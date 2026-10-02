@@ -53,11 +53,20 @@ Uygulaması:
 ## 4. Sohbet, özel mesaj ve propaganda
 
 **Sohbet kanalları**
-- **Türkiye Meydanı:** Tüm oyuncular.
-- **İl Kahvesi:** Yalnızca senin ilindeki oyuncular.
-- **Parti sohbeti:** Yalnızca partinin üyeleri.
-- **TBMM Genel Kurulu:** Vekiller, bakanlar ve cumhurbaşkanı konuşur, herkes izler.
-- **Özel mesaj:** İki oyuncu arasında.
+Sohbet ekranı kanalları üç grupta gösterir. Her kanalda son mesaj, okunmamış mesaj sayısı ve çevrimiçi oyuncu sayısı görünür. Girmeye yetkin olmayan kanallar silinmez, **kilitli** görünür ve nasıl açılacağı yazar.
+
+| Grup | Kanal | Kim girer, kim yazar |
+|---|---|---|
+| Herkese açık | **Türkiye Meydanı** | Tüm oyuncular |
+| | **İl Kahvesi** | Yalnızca senin ilindeki oyuncular |
+| | **Belediye Meclisi** | İlin herkesi izler. Yalnızca o ilin belediye başkanı ve milletvekilleri yazar |
+| Siyasi örgüt | **Parti sohbeti** | Partinin üyeleri |
+| | **Parti Yönetim Kurulu** | Yalnızca genel başkan ve genel başkan yardımcıları (sıradan üye giremez) |
+| | **İttifak sohbeti** | İttifaktaki partilerin üyeleri |
+| Devlet | **TBMM Genel Kurulu** | Vekiller, bakanlar ve cumhurbaşkanı konuşur, herkes izler |
+| | **Bakanlar Kurulu** | Yalnızca cumhurbaşkanı ve bakanlar |
+
+**Özel mesaj:** İki oyuncu arasında.
 
 **Propaganda yayınları** alıcıların bildirim kutusuna düşer:
 
@@ -215,7 +224,10 @@ Yeni oyuncu 10.000 ₺ ile başlar.
 | **Aday adaylığı ücreti** (parti kasasına gider) | Milletvekili 5.000, belediye 3.000 × il büyüklüğü (1–3), genel başkanlık 10.000, cumhurbaşkanlığı 20.000 ₺. Fiyat düzeyiyle artar. Genel başkan her ücreti ×0 ile ×3 arasında ayarlayabilir |
 | **Taşınma** (il değiştirme) | 5.000 ₺ × fiyat düzeyi. Devletin taşınma desteği, ücretsiz ulaşım ve hızlı tren düşürür |
 | **Ek propaganda hakkı** | 1.500 ₺. Günlük hak bitince bir yayın daha. Günde en fazla 3 |
-| **Partiye bağış** | Günde en fazla bir aylık asgari ücret kadar |
+| **Partiye bağış** | Parti kasasına girer. Günde en fazla bir aylık asgari ücret kadar (şehir bağışıyla ortak sınır). Her asgari ücret tutarı **+1 kıdem puanı** kazandırır |
+| **Şehir kalkınma bağışı** | İlin gelişmişliğini artırır: her asgari ücret tutarı için **+0,005 gelişmişlik** (gelişmiş ilde maaşlar ve belediye geliri artar) ve **+1 kıdem puanı**. Ayın hayırseverleri listesi herkese açıktır |
+
+**Verginin karşılığı:** "Hayat" ekranındaki vergi karnesi, son 7 günde ödediğin gelir vergisinin bütçe kanunundaki paylara göre hangi bakanlığa, belediyelere ve sosyal desteğe gittiğini gösterir; karşılığında sana işleyen hizmetleri (icraatlar, belediye hizmetleri) de listeler.
 
 ### Ülke ekonomisini kim yönetir?
 Cumhurbaşkanı ve kabine. Ekonomi masasındaki her ayar Resmî Gazete'de yayımlanır.
@@ -301,10 +313,10 @@ Her makam yalnızca **kendi yetkisindeki** şeyi vaat edebilir. Örneğin vekil 
 
 | Kim | En fazla | Ne vaat edebilir |
 |---|---|---|
-| **Parti (seçim beyannamesi, genel başkan yazar)** | 5 | Asgari ücret hedefi, gelir vergisi hedefi, kıdem primi, sosyal destek, taşınma desteği, bayram ikramiyesi, bakanlık icraatları (istihdam paketi, ucuz gıda, ücretsiz sağlık, burs, fiyat denetimi, toplu taşıma) |
-| **Milletvekili adayı** | 3 | Vergi tavanını indiren bütçeye, belediye payını artıran bütçeye, partilere yardımı azaltan bütçeye, barajı indiren seçim kanununa kabul oyu vermek |
+| **Parti (seçim beyannamesi, genel başkan yazar)** | 5 | Asgari ücret hedefi, gelir vergisi hedefi, kıdem primi, sosyal destek, taşınma desteği, bayram ikramiyesi ve **24 bakanlık icraatının hepsi** (her icraatın kendi vaadi vardır; yapılınca tutulmuş sayılır) |
+| **Milletvekili adayı** | 3 | Vergi tavanını indiren bütçeye, belediye payını artıran bütçeye, partilere yardımı azaltan bütçeye, barajı indiren seçim kanununa kabul oyu vermek; Meclis oylamalarının en az %50-100'üne katılmak; en az 1-5 kanun teklifi vermek |
 | **Belediye başkanı adayı** | 4 | Kent vergisini indirmek, hemşehri desteği, kent lokantası, ücretsiz ulaşım, kira yardımı, istihdam ofisi, altyapı, raylı sistem |
-| **Genel başkan adayı** | 2 | Aday ücretlerini düşürmek, adaylara kampanya desteği |
+| **Genel başkan adayı** | 2 | Aday ücretlerini düşürmek, adaylara kampanya desteği, parti üye sayısını artırmak, parti kasasını büyütmek |
 
 **Karşılıksız vaat verilemez.** Aday vaatleri seçerken sistem maliyetini ülkenin ya da ilin mali alanıyla karşılaştırır:
 - **Karşılığı var:** Maliyet mali alanın yarısından az, enflasyon etkisi en fazla 3 puan.
@@ -318,6 +330,13 @@ Vergi artışı vaadi gelir yaratır, yani başka vaatlere yer açar.
 - Tek seferlik vaatler (ikramiye, yatırım, kanun oyu) yerine getirilince "tutuldu" olur.
 
 Karne oyuncu kartında, parti sayfasında, il sayfasında ve belediye ekranında herkese açıktır.
+
+**Söz tutmanın karşılığı (itibar):** Vaat sonuçlanınca oyuncunun kişisel itibarına ve kıdem puanına işlenir. Kıdem puanı statüyü, statü de maaşını belirlediği için vaat tutmanın doğrudan parasal karşılığı vardır.
+- **Tek seferlik vaat yapılınca** hemen **+5 kıdem puanı**. Görev bitene kadar yapılmazsa **−3** (puan 0'ın altına inmez).
+- **Sürekli vaat** görev bitince değerlendirilir: günlerin en az yarısında tutulduysa **+5**, değilse **−3**.
+- Cumhurbaşkanı partinin beyannamesindeki vaatlerin sorumlusudur; vaatler onun karnesine işlenir.
+- Oyuncunun **söz karnesi** (tutulan / toplam vaat) oyuncu kartında, aday listelerinde ve Hayat ekranında görünür. En az 3 vaat sonuçlanmışsa tutma oranı %70 ve üstüyse **Sözünün Eri**, %30'un altındaysa **Lafta Kalan** rozeti çıkar.
+- Her vaat tek bir kez işlenir, tekrar saymaz.
 
 ## 8. Sunucu: veriler nerede, nasıl saklanıyor?
 

@@ -8,7 +8,7 @@ cd "$(dirname "$0")/../sql"
   echo "--  Tekrar çalıştırmak güvenlidir (var olan veriyi silmez)."
   echo "-- ====================================================================="
   echo "begin;"
-  cat 01_sema.sql; echo; cat iller.sql; echo; cat 02_motor.sql; echo; cat 03_api.sql; echo; cat 05_kabine_sosyal.sql; echo; cat 07_devlet.sql; echo; cat 08_asama3.sql; echo; cat 09_vatandas.sql; echo; cat 06_yetkiler.sql; echo
+  cat 01_sema.sql; echo; cat iller.sql; echo; cat 02_motor.sql; echo; cat 03_api.sql; echo; cat 05_kabine_sosyal.sql; echo; cat 07_devlet.sql; echo; cat 08_asama3.sql; echo; cat 09_vatandas.sql; echo; cat 10_ekonomi2.sql; echo; cat 06_yetkiler.sql; echo
   echo "commit;"
   echo
   cat 04_zamanlayici.sql

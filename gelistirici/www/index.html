@@ -673,7 +673,7 @@ function secenekSatir(x, mv, destekler){
   if (mv) return `<div class="pusula-secenek" data-h="${x.hedef}">${amblemKutu(x)}<div style="flex:1;min-width:0"><b>${e(x.ad)}</b>
       <div class="kucuk">Liste: ${x.liste.slice(0, 4).map(l => `${l.sira}. ${e(l.kad)}`).join(", ")}${x.liste.length > 4 ? ` +${x.liste.length - 4}` : ""}</div>${x.liste[0] && x.liste[0].vaat ? `<div class="vaat">“${e(x.liste[0].vaat)}” — ${e(x.liste[0].kad)}</div>` : ""}${x.beyanname && x.beyanname.vaatler.length ? `<div class="kucuk" style="margin-top:4px;color:var(--gold2);font-weight:700">Seçim beyannamesi</div>${vaatHtml(x.beyanname.vaatler)}` : ""}</div><div class="daire"></div></div>`;
   return `<div class="pusula-secenek" data-h="${x.hedef}">${amblemKutu({ renk: x.renk, amblem: (partiBul(x.parti_id) || {}).amblem })}
-    <div style="flex:1;min-width:0"><b>${e(x.kad)}</b><div class="kucuk">${x.kisa ? `<span style="color:${e(x.renk)}">${e(x.kisa)}</span>` : "Bağımsız"}${x.il_id ? " · " + e(ilAd(x.il_id)) : ""}${dst ? ` · Destekleyen: ${dst.map(d => `<span style="color:${e(d.renk)}">${e(d.kisa)}</span>`).join(", ")}` : ""}</div>${x.vaat ? `<div class="vaat">“${e(x.vaat)}”</div>` : ""}${vaatHtml(x.vaatler)}${x.beyanname && x.beyanname.vaatler.length ? `<div class="kucuk" style="margin-top:4px;color:var(--gold2);font-weight:700">Partisinin beyannamesi</div>${vaatHtml(x.beyanname.vaatler)}` : ""}</div><div class="daire"></div></div>`;
+    <div style="flex:1;min-width:0"><b>${e(x.kad)}</b> ${itibarCip(x.itibar)}<div class="kucuk">${x.kisa ? `<span style="color:${e(x.renk)}">${e(x.kisa)}</span>` : "Bağımsız"}${x.il_id ? " · " + e(ilAd(x.il_id)) : ""}${dst ? ` · Destekleyen: ${dst.map(d => `<span style="color:${e(d.renk)}">${e(d.kisa)}</span>`).join(", ")}` : ""}</div>${x.vaat ? `<div class="vaat">“${e(x.vaat)}”</div>` : ""}${vaatHtml(x.vaatler)}${x.beyanname && x.beyanname.vaatler.length ? `<div class="kucuk" style="margin-top:4px;color:var(--gold2);font-weight:700">Partisinin beyannamesi</div>${vaatHtml(x.beyanname.vaatler)}` : ""}</div><div class="daire"></div></div>`;
 }
 let PARTI_ON = [];
 const partiBul = (id) => PARTI_ON.find(p => p.id === id);
@@ -711,7 +711,7 @@ function pusulaBagla(s){
 }
 function adayListesiHtml(s){
   if (s.tur === "mv") return `<h2>Adaylar</h2><p class="alt">Parti listeleri ön seçimden sonra belli olur.</p>${s.secenekler.map(x => `<div class="liste-satir">${amblemKutu(x)}<div class="orta"><b>${e(x.ad)}</b><div class="kucuk">${x.liste.map(l => `${l.sira}. ${e(l.kad)}`).join(", ")}</div></div></div>`).join("") || `<div class="bos">Henüz liste yok.</div>`}`;
-  return `<h2>Adaylar</h2>${s.secenekler.map(x => `<div class="liste-satir"><div class="orta"><b>${e(x.kad)}</b><div class="kucuk">${x.kisa ? `<span style="color:${e(x.renk)}">${e(x.kisa)}</span>` : ""}${x.il_id ? " · " + e(ilAd(x.il_id)) : ""}</div>${x.vaat ? `<div class="vaat">“${e(x.vaat)}”</div>` : ""}${vaatHtml(x.vaatler)}</div></div>`).join("") || `<div class="bos">Henüz aday yok.</div>`}
+  return `<h2>Adaylar</h2>${s.secenekler.map(x => `<div class="liste-satir"><div class="orta"><b>${e(x.kad)}</b> ${itibarCip(x.itibar)}<div class="kucuk">${x.kisa ? `<span style="color:${e(x.renk)}">${e(x.kisa)}</span>` : ""}${x.il_id ? " · " + e(ilAd(x.il_id)) : ""}</div>${x.vaat ? `<div class="vaat">“${e(x.vaat)}”</div>` : ""}${vaatHtml(x.vaatler)}</div></div>`).join("") || `<div class="bos">Henüz aday yok.</div>`}
     <p class="kucuk" style="margin-top:8px">Sandık ${tarihSaat(s.oy_bas)}'de açılır.</p>`;
 }
 function oyBarlari(adaylar, toplam){
@@ -813,7 +813,7 @@ async function ilDetay(id){
         : `<div class="kucuk" style="margin-top:8px">Şu an bu ilde oyunculara işleyen belediye hizmeti yok.</div>`}
 </div>
     <div class="kart"><h2>Milletvekilleri (${d.vekiller.length}/${d.mv})</h2>${d.vekiller.map(v => `<div class="liste-satir" onclick="oyuncuKart('${e(v.kad)}')" style="cursor:pointer"><div class="orta"><b>${e(v.kad)}</b></div>${partiRozet(v.parti, true)}${v.kaynak === "yedek" ? ` <span class="rozet">yedek</span>` : ""}</div>`).join("") || `<div class="alt">Bu ilden Meclis'te vekil yok.</div>`}</div>
-    ${Object.entries(grup).map(([t, l]) => `<div class="kart"><h2>${TUR[t].ad} adayları</h2>${l.map(a => `<div class="liste-satir"><div class="orta"><b>${a.sira ? a.sira + ". " : ""}${e(a.kad)}</b>${a.vaat ? `<div class="vaat">“${e(a.vaat)}”</div>` : ""}${vaatHtml(a.vaatler)}</div><span style="color:${e(a.renk)};font-weight:700">${e(a.kisa)}</span></div>`).join("")}</div>`).join("")}
+    ${Object.entries(grup).map(([t, l]) => `<div class="kart"><h2>${TUR[t].ad} adayları</h2>${l.map(a => `<div class="liste-satir"><div class="orta"><b>${a.sira ? a.sira + ". " : ""}${e(a.kad)}</b> ${itibarCip(a.itibar)}${a.vaat ? `<div class="vaat">“${e(a.vaat)}”</div>` : ""}${vaatHtml(a.vaatler)}</div><span style="color:${e(a.renk)};font-weight:700">${e(a.kisa)}</span></div>`).join("")}</div>`).join("")}
     ${d.partiler.length ? `<div class="kart"><h2>Partilerin üye sayısı</h2>${d.partiler.map(x => `<div class="kv"><span class="k">${partiRozet(x)}</span><span class="v">${x.uye}</span></div>`).join("")}</div>` : ""}
     ${p && !d.benim_ilim ? `<button class="btn ikinci" onclick="ilDegistir(${d.id}, ${d.tasinma == null ? "null" : d.tasinma})">Bu ile taşın${d.tasinma != null ? ` (${fmt(d.tasinma)} ₺)` : ""}</button>` : ""}
     <button class="btn ikinci" onclick="modalKapat()">Kapat</button>`;
@@ -1405,27 +1405,42 @@ function zamanKisa(ts){
 }
 async function sohbetListe(){
   yukleniyor("Sohbet");
-  let dm, itt = null; try { dm = await API.rpc("ozel_liste"); await durumYenile(); if (D.durum.profil.parti) itt = (await API.rpc("ittifak_bilgi", { p_parti: D.durum.profil.parti.id })).ittifak; } catch (err) { iskelet("Sohbet", `<div class="bos">${e(hataCevir(err.message))}</div>`); return; }
+  let dm, oz; try { [dm, oz] = await Promise.all([API.rpc("ozel_liste"), API.rpc("sohbet_ozet")]); await durumYenile(); } catch (err) { iskelet("Sohbet", `<div class="bos">${e(hataCevir(err.message))}</div>`); return; }
   const p = D.durum.profil;
   const kik = (ic, renk) => `<div class="kik" style="background:${renk}22;color:${renk}">${ic}</div>`;
-  const kanal = (k, ikon, ad, alt, kapali) => `<div class="kanal" ${kapali ? `style="opacity:.5"` : `onclick="ekranAc(()=>sohbetEkrani('${k}'))"`}>${ikon}
-      <div style="flex:1;min-width:0"><b>${e(ad)}</b><div class="kucuk">${e(alt)}</div></div><span style="color:var(--mut)">›</span></div>`;
+  const sv = (d) => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const IK = {
+    genel: kik(IKON.sohbet.replace("<svg", '<svg width="22" height="22"'), "#FF453A"),
+    il: kik(FINCAN.replace("<svg", '<svg width="22" height="22"'), "#D9A441"),
+    belediye: kik(sv('<path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/>'), "#30D158"),
+    parti: p.parti ? `<div class="kik" style="background:${e(p.parti.renk)}22">${amblemSvg(p.parti.amblem, p.parti.renk).replace("<svg", '<svg width="22" height="22"')}</div>` : kik("?", "#888"),
+    yonetim: kik(sv('<path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/>'), "#FF9F0A"),
+    ittifak: kik(sv('<path d="M8 12h8M5 8l-3 4 3 4M19 8l3 4-3 4"/>'), "#BF5AF2"),
+    meclis: kik(IKON.devlet.replace("<svg", '<svg width="22" height="22"'), "#0A84FF"),
+    kabine: kik(sv('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>'), "#64D2FF") };
+  const ALT = { genel: "Tüm oyuncular", il: "Senin ilindeki oyuncular", belediye: "Herkes izler; belediye başkanı ve ilin vekilleri konuşur",
+    parti: "Yalnızca parti üyeleri görür", yonetim: "Genel başkan ve yardımcıları", ittifak: "İttifak partilerinin üyeleri",
+    meclis: "Vekiller, bakanlar ve cumhurbaşkanı konuşur; herkes izler", kabine: "Cumhurbaşkanı ve bakanlar" };
+  const GRUP = [["Herkese açık", ["genel", "il", "belediye"]], ["Siyasi örgüt", ["parti", "yonetim", "ittifak"]], ["Devlet", ["meclis", "kabine"]]];
+  const satir = (k) => {
+    const kilitli = !!k.kilit;
+    return `<div class="kanal" ${kilitli ? `style="opacity:.55" onclick="toast('${e(k.kilit)}')"` : `onclick="ekranAc(()=>sohbetEkrani('${k.kanal}'))"`}>${IK[k.kanal]}
+      <div style="flex:1;min-width:0"><b>${e(k.baslik)}</b>${kilitli ? ` <span class="kucuk">🔒</span>` : ""}
+        <div class="kucuk" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${kilitli ? e(k.kilit) : k.son ? `${e(k.son.kad)}: ${e(k.son.metin)}` : e(ALT[k.kanal])}</div>
+        ${!kilitli && k.cevrimici != null ? `<div class="kucuk" style="color:var(--good)">● ${k.cevrimici} çevrimiçi${k.yazabilir ? "" : " · yalnızca izleme"}</div>` : !kilitli && !k.yazabilir ? `<div class="kucuk">Yalnızca izleme</div>` : ""}</div>
+      <div style="text-align:right">${k.son ? `<div class="kucuk">${zamanKisa(k.son.zaman)}</div>` : ""}${k.okunmamis ? `<span class="rozet kirmizi" style="margin-top:4px">${k.okunmamis > 99 ? "99+" : k.okunmamis}</span>` : kilitli ? "" : `<span style="color:var(--mut)">›</span>`}</div></div>`;
+  };
   iskelet("Sohbet", `
-    <div class="kart"><h2>Kanallar</h2>
-      ${kanal("genel", kik(IKON.sohbet.replace("<svg", '<svg width="22" height="22"'), "#FF453A"), "Türkiye Meydanı", "Tüm oyuncular")}
-      ${kanal("il", kik(FINCAN.replace("<svg", '<svg width="22" height="22"'), "#D9A441"), p.il_ad + " Kahvesi", "Senin ilindeki oyuncular")}
-      ${p.parti ? kanal("parti", `<div class="kik" style="background:${e(p.parti.renk)}22">${amblemSvg(p.parti.amblem, p.parti.renk).replace("<svg", '<svg width="22" height="22"')}</div>`, p.parti.ad, "Yalnızca parti üyeleri görür")
-                : kanal("parti", kik("?", "#888"), "Parti sohbeti", "Bir partiye katılınca açılır", true)}
-      ${itt ? kanal("ittifak", kik('<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12h8M5 8l-3 4 3 4M19 8l3 4-3 4"/></svg>', "#BF5AF2"), itt.ad, "İttifak partilerinin üyeleri") : ""}
-      ${kanal("meclis", kik(IKON.devlet.replace("<svg", '<svg width="22" height="22"'), "#0A84FF"), "TBMM Genel Kurulu", "Vekiller, bakanlar ve cumhurbaşkanı konuşur; herkes izler")}</div>
+    <div class="kart" style="display:flex;justify-content:space-between;align-items:center"><b>Sohbet</b><span class="kucuk" style="color:var(--good)">● ${oz.cevrimici} oyuncu çevrimiçi</span></div>
+    ${GRUP.map(([ad, liste]) => `<div class="kart"><h2>${ad}</h2>${liste.map(kn => satir(oz.kanallar.find(k => k.kanal === kn))).join("")}</div>`).join("")}
     <div class="kart"><h2>Özel mesajlar</h2>
       ${dm.map(x => `<div class="kanal" onclick="ekranAc(()=>ozelEkrani('${e(x.kad)}'))">${amblemKutu(x.parti)}
         <div style="flex:1;min-width:0"><b>${e(x.kad)}</b>${x.unvan ? ` <span class="kucuk" style="color:var(--gold2)">${e(x.unvan)}</span>` : ""}
           <div class="kucuk" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.benden ? "Sen: " : ""}${e(x.son)}</div></div>
         <div style="text-align:right"><div class="kucuk">${zamanKisa(x.zaman)}</div>${x.okunmamis ? `<span class="rozet kirmizi" style="margin-top:4px">${x.okunmamis}</span>` : ""}</div></div>`).join("")
-        || `<div class="bos">Henüz özel mesajın yok. Bir oyuncunun kartından ya da sohbetteki mesajına dokunarak yazabilirsin.</div>`}
+        || `<div class="bos">Henüz özel mesajın yok. Bir oyuncunun kartına ya da sohbetteki bir mesajına dokunup yazabilirsin.</div>`}
       <button class="btn ikinci" onclick="yeniOzelModal()">Yeni mesaj</button></div>
-    <div class="kart"><div class="kucuk">Hakaret, küfür, nefret söylemi ve spam yasaktır. Uygunsuz bir mesaja dokunup şikâyet edebilir, oyuncuyu engelleyebilirsin. 3 kişinin şikâyet ettiği mesaj otomatik gizlenir.</div></div>`);
+    <div class="kart"><div class="kucuk">Hakaret, küfür, nefret söylemi ve spam yasaktır. Uygunsuz bir mesaja dokunup şikâyet edebilir, oyuncuyu engelleyebilirsin. 3 kişinin şikâyet ettiği mesaj otomatik gizlenir. Kilitli kanallar ilgili göreve gelince açılır.</div></div>`);
 }
 function yeniOzelModal(){
   const m = modal(`<h3 style="font-size:19px;font-weight:800">Yeni özel mesaj</h3>
@@ -1468,10 +1483,10 @@ async function sohbetEkrani(kanal){
   try {
     const r = await API.rpc("sohbet_oku", { p_kanal: kanal, p_once: null, p_sonra: null });
     $("#sbBaslik").textContent = r.baslik;
-    akis.innerHTML = r.mesajlar.length ? "" : `<div class="bos">Henüz mesaj yok. İlk mesajı sen yaz!</div>`;
+    akis.innerHTML = r.mesajlar.length ? "" : `<div class="bos">${r.yazabilir ? "Henüz kimse yazmadı. İlk mesajı sen yaz!" : "Henüz kimse söz almadı. Burada konuşulanları izleyebilirsin."}</div>`;
     if (r.mesajlar.length) { sonId = r.mesajlar[r.mesajlar.length - 1].id; ilkId = r.mesajlar[0].id; akisaEkle(akis, r.mesajlar); akis.scrollTop = akis.scrollHeight; }
     if (r.mesajlar.length < 40) bitti = true;
-    if (!r.yazabilir) $("#yazbar").innerHTML = `<div class="kucuk" style="padding:6px 4px;text-align:center;width:100%">Genel Kurul'da yalnızca milletvekilleri, bakanlar ve cumhurbaşkanı söz alabilir. Sen izleyebilirsin.</div>`;
+    if (!r.yazabilir) $("#yazbar").innerHTML = `<div class="kucuk" style="padding:6px 4px;text-align:center;width:100%">${kanal === "belediye" ? "Belediye meclisinde yalnızca o ilin belediye başkanı ve milletvekilleri söz alabilir." : "Genel Kurul'da yalnızca milletvekilleri, bakanlar ve cumhurbaşkanı söz alabilir."} Sen izleyebilirsin.</div>`;
   } catch (err) { akis.innerHTML = `<div class="bos">${e(hataCevir(err.message))}</div>`; $("#yazbar").remove(); return; }
   akis.addEventListener("scroll", async () => {
     if (akis.scrollTop > 40 || yukluyor || bitti || !ilkId) return;
@@ -1545,6 +1560,10 @@ function sikayetModal(tur, id, kad, el){
 async function engelDegis(kad, engelle){
   try { await islem(() => API.rpc(engelle ? "engelle" : "engel_kaldir", { p_kad: kad }), engelle ? `${kad} engellendi.` : "Engel kaldırıldı."); modalKapat(); } catch (_) {}
 }
+function itibarCip(i){
+  if (!i || !i.toplam) return "";
+  return `<span class="rozet ${i.rozet === "Sözünün Eri" ? "yesil" : i.rozet === "Lafta Kalan" ? "kirmizi" : "altin"}" title="Geçmiş görevlerinde verdiği vaatlerden tutulanlar">Söz karnesi ${i.tutulan}/${i.toplam}${i.rozet ? " · " + i.rozet : ""}</span>`;
+}
 async function oyuncuKart(kad){
   const m = modal(`<div class="yukleniyor">Yükleniyor…</div>`);
   let k; try { k = await API.rpc("oyuncu_kart", { p_kad: kad }); } catch (err) { m.querySelector(".modal").innerHTML = `<div class="bos">${e(hataCevir(err.message))}</div>`; return; }
@@ -1552,7 +1571,7 @@ async function oyuncuKart(kad){
     <div style="display:flex;gap:12px;align-items:center">${amblemKutu(k.parti, 56)}<div style="min-width:0"><h3 style="font-size:21px;font-weight:900">${e(k.kad)}</h3>
       ${k.unvan ? `<div style="color:var(--gold2);font-weight:700;font-size:14px">${e(k.unvan)}</div>` : ""}
       <div class="alt">${e(k.il_ad)} · ${partiRozet(k.parti, true)}${k.statu ? ` · <span style="color:var(--gold2)">${e(k.statu.ad)}</span>` : ""}</div></div></div>
-    ${(k.rozetler || []).length ? `<div class="rozetler">${k.rozetler.map(r => `<span class="rozet altin" title="${e(r.aciklama)}">★ ${e(r.ad)}</span>`).join("")}</div>` : ""}
+    ${(k.rozetler || []).length || (k.itibar && k.itibar.toplam) ? `<div class="rozetler">${k.rozetler.map(r => `<span class="rozet altin" title="${e(r.aciklama)}">★ ${e(r.ad)}</span>`).join("")}${itibarCip(k.itibar)}</div>` : ""}
     ${(k.karneler || []).length ? `<div class="kart" style="margin-top:12px"><h2>Vaat karnesi</h2>${k.karneler.map(karneHtml).join("")}<div class="kucuk" style="margin-top:6px">Seçimde verdiği ölçülebilir vaatleri görevdeyken yerine getirip getirmediği her gün otomatik kontrol edilir.</div></div>` : ""}
     <div class="kart" style="margin-top:12px"><h2>Siyasi geçmiş</h2>${k.gecmis.map(g => `<div class="kv"><span class="k">${e(g.makam)}</span><span class="v kucuk">${tarih(g.bas)}${g.bit ? " – " + tarih(g.bit) : " – görevde"}</span></div>`).join("") || `<div class="alt">Henüz görev almadı.</div>`}
       <div class="kucuk" style="margin-top:6px">Katılım: ${tarih(k.katilim)}</div></div>
@@ -1807,16 +1826,17 @@ async function vaatEditor(o){
     const m = +t.mevcut || 0, r = (x) => Math.max(t.min ?? -1e12, Math.min(t.max ?? 1e12, x));
     return { asgari: Math.ceil(m * 1.08 / 500) * 500, vergi: r(m - 2), kidem: r(m + 5), destek: r(m + 100), tasinma: r(m + 20), ikramiye: 1000,
              vergi_tavan: r(m - 5), belediye_payi: r(m + 5), baraj: r(Math.max(0, m - 2)), parti_yardim: Math.round(m / 2),
-             kent_vergisi: r(Math.max(0, m - 1)), hemsehri: r(m + 100), aday_ucret: 0.5, kampanya: 10000 }[t.kod];
+             kent_vergisi: r(Math.max(0, m - 1)), hemsehri: r(m + 100), aday_ucret: 0.5, kampanya: 10000,
+             katilim: 80, teklif: 1, uye: r(Math.max(2, Math.round(m) + 10)), kasa: r(Math.max(10000, Math.round(m * 2 / 1000) * 1000)) }[t.kod];
   };
-  const B = { tl_ay: "₺/ay", tl_gun: "₺/gün", tl: "₺", yuzde: "%", kat: "×" };
+  const B = { tl_ay: "₺/ay", tl_gun: "₺/gün", tl: "₺", yuzde: "%", kat: "×", adet: "adet" };
   const birim = sec.birim === "tl" ? "₺/gün" : "milyar ₺/gün";
   const m = modal(`<h3 style="font-size:19px;font-weight:800">${e(o.baslik)}</h3><p class="alt">${e(o.aciklama)}</p>
     <div class="alan"><label>Bildirge <span id="vsay" class="kucuk"></span></label><textarea class="alanmetin" id="vmetin" maxlength="${o.metinMax}" style="min-height:80px" placeholder="Seçmenlere ne söylüyorsun?">${e(o.metin || "")}</textarea></div>
     <div class="kucuk" style="margin-top:10px;font-weight:800;color:var(--txt2)">ÖLÇÜLEBİLİR VAATLER (en fazla ${sec.en_fazla})</div>
     ${sec.turler.map(t => `<div class="secenek ${secili.has(t.kod) ? "secili" : ""}" data-kod="${t.kod}" style="flex-direction:column;align-items:stretch">
       <div style="display:flex;gap:8px;align-items:flex-start"><div style="flex:1"><b style="font-size:14px">${e(t.ad)}</b><div class="kucuk">${e(t.aciklama)}${t.mevcut != null ? ` Bugün: ${t.birim === "yuzde" ? "%" + fmt(t.mevcut, 1) : t.birim === "kat" ? "×" + fmt(t.mevcut, 2) : fmt(t.mevcut) + " " + B[t.birim]}.` : ""}${t.acik ? " Bu hizmet şu an açık." : ""}</div></div><span class="rozet" data-isaret>${secili.has(t.kod) ? "✓" : "+"}</span></div>
-      ${t.birim !== "yok" ? `<div class="payinput" style="margin-top:6px;${secili.has(t.kod) ? "" : "display:none"}" data-hedef-kutu><span class="kucuk">Hedef (${B[t.birim]})</span><input data-hedef type="number" step="${t.birim === "kat" ? 0.25 : t.birim === "yuzde" ? 0.5 : t.kod === "asgari" ? 500 : 10}" value="${secili.get(t.kod) ?? oneri(t)}" inputmode="decimal"></div>` : ""}
+      ${t.birim !== "yok" ? `<div class="payinput" style="margin-top:6px;${secili.has(t.kod) ? "" : "display:none"}" data-hedef-kutu><span class="kucuk">Hedef (${B[t.birim]})</span><input data-hedef type="number" step="${t.birim === "kat" ? 0.25 : t.birim === "yuzde" ? 0.5 : t.birim === "adet" ? 1 : t.kod === "asgari" ? 500 : t.kod === "kasa" ? 1000 : 10}" value="${secili.get(t.kod) ?? oneri(t)}" inputmode="decimal"></div>` : ""}
       <div class="kucuk" data-maliyet></div></div>`).join("")}
     <div class="kart" style="margin:12px 0 0;background:var(--panel2)" id="vhesap"><div class="kucuk">Vaat seçtikçe maliyeti burada görürsün.</div></div>
     <button class="btn altin" id="vkaydet">Kaydet</button>`);
@@ -1968,7 +1988,18 @@ function hayatCiz(h){
       <div style="display:flex;justify-content:space-between"><b>${e(st.ad)}</b><span class="kucuk">${st.puan} kıdem puanı${st.sonraki_esik ? ` · ${e(st.sonraki_ad)}: ${st.sonraki_esik}` : ""}</span></div>
       <div class="bar"><i style="width:${stOran}%;background:var(--gold)"></i></div>
       <div style="margin-top:6px">${STATU.map(([a, p2], i) => `<span class="taahhut ${i <= STATU.findIndex(x => x[0] === st.ad) ? "" : "yok"}">${a}</span>`).join("")}</div>
-      <p class="kucuk" style="margin-top:6px">Oyuna girip topladığın her gün +1, kullandığın her oy +3 kıdem puanı. Her basamak maaşına kıdem primi kadar (%${fmt(h.ulke.kidem_primi, 1)}) ekler. Kıdem primini hükümet belirler. Şu an maaş çarpanın ×${fmt(st.carpan, 2)}.</p></div>
+      <p class="kucuk" style="margin-top:6px">Oyuna girip topladığın her gün +1, kullandığın her oy +3, tuttuğun her vaat +5, bir asgari ücret tutarındaki her bağış +1 kıdem puanı (tutamadığın vaat −3). Her basamak maaşına kıdem primi kadar (%${fmt(h.ulke.kidem_primi, 1)}) ekler. Kıdem primini hükümet belirler. Şu an maaş çarpanın ×${fmt(st.carpan, 2)}.</p></div>
+    <div class="kart"><h2>Söz karnen</h2>
+      ${h.itibar && h.itibar.toplam ? `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>${h.itibar.tutulan} vaat tutuldu, ${h.itibar.bozulan} vaat tutulmadı</b>${itibarCip(h.itibar)}</div>
+        <div class="bar"><i style="width:${h.itibar.oran}%;background:var(--good)"></i></div><div class="kucuk" style="margin-top:6px">Tutma oranın %${h.itibar.oran}. Karnen oyuncu kartında ve aday olduğunda herkese görünür.</div>`
+        : `<div class="bos" style="padding:6px 0">Henüz sonuçlanmış vaadin yok. Aday olup ölçülebilir vaat verirsen, görev dönemin içinde yerine getirdiklerin burada görünür.</div>`}
+      <p class="kucuk" style="margin-top:6px">Tutulan her vaat +5 kıdem puanı kazandırır (statü ve maaşın artar), tutulmayan −3 kaybettirir.</p></div>
+    <div class="kart"><h2>Şehrine katkı</h2>
+      <p class="alt">Kalkınma bağışın ${e(h.il_ad)} ilinin gelişmişliğini artırır; gelişmiş ilde maaşlar ve belediye geliri yükselir. Bir asgari ücret tutarındaki bağış 1 kıdem puanı kazandırır.</p>
+      <button class="btn ikinci" id="hBagis">🏙️ Kalkınma bağışı yap</button></div>
+    <div class="kart"><h2>Verginin karşılığı</h2>
+      <p class="alt">Ödediğin gelir vergisinin hangi bakanlığa, belediyeye ve sosyal desteğe gittiğini gör.</p>
+      <button class="btn ikinci" id="hVergi">🧾 Verginin nereye gittiğini gör</button></div>
     <div class="kart"><h2>Günlük bordron</h2>
       <div class="kv"><span class="k">Asgari ücret</span><span class="v">${tlYaz(kb.asgari)}/ay</span></div>
       <div class="kv"><span class="k">Statü · ${e(h.il_ad)} refahı${kb.ucret_bonus ? " · destekler" : ""}</span><span class="v">×${fmt(kb.statu_carpan, 2)} · ×${fmt(kb.il_carpan, 2)}${kb.ucret_bonus ? ` · +%${fmt(kb.ucret_bonus)}` : ""}</span></div>
@@ -2003,6 +2034,34 @@ function hayatCiz(h){
     catch (err) { toast(hataCevir(err.message), true); b.disabled = false; }
   };
   $("#hMagaza").onclick = () => magazaModal();
+  $("#hBagis").onclick = () => ilBagisModal();
+  $("#hVergi").onclick = () => vergiKarneModal();
+}
+async function ilBagisModal(){
+  const m = modal(`<div class="yukleniyor">Yükleniyor…</div>`);
+  let d; try { d = await API.rpc("il_bagis_durum"); } catch (err) { modalKapat(); toast(hataCevir(err.message), true); return; }
+  m.querySelector(".modal").innerHTML = `<h3 style="font-size:19px;font-weight:800">${e(d.il_ad)} kalkınma bağışı</h3>
+    <p class="alt">Bağışlar ilin gelişmişliğini artırır (şu an ${fmt(d.gelisim, 2)}/100). Parti bağışıyla birlikte günlük sınır: ${tlYaz(d.tavan)} (bugün ${tlYaz(d.bugun)}).</p>
+    <div class="alan"><label>Bağış (₺)</label><input id="ibmik" type="number" min="100" step="100" value="1000" inputmode="numeric"></div>
+    <div class="kv"><span class="k">Bu ay şehre toplam katkı</span><span class="v">${tlYaz(d.ay_toplam)}</span></div>
+    <div class="kv"><span class="k">Senin toplam bağışın</span><span class="v">${tlYaz(d.benim_toplam)}</span></div>
+    <div class="kucuk" style="margin-top:10px;font-weight:800;color:var(--txt2)">BU AYIN HAYIRSEVERLERİ</div>
+    ${d.top.map((x, i) => `<div class="kv"><span class="k">${i + 1}. ${e(x.kad)}</span><span class="v">${tlYaz(x.toplam)}</span></div>`).join("") || `<div class="bos" style="padding:8px 0">Bu ay henüz kimse bağış yapmadı. İlk hayırsever sen ol.</div>`}
+    <button class="btn altin" id="ibok">Bağışla</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`;
+  $("#ibok", m).onclick = async () => { try { await API.rpc("il_bagis", { p_miktar: +$("#ibmik", m).value }); modalKapat(); toast("Bağışın için teşekkürler!"); D._hayat = null; hayatEkrani(); } catch (err) { toast(hataCevir(err.message), true); } };
+}
+async function vergiKarneModal(){
+  const m = modal(`<div class="yukleniyor">Yükleniyor…</div>`);
+  let d; try { d = await API.rpc("vergi_karnem"); } catch (err) { modalKapat(); toast(hataCevir(err.message), true); return; }
+  const top = Math.max(1, ...d.kalemler.map(x => x.tl));
+  m.querySelector(".modal").innerHTML = `<h3 style="font-size:19px;font-weight:800">Verginin karşılığı</h3>
+    <p class="alt">Son 7 günde ödediğin gelir vergisi: <b>${tlYaz(d.vergi_7gun)}</b> (oran %${fmt(d.vergi_oran, 1)}, asgari ücret muaf). Bütçe kanunundaki paylara göre dağılımı:</p>
+    ${d.vergi_7gun > 0 ? d.kalemler.filter(x => x.tl > 0).map(x => `<div style="padding:6px 0"><div style="display:flex;justify-content:space-between;gap:8px"><span>${e(x.ad)}</span><b>${fmt(x.tl, 2)} ₺</b></div><div class="bar"><i style="width:${x.tl * 100 / top}%;background:var(--gold)"></i></div></div>`).join("")
+      : `<div class="bos">Henüz vergi ödemedin. Maaşını toplayınca ödediğin vergi ve gittiği yer burada görünür.</div>`}
+    <div class="kucuk" style="margin-top:10px;font-weight:800;color:var(--txt2)">KARŞILIĞINDA SANA İŞLEYENLER</div>
+    ${d.etkiler.map(x => `<div style="padding:6px 0"><b style="font-size:14px">${e(x.kaynak)}</b>${etkiCip(x.etkiler)}</div>`).join("") || `<div class="bos" style="padding:8px 0">Şu an sana işleyen bir hizmet yok. Bakanlıklar icraat yaptıkça ve belediyeler hizmet açtıkça burada görünür.</div>`}
+    ${d.destek_gunluk ? `<div class="kv"><span class="k">Yeni vatandaşlara günlük sosyal destek</span><span class="v">${tlYaz(d.destek_gunluk)}/gün</span></div>` : ""}
+    <button class="btn ikinci" onclick="modalKapat()">Kapat</button>`;
 }
 // Ödüllü reklam (@capacitor-community/admob). Ödül yalnızca reklam gerçekten izlenince verilir.
 const REKLAM = {

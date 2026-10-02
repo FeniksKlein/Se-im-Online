@@ -393,7 +393,7 @@ begin
   c := oyun.cuzdanim(p.id);
   select * into u from oyun.ulke where id = 1;
   return jsonb_build_object(
-    'para', c.para, 'statu', oyun.statu_json(p.id), 'kumbara', oyun.gelir_hesap(p.id, t),
+    'para', c.para, 'statu', oyun.statu_json(p.id), 'itibar', oyun.itibar_json(p.id), 'kumbara', oyun.gelir_hesap(p.id, t),
     'seri_gun', c.seri_gun, 'bugun_toplandi', c.seri_gun = (t at time zone 'Europe/Istanbul')::date, 'il_ad', (select ad from oyun.iller where id = p.il_id),
     'makamlar', coalesce((select jsonb_agg(jsonb_build_object('tur', m.tur, 'aylik', round(oyun.makam_maasi(m.tur, m.il_id))))
                           from oyun.makamlar m where m.user_id = p.id and m.bit is null), '[]'::jsonb),
@@ -527,7 +527,7 @@ begin
     raise exception 'Bağış sınırı: kişi başı günde en fazla % ₺ (bugün % ₺ bağışladın).', oyun.tl(tavan), oyun.tl(c.bagis_bugun);
   end if;
   perform oyun.para_islem(p.id, -m, 'bagis', format('%s partisine bağış', (select kisa from oyun.partiler where id = p.parti_id)), t);
-  update oyun.cuzdan set bagis_bugun = bagis_bugun + m where user_id = p.id;
+  update oyun.cuzdan set bagis_bugun = bagis_bugun + m, kidem = kidem + m / tavan where user_id = p.id;   -- her asgari ücret tutarında bağış 1 kıdem puanı
   update oyun.partiler set kasa = kasa + m where id = p.parti_id;
   insert into oyun.parti_hareket(parti_id, zaman, tutar, aciklama, tur) values (p.parti_id, t, m, format('%s bağış yaptı', p.kad), 'bagis');
   return public.parti_kasa(p.parti_id);

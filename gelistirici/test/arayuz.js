@@ -194,7 +194,8 @@ const AUTH = {
   saat('2026-10-10 18:01');
   const belKim = psql(`select p.kad from oyun.makamlar m join oyun.profiller p on p.id=m.user_id where m.tur='bel' and m.il_id=35 and m.bit is null`);
   console.log('   İzmir belediye başkanı:', belKim);
-  if (belKim !== 'Ercan') psql(`update oyun.makamlar set user_id=(select id from oyun.profiller where kad='Ercan'), parti_id=1 where tur='bel' and il_id=35 and bit is null`); // ekranları göstermek için
+  if (!belKim) psql(`insert into oyun.makamlar(tur, user_id, il_id, parti_id, bas) select 'bel', id, 35, 1, oyun.simdi() from oyun.profiller where kad='Ercan'`);   // rastgele botlar İzmir'de kimseyi seçtirmediyse
+  else if (belKim !== 'Ercan') psql(`update oyun.makamlar set user_id=(select id from oyun.profiller where kad='Ercan'), parti_id=1 where tur='bel' and il_id=35 and bit is null`); // ekranları göstermek için
   saat('2026-10-11 00:01');
   await yenile();
   await foto('11-gundem-belediye-sonrasi');
@@ -229,6 +230,19 @@ const AUTH = {
   await foto('14-hayat');
   assert1(psql(`select oyun.bonus(35::smallint,'gecim',oyun.simdi())`) === '15', 'lokanta geçim indirimi işlemedi');
   ok('Hayat: maaş kumbarası toplandı, ödüllü reklam izlendi, mağazadan 10.000 ₺ alındı; kent lokantası geçimi %15 düşürdü');
+  // söz karnesi, şehir bağışı ve vergi karnesi
+  await bekle('Söz karnen'); await bekle('Şehrine katkı');
+  const kidemOnce = +psql(`select kidem from oyun.cuzdan c join oyun.profiller p on p.id=c.user_id where p.kad='Ercan'`);
+  await page.click('#hBagis'); await bekle('kalkınma bağışı'); await bekle('HAYIRSEVERLERİ');
+  await foto('14c-sehir-bagisi');
+  await page.fill('#ibmik', '2000'); await page.click('#ibok'); await toastBekle('teşekkürler');
+  assert1(+psql(`select kidem from oyun.cuzdan c join oyun.profiller p on p.id=c.user_id where p.kad='Ercan'`) > kidemOnce, 'bağış kıdem puanı vermedi');
+  assert1(+psql(`select sum(tutar) from oyun.il_bagis_kayit`) === 2000, 'bağış kaydı yok');
+  await bekle('Söz karnen');
+  await page.click('#hVergi'); await bekle('Verginin karşılığı'); await bekle('KARŞILIĞINDA SANA İŞLEYENLER');
+  await foto('14d-vergi-karnesi');
+  await page.evaluate(() => modalKapat());
+  ok('Hayat: söz karnesi kartı, şehir kalkınma bağışı (kıdem puanı verdi) ve vergi karnesi çalışıyor');
 
   // ---- KURULTAY 15-18
   saat('2026-10-15 10:00');
@@ -249,7 +263,9 @@ const AUTH = {
   await tikla('Karar ver'); await tikla('Kendim aday olacağım'); await bekle('Kendin adaysın');
   await page.evaluate(() => { D.sekme = 'parti'; D.yigin = []; }); await page.evaluate(() => ekranAc(() => partiDetay(1)));
   await tikla('Yardımcıları ata'); await page.waitForTimeout(300);
-  const ilkUye = await page.locator('#g1 option').nth(1).textContent();
+  // genel başkan yardımcısı yalnızca milletvekili olabilir: listeden bir vekil seç
+  const vekilUye = psql(`select p.kad from oyun.profiller p join oyun.makamlar m on m.user_id=p.id and m.tur='mv' and m.bit is null where p.parti_id=1 order by p.kad limit 1`);
+  const ilkUye = vekilUye || await page.locator('#g1 option').nth(1).textContent();
   await page.selectOption('#g1', { label: ilkUye }); await tikla('Kaydet'); await bekle('GB Yardımcısı');
   await foto('15-parti-gb');
   ok('Kurultay, CB adayı kararı (kendisi), GB yardımcısı atama');
@@ -267,6 +283,11 @@ const AUTH = {
   // ---- GENEL SEÇİM
   saat('2026-10-26 10:00');
   psql(`select oyun.test_bot_aday('mv_on', 0.45)`); psql(`select oyun.test_bot_aday('cb_on', 0.02)`);
+  // Ercan'ın (İzmir, CYP) oy verebileceği en az bir vekil adayı olsun (botlar rastgele olduğundan garanti edilir)
+  if (+psql(`select count(*) from oyun.adaylar a join oyun.secimler s on s.id=a.secim_id where s.tur='mv_on' and s.donem='2026-11' and a.il_id=35 and a.parti_id=1`) === 0) {
+    const b = psql(`update oyun.profiller set il_id=35, parti_id=1 where id=(select id from oyun.profiller where kad like 'Bot\\_%' and id not in (select user_id from oyun.adaylar) and id not in (select user_id from oyun.makamlar where bit is null) order by kad limit 1) returning id`).split('\n')[0];
+    rpc(b, 'aday_ol', { p_tur: 'mv_on' });
+  }
   // tek görev kuralı: genel başkan milletvekili adayı olamaz
   await yenile(); await tikla('Milletvekili aday adayı ol'); await bekle('Seçimi kazanırsan'); await foto('19c-tek-gorev-uyari');
   await page.click('#evet'); await toastBekle('Genel başkan milletvekili');
@@ -331,6 +352,8 @@ const AUTH = {
   botYaz(botlar[1], 'genel', 'Yeni kabineye başarılar!');
   try { if (izmirBot) botYaz(izmirBot, 'il', 'İzmirliler, belediye seçiminde birlik olalım.'); } catch (_) {}
   await page.evaluate(() => sekmeAc('sohbet')); await bekle('Türkiye Meydanı');
+  await bekle('Belediye Meclisi'); await bekle('Bakanlar Kurulu'); await bekle('Yönetim Kurulu');
+  await foto('25-sohbet-kanallar');
   await page.getByText('Türkiye Meydanı').click(); await bekle('Yeni kabineye başarılar!');
   await page.fill('#yaz', 'Teşekkürler arkadaşlar, hep birlikte çalışacağız!'); await page.click('#gonder');
   await bekle('hep birlikte çalışacağız');

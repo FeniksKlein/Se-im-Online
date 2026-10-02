@@ -6,9 +6,9 @@ Bu paketle hazır olanlar:
 - Tüm seçimler: belediye, kurultay, vekil ön seçimi, genel seçim, cumhurbaşkanlığı ve 2. tur.
 - Makamlar: cumhurbaşkanı, 12 bakanlık kabine, genel başkan ve 6 yardımcısı, vekiller, belediye başkanları.
 - Devlet yönetimi: ülke karnesi, bakanlık icraatları, kanun süreci (oylama, onay, veto, ısrar), cumhurbaşkanlığı kararları, ittifaklar ve Resmî Gazete.
-- Vatandaş ekonomisi: maaş kumbarası, günlük seri, statü ve kıdem primi, gerçek oranlarda makam maaşları, ödüllü reklam ve ₺ paketi satışı; hükümetin ekonomi masası, bütçe kanunu, belediye hizmetleri ve bakanlık icraatlarının oyunculara etkisi; aday ücretleri, taşınma masrafı, parti kasası; bütçeyle hesaplanan ölçülebilir vaatler ve vaat karnesi.
+- Vatandaş ekonomisi: maaş kumbarası, günlük seri, statü ve kıdem primi, gerçek oranlarda makam maaşları, ödüllü reklam ve ₺ paketi satışı; hükümetin ekonomi masası, bütçe kanunu, belediye hizmetleri ve bakanlık icraatlarının oyunculara etkisi; aday ücretleri, taşınma masrafı, parti kasası; bütçeyle hesaplanan ölçülebilir vaatler (her bakanlık icraatı, vekillik ve genel başkanlık için ayrı vaat türü) ve vaat karnesi; tutulan vaadin kıdem puanı ve itibar karşılığı (Sözünün Eri / Lafta Kalan); şehir kalkınma bağışı ve verginin nereye gittiğini gösteren vergi karnesi.
 - Belediye hizmetleri, adayların seçim bildirgeleri, rozetler, yönetici paneli ve telefona gelen bildirimler (push).
-- Sohbet kanalları, özel mesaj, propaganda yayınları ve bildirimler.
+- Sohbet: Türkiye Meydanı, il kahvesi, belediye meclisi, parti, parti yönetim kurulu, ittifak, TBMM Genel Kurulu ve Bakanlar Kurulu kanalları (okunmamış sayacı, kilitli kanal bilgisi); özel mesaj, propaganda yayınları ve bildirimler.
 - Şikâyet etme ve engelleme.
 - Harita ve Meclis ekranları.
 
