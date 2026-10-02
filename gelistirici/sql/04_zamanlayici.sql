@@ -1,0 +1,18 @@
+-- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 4) ZAMANLAYICI (yalnızca Supabase'de)
+--  Seçim motorunu her dakika çalıştırır: takvimi üretir, 18:00'de sayar,
+--  göreve başlatmaları yapar. Supabase'de "pg_cron" eklentisi gerekir.
+-- =====================================================================
+create extension if not exists pg_cron with schema pg_catalog;
+grant usage on schema cron to postgres;
+grant all privileges on all tables in schema cron to postgres;
+
+-- Oyun saatini bu andan başlat (bu andan önceki seçimler oluşturulmaz)
+update oyun.ayarlar set baslangic = now(), test_simdi = null where id = 1;
+
+-- Varsa eski zamanlayıcıyı kaldır, yenisini kur
+select cron.unschedule(jobid) from cron.job where jobname = 'secim-motoru';
+select cron.schedule('secim-motoru', '* * * * *', 'select oyun.tick()');
+
+-- İlk takvimi hemen üret
+select oyun.tick();

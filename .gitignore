@@ -1,0 +1,5 @@
+node_modules/
+__pycache__/
+gelistirici/test/ekran/
+*.log
+.DS_Store
