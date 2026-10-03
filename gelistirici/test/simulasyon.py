@@ -353,8 +353,9 @@ ok("Okuma fonksiyonları (durum, harita, partiler, meclis, il/parti/seçim detay
 # ---------------- KASIM BELEDİYE: eski başkanların dönemi biter ----------------
 saat("2026-11-11 00:01")
 eski = int(q("select count(*) from oyun.makamlar where tur='bel' and bit is not null"))
-assert eski == bel_say and q("select count(*) from oyun.makamlar where tur='bel' and bit is null") == "0"
-ok(f"1 ay sonra (11 Kasım) {eski} belediye başkanının görevi bitti; Kasım seçiminde aday çıkmayan illerde makam boş")
+aktif_bel = int(q("select count(*) from oyun.makamlar where tur='bel' and bit is null"))
+assert eski + aktif_bel == bel_say and eski >= 1
+ok(f"11 Kasım: {eski} ilde yeni seçilen başkana devir oldu; Kasım seçiminde aday çıkmayan {aktif_bel} ilde görevdeki başkan yerinde kalıyor")
 
 # ---------------- HESAP SİLME ----------------
 silinecek = q(f"""select m.user_id from oyun.makamlar m where m.tur='mv' and m.bit is null and exists (

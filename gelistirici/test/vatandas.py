@@ -223,6 +223,7 @@ ok(f"Seçim beyannamesi: sıfır vergi + 1.000 ₺ destek ve %60 asgari ücret a
 # Vekil adayı yalnız Meclis yetkilerini vaat eder
 saat("2026-10-26 10:00")
 q(f"update oyun.cuzdan set para = 50000 where user_id = '{veli}'")
+q(f"update oyun.partiler set gb = null where gb = '{veli}'")   # kurultay sonrası otomatik genel başkan olmuştu
 rpc(veli, "aday_ol", "mv_on")
 mo = int(k("select id from oyun.secimler where tur='mv_on' and durum='bekliyor' order by oy_bas limit 1"))
 hata_bekle(rpc, veli, "vaat_yaz", mo, "x", j([{"kod": "asgari", "hedef": 35000}]), icerir="Geçersiz vaat")

@@ -809,14 +809,19 @@ begin
       update oyun.partiler set gb = k.user_id where id = k.parti_id;
       perform oyun.bildir(k.user_id, format('Kurultayı kazandın: %s Genel Başkanı oldun. 6 genel başkan yardımcını atayabilirsin.', (select ad from oyun.partiler where id = k.parti_id)), t);
     end loop;
+    -- BOŞ MAKAM KURALI: kurultayda kimse aday olmadığı için genel başkansız kalan parti kıdemli üyesini genel başkan yapar
+    perform oyun.gb_halef(t);
   elsif s.tur = 'cb' and coalesce((s.sonuc->>'ikinci_tur')::boolean, false) then
     null; -- 2. tur bekleniyor: görevdeki cumhurbaşkanı 2. tur sonucuna kadar devam eder
   else
-    -- Eski dönem biter
-    for m in select id from oyun.makamlar where tur = case when s.tur = 'cb2' then 'cb' else s.tur end and bit is null loop
-      perform oyun.makam_bitir(m.id, t, 'donem_bitti');
-    end loop;
-    -- Yeniler göreve başlar
+    -- Milletvekilleri liste usulüyle seçilir: eski Meclis topluca biter. (Boş kalan sandalyeleri yedek listeler doldurur.)
+    if s.tur = 'mv' then
+      for m in select id from oyun.makamlar where tur = 'mv' and bit is null loop
+        perform oyun.makam_bitir(m.id, t, 'donem_bitti');
+      end loop;
+    end if;
+    -- BOŞ MAKAM KURALI: belediye başkanlığı ve cumhurbaşkanlığında eski görevli ancak yerine yenisi gerçekten başlayınca düşer.
+    -- Seçimde aday çıkmadıysa (ya da kazanan göreve başlayamadıysa) görevdeki, yeni biri seçilene kadar görevine devam eder.
     for k in select * from oyun.kazananlar where secim_id = s.id loop
       continue when not exists (select 1 from oyun.profiller where id = k.user_id);   -- hesap silinmiş
       -- Genel başkan vekil/belediye başkanı olamaz (adaylığı zaten engellenir; yine de güvenceye al)
@@ -825,6 +830,16 @@ begin
         perform oyun.bildir(k.user_id, 'Genel başkan olduğun için seçildiğin bu görevi üstlenemezsin.', t);
         if s.tur = 'mv' then perform oyun.yedek_getir(s.id, k.il_id, k.parti_id, t); end if;
         continue;
+      end if;
+      -- Yerine geçilen görevli (aynı ilin belediye başkanı / cumhurbaşkanı) görevi devreder
+      if s.tur = 'bel' then
+        for m in select id from oyun.makamlar where tur = 'bel' and il_id = k.il_id and bit is null loop
+          perform oyun.makam_bitir(m.id, t, 'donem_bitti');
+        end loop;
+      elsif s.tur in ('cb','cb2') then
+        for m in select id from oyun.makamlar where tur = 'cb' and bit is null loop
+          perform oyun.makam_bitir(m.id, t, 'donem_bitti');
+        end loop;
       end if;
       -- Tek görev kuralı: kişinin elindeki diğer görev düşer (milletvekili + genel başkan yardımcısı ve genel başkan + cumhurbaşkanı hariç)
       if (case when s.tur = 'cb2' then 'cb' else s.tur end) in ('bel','cb') then
@@ -839,10 +854,16 @@ begin
         else format('%s olarak göreve başladın.', case s.tur when 'mv' then (select ad from oyun.iller where id = k.il_id) || ' Milletvekili'
                                                          else (select ad from oyun.iller where id = k.il_id) || ' Belediye Başkanı' end) end, t);
     end loop;
+    -- Seçimde kimse kazanamadıysa görevde kalanlara haber ver
+    if s.tur in ('cb','cb2') and not exists (select 1 from oyun.makamlar where tur = 'cb' and secim_id = s.id) then
+      for m in select user_id from oyun.makamlar where tur = 'cb' and bit is null loop
+        perform oyun.bildir(m.user_id, 'Cumhurbaşkanlığı seçiminde yeni bir başkan çıkmadı; yeni cumhurbaşkanı seçilene kadar görevine devam ediyorsun.', t);
+      end loop;
+    end if;
     -- Yeni Meclis göreve başlayınca sonuçlanmamış kanun teklifleri kadük olur
     if s.tur = 'mv' then perform oyun.kanunlar_kaduk(t); end if;
-    -- Yeni cumhurbaşkanı göreve başlayınca eski kabine düşer
-    if s.tur in ('cb','cb2') then
+    -- Yeni bir cumhurbaşkanlığı dönemi gerçekten başlayınca kabine yenilenir; seçimde kimse kazanamadıysa kabine yerinde kalır
+    if s.tur in ('cb','cb2') and exists (select 1 from oyun.makamlar where tur = 'cb' and secim_id = s.id) then
       for m in select id from oyun.makamlar where tur = 'bakan' and bit is null loop
         perform oyun.makam_bitir(m.id, t, 'kabine_yenilendi');
       end loop;
@@ -2261,12 +2282,13 @@ end $$;
 create or replace function public.icraat_yap(p_kod text, p_il int default null) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
 declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); i oyun.icraatlar; m oyun.makamlar; son timestamptz; v_kasa numeric; ilad text;
-        bk text; n int; toplam numeric; ek text := '';
+        bk text; n int; toplam numeric; ek text := ''; vekalet_mi boolean := false;
 begin
   select * into i from oyun.icraatlar where kod = p_kod;
   if i.kod is null then raise exception 'İcraat bulunamadı.'; end if;
   select * into m from oyun.makamlar where user_id = p.id and tur = 'bakan' and bit is null and bakanlik = i.bakanlik;
-  if m.id is null then raise exception 'Bu icraatı yalnızca ilgili bakan yapabilir.'; end if;
+  vekalet_mi := m.id is null and oyun.bakanlik_vekili(p.id, i.bakanlik);     -- boş bakanlığa cumhurbaşkanı vekâlet eder
+  if m.id is null and not vekalet_mi then raise exception 'Bu icraatı yalnızca ilgili bakan yapabilir; bakanlık boşsa cumhurbaşkanı vekâleten yapar.'; end if;
   if i.il_gerekli then
     select ad into ilad from oyun.iller where id = p_il;
     if ilad is null then raise exception 'Bir il seçmelisin.'; end if;
@@ -2301,8 +2323,8 @@ begin
   end if;
   insert into oyun.icraat_kayit(kod, bakan, il_id, zaman, maliyet) values (i.kod, p.id, p_il, t, i.maliyet);
   perform oyun.gazete_ekle('icraat', i.ad || coalesce(' — ' || ilad, ''),
-    format('%s %s tarafından başlatıldı. %s Maliyet: %s milyar ₺.%s', replace(bk, 'Bakanlığı', 'Bakanı'), p.kad, i.aciklama, i.maliyet, ek), null, t);
-  perform oyun.olay('icraat', format('%s: %s%s.', (select replace(ad, 'Bakanlığı', 'Bakanı') from oyun.bakanliklar where kod = i.bakanlik) || ' ' || p.kad, i.ad, coalesce(' (' || ilad || ')', '')), p_il::smallint, p.parti_id, t);
+    format('%s %s tarafından başlatıldı. %s Maliyet: %s milyar ₺.%s', case when vekalet_mi then bk || ' vekâleten Cumhurbaşkanı' else replace(bk, 'Bakanlığı', 'Bakanı') end, p.kad, i.aciklama, i.maliyet, ek), null, t);
+  perform oyun.olay('icraat', format('%s: %s%s.', case when vekalet_mi then 'Cumhurbaşkanı ' || p.kad || ' (' || bk || ' vekâleten)' else (select replace(ad, 'Bakanlığı', 'Bakanı') from oyun.bakanliklar where kod = i.bakanlik) || ' ' || p.kad end, i.ad, coalesce(' (' || ilad || ')', '')), p_il::smallint, p.parti_id, t);
   return public.bakanlik_paneli();
 end $$;
 
@@ -4920,6 +4942,106 @@ begin
 end $$;
 
 -- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 11) BOŞ MAKAM KURALI
+--  Başlangıçta oyuncu az olacağı için bazı makamlar boş kalabilir. Kural:
+--   1. Boş bakanlığa cumhurbaşkanı vekâlet eder (icraat yapabilir, bakanlık kasasından).
+--   2. Seçimde aday çıkmayan makamda (belediye, cumhurbaşkanlığı) görevdeki, yenisi seçilene kadar devam eder.
+--      (02_motor.sql: goreve_baslat)
+--   3. Genel başkansız parti kalmaz: üyeler "Genel başkanlığı üstlen" ile hemen devralabilir; kurultayda da kimse aday olmazsa
+--      başka görevi olmayan en kıdemli üye genel başkan olur.
+--   4. Meclis'in yetersayıları dolu sandalye sayısına göre ölçeklenir (07_devlet.sql).
+--   5. Boş Makamlar panosu: neyin boş olduğu, kimin vekâlet ettiği ve sonraki seçim.
+-- =====================================================================
+
+-- Cumhurbaşkanı, boş bir bakanlığa vekâlet edebilir mi?
+create or replace function oyun.bakanlik_vekili(p_user uuid, p_bakanlik text) returns boolean language sql stable as $$
+  select exists (select 1 from oyun.makamlar where user_id = p_user and tur = 'cb' and bit is null)
+     and not exists (select 1 from oyun.makamlar where tur = 'bakan' and bakanlik = p_bakanlik and bit is null)
+$$;
+
+-- Bir bakanlığın paneli (bakanlik_paneli ile aynı biçim)
+create or replace function oyun.bakanlik_panel_json(p_kod text, t timestamptz) returns jsonb language plpgsql stable as $$
+declare pay numeric;
+begin
+  pay := coalesce(((select butce from oyun.ulke where id = 1) ->> p_kod)::numeric, 0);
+  return jsonb_build_object(
+    'kod', p_kod, 'ad', (select ad from oyun.bakanliklar where kod = p_kod),
+    'kasa', round((select kasa from oyun.bakanlik_kasa where kod = p_kod), 1),
+    'gunluk', round(10 * pay / 100, 2), 'pay', pay,
+    'icraatlar', (select jsonb_agg(jsonb_build_object('kod', i.kod, 'ad', i.ad, 'aciklama', i.aciklama, 'maliyet', i.maliyet,
+                    'il_gerekli', i.il_gerekli, 'etki', i.etki, 'bekleme_saat', i.bekleme_saat,
+                    'oyuncu', i.oyuncu, 'sure_gun', i.sure_gun, 'ozel', i.ozel,
+                    'aktif_bit', (select max(e.bit) from oyun.etkiler e where e.kaynak_kod = i.kod and e.il_id is null and e.bit > t),
+                    'hazir', (select max(k.zaman) + make_interval(hours => i.bekleme_saat) from oyun.icraat_kayit k where k.kod = i.kod))
+                  order by i.maliyet) from oyun.icraatlar i where i.bakanlik = p_kod));
+end $$;
+
+-- Cumhurbaşkanının vekâleten yönettiği (bakanı olmayan) bakanlıkların panelleri
+create or replace function public.vekalet_paneli() returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi();
+begin
+  if not exists (select 1 from oyun.makamlar where user_id = p.id and tur = 'cb' and bit is null) then return '[]'::jsonb; end if;
+  return coalesce((select jsonb_agg(oyun.bakanlik_panel_json(b.kod, t) order by b.sira) from oyun.bakanliklar b
+                   where not exists (select 1 from oyun.makamlar m where m.tur = 'bakan' and m.bakanlik = b.kod and m.bit is null)), '[]'::jsonb);
+end $$;
+
+-- Genel başkansız kalan parti (kurultayda kimse aday olmadı): başka görevi olmayan (cumhurbaşkanı hariç) en kıdemli üye genel başkan olur.
+-- Bir sonraki kurultayda üyeler genel başkanı yeniden seçer. Kurultay sonucu işlenince çağrılır (02_motor.sql: goreve_baslat).
+create or replace function oyun.gb_halef(t timestamptz) returns void language plpgsql as $$
+declare pa record; aday uuid;
+begin
+  for pa in select id, ad from oyun.partiler where not kapali and gb is null loop
+    select pr.id into aday from oyun.profiller pr
+     where pr.parti_id = pa.id and not pr.yasakli
+       and not exists (select 1 from oyun.makamlar m where m.user_id = pr.id and m.bit is null and m.tur <> 'cb')
+     order by oyun.kidem_puani(pr.id) desc, pr.parti_at, pr.id limit 1;
+    continue when aday is null;
+    delete from oyun.parti_gby where user_id = aday;       -- genel başkan aynı zamanda yardımcı olamaz
+    update oyun.partiler set gb = aday where id = pa.id and gb is null;
+    perform oyun.bildir(aday, format('%s kurultayda genel başkansız kaldığı için kıdemin en yüksek olduğu üye olarak genel başkan oldun. Bir sonraki kurultayda üyeler genel başkanı yeniden seçecek; 6 genel başkan yardımcını atayabilirsin.', pa.ad), t);
+    perform oyun.olay('parti', format('%s genel başkansız kaldı; kıdemi en yüksek üye %s genel başkan oldu.', pa.ad, (select kad from oyun.profiller where id = aday)), null, pa.id, t);
+  end loop;
+end $$;
+
+-- Genel başkansız partinin üyesi, başka görevi yoksa genel başkanlığı hemen üstlenebilir (genel başkan yardımcısı da olabilir)
+create or replace function public.genel_baskanlik_uslen() returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); pa oyun.partiler; c text;
+begin
+  select * into pa from oyun.partiler where id = p.parti_id and not kapali for update;
+  if pa.id is null then raise exception 'Önce bir partiye üye olmalısın.'; end if;
+  if pa.gb is not null then raise exception 'Partinin genel başkanı var.'; end if;
+  select oyun.rol_ad(r) into c from unnest(oyun.roller(p.id)) r where r <> 'gby' and not oyun.rol_uyumlu(r, 'gb') limit 1;
+  if c is not null then raise exception 'Şu anda % görevindesin; genel başkan olmak için önce o görevden istifa etmelisin.', c; end if;
+  delete from oyun.parti_gby where user_id = p.id;
+  update oyun.partiler set gb = p.id where id = pa.id;
+  perform oyun.olay('parti', format('%s genel başkansız kalan %s partisinin genel başkanlığını üstlendi.', p.kad, pa.ad), null, pa.id, t);
+  perform oyun.bildir(p.id, format('%s Genel Başkanı oldun. 6 genel başkan yardımcını atayabilir, seçim beyannamesini yazabilirsin. Bir sonraki kurultayda üyeler genel başkanı yeniden seçer.', pa.ad), t);
+  return public.durum();
+end $$;
+
+-- Boş Makamlar panosu
+create or replace function public.bos_makamlar() returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare t timestamptz := oyun.simdi(); cb text := (select oyun.kad(user_id) from oyun.makamlar where tur = 'cb' and bit is null limit 1); mv int;
+begin
+  select count(*) into mv from oyun.makamlar where tur = 'mv' and bit is null;
+  return jsonb_build_object(
+    'cb', cb,
+    'bakanliklar', coalesce((select jsonb_agg(jsonb_build_object('kod', b.kod, 'ad', b.ad) order by b.sira) from oyun.bakanliklar b
+                             where not exists (select 1 from oyun.makamlar m where m.tur = 'bakan' and m.bakanlik = b.kod and m.bit is null)), '[]'::jsonb),
+    'belediyeler', coalesce((select jsonb_agg(jsonb_build_object('id', i.id, 'ad', i.ad) order by i.ad) from oyun.iller i
+                             where not exists (select 1 from oyun.makamlar m where m.tur = 'bel' and m.il_id = i.id and m.bit is null)), '[]'::jsonb),
+    'vekil', jsonb_build_object('dolu', mv, 'bos', 600 - mv),
+    'partiler', coalesce((select jsonb_agg(jsonb_build_object('id', pa.id, 'kisa', pa.kisa)) from oyun.partiler pa where not pa.kapali and pa.gb is null
+                          and exists (select 1 from oyun.profiller where parti_id = pa.id)), '[]'::jsonb),
+    'sonraki', coalesce((select jsonb_agg(jsonb_build_object('tur', x.tur, 'basvuru_bas', x.basvuru_bas, 'basvuru_bit', x.basvuru_bit, 'oy_bas', x.oy_bas) order by x.oy_bas)
+                         from (select distinct on (tur) tur, basvuru_bas, basvuru_bit, oy_bas from oyun.secimler
+                               where durum = 'bekliyor' and tur in ('bel','mv','cb','kurultay') and oy_bit > t order by tur, oy_bas) x), '[]'::jsonb));
+end $$;
+
+-- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 6) YETKİLER
 --  Yalnızca giriş yapmış oyuncular bu fonksiyonları çağırabilir.
 -- =====================================================================
@@ -4945,7 +5067,7 @@ begin
     'politika_ayarla(text,numeric)','politika_onizle(text,numeric)',
     'vaat_secenekleri(text,int)','vaat_hesapla(text,jsonb,int)','vaat_yaz(bigint,text,jsonb)','vaatlerim(bigint)','beyanname_kaydet(text,jsonb)',
     'admin_ozet()','admin_sikayetler(text)','admin_sikayet_karar(text,bigint,text,text)','admin_oyuncu(text)','admin_islem(text,text)','admin_duyuru(text)','admin_ayar(int)',
-    'il_bagis(numeric)','il_bagis_durum()','vergi_karnem()','sohbet_ozet()',
+    'genel_baskanlik_uslen()','vekalet_paneli()','bos_makamlar()','il_bagis(numeric)','il_bagis_durum()','vergi_karnem()','sohbet_ozet()',
     'cihaz_kaydet(text,text)','cihaz_sil(text)','bildirim_ayar_kaydet(jsonb)']
   loop
     execute format('revoke all on function public.%s from public, anon', f);

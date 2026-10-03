@@ -308,6 +308,13 @@ Etkiler üst üste biner; indirimler en fazla %90'dır.
 - Genel başkan kasadan üyelerine **kampanya desteği** gönderir ve aday ücretlerinin çarpanını ayarlar.
 - Kasa hareketleri, partinin seçim beyannamesi ve iktidardaysa hükümet karnesi parti sayfasında herkese açıktır.
 
+### Boş makam kuralı: hiçbir koltuk sahipsiz kalmaz
+- **Bakanlık boşsa** cumhurbaşkanı vekâleten yönetir; o bakanlığın icraatlarını kendisi yapar (Resmî Gazete'de "… vekâleten Cumhurbaşkanı …" yazar). Bakan atanınca vekâlet sona erer.
+- **Seçimde kazanan çıkmazsa** (kimse aday olmadıysa) görevdeki belediye başkanı ya da cumhurbaşkanı, yenisi seçilene kadar yerinde kalır; kabine de cumhurbaşkanı değişene kadar dağılmaz. Yeni kazanan çıkan yerde görev devredilir. Meclis ise liste usulüyle topluca yenilenir.
+- **Genel başkansız parti kalmaz:** üyelerden biri "Genel başkanlığı üstlen" ile gönüllü olabilir; kurultayda aday çıkmazsa başka görevi olmayan en kıdemli üye otomatik genel başkan olur. Üyesi olmayan parti boş kalır, zorla kimse atanmaz.
+- **Meclis eşikleri** dolu sandalye sayısına göre hesaplanır; boş sandalye karar sayısını bozmaz.
+- **Boş Makamlar panosu** (Hükümet sekmesi): boş bakanlıklar, belediyeler, Meclis sandalyeleri, genel başkansız partiler ve sıradaki seçimler.
+
 ### Vaatler: her biri ölçülebilir ve karşılıklı
 Her makam yalnızca **kendi yetkisindeki** şeyi vaat edebilir. Örneğin vekil asgari ücreti artıramaz, ama partisi seçim beyannamesinde vaat edebilir.
 

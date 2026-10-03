@@ -344,6 +344,13 @@ const AUTH = {
   await foto('25-kabine');
   ok('Kabine: cumhurbaşkanı arayüzden 4 bakan atadı');
 
+  // ---- BOŞ MAKAMLAR / VEKÂLET
+  await bekle('Boş makamlar'); await bekle('Vekâleten yönettiğin bakanlıklar');
+  await page.locator('details.vekil-bakanlik').first().locator('summary').click();
+  await page.waitForTimeout(300);
+  await foto('25b-bos-makamlar');
+  ok('Boş makamlar panosu ve cumhurbaşkanının vekâlet bölümü görünüyor');
+
   // ---- SOHBET
   const uid = (kad) => psql(`select id from oyun.profiller where kad='${kad}'`);
   const botYaz = (kad, kanal, metin) => psql(`select set_config('request.jwt.claim.sub','${uid(kad)}',false); select public.sohbet_yaz('${kanal}', '${metin}')`);
@@ -377,7 +384,7 @@ const AUTH = {
   await page.evaluate(async () => rozetGuncelle(await API.rpc('rozetler')));
   await page.evaluate(() => { D.yigin = []; sekmeAc('sohbet'); }); await bekle('Özel mesajlar');
   await foto('29-sohbet-liste');
-  await page.getByText(botlar[3]).first().click(); await bekle('Maliye için bir dosya');
+  await page.locator('.kanal', { hasText: 'Maliye için bir dosya' }).first().click(); await bekle('Maliye için bir dosya');
   saat('2026-11-03 00:03');
   await page.fill('#yaz', 'Yarın Külliye\'de görüşelim.'); await page.click('#gonder'); await bekle('Külliye');
   await foto('30-ozel-mesaj');

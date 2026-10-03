@@ -355,12 +355,13 @@ end $$;
 create or replace function public.icraat_yap(p_kod text, p_il int default null) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
 declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); i oyun.icraatlar; m oyun.makamlar; son timestamptz; v_kasa numeric; ilad text;
-        bk text; n int; toplam numeric; ek text := '';
+        bk text; n int; toplam numeric; ek text := ''; vekalet_mi boolean := false;
 begin
   select * into i from oyun.icraatlar where kod = p_kod;
   if i.kod is null then raise exception 'İcraat bulunamadı.'; end if;
   select * into m from oyun.makamlar where user_id = p.id and tur = 'bakan' and bit is null and bakanlik = i.bakanlik;
-  if m.id is null then raise exception 'Bu icraatı yalnızca ilgili bakan yapabilir.'; end if;
+  vekalet_mi := m.id is null and oyun.bakanlik_vekili(p.id, i.bakanlik);     -- boş bakanlığa cumhurbaşkanı vekâlet eder
+  if m.id is null and not vekalet_mi then raise exception 'Bu icraatı yalnızca ilgili bakan yapabilir; bakanlık boşsa cumhurbaşkanı vekâleten yapar.'; end if;
   if i.il_gerekli then
     select ad into ilad from oyun.iller where id = p_il;
     if ilad is null then raise exception 'Bir il seçmelisin.'; end if;
@@ -395,8 +396,8 @@ begin
   end if;
   insert into oyun.icraat_kayit(kod, bakan, il_id, zaman, maliyet) values (i.kod, p.id, p_il, t, i.maliyet);
   perform oyun.gazete_ekle('icraat', i.ad || coalesce(' — ' || ilad, ''),
-    format('%s %s tarafından başlatıldı. %s Maliyet: %s milyar ₺.%s', replace(bk, 'Bakanlığı', 'Bakanı'), p.kad, i.aciklama, i.maliyet, ek), null, t);
-  perform oyun.olay('icraat', format('%s: %s%s.', (select replace(ad, 'Bakanlığı', 'Bakanı') from oyun.bakanliklar where kod = i.bakanlik) || ' ' || p.kad, i.ad, coalesce(' (' || ilad || ')', '')), p_il::smallint, p.parti_id, t);
+    format('%s %s tarafından başlatıldı. %s Maliyet: %s milyar ₺.%s', case when vekalet_mi then bk || ' vekâleten Cumhurbaşkanı' else replace(bk, 'Bakanlığı', 'Bakanı') end, p.kad, i.aciklama, i.maliyet, ek), null, t);
+  perform oyun.olay('icraat', format('%s: %s%s.', case when vekalet_mi then 'Cumhurbaşkanı ' || p.kad || ' (' || bk || ' vekâleten)' else (select replace(ad, 'Bakanlığı', 'Bakanı') from oyun.bakanliklar where kod = i.bakanlik) || ' ' || p.kad end, i.ad, coalesce(' (' || ilad || ')', '')), p_il::smallint, p.parti_id, t);
   return public.bakanlik_paneli();
 end $$;
 
