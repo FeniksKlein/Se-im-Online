@@ -307,11 +307,14 @@ $$;
 -- aday_ol içinden çağrılır: ücret oyuncudan alınır, parti kasasına girer
 create or replace function oyun.aday_ucreti_al(p oyun.profiller, p_tur text, t timestamptz) returns numeric language plpgsql as $$
 declare ucret numeric := oyun.aday_ucreti(p.parti_id, p_tur, p.il_id); pk text := (select kisa from oyun.partiler where id = p.parti_id);
+        fon numeric := round(oyun.aday_ucreti(p.parti_id, p_tur, p.il_id) * oyun.duz('aday_destek') / 100);
 begin
   if ucret <= 0 then return 0; end if;
-  perform oyun.para_islem(p.id, -ucret, 'aday', format('%s %s başvuru ücreti', pk,
+  -- Siyasi katılım fonu (mevzuat): ücretin bir kısmını hazine öder, parti kasasına tamamı girer
+  perform oyun.para_islem(p.id, -(ucret - fon), 'aday', format('%s %s başvuru ücreti%s', pk,
     case p_tur when 'mv_on' then 'milletvekili aday adaylığı' when 'bel_on' then 'belediye başkanı aday adaylığı'
-               when 'kurultay' then 'genel başkanlık adaylığı' else 'cumhurbaşkanı aday adaylığı' end), t);
+               when 'kurultay' then 'genel başkanlık adaylığı' else 'cumhurbaşkanı aday adaylığı' end,
+    case when fon > 0 then format(' (%s ₺''sini siyasi katılım fonu ödedi)', oyun.tl(fon)) else '' end), t);
   update oyun.partiler set kasa = kasa + ucret where id = p.parti_id;
   insert into oyun.parti_hareket(parti_id, zaman, tutar, aciklama, tur) values (p.parti_id, t, ucret, format('%s başvuru ücreti ödedi', p.kad), 'aday');
   return ucret;
@@ -333,10 +336,12 @@ begin
   ub := oyun.bonus(p.il_id, 'ucret', t) + case when (st ->> 'basamak')::int <= 1 then oyun.bonus(p.il_id, 'ucret_yeni', t) else 0 end;
   -- seri: bir sonraki (ya da bugünkü) toplamada geçerli olan seri
   seri_y := case when c.seri_gun = bugun then c.seri when c.seri_gun = bugun - 1 then c.seri + 1 else 1 end;
-  seri_b := least(30, 5 * (seri_y - 1));
+  seri_b := least(oyun.duz('seri_tavan'), 5 * (seri_y - 1));
   asg_saat := ul.asgari / 720;
   maas := asg_saat * (st ->> 'carpan')::numeric * ilc * (1 + ub / 100);
-  makam := coalesce((select sum(oyun.makam_maasi(m.tur, m.il_id)) from oyun.makamlar m where m.user_id = u and m.bit is null), 0) / 720;
+  -- Meclis devamsızlık kesintisi (mevzuat): vekilin katılmadığı oylamalar oranında
+  makam := coalesce((select sum(oyun.makam_maasi(m.tur, m.il_id) * case when m.tur = 'mv' then 1 - oyun.vekil_kesinti_orani(u, t) / 100 else 1 end)
+                     from oyun.makamlar m where m.user_id = u and m.bit is null), 0) / 720;
   brut := (maas + makam) * (1 + seri_b / 100);
   vergi := greatest(0, brut - asg_saat) * ul.vergi / 100;                 -- asgari ücret gelir vergisinden muaftır
   kv := (select kent_vergisi from oyun.il_durum where il_id = p.il_id);
@@ -344,13 +349,15 @@ begin
   gecim_ind := least(60, oyun.bonus(p.il_id, 'gecim', t));
   gecim := 350.0 / 24 * ul.endeks * (1 - gecim_ind / 100);
   net := greatest(0, brut - vergi - kent - gecim);
-  saat := least(8, greatest(0, extract(epoch from (t - c.son_toplama)) / 3600));
+  saat := least(oyun.kumbara_saat(), greatest(0, extract(epoch from (t - c.son_toplama)) / 3600));
   if c.seri_gun is distinct from bugun then
     destek := case when (st ->> 'basamak')::int <= 1 then ul.destek else 0 end;
     hem := (select hemsehri from oyun.il_durum where il_id = p.il_id);
   end if;
   return jsonb_build_object(
-    'saat', round(saat, 3), 'dolu', saat >= 8, 'dolma_an', c.son_toplama + interval '8 hours',
+    'saat', round(saat, 3), 'dolu', saat >= oyun.kumbara_saat(), 'dolma_an', c.son_toplama + make_interval(hours => oyun.kumbara_saat()::int),
+    'kapasite', oyun.kumbara_saat(), 'seri_tavan', oyun.duz('seri_tavan'),
+    'vekil_kesinti', case when exists (select 1 from oyun.makamlar where user_id = u and tur = 'mv' and bit is null) then oyun.vekil_kesinti_orani(u, t) end,
     'birikmis', round(net * saat), 'brut_birikmis', round(brut * saat), 'vergi_birikmis', round(vergi * saat),
     'saatlik', jsonb_build_object('maas', round(maas, 2), 'makam', round(makam, 2), 'brut', round(brut, 2), 'vergi', round(vergi, 2),
                                   'kent', round(kent, 2), 'gecim', round(gecim, 2), 'net', round(net, 2)),
@@ -435,6 +442,7 @@ begin
     des := (g -> 'gunluk_destek' ->> 'devlet')::numeric; hem := (g -> 'gunluk_destek' ->> 'belediye')::numeric;
     if des > 0 then perform oyun.para_islem(p.id, des, 'destek', 'Devlet sosyal desteği (günlük)', t); end if;
     if hem > 0 then perform oyun.para_islem(p.id, hem, 'hemsehri', (select ad from oyun.iller where id = p.il_id) || ' Belediyesi hemşehri desteği', t); end if;
+    perform oyun.gunluk_kesinti(p.id, t);       -- servet vergisi ve emlak vergisi (mevzuat)
   end if;
   update oyun.cuzdan set son_toplama = t, kumbara_bildirim = null where user_id = p.id;
   sonra := oyun.statu_basamak(oyun.kidem_puani(p.id));
@@ -621,10 +629,10 @@ create or replace function oyun.kumbara_hatirlat(t timestamptz) returns void lan
 declare r record;
 begin
   for r in select c.user_id from oyun.cuzdan c
-           where c.son_toplama <= t - interval '8 hours' and c.son_toplama > t - interval '3 days'
+           where c.son_toplama <= t - make_interval(hours => oyun.kumbara_saat()::int) and c.son_toplama > t - interval '3 days'
              and (c.kumbara_bildirim is null or c.kumbara_bildirim < c.son_toplama)
              and exists (select 1 from oyun.cihazlar d where d.user_id = c.user_id) loop
-    perform oyun.push_kisiye(r.user_id, 'kisisel', 'Kumbaran doldu 💰', 'Maaşın 8 saattir birikiyor. Toplamazsan birikme durur.', '{"ekran":"hayat"}');
+    perform oyun.push_kisiye(r.user_id, 'kisisel', 'Kumbaran doldu 💰', format('Maaşın %s saattir birikiyor. Toplamazsan birikme durur.', oyun.kumbara_saat()), '{"ekran":"hayat"}');
     update oyun.cuzdan set kumbara_bildirim = t where user_id = r.user_id;
   end loop;
 end $$;
@@ -735,6 +743,11 @@ begin
       e := oyun.politika_etki(case p_kod when 'kidem' then 'kidem_primi' when 'tasinma' then 'tasinma_destek' else p_kod end, p_hedef);
       m := (e ->> 'gunluk')::numeric; enf := (e ->> 'enflasyon')::numeric;
     elsif p_kod = 'ikramiye' then m := p_hedef * oyun.nufus('ikramiye') / 1e9 / 30;
+    elsif exists (select 1 from oyun.duzenleme_tanim where kod = p_kod and kapsam = 'ulke') then
+      e := oyun.duzenleme_etki(p_kod, p_hedef);
+      m := (e ->> 'gunluk')::numeric; enf := (e ->> 'enflasyon')::numeric;
+    elsif p_kod = 'ozellestirme' then m := -10.0 / 30;
+    elsif p_kod = 'referandum' then m := 0;
     else
       select maliyet into mal from oyun.icraatlar where kod = p_kod;
       m := coalesce(mal, 0) / 7;
@@ -743,6 +756,9 @@ begin
     if p_kod = 'vergi_tavan' and p_hedef < u.vergi then m := (oyun.politika_etki('vergi', p_hedef) ->> 'gunluk')::numeric;
     elsif p_kod = 'belediye_payi' and p_hedef > u.belediye_payi then
       m := (oyun.ulke_hesap(u) ->> 'belediye')::numeric * (p_hedef - u.belediye_payi) / u.belediye_payi;
+    elsif exists (select 1 from oyun.duzenleme_tanim where kod = p_kod and kapsam = 'ulke') then
+      e := oyun.duzenleme_etki(p_kod, p_hedef);
+      m := (e ->> 'gunluk')::numeric; enf := (e ->> 'enflasyon')::numeric;
     end if;
   elsif p_kapsam = 'bel' then
     select * into d from oyun.il_durum where il_id = p_il;
@@ -751,6 +767,10 @@ begin
     elsif p_kod = 'hemsehri' and p_hedef > d.hemsehri then m := oyun.hemsehri_gider(p_il, p_hedef - d.hemsehri);
     elsif p_kod in ('lokanta','ulasim','kira','istihdam') and not exists (select 1 from oyun.il_hizmet where il_id = p_il and kod = p_kod) then
       m := oyun.hizmet_gider(p_il, p_kod);
+    elsif p_kod = 'emlak' then
+      m := -(p_hedef - oyun.il_duz(p_il, 'emlak')) * u.endeks * oyun.nufus('il_hane') * (select mv from oyun.iller where id = p_il) / 600 / 1e9;
+    elsif p_kod = 'hosgeldin' then m := greatest(0, p_hedef - oyun.il_duz(p_il, 'hosgeldin')) * 2000 / 1e9;
+    elsif p_kod = 'imar_barisi' then m := -4 * oyun.il_gunluk_gelir((select mv from oyun.iller where id = p_il)) * u.endeks / 30;
     elsif p_kod in ('altyapi','rayli') then
       m := (select gun from oyun.belediye_yatirimlari where kod = p_kod) * oyun.il_gunluk_gelir((select mv from oyun.iller where id = p_il)) * u.endeks / 30;
     end if;
@@ -846,7 +866,7 @@ begin
     insert into oyun.vaatler(kapsam, donem, user_id, parti_id, il_id, kod, hedef, yon, olusturma)
     values (p_kapsam, p_donem, case when p_kapsam = 'beyanname' then null else u end, p_parti, p_il, v ->> 'kod', (v ->> 'hedef')::numeric,
             coalesce((select yon from oyun.vaat_turleri where kapsam = p_kapsam and kod = v ->> 'kod'),
-                     case when v ->> 'kod' = 'vergi' and (v ->> 'hedef')::numeric < mevcut then '<=' else '>=' end), t);
+                     case when (v ->> 'hedef')::numeric < coalesce(oyun.vaat_mevcut(p_kapsam, v ->> 'kod', p_il, p_parti), mevcut) then '<=' else '>=' end), t);
   end loop;
   return r;
 end $$;

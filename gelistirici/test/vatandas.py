@@ -159,7 +159,7 @@ ok(f"Aday ücreti: İstanbul belediye ön seçimi {ucret:,} ₺, para yetmeyince
 
 # ---------------- VAATLER: KAYIT VE MALİ ALAN ----------------
 sec = rpc(ayse, "vaat_secenekleri", "bel")
-assert len(sec["turler"]) == 8 and sec["en_fazla"] == 4 and sec["alan"] > 0
+assert len(sec["turler"]) == 11 and sec["en_fazla"] == 4 and sec["alan"] > 0
 bo = int(k("select id from oyun.secimler where tur='bel_on' and donem='2026-10'"))
 asiri = j([{"kod": "hemsehri", "hedef": 1000}, {"kod": "kira"}, {"kod": "istihdam"}, {"kod": "rayli"}])
 assert rpc(ayse, "vaat_hesapla", "bel", asiri)["karar"] == "karsiliksiz"

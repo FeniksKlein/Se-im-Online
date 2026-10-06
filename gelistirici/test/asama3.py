@@ -28,7 +28,7 @@ assert rpc(vatandas, "belediye_paneli") is None
 pan = rpc(baskan, "belediye_paneli")
 taban = 0.02 + 0.004 * 28
 assert pan["il_ad"] == "İzmir" and abs(pan["gelir"] - taban * 1.2) < 0.001 and abs(pan["kasa"] - 5 * taban) < 0.001
-assert len(pan["hizmetler"]) == 4 and len(pan["yatirimlar"]) == 2 and pan["kent_vergisi"] == 2
+assert len(pan["hizmetler"]) == 4 and len(pan["yatirimlar"]) == 4 and len(pan["kurallar"]) == 2 and pan["kent_vergisi"] == 2
 hata_bekle(rpc, baskan, "belediye_yatirim", "rayli", icerir="yeterli para")
 pan = rpc(baskan, "belediye_hizmet", "lokanta", True)
 lok = next(x for x in pan["hizmetler"] if x["kod"] == "lokanta")

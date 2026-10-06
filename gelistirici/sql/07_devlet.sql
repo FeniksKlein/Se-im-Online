@@ -284,7 +284,7 @@ create or replace function oyun.il_gelir(p_il smallint) returns numeric language
 $$;
 
 create or replace function oyun.gunluk_ekonomi(t timestamptz) returns void language plpgsql as $$
-declare u oyun.ulke; bugun date := (t at time zone 'Europe/Istanbul')::date; g date; h jsonb; hb numeric; he numeric; hi numeric; hm numeric; acik numeric;
+declare u oyun.ulke; bugun date := (t at time zone 'Europe/Istanbul')::date; g date; h jsonb; hb numeric; he numeric; hi numeric; hm numeric; acik numeric; mk jsonb;
 begin
   select * into u from oyun.ulke where id = 1 for update;
   if u.son_gun is null then
@@ -302,14 +302,15 @@ begin
     update oyun.ulke set endeks = u.endeks, belediye_payi = u.belediye_payi where id = 1;
     perform oyun.belediye_gunluk(t);
     -- göstergeler hedeflerine doğru kayar
-    hb := 4 - (u.vergi - 20) * 0.15 - greatest(0, u.enflasyon - 30) * 0.03;
+    mk := oyun.mevzuat_makro();
+    hb := 4 - (u.vergi - 20) * 0.15 - greatest(0, u.enflasyon - 30) * 0.03 + (mk ->> 'buyume')::numeric;
     u.buyume := u.buyume + (hb - u.buyume) * 0.05;
     acik := greatest(0, u.asgari / u.asgari_ref - 1);           -- ekonominin kaldıramadığı ücret artışı
-    he := 25 + greatest(0, -u.hazine) * 0.05 + (u.buyume - 3) * 0.5 + acik * 40 + (u.kidem_primi - 10) * 0.15 + u.destek / 100;
+    he := 25 + greatest(0, -u.hazine) * 0.05 + (u.buyume - 3) * 0.5 + acik * 40 + (u.kidem_primi - 10) * 0.15 + u.destek / 100 + (mk ->> 'enflasyon')::numeric;
     u.enflasyon := u.enflasyon + (he - u.enflasyon) * 0.03 + case when u.hazine < 0 then 0.2 else 0 end;
     hi := 12 - u.buyume * 0.8;
     u.issizlik := u.issizlik + (hi - u.issizlik) * 0.05;
-    hm := oyun.sinir(50 - (u.enflasyon - 30) * 0.4 - (u.issizlik - 9) * 1.5 + (u.buyume - 3) * 2 - (u.vergi - 20) * 0.6, 5, 95);
+    hm := oyun.sinir(50 - (u.enflasyon - 30) * 0.4 - (u.issizlik - 9) * 1.5 + (u.buyume - 3) * 2 - (u.vergi - 20) * 0.6 + (mk ->> 'memnuniyet')::numeric, 5, 95);
     u.memnuniyet := u.memnuniyet + (hm - u.memnuniyet) * 0.08;
     u.buyume := oyun.sinir(u.buyume, -10, 15); u.enflasyon := oyun.sinir(u.enflasyon, 0, 200);
     u.issizlik := oyun.sinir(u.issizlik, 2, 40); u.memnuniyet := oyun.sinir(u.memnuniyet, 0, 100);
@@ -319,6 +320,7 @@ begin
     update oyun.ulke set hazine = u.hazine, buyume = u.buyume, enflasyon = u.enflasyon, issizlik = u.issizlik, memnuniyet = u.memnuniyet,
       endeks = u.endeks, asgari_ref = u.asgari_ref where id = 1;
     perform oyun.gunluk_odemeler(g, t);
+    perform oyun.mevzuat_gunluk(g, t);
     perform oyun.vaat_degerlendir(g, t);
     select * into u from oyun.ulke where id = 1;
     insert into oyun.ulke_gecmis values (g, round(u.hazine, 1), u.vergi, round(u.buyume, 2), round(u.enflasyon, 2), round(u.issizlik, 2), round(u.memnuniyet, 1))
@@ -414,6 +416,7 @@ begin
     'hazine', round(u.hazine, 1), 'vergi', u.vergi, 'vergi_alt', u.vergi_alt, 'vergi_ust', u.vergi_ust,
     'buyume', round(u.buyume, 2), 'enflasyon', round(u.enflasyon, 1), 'issizlik', round(u.issizlik, 1), 'memnuniyet', round(u.memnuniyet, 1),
     'baraj', (select baraj from oyun.ayarlar where id = 1), 'bekleyen_baraj', u.bekleyen_baraj,
+    'kararname_sinir', oyun.anayasa_deger('kararname_sinir'), 'vergi_tavani', oyun.anayasa_deger('vergi_tavani'),
     'asgari', u.asgari, 'asgari_ref', round(u.asgari_ref), 'kidem_primi', u.kidem_primi, 'destek', u.destek, 'tasinma_destek', u.tasinma_destek,
     'belediye_payi', u.belediye_payi, 'parti_yardim', u.parti_yardim, 'endeks', round(u.endeks, 3),
     'hesap', oyun.ulke_hesap(u), 'mali_alan', oyun.mali_alan(),
@@ -451,10 +454,12 @@ $$;
 create or replace function public.kararname_cikar(p_tur text, p_baslik text, p_metin text, p_veri jsonb default '{}'::jsonb) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
 declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); n int; miktar numeric; il_ad text; bk text; yeni bigint; v_no int; b text; m text; maliyet numeric;
+        sinir int := coalesce(oyun.anayasa_deger('kararname_sinir'), 3)::int; dt record; eng text; deger numeric; faiz numeric; u oyun.ulke;
 begin
   perform oyun.cb_zorunlu(p);
-  if (select count(*) from oyun.kararnameler k where k.cb = p.id and k.zaman >= oyun.bugun_bas(t)) >= 3 then
-    raise exception 'Bugün en fazla 3 kararname çıkarabilirsin.';
+  if sinir = 0 then raise exception 'Anayasa cumhurbaşkanının kararname yetkisini kaldırdı.'; end if;
+  if (select count(*) from oyun.kararnameler k where k.cb = p.id and k.zaman >= oyun.bugun_bas(t)) >= sinir then
+    raise exception 'Bugün en fazla % kararname çıkarabilirsin (anayasal sınır).', sinir;
   end if;
   m := nullif(btrim(coalesce(p_metin, '')), '');
   if m is not null then m := oyun.metin_temizle(m, 3000); end if;
@@ -496,11 +501,58 @@ begin
     update oyun.ulke set hazine = hazine - maliyet where id = 1;
     b := format('Kişi Başı %s ₺ Bayram İkramiyesi Ödenmesi Hakkında Karar', to_char(miktar, 'FM999G999'));
     p_veri := jsonb_build_object('miktar', miktar, 'kisi', n, 'maliyet', maliyet);
+  elsif p_tur = 'duzenleme' then
+    -- Oyuncuları etkileyen kural (mevzuat): kanunla ya da anayasayla düzenlenmiş konuda kararname çıkarılamaz
+    select * into dt from oyun.duzenleme_tanim where kod = p_veri ->> 'kod' and kapsam = 'ulke';
+    if dt.kod is null then raise exception 'Geçersiz düzenleme.'; end if;
+    eng := oyun.duzenleme_engel(dt.kod, 'kararname');
+    if eng is not null then raise exception '%', eng; end if;
+    deger := oyun.duzenleme_dogrula(dt.kod, (p_veri ->> 'deger')::numeric, 'ulke');
+    if deger = oyun.duz(dt.kod) then raise exception 'Bu kural zaten bu değerde.'; end if;
+    if exists (select 1 from oyun.duzenlemeler where kod = dt.kod and kaynak = 'kararname' and zaman > t - interval '24 hours') then
+      raise exception 'Aynı kural 24 saatte bir değiştirilebilir.';
+    end if;
+    p_veri := jsonb_build_object('kod', dt.kod, 'deger', deger,
+      'onceki', jsonb_build_object('deger', oyun.duz(dt.kod), 'kaynak', (select kaynak from oyun.duzenlemeler where kod = dt.kod),
+                                   'ref_id', (select ref_id from oyun.duzenlemeler where kod = dt.kod)));
+    b := format('%s Hakkında Karar (%s)', dt.ad, oyun.duz_yaz(dt.kod, deger));
+  elsif p_tur = 'ozellestirme' then
+    -- Kamu varlığı satışı: hazineye tek seferlik gelir; işsizlik artar, memnuniyet düşer
+    miktar := round((p_veri ->> 'miktar')::numeric);
+    if miktar is null or miktar < 10 or miktar > 100 then raise exception 'Özelleştirme 10-100 milyar ₺ arasında olmalı.'; end if;
+    if miktar > (select kamu_varlik from oyun.ulke where id = 1) then raise exception 'Satılabilecek kamu varlığı kalmadı (kalan % milyar ₺).', round((select kamu_varlik from oyun.ulke where id = 1), 1); end if;
+    if exists (select 1 from oyun.kararnameler where tur = 'ozellestirme' and durum = 'yururlukte' and zaman > t - interval '7 days') then
+      raise exception 'Özelleştirme 7 günde bir yapılabilir.';
+    end if;
+    update oyun.ulke set kamu_varlik = kamu_varlik - miktar where id = 1;
+    perform oyun.etki_uygula(jsonb_build_object('hazine', miktar, 'issizlik', miktar / 50.0, 'memnuniyet', -miktar / 25.0, 'buyume', miktar / 200.0), null);
+    b := format('%s Milyar ₺ Değerinde Kamu Varlığının Özelleştirilmesi Hakkında Karar', miktar);
+    p_veri := jsonb_build_object('miktar', miktar);
+  elsif p_tur = 'tahvil' then
+    -- Borçlanma: para bugün girer, 60 günde faiziyle geri ödenir (faiz enflasyona bağlı)
+    miktar := round((p_veri ->> 'miktar')::numeric);
+    if miktar is null or miktar < 10 or miktar > 100 then raise exception 'Tahvil ihracı 10-100 milyar ₺ arasında olmalı.'; end if;
+    if coalesce((select sum(gunluk * kalan_gun) from oyun.borclar where kalan_gun > 0), 0) + miktar > 300 then
+      raise exception 'Toplam borç stoku 300 milyar ₺''yi aşamaz.';
+    end if;
+    faiz := oyun.tahvil_faiz();
+    perform oyun.etki_uygula(jsonb_build_object('hazine', miktar), null);
+    b := format('%s Milyar ₺ Devlet İç Borçlanma Senedi (Tahvil) İhracı Hakkında Karar (faiz %%%s, 60 gün)', miktar, faiz);
+    p_veri := jsonb_build_object('miktar', miktar, 'faiz', faiz);
   else
     raise exception 'Geçersiz kararname türü.';
   end if;
   v_no := nextval('oyun.kararname_no');
   insert into oyun.kararnameler(no, tur, baslik, metin, veri, cb, zaman) values (v_no, p_tur, b, m, p_veri, p.id, t) returning id into yeni;
+  if p_tur = 'duzenleme' then
+    perform oyun.duzenleme_uygula(p_veri ->> 'kod', (p_veri ->> 'deger')::numeric, 'kararname', yeni, t);
+    insert into oyun.bildirimler(user_id, zaman, metin)
+      select x.id, t, format('Cumhurbaşkanlığı kararı: %s artık %s. %s', dt.ad, oyun.duz_yaz(dt.kod, deger), dt.oyuncu)
+      from oyun.profiller x where not x.yasakli and x.id <> p.id and x.son_gorulme > t - interval '7 days';
+  elsif p_tur = 'tahvil' then
+    insert into oyun.borclar(kararname_id, anapara, faiz, gunluk, kalan_gun, zaman)
+    values (yeni, miktar, faiz, round(miktar * (1 + faiz / 100) / 60, 4), 60, t);
+  end if;
   perform oyun.gazete_ekle('kararname', format('%s sayılı Cumhurbaşkanlığı Kararı: %s', v_no, b), m, yeni, t);
   perform oyun.olay('kararname', format('Cumhurbaşkanı %s, %s sayılı kararı imzaladı: %s', p.kad, v_no, b), null, p.parti_id, t);
   return jsonb_build_object('tamam', true, 'no', v_no, 'baslik', b, 'veri', p_veri);
@@ -569,12 +621,28 @@ begin
       raise exception 'İptal edilecek yürürlükte bir kararname seçmelisin.';
     end if;
     v := jsonb_build_object('kararname_id', (p_veri ->> 'kararname_id')::bigint);
+  elsif p_tur = 'duzenleme' then
+    if oyun.duzenleme_engel(p_veri ->> 'kod', 'kanun') is not null then raise exception '%', oyun.duzenleme_engel(p_veri ->> 'kod', 'kanun'); end if;
+    v := jsonb_build_object('kod', p_veri ->> 'kod', 'deger', oyun.duzenleme_dogrula(p_veri ->> 'kod', (p_veri ->> 'deger')::numeric, 'ulke'));
+    if (v ->> 'deger')::numeric = oyun.duz(v ->> 'kod') and (select kaynak from oyun.duzenlemeler where kod = v ->> 'kod') = 'kanun' then
+      raise exception 'Bu kural zaten kanunla bu değerde.';
+    end if;
+  elsif p_tur = 'anayasa' then
+    v := oyun.anayasa_dogrula(p_veri);
   else raise exception 'Geçersiz kanun türü.'; end if;
+  if p_tur = 'butce' and (v ->> 'vergi_ust')::numeric > oyun.anayasa_deger('vergi_tavani') then
+    raise exception 'Anayasa gelir vergisinin tavanını %%% olarak belirlemiştir; vergi bandı bunun üstüne çıkamaz.', oyun.anayasa_deger('vergi_tavani');
+  end if;
   select * into s from oyun.kanun_suresi();
   insert into oyun.kanunlar(tur, baslik, metin, veri, teklif_eden, teklif_parti, teklif_at, oy_bas, oy_bit)
   values (p_tur, b, m, v, p.id, p.parti_id, t, t + s.gorusme, t + s.gorusme + s.oylama) returning id into yeni;
+  if p_tur = 'anayasa' then
+    insert into oyun.kanun_oylari(kanun_id, asama, vekil, parti_id, oy, zaman) values (yeni, 'imza', p.id, p.parti_id, 'kabul', t);
+  end if;
   insert into oyun.bildirimler(user_id, zaman, metin)
-    select m2.user_id, t, format('Yeni kanun teklifi: "%s" (%s). Oylama %s''da başlıyor.', b, p.kad, to_char((t + s.gorusme) at time zone 'Europe/Istanbul', 'DD.MM HH24:MI'))
+    select m2.user_id, t, case when p_tur = 'anayasa'
+             then format('Anayasa değişikliği teklifi: "%s" (%s). Oylamaya geçmesi için vekillerin üçte biri %s''a kadar imza vermeli.', b, p.kad, to_char((t + s.gorusme) at time zone 'Europe/Istanbul', 'DD.MM HH24:MI'))
+             else format('Yeni kanun teklifi: "%s" (%s). Oylama %s''da başlıyor.', b, p.kad, to_char((t + s.gorusme) at time zone 'Europe/Istanbul', 'DD.MM HH24:MI')) end
     from oyun.makamlar m2 where m2.tur = 'mv' and m2.bit is null and m2.user_id <> p.id;
   perform oyun.olay('meclis', format('%s Meclis''e kanun teklifi verdi: %s', p.kad, b), null, p.parti_id, t);
   return jsonb_build_object('id', yeni);
@@ -612,6 +680,15 @@ begin
   perform oyun.cb_zorunlu(p);
   select * into k from oyun.kanunlar where id = p_id for update;
   if k.durum <> 'cb_onayinda' or t >= k.cb_bit then raise exception 'Bu kanun onayınızı beklemiyor.'; end if;
+  if k.tur = 'anayasa' then
+    if p_karar = 'onay' then
+      perform oyun.kanun_yururluk(k.id, t, format('Meclis''te üçte iki çoğunlukla kabul edildi; Cumhurbaşkanı %s yayımladı.', p.kad));
+    elsif p_karar = 'halkoyu' then
+      perform oyun.referandum_baslat(k.id, t);
+      perform oyun.olay('referandum', format('Cumhurbaşkanı %s, "%s" anayasa değişikliğini halkoyuna sundu.', p.kad, k.baslik), null, p.parti_id, t);
+    else raise exception 'Anayasa değişikliği veto edilemez; yayımlayabilir ya da halkoyuna sunabilirsin.'; end if;
+    return public.kanun_detay(p_id);
+  end if;
   if p_karar = 'onay' then
     perform oyun.kanun_yururluk(k.id, t, format('Cumhurbaşkanı %s tarafından onaylandı.', p.kad));
   elsif p_karar = 'veto' then
@@ -653,8 +730,21 @@ begin
     if kr.tur = 'vergi' and not exists (select 1 from oyun.kararnameler where tur = 'vergi' and durum = 'yururlukte' and zaman > kr.zaman) then
       update oyun.ulke set vergi = vergi_kanun where id = 1;
     end if;
+    -- iptal edilen kararname hâlâ yürürlükteki kuralı belirliyorsa kural bir önceki hâline döner
+    if kr.tur = 'duzenleme' and exists (select 1 from oyun.duzenlemeler where kod = kr.veri ->> 'kod' and kaynak = 'kararname' and ref_id = kr.id) then
+      if kr.veri -> 'onceki' ->> 'kaynak' is null then delete from oyun.duzenlemeler where kod = kr.veri ->> 'kod';
+      else update oyun.duzenlemeler set deger = (kr.veri -> 'onceki' ->> 'deger')::numeric, kaynak = kr.veri -> 'onceki' ->> 'kaynak',
+             ref_id = (kr.veri -> 'onceki' ->> 'ref_id')::bigint, zaman = t where kod = kr.veri ->> 'kod'; end if;
+    end if;
+  elsif k.tur = 'duzenleme' then
+    if not oyun.duzenleme_uygula(k.veri ->> 'kod', (k.veri ->> 'deger')::numeric, 'kanun', k.id, t) then
+      update oyun.kanunlar set sonuc_metin = p_not || ' Ancak kural bu arada anayasaya bağlandığı için uygulanamadı.' where id = k.id;
+    end if;
+  elsif k.tur = 'anayasa' then
+    perform oyun.anayasa_uygula(k, t);
   end if;
-  perform oyun.gazete_ekle('kanun', format('%s sayılı %s', v_no, k.baslik), k.metin, k.id, t);
+  perform oyun.gazete_ekle(case when k.tur = 'anayasa' then 'anayasa' else 'kanun' end,
+    format('%s sayılı %s', v_no, k.baslik), coalesce(case when k.tur = 'anayasa' then oyun.anayasa_aciklama(k.veri) || ' ' end, '') || k.metin, k.id, t);
   perform oyun.bildir(k.teklif_eden, format('Teklifin yasalaştı: %s sayılı "%s" yürürlüğe girdi.', v_no, k.baslik), t);
   perform oyun.olay('meclis', format('%s sayılı "%s" yürürlüğe girdi. %s', v_no, k.baslik, p_not), null, k.teklif_parti, t);
 end $$;
@@ -668,8 +758,36 @@ create or replace function oyun.kanun_tick(t timestamptz) returns void language 
 declare k oyun.kanunlar; c record; dolu int; cb uuid; s record;
 begin
   select * into s from oyun.kanun_suresi();
+  -- anayasa değişikliği: görüşme bitince imza sayısı dolu sandalyelerin üçte birine ulaşmadıysa teklif düşer
+  for k in select * from oyun.kanunlar where durum = 'gorusmede' and tur = 'anayasa' and t >= oy_bas order by oy_bas loop
+    dolu := oyun.dolu_sandalye();
+    if (select count(*) from oyun.kanun_oylari where kanun_id = k.id and asama = 'imza') < ceil(dolu / 3.0) then
+      update oyun.kanunlar set durum = 'ret', sonuc_at = k.oy_bas,
+        sonuc_metin = format('Yeterli imza toplanamadı: %s imza, en az %s gerekliydi (dolu sandalyelerin üçte biri).',
+                             (select count(*) from oyun.kanun_oylari where kanun_id = k.id and asama = 'imza'), ceil(dolu / 3.0)) where id = k.id;
+      perform oyun.bildir(k.teklif_eden, format('"%s" anayasa değişikliği teklifin yeterli imza toplayamadı.', k.baslik), k.oy_bas);
+    end if;
+  end loop;
   update oyun.kanunlar set durum = 'oylamada' where durum = 'gorusmede' and t >= oy_bas;
-  for k in select * from oyun.kanunlar where durum = 'oylamada' and t >= oy_bit order by oy_bit loop
+  for k in select * from oyun.kanunlar where durum = 'oylamada' and tur = 'anayasa' and t >= oy_bit order by oy_bit loop
+    select * into c from oyun.kanun_say(k.id, 'ilk');
+    dolu := oyun.dolu_sandalye();
+    cb := oyun.aktif_cb();
+    if dolu > 0 and c.kabul >= ceil(dolu * 2 / 3.0) and cb is not null then
+      update oyun.kanunlar set durum = 'cb_onayinda', cb_bit = k.oy_bit + s.cb,
+        sonuc_metin = format('Gizli oylamada %s kabul, %s ret, %s çekimser: üçte iki çoğunluk sağlandı.', c.kabul, c.ret, c.cekimser) where id = k.id;
+      perform oyun.bildir(cb, format('"%s" anayasa değişikliği Meclis''ten üçte iki çoğunlukla geçti. 48 saat içinde yayımla ya da halkoyuna sun.', k.baslik), k.oy_bit);
+      perform oyun.olay('meclis', format('"%s" anayasa değişikliği üçte iki çoğunlukla kabul edildi (%s kabul). Cumhurbaşkanına sunuldu.', k.baslik, c.kabul), null, k.teklif_parti, k.oy_bit);
+    elsif dolu > 0 and c.kabul >= ceil(dolu * 3 / 5.0) then
+      update oyun.kanunlar set sonuc_metin = format('Gizli oylamada %s kabul, %s ret, %s çekimser: beşte üç çoğunlukla kabul edildi, halkoyuna sunuluyor.', c.kabul, c.ret, c.cekimser) where id = k.id;
+      perform oyun.referandum_baslat(k.id, k.oy_bit);
+    else
+      update oyun.kanunlar set durum = 'ret', sonuc_at = k.oy_bit,
+        sonuc_metin = format('Reddedildi: gizli oylamada %s kabul oyu çıktı; halkoyuna sunulması için en az %s (beşte üç) gerekliydi.', c.kabul, ceil(dolu * 3 / 5.0)) where id = k.id;
+      perform oyun.bildir(k.teklif_eden, format('"%s" anayasa değişikliği teklifin Meclis''te gerekli çoğunluğu alamadı.', k.baslik), k.oy_bit);
+    end if;
+  end loop;
+  for k in select * from oyun.kanunlar where durum = 'oylamada' and tur <> 'anayasa' and t >= oy_bit order by oy_bit loop
     select * into c from oyun.kanun_say(k.id, 'ilk');
     dolu := oyun.dolu_sandalye();
     if dolu > 0 and c.kabul + c.ret + c.cekimser >= ceil(dolu / 3.0) and c.kabul > c.ret and c.kabul >= floor(dolu / 4.0) + 1 then
@@ -691,7 +809,8 @@ begin
     end if;
   end loop;
   for k in select * from oyun.kanunlar where durum = 'cb_onayinda' and t >= cb_bit order by cb_bit loop
-    perform oyun.kanun_yururluk(k.id, k.cb_bit, 'Cumhurbaşkanı süresi içinde karar vermediği için kendiliğinden yürürlüğe girdi.');
+    perform oyun.kanun_yururluk(k.id, k.cb_bit, case when k.tur = 'anayasa' then 'Cumhurbaşkanı süresi içinde halkoyuna sunmadığı için yayımlanarak yürürlüğe girdi.'
+                                                    else 'Cumhurbaşkanı süresi içinde karar vermediği için kendiliğinden yürürlüğe girdi.' end);
   end loop;
   for k in select * from oyun.kanunlar where durum = 'israr' and t >= israr_bit order by israr_bit loop
     select * into c from oyun.kanun_say(k.id, 'israr');
@@ -750,11 +869,18 @@ begin
     'oy_acik', (k.durum = 'oylamada' and t >= k.oy_bas and t < k.oy_bit) or (k.durum = 'israr' and t < k.israr_bit),
     'benim_oyum', (select oy from oyun.kanun_oylari where kanun_id = k.id and vekil = p.id and asama = case when k.durum = 'israr' then 'israr' else 'ilk' end),
     'cb_karar_verebilir', k.durum = 'cb_onayinda' and t < k.cb_bit and oyun.aktif_cb() = p.id,
+    'anayasa_aciklama', case when k.tur = 'anayasa' then oyun.anayasa_aciklama(k.veri) end,
+    'duzenleme', case when k.tur = 'duzenleme' then (select jsonb_build_object('ad', d.ad, 'yazi', oyun.duz_yaz(d.kod, (k.veri ->> 'deger')::numeric),
+                    'mevcut', oyun.duz_yaz(d.kod, oyun.duz(d.kod)), 'oyuncu', d.oyuncu, 'devlet', d.devlet) from oyun.duzenleme_tanim d where d.kod = k.veri ->> 'kod') end,
+    'imza_yeter', ceil(dolu / 3.0), 'uc_bes', ceil(dolu * 3 / 5.0), 'iki_uc', ceil(dolu * 2 / 3.0),
+    'imzaladim', exists (select 1 from oyun.kanun_oylari where kanun_id = k.id and vekil = p.id and asama = 'imza'),
+    'referandum', (select jsonb_build_object('id', r.id, 'oy_bas', r.oy_bas, 'durum', r.durum, 'sonuc', r.sonuc) from oyun.referandumlar r where r.kanun_id = k.id),
     'benim', k.teklif_eden = p.id,
     'oylar', (select jsonb_object_agg(a.asama, a.j) from (
        select o.asama, jsonb_build_object(
          'kabul', count(*) filter (where o.oy = 'kabul'), 'ret', count(*) filter (where o.oy = 'ret'), 'cekimser', count(*) filter (where o.oy = 'cekimser'),
-         'liste', jsonb_agg(jsonb_build_object('kad', oyun.kad(o.vekil), 'oy', o.oy, 'parti', oyun.parti_json(o.parti_id)) order by o.parti_id, o.zaman)) j
+         'liste', case when k.tur = 'anayasa' and o.asama = 'ilk' then '[]'::jsonb
+                       else jsonb_agg(jsonb_build_object('kad', oyun.kad(o.vekil), 'oy', o.oy, 'parti', oyun.parti_json(o.parti_id)) order by o.parti_id, o.zaman) end) j
        from oyun.kanun_oylari o where o.kanun_id = k.id group by o.asama) a));
 end $$;
 

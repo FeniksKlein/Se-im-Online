@@ -24,7 +24,8 @@ begin
     'politika_ayarla(text,numeric)','politika_onizle(text,numeric)',
     'vaat_secenekleri(text,int)','vaat_hesapla(text,jsonb,int)','vaat_yaz(bigint,text,jsonb)','vaatlerim(bigint)','beyanname_kaydet(text,jsonb)',
     'admin_ozet()','admin_sikayetler(text)','admin_sikayet_karar(text,bigint,text,text)','admin_oyuncu(text)','admin_islem(text,text)','admin_duyuru(text)','admin_ayar(int)',
-    'genel_baskanlik_uslen()','vekalet_paneli()','bos_makamlar()','il_bagis(numeric)','il_bagis_durum()','vergi_karnem()','sohbet_ozet()',
+    'genel_baskanlik_uslen()','vekalet_paneli()','bos_makamlar()',
+    'mevzuat()','mevzuat_onizle(text,numeric)','referandumlar(int)','referandum_detay(bigint)','referandum_oy(bigint,text)','kanun_imza(bigint,boolean)','belediye_duzenle(text,numeric)','bakan_adaylari(text)','il_bagis(numeric)','il_bagis_durum()','vergi_karnem()','sohbet_ozet()',
     'cihaz_kaydet(text,text)','cihaz_sil(text)','bildirim_ayar_kaydet(jsonb)']
   loop
     execute format('revoke all on function public.%s from public, anon', f);

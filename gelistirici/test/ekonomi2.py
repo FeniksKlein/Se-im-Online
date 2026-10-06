@@ -109,7 +109,7 @@ ok("Söz karnesi rozetleri: Sözünün Eri / Lafta Kalan")
 # ---------------- HER İCRAATIN VAADİ VAR ----------------
 assert q("select count(*) from oyun.icraatlar i where not exists (select 1 from oyun.vaat_turleri t where t.kapsam='beyanname' and t.kod=i.kod)") == "0"
 sec = rpc(gb, "vaat_secenekleri", "beyanname")
-assert len(sec["turler"]) == 30, len(sec["turler"])
+assert len(sec["turler"]) == 39, len(sec["turler"])
 mv = {t["kod"]: t for t in rpc(vek, "vaat_secenekleri", "mv")["turler"]}
 gbs = {t["kod"]: t for t in rpc(gb, "vaat_secenekleri", "gb")["turler"]}
 assert {"katilim", "teklif"} <= set(mv) and {"uye", "kasa"} <= set(gbs) and gbs["uye"]["mevcut"] >= 1

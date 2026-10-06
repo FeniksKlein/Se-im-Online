@@ -418,7 +418,7 @@ const AUTH = {
   await page.click('#kimza'); await bekle('Resmî Gazete\'de yayımlandı');
   ok('2. aşama: CB hükümet ekranı ve kararname (İzmir\'e 15 milyar ₺ destek)');
   await tikla('Kararname çıkar'); await page.waitForTimeout(300);
-  await page.locator('[data-t="ikramiye"]').click(); await page.fill('#kikr', '1000'); await page.waitForTimeout(200);
+  await page.selectOption('#ktur', 'ikramiye'); await page.fill('#kikr', '1000'); await page.waitForTimeout(200);
   await foto('38b-ikramiye');
   await page.click('#kimza'); await bekle('Resmî Gazete\'de yayımlandı');
   assert1(+psql(`select count(*) from oyun.hesap_hareket where tur='ikramiye'`) >= 1, 'ikramiye ödenmedi');
@@ -445,7 +445,7 @@ const AUTH = {
   await girisYap(vekilBot);
   await page.evaluate(() => { D.devletSekme = 'meclis'; sekmeAc('devlet'); }); await bekle('Gündemdeki teklifler');
   await tikla('+ Kanun teklifi ver'); await page.waitForTimeout(400);
-  await page.locator('[data-t="butce"]').click();
+  await page.selectOption('#ktur', 'butce');
   await page.fill('#kbaslik', '2027 Yılı Merkezî Yönetim Bütçe Kanunu');
   await page.fill('#kgerekce', 'Vergi tavanı %30\'a indirilir, belediyelerin payı %12\'ye çıkar; eğitim ve sağlık bütçeleri artırılır.');
   await page.fill('[data-b="vergi_ust"]', '30'); await page.fill('[data-b="belediye_payi"]', '12');
@@ -539,6 +539,52 @@ const AUTH = {
   await page.locator('.renkler button').nth(5).click(); await page.locator('.amblemler button').nth(8).click();
   await foto('36-parti-kur');
   ok('Vekil haritası, profil, parti kurma ekranı');
+
+  // ---- MEVZUAT · KARARNAMEYLE KURAL · TAHVİL · BAKAN ARAMA · HALK OYLAMASI · BELEDİYE KARARI
+  await page.evaluate(() => { D.sekme = 'devlet'; D.devletSekme = 'mevzuat'; D.yigin = []; sekmeAc('devlet'); }); await bekle('Devletin kasası');
+  const hibe = page.locator('[data-kural="yeni_hibe"]');
+  await hibe.locator('input').fill('5000'); await page.waitForTimeout(600);
+  await hibe.locator('[data-kkarar]').click(); await page.click('#evet'); await bekle("Resmî Gazete'de yayımlandı");
+  assert1(psql(`select deger from oyun.duzenlemeler where kod='yeni_hibe'`) === '5000', 'hoş geldin hibesi kararnamesi uygulanmadı');
+  await bekle('Cumhurbaşkanlığı kararnamesi'); await page.waitForTimeout(300);
+  await page.locator('[data-kural="yeni_hibe"]').scrollIntoViewIfNeeded(); await foto('52-mevzuat');
+  await page.evaluate(() => kararnameModal('tahvil')); await bekle('Devlet iç borçlanma'); await page.fill('#kmik', '30'); await page.waitForTimeout(200);
+  await foto('53-tahvil');
+  await page.click('#kimza'); await bekle("Resmî Gazete'de yayımlandı");
+  assert1(+psql(`select count(*) from oyun.borclar`) === 1, 'tahvil kaydı yok');
+  ok('Mevzuat: cumhurbaşkanı kararnameyle hoş geldin hibesi getirdi ve tahvil ihraç etti');
+  await page.evaluate(() => bakanAtaModal('egitim', 'Millî Eğitim Bakanlığı', true)); await bekle('Seç'); await page.waitForTimeout(200);
+  await foto('54-bakan-ara'); await page.evaluate(() => modalKapat());
+  ok('Bakan atama: oyuncu arama listesi uygun adayları ve engelleri gösteriyor');
+  const ak = psql(`insert into oyun.kanunlar(tur,baslik,metin,veri,teklif_eden,teklif_parti,durum,teklif_at,oy_bas,oy_bit)
+    select 'anayasa','Sandık Görevi Anayasa Değişikliği','Seçimlere katılım vatandaşlık görevidir; sandığa gitmeyene ceza anayasal güvenceye alınır.',
+           '{"madde":"duzenleme","kod":"oy_cezasi","deger":500}', id, parti_id, 'oylamada', '2026-11-03 00:00+03','2026-11-04 00:00+03','2026-11-05 00:00+03'
+    from oyun.profiller where kad='${vekilBot}' returning id`).split('\n')[0];
+  const rid = psql(`select oyun.referandum_baslat(${ak}, '2026-11-05 00:00+03')`).split('\n')[0];
+  saat('2026-11-06 10:01');
+  await page.evaluate(() => { D.sekme = 'gundem'; D.yigin = []; sekmeAc('gundem'); }); await bekle('Sandığa git');
+  await foto('55-gundem-halkoylamasi');
+  await page.locator('.olay', { hasText: 'Halk oylaması' }).first().click(); await bekle('Oy pusulası');
+  await foto('56-halkoylamasi-pusula');
+  await page.click('.ref-daire.evet'); await page.click('#refmuhur'); await bekle('Oyun sandıkta');
+  await foto('57-oy-sandikta');
+  const secmenler = psql(`select kad from oyun.profiller where kad like 'Bot%' order by kad limit 40`).split('\n');
+  secmenler.forEach((b, i) => psql(`select set_config('request.jwt.claim.sub','${uid(b)}',false); select public.referandum_oy(${rid}, '${i % 3 === 0 ? 'hayir' : 'evet'}')`));
+  saat('2026-11-06 20:05');
+  await page.evaluate((id) => referandumEkrani(id), +rid); await bekle('Sonuç:'); await page.waitForTimeout(300);
+  await foto('58-halkoylamasi-sonuc');
+  assert1(psql(`select sonuc from oyun.referandumlar where id=${rid}`) === 'kabul' && psql(`select kaynak from oyun.duzenlemeler where kod='oy_cezasi'`) === 'anayasa', 'halk oylaması sonucu uygulanmadı');
+  ok('Halk oylaması: gündemde sandık kartı, Evet/Hayır pusulası, mühür, il il sonuç; kabul edilen kural anayasaya bağlandı');
+  const baskanBot = psql(`select p.kad from oyun.makamlar m join oyun.profiller p on p.id=m.user_id where m.tur='bel' and m.bit is null and p.kad like 'Bot%' limit 1`);
+  if (baskanBot) {
+    await girisYap(baskanBot);
+    await page.evaluate(() => { D.yigin = []; ekranAc(belediyeEkrani); }); await bekle('Belediye meclisi kararları');
+    const emlak = page.locator('[data-bkural="emlak"]');
+    await emlak.locator('input').fill('50'); await emlak.locator('button').click(); await page.click('#evet'); await bekle('Belediye meclisi kararı yürürlükte');
+    await page.locator('[data-bkural="emlak"]').scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
+    await foto('59-belediye-kurallari');
+    ok('Belediye başkanı emlak vergisini belediye meclisi kararıyla belirledi');
+  }
 
   // XSS denemesi: kötü niyetli kullanıcı adı veritabanında reddedilmeli, parti adı da
   let xss = 'geçti';

@@ -308,6 +308,39 @@ Etkiler üst üste biner; indirimler en fazla %90'dır.
 - Genel başkan kasadan üyelerine **kampanya desteği** gönderir ve aday ücretlerinin çarpanını ayarlar.
 - Kasa hareketleri, partinin seçim beyannamesi ve iktidardaysa hükümet karnesi parti sayfasında herkese açıktır.
 
+### Mevzuat, anayasa değişikliği ve halk oylaması
+Oyuncuların cüzdanına doğrudan dokunan kurallar ("Devlet › Mevzuat"). Yetki sırası gerçekteki gibidir: **Anayasa › Kanun › Cumhurbaşkanlığı kararnamesi**.
+- Cumhurbaşkanı kuralı kararnameyle değiştirir; Meclis aynı konuyu kanunla düzenlerse artık kararname çıkarılamaz. Kararname kanunla iptal edilirse kural bir önceki hâline döner.
+- Anayasaya bağlanan kural ne kanunla ne kararnameyle değişir; ancak yeni bir anayasa değişikliğiyle.
+
+| Kural | Tür | Oyuncuya | Devlete |
+|---|---|---|---|
+| Servet vergisi (‰0-10) | gelir | 250.000 ₺ üstü servetten günlük kesinti | her ‰1 günde +0,3 milyar ₺; büyüme düşer |
+| Sandığa gitmeyene ceza (0-5.000 ₺) | yaptırım | oy kullanabilecekken kullanmayana bir kez | katılım artar, memnuniyet biraz düşer |
+| Yeni vatandaşa hoş geldin hibesi (0-50.000 ₺) | kolaylık | yeni hesaba bir kez | 5.000 kişi/gün maliyet |
+| Siyasi katılım fonu (%0-100) | kolaylık | aday ücretinin bu kadarını devlet öder | her %10 günde 0,04 milyar ₺ |
+| Devamlılık primi tavanı (%0-60) | kolaylık | seri primi tavanı | %30 üstü enflasyon |
+| Maaş kumbarası kapasitesi (6-12 saat) | kolaylık | maaş daha uzun birikir | büyüme biraz düşer |
+| Meclis devamsızlık kesintisi (%0-50) | yaptırım | oylamaya katılmayan vekilin maaşından | memnuniyet artar |
+
+- Ceza geriye yürümez: sandığa gitmeme cezası sandık açılmadan önce yürürlükte olan kurala göre kesilir.
+- **Devlete para:** özelleştirme (10-100 milyar ₺, kamu varlığı 400 milyar ₺ ile sınırlı, 7 günde bir; işsizlik artar, memnuniyet düşer) ve tahvil (10-100 milyar ₺; faiz = 8 + enflasyon/2, 60 günde faiziyle geri ödenir; borç stoku en fazla 300 milyar ₺).
+- **Anayasa değişikliği:**
+  - Bir milletvekili teklif eder ve 24 saatte dolu sandalyelerin 1/3'ü imza vermelidir.
+  - Meclis gizli oyla oylar. ≥3/5 kabul çıkarsa halk oylamasına gider. ≥2/3 kabul çıkarsa cumhurbaşkanı yayımlar ya da halkoyuna sunar; karar vermezse 48 saat sonra yayımlanmış sayılır. Anayasa değişikliği veto edilemez.
+  - Maddeler: bir kuralı anayasaya bağla ya da anayasadan çıkar; cumhurbaşkanının günlük kararname sayısı (0-5; 0 yetkiyi kaldırır); gelir vergisinin anayasal tavanı (%20-45).
+- **Halk oylaması:**
+  - En az 24 saat kampanya süresi vardır; oylama belirlenen gün 08:00-20:00 arasındadır.
+  - Seçmen kütüğü halk oylaması kararıyla kesinleşir.
+  - Oy gizlidir: kimin oy kullandığı ve sandıktaki Evet/Hayır sayısı ayrı tablolarda tutulur, birbirine bağlanamaz.
+  - Geçerli oyların yarısından fazlası Evet ise değişiklik yürürlüğe girer; sonuç il il açıklanır. Oy kullanmak +3 kıdem puanı kazandırır.
+- **Belediye meclisi kararları:**
+  - Emlak vergisi (0-300 ₺/gün) belediye kasasına gelir getirir, ildeki memnuniyeti düşürür.
+  - Hoş geldin desteği (0-20.000 ₺) ile yerleşene her ilde bir kez ödenir ve kasadan düşer.
+  - Gelir işlemleri: imar barışı (kasaya 4 günlük gelir, gelişmişlik −3) ve belediye arsası satışı (6 günlük gelir, gelişmişlik −1, memnuniyet −3).
+- **Vaatler:** Her kural için CB adayı, vekil ve belediye başkanı vaat türleri vardır ("servet vergisini kanunla belirleyeceğim", "anayasa teklifine imza vereceğim", "emlak vergisini indireceğim"…). Bunlar söz karnesine işlenir.
+- **Bakan atama:** Cumhurbaşkanı görev süresi boyunca istediği oyuncuyu arayıp bakan atar, istediği an görevden alıp yerine başkasını atar. Arama listesinde kimin atanabileceği ve kimin başka görevi olduğu görünür.
+
 ### Boş makam kuralı: hiçbir koltuk sahipsiz kalmaz
 - **Bakanlık boşsa** cumhurbaşkanı vekâleten yönetir; o bakanlığın icraatlarını kendisi yapar (Resmî Gazete'de "… vekâleten Cumhurbaşkanı …" yazar). Bakan atanınca vekâlet sona erer.
 - **Seçimde kazanan çıkmazsa** (kimse aday olmadıysa) görevdeki belediye başkanı ya da cumhurbaşkanı, yenisi seçilene kadar yerinde kalır; kabine de cumhurbaşkanı değişene kadar dağılmaz. Yeni kazanan çıkan yerde görev devredilir. Meclis ise liste usulüyle topluca yenilenir.

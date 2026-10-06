@@ -522,6 +522,7 @@ begin
     exit when n > 200;
   end loop;
   perform oyun.kanun_tick(t);
+  perform oyun.mevzuat_tick(t);
   perform oyun.gunluk_ekonomi(t);
   perform oyun.push_hatirlatmalar(t);
   perform oyun.push_tetikle();

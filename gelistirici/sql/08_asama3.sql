@@ -94,7 +94,7 @@ begin
   -- gelişmişlik yatırım almazsa yavaşça ortalamaya döner; memnuniyet hizmetlere, desteğe ve vergiye göre şekillenir
   update oyun.il_durum d set gelisim = gelisim + (50 - gelisim) * 0.01,
     memnuniyet = oyun.sinir(memnuniyet + (50 + 4 * (select count(*) from oyun.il_hizmet ih where ih.il_id = d.il_id) + least(10, hemsehri / 30)
-                                          - kent_vergisi * 2 - memnuniyet) * 0.05, 0, 100);
+                                          - kent_vergisi * 2 - oyun.il_duz(d.il_id, 'emlak') / 30 - memnuniyet) * 0.05, 0, 100);
 end $$;
 
 create or replace function oyun.il_hizmet_json(p_il smallint, t timestamptz) returns jsonb language sql stable as $$
@@ -125,10 +125,11 @@ begin
     'sakin', (select count(*) from oyun.profiller where il_id = i.id and not yasakli), 'aktif_sakin', oyun.il_sakin(i.id, t),
     'maas', round(oyun.makam_maasi('bel', i.id)),
     'vaatler', oyun.vaat_listesi_makam(m.id),
+    'kurallar', oyun.il_kurallar_json(i.id, t),
     'hizmetler', (select jsonb_agg(jsonb_build_object('kod', b.kod, 'ad', b.ad, 'aciklama', b.aciklama, 'etki', b.etki,
                     'gider', oyun.hizmet_gider(i.id, b.kod), 'acik', h.il_id is not null, 'acilis', h.acilis) order by b.sira)
                   from oyun.belediye_hizmetleri b left join oyun.il_hizmet h on h.il_id = i.id and h.kod = b.kod),
-    'yatirimlar', (select jsonb_agg(jsonb_build_object('kod', y.kod, 'ad', y.ad, 'aciklama', y.aciklama, 'gelisim', y.gelisim,
+    'yatirimlar', (select jsonb_agg(jsonb_build_object('kod', y.kod, 'ad', y.ad, 'aciklama', y.aciklama, 'gelisim', y.gelisim, 'tur', y.tur, 'memnuniyet', y.memnuniyet, 'bekleme_saat', y.bekleme_saat,
                     'maliyet', round(y.gun * oyun.il_gunluk_gelir(i.mv) * (select endeks from oyun.ulke where id = 1), 3), 'gun', y.gun,
                     'hazir', (select max(k.zaman) + make_interval(hours => y.bekleme_saat) from oyun.belediye_proje_kayit k where k.kod = y.kod and k.il_id = i.id))
                   order by y.sira) from oyun.belediye_yatirimlari y),

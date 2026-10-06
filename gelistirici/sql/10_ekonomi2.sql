@@ -94,7 +94,15 @@ begin
       when 'ikramiye' then
         v_cb := (select user_id from oyun.makamlar where id = v.makam_id);
         return exists (select 1 from oyun.kararnameler k where k.tur = 'ikramiye' and k.cb = v_cb and k.zaman >= bas and (k.veri ->> 'miktar')::numeric >= v.hedef);
-      else return exists (select 1 from oyun.icraat_kayit k where k.kod = v.kod and k.zaman >= bas);
+      when 'ozellestirme' then
+        v_cb := (select user_id from oyun.makamlar where id = v.makam_id);
+        return exists (select 1 from oyun.kararnameler k where k.tur = 'ozellestirme' and k.cb = v_cb and k.zaman >= bas);
+      when 'referandum' then return exists (select 1 from oyun.referandumlar r where r.olusturma >= bas);
+      else
+        if exists (select 1 from oyun.duzenleme_tanim where kod = v.kod) then
+          return case when v.yon = '<=' then oyun.duz(v.kod) <= v.hedef else oyun.duz(v.kod) >= v.hedef end;
+        end if;
+        return exists (select 1 from oyun.icraat_kayit k where k.kod = v.kod and k.zaman >= bas);
     end case;
   elsif v.kapsam = 'mv' then
     if v.kod = 'katilim' then
@@ -104,6 +112,9 @@ begin
       return toplam < 3 or katildi * 100 >= v.hedef * toplam;     -- henüz yeterli oylama yoksa vaat tutulmuş sayılır
     elsif v.kod = 'teklif' then
       return (select count(*) from oyun.kanunlar where teklif_eden = v.user_id and teklif_at >= bas and durum <> 'geri_cekildi') >= v.hedef;
+    elsif v.kod = 'anayasa_imza' then
+      return exists (select 1 from oyun.kanun_oylari o join oyun.kanunlar k on k.id = o.kanun_id
+                     where o.vekil = v.user_id and o.asama = 'imza' and k.teklif_at >= bas and k.durum <> 'geri_cekildi');
     end if;
     return exists (select 1 from oyun.kanunlar k where k.durum = 'yururlukte' and k.sonuc_at >= bas
       and exists (select 1 from oyun.kanun_oylari o where o.kanun_id = k.id and o.vekil = v.user_id and o.oy = 'kabul')
@@ -112,13 +123,16 @@ begin
             when 'belediye_payi' then k.tur = 'butce' and (k.veri ->> 'belediye_payi')::numeric >= v.hedef
             when 'parti_yardim' then k.tur = 'butce' and (k.veri ->> 'parti_yardim')::numeric <= v.hedef
             when 'baraj' then k.tur = 'secim' and (k.veri ->> 'baraj')::numeric <= v.hedef
-            else false end);
+            else k.tur in ('duzenleme','anayasa') and k.veri ->> 'kod' = v.kod
+                 and case when v.yon = '<=' then (k.veri ->> 'deger')::numeric <= v.hedef else (k.veri ->> 'deger')::numeric >= v.hedef end end);
   elsif v.kapsam = 'bel' then
     select * into d from oyun.il_durum where il_id = v.il_id;
     case v.kod
       when 'kent_vergisi' then return d.kent_vergisi <= v.hedef;
       when 'hemsehri' then return d.hemsehri >= v.hedef;
-      when 'altyapi', 'rayli' then
+      when 'emlak', 'hosgeldin' then
+        return case when v.yon = '<=' then oyun.il_duz(v.il_id, v.kod) <= v.hedef else oyun.il_duz(v.il_id, v.kod) >= v.hedef end;
+      when 'altyapi', 'rayli', 'imar_barisi' then
         return exists (select 1 from oyun.belediye_proje_kayit k where k.kod = v.kod and k.il_id = v.il_id and k.baskan = v.user_id and k.zaman >= bas);
       else return exists (select 1 from oyun.il_hizmet h where h.il_id = v.il_id and h.kod = v.kod);
     end case;
@@ -199,13 +213,7 @@ begin
     'en_fazla', case p_kapsam when 'beyanname' then 5 when 'bel' then 4 when 'mv' then 3 else 2 end,
     'alan', oyun.vaat_alani(p_kapsam, il, p.parti_id), 'birim', case p_kapsam when 'gb' then 'tl' else 'milyar' end,
     'turler', (select jsonb_agg(jsonb_build_object('kod', t.kod, 'ad', t.ad, 'birim', t.birim, 'tip', t.tip, 'min', t.min, 'max', t.max, 'aciklama', t.aciklama,
-                 'mevcut', case t.kod when 'asgari' then u.asgari when 'vergi' then u.vergi when 'kidem' then u.kidem_primi when 'destek' then u.destek
-                                      when 'tasinma' then u.tasinma_destek when 'vergi_tavan' then u.vergi_ust when 'belediye_payi' then u.belediye_payi
-                                      when 'baraj' then (select baraj from oyun.ayarlar where id = 1) when 'parti_yardim' then u.parti_yardim
-                                      when 'kent_vergisi' then d.kent_vergisi when 'hemsehri' then d.hemsehri
-                                      when 'uye' then (select count(*) from oyun.profiller where parti_id = p.parti_id)
-                                      when 'kasa' then (select round(kasa) from oyun.partiler where id = p.parti_id)
-                                      when 'aday_ucret' then (select max(value::numeric) from oyun.partiler pa, jsonb_each_text(pa.aday_ucret) where pa.id = p.parti_id) end,
+                 'mevcut', oyun.vaat_mevcut(t.kapsam, t.kod, il, p.parti_id),
                  'acik', case when t.kod in ('lokanta','ulasim','kira','istihdam') then exists (select 1 from oyun.il_hizmet h where h.il_id = il and h.kod = t.kod) end)
                order by t.sira) from oyun.vaat_turleri t where t.kapsam = p_kapsam));
 end $$;
