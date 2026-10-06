@@ -8,7 +8,9 @@ grant usage on schema cron to postgres;
 grant all privileges on all tables in schema cron to postgres;
 
 -- Oyun saatini bu andan başlat (bu andan önceki seçimler oluşturulmaz)
-update oyun.ayarlar set baslangic = now(), test_simdi = null where id = 1;
+-- İlk kurulumda (henüz hiç seçim yokken) başlangıcı şimdiye al; güncellemelerde takvime dokunma
+update oyun.ayarlar set test_simdi = null where id = 1;
+update oyun.ayarlar set baslangic = now() where id = 1 and not exists (select 1 from oyun.secimler);
 
 -- Varsa eski zamanlayıcıyı kaldır, yenisini kur
 select cron.unschedule(jobid) from cron.job where jobname = 'secim-motoru';

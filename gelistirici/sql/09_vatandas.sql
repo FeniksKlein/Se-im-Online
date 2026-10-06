@@ -120,7 +120,7 @@ create table if not exists oyun.vaat_turleri(
   aciklama text not null,
   primary key (kapsam, kod)
 );
-delete from oyun.vaat_turleri;
+-- katalog: silinmez, güncellenir (verilmiş vaatler bu kodlara bağlıdır)
 insert into oyun.vaat_turleri(kapsam, kod, ad, birim, tip, yon, min, max, sira, aciklama) values
  ('beyanname','asgari','Asgari ücreti artıracağız','tl_ay','surekli','>=',null,null,1,'Herkesin maaşının tabanı. Ekonominin kaldırabileceğinden hızlı artarsa enflasyon yükselir.'),
  ('beyanname','vergi','Gelir vergisini değiştireceğiz','yuzde','surekli',null,0,45,2,'Asgari ücretin üstündeki kazançtan kesilir. İndirmek hazinenin gelirini azaltır; artırmak yeni vaatlere yer açar.'),
@@ -147,7 +147,9 @@ insert into oyun.vaat_turleri(kapsam, kod, ad, birim, tip, yon, min, max, sira, 
  ('bel','altyapi','Altyapıyı yenileyeceğim','yok','tek',null,null,null,7,'İlin gelişmişliği kalıcı +4.'),
  ('bel','rayli','Raylı sistem hattı yapacağım','yok','tek',null,null,null,8,'İlin gelişmişliği kalıcı +10.'),
  ('gb','aday_ucret','Aday adaylığı ücretlerini düşüreceğim','kat','surekli','<=',0,3,1,'Parti içi seçimlere başvuru ücretinin çarpanı (en yüksek olanı).'),
- ('gb','kampanya','Adaylara kasadan kampanya desteği vereceğim','tl','tek','>=',1000,1000000,2,'Görev süresince adaylara toplam bu kadar destek.');
+ ('gb','kampanya','Adaylara kasadan kampanya desteği vereceğim','tl','tek','>=',1000,1000000,2,'Görev süresince adaylara toplam bu kadar destek.')
+on conflict (kapsam, kod) do update set ad = excluded.ad, birim = excluded.birim, tip = excluded.tip, yon = excluded.yon,
+  min = excluded.min, max = excluded.max, sira = excluded.sira, aciklama = excluded.aciklama;
 
 create table if not exists oyun.vaatler(
   id         bigserial primary key,

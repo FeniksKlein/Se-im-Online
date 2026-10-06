@@ -624,6 +624,12 @@ const AUTH = {
   await page.evaluate(() => vatandaslikModal()); await bekle('Seçmen kartın');
   await foto('65-secmen-karti'); await page.evaluate(() => modalKapat());
   ok('Seçmen kartı: oy, adaylık ve parti kurma şartları listeleniyor');
+  psql(`update oyun.ayarlar set min_uygulama='2099.01.01-1'`);
+  await page.evaluate(() => basla()); await bekle('Güncelleme gerekli');
+  await foto('66-guncelleme-gerekli');
+  psql(`update oyun.ayarlar set min_uygulama='0'`);
+  await page.evaluate(() => basla()); await bekle('Gündem');
+  ok('Zorunlu güncelleme: sunucu eski uygulamayı desteklemeyince güncelleme ekranı çıktı; sürüm uyunca oyun kaldığı yerden açıldı');
 
   // XSS denemesi: kötü niyetli kullanıcı adı veritabanında reddedilmeli, parti adı da
   let xss = 'geçti';

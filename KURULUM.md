@@ -290,3 +290,16 @@ update oyun.ayarlar set baslangic_para = 10000;
 - **Parti kurmak:** 30 kıdem, 7 gün içinde 5 kurucu üye.
 
 Açılış günlerinde oyuncu azken kıdem ve kurucu sayısını düşürüp oyuncu sayısı arttıkça yükseltebilirsin.
+
+
+## Güncelleme yapmak (oyun sıfırlanmaz)
+Oyunda bir şeyi değiştirdiğimde ya da yeni bir özellik eklediğimde sana yeni bir `supabase-kurulum.sql` gönderirim. Yapacağın tek şey: Supabase → **SQL Editor** → **New query** → dosyanın tamamını yapıştır → **Run**.
+- Dosya önce oyunun tam yedeğini alır.
+- Oyuncuların hesabı, makamı, parası, kıdemi, oyları, partileri ve mülkleri güncellemeden önce ve sonra karşılaştırılır. Tek bir değer değişecek olursa güncelleme **kendiliğinden iptal olur** ve oyun olduğu gibi kalır.
+- Başarılı güncellemenin sonunda `"kontrol": "oyuncu verisi değişmedi"` yazar.
+- Yeni bir makam ya da özellik geldiğinde yalnızca o eklenir; mevcut makamlar ve o makamlardaki kişiler değişmez.
+- Ayrıntılar ve geliştirici kuralları: `GUNCELLEME_KURALLARI.md`.
+
+**Oyunu sıfırlamak sadece senin elinde:** SQL Editor'de `select oyun.oyunu_sifirla('OYUNU SIFIRLA');` çalıştırırsın, ardından kurulum dosyasını bir kez daha çalıştırırsın. Sıfırlamadan önce de otomatik yedek alınır; pişman olursan `select * from oyun.yedekler();` ile yedeği bulup `select oyun.yedekten_don('yedek_…', 'GERİ YÜKLE');` ile geri dönersin.
+
+**Telefon uygulaması eski kalırsa:** Ben › Yönetici paneli › "En düşük uygulama sürümü" alanına sürüm yazarsan (ör. `2026.10.06-3`) daha eski uygulamalar "Güncelleme gerekli" ekranı gösterir. Web sürümü (GitHub Pages) her zaman en günceldir.

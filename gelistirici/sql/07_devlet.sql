@@ -194,10 +194,8 @@ create table if not exists oyun.kararnameler(
   zaman  timestamptz not null,
   durum  text not null default 'yururlukte' check (durum in ('yururlukte','iptal'))
 );
-alter table oyun.kanunlar drop constraint if exists kanunlar_tur_check;
-alter table oyun.kanunlar add constraint kanunlar_tur_check check (tur in ('serbest','butce','secim','iptal'));
-alter table oyun.kararnameler drop constraint if exists kararnameler_tur_check;
-alter table oyun.kararnameler add constraint kararnameler_tur_check check (tur in ('serbest','il_destek','odenek','vergi','ikramiye'));  -- 'vergi' eski kayıtlar için
+-- kanunlar_tur_check ve kararnameler_tur_check en güncel listeleriyle 12_mevzuat.sql'de tanımlıdır
+-- (kalıcılık kuralı: izin verilen değer listeleri yalnızca genişler; eski dosyalar dar listeyi geri kurmaz)
 
 alter table oyun.ittifaklar add column if not exists kurucu_parti bigint;
 create table if not exists oyun.ittifak_davetler(

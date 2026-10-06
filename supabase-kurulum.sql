@@ -3,7 +3,109 @@
 --  Supabase → SQL Editor → New query → bu dosyanın TAMAMINI yapıştır → Run
 --  Tekrar çalıştırmak güvenlidir (var olan veriyi silmez).
 -- =====================================================================
+--  Bu dosya oyunu SIFIRLAMAZ: önce yedek alır, sonunda oyuncu verisini (hesap, makam, para, kıdem,
+--  oy, parti…) karşılaştırır; tek bir değer değiştiyse hiçbir şey uygulanmaz.
 begin;
+-- =====================================================================
+--  KALICILIK: OYUN HİÇ SIFIRLANMAZ
+--
+--  Her güncelleme (supabase-kurulum.sql) tek bir işlem (transaction) içinde çalışır:
+--    1) guncelleme_basla : oyunun yedeği alınır, oyuncu verisinin "parmak izi" çıkarılır
+--    2) şema ve fonksiyonlar güncellenir (yalnızca EKLER: yeni tablo, yeni sütun, yeni makam türü…)
+--    3) guncelleme_bitti : parmak izi yeniden çıkarılır. Oyuncuların hesabı, makamı, parası, kıdemi,
+--       oyları, partileri, mülkleri… tek bir bayt bile değiştiyse GÜNCELLEME DURDURULUR ve hiçbir şey
+--       uygulanmaz (işlem geri alınır). Böylece bir güncelleme oyunu asla bozamaz.
+--  Ayrıca: oyun tabloları TRUNCATE ile boşaltılamaz, DROP TABLE / DROP COLUMN ile silinemez
+--  (yalnızca sahibinin bilerek çalıştıracağı sıfırlama/geri yükleme fonksiyonlarıyla).
+--  Oyunu sıfırlamak yalnızca oyun sahibinin işidir:  select oyun.oyunu_sifirla('OYUNU SIFIRLA');
+-- =====================================================================
+create schema if not exists oyun;
+revoke all on schema oyun from public;
+
+create table if not exists oyun.surumler(
+  id          serial primary key,
+  surum       text not null,
+  aciklama    text,
+  baslangic   timestamptz not null default clock_timestamp(),
+  bitis       timestamptz,
+  yedek       text,
+  parmak_once jsonb,
+  parmak_sonra jsonb
+);
+
+-- Oyuncu verisinin parmak izi: sayılar, toplamlar ve içerik özetleri (var olan tablo/sütunlar üzerinden)
+create or replace function oyun.parmak_izi() returns jsonb language plpgsql as $$
+declare sonuc jsonb := '{}'; r record; v text;
+begin
+  for r in select * from (values
+    ('oyuncu',        'oyun.profiller',     'select count(*)::text from oyun.profiller'),
+    ('profiller',     'oyun.profiller',     'select md5(coalesce(string_agg(id::text||''|''||kad||''|''||il_id||''|''||coalesce(parti_id::text,'''')||''|''||olusturma::text, '','' order by id), '''')) from oyun.profiller'),
+    ('makamlar',      'oyun.makamlar',      'select md5(coalesce(string_agg(id||''|''||tur||''|''||user_id||''|''||coalesce(il_id::text,'''')||''|''||coalesce(bakanlik,'''')||''|''||bas::text||''|''||coalesce(bit::text,''''), '','' order by id), '''')) from oyun.makamlar'),
+    ('aktif_makam',   'oyun.makamlar',      'select count(*)::text from oyun.makamlar where bit is null'),
+    ('cuzdanlar',     'oyun.cuzdan',        'select md5(coalesce(string_agg(user_id||''|''||para||''|''||kidem||''|''||coalesce(seri::text,''''), '','' order by user_id), '''')) from oyun.cuzdan'),
+    ('toplam_para',   'oyun.cuzdan',        'select coalesce(sum(para),0)::text from oyun.cuzdan'),
+    ('toplam_kidem',  'oyun.cuzdan',        'select coalesce(sum(kidem),0)::text from oyun.cuzdan'),
+    ('partiler',      'oyun.partiler',      'select md5(coalesce(string_agg(id||''|''||ad||''|''||kisa||''|''||coalesce(gb::text,'''')||''|''||kasa||''|''||kapali, '','' order by id), '''')) from oyun.partiler'),
+    ('gby',           'oyun.parti_gby',     'select count(*)::text from oyun.parti_gby'),
+    ('oylar',         'oyun.oylar',         'select count(*)::text from oyun.oylar'),
+    ('secimler',      'oyun.secimler',      'select md5(coalesce(string_agg(id||''|''||tur||''|''||donem||''|''||durum, '','' order by id), '''')) from oyun.secimler'),
+    ('adaylar',       'oyun.adaylar',       'select count(*)::text from oyun.adaylar'),
+    ('kazananlar',    'oyun.kazananlar',    'select count(*)::text from oyun.kazananlar'),
+    ('hareketler',    'oyun.hesap_hareket', 'select count(*)::text from oyun.hesap_hareket'),
+    ('kanunlar',      'oyun.kanunlar',      'select md5(coalesce(string_agg(id||''|''||durum||''|''||coalesce(no::text,''''), '','' order by id), '''')) from oyun.kanunlar'),
+    ('kararnameler',  'oyun.kararnameler',  'select count(*)::text from oyun.kararnameler'),
+    ('mesajlar',      'oyun.mesajlar',      'select count(*)::text from oyun.mesajlar'),
+    ('ozel',          'oyun.ozel', 'select count(*)::text from oyun.ozel'),
+    ('vaatler',       'oyun.vaatler',       'select count(*)::text from oyun.vaatler'),
+    ('itibar',        'oyun.itibar',        'select count(*)::text from oyun.itibar'),
+    ('mulkler',       'oyun.mulkler',       'select md5(coalesce(string_agg(id||''|''||user_id||''|''||bedel, '','' order by id), '''')) from oyun.mulkler'),
+    ('ulke',          'oyun.ulke',          'select md5(coalesce(string_agg(hazine||''|''||vergi||''|''||asgari, '',''), '''')) from oyun.ulke'),
+    ('iller',         'oyun.il_durum',      'select md5(coalesce(string_agg(il_id||''|''||gelisim||''|''||coalesce(kasa,0), '','' order by il_id), '''')) from oyun.il_durum'),
+    ('satin_alma',    'oyun.satin_almalar', 'select count(*)::text from oyun.satin_almalar'),
+    ('referandum',    'oyun.referandumlar', 'select count(*)::text from oyun.referandumlar'),
+    ('duzenlemeler',  'oyun.duzenlemeler',  'select md5(coalesce(string_agg(kod||''|''||deger||''|''||kaynak, '','' order by kod), '''')) from oyun.duzenlemeler')
+  ) x(ad, tablo, sorgu) loop
+    if to_regclass(r.tablo) is null then continue; end if;
+    begin
+      execute r.sorgu into v;
+      sonuc := sonuc || jsonb_build_object(r.ad, v);
+    exception when undefined_column or undefined_table then null;   -- eski sürümde olmayan sütun: karşılaştırmaya girmez
+    end;
+  end loop;
+  return sonuc;
+end $$;
+
+-- Yedek: oyun şemasındaki bütün tabloların anlık kopyası (ayrı şemada; internete açık değildir). Son 5 yedek tutulur.
+create or replace function oyun.yedek_al(p_etiket text) returns text language plpgsql as $$
+declare sema text := 'yedek_' || to_char(clock_timestamp() at time zone 'Europe/Istanbul', 'YYYYMMDD_HH24MISS_US'); t record; eski record;
+begin
+  execute format('create schema %I', sema);
+  execute format('revoke all on schema %I from public', sema);
+  execute format('comment on schema %I is %L', sema, coalesce(p_etiket, 'yedek') || ' · ' || to_char(clock_timestamp() at time zone 'Europe/Istanbul', 'DD.MM.YYYY HH24:MI'));
+  for t in select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'oyun' and c.relkind in ('r','p') loop
+    execute format('create table %I.%I as table oyun.%I', sema, t.relname, t.relname);
+  end loop;
+  for eski in select nspname from pg_namespace where nspname like 'yedek\_%' order by nspname desc offset 5 loop
+    execute format('drop schema %I cascade', eski.nspname);
+  end loop;
+  return sema;
+end $$;
+
+create or replace function oyun.yedekler() returns table(sema text, aciklama text) language sql stable as $$
+  select n.nspname::text, obj_description(n.oid, 'pg_namespace') from pg_namespace n where n.nspname like 'yedek\_%' order by n.nspname desc
+$$;
+
+create or replace function oyun.guncelleme_basla(p_surum text, p_aciklama text default null) returns void language plpgsql as $$
+declare y text; var boolean := false;
+begin
+  if to_regclass('oyun.profiller') is not null then
+    execute 'select exists (select 1 from oyun.profiller)' into var;
+  end if;
+  if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
+  insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
+end $$;
+
+select oyun.guncelleme_basla('2026.10.06-3', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -2140,10 +2242,8 @@ create table if not exists oyun.kararnameler(
   zaman  timestamptz not null,
   durum  text not null default 'yururlukte' check (durum in ('yururlukte','iptal'))
 );
-alter table oyun.kanunlar drop constraint if exists kanunlar_tur_check;
-alter table oyun.kanunlar add constraint kanunlar_tur_check check (tur in ('serbest','butce','secim','iptal'));
-alter table oyun.kararnameler drop constraint if exists kararnameler_tur_check;
-alter table oyun.kararnameler add constraint kararnameler_tur_check check (tur in ('serbest','il_destek','odenek','vergi','ikramiye'));  -- 'vergi' eski kayıtlar için
+-- kanunlar_tur_check ve kararnameler_tur_check en güncel listeleriyle 12_mevzuat.sql'de tanımlıdır
+-- (kalıcılık kuralı: izin verilen değer listeleri yalnızca genişler; eski dosyalar dar listeyi geri kurmaz)
 
 alter table oyun.ittifaklar add column if not exists kurucu_parti bigint;
 create table if not exists oyun.ittifak_davetler(
@@ -3744,7 +3844,7 @@ create table if not exists oyun.vaat_turleri(
   aciklama text not null,
   primary key (kapsam, kod)
 );
-delete from oyun.vaat_turleri;
+-- katalog: silinmez, güncellenir (verilmiş vaatler bu kodlara bağlıdır)
 insert into oyun.vaat_turleri(kapsam, kod, ad, birim, tip, yon, min, max, sira, aciklama) values
  ('beyanname','asgari','Asgari ücreti artıracağız','tl_ay','surekli','>=',null,null,1,'Herkesin maaşının tabanı. Ekonominin kaldırabileceğinden hızlı artarsa enflasyon yükselir.'),
  ('beyanname','vergi','Gelir vergisini değiştireceğiz','yuzde','surekli',null,0,45,2,'Asgari ücretin üstündeki kazançtan kesilir. İndirmek hazinenin gelirini azaltır; artırmak yeni vaatlere yer açar.'),
@@ -3771,7 +3871,9 @@ insert into oyun.vaat_turleri(kapsam, kod, ad, birim, tip, yon, min, max, sira, 
  ('bel','altyapi','Altyapıyı yenileyeceğim','yok','tek',null,null,null,7,'İlin gelişmişliği kalıcı +4.'),
  ('bel','rayli','Raylı sistem hattı yapacağım','yok','tek',null,null,null,8,'İlin gelişmişliği kalıcı +10.'),
  ('gb','aday_ucret','Aday adaylığı ücretlerini düşüreceğim','kat','surekli','<=',0,3,1,'Parti içi seçimlere başvuru ücretinin çarpanı (en yüksek olanı).'),
- ('gb','kampanya','Adaylara kasadan kampanya desteği vereceğim','tl','tek','>=',1000,1000000,2,'Görev süresince adaylara toplam bu kadar destek.');
+ ('gb','kampanya','Adaylara kasadan kampanya desteği vereceğim','tl','tek','>=',1000,1000000,2,'Görev süresince adaylara toplam bu kadar destek.')
+on conflict (kapsam, kod) do update set ad = excluded.ad, birim = excluded.birim, tip = excluded.tip, yon = excluded.yon,
+  min = excluded.min, max = excluded.max, sira = excluded.sira, aciklama = excluded.aciklama;
 
 create table if not exists oyun.vaatler(
   id         bigserial primary key,
@@ -6950,6 +7052,168 @@ begin
   end loop;
 end $$;
 
+-- =====================================================================
+--  KALICILIK (son): bütünlük kontrolü, silme koruması, sürüm bilgisi, sahibin sıfırlama/geri yükleme araçları
+-- =====================================================================
+alter table oyun.ayarlar add column if not exists son_uygulama text not null default '0';
+alter table oyun.ayarlar add column if not exists min_uygulama text not null default '0';
+
+-- TRUNCATE koruması (tablo bazında): oyun tabloları yalnızca sahibinin sıfırlama/geri yükleme işlemiyle boşaltılabilir
+create or replace function oyun.bosaltma_korumasi() returns trigger language plpgsql as $$
+begin
+  if coalesce(current_setting('oyun.sifirlama', true), '') <> 'evet' then
+    raise exception 'Oyun verileri korunuyor: % tablosu boşaltılamaz. Oyunu sıfırlamak için: select oyun.oyunu_sifirla(''OYUNU SIFIRLA'');', tg_table_name;
+  end if;
+  return null;
+end $$;
+
+-- DROP TABLE / DROP COLUMN koruması (olay tetikleyicisi; Supabase izin vermezse atlanır, TRUNCATE koruması yine çalışır)
+create or replace function oyun.silme_korumasi() returns event_trigger language plpgsql as $$
+declare o record;
+begin
+  if coalesce(current_setting('oyun.sifirlama', true), '') = 'evet' or coalesce(current_setting('oyun.tablo_kaldir', true), '') = 'evet' then return; end if;
+  for o in select * from pg_event_trigger_dropped_objects() loop
+    if o.schema_name = 'oyun' and o.object_type in ('table','table column') and not o.is_temporary then
+      raise exception 'Oyun verileri korunuyor: % (%) silinemez. Güncellemeler yalnızca ekleme yapar.', o.object_identity, o.object_type;
+    end if;
+  end loop;
+end $$;
+
+create or replace function oyun.koruma_kur() returns void language plpgsql as $$
+declare t record;
+begin
+  for t in select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'oyun' and c.relkind = 'r' loop
+    execute format('drop trigger if exists bosaltma_korumasi on oyun.%I', t.relname);
+    execute format('create trigger bosaltma_korumasi before truncate on oyun.%I for each statement execute function oyun.bosaltma_korumasi()', t.relname);
+  end loop;
+  begin
+    if not exists (select 1 from pg_event_trigger where evtname = 'oyun_silme_korumasi') then
+      create event trigger oyun_silme_korumasi on sql_drop execute function oyun.silme_korumasi();
+    end if;
+  exception when insufficient_privilege or feature_not_supported then
+    raise notice 'Bilgi: DROP koruması (olay tetikleyicisi) bu sunucuda kurulamadı; TRUNCATE koruması ve güncelleme bütünlük kontrolü etkin.';
+  end;
+end $$;
+
+-- Güncellemenin sonu: oyuncu verisi değiştiyse her şey geri alınır
+create or replace function oyun.guncelleme_bitti() returns jsonb language plpgsql as $$
+declare s oyun.surumler; once jsonb; sonra jsonb := oyun.parmak_izi(); k text; farklar text := '';
+begin
+  select * into s from oyun.surumler where bitis is null order by id desc limit 1;
+  if s.id is null then raise exception 'guncelleme_basla çağrılmadan guncelleme_bitti çağrıldı.'; end if;
+  once := coalesce(s.parmak_once, '{}');
+  -- hiç oyuncu yokken (ilk kurulum ya da sahibin sıfırlaması) başlangıç verileri yüklenir; korunacak oyuncu verisi yoktur
+  if coalesce(once ->> 'oyuncu', '0') = '0' then once := '{}'; end if;
+  for k in select jsonb_object_keys(once) loop
+    if sonra ->> k is distinct from once ->> k then farklar := farklar || ' ' || k; end if;
+  end loop;
+  if farklar <> '' then
+    raise exception 'GÜNCELLEME DURDURULDU: bu güncelleme oyuncu verisini değiştirecekti (%). Hiçbir değişiklik uygulanmadı; oyun olduğu gibi duruyor.', btrim(farklar);
+  end if;
+  update oyun.surumler set bitis = clock_timestamp(), parmak_sonra = sonra where id = s.id;
+  update oyun.ayarlar set son_uygulama = s.surum where id = 1;
+  perform oyun.koruma_kur();
+  return jsonb_build_object('surum', s.surum, 'yedek', s.yedek, 'kontrol', 'oyuncu verisi değişmedi', 'oyuncu', sonra ->> 'oyuncu', 'aktif_makam', sonra ->> 'aktif_makam');
+end $$;
+
+-- Uygulamanın sürüm kontrolü: eski uygulama sunucuyla uyumsuz hâle gelirse "güncelle" ekranı gösterir
+create or replace function public.surum() returns jsonb
+language sql security definer set search_path = oyun, public, pg_temp as $$
+  select jsonb_build_object('sunucu', (select surum from oyun.surumler where bitis is not null order by id desc limit 1),
+                            'son_uygulama', a.son_uygulama, 'min_uygulama', a.min_uygulama)
+  from oyun.ayarlar a where a.id = 1
+$$;
+revoke all on function public.surum() from public;
+grant execute on function public.surum() to anon, authenticated;
+
+-- Yönetici: eski uygulamaları zorunlu güncellemeye yönlendir
+create or replace function public.admin_min_uygulama(p_surum text) returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare y oyun.profiller := oyun.yonetici_zorunlu();
+begin
+  if p_surum !~ '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}-[0-9]+$' and p_surum <> '0' then raise exception 'Sürüm biçimi YYYY.AA.GG-N olmalı.'; end if;
+  update oyun.ayarlar set min_uygulama = p_surum where id = 1;
+  return public.surum();
+end $$;
+revoke all on function public.admin_min_uygulama(text) from public, anon;
+grant execute on function public.admin_min_uygulama(text) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- SAHİBİN ARAÇLARI (yalnızca Supabase SQL Editor'den; uygulamadan çağrılamaz)
+-- ---------------------------------------------------------------------
+-- Katalog tabloları sıfırlamada korunur (iller, bakanlıklar, icraat/vaat/kural katalogları, ayarlar, sürümler)
+create or replace function oyun.katalog_tablo(t text) returns boolean language sql immutable as $$
+  select t in ('ayarlar','iller','bakanliklar','icraatlar','vaat_turleri','duzenleme_tanim','belediye_hizmetleri','belediye_yatirimlari',
+               'paketler','gecici_eposta','surumler')
+$$;
+
+-- Oyunu sıfırlar: önce yedek alır, sonra oyun dünyasını boşaltır. Oyuncu hesapları (giriş bilgileri) kalır;
+-- herkes yeniden profil oluşturur. Ardından supabase-kurulum.sql bir kez daha çalıştırılmalıdır (başlangıç verileri).
+create or replace function oyun.oyunu_sifirla(p_onay text) returns text language plpgsql as $$
+declare y text; liste text;
+begin
+  if p_onay is distinct from 'OYUNU SIFIRLA' then
+    raise exception 'Oyunu sıfırlamak için tam olarak şunu yaz: select oyun.oyunu_sifirla(''OYUNU SIFIRLA'');';
+  end if;
+  y := oyun.yedek_al('Sıfırlama öncesi');
+  perform set_config('oyun.sifirlama', 'evet', true);
+  select string_agg(format('oyun.%I', c.relname), ', ') into liste
+    from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'oyun' and c.relkind = 'r' and not oyun.katalog_tablo(c.relname);
+  execute 'truncate ' || liste || ' restart identity cascade';
+  return format('Oyun sıfırlandı. Yedek: %s. Şimdi supabase-kurulum.sql dosyasını bir kez daha çalıştır.', y);
+end $$;
+
+-- Bir yedeğe geri döner (o anki durumun da yedeği alınır). Sütunu yedekte olmayan yeni tablolar boş kalır.
+create or replace function oyun.yedekten_don(p_sema text, p_onay text) returns text language plpgsql as $$
+declare y text; t record; liste text; kalan text[]; tur int := 0; sutunlar text; ok boolean; n int;
+begin
+  if p_onay is distinct from 'GERİ YÜKLE' then
+    raise exception 'Geri yüklemek için: select oyun.yedekten_don(''%'', ''GERİ YÜKLE'');', p_sema;
+  end if;
+  if p_sema !~ '^yedek_' or not exists (select 1 from pg_namespace where nspname = p_sema) then raise exception 'Yedek bulunamadı: %', p_sema; end if;
+  y := oyun.yedek_al('Geri yükleme öncesi');
+  perform set_config('oyun.sifirlama', 'evet', true);
+  select array_agg(c.relname::text) into kalan from pg_class c join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'oyun' and c.relkind = 'r' and c.relname <> 'surumler'
+     and exists (select 1 from pg_class c2 join pg_namespace n2 on n2.oid = c2.relnamespace where n2.nspname = p_sema and c2.relname = c.relname);
+  select string_agg(format('oyun.%I', x), ', ') into liste from unnest(kalan) x;
+  execute 'truncate ' || liste || ' cascade';
+  foreach liste in array kalan loop execute format('alter table oyun.%I disable trigger user', liste); end loop;
+  -- yabancı anahtar sırası bilinmediği için birkaç turda yükle
+  while array_length(kalan, 1) > 0 and tur < 10 loop
+    tur := tur + 1;
+    foreach liste in array kalan loop
+      select string_agg(format('%I', a.attname), ', ') into sutunlar
+        from pg_attribute a join pg_class c on c.oid = a.attrelid join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'oyun' and c.relname = liste and a.attnum > 0 and not a.attisdropped and a.attgenerated = ''
+         and exists (select 1 from pg_attribute b join pg_class c2 on c2.oid = b.attrelid join pg_namespace n2 on n2.oid = c2.relnamespace
+                     where n2.nspname = p_sema and c2.relname = liste and b.attname = a.attname and not b.attisdropped);
+      ok := true;
+      begin
+        execute format('insert into oyun.%I (%s) select %s from %I.%I', liste, sutunlar, sutunlar, p_sema, liste);
+      exception when foreign_key_violation then ok := false;
+      end;
+      if ok then kalan := array_remove(kalan, liste); end if;
+    end loop;
+  end loop;
+  for t in select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'oyun' and c.relkind = 'r' loop
+    execute format('alter table oyun.%I enable trigger user', t.relname);
+  end loop;
+  if array_length(kalan, 1) > 0 then raise exception 'Geri yükleme tamamlanamadı (%); hiçbir şey değişmedi.', array_to_string(kalan, ', '); end if;
+  -- kimlik sayaçlarını yedekteki en büyük değere getir
+  for t in select s.relname seq, tc.relname tablo, a.attname sutun from pg_class s
+             join pg_depend d on d.objid = s.oid and d.deptype in ('a','i') join pg_class tc on tc.oid = d.refobjid
+             join pg_attribute a on a.attrelid = tc.oid and a.attnum = d.refobjsubid join pg_namespace n on n.oid = tc.relnamespace
+            where s.relkind = 'S' and n.nspname = 'oyun' loop
+    execute format('select coalesce(max(%I), 0) from oyun.%I', t.sutun, t.tablo) into n;
+    if n > 0 then execute format('select setval(%L, %s)', 'oyun.' || t.seq, n); end if;
+  end loop;
+  return format('%s yedeğine dönüldü. Dönüş öncesi durumun yedeği: %s', p_sema, y);
+end $$;
+
+revoke all on function oyun.oyunu_sifirla(text), oyun.yedekten_don(text, text), oyun.yedek_al(text) from public;
+
+select oyun.guncelleme_bitti();
 commit;
 
 -- =====================================================================
@@ -6962,7 +7226,9 @@ grant usage on schema cron to postgres;
 grant all privileges on all tables in schema cron to postgres;
 
 -- Oyun saatini bu andan başlat (bu andan önceki seçimler oluşturulmaz)
-update oyun.ayarlar set baslangic = now(), test_simdi = null where id = 1;
+-- İlk kurulumda (henüz hiç seçim yokken) başlangıcı şimdiye al; güncellemelerde takvime dokunma
+update oyun.ayarlar set test_simdi = null where id = 1;
+update oyun.ayarlar set baslangic = now() where id = 1 and not exists (select 1 from oyun.secimler);
 
 -- Varsa eski zamanlayıcıyı kaldır, yenisini kur
 select cron.unschedule(jobid) from cron.job where jobname = 'secim-motoru';

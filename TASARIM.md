@@ -308,6 +308,17 @@ Etkiler üst üste biner; indirimler en fazla %90'dır.
 - Genel başkan kasadan üyelerine **kampanya desteği** gönderir ve aday ücretlerinin çarpanını ayarlar.
 - Kasa hareketleri, partinin seçim beyannamesi ve iktidardaysa hükümet karnesi parti sayfasında herkese açıktır.
 
+### Kalıcılık: oyun hiç sıfırlanmaz
+- **Kurulum dosyası.** Her güncelleme tek işlem olarak çalışır:
+  - Önce yedek alınır (son 5 yedek tutulur).
+  - Oyuncu verisinin parmak izi çıkarılır: hesaplar, makamlar ve sahipleri, cüzdanlar, partiler, seçimler, oylar, kanunlar, mülkler, ülke ve il durumu, kurallar.
+  - Sonda parmak izi yeniden karşılaştırılır; tek fark güncellemeyi iptal eder.
+  - Hiç oyuncu yokken (ilk kurulum ya da sıfırlama) başlangıç verileri serbestçe yüklenir.
+- **Silme koruması.** Oyun tabloları TRUNCATE ile boşaltılamaz; DROP TABLE ve DROP COLUMN, olay tetikleyicisiyle engellenir.
+- **Sahibin araçları.** Sıfırlama (`'OYUNU SIFIRLA'` cümlesiyle) ve yedeğe dönüş (`'GERİ YÜKLE'`) yalnızca SQL Editor'den yapılabilir; uygulamadan çağrılamaz. İkisi de işlemden önce otomatik yedek alır.
+- **Uygulama sürümü.** `SURUM` dosyasından hem sunucuya hem uygulamaya yazılır. Yönetici "en düşük uygulama sürümü"nü yükseltirse eski telefon uygulamaları güncelleme ekranı gösterir.
+- **Kurallar.** Ayrıntılı geliştirici kuralları `GUNCELLEME_KURALLARI.md` dosyasında.
+
 ### TBMM Başkanlık Divanı ve parti grupları (gerçek usul: Anayasa md. 94, TBMM İçtüzüğü)
 - **Geçici Başkan.** Yeni Meclis göreve başlayınca en kıdemli milletvekili Geçici Başkan olur.
 - **TBMM Başkanı seçimi.**
