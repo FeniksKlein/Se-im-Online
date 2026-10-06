@@ -189,10 +189,22 @@ begin
     raise exception 'Bu yatırım % tarihinden sonra tekrar yapılabilir.', to_char((son + make_interval(hours => y.bekleme_saat)) at time zone 'Europe/Istanbul', 'DD.MM HH24:MI');
   end if;
   select kasa into v_kasa from oyun.il_durum where il_id = m.il_id for update;
+  if y.kod = 'arsa_satisi' then
+    -- arsa doğrudan satılmaz: ihaleye çıkar, kasa ve etkiler ihale sonucunda işlenir
+    perform oyun.arsa_ihale_ac(m.il_id, p, t);
+    insert into oyun.belediye_proje_kayit(kod, il_id, baskan, zaman, maliyet) values (y.kod, m.il_id, p.id, t, 0);
+    return public.belediye_paneli();
+  end if;
   if v_kasa < maliyet then raise exception 'Belediye kasasında yeterli para yok (% milyar ₺ gerekli, kasada % var).', maliyet, round(v_kasa, 3); end if;
   update oyun.il_durum set kasa = kasa - maliyet, gelisim = oyun.sinir(gelisim + y.gelisim, 0, 100),
     memnuniyet = oyun.sinir(memnuniyet + y.memnuniyet, 0, 100) where il_id = m.il_id;
   insert into oyun.belediye_proje_kayit(kod, il_id, baskan, zaman, maliyet) values (y.kod, m.il_id, p.id, t, maliyet);
+  if y.kod = 'imar_barisi' then
+    perform oyun.etki_ekle(m.il_id, 'belediye', 'imar_barisi', ilad || ' Belediyesi · İmar barışı', '[{"tur":"gecim","deger":8}]'::jsonb, 14, p.id, t);
+    insert into oyun.bildirimler(user_id, zaman, metin)
+      select x.id, t, format('%s Belediyesi imar barışı ilan etti: 14 gün kira ve geçim masrafın %%8 düşük. Çarpık yapılaşma ilin gelişmişliğini 3 puan düşürdü (maaşlar ~%%1,2 azalır).', ilad)
+      from oyun.profiller x where x.il_id = m.il_id and x.id <> p.id and not x.yasakli;
+  end if;
   perform oyun.olay('belediye', format('%s Belediye Başkanı %s: %s.', ilad, p.kad, y.ad), m.il_id, p.parti_id, t);
   return public.belediye_paneli();
 end $$;

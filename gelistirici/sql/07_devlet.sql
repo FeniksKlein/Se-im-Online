@@ -582,6 +582,9 @@ language plpgsql security definer set search_path = oyun, public, pg_temp as $$
 declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); b text; m text; v jsonb; top numeric; k text; yeni bigint; s record; pay numeric;
 begin
   if not oyun.aktif_vekil(p.id) then raise exception 'Kanun teklifini yalnızca milletvekilleri verebilir.'; end if;
+  if exists (select 1 from oyun.makamlar where user_id = p.id and tur = 'tbmm' and bit is null) then
+    raise exception 'Meclis Başkanı kanun teklifi veremez; tarafsız kalmalıdır.';
+  end if;
   if exists (select 1 from oyun.kanunlar where teklif_eden = p.id and durum in ('gorusmede','oylamada','cb_onayinda','israr')) then
     raise exception 'Sonuçlanmamış bir teklifin varken yeni teklif veremezsin.';
   end if;
@@ -664,6 +667,9 @@ declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); k oy
 begin
   if p_oy not in ('kabul','ret','cekimser') then raise exception 'Geçersiz oy.'; end if;
   if not oyun.aktif_vekil(p.id) then raise exception 'Yalnızca milletvekilleri oy kullanabilir.'; end if;
+  if exists (select 1 from oyun.makamlar where user_id = p.id and tur = 'tbmm' and bit is null) then
+    raise exception 'Meclis Başkanı Genel Kurul''da oy kullanamaz (Anayasa md. 94).';
+  end if;
   select * into k from oyun.kanunlar where id = p_id;
   if k.durum = 'oylamada' and t >= k.oy_bas and t < k.oy_bit then a := 'ilk';
   elsif k.durum = 'israr' and t < k.israr_bit then a := 'israr';
@@ -870,6 +876,7 @@ begin
     'benim_oyum', (select oy from oyun.kanun_oylari where kanun_id = k.id and vekil = p.id and asama = case when k.durum = 'israr' then 'israr' else 'ilk' end),
     'cb_karar_verebilir', k.durum = 'cb_onayinda' and t < k.cb_bit and oyun.aktif_cb() = p.id,
     'anayasa_aciklama', case when k.tur = 'anayasa' then oyun.anayasa_aciklama(k.veri) end,
+    'grup', oyun.grup_karar_json(k.id, p), 'tbmm_baskani', exists (select 1 from oyun.makamlar where user_id = p.id and tur = 'tbmm' and bit is null),
     'duzenleme', case when k.tur = 'duzenleme' then (select jsonb_build_object('ad', d.ad, 'yazi', oyun.duz_yaz(d.kod, (k.veri ->> 'deger')::numeric),
                     'mevcut', oyun.duz_yaz(d.kod, oyun.duz(d.kod)), 'oyuncu', d.oyuncu, 'devlet', d.devlet) from oyun.duzenleme_tanim d where d.kod = k.veri ->> 'kod') end,
     'imza_yeter', ceil(dolu / 3.0), 'uc_bes', ceil(dolu * 3 / 5.0), 'iki_uc', ceil(dolu * 2 / 3.0),
@@ -880,7 +887,9 @@ begin
        select o.asama, jsonb_build_object(
          'kabul', count(*) filter (where o.oy = 'kabul'), 'ret', count(*) filter (where o.oy = 'ret'), 'cekimser', count(*) filter (where o.oy = 'cekimser'),
          'liste', case when k.tur = 'anayasa' and o.asama = 'ilk' then '[]'::jsonb
-                       else jsonb_agg(jsonb_build_object('kad', oyun.kad(o.vekil), 'oy', o.oy, 'parti', oyun.parti_json(o.parti_id)) order by o.parti_id, o.zaman) end) j
+                       else jsonb_agg(jsonb_build_object('kad', oyun.kad(o.vekil), 'oy', o.oy, 'parti', oyun.parti_json(o.parti_id),
+                              'aykiri', o.asama <> 'imza' and exists (select 1 from oyun.grup_kararlari g where g.kanun_id = k.id and g.parti_id = o.parti_id
+                                                                         and g.karar in ('kabul','ret') and g.karar <> o.oy)) order by o.parti_id, o.zaman) end) j
        from oyun.kanun_oylari o where o.kanun_id = k.id group by o.asama) a));
 end $$;
 

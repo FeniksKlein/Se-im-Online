@@ -335,6 +335,7 @@ begin
       top := top + em;
     end if;
   end if;
+  perform oyun.kira_ode(u, t);
   return top;
 end $$;
 
@@ -528,6 +529,7 @@ language plpgsql security definer set search_path = oyun, public, pg_temp as $$
 declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); k oyun.kanunlar;
 begin
   if not oyun.aktif_vekil(p.id) then raise exception 'Anayasa değişikliği teklifini yalnızca milletvekilleri imzalayabilir.'; end if;
+  if exists (select 1 from oyun.makamlar where user_id = p.id and tur = 'tbmm' and bit is null) then raise exception 'Meclis Başkanı teklif imzalayamaz.'; end if;
   select * into k from oyun.kanunlar where id = p_id;
   if k.tur <> 'anayasa' then raise exception 'İmza yalnızca anayasa değişikliği tekliflerinde toplanır.'; end if;
   if k.durum <> 'gorusmede' or t >= k.oy_bas then raise exception 'İmza süresi bitti.'; end if;
@@ -618,6 +620,7 @@ begin
     end if;
     insert into oyun.oy_cezasi_kayit values ('r' || r.id, ceza, n, toplam, t);
   end loop;
+  perform oyun.arsa_tick(t);
 end $$;
 
 -- Her gece: borç taksitleri (ulke_hesap gideri zaten hazineden düştü)
@@ -712,8 +715,8 @@ end $$;
 -- Belediye gelir işlemleri (negatif maliyetli "yatırım"): imar barışı ve arsa satışı
 alter table oyun.belediye_yatirimlari add column if not exists tur text not null default 'yatirim';
 insert into oyun.belediye_yatirimlari(kod, ad, aciklama, gun, bekleme_saat, gelisim, memnuniyet, sira, tur) values
- ('imar_barisi','İmar barışı','Kaçak yapılara harç karşılığı yapı kayıt belgesi: kasaya 4 günlük taban gelir girer, ama çarpık kentleşme gelişmişliği −3 düşürür.',-4,720,-3,2,3,'gelir'),
- ('arsa_satisi','Belediye arsası satışı','Kamu arazisini satarak kasaya 6 günlük taban gelir. Yeşil alan azalır: gelişmişlik −1, memnuniyet −3.',-6,336,-1,-3,4,'gelir')
+ ('imar_barisi','İmar barışı','Kaçak yapılara harç karşılığı yapı kayıt belgesi. Kasaya 4 günlük taban gelir girer. Hemşehriye: kayıt dışı konutlar yasallaşınca kira ve geçim masrafı 14 gün %8 düşer. Bedeli: çarpık kentleşme gelişmişliği −3 düşürür; ildeki maaşlar kalıcı olarak yaklaşık %1,2 azalır.',-4,720,-3,2,3,'gelir'),
+ ('arsa_satisi','Belediye arsası ihalesi','Kamu arazisi 48 saatlik açık artırmaya çıkar. O ilde yaşayan oyuncular pey sürer; kazanan arsanın sahibi olur ve her gün bedelin binde 4''ü kadar kira geliri alır. Kasaya, satış bedeline göre 6 günlük taban gelir civarında para girer. Diğer hemşehriler için yeşil alan azalır: gelişmişlik −1 (maaşlar ~%0,4 düşer), memnuniyet −3.',-6,336,-1,-3,4,'gelir')
 on conflict (kod) do update set ad = excluded.ad, aciklama = excluded.aciklama, gun = excluded.gun, bekleme_saat = excluded.bekleme_saat,
   gelisim = excluded.gelisim, memnuniyet = excluded.memnuniyet, sira = excluded.sira, tur = excluded.tur;
 
@@ -793,3 +796,123 @@ $$;
 alter table oyun.profiller alter column bildirim_okundu set default oyun.simdi();
 alter table oyun.profiller alter column olusturma set default oyun.simdi();
 alter table oyun.profiller alter column il_at set default oyun.simdi();
+
+
+-- ---------------------------------------------------------------------
+-- ARSA İHALESİ VE MÜLKLER (belediye arsası satışının oyuncuya doğrudan karşılığı)
+-- ---------------------------------------------------------------------
+create table if not exists oyun.arsa_ihale(
+  id         bigserial primary key,
+  il_id      smallint not null references oyun.iller(id),
+  baskan     uuid,
+  muhammen   numeric not null,          -- tahmini bedel (₺): açılış fiyatı
+  bas        timestamptz not null,
+  bit        timestamptz not null,
+  en_yuksek  numeric,
+  en_yuksek_user uuid references oyun.profiller(id) on delete set null,
+  teklif_sayisi int not null default 0,
+  durum      text not null default 'acik' check (durum in ('acik','satildi','satilamadi'))
+);
+create table if not exists oyun.mulkler(
+  id       bigserial primary key,
+  user_id  uuid not null references oyun.profiller(id) on delete cascade,
+  il_id    smallint not null,
+  tur      text not null default 'arsa',
+  bedel    numeric not null,
+  gunluk   numeric not null,            -- günlük kira geliri (₺)
+  alis     timestamptz not null,
+  ihale_id bigint
+);
+create index if not exists mulkler_user on oyun.mulkler(user_id);
+
+create or replace function oyun.arsa_muhammen(p_il smallint) returns numeric language sql stable as $$
+  select round(25000 * u.endeks * (1 + i.mv / 20.0) * (0.5 + d.gelisim / 100) / 1000) * 1000
+  from oyun.iller i join oyun.il_durum d on d.il_id = i.id, oyun.ulke u where i.id = p_il and u.id = 1
+$$;
+
+create or replace function oyun.arsa_ihale_ac(p_il smallint, p oyun.profiller, t timestamptz) returns bigint language plpgsql as $$
+declare yeni bigint; ilad text; mh numeric := oyun.arsa_muhammen(p_il);
+begin
+  if exists (select 1 from oyun.arsa_ihale where il_id = p_il and durum = 'acik') then raise exception 'İlde süren bir arsa ihalesi var.'; end if;
+  insert into oyun.arsa_ihale(il_id, baskan, muhammen, bas, bit) values (p_il, p.id, mh, t, t + interval '48 hours') returning id into yeni;
+  select ad into ilad from oyun.iller where id = p_il;
+  perform oyun.gazete_ekle('belediye', format('%s Belediyesi arsa satış ihalesi', ilad),
+    format('Muhammen bedel %s ₺. Teklifler 48 saat boyunca açık artırma usulüyle alınır; yalnızca ilde yaşayan vatandaşlar katılabilir.', oyun.tl(mh)), yeni, t);
+  insert into oyun.bildirimler(user_id, zaman, metin)
+    select x.id, t, format('%s Belediyesi arsa ihalesine çıktı: açılış %s ₺, 48 saat. Kazanan her gün kira geliri alır (Gündem).', ilad, oyun.tl(mh))
+    from oyun.profiller x where x.il_id = p_il and x.id <> p.id and not x.yasakli;
+  perform oyun.olay('belediye', format('%s Belediye Başkanı %s bir belediye arsasını ihaleye çıkardı.', ilad, p.kad), p_il, p.parti_id, t);
+  return yeni;
+end $$;
+
+create or replace function public.arsa_teklif(p_ihale bigint, p_tutar numeric) returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); a oyun.arsa_ihale; asgari numeric; tutar numeric := round(p_tutar);
+begin
+  select * into a from oyun.arsa_ihale where id = p_ihale for update;
+  if a.id is null or a.durum <> 'acik' or t >= a.bit then raise exception 'Bu ihale açık değil.'; end if;
+  if p.il_id <> a.il_id then raise exception 'İhaleye yalnızca o ilde yaşayan vatandaşlar katılabilir.'; end if;
+  if exists (select 1 from oyun.makamlar where user_id = p.id and tur = 'bel' and bit is null and il_id = a.il_id) then
+    raise exception 'Belediye başkanı kendi belediyesinin ihalesine katılamaz.';
+  end if;
+  if oyun.uyari(p, t) is not null then raise exception 'İhaleye katılmak için: %', oyun.uyari(p, t); end if;
+  if a.en_yuksek_user = p.id then raise exception 'En yüksek teklif zaten senin.'; end if;
+  asgari := case when a.en_yuksek is null then a.muhammen else ceil(a.en_yuksek * 1.05 / 100) * 100 end;
+  if tutar is null or tutar < asgari then raise exception 'Teklif en az % ₺ olmalı.', oyun.tl(asgari); end if;
+  perform oyun.para_islem(p.id, -tutar, 'ihale', format('%s arsa ihalesi teklifi (teminat)', (select ad from oyun.iller where id = a.il_id)), t);
+  if a.en_yuksek_user is not null then
+    perform oyun.para_islem(a.en_yuksek_user, a.en_yuksek, 'ihale_iade', 'Arsa ihalesinde teklifin geçildi: teminat iadesi', t);
+    perform oyun.bildir(a.en_yuksek_user, format('Arsa ihalesinde %s senin teklifini %s ₺ ile geçti. Teminatın iade edildi.', p.kad, oyun.tl(tutar)), t);
+  end if;
+  update oyun.arsa_ihale set en_yuksek = tutar, en_yuksek_user = p.id, teklif_sayisi = teklif_sayisi + 1,
+    bit = greatest(bit, t + interval '10 minutes') where id = a.id;   -- son dakika teklifinde süre 10 dk uzar
+  return public.ihaleler();
+end $$;
+
+create or replace function public.ihaleler() returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi();
+begin
+  return jsonb_build_object(
+    'acik', coalesce((select jsonb_agg(jsonb_build_object('id', a.id, 'il_id', a.il_id, 'il', i.ad, 'muhammen', a.muhammen, 'bit', a.bit,
+               'en_yuksek', a.en_yuksek, 'lider', oyun.kad(a.en_yuksek_user), 'benim', a.en_yuksek_user = p.id, 'teklif_sayisi', a.teklif_sayisi,
+               'asgari', case when a.en_yuksek is null then a.muhammen else ceil(a.en_yuksek * 1.05 / 100) * 100 end,
+               'katilabilir', p.il_id = a.il_id, 'kira_orani', 0.004) order by a.bit)
+             from oyun.arsa_ihale a join oyun.iller i on i.id = a.il_id where a.durum = 'acik' and (a.il_id = p.il_id or a.en_yuksek_user = p.id)), '[]'::jsonb),
+    'mulklerim', coalesce((select jsonb_agg(jsonb_build_object('il', i.ad, 'tur', m.tur, 'bedel', m.bedel, 'gunluk', m.gunluk, 'alis', m.alis) order by m.alis)
+             from oyun.mulkler m join oyun.iller i on i.id = m.il_id where m.user_id = p.id), '[]'::jsonb));
+end $$;
+
+create or replace function oyun.arsa_tick(t timestamptz) returns void language plpgsql as $$
+declare a oyun.arsa_ihale; ilad text; gelir numeric; taban numeric;
+begin
+  for a in select * from oyun.arsa_ihale where durum = 'acik' and t >= bit order by bit loop
+    select ad into ilad from oyun.iller where id = a.il_id;
+    if a.en_yuksek_user is null then
+      update oyun.arsa_ihale set durum = 'satilamadi' where id = a.id;
+      perform oyun.olay('belediye', format('%s Belediyesi arsa ihalesine teklif gelmedi; arsa satılamadı.', ilad), a.il_id, null, a.bit);
+      if a.baskan is not null then perform oyun.bildir(a.baskan, 'Arsa ihalesine teklif gelmedi; arsa belediyede kaldı.', a.bit); end if;
+      continue;
+    end if;
+    taban := oyun.il_gunluk_gelir((select mv from oyun.iller where id = a.il_id)) * (select endeks from oyun.ulke where id = 1);
+    gelir := round(6 * taban * least(3, a.en_yuksek / a.muhammen), 4);
+    update oyun.arsa_ihale set durum = 'satildi' where id = a.id;
+    insert into oyun.mulkler(user_id, il_id, tur, bedel, gunluk, alis, ihale_id)
+    values (a.en_yuksek_user, a.il_id, 'arsa', a.en_yuksek, round(a.en_yuksek * 0.004), a.bit, a.id);
+    update oyun.il_durum set kasa = coalesce(kasa, 0) + gelir, gelisim = oyun.sinir(gelisim - 1, 0, 100), memnuniyet = oyun.sinir(memnuniyet - 3, 0, 100)
+      where il_id = a.il_id;
+    perform oyun.bildir(a.en_yuksek_user, format('Tebrikler! %s''deki belediye arsasını %s ₺ ile aldın. Her gün %s ₺ kira geliri cüzdanına yatar.',
+                                                  ilad, oyun.tl(a.en_yuksek), oyun.tl(round(a.en_yuksek * 0.004))), a.bit);
+    perform oyun.gazete_ekle('belediye', format('%s Belediyesi arsa ihalesi sonuçlandı', ilad),
+      format('Arsa %s ₺ bedelle %s''e satıldı. Belediye kasasına %s milyar ₺ girdi; yeşil alan azaldı.', oyun.tl(a.en_yuksek), oyun.kad(a.en_yuksek_user), replace(gelir::text, '.', ',')), a.id, a.bit);
+    perform oyun.olay('belediye', format('%s''de belediye arsası %s ₺ ile %s''e satıldı.', ilad, oyun.tl(a.en_yuksek), oyun.kad(a.en_yuksek_user)), a.il_id, null, a.bit);
+  end loop;
+end $$;
+
+-- Mülk kira geliri: günün ilk toplamasında (topla → gunluk_kesinti içinden)
+create or replace function oyun.kira_ode(u uuid, t timestamptz) returns numeric language plpgsql as $$
+declare k numeric := coalesce((select sum(gunluk) from oyun.mulkler where user_id = u), 0);
+begin
+  if k > 0 then perform oyun.para_islem(u, k, 'kira', 'Arsa kira geliri (günlük)', t); end if;
+  return k;
+end $$;

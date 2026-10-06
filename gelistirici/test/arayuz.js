@@ -70,7 +70,7 @@ const AUTH = {
   const ctx = await browser.newContext({ ...devices['iPhone 13'], locale: 'tr-TR', timezoneId: 'Europe/Istanbul' });
   const page = await ctx.newPage();
   const hatalar = [];
-  page.on('pageerror', e => hatalar.push('pageerror: ' + e.message));
+  page.on('pageerror', e => hatalar.push('pageerror: ' + e.message + ' @ ' + String(e.stack || '').split('\n').slice(1, 4).join(' | ')));
   page.on('console', m => { if (m.type() === 'error' && !/supabase|ERR_|Failed to load/.test(m.text())) hatalar.push('console: ' + m.text()); });
   await page.route(/cdn\.jsdelivr\.net/, r => r.abort());
   await page.exposeFunction('__api', (yontem, a, b, c) => {
@@ -584,7 +584,46 @@ const AUTH = {
     await page.locator('[data-bkural="emlak"]').scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
     await foto('59-belediye-kurallari');
     ok('Belediye başkanı emlak vergisini belediye meclisi kararıyla belirledi');
+    // arsa ihalesi: başkan ihaleye çıkarır, ilde yaşayan bir oyuncu pey sürer
+    await page.evaluate(() => { D.yigin = []; ekranAc(belediyeEkrani); }); await bekle('İhaleye çıkar');
+    await page.locator('.kart', { hasText: 'Belediye arsası ihalesi' }).getByRole('button', { name: 'İhaleye çıkar' }).click();
+    await page.click('#evet'); await bekle('başladı');
+    const ilId = psql(`select il_id from oyun.makamlar where tur='bel' and bit is null and user_id=(select id from oyun.profiller where kad='${baskanBot}')`);
+    const sakin = psql(`select kad from oyun.profiller where il_id=${ilId} and kad like 'Bot%' and kad<>'${baskanBot}' limit 1`);
+    if (sakin) {
+      await girisYap(sakin); await bekle('arsa ihalesi');
+      await foto('60-gundem-ihale');
+      await page.locator('.olay', { hasText: 'arsa ihalesi' }).getByRole('button', { name: /Pey sür/ }).click(); await bekle('Kazanırsan günlük kira');
+      await foto('61-ihale-teklif');
+      await page.click('#aok'); await bekle('Teklifin alındı');
+      assert1(psql(`select count(*) from oyun.arsa_ihale where en_yuksek_user=(select id from oyun.profiller where kad='${sakin}')`) === '1', 'teklif kaydedilmedi');
+      ok('Arsa ihalesi: başkan ihaleye çıkardı, ilde yaşayan oyuncu gündemden pey sürdü');
+    }
   }
+  // ---- TBMM BAŞKANLIK DİVANI
+  psql(`select oyun.meclis_donem_baslat(null, oyun.simdi())`);
+  const vek = psql(`select p.kad from oyun.makamlar m join oyun.profiller p on p.id=m.user_id where m.tur='mv' and m.bit is null and p.kad like 'Bot%' order by p.kad limit 1`);
+  await girisYap(vek);
+  await page.evaluate(() => { D.devletSekme = 'meclis'; D.yigin = []; sekmeAc('devlet'); }); await bekle('TBMM Başkanlık Divanı');
+  await page.getByRole('button', { name: 'TBMM Başkanlığına aday ol' }).click(); await bekle('Adaylığın alındı');
+  await page.waitForTimeout(900); try { await page.locator('.olay', { hasText: 'TBMM Başkanlığı seçimi' }).first().scrollIntoViewIfNeeded({ timeout: 3000 }); } catch (_) {} await foto('62-tbmm-adaylik');
+  const simdiTs = psql(`select to_char((oyun.simdi() + interval '24 hours 2 minutes') at time zone 'Europe/Istanbul', 'YYYY-MM-DD HH24:MI')`);
+  saat(simdiTs);
+  await page.evaluate(() => { D.devletSekme = 'meclis'; D.yigin = []; sekmeAc('devlet'); }); await bekle('1. tur');
+  await page.locator('.olay', { hasText: 'TBMM Başkanlığı seçimi' }).getByRole('button', { name: 'Oy ver' }).first().click(); await page.click('#evet'); await bekle('Oyun sandıkta');
+  const msid = psql(`select id from oyun.meclis_secim where tur='baskan' and durum='oylama'`);
+  const vekiller = psql(`select p.kad from oyun.makamlar m join oyun.profiller p on p.id=m.user_id where m.tur='mv' and m.bit is null and p.kad<>'${vek}'`).split('\n').filter(Boolean);
+  vekiller.forEach(v => { try { psql(`select set_config('request.jwt.claim.sub','${uid(v)}',false); select public.meclis_oy(${msid}, 'baskan', '${vek}')`); } catch (_) {} });
+  await page.evaluate(() => { D.devletSekme = 'meclis'; D.yigin = []; sekmeAc('devlet'); }); await bekle('Oyunu kullandın');
+  await page.waitForTimeout(900); try { await page.locator('.olay', { hasText: 'TBMM Başkanlığı seçimi' }).first().scrollIntoViewIfNeeded({ timeout: 3000 }); } catch (_) {} await foto('63-tbmm-oylama');
+  saat(psql(`select to_char((oyun.simdi() + interval '13 hours') at time zone 'Europe/Istanbul', 'YYYY-MM-DD HH24:MI')`));
+  await page.evaluate(() => { D.devletSekme = 'meclis'; D.yigin = []; sekmeAc('devlet'); }); await bekle('TBMM Başkanı');
+  assert1(psql(`select count(*) from oyun.makamlar where tur='tbmm' and bit is null`) === '1', 'TBMM Başkanı seçilmedi');
+  await page.waitForTimeout(900); try { await page.locator('.kart', { hasText: 'TBMM Başkanlık Divanı' }).first().first().scrollIntoViewIfNeeded({ timeout: 3000 }); } catch (_) {} await foto('64-tbmm-divan');
+  ok('TBMM Başkanlığı: vekil aday oldu, gizli oy verdi; ilk turda üçte iki ile Meclis Başkanı seçildi');
+  await page.evaluate(() => vatandaslikModal()); await bekle('Seçmen kartın');
+  await foto('65-secmen-karti'); await page.evaluate(() => modalKapat());
+  ok('Seçmen kartı: oy, adaylık ve parti kurma şartları listeleniyor');
 
   // XSS denemesi: kötü niyetli kullanıcı adı veritabanında reddedilmeli, parti adı da
   let xss = 'geçti';

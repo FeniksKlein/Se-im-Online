@@ -210,6 +210,7 @@ $$;
 --   İl belediye başkanı (nüfusa göre): 2 milyon+ 317.800 · 1-2 milyon 267.800 · 250-500 bin 198.900 · daha küçük 171.400
 create or replace function oyun.makam_maasi(p_tur text, p_il smallint) returns numeric language sql stable as $$
   select (case p_tur when 'cb' then 354497 when 'bakan' then 318009 when 'mv' then 310332
+            when 'tbmm' then 60000 when 'bskv' then 30000 when 'grup_bskv' then 20000   -- vekil ödeneğine ek görev tazminatı
             when 'bel' then (select case when mv >= 14 then 317800 when mv >= 8 then 267800 when mv >= 4 then 198900 else 171400 end
                              from oyun.iller where id = p_il)
             else 0 end) * (select endeks from oyun.ulke where id = 1)
@@ -412,6 +413,8 @@ begin
     'ulke', jsonb_build_object('asgari', u.asgari, 'vergi', u.vergi, 'destek', u.destek, 'kidem_primi', u.kidem_primi,
                                'enflasyon', round(u.enflasyon, 1), 'tasinma_destek', u.tasinma_destek),
     'etkiler', oyun.etkilerim(p.il_id, t),
+    'mulkler', coalesce((select jsonb_agg(jsonb_build_object('il', i.ad, 'tur', m.tur, 'bedel', m.bedel, 'gunluk', m.gunluk) order by m.alis)
+                         from oyun.mulkler m join oyun.iller i on i.id = m.il_id where m.user_id = p.id), '[]'::jsonb),
     'paketler', (select jsonb_agg(jsonb_build_object('urun_id', urun_id, 'ad', ad, 'miktar', miktar) order by sira) from oyun.paketler),
     'hareketler', coalesce((select jsonb_agg(jsonb_build_object('zaman', h.zaman, 'tutar', h.tutar, 'vergi', h.vergi, 'tur', h.tur, 'aciklama', h.aciklama)
                     order by h.zaman desc, h.id desc)

@@ -6,7 +6,7 @@ Bu paketle hazır olanlar:
 - Tüm seçimler: belediye, kurultay, vekil ön seçimi, genel seçim, cumhurbaşkanlığı ve 2. tur.
 - Makamlar: cumhurbaşkanı, 12 bakanlık kabine, genel başkan ve 6 yardımcısı, vekiller, belediye başkanları.
 - Devlet yönetimi: ülke karnesi, bakanlık icraatları, kanun süreci (oylama, onay, veto, ısrar), cumhurbaşkanlığı kararları, ittifaklar ve Resmî Gazete.
-- Vatandaş ekonomisi: maaş kumbarası, günlük seri, statü ve kıdem primi, gerçek oranlarda makam maaşları, ödüllü reklam ve ₺ paketi satışı; hükümetin ekonomi masası, bütçe kanunu, belediye hizmetleri ve bakanlık icraatlarının oyunculara etkisi; aday ücretleri, taşınma masrafı, parti kasası; bütçeyle hesaplanan ölçülebilir vaatler (her bakanlık icraatı, vekillik ve genel başkanlık için ayrı vaat türü) ve vaat karnesi; tutulan vaadin kıdem puanı ve itibar karşılığı (Sözünün Eri / Lafta Kalan); şehir kalkınma bağışı ve verginin nereye gittiğini gösteren vergi karnesi; boş makam kuralı (bakanlıkta cumhurbaşkanı vekâleti, aday çıkmazsa görevdekinin devamı, genel başkansız parti kalmaması) ve Boş Makamlar panosu; mevzuat (servet vergisi, oy cezası, hoş geldin hibesi, siyasi katılım fonu, devamsızlık kesintisi…) ile Anayasa › Kanun › Kararname hiyerarşisi, özelleştirme ve tahvil, anayasa değişikliği ve gizli oylu halk oylaması (il il sonuç), belediye meclisi kararları (emlak vergisi, hoş geldin desteği, imar barışı, arsa satışı), bakan arama listesi.
+- Vatandaş ekonomisi: maaş kumbarası, günlük seri, statü ve kıdem primi, gerçek oranlarda makam maaşları, ödüllü reklam ve ₺ paketi satışı; hükümetin ekonomi masası, bütçe kanunu, belediye hizmetleri ve bakanlık icraatlarının oyunculara etkisi; aday ücretleri, taşınma masrafı, parti kasası; bütçeyle hesaplanan ölçülebilir vaatler (her bakanlık icraatı, vekillik ve genel başkanlık için ayrı vaat türü) ve vaat karnesi; tutulan vaadin kıdem puanı ve itibar karşılığı (Sözünün Eri / Lafta Kalan); şehir kalkınma bağışı ve verginin nereye gittiğini gösteren vergi karnesi; boş makam kuralı (bakanlıkta cumhurbaşkanı vekâleti, aday çıkmazsa görevdekinin devamı, genel başkansız parti kalmaması) ve Boş Makamlar panosu; mevzuat (servet vergisi, oy cezası, hoş geldin hibesi, siyasi katılım fonu, devamsızlık kesintisi…) ile Anayasa › Kanun › Kararname hiyerarşisi, özelleştirme ve tahvil, anayasa değişikliği ve gizli oylu halk oylaması (il il sonuç), belediye meclisi kararları (emlak vergisi, hoş geldin desteği, imar barışı, arsa ihalesi ve kira geliri veren mülkler), bakan arama listesi; TBMM Başkanlık Divanı (4 turlu gizli oyla Meclis Başkanı, başkanvekilleri, grup başkanvekilleri, grup kararı, Genel Kurul'da ihtar) ve Meclis grubu / Başkanlık Divanı sohbetleri; çoklu hesaba karşı cihaz ve bağlantı izi, seçmen kartı (oy ve adaylık şartları), cihaz başına tek oy, tek kullanımlık e-posta engeli, yönetici şüpheli hesap paneli; kurucu üyeli parti kuruluşu.
 - Belediye hizmetleri, adayların seçim bildirgeleri, rozetler, yönetici paneli ve telefona gelen bildirimler (push).
 - Sohbet: Türkiye Meydanı, il kahvesi, belediye meclisi, parti, parti yönetim kurulu, ittifak, TBMM Genel Kurulu ve Bakanlar Kurulu kanalları (okunmamış sayacı, kilitli kanal bilgisi); özel mesaj, propaganda yayınları ve bildirimler.
 - Şikâyet etme ve engelleme.
@@ -174,9 +174,10 @@ Bu bölüm isteğe bağlı; push kurulmadan da oyun çalışır, bildirimler uyg
 **B. Uygulama (Capacitor)**
 1. Online oyunun Capacitor projesinde:
    ```
-   npm install @capacitor-firebase/messaging firebase
+   npm install @capacitor-firebase/messaging firebase @capacitor/device
    npx cap sync
    ```
+   (`@capacitor/device`, çoklu hesap önlemi için telefonun kalıcı cihaz kimliğini verir. Kurulmazsa uygulama kendi ürettiği kimliği kullanır; o kimlik uygulama silinince sıfırlanır.)
 2. `GoogleService-Info.plist`'i Xcode'da `App/App` klasörüne sürükle ("Copy items if needed" işaretli). `google-services.json`'u `android/app/` klasörüne koy.
 3. Xcode → *Signing & Capabilities* → **+ Capability** → **Push Notifications** ve **Background Modes → Remote notifications**.
 4. iOS'ta `AppDelegate.swift` dosyasına Firebase'i başlatan birkaç satır eklenir. Satırlar eklentinin kurulum sayfasında var: capawesome.io → *Firebase Cloud Messaging*. Bu adımda ekran görüntüsü atarsan birlikte yaparız.
@@ -278,3 +279,14 @@ update oyun.ayarlar set baslangic_para = 10000;
 
 - Canlıya çıkış kontrol listesi (7. bölüm) ve mağaza gönderimi.
 - Gerçek oyuncularla ekonomi ve propaganda dengesinin ayarlanması.
+
+
+## Yayına almadan önce: vatandaşlık şartları
+Üretimde varsayılan şartlar şunlardır; hepsi yönetici panelinden (Ben › Yönetici paneli › Vatandaşlık ve parti kurma şartları) değiştirilebilir:
+- **Hesap yaşı:** 3 gün.
+- **Oy için en az kıdem:** 10 ("Vatandaş" statüsü, yaklaşık 10 gün maaş toplamak).
+- **Seçmen kütüğü:** yerel ve genel seçimde ilinde en az 7 gündür kayıtlı olmak.
+- **Bir cihazda en fazla hesap:** 2. İkinci hesap yönetici onayına kadar oy kullanamaz.
+- **Parti kurmak:** 30 kıdem, 7 gün içinde 5 kurucu üye.
+
+Açılış günlerinde oyuncu azken kıdem ve kurucu sayısını düşürüp oyuncu sayısı arttıkça yükseltebilirsin.

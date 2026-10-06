@@ -308,6 +308,56 @@ Etkiler üst üste biner; indirimler en fazla %90'dır.
 - Genel başkan kasadan üyelerine **kampanya desteği** gönderir ve aday ücretlerinin çarpanını ayarlar.
 - Kasa hareketleri, partinin seçim beyannamesi ve iktidardaysa hükümet karnesi parti sayfasında herkese açıktır.
 
+### TBMM Başkanlık Divanı ve parti grupları (gerçek usul: Anayasa md. 94, TBMM İçtüzüğü)
+- **Geçici Başkan.** Yeni Meclis göreve başlayınca en kıdemli milletvekili Geçici Başkan olur.
+- **TBMM Başkanı seçimi.**
+  - Adaylık 24 saat sürer; seçim gizli oyla yapılır, her tur 12 saattir.
+  - 1. ve 2. turda dolu sandalyelerin 2/3'ü, 3. turda salt çoğunluk gerekir. 4. tur, 3. turda en çok oy alan iki aday arasındadır; en çok oy alan seçilir.
+  - Tur sonuçlarında yalnızca sayılar açıklanır.
+  - Aday çıkmazsa adaylık iki kez 24 saat uzar. Başkanlık boşalırsa ara seçim açılır.
+- **Meclis Başkanının kısıtları.** Genel Kurul'da oy kullanamaz, kanun teklifi veremez ve imzalayamaz. Partisinin faaliyetlerine katılamaz: seçilince genel başkanlığı ve GBY'liği düşer.
+- **İhtar.** Meclis Başkanı ve başkanvekilleri, Başkan seçilene kadar da Geçici Başkan, Genel Kurul'da ihtar verebilir. İhtar alan vekil 1 saat Genel Kurul'da söz alamaz.
+- **Siyasi parti grubu.**
+  - Gerçekte 600 sandalyede 20 vekil gerekir; oyunda eşik dolu sandalyeye oranlanır (en az 2).
+  - Gruba vekilin bugünkü partisi sayılır: partisinden ayrılan vekil bağımsız kalır.
+- **Başkanvekilleri ve grup başkanvekilleri.**
+  - En büyük 3 grup birer TBMM Başkanvekili seçer.
+  - Her grup kendi grup başkanvekillerini seçer: 2 kişi, sandalyelerin 1/6'sından büyük grupta 3 kişi.
+  - Grup seçimleri 24 saat adaylık ve 12 saat oylamayla, yalnızca o partinin vekilleri arasında yapılır.
+- **Grup kararı.** Grup başkanvekili ya da milletvekili olan genel başkan, oylanacak kanun için kabul, ret ya da serbest kararı alır. Karar partinin vekillerine bildirilir; karara aykırı açık oy listede işaretlenir.
+- **Görev tazminatı** (vekil ödeneğine ek): TBMM Başkanı 60.000 ₺, başkanvekili 30.000 ₺, grup başkanvekili 20.000 ₺ (fiyat düzeyiyle artar).
+- **Yeni sohbet kanalları.** Parti Meclis Grubu (partinin vekilleri ve genel başkan) ve TBMM Başkanlık Divanı ve Danışma Kurulu (Başkan, başkanvekilleri, grup başkanvekilleri).
+
+### Bir insan = bir vatandaş: çoklu hesap önlemleri ve seçmen kartı
+- **Sinyaller.**
+  - Uygulamanın cihaz kimliği (`@capacitor/device` ya da uygulamanın ürettiği kalıcı kimlik).
+  - Cihaz izi: ekran, dil, saat dilimi, tuval çizimi.
+  - Bağlantı adresi (IP).
+  - Hepsi gizli tuzla SHA-256 özeti olarak saklanır. Silinen hesapların ve 180 gündür kullanılmayan kayıtların izi silinir.
+- **Kurallar.**
+  - Aynı cihaz kimliğinde sonradan açılan hesap "inceleme bekliyor" olur. Yönetici onaylayana kadar oy kullanamaz, aday olamaz, parti kuramaz, kurucu sayılmaz.
+  - Bir cihazda en fazla 2 hesap açılabilir.
+  - Aynı cihazdan aynı sandıkta tek oy kullanılır; bu, onaylı hesaplar ve halk oylaması için de geçerlidir.
+  - Tek kullanımlık e-posta servisleri reddedilir.
+- **Zayıf sinyaller.** Cihaz izi aynı model telefonlarda çakışabilir. IP de aile, okul ya da mobil operatörde paylaşılır. Bu ikisi engel sebebi değildir; yalnızca yönetici panelinde küme olarak gösterilir. eRepublik de aynı IP'yi tek başına çoklu hesap delili saymaz.
+- **Seçmen kartı.** Oy, adaylık, kurucu üyelik ve bakanlık için şartlar:
+  - hesap yaşı;
+  - doğrulanmış e-posta;
+  - doğrulanmış cihaz;
+  - tek hesap olmak;
+  - en az "Vatandaş" statüsü (kıdem).
+  Yerel ve genel seçimde bunlara seçmen kütüğü eklenir: ilinde en az 7 gündür kayıtlı olmak.
+- **Parti kuruluşu.** Kurucunun en az 30 kıdemi olmalı. Kurulan parti "kuruluş aşamasında" başlar. 7 gün içinde seçmen kartı hazır 5 kurucu üyeye ulaşırsa kurulur; ulaşamazsa düşer. Kuruluş tamamlanmadan seçime aday çıkaramaz. Gerçekte Siyasi Partiler Kanunu en az 30 kurucu arar.
+
+### Belediye arsası ihalesi ve imar barışı: oyuncuya doğrudan karşılık
+- **Arsa ihalesi.**
+  - Başkan arsayı 48 saatlik açık artırmaya çıkarır. Açılış fiyatı, ilin büyüklüğü ve gelişmişliğiyle belirlenir.
+  - Yalnızca o ilde yaşayan oyuncular pey sürebilir; başkan katılamaz.
+  - Teklif teminat olarak cüzdandan alınır, teklif geçilirse iade edilir. Son 10 dakikadaki teklif süreyi uzatır.
+  - Kazanan arsa sahibi olur ve her gün bedelin binde 4'ü kadar kira alır (yaklaşık 250 günde amorti).
+  - Kasaya bedele göre 6 günlük taban gelir civarında para girer. Şehrin geri kalanı için yeşil alan azalır: gelişmişlik −1, memnuniyet −3.
+- **İmar barışı.** Kasaya 4 günlük gelir girer. Hemşehrilerin geçim masrafı 14 gün %8 düşer. Buna karşılık gelişmişlik −3 olur: ildeki maaşlar kalıcı olarak yaklaşık %1,2 azalır.
+
 ### Mevzuat, anayasa değişikliği ve halk oylaması
 Oyuncuların cüzdanına doğrudan dokunan kurallar ("Devlet › Mevzuat"). Yetki sırası gerçekteki gibidir: **Anayasa › Kanun › Cumhurbaşkanlığı kararnamesi**.
 - Cumhurbaşkanı kuralı kararnameyle değiştirir; Meclis aynı konuyu kanunla düzenlerse artık kararname çıkarılamaz. Kararname kanunla iptal edilirse kural bir önceki hâline döner.

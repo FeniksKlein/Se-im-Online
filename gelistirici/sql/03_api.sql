@@ -148,6 +148,9 @@ begin
   perform oyun.ittifak_temizle();
 end $$;
 
+-- Kuruluş aşamasındaki parti: kurucu üye sayısı tamamlanana kadar dolu (14_guvenlik)
+alter table oyun.partiler add column if not exists kurulus_bit timestamptz;
+
 create or replace function public.parti_kur(p_ad text, p_kisa text, p_renk text, p_amblem text) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
 declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); gun int := (select parti_kur_gun from oyun.ayarlar where id = 1); yeni bigint;
@@ -163,15 +166,21 @@ begin
   end if;
   if exists (select 1 from oyun.partiler where not kapali and lower(ad) = lower(p_ad)) then raise exception 'Bu adla bir parti zaten var.'; end if;
   if exists (select 1 from oyun.partiler where not kapali and lower(kisa) = lower(p_kisa)) then raise exception 'Bu kısa ad kullanılıyor.'; end if;
-  if oyun.uyari(p, t) is not null then raise exception 'Parti kurmak için %', lower(oyun.uyari(p, t)); end if;
+  if oyun.uyari(p, t) is not null then raise exception 'Parti kurmak için: %', oyun.uyari(p, t); end if;
+  if oyun.kidem_puani(p.id) < (select parti_kurucu_kidem from oyun.ayarlar where id = 1) then
+    raise exception 'Parti kurabilmek için en az % kıdem puanın olmalı (şu an %). Her gün maaşını topla, seçimlerde oy kullan.',
+      (select parti_kurucu_kidem from oyun.ayarlar where id = 1), oyun.kidem_puani(p.id);
+  end if;
   if p.son_parti_kur is not null and p.son_parti_kur + make_interval(days => gun) > t then
     raise exception 'En fazla % günde bir parti kurabilirsin.', gun;
   end if;
   perform oyun._ayril(p.id, t);
-  insert into oyun.partiler(ad, kisa, renk, amblem, gb, kurucu, kurulus) values (p_ad, p_kisa, lower(p_renk), p_amblem, p.id, p.id, t)
+  insert into oyun.partiler(ad, kisa, renk, amblem, gb, kurucu, kurulus, kurulus_bit)
+  values (p_ad, p_kisa, lower(p_renk), p_amblem, p.id, p.id, t, t + make_interval(days => (select parti_kurulus_gun from oyun.ayarlar where id = 1)))
   returning id into yeni;
   update oyun.profiller set parti_id = yeni, parti_at = t, son_parti_kur = t where id = p.id;
-  perform oyun.olay('parti', format('%s, %s (%s) adıyla yeni bir parti kurdu.', p.kad, p_ad, p_kisa), p.il_id, yeni, t);
+  perform oyun.olay('parti', format('%s, %s (%s) adıyla yeni bir parti kurmak için kuruluş dilekçesi verdi. Kurucu üyeler aranıyor.', p.kad, p_ad, p_kisa), p.il_id, yeni, t);
+  perform oyun.parti_kurulus_kontrol(yeni, t);
   return public.durum();
 end $$;
 
@@ -262,6 +271,9 @@ begin
   if p.parti_id is null then raise exception 'Aday olmak için bir partiye üye olmalısın.'; end if;
   if p.parti_at > s.basvuru_bas then raise exception 'Bu dönem aday olabilmek için başvurular açılmadan önce partiye üye olmalıydın.'; end if;
   if oyun.uyari(p, t) is not null then raise exception '%', oyun.uyari(p, t); end if;
+  if (select kurulus_bit from oyun.partiler where id = p.parti_id) is not null then
+    raise exception 'Partin henüz kuruluş aşamasında: kurucu üye sayısı tamamlanmadan seçime katılamaz.';
+  end if;
   if p_tur in ('mv_on','bel_on') and exists (select 1 from oyun.partiler where gb = p.id) then
     raise exception 'Genel başkan milletvekili ya da belediye başkanı adayı olamaz. Genel başkan yalnızca cumhurbaşkanı adayı olabilir.';
   end if;
@@ -465,7 +477,7 @@ create or replace function public.partiler() returns jsonb
 language sql security definer set search_path = oyun, public, pg_temp as $$
   select coalesce(jsonb_agg(oyun.parti_json(pa.id) || jsonb_build_object(
     'uye', (select count(*) from oyun.profiller where parti_id = pa.id),
-    'gb', oyun.kad(pa.gb), 'sistem', pa.sistem,
+    'gb', oyun.kad(pa.gb), 'sistem', pa.sistem, 'kurulus_bit', pa.kurulus_bit,
     'vekil', (select count(*) from oyun.makamlar m where m.tur = 'mv' and m.bit is null and m.parti_id = pa.id),
     'belediye', (select count(*) from oyun.makamlar m where m.tur = 'bel' and m.bit is null and m.parti_id = pa.id))
     order by (select count(*) from oyun.profiller where parti_id = pa.id) desc, pa.id), '[]'::jsonb)
@@ -480,6 +492,10 @@ begin
   if pa.id is null then raise exception 'Parti bulunamadı.'; end if;
   return oyun.parti_json(pa.id) || jsonb_build_object(
     'kapali', pa.kapali, 'sistem', pa.sistem, 'kurulus', pa.kurulus, 'kurucu', oyun.kad(pa.kurucu),
+    'kurulus_bit', pa.kurulus_bit,
+    'kurucu_gecerli', case when pa.kurulus_bit is not null then oyun.kurucu_say(pa.id, oyun.simdi()) end,
+    'kurucu_gerekli', case when pa.kurulus_bit is not null then (select parti_kurucu_sayi from oyun.ayarlar where id = 1) end,
+    'kurucu_engelim', case when pa.kurulus_bit is not null and p.parti_id = pa.id then oyun.uyari(p, oyun.simdi()) end,
     'gb', oyun.kad(pa.gb),
     'gby', coalesce((select jsonb_agg(jsonb_build_object('sira', g.sira, 'kad', oyun.kad(g.user_id)) order by g.sira)
                      from oyun.parti_gby g where g.parti_id = pa.id), '[]'::jsonb),

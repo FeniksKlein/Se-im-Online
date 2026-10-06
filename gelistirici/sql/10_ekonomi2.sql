@@ -300,6 +300,11 @@ create table if not exists oyun.kanal_okuma(
   primary key (user_id, kanal)
 );
 
+-- Vekilin bugünkü partisi (13_meclis'te de tanımlı)
+create or replace function oyun.aktif_mv_parti(u uuid) returns bigint language sql stable as $$
+  select p.parti_id from oyun.profiller p where p.id = u and exists (select 1 from oyun.makamlar m where m.user_id = u and m.tur = 'mv' and m.bit is null)
+$$;
+
 create or replace function oyun.kanal_coz(p oyun.profiller, p_kanal text) returns text language plpgsql stable as $$
 begin
   return case p_kanal
@@ -310,6 +315,9 @@ begin
     when 'meclis' then 'meclis'
     when 'ittifak' then (select 'ittifak:' || u.ittifak_id from oyun.ittifak_uyeler u where u.parti_id = p.parti_id)
     when 'kabine' then case when exists (select 1 from oyun.makamlar where user_id = p.id and bit is null and tur in ('cb','bakan')) then 'kabine' end
+    when 'grup' then case when oyun.aktif_mv_parti(p.id) is not null then 'grup:' || oyun.aktif_mv_parti(p.id)
+                          when exists (select 1 from oyun.partiler pa where pa.gb = p.id and pa.id = p.parti_id) then 'grup:' || p.parti_id end
+    when 'divan' then case when exists (select 1 from oyun.makamlar where user_id = p.id and bit is null and tur in ('tbmm','bskv','grup_bskv')) then 'divan' end
     when 'yonetim' then (select 'yonetim:' || pa.id from oyun.partiler pa
                          where pa.id = p.parti_id and not pa.kapali
                            and (pa.gb = p.id or exists (select 1 from oyun.parti_gby g where g.parti_id = pa.id and g.user_id = p.id)))
@@ -325,6 +333,8 @@ create or replace function oyun.kanal_baslik(p oyun.profiller, kod text) returns
     when 'yonetim' then (select kisa from oyun.partiler where id = p.parti_id) || ' Yönetim Kurulu'
     when 'meclis' then 'TBMM Genel Kurulu'
     when 'kabine' then 'Bakanlar Kurulu'
+    when 'grup' then (select kisa from oyun.partiler where id = coalesce(oyun.aktif_mv_parti(p.id), p.parti_id)) || ' Meclis Grubu'
+    when 'divan' then 'TBMM Başkanlık Divanı ve Danışma Kurulu'
     when 'ittifak' then (select i.ad from oyun.ittifak_uyeler u join oyun.ittifaklar i on i.id = u.ittifak_id where u.parti_id = p.parti_id)
   end
 $$;
@@ -341,6 +351,8 @@ create or replace function oyun.kanal_hata(kod text) returns text language sql i
     when 'ittifak' then 'Partin bir ittifakta değil.'
     when 'kabine' then 'Bakanlar Kurulu sohbetine yalnızca cumhurbaşkanı ve bakanlar girebilir.'
     when 'yonetim' then 'Parti yönetimi sohbetine yalnızca genel başkan ve genel başkan yardımcıları girebilir.'
+    when 'grup' then 'Meclis grubu sohbetine yalnızca partinin milletvekilleri ve genel başkanı girebilir.'
+    when 'divan' then 'Başkanlık Divanı sohbetine TBMM Başkanı, başkanvekilleri ve grup başkanvekilleri girebilir.'
     else 'Parti sohbeti için bir partiye üye olmalısın.' end
 $$;
 
@@ -384,6 +396,9 @@ begin
   k := oyun.kanal_coz(p, p_kanal);
   if k is null then raise exception '%', oyun.kanal_hata(p_kanal); end if;
   if not oyun.kanal_yazabilir(p, p_kanal) then raise exception '%', oyun.kanal_yaz_hata(p_kanal); end if;
+  if p_kanal = 'meclis' and oyun.ihtarli(p.id, t) is not null then
+    raise exception 'Meclis Başkanlığından ihtar aldın; % saatine kadar Genel Kurul''da söz alamazsın.', to_char(oyun.ihtarli(p.id, t) at time zone 'Europe/Istanbul', 'HH24:MI');
+  end if;
   perform oyun.yazabilir_mi(p, t);
   m := oyun.metin_temizle(p_metin, 500);
   insert into oyun.mesajlar(kanal, user_id, metin, zaman) values (k, p.id, m, t);
@@ -396,11 +411,12 @@ create or replace function public.sohbet_ozet() returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
 declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); liste jsonb := '[]'; kod text; k text; imlec bigint; okunmamis int; son jsonb; cev int; kilit text;
 begin
-  foreach kod in array array['genel','il','belediye','parti','yonetim','ittifak','meclis','kabine'] loop
+  foreach kod in array array['genel','il','belediye','parti','yonetim','ittifak','meclis','grup','divan','kabine'] loop
     k := oyun.kanal_coz(p, kod);
     kilit := case when k is not null then null else case kod
       when 'parti' then 'Bir partiye katılınca açılır.' when 'yonetim' then 'Genel başkan ya da genel başkan yardımcısı olunca açılır.'
-      when 'ittifak' then 'Partin bir ittifaka girince açılır.' when 'kabine' then 'Cumhurbaşkanı ya da bakan olunca açılır.' end end;
+      when 'ittifak' then 'Partin bir ittifaka girince açılır.' when 'kabine' then 'Cumhurbaşkanı ya da bakan olunca açılır.'
+      when 'grup' then 'Milletvekili olunca açılır.' when 'divan' then 'TBMM Başkanı, başkanvekili ya da grup başkanvekili olunca açılır.' end end;
     okunmamis := 0; son := null; cev := null;
     if k is not null then
       select son_id into imlec from oyun.kanal_okuma where user_id = p.id and kanal = k;
@@ -418,7 +434,8 @@ begin
         end;
     end if;
     liste := liste || jsonb_build_object('kanal', kod, 'baslik', coalesce(oyun.kanal_baslik(p, kod), case kod when 'parti' then 'Parti sohbeti' when 'yonetim' then 'Parti Yönetim Kurulu'
-                  when 'ittifak' then 'İttifak sohbeti' when 'kabine' then 'Bakanlar Kurulu' end),
+                  when 'ittifak' then 'İttifak sohbeti' when 'kabine' then 'Bakanlar Kurulu' when 'grup' then 'Parti Meclis Grubu'
+                  when 'divan' then 'TBMM Başkanlık Divanı' end),
       'kilit', kilit, 'yazabilir', k is not null and oyun.kanal_yazabilir(p, kod), 'okunmamis', okunmamis, 'son', son, 'cevrimici', cev);
   end loop;
   return jsonb_build_object('kanallar', liste,

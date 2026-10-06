@@ -26,7 +26,7 @@ baska_il = oyuncu("Ankara", 6, 2)
 # ---------------- SOHBET ----------------
 oz = rpc(sade, "sohbet_ozet")
 k = {x["kanal"]: x for x in oz["kanallar"]}
-assert list(k) == ["genel", "il", "belediye", "parti", "yonetim", "ittifak", "meclis", "kabine"], list(k)
+assert list(k) == ["genel", "il", "belediye", "parti", "yonetim", "ittifak", "meclis", "grup", "divan", "kabine"], list(k)
 assert k["kabine"]["kilit"] and k["yonetim"]["kilit"] and k["ittifak"]["kilit"] and not k["genel"]["kilit"] and not k["parti"]["kilit"]
 assert k["belediye"]["baslik"].startswith("İstanbul") or "Belediye Meclisi" in k["belediye"]["baslik"]
 ok("Sohbet listesi 8 kanal döndürüyor; kabine, yönetim ve ittifak sade oyuncuya kilitli (nedeniyle birlikte)")
