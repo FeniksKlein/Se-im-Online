@@ -889,7 +889,7 @@ end $$;
 create or replace function oyun.ekonomi_kanun_yururluk()
 returns trigger
 language plpgsql security definer
-set search_path='' as $
+set search_path='' as $econ$
 declare
   oz text;
   d numeric;
@@ -935,7 +935,7 @@ begin
   end if;
 
   return new;
-end $$;
+end $econ$;
 
 drop trigger if exists ekonomi_kanun_yururluk on oyun.kanunlar;
 create trigger ekonomi_kanun_yururluk
