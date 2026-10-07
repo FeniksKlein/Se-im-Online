@@ -838,3 +838,17 @@ begin
   perform oyun.guvenlik_tick(t); perform oyun.gunluk_ekonomi(t); perform oyun.banka_tick(t); perform oyun.push_hatirlatmalar(t); perform oyun.push_tetikle();
   return n;
 end $$;
+
+
+-- Yeni siyasi tablolardaki sık kullanılan yabancı anahtarlar için indeksler.
+create index if not exists hukumetler_kuran_parti_idx on oyun.hukumetler(kuran_parti);
+create index if not exists hukumetler_basbakan_idx on oyun.hukumetler(basbakan);
+create index if not exists hukumet_partileri_parti_idx on oyun.hukumet_partileri(parti_id);
+create index if not exists hukumet_guven_oylari_vekil_idx on oyun.hukumet_guven_oylari(vekil);
+create index if not exists gensorular_hukumet_idx on oyun.gensorular(hukumet_id);
+create index if not exists gensorular_teklif_eden_idx on oyun.gensorular(teklif_eden);
+create index if not exists gensorular_parti_idx on oyun.gensorular(parti_id);
+create index if not exists gensoru_oylari_vekil_idx on oyun.gensoru_oylari(vekil);
+create index if not exists erken_secim_teklifleri_teklif_eden_idx on oyun.erken_secim_teklifleri(teklif_eden);
+create index if not exists erken_secim_teklifleri_parti_idx on oyun.erken_secim_teklifleri(parti_id);
+create index if not exists erken_secim_oylari_vekil_idx on oyun.erken_secim_oylari(vekil);
