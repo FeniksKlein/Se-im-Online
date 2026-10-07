@@ -1052,7 +1052,7 @@ async function kararnameModal(tur0){
   const iller = [...VERI.iller].sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
   const kurallar = mz.kurallar.filter(k => !k.cb_engel);
   let tur = tur0 || "il_destek";
-  const TURLER = [["il_destek","İl kalkınma desteği"],["odenek","Bakanlığa ek ödenek"],["ikramiye","Bayram ikramiyesi"],["duzenleme","Kural (mevzuat) düzenlemesi"],["tahvil","Tahvil ihracı (borçlanma)"],["ozellestirme","Özelleştirme"],["serbest","Serbest karar"]];
+  const TURLER = [["il_destek","İl kalkınma desteği"],["odenek","Bakanlığa ek ödenek"],["ikramiye","Bayram ikramiyesi"],["borc_affi","Kredi borç affı"],["duzenleme","Kural (mevzuat) düzenlemesi"],["tahvil","Tahvil ihracı (borçlanma)"],["ozellestirme","Özelleştirme"],["serbest","Serbest karar"]];
   const m = modal(`<h3 style="font-size:19px;font-weight:800">Cumhurbaşkanlığı kararnamesi</h3>
     <div class="alan" style="margin-top:8px"><label>Kararın türü</label><select id="ktur">${TURLER.map(([k, a]) => `<option value="${k}" ${k === tur ? "selected" : ""}>${a}</option>`).join("")}</select></div>
     <div id="kform"></div><div class="hata-metin" id="khata"></div><button class="btn altin" id="kimza">İmzala ve yayımla</button>`);
@@ -1067,6 +1067,7 @@ async function kararnameModal(tur0){
       ikramiye: `<p class="alt" style="margin-top:6px">Bayram ikramiyesi: son 7 günde oyuna giren her oyuncunun cüzdanına tek seferlik ödeme (şu an ${fmt(u.aktif_oyuncu)} oyuncu). Ülkede 16 milyon kişiye ödendiği için bedeli hazineden çıkar; 7 günde bir verilebilir.</p>
         <div class="alan"><label>Kişi başı tutar (500-5.000 ₺)</label><input id="kikr" type="number" min="500" max="5000" step="250" value="1000" inputmode="numeric"></div>
         <p class="kucuk" id="kikrmal"></p>`,
+      borc_affi: `<p class="alt" style="margin-top:6px">Oyuncuların açık banka kredi borçlarının seçtiğin yüzdesini siler. Borçlular rahatlar; bunun hazine maliyeti ve enflasyon etkisi vardır. Cumhurbaşkanlığı kararıyla borç affı 7 günde bir çıkarılabilir.</p><div class="alan"><label>Affedilecek oran (%10-%100)</label><input id="kaf" type="number" min="10" max="100" step="5" value="25" inputmode="decimal"></div><p class="kucuk" id="kafetki"></p>`,
       duzenleme: kurallar.length ? `<p class="alt" style="margin-top:6px">Oyuncuların cüzdanına doğrudan dokunan kurallar. Meclis'in kanunla ya da anayasanın düzenlediği konular burada yok.</p>
         <div class="alan"><label>Kural</label><select id="kkod">${kurallar.map(k => `<option value="${k.kod}">${e(k.ad)} (şu an ${e(k.yazi)})</option>`).join("")}</select></div>
         <p class="kucuk" id="kkacik"></p>
@@ -1078,6 +1079,8 @@ async function kararnameModal(tur0){
         <div class="alan"><label>Miktar (10-100 milyar ₺)</label><input id="kmik" type="number" min="10" max="100" step="5" value="20" inputmode="numeric"></div><p class="kucuk" id="koz"></p>`,
       serbest: `<div class="alan"><label>Kararın başlığı</label><input id="kbas" maxlength="120" placeholder="Örn. Millî Yas İlanı Hakkında Karar"></div>`
     }[tur] + `<div class="alan"><label>${tur === "serbest" ? "Karar metni" : "Açıklama (isteğe bağlı)"}</label><textarea class="alanmetin" id="kmetin" maxlength="3000" style="min-height:80px"></textarea></div>`;
+    const af = $("#kaf", m);
+    if (af) { let z=null; const yaz=()=>{clearTimeout(z);z=setTimeout(async()=>{try{const x=await API.rpc("borc_affi_onizle",{p_oran:+af.value});$("#kafetki",m).innerHTML=`<b>${x.borclu_oyuncu} borçlu oyuncu</b> · ${tlYaz(x.oyuncu_silinecek)} borç silinir<br>Hazine <b class="kotu">−${fmt(x.maliyet,1)} milyar ₺</b> · enflasyon <b class="kotu">+${fmt(x.enflasyon,2)}</b> · büyüme <b class="iyi">+${fmt(x.buyume,2)}</b> · memnuniyet <b class="iyi">+${fmt(x.memnuniyet,2)}</b>`;}catch(err){$("#kafetki",m).textContent=hataCevir(err.message);}},250)}; af.oninput=yaz; yaz(); }
     const ik = $("#kikr", m);
     if (ik) { const yaz = () => $("#kikrmal", m).textContent = `Hazineye maliyeti ${fmt((+ik.value || 0) * 16e6 / 1e9, 1)} milyar ₺ (hazine: ${fmt(u.hazine, 1)}).`; ik.oninput = yaz; yaz(); }
     const mk = $("#kmik", m);
@@ -1104,7 +1107,9 @@ async function kararnameModal(tur0){
       : tur === "duzenleme" ? { kod: ($("#kkod", m) || {}).value, deger: +($("#kdeger", m) || {}).value }
       : tur === "tahvil" || tur === "ozellestirme" ? { miktar: +$("#kmik", m).value } : {};
     try {
-      const r = await API.rpc("kararname_cikar", { p_tur: tur, p_baslik: tur === "serbest" ? $("#kbas", m).value : null, p_metin: $("#kmetin", m).value, p_veri: veri });
+      const r = tur === "borc_affi"
+        ? await API.rpc("borc_affi_karar",{p_oran:+$("#kaf",m).value,p_metin:$("#kmetin",m).value})
+        : await API.rpc("kararname_cikar", { p_tur: tur, p_baslik: tur === "serbest" ? $("#kbas", m).value : null, p_metin: $("#kmetin", m).value, p_veri: veri });
       modalKapat(); toast(`${r.no} sayılı karar Resmî Gazete'de yayımlandı.`); devletEkrani();
     } catch (err) { $("#khata", m).textContent = hataCevir(err.message); }
   };
@@ -1469,7 +1474,7 @@ async function kanunTeklifEkrani(tur0, kod0){
   try { kararlar = (await API.rpc("kararnameler", { p_limit: 50 })).filter(k => k.durum === "yururlukte"); } catch (_) {}
   try { mz = D._mevzuat = await API.rpc("mevzuat"); } catch (_) {}
   const u = D._karne || await API.rpc("ulke_karnesi");
-  const TURLER = [["serbest","Kanun (serbest metin)"],["duzenleme","Kural kanunu (mevzuat)"],["butce","Bütçe kanunu"],["secim","Seçim kanunu (baraj)"],["iptal","Kararname iptali"],["anayasa","Anayasa değişikliği"]];
+  const TURLER = [["serbest","Kanun (serbest metin)"],["vergi","Gelir vergisi oranı kanunu"],["borc_affi","Kredi borç affı kanunu"],["duzenleme","Kural kanunu (mevzuat)"],["butce","Bütçe kanunu"],["secim","Seçim kanunu (baraj)"],["iptal","Kararname iptali"],["anayasa","Anayasa değişikliği"]];
   iskelet("Kanun teklifi", `
     <div class="kart"><div class="alan" style="margin-top:0"><label>Teklifin türü</label><select id="ktur">${TURLER.map(([k, a]) => `<option value="${k}" ${k === tur ? "selected" : ""}>${a}</option>`).join("")}</select></div>
       <p class="kucuk" id="tacik" style="margin-top:8px"></p>
@@ -1480,6 +1485,8 @@ async function kanunTeklifEkrani(tur0, kod0){
       <button class="btn altin" id="kver">Teklifi Meclis Başkanlığına sun</button>
       <p class="kucuk" id="ksure" style="margin-top:8px"></p></div>`, { geri: true, sekmesiz: true });
   const acik = { serbest: "Serbest kanun: metniyle Resmî Gazete'de yayımlanır.",
+    vergi: "Gelir vergisi oranını doğrudan kanunla belirler. Vergi düşerse oyuncuların net geliri ve memnuniyeti artar ama hazine geliri azalır; yükselirse tersi olur.",
+    borc_affi: "Oyuncuların açık banka kredi borçlarının seçilen yüzdesini siler. Borçlular rahatlar, büyüme ve memnuniyet artar; hazine maliyeti ve enflasyon baskısı doğar.",
     duzenleme: "Kural kanunu: oyuncuların cüzdanına dokunan bir kuralı (servet vergisi, oy cezası, hoş geldin hibesi…) belirler. Kanunla düzenlenen konuda cumhurbaşkanı artık kararname çıkaramaz.",
     butce: "Bütçe kanunu: gelir vergisi bandını (hükümet vergiyi bu bant içinde ayarlar), belediyelerin vergi payını, partilere hazine yardımını ve 12 bakanlığın bütçe payını belirler. Asgari ücreti ve sosyal desteği Meclis değil hükümet belirler.",
     secim: "Seçim kanunu: ülke barajını değiştirir. Seçim döneminde kabul edilirse bir sonraki seçimden itibaren uygulanır.",
@@ -1508,7 +1515,9 @@ async function kanunTeklifEkrani(tur0, kod0){
   const param = () => {
     $("#tacik").textContent = acik[tur];
     $("#ksure").textContent = tur === "anayasa" ? "İmza süresi 24 saat, ardından 24 saat gizli oylama. Sonuçlanmamış bir teklifin varken yenisini veremezsin." : "Teklif 24 saat görüşülür, ardından 24 saat oylanır. Sonuçlanmamış bir teklifin varken yenisini veremezsin.";
-    $("#kparam").innerHTML = tur === "butce" ? `${BUTCE_ALAN.map(([k2, a2, d2]) => `<div class="payinput"><span>${a2}<div class="kucuk">şu an ${fmt(u[k2], d2)}</div></span><input data-b="${k2}" type="number" step="${d2 ? "0.5" : "1000"}" value="${u[k2]}" inputmode="decimal"></div>`).join("")}
+    $("#kparam").innerHTML = tur === "vergi" ? `<div class="alan"><label>Yeni gelir vergisi oranı (%0-%45) · şu an %${fmt(u.vergi,1)}</label><input id="pvergi" type="number" min="0" max="45" step="0.5" value="${fmt(u.vergi,1)}" inputmode="decimal"></div><p class="kucuk" id="pveretki"></p>`
+      : tur === "borc_affi" ? `<div class="alan"><label>Silinecek kredi borcu oranı (%10-%100)</label><input id="paf" type="number" min="10" max="100" step="5" value="25" inputmode="decimal"></div><p class="kucuk" id="pafetki"></p>`
+      : tur === "butce" ? `${BUTCE_ALAN.map(([k2, a2, d2]) => `<div class="payinput"><span>${a2}<div class="kucuk">şu an ${fmt(u[k2], d2)}</div></span><input data-b="${k2}" type="number" step="${d2 ? "0.5" : "1000"}" value="${u[k2]}" inputmode="decimal"></div>`).join("")}
         <div class="alan"><label>Bakanlık payları (toplam 100) · <span id="ptop"></span></label>${u.butce.map(b => `<div class="payinput"><span>${e(b.ad)}</span><input data-k="${b.kod}" type="number" step="0.5" value="${b.pay}" inputmode="decimal"></div>`).join("")}</div>`
       : tur === "secim" ? `<div class="alan"><label>Yeni baraj (%0-%10) · şu an %${fmt(u.baraj, 1)}</label><input id="pbaraj" type="number" step="0.5" value="${u.baraj}" inputmode="decimal"></div>`
       : tur === "iptal" ? `<div class="alan"><label>İptal edilecek karar</label><select id="pkarar">${kararlar.map(k => `<option value="${k.id}">${k.no} sayılı: ${e(k.baslik)}</option>`).join("") || `<option value="">Yürürlükte karar yok</option>`}</select></div>`
@@ -1516,6 +1525,8 @@ async function kanunTeklifEkrani(tur0, kod0){
       : tur === "anayasa" ? `<div class="alan"><label>Değişecek madde</label><select id="amadde"><option value="duzenleme">Bir kuralı anayasaya bağla</option><option value="serbest_birak">Bir kuralı anayasadan çıkar</option><option value="kararname_sinir">Cumhurbaşkanının kararname yetkisi</option><option value="vergi_tavani">Gelir vergisinin anayasal tavanı</option></select></div><div id="aparam"></div>` : "";
     if (tur === "duzenleme") kuralBaglaForm("dkod", kanunluk);
     if (tur === "anayasa") { $("#amadde").onchange = anayasaForm; anayasaForm(); }
+    if (tur === "vergi") { let z=null; const i=$("#pvergi"); const yaz=()=>{clearTimeout(z);z=setTimeout(async()=>{try{$("#pveretki").innerHTML=etkiOzet(await API.rpc("politika_onizle",{p_kod:"vergi",p_deger:+i.value}));}catch(err){$("#pveretki").textContent=hataCevir(err.message);}},250)}; i.oninput=yaz; yaz(); }
+    if (tur === "borc_affi") { let z=null; const i=$("#paf"); const yaz=()=>{clearTimeout(z);z=setTimeout(async()=>{try{const x=await API.rpc("borc_affi_onizle",{p_oran:+i.value});$("#pafetki").innerHTML=`<b>${x.borclu_oyuncu} borçlu oyuncu</b> · ${tlYaz(x.oyuncu_silinecek)} borç silinir<br>Hazine <b class="kotu">−${fmt(x.maliyet,1)} milyar ₺</b> · enflasyon <b class="kotu">+${fmt(x.enflasyon,2)}</b> · büyüme <b class="iyi">+${fmt(x.buyume,2)}</b> · işsizlik <b class="iyi">${fmt(x.issizlik,2)}</b> · memnuniyet <b class="iyi">+${fmt(x.memnuniyet,2)}</b>`;}catch(err){$("#pafetki").textContent=hataCevir(err.message);}},250)}; i.oninput=yaz; yaz(); }
     const top = () => { const t = [...document.querySelectorAll("[data-k]")].reduce((s2, i) => s2 + (+i.value || 0), 0); const el = $("#ptop"); if (el) { el.textContent = fmt(t, 1); el.style.color = Math.abs(t - 100) < 0.51 ? "var(--good)" : "var(--acc2)"; } };
     document.querySelectorAll("[data-k]").forEach(i => i.oninput = top); top();
   };
@@ -1531,7 +1542,11 @@ async function kanunTeklifEkrani(tur0, kod0){
       veri = mad === "duzenleme" ? { madde: mad, kod: $("#akod").value, deger: +$("#akod_deger").value }
         : mad === "serbest_birak" ? { madde: mad, kod: ($("#akod2") || {}).value } : { madde: mad, deger: +$("#adeger").value }; }
     try {
-      const r = await API.rpc("kanun_teklif", { p_tur: tur, p_baslik: $("#kbaslik").value, p_metin: $("#kgerekce").value, p_veri: veri });
+      const r = tur === "vergi"
+        ? await API.rpc("vergi_kanun_teklif",{p_oran:+$("#pvergi").value,p_baslik:$("#kbaslik").value,p_metin:$("#kgerekce").value})
+        : tur === "borc_affi"
+          ? await API.rpc("borc_affi_kanun_teklif",{p_oran:+$("#paf").value,p_baslik:$("#kbaslik").value,p_metin:$("#kgerekce").value})
+          : await API.rpc("kanun_teklif", { p_tur: tur, p_baslik: $("#kbaslik").value, p_metin: $("#kgerekce").value, p_veri: veri });
       toast(tur === "anayasa" ? "Teklifin Meclis'te. Şimdi vekillerden imza topla." : "Teklifin Meclis gündemine alındı."); D.yigin.pop(); ekranAc(() => kanunEkrani(r.id));
     } catch (err) { $("#khata").textContent = hataCevir(err.message); }
   };
