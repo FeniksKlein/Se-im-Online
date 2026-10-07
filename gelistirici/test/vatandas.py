@@ -58,6 +58,11 @@ assert abs(s_["maas"] - asg_saat) < 0.01 and s_["vergi"] == 0                   
 assert abs(s_["kent"] - asg_saat * 0.02) < 0.01 and abs(s_["gecim"] - 350 / 24) < 0.01
 net8 = round((asg_saat * 0.98 - 350 / 24) * 8)
 assert kb["birikmis"] == net8, (kb["birikmis"], net8)
+# oyun hızı: canlıdaki varsayılan ×3; yalnız vatandaş maaşını katlar (makam maaşı değişmez)
+k("update oyun.ayarlar set maas_hizi = 3 where id = 1")
+h3 = hy(ali)["kumbara"]["saatlik"]
+assert abs(h3["maas"] - asg_saat * 3) < 0.01 and h3["makam"] == 0, h3
+k("update oyun.ayarlar set maas_hizi = 1 where id = 1")
 r = rpc(ali, "topla")
 assert r["para"] == 10000 + net8 and r["sonuc"]["ilk"] and r["sonuc"]["seri"] == 1 and r["statu"]["puan"] == 1
 hata_bekle(rpc, ali, "topla", icerir="henüz boş")

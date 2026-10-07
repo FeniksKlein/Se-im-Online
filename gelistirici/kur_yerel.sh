@@ -10,4 +10,4 @@ done
 psql -h /tmp -U postgres -d oyun_test -q -At -v ON_ERROR_STOP=1 -c "select oyun.guncelleme_bitti()" >/dev/null
 echo kuruldu
 # Yerel test: eski testler için vatandaşlık şartlarını gevşet (yeni testler kendi değerlerini kurar)
-psql -h /tmp -U postgres -d oyun_test -q -c "update oyun.ayarlar set oy_min_kidem=0, oy_il_gun=0, cihaz_zorunlu=false, parti_kurucu_sayi=1, parti_kurucu_kidem=0, coklu_kontrol=false, eposta_zorunlu=false"
+psql -h /tmp -U postgres -d oyun_test -q -c "update oyun.ayarlar set maas_hizi=1, oy_min_kidem=0, oy_il_gun=0, cihaz_zorunlu=false, parti_kurucu_sayi=1, parti_kurucu_kidem=0, coklu_kontrol=false, eposta_zorunlu=false"

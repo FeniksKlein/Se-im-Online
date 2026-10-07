@@ -105,7 +105,7 @@ begin
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
 
-select oyun.guncelleme_basla('2026.10.06-3', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.10.07-1', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -3739,6 +3739,8 @@ grant execute on function public.push_bitti(jsonb) to service_role;
 -- =====================================================================
 
 alter table oyun.ayarlar add column if not exists baslangic_para numeric not null default 10000;
+-- Vatandaş maaşı çarpanı (oyun hızı): asgari ücretin saatlik karşılığı bu kadar katıyla ödenir. Makam maaşları etkilenmez.
+alter table oyun.ayarlar add column if not exists maas_hizi numeric not null default 3;
 
 -- Önceki taslak sürümün (enerji/deneyim) kalıntıları
 do $$
@@ -4053,7 +4055,7 @@ end $$;
 create or replace function oyun.gelir_hesap(u uuid, t timestamptz) returns jsonb language plpgsql stable as $$
 declare p oyun.profiller; c oyun.cuzdan; ul oyun.ulke; st jsonb; ilc numeric; ub numeric; seri_y int; seri_b numeric;
         maas numeric; makam numeric; brut numeric; vergi numeric; kent numeric; gecim numeric; gecim_ind numeric; net numeric;
-        saat numeric; bugun date := (t at time zone 'Europe/Istanbul')::date; destek numeric := 0; hem numeric := 0; asg_saat numeric; kv numeric;
+        saat numeric; v_hiz numeric := coalesce((select maas_hizi from oyun.ayarlar where id = 1), 1); bugun date := (t at time zone 'Europe/Istanbul')::date; destek numeric := 0; hem numeric := 0; asg_saat numeric; kv numeric;
 begin
   select * into p from oyun.profiller where id = u;
   select * into c from oyun.cuzdan where user_id = u;
@@ -4065,7 +4067,7 @@ begin
   seri_y := case when c.seri_gun = bugun then c.seri when c.seri_gun = bugun - 1 then c.seri + 1 else 1 end;
   seri_b := least(oyun.duz('seri_tavan'), 5 * (seri_y - 1));
   asg_saat := ul.asgari / 720;
-  maas := asg_saat * (st ->> 'carpan')::numeric * ilc * (1 + ub / 100);
+  maas := asg_saat * v_hiz * (st ->> 'carpan')::numeric * ilc * (1 + ub / 100);
   -- Meclis devamsızlık kesintisi (mevzuat): vekilin katılmadığı oylamalar oranında
   makam := coalesce((select sum(oyun.makam_maasi(m.tur, m.il_id) * case when m.tur = 'mv' then 1 - oyun.vekil_kesinti_orani(u, t) / 100 else 1 end)
                      from oyun.makamlar m where m.user_id = u and m.bit is null), 0) / 720;
