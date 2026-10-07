@@ -49,3 +49,13 @@ Güncellemeler yalnızca EKLER (yeni tablo/sütun/makam). Oyuncunun makamı, par
 
 ## Tanıtım
 Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi yüksek olursa tamamlanıp yayınlanacak.
+
+
+## 2026-10-07 · 2026.10.07-8 canlı güncelleme
+- Siyasi sistem: erken seçim kararı/çağrısı ve TBMM oylaması; parlamenter sistemde hükümet kurma görüşmeleri, koalisyon, dışarıdan destekli azınlık hükümeti, güvenoyu, gensoru ve koalisyon ortağının çekilmesiyle hükümetin düşmesi.
+- Anayasa ekranı: hükümet sistemi, seçim barajı, CB görev süresi, milletvekili sayısı, yerel yönetim yetkisi ve erken seçim çoğunluğu gerçek oyun motoruna bağlı.
+- Genel seçim barajı %7. İttifak toplamı %7'yi geçerse ittifaktaki partiler barajı geçmiş sayılır.
+- Genel seçime katılmak için partinin Türkiye'de en az 1 il teşkilatı yeterli; belediye adaylığı için ilgili il teşkilatı gerekli. Teşkilat taban maliyeti 500'e düşürüldü.
+- Vadesiz banka hesabı oyuncular arası transferin tek kanalı oldu: cüzdandan cüzdana havale kaldırıldı, transfer vadesizden vadesize gider.
+- Bütün oyuncu transferleri oyun.banka_transfer tablosunda kalıcı kayıtlı. Yönetici panelinde gönderen/alıcı, tutar, açıklama, tarih, iki hesap arasındaki 30 günlük toplam ve bağlı-hesap uyarısı görülebilir/filtrelenebilir.
+- Web/GitHub Pages ve uygulama tek dosyası 2026.10.07-8 olarak derlendi. Canlı Supabase migration'ları uygulandı.
