@@ -161,7 +161,7 @@ language sql stable set search_path='' as $$
 $$;
 
 create or replace function oyun.unvan(u uuid) returns text
-language sql stable set search_path='' as $
+language sql stable set search_path='' as $body$
   select coalesce(
     (select 'Başbakan' from oyun.hukumetler h where h.basbakan=u and h.durum='gorevde' and h.bit is null limit 1),
     (select 'Cumhurbaşkanı' from oyun.makamlar where user_id=u and tur='cb' and bit is null limit 1),
@@ -172,13 +172,13 @@ language sql stable set search_path='' as $
     (select i.ad||' Belediye Başkanı' from oyun.makamlar m join oyun.iller i on i.id=m.il_id where m.user_id=u and m.tur='bel' and m.bit is null limit 1),
     (select pa.kisa||' Genel Başkan Yardımcısı' from oyun.parti_gby g join oyun.partiler pa on pa.id=g.parti_id where g.user_id=u limit 1)
   )
-$;
+$body$;
 
 create or replace function oyun.meclis_yazabilir(u uuid) returns boolean
-language sql stable set search_path='' as $
+language sql stable set search_path='' as $body$
   select exists(select 1 from oyun.makamlar where user_id=u and bit is null and tur in ('mv','cb','bakan'))
       or exists(select 1 from oyun.hukumetler where basbakan=u and durum='gorevde' and bit is null)
-$;
+$body$;
 
 create or replace function oyun.cb_zorunlu(p oyun.profiller) returns void
 language plpgsql set search_path='' as $$
