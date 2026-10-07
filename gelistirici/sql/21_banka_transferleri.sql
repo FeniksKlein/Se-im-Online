@@ -57,6 +57,9 @@ begin
   if gm.vadesiz<m then
     raise exception 'Transfer için vadesiz hesabında yeterli para yok. Bakiye: % ₺.',oyun.tl(gm.vadesiz);
   end if;
+  if oyun.mevduat_toplam(h.id)+m>oyun.banka_tavani() then
+    raise exception 'Alıcının banka mevduatı üst sınıra çok yakın. Bu transfer alıcının mevduat tavanını aşar.';
+  end if;
 
   update oyun.banka_musteri set vadesiz=vadesiz-m where user_id=p.id;
   update oyun.banka_musteri set vadesiz=vadesiz+m where user_id=h.id;
@@ -174,3 +177,53 @@ end $$;
 
 revoke all on function public.admin_transferler(int,text,numeric) from public,anon;
 grant execute on function public.admin_transferler(int,text,numeric) to authenticated;
+
+
+create or replace function public.admin_transferler_sayfa(
+  p_limit int default 100,p_offset int default 0,p_ara text default null,p_min numeric default null
+) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare
+  p oyun.profiller:=oyun.yonetici_zorunlu();
+  lim int:=least(greatest(coalesce(p_limit,100),1),250);
+  off int:=greatest(coalesce(p_offset,0),0);
+  ara text:=lower(btrim(coalesce(p_ara,'')));
+  toplam int;
+  satirlar jsonb;
+begin
+  select count(*) into toplam
+  from oyun.banka_transfer bt
+  join oyun.profiller gp on gp.id=bt.gonderen
+  join oyun.profiller ap on ap.id=bt.alici
+  where (ara='' or lower(gp.kad) like '%'||ara||'%' or lower(ap.kad) like '%'||ara||'%')
+    and (p_min is null or bt.tutar>=p_min);
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+      'id',t.id,'zaman',t.zaman,'gonderen',g.kad,'alici',a.kad,'tutar',t.tutar,'aciklama',t.aciklama,
+      'gonderen_olusturma',g.olusturma,'alici_olusturma',a.olusturma,
+      'ikili_30gun',(select count(*) from oyun.banka_transfer z
+        where z.zaman>oyun.simdi()-interval '30 days'
+          and ((z.gonderen=t.gonderen and z.alici=t.alici) or (z.gonderen=t.alici and z.alici=t.gonderen))),
+      'ikili_tutar_30gun',(select coalesce(sum(z.tutar),0) from oyun.banka_transfer z
+        where z.zaman>oyun.simdi()-interval '30 days'
+          and ((z.gonderen=t.gonderen and z.alici=t.alici) or (z.gonderen=t.alici and z.alici=t.gonderen))),
+      'bagli_hesap',exists(select 1 from oyun.bagli_hesaplar(t.gonderen)b where b=t.alici)
+    ) order by t.zaman desc,t.id desc),'[]'::jsonb)
+  into satirlar
+  from (
+    select bt.* from oyun.banka_transfer bt
+    join oyun.profiller gp on gp.id=bt.gonderen
+    join oyun.profiller ap on ap.id=bt.alici
+    where (ara='' or lower(gp.kad) like '%'||ara||'%' or lower(ap.kad) like '%'||ara||'%')
+      and (p_min is null or bt.tutar>=p_min)
+    order by bt.zaman desc,bt.id desc
+    limit lim offset off
+  )t
+  join oyun.profiller g on g.id=t.gonderen
+  join oyun.profiller a on a.id=t.alici;
+
+  return jsonb_build_object('toplam',toplam,'offset',off,'limit',lim,'satirlar',satirlar);
+end $$;
+
+revoke all on function public.admin_transferler_sayfa(int,int,text,numeric) from public,anon;
+grant execute on function public.admin_transferler_sayfa(int,int,text,numeric) to authenticated;
