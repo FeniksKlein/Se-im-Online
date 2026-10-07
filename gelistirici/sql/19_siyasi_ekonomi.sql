@@ -1304,3 +1304,62 @@ revoke all on function public.borc_affi_kararname(numeric,text) from public,anon
 grant execute on function public.borc_affi_kararname(numeric,text) to authenticated;
 revoke all on function public.ekonomi_kanun_teklif(text,text,text,numeric) from public,anon;
 grant execute on function public.ekonomi_kanun_teklif(text,text,text,numeric) to authenticated;
+
+
+-- ---------------------------------------------------------------------
+-- YENİ OYUNCU VERİLERİNİ KORUMA
+-- ---------------------------------------------------------------------
+create or replace function oyun.parmak_izi() returns jsonb language plpgsql as $$
+declare sonuc jsonb := '{}'; r record; v text; yeni_tablo text;
+begin
+  for r in select * from (values
+    ('oyuncu',        'oyun.profiller',     'select count(*)::text from oyun.profiller'),
+    ('profiller',     'oyun.profiller',     'select md5(coalesce(string_agg(id::text||''|''||kad||''|''||il_id||''|''||coalesce(parti_id::text,'''')||''|''||olusturma::text, '','' order by id), '''')) from oyun.profiller'),
+    ('makamlar',      'oyun.makamlar',      'select md5(coalesce(string_agg(id||''|''||tur||''|''||user_id||''|''||coalesce(il_id::text,'''')||''|''||coalesce(bakanlik,'''')||''|''||bas::text||''|''||coalesce(bit::text,''''), '','' order by id), '''')) from oyun.makamlar'),
+    ('aktif_makam',   'oyun.makamlar',      'select count(*)::text from oyun.makamlar where bit is null'),
+    ('cuzdanlar',     'oyun.cuzdan',        'select md5(coalesce(string_agg(user_id||''|''||para||''|''||kidem||''|''||coalesce(seri::text,''''), '','' order by user_id), '''')) from oyun.cuzdan'),
+    ('toplam_para',   'oyun.cuzdan',        'select coalesce(sum(para),0)::text from oyun.cuzdan'),
+    ('toplam_kidem',  'oyun.cuzdan',        'select coalesce(sum(kidem),0)::text from oyun.cuzdan'),
+    ('partiler',      'oyun.partiler',      'select md5(coalesce(string_agg(id||''|''||ad||''|''||kisa||''|''||coalesce(gb::text,'''')||''|''||kasa||''|''||kapali, '','' order by id), '''')) from oyun.partiler'),
+    ('gby',           'oyun.parti_gby',     'select count(*)::text from oyun.parti_gby'),
+    ('oylar',         'oyun.oylar',         'select count(*)::text from oyun.oylar'),
+    ('secimler',      'oyun.secimler',      'select md5(coalesce(string_agg(id||''|''||tur||''|''||donem||''|''||durum, '','' order by id), '''')) from oyun.secimler'),
+    ('adaylar',       'oyun.adaylar',       'select count(*)::text from oyun.adaylar'),
+    ('kazananlar',    'oyun.kazananlar',    'select count(*)::text from oyun.kazananlar'),
+    ('hareketler',    'oyun.hesap_hareket', 'select count(*)::text from oyun.hesap_hareket'),
+    ('kanunlar',      'oyun.kanunlar',      'select md5(coalesce(string_agg(id||''|''||durum||''|''||coalesce(no::text,''''), '','' order by id), '''')) from oyun.kanunlar'),
+    ('kararnameler',  'oyun.kararnameler',  'select count(*)::text from oyun.kararnameler'),
+    ('mesajlar',      'oyun.mesajlar',      'select count(*)::text from oyun.mesajlar'),
+    ('ozel',          'oyun.ozel', 'select count(*)::text from oyun.ozel'),
+    ('vaatler',       'oyun.vaatler',       'select count(*)::text from oyun.vaatler'),
+    ('itibar',        'oyun.itibar',        'select count(*)::text from oyun.itibar'),
+    ('mulkler',       'oyun.mulkler',       'select md5(coalesce(string_agg(id||''|''||user_id||''|''||bedel, '','' order by id), '''')) from oyun.mulkler'),
+    ('ulke',          'oyun.ulke',          'select md5(coalesce(string_agg(hazine||''|''||vergi||''|''||asgari, '',''), '''')) from oyun.ulke'),
+    ('iller',         'oyun.il_durum',      'select md5(coalesce(string_agg(il_id||''|''||gelisim||''|''||coalesce(kasa,0), '','' order by il_id), '''')) from oyun.il_durum'),
+    ('satin_alma',    'oyun.satin_almalar', 'select count(*)::text from oyun.satin_almalar'),
+    ('referandum',    'oyun.referandumlar', 'select count(*)::text from oyun.referandumlar'),
+    ('duzenlemeler',  'oyun.duzenlemeler',  'select md5(coalesce(string_agg(kod||''|''||deger||''|''||kaynak, '','' order by kod), '''')) from oyun.duzenlemeler'),
+    ('banka',         'oyun.banka_musteri', 'select md5(coalesce(string_agg(user_id||''|''||vadesiz||''|''||kredi_notu, '','' order by user_id), '''')) from oyun.banka_musteri'),
+    ('vadeli',        'oyun.vadeli',        'select md5(coalesce(string_agg(id||''|''||user_id||''|''||anapara||''|''||durum, '','' order by id), '''')) from oyun.vadeli'),
+    ('krediler',      'oyun.krediler',      'select md5(coalesce(string_agg(id||''|''||user_id||''|''||kalan||''|''||durum, '','' order by id), '''')) from oyun.krediler'),
+    ('teskilat',      'oyun.parti_teskilat','select count(*)::text from oyun.parti_teskilat'),
+    ('moderator',     'oyun.moderatorler',  'select md5(coalesce(string_agg(user_id||''|''||array_to_string(yetkiler, '';''), '','' order by user_id), '''')) from oyun.moderatorler')
+  ) x(ad, tablo, sorgu) loop
+    if to_regclass(r.tablo) is null then continue; end if;
+    begin
+      execute r.sorgu into v;
+      sonuc := sonuc || jsonb_build_object(r.ad, v);
+    exception when undefined_column or undefined_table then null;   -- eski sürümde olmayan sütun: karşılaştırmaya girmez
+    end;
+  end loop;
+  -- Basın kasaları, abonelikler ve il görevleri de sonraki güncellemelerde korunur.
+  -- İlk kurulumda henüz bulunmayan tablolar eski sürümün karşılaştırmasına girmez.
+  foreach yeni_tablo in array array['parti_teskilat_gorev', 'oyuncu_gazeteleri',
+    'gazete_abonelik', 'gazete_yazar_teklif', 'gazete_yazarlar', 'gazete_yayinlari', 'gazete_hareket',
+    'parti_ad_gecmis', 'parti_tuzuk_teklifleri', 'parti_tuzuk_oylari', 'borc_aflari'] loop
+    if to_regclass('oyun.' || yeni_tablo) is null then continue; end if;
+    execute format('select md5(coalesce(string_agg(to_jsonb(x)::text, '','' order by to_jsonb(x)::text), '''')) from oyun.%I x', yeni_tablo) into v;
+    sonuc := sonuc || jsonb_build_object(yeni_tablo, v);
+  end loop;
+  return sonuc;
+end $$;
