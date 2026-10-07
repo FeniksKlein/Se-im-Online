@@ -1163,6 +1163,14 @@ function kuralKart(k, m){
     ${m.vekil_mi ? (k.kanun_engel ? `<div class="kucuk" style="margin-top:6px;color:var(--gold2)">${e(k.kanun_engel)}</div>`
       : `<button class="btn ikinci" onclick="ekranAc(()=>kanunTeklifEkrani('duzenleme','${k.kod}'))">Bu konuda kanun teklifi ver</button>`) : ""}</div>`;
 }
+function anayasaDegerYaz(a){
+  if(a.kod==="hukumet_sistemi") return +a.deger===1?"Parlamenter sistem":"Cumhurbaşkanlığı sistemi";
+  if(["secim_baraji","yerel_yetki","erken_secim_esigi","vergi_tavani"].includes(a.kod)) return "%"+fmt(a.deger,a.kod==="secim_baraji"?1:0);
+  if(a.kod==="cb_gorev_suresi") return fmt(a.deger)+" ay";
+  if(a.kod==="milletvekili_sayisi") return fmt(a.deger)+" sandalye";
+  if(a.kod==="kararname_sinir") return +a.deger===0?"kaldırıldı":fmt(a.deger)+" / gün";
+  return fmt(a.deger);
+}
 async function mevzuatHtml(){
   const m = await API.rpc("mevzuat"); D._mevzuat = m;
   const be = m.beni_etkileyen, etk = [];
@@ -1178,7 +1186,7 @@ async function mevzuatHtml(){
     <div class="kart"><h2>Mevzuat</h2><p class="alt">Oyuncuların cüzdanına doğrudan dokunan kurallar. Yetki sırası gerçekteki gibidir: <b>Anayasa</b> (halk oylaması) › <b>Kanun</b> (Meclis) › <b>Cumhurbaşkanlığı kararnamesi</b>. Meclis bir konuyu kanunla düzenlediyse cumhurbaşkanı onu kararnameyle değiştiremez; anayasaya bağlanan kuralı ancak yeni bir halk oylaması değiştirir.</p>
       ${etk.length ? `<div class="kucuk" style="margin-top:8px;font-weight:800;color:var(--txt2)">SENİ ŞU AN ETKİLEYENLER</div>${etk.map(x => `<div class="kucuk" style="padding:3px 0">• ${x}</div>`).join("")}` : ""}</div>
     ${m.kurallar.map(k => kuralKart(k, m)).join("")}
-    <div class="kart"><h2>Anayasa</h2>${m.anayasa.map(a => `<div class="kv"><span class="k">${e(a.ad)}</span><span class="v">${a.kod === "vergi_tavani" ? "%" + fmt(a.deger) : a.deger == 0 ? "kaldırıldı" : fmt(a.deger) + " / gün"}</span></div>
+    <div class="kart"><h2>Anayasa</h2>${m.anayasa.map(a => `<div class="kv"><span class="k">${e(a.ad)}</span><span class="v">${e(anayasaDegerYaz(a))}</span></div>
         <div class="kucuk" style="margin-bottom:6px">${e(a.aciklama)}${a.kanun_no ? ` · ${a.kanun_no} sayılı değişiklikle` : ""}</div>`).join("")}
       <p class="kucuk">Anayasa değişikliği: bir milletvekili teklif eder, vekillerin üçte biri imza verir, Meclis gizli oyla oylar. Beşte üç kabul → halk oylaması. Üçte iki kabul → cumhurbaşkanı yayımlar ya da halkoyuna sunar.</p>
       ${m.vekil_mi ? `<button class="btn altin" onclick="ekranAc(()=>kanunTeklifEkrani('anayasa'))">Anayasa değişikliği teklif et</button>` : ""}</div>
@@ -1560,12 +1568,19 @@ async function kanunTeklifEkrani(tur0, kod0){
       try { $("#" + id + "_etki").innerHTML = etkiOzet(await API.rpc("mevzuat_onizle", { p_kod: s.value, p_deger: +$("#" + id + "_deger").value })); } catch (err) { $("#" + id + "_etki").textContent = hataCevir(err.message); } }, 300); };
   };
   const anayasaForm = () => {
-    const mad = $("#amadde").value, ay = (k2) => mz.anayasa.find(a => a.kod === k2) || {};
-    $("#aparam").innerHTML = mad === "duzenleme" ? kuralSec(mz.kurallar, "akod", kod0)
-      : mad === "serbest_birak" ? (anayasada.length ? `<div class="alan"><label>Anayasadan çıkarılacak kural</label><select id="akod2">${anayasada.map(k => `<option value="${k.kod}">${e(k.ad)} (${e(k.yazi)})</option>`).join("")}</select></div>` : `<p class="kucuk">Anayasaya bağlanmış kural yok.</p>`)
-      : mad === "kararname_sinir" ? `<div class="alan"><label>Cumhurbaşkanının günlük kararname sayısı (0-5) · şu an ${fmt(ay("kararname_sinir").deger)}</label><input id="adeger" type="number" min="0" max="5" step="1" value="${ay("kararname_sinir").deger}" inputmode="numeric"></div><p class="kucuk">0 yazarsan cumhurbaşkanının kararname yetkisi tamamen kalkar.</p>`
-      : `<div class="alan"><label>Gelir vergisinin anayasal tavanı (%20-45) · şu an %${fmt(ay("vergi_tavani").deger)}</label><input id="adeger" type="number" min="20" max="45" step="1" value="${ay("vergi_tavani").deger}" inputmode="numeric"></div>`;
-    if (mad === "duzenleme") kuralBaglaForm("akod", mz.kurallar);
+    const mad=$("#amadde").value, ay=(k2)=>mz.anayasa.find(a=>a.kod===k2)||{};
+    if(mad==="duzenleme"){
+      $("#aparam").innerHTML=kuralSec(mz.kurallar,"akod",kod0); kuralBaglaForm("akod",mz.kurallar); return;
+    }
+    if(mad==="serbest_birak"){
+      $("#aparam").innerHTML=anayasada.length?`<div class="alan"><label>Anayasadan çıkarılacak kural</label><select id="akod2">${anayasada.map(k=>`<option value="${k.kod}">${e(k.ad)} (${e(k.yazi)})</option>`).join("")}</select></div>`:`<p class="kucuk">Anayasaya bağlanmış kural yok.</p>`; return;
+    }
+    const a=ay(mad);
+    if(mad==="hukumet_sistemi"){
+      $("#aparam").innerHTML=`<div class="alan"><label>Hükümet sistemi · şu an ${+a.deger===1?"Parlamenter":"Cumhurbaşkanlığı"}</label><select id="adeger"><option value="0" ${+a.deger===0?"selected":""}>Cumhurbaşkanlığı sistemi</option><option value="1" ${+a.deger===1?"selected":""}>Parlamenter sistem</option></select></div><p class="kucuk">${e(a.aciklama||"")}</p>`; return;
+    }
+    const step=mad==="secim_baraji"?"0.5":"1";
+    $("#aparam").innerHTML=`<div class="alan"><label>${e(a.ad||mad)} · şu an ${e(anayasaDegerYaz(a))}</label><input id="adeger" type="number" min="${a.min}" max="${a.max}" step="${step}" value="${a.deger}" inputmode="decimal"></div><p class="kucuk">${e(a.aciklama||"")}</p>`;
   };
   const param = () => {
     $("#tacik").textContent = acik[tur];
@@ -1577,7 +1592,7 @@ async function kanunTeklifEkrani(tur0, kod0){
       : tur === "secim" ? `<div class="alan"><label>Yeni baraj (%0-%10) · şu an %${fmt(u.baraj, 1)}</label><input id="pbaraj" type="number" step="0.5" value="${u.baraj}" inputmode="decimal"></div>`
       : tur === "iptal" ? `<div class="alan"><label>İptal edilecek karar</label><select id="pkarar">${kararlar.map(k => `<option value="${k.id}">${k.no} sayılı: ${e(k.baslik)}</option>`).join("") || `<option value="">Yürürlükte karar yok</option>`}</select></div>`
       : tur === "duzenleme" ? (kanunluk.length ? kuralSec(kanunluk, "dkod", kod0) : `<p class="kucuk">Bütün kurallar anayasaya bağlanmış; önce anayasa değişikliği gerekir.</p>`)
-      : tur === "anayasa" ? `<div class="alan"><label>Değişecek madde</label><select id="amadde"><option value="duzenleme">Bir kuralı anayasaya bağla</option><option value="serbest_birak">Bir kuralı anayasadan çıkar</option><option value="kararname_sinir">Cumhurbaşkanının kararname yetkisi</option><option value="vergi_tavani">Gelir vergisinin anayasal tavanı</option></select></div><div id="aparam"></div>` : "";
+      : tur === "anayasa" ? `<div class="alan"><label>Değişecek madde</label><select id="amadde"><option value="duzenleme">Bir kuralı anayasaya bağla</option><option value="serbest_birak">Bir kuralı anayasadan çıkar</option><option value="hukumet_sistemi">Hükümet sistemi</option><option value="secim_baraji">Seçim barajı</option><option value="cb_gorev_suresi">Cumhurbaşkanı görev süresi</option><option value="milletvekili_sayisi">Milletvekili sayısı</option><option value="yerel_yetki">Yerel yönetim yetkileri</option><option value="erken_secim_esigi">Erken seçim Meclis eşiği</option><option value="kararname_sinir">Cumhurbaşkanının kararname yetkisi</option><option value="vergi_tavani">Gelir vergisinin anayasal tavanı</option></select></div><div id="aparam"></div>` : "";
     if (tur === "duzenleme") kuralBaglaForm("dkod", kanunluk);
     if (tur === "anayasa") { $("#amadde").onchange = anayasaForm; anayasaForm(); }
     if (tur === "vergi") { let z=null; const i=$("#pvergi"); const yaz=()=>{clearTimeout(z);z=setTimeout(async()=>{try{$("#pveretki").innerHTML=etkiOzet(await API.rpc("politika_onizle",{p_kod:"vergi",p_deger:+i.value}));}catch(err){$("#pveretki").textContent=hataCevir(err.message);}},250)}; i.oninput=yaz; yaz(); }
