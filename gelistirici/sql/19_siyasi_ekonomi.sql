@@ -889,12 +889,13 @@ end $$;
 create or replace function oyun.ekonomi_kanun_yururluk()
 returns trigger
 language plpgsql security definer
-set search_path='' as $$
+set search_path='' as $
 declare
   oz text;
   d numeric;
   e jsonb;
   eski numeric;
+  pe jsonb;
 begin
   if new.durum<>'yururlukte' or old.durum='yururlukte' then return new; end if;
   oz:=new.veri->>'ozel_tur';
@@ -908,13 +909,22 @@ begin
 
   elsif oz='vergi' then
     d:=round((new.veri->>'deger')::numeric,1);
+    pe:=oyun.politika_etki('vergi',d);
     select vergi into eski from oyun.ulke where id=1;
+
     update oyun.ulke
        set vergi=d,
            vergi_kanun=d,
            vergi_alt=least(vergi_alt,d),
            vergi_ust=greatest(vergi_ust,d)
      where id=1;
+
+    perform oyun.etki_uygula(jsonb_build_object(
+      'enflasyon',coalesce((pe->>'enflasyon')::numeric,0),
+      'buyume',coalesce((pe->>'buyume')::numeric,0),
+      'issizlik',coalesce((pe->>'issizlik')::numeric,0),
+      'memnuniyet',coalesce((pe->>'memnuniyet')::numeric,0)
+    ),null);
 
     insert into oyun.politika_kayit(kod,eski,yeni,user_id,makam,zaman)
     values('vergi',eski,d,new.teklif_eden,'meclis',coalesce(new.sonuc_at,oyun.simdi()));
@@ -982,6 +992,74 @@ begin
     'oyuncu_net_fark',case when p_kod='vergi' then round(-fark,1) else 0 end
   );
 end $$;
+
+create or replace function public.politika_ayarla(p_kod text,p_deger numeric)
+returns jsonb
+language plpgsql security definer
+set search_path='oyun','public','pg_temp' as $
+declare
+  p oyun.profiller:=oyun.profilim();
+  t timestamptz:=oyun.simdi();
+  d record;
+  s record;
+  eski numeric;
+  yeni numeric;
+  son timestamptz;
+  mk text;
+  unvan text;
+  bas text;
+  pe jsonb;
+begin
+  select * into d from oyun.politika_tanim() x where x.kod=p_kod;
+  if d.kod is null then raise exception 'Geçersiz politika.'; end if;
+
+  if exists(select 1 from oyun.makamlar where user_id=p.id and tur='cb' and bit is null) then
+    mk:='cb'; unvan:='Cumhurbaşkanı';
+  elsif exists(select 1 from oyun.makamlar where user_id=p.id and tur='bakan' and bakanlik=d.bakanlik and bit is null) then
+    mk:='bakan';
+    unvan:=(select replace(ad,'Bakanlığı','Bakanı') from oyun.bakanliklar where kod=d.bakanlik);
+  else
+    raise exception 'Bu ayarı yalnızca cumhurbaşkanı ve ilgili bakan yapabilir.';
+  end if;
+
+  select * into s from oyun.politika_sinir(p_kod);
+  eski:=oyun.politika_deger(p_kod);
+  yeni:=case when d.birim in ('tl_ay','tl_gun') then round(p_deger) else round(p_deger,1) end;
+
+  if yeni is null or yeni=eski then raise exception 'Yeni değer mevcut değerle aynı.'; end if;
+  if yeni<s.alt or yeni>s.ust then
+    raise exception '% şu an % ile % arasında ayarlanabilir.',
+      d.ad,oyun.birim_yaz(s.alt,d.birim),oyun.birim_yaz(s.ust,d.birim);
+  end if;
+
+  select max(zaman) into son from oyun.politika_kayit where kod=p_kod;
+  if son is not null and son+make_interval(days=>d.bekleme_gun)>t then
+    raise exception '% en erken % tarihinde yeniden değiştirilebilir.',
+      d.ad,to_char((son+make_interval(days=>d.bekleme_gun)) at time zone 'Europe/Istanbul','DD.MM HH24:MI');
+  end if;
+
+  pe:=oyun.politika_etki(p_kod,yeni);
+  execute format('update oyun.ulke set %I=$1 where id=1',p_kod) using yeni;
+
+  if p_kod='vergi' then
+    perform oyun.etki_uygula(jsonb_build_object(
+      'enflasyon',coalesce((pe->>'enflasyon')::numeric,0),
+      'buyume',coalesce((pe->>'buyume')::numeric,0),
+      'issizlik',coalesce((pe->>'issizlik')::numeric,0),
+      'memnuniyet',coalesce((pe->>'memnuniyet')::numeric,0)
+    ),null);
+  end if;
+
+  insert into oyun.politika_kayit(kod,eski,yeni,user_id,makam,zaman)
+  values(p_kod,eski,yeni,p.id,mk,t);
+
+  bas:=format('%s: %s → %s',d.ad,oyun.birim_yaz(eski,d.birim),oyun.birim_yaz(yeni,d.birim));
+  perform oyun.gazete_ekle(case when mk='cb' then 'kararname' else 'icraat' end,
+    bas,format('%s %s tarafından belirlendi.',unvan,p.kad),null,t);
+  perform oyun.olay('ekonomi',format('%s %s: %s',unvan,p.kad,bas),null,p.parti_id,t);
+
+  return jsonb_build_object('tamam',true,'kod',p_kod,'eski',eski,'yeni',yeni,'etki',pe);
+end $;
 
 insert into oyun.vaat_turleri(kapsam,kod,ad,birim,tip,yon,min,max,sira,aciklama)
 values(
