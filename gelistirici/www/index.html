@@ -556,6 +556,12 @@ function siradakiAn(s){
   for (const [k, ad] of anlar) if (s[k] && new Date(s[k]).getTime() > t) return { ad, an: new Date(s[k]).getTime() };
   return null;
 }
+function secimTakvimAdi(s){
+  const tur = TUR[s.tur] || { ad: s.tur };
+  const hedef = s.hedef_il_ad ? " · " + e(s.hedef_il_ad)
+    : s.hedef_parti ? " · " + e(s.hedef_parti.kisa || s.hedef_parti.ad || "") : "";
+  return (s.ara ? '<span class="rozet kirmizi" style="margin-right:5px">Olağanüstü</span>' : "") + e(tur.ad) + hedef;
+}
 function olayKarti(s){
   const p = D.durum.profil, tur = TUR[s.tur];
   const sa = siradakiAn(s);
@@ -579,7 +585,7 @@ function olayKarti(s){
     etiket = `<span class="rozet">Sonuçlandı</span>`;
     aksiyon = `<button class="btn ikinci" onclick="ekranAc(()=>secimEkrani(${s.id}))">Sonuçları gör</button>`;
   } else return "";
-  return `<div class="olay ${cls}"><div class="baslik"><b>${tur.ad}</b>${etiket}</div>
+  return `<div class="olay ${cls}"><div class="baslik"><b>${secimTakvimAdi(s)}</b>${etiket}</div>
     ${sa ? `<div class="alt" style="margin-top:6px">${sa.ad}: ${tarihSaat(sa.an)}</div><div class="sayac" data-an="${sa.an}">${kalan(sa.an - simdi())}</div>` : ""}
     ${s.katilim != null ? `<div class="kucuk" style="margin-top:4px">${s.katilim} oy kullanıldı</div>` : ""}
     ${aksiyon}</div>`;
@@ -641,7 +647,7 @@ async function gundemEkrani(){
     <div class="kart"><h2>Seçim takvimi</h2>${gelecek.length ? gelecek.map(s => {
       const an = new Date(s.basvuru_bas || s.oy_bas), pr = trParca(an);
       return `<div class="takvim-satir"><div class="gun"><b>${pr.g}</b><span>${AYLAR[pr.a - 1].slice(0, 3)}</span></div>
-        <div style="flex:1"><b>${TUR[s.tur].ad}</b><div class="alt">${s.basvuru_bas ? "Başvuru " + tarih(s.basvuru_bas) + " · " : ""}Oylama ${tarih(s.oy_bas)} ${saatYaz(s.oy_bas)}–${saatYaz(s.oy_bit)}</div></div></div>`;
+        <div style="flex:1"><b>${secimTakvimAdi(s)}</b><div class="alt">${s.basvuru_bas ? "Başvuru " + tarih(s.basvuru_bas) + " · " : ""}Oylama ${tarih(s.oy_bas)} ${saatYaz(s.oy_bas)}–${saatYaz(s.oy_bit)}</div></div></div>`;
     }).join("") : `<div class="bos">Yaklaşan seçim yok.</div>`}</div>
     <div class="kart"><h2>Son gelişmeler</h2>${haber.length ? haber.map(h => `<div class="liste-satir"><div class="orta"><div style="font-size:14px">${e(h.metin)}</div><div class="kucuk">${tarihSaat(h.zaman)}</div></div></div>`).join("") : `<div class="bos">Henüz haber yok.</div>`}</div>`;
   iskelet("Gündem", govde);
@@ -935,7 +941,7 @@ function bosMakamHtml(b){
   const say = b.bakanliklar.length + b.belediyeler.length + (b.vekil.bos > 0 ? 1 : 0) + b.partiler.length + (b.cb ? 0 : 1);
   const liste = (l, n) => l.slice(0, n).map(x => `<span class="taahhut yok">${e(x.ad || x.kisa)}</span>`).join("") + (l.length > n ? ` <span class="kucuk">+${l.length - n} daha</span>` : "");
   return `<div class="kart"><h2>Boş makamlar</h2>
-    <p class="alt" style="margin-bottom:8px">Hiçbir makam sahipsiz kalmaz: boş bakanlığa cumhurbaşkanı vekâlet eder, seçimde aday çıkmayan makamda görevdeki yenisi seçilene kadar devam eder, genel başkansız parti kalmaz. Boş makamlar aşağıda; aday olarak sen doldurabilirsin.</p>
+    <p class="alt" style="margin-bottom:8px">İstifayla boşalan cumhurbaşkanlığı, belediye başkanlığı ve genel başkanlık için sistem en yakın olağanüstü seçimi otomatik açar. TBMM Başkanlığı boşalınca Meclis içi ara seçim başlar. Diğer boş makamlar aşağıda; aday veya atamayla doldurulabilir.</p>
     ${say === 0 ? `<div class="bos">Şu an boş makam yok.</div>` : ""}
     ${b.cb ? "" : `<div class="kv"><span class="k">Cumhurbaşkanlığı</span><span class="v kotu">Boş</span></div><div class="kucuk" style="margin-bottom:6px">Cumhurbaşkanı yokken bakanlıklar vekâletsiz kalır, ülke ekonomisi son ayarlarıyla sürer.</div>`}
     ${b.bakanliklar.length ? `<div class="kv"><span class="k">Boş bakanlık</span><span class="v">${b.bakanliklar.length}/12</span></div>
@@ -945,7 +951,7 @@ function bosMakamHtml(b){
     ${b.vekil.bos > 0 ? `<div class="kv"><span class="k">Boş milletvekili sandalyesi</span><span class="v">${b.vekil.bos}/600</span></div>
       <div class="kucuk" style="margin-bottom:8px">Boşalan sandalyeyi partinin yedek listesi doldurur. Meclis'in toplanma, karar ve ısrar yetersayıları dolu sandalye sayısına göre hesaplanır; az vekille de çalışır.</div>` : ""}
     ${b.partiler.length ? `<div class="kv"><span class="k">Genel başkansız parti</span><span class="v">${b.partiler.length}</span></div>
-      <div class="kucuk" style="margin-bottom:8px">Başka görevi olmayan en kıdemli üye otomatik genel başkan olur. ${liste(b.partiler, 6)}</div>` : ""}
+      <div class="kucuk" style="margin-bottom:8px">İstifa nedeniyle boşaldıysa olağanüstü kurultay açılır; seçim süreci yoksa mevcut yedek kuralı devreye girer. ${liste(b.partiler, 6)}</div>` : ""}
     ${b.sonraki.length ? `<div class="kucuk" style="margin-top:8px;font-weight:800;color:var(--txt2)">SIRADAKİ SEÇİMLER</div>${b.sonraki.map(x => `<div class="kv"><span class="k">${SONRAKI[x.tur]}</span><span class="v kucuk">${x.basvuru_bit ? "başvuru " + tarih(x.basvuru_bas) + "–" + tarih(x.basvuru_bit) + " · " : ""}oylama ${tarih(x.oy_bas)}</span></div>`).join("")}` : ""}</div>`;
 }
 async function hukumetHtml(){
@@ -955,7 +961,7 @@ async function hukumetHtml(){
   const bekleyen = (kl || []).filter(k => k.durum === "cb_onayinda");
   const dolu = kab.bakanlar.filter(b => b.kad).length;
   return `
-    ${kab.cb ? `<div class="kart cb-kart" onclick="oyuncuKart('${e(kab.cb.kad)}')" style="cursor:pointer">${amblemKutu(kab.cb.parti, 48)}<div><div class="kucuk">CUMHURBAŞKANI</div><b style="font-size:17px">${e(kab.cb.kad)}</b><div class="alt">${partiRozet(kab.cb.parti)} · göreve başlama ${tarih(kab.cb.bas)}</div></div></div>` : `<div class="kart"><div class="kucuk">CUMHURBAŞKANI</div><div class="alt">Makam boş — ilk cumhurbaşkanı genel seçimde belirlenecek.</div></div>`}
+    ${kab.cb ? `<div class="kart cb-kart" onclick="oyuncuKart('${e(kab.cb.kad)}')" style="cursor:pointer">${amblemKutu(kab.cb.parti, 48)}<div><div class="kucuk">CUMHURBAŞKANI</div><b style="font-size:17px">${e(kab.cb.kad)}</b><div class="alt">${partiRozet(kab.cb.parti)} · göreve başlama ${tarih(kab.cb.bas)}</div></div></div>` : `<div class="kart"><div class="kucuk">CUMHURBAŞKANI</div><div class="alt">Makam boş — yeni cumhurbaşkanı en yakın seçim takviminde belirlenecek.</div></div>`}
     ${cbyim ? `<div class="olay basvuru"><div class="baslik"><b>Cumhurbaşkanlığı masası</b><span class="rozet altin">Yetkilerin</span></div>
       <p class="alt" style="margin-top:6px">Ekonomiyi sen yönetirsin: aşağıdaki ekonomi masasından asgari ücreti, vergiyi, kıdem primini, sosyal desteği ve taşınma desteğini ayarlarsın. Ayrıca kararname çıkarırsın (anayasal sınır şu an günde ${fmt(u.kararname_sinir ?? 3)}): il desteği, bakanlıklara ek ödenek, bayram ikramiyesi, oyunculara dokunan kurallar (Mevzuat sekmesi), tahvil ihracı, özelleştirme ya da serbest karar. Bakanları istediğin an atar, görevden alırsın.</p>
       ${bekleyen.map(k => `<div class="liste-satir" onclick="ekranAc(()=>kanunEkrani(${k.id}))" style="cursor:pointer"><div class="orta"><b>${e(k.baslik)}</b><div class="kucuk">Onayını bekliyor · son ${tarihSaat(k.cb_bit)}</div></div><span class="durum d-cb_onayinda">Karar ver</span></div>`).join("")}
@@ -1571,7 +1577,7 @@ async function gbUslen(id){
 async function partiDetay(id){
   yukleniyor("Parti");
   let p; try { p = await API.rpc("parti_detay", { p_parti: id }); await durumYenile(); } catch (err) { iskelet("Parti", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
-  const ben = D.durum.profil, gbyim = p.uyesiyim && ben.gb;
+  const ben = D.durum.profil, gbyim = p.uyesiyim && ben.gb, araKurultay = p.uyesiyim && D.durum.takvim.some(x => x.ara && x.tur === "kurultay" && x.hedef_parti_id === p.id && ["yakinda","basvuru","oy","sayim"].includes(x.asama));
   const makamAd = (m) => (m || "").split(",").filter(Boolean).map(x => `<span class="rozet altin">${MAKAM_AD[x]}</span>`).join(" ");
   iskelet(e(p.kisa), `
     <div class="kart" style="text-align:center"><div class="amb" style="margin:0 auto 10px;width:72px;height:72px;border-radius:20px;background:${e(p.renk)}22">${amblemSvg(p.amblem, p.renk).replace("<svg", '<svg style="width:42px;height:42px;color:' + e(p.renk) + '"')}</div>
@@ -1584,9 +1590,9 @@ async function partiDetay(id){
       ${!p.uyesiyim ? `<button class="btn altin" onclick="partiyeKatil(${p.id})">Kurucu üye ol</button>` : ""}</div>` : ""}
     <div class="kart"><h2>Yönetim</h2>
       <div class="kv"><span class="k">Genel Başkan</span><span class="v">${p.gb ? `<a class="bag" href="#" onclick="oyuncuKart('${e(p.gb)}');return false">${e(p.gb)}</a>` : "— (genel başkansız)"}</span></div>
-      ${!p.gb && p.uyesiyim ? `<button class="btn" onclick="gbUslen(${p.id})">Genel başkanlığı üstlen</button>` : ""}
+      ${!p.gb && p.uyesiyim && !araKurultay ? `<button class="btn" onclick="gbUslen(${p.id})">Genel başkanlığı üstlen</button>` : ""}${araKurultay ? `<div class="kucuk" style="margin-top:8px;color:var(--gold2)">Olağanüstü kurultay süreci başladı; yeni genel başkan seçimle belirlenecek.</div>` : ""}
       ${[1,2,3,4,5,6].map(i => { const g = p.gby.find(x => x.sira === i); return `<div class="kv"><span class="k">GB Yardımcısı ${i}</span><span class="v">${g ? `<a class="bag" href="#" onclick="oyuncuKart('${e(g.kad)}');return false">${e(g.kad)}</a>` : "—"}</span></div>`; }).join("")}
-      ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button>` : ""}
+      ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
       ${p.uyesiyim && ben.gby ? `<button class="btn tehlike" onclick="gbyIstifa()">Yardımcılıktan istifa et</button>` : ""}</div>
     ${p.uyesiyim ? `<button class="btn tehlike" style="margin:0 0 12px" onclick="partidenAyril()">Partiden ayrıl</button>` : `<button class="btn" style="margin:0 0 12px" onclick="partiyeKatil(${p.id})">Partiye katıl</button>`}
     <div id="teskilatKart"></div>
@@ -1712,8 +1718,36 @@ async function gbyModal(pid){
 }
 async function gorevIstifa(gorev){
   const ad = gorev === "mv" ? "Milletvekilliği" : "Belediye başkanlığı";
-  if (!await onayla(ad + "ndan istifa", `${ad} görevinden ayrılacaksın.${gorev === "mv" ? " Yerine partinin listesinden sıradaki aday Meclis'e girer." : ""} Bu işlem geri alınamaz.`, "İstifa et", true)) return;
-  try { await islem(() => API.rpc("istifa", { p_gorev: gorev }), "İstifan alındı."); yenidenCiz(); } catch (_) {}
+  const ek = gorev === "mv"
+    ? " Yerine partinin listesinden sıradaki uygun aday Meclis'e girer."
+    : " Makam hemen boşalır; yalnız ilin için en yakın olağanüstü seçim takvimi oluşturulur.";
+  if (!await onayla(ad + "ndan istifa", ad + " görevinden ayrılacaksın." + ek + " Bu işlem geri alınamaz.", "İstifa et", true)) return;
+  try {
+    await islem(() => API.rpc("istifa", { p_gorev: gorev }), gorev === "mv" ? "İstifan alındı." : "İstifan alındı. Seçim takvimi güncellendi.");
+    await durumYenile();
+    yenidenCiz();
+  } catch (_) {}
+}
+async function makamIstifa(gorev){
+  const bilgi = {
+    gb: ["Genel başkanlık", "Parti genel başkanlığı hemen boşalır; en yakın zamanda olağanüstü kurultay yapılır."],
+    cb: ["Cumhurbaşkanlığı", "Makam hemen boşalır; en yakın zamanda olağanüstü cumhurbaşkanlığı seçimi yapılır."],
+    tbmm: ["TBMM Başkanlığı", "Makam hemen boşalır; Meclis'te ara başkanlık seçimi için adaylık süreci başlar."]
+  }[gorev];
+  if (!bilgi) return;
+  if (!await onayla(bilgi[0] + " görevinden istifa", bilgi[0] + " görevinden ayrılacaksın. " + bilgi[1] + " Bu işlem geri alınamaz.", "İstifa et", true)) return;
+  try {
+    await islem(() => API.rpc("istifa", { p_gorev: gorev }), "İstifan alındı. Seçim takvimi güncellendi.");
+    await durumYenile();
+    yenidenCiz();
+  } catch (_) {}
+}
+function ekIstifaButonlari(p){
+  let h = "";
+  if (p.gb) h += '<button class="btn tehlike" onclick="makamIstifa(&quot;gb&quot;)">Genel başkanlıktan istifa et</button>';
+  if (p.cb_mi) h += '<button class="btn tehlike" onclick="makamIstifa(&quot;cb&quot;)">Cumhurbaşkanlığından istifa et</button>';
+  if (p.makamlar.some(x => x.tur === "tbmm")) h += '<button class="btn tehlike" onclick="makamIstifa(&quot;tbmm&quot;)">TBMM Başkanlığından istifa et</button>';
+  return h;
 }
 // Tek görev kuralı (sunucudaki ile aynı): kimse aynı anda iki görev taşıyamaz. İstisna: vekil + GB yardımcısı, genel başkan + cumhurbaşkanı.
 function gorevCakisma(yeni){
@@ -1786,6 +1820,7 @@ async function benEkrani(){
       <button class="btn ikinci" onclick="ilSecModal()">İl değiştir</button>
       ${p.makamlar.some(x => x.tur === "mv") ? `<button class="btn ikinci" onclick="gorevIstifa('mv')">Milletvekilliğinden istifa et</button>` : ""}
       ${p.makamlar.some(x => x.tur === "bel") ? `<button class="btn ikinci" onclick="gorevIstifa('bel')">Belediye başkanlığından istifa et</button>` : ""}
+      ${ekIstifaButonlari(p)}
       ${p.il_kilit ? `<p class="kucuk" style="margin-top:6px">${e(p.il_kilit)}</p>` : ilSerbest ? `<p class="kucuk" style="margin-top:6px">İlini ${ilSerbest} değiştirebilirsin.</p>` : ""}</div>
     <div class="kart"><h2>Geçmiş seçimler</h2>${g.map(s => `<div class="liste-satir" onclick="ekranAc(()=>secimEkrani(${s.id}))" style="cursor:pointer"><div class="orta"><b>${TUR[s.tur].ad}</b><div class="kucuk">${tarih(s.sonuc_at)}</div></div><span style="color:var(--mut)">›</span></div>`).join("") || `<div class="bos">Henüz sonuçlanan seçim yok.</div>`}</div>
     <div class="kart"><h2>Bilgi</h2>
@@ -2143,7 +2178,7 @@ const PUSH = {
   },
   istenenKonular(){
     const p = D.durum.profil, a = p.bildirim_ayar || {}, k = ["duyuru"];
-    if (a.secim !== false) { k.push("s_tum"); if (p.parti) k.push("s_parti_" + p.parti.id); }
+    if (a.secim !== false) { k.push("s_tum", "s_il_" + p.il_id); if (p.parti) k.push("s_parti_" + p.parti.id); }
     if (a.propaganda !== false) { k.push("p_tum", "p_il_" + p.il_id); if (p.parti) k.push("p_parti_" + p.parti.id); }
     return k;
   },

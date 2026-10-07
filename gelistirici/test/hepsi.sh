@@ -12,6 +12,7 @@ for t in sosyal devlet asama3 simulasyon tek_gorev vatandas ekonomi2 bos_makam m
     echo "✗ $t"; echo "$out" | tail -15; basarisiz=1
   fi
 done
+if out=$(node istifa_arayuz.js 2>&1); then echo "✓ istifa_arayuz: $(echo "$out" | tail -1)"; else echo "✗ istifa_arayuz"; echo "$out" | tail -15; basarisiz=1; fi
 bash ../build/sql_birlestir.sh >/dev/null
 if out=$(python3 kalicilik.py 2>&1); then echo "✓ kalicilik: $(echo "$out" | tail -1)"; else echo "✗ kalicilik"; echo "$out" | tail -15; basarisiz=1; fi
 exit $basarisiz

@@ -4,10 +4,10 @@ const kok = path.join(__dirname, '..');
 const oku = ad => fs.readFileSync(path.join(kok, 'sql', ad), 'utf8').replace(/\r\n/g, '\n').trimEnd();
 const surum = fs.readFileSync(path.join(kok, 'SURUM'), 'utf8').trim();
 if (!/^\d{4}\.\d{2}\.\d{2}-\d+$/.test(surum)) throw new Error('Geçersiz sürüm');
-const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_kabine_sosyal.sql', '07_devlet.sql', '08_asama3.sql', '09_vatandas.sql', '10_ekonomi2.sql', '11_bos_makam.sql', '12_mevzuat.sql', '13_meclis.sql', '14_guvenlik.sql', '15_ekonomi3.sql', '16_moderator.sql', '17_basin_teskilat.sql', '06_yetkiler.sql'];
+const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_kabine_sosyal.sql', '07_devlet.sql', '08_asama3.sql', '09_vatandas.sql', '10_ekonomi2.sql', '11_bos_makam.sql', '12_mevzuat.sql', '13_meclis.sql', '14_guvenlik.sql', '15_ekonomi3.sql', '16_moderator.sql', '17_basin_teskilat.sql', '18_ara_secim_istifa.sql', '06_yetkiler.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
-  '-- 2026.10.07-3 canlıda zaten uygulanmıştır; bu sürüm eşitlemesi için yeniden çalıştırmayın.',
+  '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
   'begin;', oku('kalicilik_bas.sql'),
   `select oyun.guncelleme_basla('${surum}', 'supabase-kurulum.sql');`,
   ...dosyalar.map(oku), oku('kalicilik_son.sql'), 'select oyun.guncelleme_bitti();', 'commit;', '', oku('04_zamanlayici.sql'), ''].join('\n');
