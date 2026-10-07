@@ -1574,6 +1574,48 @@ async function gbUslen(id){
   try { await API.rpc("genel_baskanlik_uslen", {}); await durumYenile(); toast("Artık partinin genel başkanısın"); partiDetay(id); }
   catch (err) { toast(hataCevir(err.message), true); }
 }
+async function partiAdModal(pid){
+  let p; try { p = await API.rpc("parti_detay", { p_parti: pid }); } catch (err) { return toast(hataCevir(err.message), true); }
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">Parti adını değiştir</h3>
+    <p class="alt">Bunu yalnızca genel başkan yapabilir. Parti adı en fazla 7 günde bir değiştirilebilir; eski adlar kayıt altında tutulur.</p>
+    <div class="alan"><label>Parti adı</label><input id="pad" maxlength="40" value="${e(p.ad)}"></div>
+    <div class="alan"><label>Kısa ad</label><input id="pkisa" maxlength="6" value="${e(p.kisa)}" style="text-transform:uppercase"></div>
+    <div class="hata-metin" id="pahata"></div><button class="btn altin" id="paok">Adı değiştir</button>`);
+  $("#paok",m).onclick = async () => {
+    const b=$("#paok",m); b.disabled=true;
+    try {
+      await API.rpc("parti_ad_degistir",{p_ad:$("#pad",m).value,p_kisa:$("#pkisa",m).value.toLocaleUpperCase("tr")});
+      modalKapat(); await durumYenile(); toast("Partinin adı değiştirildi."); partiDetay(pid);
+    } catch(err){ b.disabled=false; $("#pahata",m).textContent=hataCevir(err.message); }
+  };
+}
+async function partiTuzukEkrani(pid){
+  yukleniyor("Parti tüzüğü");
+  let t; try { t=await API.rpc("parti_tuzuk",{p_parti:pid}); } catch(err){ iskelet("Parti tüzüğü",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true}); return; }
+  const a=t.aktif;
+  iskelet("Parti tüzüğü",`
+    <div class="kart"><h2>Yürürlükteki tüzük</h2>
+      ${t.mevcut ? `<div style="white-space:pre-wrap;font-size:14px;line-height:1.55">${e(t.mevcut)}</div><div class="kucuk" style="margin-top:8px">Kabul: ${tarihSaat(t.mevcut_at)}</div>`
+        : `<div class="bos">Partinin henüz üyelerce kabul edilmiş bir tüzüğü yok.</div>`}</div>
+    ${a ? `<div class="olay oy"><div class="baslik"><b>${e(a.baslik)}</b><span class="rozet altin">Üye oylaması</span></div>
+      <div style="white-space:pre-wrap;font-size:14px;line-height:1.5;margin-top:8px">${e(a.metin)}</div>
+      <div class="kucuk" style="margin-top:8px">Oylama ${tarihSaat(a.bit)} tarihine kadar açık · ${a.katilim}/${a.uye_sayisi} üye oy kullandı.</div>
+      ${a.uygun ? `<div class="satir" style="margin-top:8px"><button class="btn yarim ${a.benim_oy==="evet"?"altin":"ikinci"}" onclick="tuzukOy(${pid},${a.id},'evet')">Evet</button><button class="btn yarim ${a.benim_oy==="hayir"?"tehlike":"ikinci"}" onclick="tuzukOy(${pid},${a.id},'hayir')">Hayır</button></div>` : `<div class="kucuk" style="margin-top:8px">Bu teklif açıldıktan sonra partiye katıldığın için bu oylamada oy hakkın yok.</div>`}</div>` : ""}
+    ${t.gb_mi && !a ? `<button class="btn altin" onclick="tuzukTeklifModal(${pid})">Yeni tüzüğü üyelerin oyuna sun</button>` : ""}
+    <div class="kart"><h2>Geçmiş oylamalar</h2>${t.gecmis.length ? t.gecmis.map(x=>`<div class="liste-satir"><div class="orta"><b>${e(x.baslik)}</b><div class="kucuk">${x.evet} Evet · ${x.hayir} Hayır · ${x.katilim} katılım · ${tarihSaat(x.sonuc_at)}</div></div><span class="rozet ${x.durum==="kabul"?"yesil":"kirmizi"}">${x.durum==="kabul"?"Kabul":"Ret"}</span></div>`).join("") : `<div class="bos">Henüz sonuçlanmış tüzük oylaması yok.</div>`}</div>`,{geri:true});
+}
+function tuzukTeklifModal(pid){
+  const m=modal(`<h3 style="font-size:19px;font-weight:800">Tüzüğü oylamaya sun</h3>
+    <p class="alt">Teklif 24 saat açık kalır. Evet oyları Hayır oylarından fazlaysa tüzük yürürlüğe girer.</p>
+    <div class="alan"><label>Başlık</label><input id="ttbas" maxlength="100" placeholder="Örn. Demokratik Parti Tüzüğü"></div>
+    <div class="alan"><label>Tüzük metni</label><textarea class="alanmetin" id="ttmetin" maxlength="6000" style="min-height:180px" placeholder="Partinin işleyişi, üyelerin hakları, yönetim ilkeleri…"></textarea></div>
+    <div class="hata-metin" id="tthata"></div><button class="btn altin" id="ttok">24 saatlik oylamayı başlat</button>`);
+  $("#ttok",m).onclick=async()=>{ const b=$("#ttok",m); b.disabled=true; try{ await API.rpc("parti_tuzuk_teklif",{p_baslik:$("#ttbas",m).value,p_metin:$("#ttmetin",m).value}); modalKapat(); toast("Tüzük üyelerin oyuna sunuldu."); partiTuzukEkrani(pid); }catch(err){b.disabled=false;$("#tthata",m).textContent=hataCevir(err.message);} };
+}
+async function tuzukOy(pid,teklif,oy){
+  try { await API.rpc("parti_tuzuk_oyla",{p_teklif:teklif,p_oy:oy}); toast("Oyun kaydedildi."); partiTuzukEkrani(pid); }
+  catch(err){ toast(hataCevir(err.message),true); }
+}
 async function partiDetay(id){
   yukleniyor("Parti");
   let p; try { p = await API.rpc("parti_detay", { p_parti: id }); await durumYenile(); } catch (err) { iskelet("Parti", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
@@ -1593,7 +1635,7 @@ async function partiDetay(id){
       ${!p.gb && p.uyesiyim && !araKurultay ? `<button class="btn" onclick="gbUslen(${p.id})">Genel başkanlığı üstlen</button>` : ""}${araKurultay ? `<div class="kucuk" style="margin-top:8px;color:var(--gold2)">Olağanüstü kurultay süreci başladı; yeni genel başkan seçimle belirlenecek.</div>` : ""}
       ${[1,2,3,4,5,6].map(i => { const g = p.gby.find(x => x.sira === i); return `<div class="kv"><span class="k">GB Yardımcısı ${i}</span><span class="v">${g ? `<a class="bag" href="#" onclick="oyuncuKart('${e(g.kad)}');return false">${e(g.kad)}</a>` : "—"}</span></div>`; }).join("")}
       ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
-      ${p.uyesiyim && ben.gby ? `<button class="btn tehlike" onclick="gbyIstifa()">Yardımcılıktan istifa et</button>` : ""}</div>
+      ${p.uyesiyim && ben.gby ? `<button class="btn tehlike" onclick="gbyIstifa()">Yardımcılıktan istifa et</button>` : ""}<button class="btn ikinci" onclick="ekranAc(()=>partiTuzukEkrani(${p.id}))">Parti tüzüğü ve üye oylamaları</button></div>
     ${p.uyesiyim ? `<button class="btn tehlike" style="margin:0 0 12px" onclick="partidenAyril()">Partiden ayrıl</button>` : `<button class="btn" style="margin:0 0 12px" onclick="partiyeKatil(${p.id})">Partiye katıl</button>`}
     <div id="teskilatKart"></div>
     <div id="kasaKart"></div>
@@ -2859,9 +2901,9 @@ async function teskilatKartCiz(pid){
     <div style="margin-top:6px">${t.sayi >= 81 ? `<span class="cip notr">Türkiye'nin 81 ilinde teşkilatlı</span>`
       : t.iller.map(x => `<span class="cip notr">${x.genel_merkez ? "🏛️ " : ""}${e(x.ad)}${x.uye ? " · " + x.uye + " üye" : ""}</span>`).join("")}</div>
     <p class="kucuk" style="margin-top:8px">${t.zorunlu ? "Parti yalnızca teşkilatı olan illerde milletvekili ve belediye başkanı adayı gösterebilir." : "Şu an aday göstermek için teşkilat şartı aranmıyor."}
-      Kuruluş bedeli: küçük il ${tlYaz(t.ucretler["1"])}, orta il ${tlYaz(t.ucretler["2"])}, büyük il ${tlYaz(t.ucretler["3"])}. Genel başkan/GBY parti kasasından; atanmış il sorumlusu kendi cüzdanından ödeyebilir.</p>
-    ${(t.gorevler || []).map(g => `<div class="liste-satir"><div class="orta"><b>${e(g.ad)}</b><div class="alt">İl Teşkilat Sorumlusu: ${e(g.kad)}</div><div class="kucuk">${g.teskilat_acik ? "Teşkilat açık" : "Kuruluş bekliyor"}</div></div></div>`).join("")}
-    ${t.gorev_verebilir ? `<button class="btn ikinci" onclick="teskilatGorevModal(${pid})">İl teşkilat sorumlusu ata / görevi kaldır</button>` : ""}
+      Kuruluş bedeli: küçük il ${tlYaz(t.ucretler["1"])}, orta il ${tlYaz(t.ucretler["2"])}, büyük il ${tlYaz(t.ucretler["3"])}. Genel başkan/GBY parti kasasından; atanmış İl Başkanı kendi cüzdanından ödeyebilir.</p>
+    ${(t.gorevler || []).map(g => `<div class="liste-satir"><div class="orta"><b>${e(g.ad)}</b><div class="alt">Parti İl Başkanı: ${e(g.kad)}</div><div class="kucuk">${g.teskilat_acik ? "Teşkilat açık" : "Kuruluş bekliyor"}</div></div></div>`).join("")}
+    ${t.gorev_verebilir ? `<button class="btn ikinci" onclick="teskilatGorevModal(${pid})">Parti İl Başkanı ata / görevi kaldır</button>` : ""}
     ${(t.yetkili || (t.benim_gorevler || []).some(g => !g.teskilat_acik)) && t.sayi < 81 ? `<button class="btn altin" onclick="teskilatAcModal(${pid})">İl teşkilatı aç</button>` : ""}</div>`;
 }
 function teskilatAcModal(pid){
@@ -2879,7 +2921,7 @@ function teskilatAcModal(pid){
     <p class="kucuk" id="tkbilgi"></p>
     <div class="alan"><label for="tkkaynak">Ödeme kaynağı</label><select id="tkkaynak">${t.yetkili ? '<option value="parti">Parti kasası</option>' : ''}<option value="kendi">Kendi cüzdanım</option></select></div>
     <button class="btn altin" id="tkok">Teşkilatı aç</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
-  const ciz = () => { const id = +$("#tkil", m).value, g = (t.gorevler || []).find(x => x.il_id === id); $("#tkbilgi", m).textContent = `İl: ${ilAd(id)} · Sorumlu: ${g ? g.kad : "Henüz atanmadı"} · Kuruluş bedeli: ${tlYaz(bedel(id))}`; };
+  const ciz = () => { const id = +$("#tkil", m).value, g = (t.gorevler || []).find(x => x.il_id === id); $("#tkbilgi", m).textContent = `İl: ${ilAd(id)} · İl Başkanı: ${g ? g.kad : "Henüz atanmadı"} · Kuruluş bedeli: ${tlYaz(bedel(id))}`; };
   $("#tkil", m).onchange = ciz; ciz();
   $("#tkok", m).onclick = async () => {
     await basinIslem($("#tkok", m), { ad: "teskilat_ac2", args: { p_il: +$("#tkil", m).value, p_kaynak: $("#tkkaynak", m).value } }, async () => { await teskilatKartCiz(pid); await partiKasaCiz(pid); });
@@ -2888,10 +2930,10 @@ function teskilatAcModal(pid){
 function teskilatGorevModal(pid){
   const t = D._teskilat;
   const iller = [...VERI.iller].sort((a,b) => a.ad.localeCompare(b.ad,"tr"));
-  const m = basinForm("İl teşkilat sorumlusu ata", `<p class="alt">Oyuncu kendi partinin üyesi ve seçilen ilde kayıtlı olmalı.</p><div class="alan"><label for="gorevIl">İl</label><select id="gorevIl">${iller.map(i => `<option value="${i.id}">${e(i.ad)}</option>`).join("")}</select></div><p id="gorevMevcut" class="kucuk"></p>` + basinAlan("gorevKad", "Sorumlunun kullanıcı adı", 'required maxlength="20"'), "Sorumlu ata", "teskilat_gorev_ver", el => ({ p_il: +$("#gorevIl", el).value, p_kad: $("#gorevKad", el).value.trim() }), () => teskilatKartCiz(pid));
-  const kaldir = basinDugme("Seçili ilin sorumluluğunu kaldır", () => basinIslem(kaldir, { ad: "teskilat_gorev_al", args: { p_il: +$("#gorevIl", m).value } }, () => teskilatKartCiz(pid)));
+  const m = basinForm("Parti İl Başkanı ata", `<p class="alt">Oyuncu kendi partinin üyesi ve seçilen ilde kayıtlı olmalı. Milletvekili aynı anda Parti İl Başkanı olabilir; iki görev birbirine engel değildir.</p><div class="alan"><label for="gorevIl">İl</label><select id="gorevIl">${iller.map(i => `<option value="${i.id}">${e(i.ad)}</option>`).join("")}</select></div><p id="gorevMevcut" class="kucuk"></p>` + basinAlan("gorevKad", "İl Başkanının kullanıcı adı", 'required maxlength="20"'), "İl Başkanı ata", "teskilat_gorev_ver", el => ({ p_il: +$("#gorevIl", el).value, p_kad: $("#gorevKad", el).value.trim() }), () => teskilatKartCiz(pid));
+  const kaldir = basinDugme("Seçili ilin İl Başkanını görevden al", () => basinIslem(kaldir, { ad: "teskilat_gorev_al", args: { p_il: +$("#gorevIl", m).value } }, () => teskilatKartCiz(pid)));
   $(".modal", m).appendChild(kaldir);
-  const ciz = () => { const g = (t.gorevler || []).find(x => x.il_id === +$("#gorevIl", m).value); $("#gorevMevcut", m).textContent = g ? `Mevcut sorumlu: ${g.kad}` : "Bu ilde sorumlu yok."; kaldir.disabled = !g; };
+  const ciz = () => { const g = (t.gorevler || []).find(x => x.il_id === +$("#gorevIl", m).value); $("#gorevMevcut", m).textContent = g ? `Mevcut İl Başkanı: ${g.kad}` : "Bu ilde İl Başkanı yok."; kaldir.disabled = !g; };
   $("#gorevIl", m).onchange = ciz; ciz();
 }
 
