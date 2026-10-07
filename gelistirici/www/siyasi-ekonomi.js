@@ -233,4 +233,5 @@
       if(i && (!i.value || i.value==="undefined" || isNaN(+i.value))) i.value="50";
     },0);
   };
+  try { EKRAN.devlet=window.devletEkrani; } catch(_) {}
 })();
