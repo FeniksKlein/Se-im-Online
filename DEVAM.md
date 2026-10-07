@@ -4,6 +4,12 @@ Sahibi: Ercan (FeniksKlein / Gülveren Games). Kodlama bilmiyor; **her şeyi Tü
 Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (tek dosya HTML/JS + Capacitor, Supabase arka uç).
 
 ## Canlı durum
+- 2026.10.07-3 kaynak eşitlemesi: canlı migration `20261007153118 / basin_ve_teskilat_gorevlisi_20261007`, `gelistirici/sql/17_basin_teskilat.sql` içine alındı. İçteki güncelleme başlat/bitir çağrıları çıkarıldı; bunları birleşik dosya tek kez yönetir. RPC yetkileri aynı dosyada korunur. **Bu çalışma için canlı Supabase'e SQL tekrar uygulanmaz.**
+- Gündem → Basın / Gazeteler: kurma, abonelik, kilitli önizleme, yazar teklifleri, yayınlama, kasa ve ayarlar. Kaynak: `gelistirici/www/basin.js`; HTML derlemesine gömülür. Alt menü altı sekme olarak kaldı.
+- İl seçimi oyuncu/MV oranıyla sıralanır; bağlantı hatasında oyuncu sayısı sıfır sayılmaz. Parti ekranı sorumlu atama/kaldırma ve `teskilat_ac2` ile ödeme kaynaklarını destekler. Mevcut `bagis_yap` korunmuştur.
+- Windows'ta SQL üretimi: `node gelistirici/build/sql_birlestir.js`; eski bash komutu aynı üreticiyi çağırır. Basın/görev tabloları da kalıcılık parmak izine eklendi. Canlıya uygulanmadı.
+- Yeni bağımsız test: `node gelistirici/test/basin_arayuz.js` (Playwright, gerekirse NODE_PATH ve CHROME_PATH). Gerçek mobil DOM + sahte RPC; canlıya bağlantı/yazma yok. İl, tüm basın işlemleri, teşkilat, bağış, XSS, kilit, hata, 320/390/768/1280 px kontrolleri.
+- Bu Windows ortamında eski Postgres testleri `psql`/`bash` eksikliğinden, eski arayüz testi sabit `/opt/npm-tools/node_modules/playwright` yolundan çalışamadı. Bunlar başarılı sayılmamalı; uygun yerel Linux/Postgres ortamında tekrar çalıştırılmalı.
 - Oyun (web): https://feniksklein.github.io/Se-im-Online/  (GitHub Pages, `docs/` klasörü)
 - Depo: FeniksKlein/Se-im-Online (public). Supabase projesi: secim-online (Free, Frankfurt).
 - Uygulamadaki Supabase URL + publishable anahtar `www/index.html` içindeki `window.AYAR` bloğunda (herkese açık anahtar; sorun değil).

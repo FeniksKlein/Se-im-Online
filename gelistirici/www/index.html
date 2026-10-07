@@ -29,7 +29,16 @@ window.UYGULAMA_SURUM = "__SURUM__";   // derleme sırasında SURUM dosyasından
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="veri.js"></script>
+<script src="basin.js"></script>
 <style>
+.basin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+.basin-grid .kart{margin:0}.basin-manset{text-align:center;border-top:3px solid var(--gold);border-bottom:3px double var(--line2)}
+.kart.basin-manset h1,.kart.basin-gazete h2,.kart.basin-yazi h2{font-family:Georgia,'Times New Roman',serif;overflow-wrap:anywhere;line-height:1.2;text-transform:none;letter-spacing:normal;color:var(--txt)}
+.kart.basin-manset h1{font-size:clamp(28px,7vw,42px);margin:12px 0}.kart.basin-yazi h2{font-size:27px;margin:12px 0}.kart.basin-gazete h2{font-size:25px;margin:14px 0}
+.basin-metin{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;margin:18px 0;font-size:16px}
+.basin-son,.basin-yazar{border-top:1px solid var(--line2);margin-top:14px;padding-top:14px;overflow-wrap:anywhere}
+.basin-propaganda,.basin-kilit{padding:12px;background:var(--panel2);border-left:3px solid var(--gold);margin:12px 0;line-height:1.6}
+#basinListe,#gazYonetim,#gazYayinlar{overflow-wrap:anywhere}#basinForm textarea{width:100%;resize:vertical}#gazHedefAlan[hidden]{display:none}
 :root{
   --bg:#0B0B0F; --panel:#17171D; --panel2:#202028; --panel3:#2A2A33;
   --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.12);
@@ -503,28 +512,30 @@ async function profilOlusturEkrani(){
   let harita = [];
   try { harita = await API.rpc("harita"); } catch (_) {}
   const hm = Object.fromEntries(harita.map(x => [x.id, x]));
-  const iller = [...VERI.iller].sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
+  const oranBul = i => hm[i.id] && Number.isFinite(+hm[i.id].oyuncu) ? +hm[i.id].oyuncu / i.mv : Infinity;
+  const firsat = i => oranBul(i) === Infinity ? "Veri alınamadı" : oranBul(i) < 1 ? "Yüksek fırsat" : oranBul(i) < 4 ? "Dengeli" : "Yüksek rekabet";
+  const iller = [...VERI.iller].sort((a, b) => oranBul(a) - oranBul(b) || a.ad.localeCompare(b.ad, "tr"));
   $("#app").innerHTML = `<div class="karsila" style="justify-content:flex-start">
     <h1 style="font-size:26px">Siyasete ilk adım</h1>
     <p class="giris">Oyundaki adını ve siyaset yapacağın ili seç. İlini sonradan değiştirebilirsin (30 günde bir, seçim dönemleri dışında).</p>
     <div class="alan"><label>Kullanıcı adı (3-20 karakter, değiştirilemez)</label><input id="kad" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
     <div class="alan"><label>İlin</label><select id="il"><option value="">İl seç…</option>${iller.map(i => {
-      const h = hm[i.id] || { oyuncu: 0 };
-      return `<option value="${i.id}">${e(i.ad)} — ${i.mv} vekil · ${h.oyuncu} oyuncu${h.oyuncu < i.mv ? " · fırsat" : ""}</option>`;
+      const h = hm[i.id];
+      return `<option value="${i.id}">${e(i.ad)} — ${i.mv} MV · ${h ? e(h.oyuncu) : "?"} oyuncu · ${firsat(i)}</option>`;
     }).join("")}</select></div>
-    <div class="kart" id="ilbilgi" style="margin-top:12px;display:none"></div>
+    <p class="kucuk">Fırsat illeri önce gösterilir. MV başına 1'den az oyuncu: yüksek fırsat; 1–4 arası: dengeli; 4 ve üzeri: yüksek rekabet. Bu oran seçilme garantisi değildir.</p>
+    <div class="kart" id="ilbilgi" style="margin-top:12px;display:none" aria-live="polite"></div>
     <div class="hata-metin" id="hata"></div>
     <button class="btn" id="tamam">Oyuna başla</button>
     <button class="btn ikinci" onclick="cikisYap()">Çıkış</button></div>`;
   $("#il").onchange = () => {
     const id = +$("#il").value, kutu = $("#ilbilgi");
     if (!id) { kutu.style.display = "none"; return; }
-    const i = VERI.iller.find(x => x.id === id), h = hm[id] || { oyuncu: 0 };
-    const oran = h.oyuncu / i.mv;
+    const i = VERI.iller.find(x => x.id === id), h = hm[id];
+    const oran = oranBul(i);
     kutu.style.display = "block";
-    kutu.innerHTML = `<b>${e(i.ad)}</b><div class="alt">${i.mv} milletvekili çıkarıyor · şu an ${h.oyuncu} oyuncu var</div>
-      <div style="margin-top:8px">${oran < 1 ? `<span class="rozet yesil">Fırsat ili: vekil sayısından az oyuncu var, seçilme şansın yüksek</span>`
-        : oran < 4 ? `<span class="rozet sari">Dengeli rekabet</span>` : `<span class="rozet kirmizi">Kalabalık il: rekabet sert</span>`}</div>`;
+    kutu.innerHTML = `<b>${e(i.ad)}</b><div class="alt">${i.mv} milletvekili · ${h ? e(h.oyuncu) + " oyuncu · " + fmt(oran, 2) + " oyuncu / MV" : "Oyuncu sayısı alınamadı; daha sonra tekrar deneyebilirsin."}</div>
+      <div style="margin-top:8px"><span class="rozet ${!h ? "" : oran < 1 ? "yesil" : oran < 4 ? "sari" : "kirmizi"}">${firsat(i)}</span></div>`;
   };
   $("#tamam").onclick = async () => {
     const kad = $("#kad").value.trim(), il = +$("#il").value, h = $("#hata"); h.textContent = "";
@@ -602,6 +613,7 @@ async function gundemEkrani(){
   const gelecek = d.takvim.filter(s => s.asama === "yakinda");
   const makam = p.makamlar.map(m => `<span class="rozet altin">${e(makamYaz(m))}</span>`).join(" ");
   const govde = `
+    <div class="kart"><h2>📰 Basın / Gazeteler</h2><p class="alt">Oyuncuların haberlerini ve köşe yazılarını oku, kendi gazeteni kur.</p><button class="btn altin" onclick="ekranAc(basinEkrani)">Basına göz at</button></div>
     <div class="kart" style="display:flex;gap:12px;align-items:center">
       ${amblemKutu(p.parti, 52)}
       <div style="flex:1;min-width:0"><h3 style="margin:0">${e(p.kad)}</h3>
@@ -2804,7 +2816,7 @@ async function paraGonderModal(kad){
 const ilBuyukluk = (mv) => mv >= 14 ? 3 : mv >= 8 ? 2 : 1;
 async function teskilatKartCiz(pid){
   const el = $("#teskilatKart"); if (!el) return;
-  let t; try { t = await API.rpc("teskilatlar", { p_parti: pid }); } catch (_) { return; }
+  let t; try { t = await API.rpc("teskilatlar", { p_parti: pid }); } catch (err) { el.textContent = hataCevir(err.message); return; }
   D._teskilat = t;
   el.innerHTML = `<div class="kart"><h2>İl teşkilatları</h2>
     <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:20px">${t.sayi} <span class="kucuk">/ 81 il</span></b>${t.yetkili ? `<span class="kucuk">Kasa: ${tlYaz(t.kasa)}</span>` : ""}</div>
@@ -2812,26 +2824,40 @@ async function teskilatKartCiz(pid){
     <div style="margin-top:6px">${t.sayi >= 81 ? `<span class="cip notr">Türkiye'nin 81 ilinde teşkilatlı</span>`
       : t.iller.map(x => `<span class="cip notr">${x.genel_merkez ? "🏛️ " : ""}${e(x.ad)}${x.uye ? " · " + x.uye + " üye" : ""}</span>`).join("")}</div>
     <p class="kucuk" style="margin-top:8px">${t.zorunlu ? "Parti yalnızca teşkilatı olan illerde milletvekili ve belediye başkanı adayı gösterebilir." : "Şu an aday göstermek için teşkilat şartı aranmıyor."}
-      İl binasının bedeli parti kasasından bir kez ödenir: küçük ilde ${tlYaz(t.ucretler["1"])}, orta ilde ${tlYaz(t.ucretler["2"])}, büyük ilde ${tlYaz(t.ucretler["3"])}. Teşkilatı genel başkan ve yardımcıları açar.</p>
-    ${t.yetkili && t.sayi < 81 ? `<button class="btn altin" onclick="teskilatAcModal(${pid})">İl teşkilatı aç</button>` : ""}</div>`;
+      Kuruluş bedeli: küçük il ${tlYaz(t.ucretler["1"])}, orta il ${tlYaz(t.ucretler["2"])}, büyük il ${tlYaz(t.ucretler["3"])}. Genel başkan/GBY parti kasasından; atanmış il sorumlusu kendi cüzdanından ödeyebilir.</p>
+    ${(t.gorevler || []).map(g => `<div class="liste-satir"><div class="orta"><b>${e(g.ad)}</b><div class="alt">İl Teşkilat Sorumlusu: ${e(g.kad)}</div><div class="kucuk">${g.teskilat_acik ? "Teşkilat açık" : "Kuruluş bekliyor"}</div></div></div>`).join("")}
+    ${t.gorev_verebilir ? `<button class="btn ikinci" onclick="teskilatGorevModal(${pid})">İl teşkilat sorumlusu ata / görevi kaldır</button>` : ""}
+    ${(t.yetkili || (t.benim_gorevler || []).some(g => !g.teskilat_acik)) && t.sayi < 81 ? `<button class="btn altin" onclick="teskilatAcModal(${pid})">İl teşkilatı aç</button>` : ""}</div>`;
 }
 function teskilatAcModal(pid){
   const t = D._teskilat; if (!t) return;
   const var_ = new Set(t.iller.map(x => x.il_id));
-  const iller = VERI.iller.filter(i => !var_.has(i.id)).sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
-  const bedel = (id) => t.ucretler[String(ilBuyukluk((VERI.iller.find(i => i.id === id) || {}).mv || 1))];
+  const gorevler = t.benim_gorevler || [];
+  const iller = VERI.iller.filter(i => !var_.has(i.id) && (t.yetkili || gorevler.some(g => g.il_id === i.id))).sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
+  if (!iller.length) { toast("Açılabilecek il teşkilatı yok."); return; }
+  // Sunucunun ücret tarifesini gösterir; tahsilat ve yetki RPC'de doğrulanır.
+  const bedel = (id) => { const g = gorevler.find(x => x.il_id === id); return g ? g.ucret : t.ucretler[String(ilBuyukluk((VERI.iller.find(i => i.id === id) || {}).mv || 1))]; };
   const benimIl = D.durum.profil.il_id;
   const m = modal(`<h3 style="font-size:19px;font-weight:800">İl teşkilatı aç</h3>
-    <p class="alt">Seçtiğin ilde partinin il binası açılır; parti o ilde aday gösterebilir hâle gelir ve o ildeki üyelere haber gider. Bedel parti kasasından düşer (kasada ${tlYaz(t.kasa)}).</p>
+    <p class="alt">Seçtiğin ilde partinin il binası açılır. Parti kasası: ${tlYaz(t.kasa)} · Cüzdanın: ${tlYaz(t.cuzdan)}.</p>
     <div class="alan"><label>İl</label><select id="tkil">${iller.map(i => `<option value="${i.id}" ${i.id === benimIl ? "selected" : ""}>${e(i.ad)} — ${tlYaz(bedel(i.id))}</option>`).join("")}</select></div>
     <p class="kucuk" id="tkbilgi"></p>
+    <div class="alan"><label for="tkkaynak">Ödeme kaynağı</label><select id="tkkaynak">${t.yetkili ? '<option value="parti">Parti kasası</option>' : ''}<option value="kendi">Kendi cüzdanım</option></select></div>
     <button class="btn altin" id="tkok">Teşkilatı aç</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
-  const ciz = () => { const b = bedel(+$("#tkil", m).value); $("#tkbilgi", m).innerHTML = b > t.kasa ? `<span style="color:var(--acc)">Kasada yeterli para yok: ${tlYaz(b)} gerekli. Üyeler bağış yaparak kasayı doldurabilir.</span>` : `Bedel: ${tlYaz(b)}`; };
+  const ciz = () => { const id = +$("#tkil", m).value, g = (t.gorevler || []).find(x => x.il_id === id); $("#tkbilgi", m).textContent = `İl: ${ilAd(id)} · Sorumlu: ${g ? g.kad : "Henüz atanmadı"} · Kuruluş bedeli: ${tlYaz(bedel(id))}`; };
   $("#tkil", m).onchange = ciz; ciz();
   $("#tkok", m).onclick = async () => {
-    try { await API.rpc("teskilat_ac", { p_il: +$("#tkil", m).value }); modalKapat(); toast("İl teşkilatı açıldı."); teskilatKartCiz(pid); partiKasaCiz(pid); }
-    catch (err) { toast(hataCevir(err.message), true); }
+    await basinIslem($("#tkok", m), { ad: "teskilat_ac2", args: { p_il: +$("#tkil", m).value, p_kaynak: $("#tkkaynak", m).value } }, async () => { await teskilatKartCiz(pid); await partiKasaCiz(pid); });
   };
+}
+function teskilatGorevModal(pid){
+  const t = D._teskilat;
+  const iller = [...VERI.iller].sort((a,b) => a.ad.localeCompare(b.ad,"tr"));
+  const m = basinForm("İl teşkilat sorumlusu ata", `<p class="alt">Oyuncu kendi partinin üyesi ve seçilen ilde kayıtlı olmalı.</p><div class="alan"><label for="gorevIl">İl</label><select id="gorevIl">${iller.map(i => `<option value="${i.id}">${e(i.ad)}</option>`).join("")}</select></div><p id="gorevMevcut" class="kucuk"></p>` + basinAlan("gorevKad", "Sorumlunun kullanıcı adı", 'required maxlength="20"'), "Sorumlu ata", "teskilat_gorev_ver", el => ({ p_il: +$("#gorevIl", el).value, p_kad: $("#gorevKad", el).value.trim() }), () => teskilatKartCiz(pid));
+  const kaldir = basinDugme("Seçili ilin sorumluluğunu kaldır", () => basinIslem(kaldir, { ad: "teskilat_gorev_al", args: { p_il: +$("#gorevIl", m).value } }, () => teskilatKartCiz(pid)));
+  $(".modal", m).appendChild(kaldir);
+  const ciz = () => { const g = (t.gorevler || []).find(x => x.il_id === +$("#gorevIl", m).value); $("#gorevMevcut", m).textContent = g ? `Mevcut sorumlu: ${g.kad}` : "Bu ilde sorumlu yok."; kaldir.disabled = !g; };
+  $("#gorevIl", m).onchange = ciz; ciz();
 }
 
 /* =====================================================================
