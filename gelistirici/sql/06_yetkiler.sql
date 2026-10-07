@@ -34,7 +34,7 @@ begin
     'parti_ad_degistir(text,text)','parti_tuzuk(bigint)','parti_tuzuk_teklif(text,text)','parti_tuzuk_oyla(bigint,text)',
     'borc_affi_onizle(numeric)','borc_affi_kanun_teklif(numeric,text,text)','vergi_kanun_teklif(numeric,text,text)','borc_affi_karar(numeric,text)',
     'siyasi_sistem()','hukumet_teklif(bigint[],bigint[])','hukumet_teklif_yanit(bigint,boolean)','hukumet_guven_oy(bigint,text)','hukumet_destek_cek()','gensoru_ver(text)','gensoru_oy(bigint,text)','erken_secim_teklif(text)','erken_secim_oy(bigint,text)',
-    'admin_transferler(int,text,numeric)','admin_moderatorler()','admin_moderator_ayarla(text,text[])','admin_mod_kayit(int)']
+    'admin_transferler(int,text,numeric)','admin_transferler_sayfa(int,int,text,numeric)','admin_moderatorler()','admin_moderator_ayarla(text,text[])','admin_mod_kayit(int)']
   loop
     execute format('revoke all on function public.%s from public, anon', f);
     execute format('grant execute on function public.%s to authenticated', f);
