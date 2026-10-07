@@ -76,7 +76,8 @@ begin
   -- Basın kasaları, abonelikler ve il görevleri de sonraki güncellemelerde korunur.
   -- İlk kurulumda henüz bulunmayan tablolar eski sürümün karşılaştırmasına girmez.
   foreach yeni_tablo in array array['parti_teskilat_gorev', 'oyuncu_gazeteleri',
-    'gazete_abonelik', 'gazete_yazar_teklif', 'gazete_yazarlar', 'gazete_yayinlari', 'gazete_hareket'] loop
+    'gazete_abonelik', 'gazete_yazar_teklif', 'gazete_yazarlar', 'gazete_yayinlari', 'gazete_hareket',
+    'parti_ad_gecmis', 'parti_tuzuk_teklifleri', 'parti_tuzuk_oylari', 'borc_aflari'] loop
     if to_regclass('oyun.' || yeni_tablo) is null then continue; end if;
     execute format('select md5(coalesce(string_agg(to_jsonb(x)::text, '','' order by to_jsonb(x)::text), '''')) from oyun.%I x', yeni_tablo) into v;
     sonuc := sonuc || jsonb_build_object(yeni_tablo, v);
