@@ -1046,7 +1046,7 @@ async function icraatYap(kod, ilGerekli){
     <button class="btn altin" id="icok">Uygula</button>`);
   $("#icok", m).onclick = () => calistir(+$("#icil", m).value);
 }
-async async function kararnameModal(tur0){
+async function kararnameModal(tur0){
   const u = D._karne || await API.rpc("ulke_karnesi");
   let mz = D._mevzuat; if (!mz) { try { mz = D._mevzuat = await API.rpc("mevzuat"); } catch (_) { mz = { kurallar: [], kamu_varlik: 0, tahvil_faiz: 0, borc_toplam: 0 }; } }
   const iller = [...VERI.iller].sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
