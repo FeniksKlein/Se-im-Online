@@ -1679,7 +1679,7 @@ async function gbUslen(id){
 async function partiDetay(id){
   yukleniyor("Parti");
   let p; try { p = await API.rpc("parti_detay", { p_parti: id }); await durumYenile(); } catch (err) { iskelet("Parti", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
-  const ben = D.durum.profil, gbyim = p.uyesiyim && ben.gb;
+  const ben = D.durum.profil, gbyim = p.uyesiyim && ben.gb, araKurultay = p.uyesiyim && D.durum.takvim.some(x => x.ara && x.tur === "kurultay" && x.hedef_parti_id === p.id && ["yakinda","basvuru","oy","sayim"].includes(x.asama));
   const makamAd = (m) => (m || "").split(",").filter(Boolean).map(x => `<span class="rozet altin">${MAKAM_AD[x]}</span>`).join(" ");
   iskelet(e(p.kisa), `
     <div class="kart" style="text-align:center"><div class="amb" style="margin:0 auto 10px;width:72px;height:72px;border-radius:20px;background:${e(p.renk)}22">${amblemSvg(p.amblem, p.renk).replace("<svg", '<svg style="width:42px;height:42px;color:' + e(p.renk) + '"')}</div>
@@ -1692,7 +1692,7 @@ async function partiDetay(id){
       ${!p.uyesiyim ? `<button class="btn altin" onclick="partiyeKatil(${p.id})">Kurucu üye ol</button>` : ""}</div>` : ""}
     <div class="kart"><h2>Yönetim</h2>
       <div class="kv"><span class="k">Genel Başkan</span><span class="v">${p.gb ? `<a class="bag" href="#" onclick="oyuncuKart('${e(p.gb)}');return false">${e(p.gb)}</a>` : "— (genel başkansız)"}</span></div>
-      ${!p.gb && p.uyesiyim ? `<button class="btn" onclick="gbUslen(${p.id})">Genel başkanlığı üstlen</button>` : ""}
+      ${!p.gb && p.uyesiyim && !araKurultay ? `<button class="btn" onclick="gbUslen(${p.id})">Genel başkanlığı üstlen</button>` : ""}${araKurultay ? `<div class="kucuk" style="margin-top:8px;color:var(--gold2)">Olağanüstü kurultay süreci başladı; yeni genel başkan seçimle belirlenecek.</div>` : ""}
       ${[1,2,3,4,5,6].map(i => { const g = p.gby.find(x => x.sira === i); return `<div class="kv"><span class="k">GB Yardımcısı ${i}</span><span class="v">${g ? `<a class="bag" href="#" onclick="oyuncuKart('${e(g.kad)}');return false">${e(g.kad)}</a>` : "—"}</span></div>`; }).join("")}
       ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
       ${p.uyesiyim && ben.gby ? `<button class="btn tehlike" onclick="gbyIstifa()">Yardımcılıktan istifa et</button>` : ""}</div>
