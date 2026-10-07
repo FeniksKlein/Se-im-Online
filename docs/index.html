@@ -2695,13 +2695,18 @@ async function yoneticiOyuncu(kad){
     try { await API.rpc("admin_islem", { p_kad: o.kad, p_islem: b.dataset.yk }); toast("İşlem uygulandı."); yoneticiOyuncu(o.kad); } catch (err) { toast(hataCevir(err.message), true); }
   });
 }
-async function yoneticiTransferCiz(){
+async function yoneticiTransferCiz(offset=0){
   const el=$("#ytransfer"); if(!el)return;
-  const ara=(($("#ytrara")||{}).value||"").trim(), min=+((($("#ytrmin")||{}).value)||0);
-  let l; try{l=await API.rpc("admin_transferler",{p_limit:150,p_ara:ara||null,p_min:min>0?min:null});}
+  const ara=(($("#ytrara")||{}).value||"").trim(), min=+((($("#ytrmin")||{}).value)||0), limit=100;
+  let r; try{r=await API.rpc("admin_transferler_sayfa",{p_limit:limit,p_offset:offset,p_ara:ara||null,p_min:min>0?min:null});}
   catch(err){el.innerHTML=`<div class="kucuk">${e(hataCevir(err.message))}</div>`;return;}
-  el.innerHTML=l.map(x=>`<div class="liste-satir"><div class="orta"><div><b>${e(x.gonderen)}</b> → <b>${e(x.alici)}</b> <span class="rozet ${x.bagli_hesap?"kirmizi":""}">${tlYaz(x.tutar)}</span></div><div class="kucuk">${tarihSaat(x.zaman)}${x.aciklama?" · "+e(x.aciklama):""} · bu ikili 30 günde ${x.ikili_30gun} transfer / ${tlYaz(x.ikili_tutar_30gun)}${x.bagli_hesap?" · ⚠ bağlı hesap eşleşmesi":""}</div></div></div>`).join("")||`<div class="bos">Filtreye uyan transfer yok.</div>`;
-  if($("#ytrbul"))$("#ytrbul").onclick=yoneticiTransferCiz;
+  const l=r.satirlar||[], bas=r.toplam?offset+1:0, son=Math.min(r.toplam,offset+l.length);
+  el.innerHTML=`<div class="kucuk" style="margin:8px 0">Toplam <b>${fmt(r.toplam)}</b> transfer · ${fmt(bas)}–${fmt(son)} gösteriliyor</div>`
+    + (l.map(x=>`<div class="liste-satir"><div class="orta"><div><b>${e(x.gonderen)}</b> → <b>${e(x.alici)}</b> <span class="rozet ${x.bagli_hesap?"kirmizi":""}">${tlYaz(x.tutar)}</span></div><div class="kucuk">${tarihSaat(x.zaman)}${x.aciklama?" · "+e(x.aciklama):""} · bu ikili 30 günde ${x.ikili_30gun} transfer / ${tlYaz(x.ikili_tutar_30gun)}${x.bagli_hesap?" · ⚠ bağlı hesap eşleşmesi":""}</div></div></div>`).join("")||`<div class="bos">Filtreye uyan transfer yok.</div>`)
+    + (r.toplam>limit?`<div class="satir"><button class="btn yarim ikinci" id="ytronce" ${offset<=0?"disabled":""}>← Önceki</button><button class="btn yarim ikinci" id="ytrsonra" ${offset+limit>=r.toplam?"disabled":""}>Sonraki →</button></div>`:"");
+  if($("#ytrbul"))$("#ytrbul").onclick=()=>yoneticiTransferCiz(0);
+  if($("#ytronce"))$("#ytronce").onclick=()=>yoneticiTransferCiz(Math.max(0,offset-limit));
+  if($("#ytrsonra"))$("#ytrsonra").onclick=()=>yoneticiTransferCiz(offset+limit);
 }
 async function yoneticiModCiz(){
   const el = $("#ymod"); if (!el) return;
