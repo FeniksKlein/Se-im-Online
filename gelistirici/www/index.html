@@ -2534,7 +2534,8 @@ async function yoneticiEkrani(){
         ${x.icerik ? `<div style="margin-top:6px;padding:8px 10px;background:var(--panel);border-radius:10px;font-size:14px">${e(x.icerik)}</div>` : ""}
         <div class="satir" style="flex-wrap:wrap;margin-top:6px">${KARAR.map(([k, a]) => `<button class="rozet ${k === "kapat" ? "kirmizi" : ""}" style="padding:7px 10px" data-i="${i}" data-k="${k}">${a}</button>`).join("")}</div></div>`).join("") || `<div class="bos">Açık şikâyet yok.</div>`}</div>` : ""}
     ${var_("oyuncu_ara") ? `<div class="kart"><h2>Oyuncu ara</h2><div class="satir"><input id="ykad" placeholder="Kullanıcı adı" autocapitalize="off" style="flex:1;padding:12px;border-radius:12px;background:var(--panel2);border:1px solid var(--line2)"><button class="btn yarim" style="margin:0;flex:none;width:auto" id="yara">Bul</button></div><div id="yoyuncu"></div></div>` : ""}
-    ${y.yonetici ? `<div class="kart"><h2>Moderatör ekibi</h2><div id="ymod"><div class="kucuk">Yükleniyor…</div></div></div>` : ""}
+    ${y.yonetici ? `<div class="kart"><h2>Banka transfer denetimi</h2><p class="kucuk">Tüm oyuncular arası banka transferleri burada görünür. Kullanıcı adı veya asgari tutarla filtreleyebilirsin; aynı iki hesap arasındaki 30 günlük yoğunluk ve bağlı-hesap uyarısı ayrıca gösterilir.</p><div class="satir"><input id="ytrara" placeholder="Oyuncu adı" style="flex:1;padding:10px;border-radius:10px;background:var(--panel2);border:1px solid var(--line2)"><input id="ytrmin" type="number" min="0" placeholder="Min ₺" style="width:110px;padding:10px;border-radius:10px;background:var(--panel2);border:1px solid var(--line2)"><button class="rozet" id="ytrbul">Filtrele</button></div><div id="ytransfer"><div class="kucuk">Yükleniyor…</div></div></div>
+    <div class="kart"><h2>Moderatör ekibi</h2><div id="ymod"><div class="kucuk">Yükleniyor…</div></div></div>` : ""}
     ${var_("coklu_hesap") ? `<div class="kart"><h2>Çoklu hesap şüpheleri</h2><p class="kucuk">Aynı cihazda açılmış hesaplar ve aynı bağlantı adresini paylaşan kümeler. IP tek başına delil değildir (aile, okul, mobil operatör). Gerçek kişi olduğuna kanaat getirdiğin hesabı onayla; sahte hesabı kapat.</p><div id="ysuphe"><div class="kucuk">Yükleniyor…</div></div></div>` : ""}
     ${var_("kurallar") ? `<div class="kart"><h2>Oyun kuralları</h2><div id="ykural"></div><button class="btn ikinci" id="ykuralkaydet">Kaydet</button></div>` : ""}
     ${var_("duyuru") ? `<div class="kart"><h2>Tüm oyunculara duyuru</h2><textarea class="alanmetin" id="yduyuru" maxlength="600" style="min-height:80px" placeholder="Örn. Bu gece 03:00-03:30 arası bakım yapılacak."></textarea><button class="btn altin" id="ygonder">Duyuruyu gönder</button></div>` : ""}
@@ -2551,7 +2552,7 @@ async function yoneticiEkrani(){
   if ($("#yara")) $("#yara").onclick = () => yoneticiOyuncu($("#ykad").value.trim());
   if ($("#ygonder")) $("#ygonder").onclick = async () => { try { const r = await API.rpc("admin_duyuru", { p_metin: $("#yduyuru").value }); toast(`Duyuru ${r.kitle} oyuncuya gönderildi.`); $("#yduyuru").value = ""; } catch (err) { toast(hataCevir(err.message), true); } };
   if (var_("coklu_hesap")) yoneticiSupheCiz();
-  if (y.yonetici) { yoneticiModCiz(); yoneticiKayitCiz();
+  if (y.yonetici) { yoneticiTransferCiz(); yoneticiModCiz(); yoneticiKayitCiz();
     try { const sv = await API.rpc("surum"); $("#ysunucu").textContent = sv.sunucu || "—"; $("#yminsurum").value = sv.min_uygulama || "0";
       $("#yminkaydet").onclick = async () => { try { await API.rpc("admin_min_uygulama", { p_surum: $("#yminsurum").value.trim() }); toast("Kaydedildi."); } catch (err) { toast(hataCevir(err.message), true); } }; } catch (_) {} }
   if (var_("kurallar")) try {
@@ -2591,6 +2592,14 @@ async function yoneticiOyuncu(kad){
     if (b.dataset.yk === "kapat" && !await onayla("Hesabı kapat", `${e(o.kad)} oyuna giremeyecek; görevleri düşer, mesajları gizlenir.`, "Kapat", true)) return;
     try { await API.rpc("admin_islem", { p_kad: o.kad, p_islem: b.dataset.yk }); toast("İşlem uygulandı."); yoneticiOyuncu(o.kad); } catch (err) { toast(hataCevir(err.message), true); }
   });
+}
+async function yoneticiTransferCiz(){
+  const el=$("#ytransfer"); if(!el)return;
+  const ara=(($("#ytrara")||{}).value||"").trim(), min=+((($("#ytrmin")||{}).value)||0);
+  let l; try{l=await API.rpc("admin_transferler",{p_limit:150,p_ara:ara||null,p_min:min>0?min:null});}
+  catch(err){el.innerHTML=`<div class="kucuk">${e(hataCevir(err.message))}</div>`;return;}
+  el.innerHTML=l.map(x=>`<div class="liste-satir"><div class="orta"><div><b>${e(x.gonderen)}</b> → <b>${e(x.alici)}</b> <span class="rozet ${x.bagli_hesap?"kirmizi":""}">${tlYaz(x.tutar)}</span></div><div class="kucuk">${tarihSaat(x.zaman)}${x.aciklama?" · "+e(x.aciklama):""} · bu ikili 30 günde ${x.ikili_30gun} transfer / ${tlYaz(x.ikili_tutar_30gun)}${x.bagli_hesap?" · ⚠ bağlı hesap eşleşmesi":""}</div></div></div>`).join("")||`<div class="bos">Filtreye uyan transfer yok.</div>`;
+  if($("#ytrbul"))$("#ytrbul").onclick=yoneticiTransferCiz;
 }
 async function yoneticiModCiz(){
   const el = $("#ymod"); if (!el) return;
@@ -2905,8 +2914,9 @@ function bankaCiz(b){
         <li>3 gün üst üste ödenmezse kredi <b>yasal takibe</b> düşer: vadeli hesapların bozulup borca sayılır, toplanan maaşının yarısına haciz konur, kıdemin 5 puan düşer, oyuncu kartında "Takipteki borçlu" yazar.</li>
         <li>Takipteki borç kapandıktan sonra 30 gün yeni kredi verilmez. Zamanında kapatılan her kredi notunu yükseltir.</li></ul></details></div>
 
-    <div class="kart"><h2>Para gönder</h2><p class="alt">Cüzdanından başka bir oyuncuya para gönder. Günlük sınır ${tlYaz(b.havale.tavan)} (bugün ${tlYaz(b.havale.bugun)} gönderdin).</p>
-      <button class="btn ikinci" onclick="paraGonderModal()">💸 Para gönder</button></div>
+    <div class="kart"><h2>Banka transferi</h2><p class="alt">Oyuncular arası para yalnızca <b>vadesiz hesaptan vadesiz hesaba</b> gönderilir. Vadesiz bakiyen ${tlYaz(v.bakiye)} · günlük sınır ${tlYaz(b.havale.tavan)} (bugün ${tlYaz(b.havale.bugun)} gönderdin).</p>
+      <button class="btn ikinci" onclick="paraGonderModal()">🏦 Bankadan para gönder</button></div>
+    ${(b.transferler||[]).length ? `<div class="kart"><h2>Son transferler</h2>${b.transferler.map(x=>`<div class="hareket"><div><b>${x.yon==="giden"?"→":"←"} ${e(x.karsi)}</b><div class="kucuk">${tarihSaat(x.zaman)}${x.aciklama?" · "+e(x.aciklama):""}</div></div><span class="t ${x.yon==="gelen"?"iyi":"kotu"}">${x.yon==="gelen"?"+":"−"}${tlYaz(x.tutar)}</span></div>`).join("")}</div>` : ""}
 
     <div class="kart"><h2>Banka hareketleri</h2>${b.hareketler.map(x => {
       const iyi = x.hesap === "kredi" ? x.tutar <= 0 : x.tutar >= 0;
@@ -2955,15 +2965,15 @@ function tutarModal(o){
   };
 }
 async function paraGonderModal(kad){
-  const m = modal(`<h3 style="font-size:19px;font-weight:800">Para gönder</h3>
-    <p class="alt">Gönderdiğin para hemen oyuncunun cüzdanına geçer ve ona bildirim gider. Gönderilen para geri alınamaz.</p>
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">Banka transferi</h3>
+    <p class="alt">Para senin vadesiz hesabından alıcının vadesiz hesabına geçer. Cüzdandan doğrudan oyuncuya para gönderilemez. Transfer geri alınamaz ve yönetici denetim kaydına girer.</p>
     <div class="alan"><label>Kime (kullanıcı adı)</label><input id="pgKad" value="${e(kad || "")}" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
     <div class="alan"><label>Tutar (₺)</label><input id="pgMik" type="number" min="100" step="100" value="1000" inputmode="numeric"></div>
     <div class="alan"><label>Not (isteğe bağlı)</label><input id="pgNot" maxlength="100" placeholder="Örn. Kampanya desteği"></div>
     <p class="kucuk" id="pgBilgi"></p>
     <button class="btn altin" id="pgOk">Gönder</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
   try { const b = await API.rpc("banka"); D._banka = b; const bi = $("#pgBilgi", m);
-    if (bi) bi.innerHTML = `Cüzdanında ${tlYaz(b.cuzdan)} var. Günlük sınır ${tlYaz(b.havale.tavan)}, bugün ${tlYaz(b.havale.bugun)} gönderdin.${b.havale.engel ? `<br><span style="color:var(--gold2)">Para göndermek için seçmen kartın hazır olmalı: ${e(b.havale.engel)}</span>` : ""}`; } catch (_) {}
+    if (bi) bi.innerHTML = `Vadesiz hesabında <b>${tlYaz(b.vadesiz.bakiye)}</b> var. Günlük sınır ${tlYaz(b.havale.tavan)}, bugün ${tlYaz(b.havale.bugun)} gönderdin.${b.havale.engel ? `<br><span style="color:var(--gold2)">Para göndermek için seçmen kartın hazır olmalı: ${e(b.havale.engel)}</span>` : ""}`; } catch (_) {}
   const ok = $("#pgOk", m); if (!ok) return;
   ok.onclick = async () => {
     const hedef = $("#pgKad", m).value.trim();
@@ -2971,8 +2981,8 @@ async function paraGonderModal(kad){
     ok.disabled = true;
     try {
       const r = await API.rpc("para_gonder", { p_kad: hedef, p_miktar: +$("#pgMik", m).value, p_aciklama: $("#pgNot", m).value });
-      modalKapat(); toast(`${r.alici} adlı oyuncuya ${tlYaz(r.miktar)} gönderildi.`);
-      D._hayat = null; D._banka = null; if (D.durum && D.durum.profil && D.durum.profil.cuzdan) D.durum.profil.cuzdan.para = r.para;
+      modalKapat(); toast(`${r.alici} adlı oyuncunun vadesiz hesabına ${tlYaz(r.miktar)} gönderildi.`);
+      D._banka = null;
       yenidenCiz();
     } catch (err) { ok.disabled = false; toast(hataCevir(err.message), true); }
   };
@@ -2987,7 +2997,7 @@ async function teskilatKartCiz(pid){
     <div class="bar"><i style="width:${t.sayi * 100 / 81}%;background:var(--gold)"></i></div>
     <div style="margin-top:6px">${t.sayi >= 81 ? `<span class="cip notr">Türkiye'nin 81 ilinde teşkilatlı</span>`
       : t.iller.map(x => `<span class="cip notr">${x.genel_merkez ? "🏛️ " : ""}${e(x.ad)}${x.uye ? " · " + x.uye + " üye" : ""}</span>`).join("")}</div>
-    <p class="kucuk" style="margin-top:8px">${t.zorunlu ? "Parti yalnızca teşkilatı olan illerde milletvekili ve belediye başkanı adayı gösterebilir." : "Şu an aday göstermek için teşkilat şartı aranmıyor."}
+    <p class="kucuk" style="margin-top:8px">${t.zorunlu ? "Genel seçime katılmak için Türkiye’de en az 1 il teşkilatı yeterlidir; belediye başkanı adayı göstermek için ilgili ilde teşkilat gerekir." : "Şu an aday göstermek için teşkilat şartı aranmıyor."}
       Kuruluş bedeli: küçük il ${tlYaz(t.ucretler["1"])}, orta il ${tlYaz(t.ucretler["2"])}, büyük il ${tlYaz(t.ucretler["3"])}. Genel başkan/GBY parti kasasından; atanmış İl Başkanı kendi cüzdanından ödeyebilir.</p>
     ${(t.gorevler || []).map(g => `<div class="liste-satir"><div class="orta"><b>${e(g.ad)}</b><div class="alt">Parti İl Başkanı: ${e(g.kad)}</div><div class="kucuk">${g.teskilat_acik ? "Teşkilat açık" : "Kuruluş bekliyor"}</div></div></div>`).join("")}
     ${t.gorev_verebilir ? `<button class="btn ikinci" onclick="teskilatGorevModal(${pid})">Parti İl Başkanı ata / görevi kaldır</button>` : ""}
