@@ -996,7 +996,7 @@ end $$;
 create or replace function public.politika_ayarla(p_kod text,p_deger numeric)
 returns jsonb
 language plpgsql security definer
-set search_path='oyun','public','pg_temp' as $
+set search_path='oyun','public','pg_temp' as $policy$
 declare
   p oyun.profiller:=oyun.profilim();
   t timestamptz:=oyun.simdi();
@@ -1059,7 +1059,7 @@ begin
   perform oyun.olay('ekonomi',format('%s %s: %s',unvan,p.kad,bas),null,p.parti_id,t);
 
   return jsonb_build_object('tamam',true,'kod',p_kod,'eski',eski,'yeni',yeni,'etki',pe);
-end $;
+end $policy$;
 
 insert into oyun.vaat_turleri(kapsam,kod,ad,birim,tip,yon,min,max,sira,aciklama)
 values(
