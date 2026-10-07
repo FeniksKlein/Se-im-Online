@@ -1,6 +1,6 @@
 -- =====================================================================
 -- SEÇİM SİMÜLASYONU ONLINE — 19) SİYASİ EKONOMİ + PARTİ İÇİ DEMOKRASİ
--- Sürüm: 2026.10.07-6
+-- Sürüm: 2026.10.07-7
 -- Oyuncu verisini silmez; mevcut makam/para/seçim kayıtlarını korur.
 -- =====================================================================
 
