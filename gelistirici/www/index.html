@@ -1123,6 +1123,7 @@ function etkiOzet(r){
   if (r.enflasyon) p.push(`enflasyon <b class="${r.enflasyon > 0 ? "kotu" : "iyi"}">${r.enflasyon > 0 ? "+" : ""}${fmt(r.enflasyon, 2)}</b>`);
   if (r.buyume) p.push(`büyüme <b class="${r.buyume < 0 ? "kotu" : "iyi"}">${r.buyume > 0 ? "+" : ""}${fmt(r.buyume, 2)}</b>`);
   if (r.memnuniyet) p.push(`memnuniyet <b class="${r.memnuniyet < 0 ? "kotu" : "iyi"}">${r.memnuniyet > 0 ? "+" : ""}${fmt(r.memnuniyet, 2)}</b>`);
+  if (r.oyuncu_vergi_farki) p.push(`oyuncunun vergi yükü <b class="${r.oyuncu_vergi_farki > 0 ? "kotu" : "iyi"}">${r.oyuncu_vergi_farki > 0 ? "+" : ""}${fmt(r.oyuncu_vergi_farki, 1)} puan</b>`);
   return p.length ? "Etkisi: " + p.join(" · ") : "Ekonomiye doğrudan etkisi yok.";
 }
 function refKart(r){
@@ -1634,7 +1635,7 @@ async function partiDetay(id){
       <div class="kv"><span class="k">Genel Başkan</span><span class="v">${p.gb ? `<a class="bag" href="#" onclick="oyuncuKart('${e(p.gb)}');return false">${e(p.gb)}</a>` : "— (genel başkansız)"}</span></div>
       ${!p.gb && p.uyesiyim && !araKurultay ? `<button class="btn" onclick="gbUslen(${p.id})">Genel başkanlığı üstlen</button>` : ""}${araKurultay ? `<div class="kucuk" style="margin-top:8px;color:var(--gold2)">Olağanüstü kurultay süreci başladı; yeni genel başkan seçimle belirlenecek.</div>` : ""}
       ${[1,2,3,4,5,6].map(i => { const g = p.gby.find(x => x.sira === i); return `<div class="kv"><span class="k">GB Yardımcısı ${i}</span><span class="v">${g ? `<a class="bag" href="#" onclick="oyuncuKart('${e(g.kad)}');return false">${e(g.kad)}</a>` : "—"}</span></div>`; }).join("")}
-      ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
+      ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn ikinci" onclick="partiAdModal(${p.id})">Parti adını değiştir</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
       ${p.uyesiyim && ben.gby ? `<button class="btn tehlike" onclick="gbyIstifa()">Yardımcılıktan istifa et</button>` : ""}<button class="btn ikinci" onclick="ekranAc(()=>partiTuzukEkrani(${p.id}))">Parti tüzüğü ve üye oylamaları</button></div>
     ${p.uyesiyim ? `<button class="btn tehlike" style="margin:0 0 12px" onclick="partidenAyril()">Partiden ayrıl</button>` : `<button class="btn" style="margin:0 0 12px" onclick="partiyeKatil(${p.id})">Partiye katıl</button>`}
     <div id="teskilatKart"></div>
@@ -2346,7 +2347,7 @@ async function vaatEditor(o){
   const secili = new Map((o.mevcut || []).map(x => [x.kod, x.hedef]));
   const oneri = (t) => {
     const m = +t.mevcut || 0, r = (x) => Math.max(t.min ?? -1e12, Math.min(t.max ?? 1e12, x));
-    return { asgari: Math.ceil(m * 1.08 / 500) * 500, vergi: r(m - 2), kidem: r(m + 5), destek: r(m + 100), tasinma: r(m + 20), ikramiye: 1000,
+    return { asgari: Math.ceil(m * 1.08 / 500) * 500, vergi: r(m - 2), borc_affi: 25, kidem: r(m + 5), destek: r(m + 100), tasinma: r(m + 20), ikramiye: 1000,
              vergi_tavan: r(m - 5), belediye_payi: r(m + 5), baraj: r(Math.max(0, m - 2)), parti_yardim: Math.round(m / 2),
              kent_vergisi: r(Math.max(0, m - 1)), hemsehri: r(m + 100), aday_ucret: 0.5, kampanya: 10000,
              katilim: 80, teklif: 1, uye: r(Math.max(2, Math.round(m) + 10)), kasa: r(Math.max(10000, Math.round(m * 2 / 1000) * 1000)) }[t.kod];
@@ -2777,19 +2778,20 @@ function bankaCiz(b){
 
     <div class="kart"><h2>Vadesiz hesap</h2>
       <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px"><div class="para" style="font-size:26px">${tlYaz(v.bakiye)}</div><span class="rozet altin">aylık ${yuzde(o.vadesiz)}</span></div>
-      <div class="kv"><span class="k">Bugün işleyen faiz <span class="kucuk">(gece hesaba eklenir)</span></span><span class="v iyi">+${fmt(v.birikmis, 2)} ₺</span></div>
-      <div class="kv"><span class="k">Günlük faiz kazancın</span><span class="v">${fmt(v.gunluk, 2)} ₺</span></div>
+      <div class="kv"><span class="k">Saatlik faiz kazancın <span class="kucuk">(her tamamlanan saatte bakiyeye eklenir)</span></span><span class="v iyi">+${fmt(v.saatlik, 2)} ₺</span></div>
+      <div class="kv"><span class="k">Günlük karşılığı</span><span class="v">${fmt(v.gunluk, 2)} ₺</span></div>
       <div class="kv"><span class="k">Bugüne kadar kazandığın faiz</span><span class="v">${tlYaz(v.faiz_toplam)}</span></div>
       <p class="kucuk" style="margin-top:6px">İstediğin an yatır, istediğin an çek. Faiz saat saat işler: para hesapta ne kadar durursa o kadar kazandırır.</p>
       <div class="satir"><button class="btn yarim altin" id="bYatir" ${b.acik ? "" : "disabled"}>Yatır</button><button class="btn yarim ikinci" id="bCek" ${v.bakiye >= 1 ? "" : "disabled"}>Çek</button></div></div>
 
     <div class="kart"><h2>Vadeli hesap</h2>
-      <p class="alt">Parayı belli bir süre bağla, daha yüksek faiz al. Faiz açılışta sabitlenir; vade dolunca anapara ve faiz cüzdanına yatar. Vadeden önce bozarsan durduğu gün kadar vadesiz faizi alırsın.</p>
+      <p class="alt">Parayı belli bir süre bağla, daha yüksek faiz al. Faiz açılışta sabitlenir; vade dolunca anapara ve faiz cüzdanına yatar. Vadeden önce bozarsan durduğu saat kadar vadesiz faizi alırsın.</p>
       <div class="kv"><span class="k">7 gün vadeli</span><span class="v">aylık ${yuzde(o.vadeli7)}</span></div>
       <div class="kv"><span class="k">30 gün vadeli</span><span class="v">aylık ${yuzde(o.vadeli30)}</span></div>
       ${acikV.map(x => `<div class="kart" style="margin:10px 0 0;background:var(--panel2)">
         <div style="display:flex;justify-content:space-between;gap:8px"><b>${tlYaz(x.anapara)}</b><span class="rozet">${x.gun} gün · aylık ${yuzde(x.oran)}</span></div>
         <div class="kucuk">Vade: ${tarihSaat(x.vade)} · vadede faiz +${tlYaz(x.getiri)}</div>
+        <div class="kucuk">Şu ana kadar biriken: <b class="iyi">+${tlYaz(x.biriken)}</b> · saatlik +${tlYaz(x.saatlik)}</div>
         <div class="kucuk">Şimdi bozarsan alacağın faiz: +${tlYaz(x.bozma)}</div>
         <button class="rozet" style="padding:7px 10px;margin-top:6px" data-boz="${x.id}">Vadeden önce boz</button></div>`).join("")}
       ${kapali.length ? `<div class="kucuk" style="margin-top:10px;font-weight:800;color:var(--txt2)">SON KAPANANLAR</div>${kapali.map(x => `<div class="kv"><span class="k">${tlYaz(x.anapara)} · ${x.gun} gün · ${DUR[x.durum] || x.durum}</span><span class="v iyi">+${tlYaz(x.getiri)}</span></div>`).join("")}` : ""}
