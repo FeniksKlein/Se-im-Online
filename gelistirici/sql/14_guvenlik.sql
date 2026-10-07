@@ -195,7 +195,8 @@ begin
       jsonb_build_object('ad', format('"Vatandaş" statüsü (en az %s kıdem)', a.oy_min_kidem), 'tamam', k >= a.oy_min_kidem, 'not', format('Kıdemin: %s', k)),
       jsonb_build_object('ad', format('Seçmen kütüğü: yerel ve genel seçimde ilinde en az %s gün', a.oy_il_gun), 'tamam', p.il_at <= t - make_interval(days => a.oy_il_gun),
                          'not', case when p.il_at > t - make_interval(days => a.oy_il_gun) then 'Bu ilde oy hakkı: ' || to_char((p.il_at + make_interval(days => a.oy_il_gun)) at time zone 'Europe/Istanbul', 'DD.MM') end)),
-    'parti_kurma', jsonb_build_object('kidem', a.parti_kurucu_kidem, 'kurucu', a.parti_kurucu_sayi, 'gun', a.parti_kurulus_gun, 'benim_kidem', k));
+    'parti_kurma', jsonb_build_object('kidem', a.parti_kurucu_kidem, 'kurucu', a.parti_kurucu_sayi, 'gun', a.parti_kurulus_gun, 'benim_kidem', k,
+                                      'ucret', oyun.parti_kur_ucreti(), 'para', (select para from oyun.cuzdanim(p.id))));
 end $$;
 
 -- ---------------------------------------------------------------------
@@ -224,6 +225,7 @@ begin
     delete from oyun.parti_gby where parti_id = pa.id;
     update oyun.profiller set parti_id = null, parti_at = null where parti_id = pa.id;
     update oyun.partiler set kapali = true where id = pa.id;
+    perform oyun.parti_kurulus_iade(pa, t);      -- kuruluş ücretinin yarısı kurucuya (15_ekonomi3)
     perform oyun.olay('parti', format('%s (%s) kurucu üye sayısını tamamlayamadığı için kurulamadı.', pa.ad, pa.kisa), null, null, t);
   end if;
 end $$;
@@ -245,7 +247,7 @@ end $$;
 -- ---------------------------------------------------------------------
 create or replace function public.admin_supheler() returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
-declare p oyun.profiller := oyun.yonetici_zorunlu(); t timestamptz := oyun.simdi();
+declare p oyun.profiller := oyun.yetki_zorunlu('coklu_hesap'); t timestamptz := oyun.simdi();
 begin
   return jsonb_build_object(
     -- Güçlü: aynı cihaz kimliği · Zayıf: aynı cihaz izi (aynı model telefonlarda çakışabilir)
@@ -268,8 +270,9 @@ end $$;
 
 create or replace function public.admin_hesap_onay(p_kad text, p_onay boolean, p_not text default null) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
-declare p oyun.profiller := oyun.yonetici_zorunlu(); h oyun.profiller := oyun.profil_bul(p_kad); t timestamptz := oyun.simdi();
+declare p oyun.profiller := oyun.yetki_zorunlu('coklu_hesap'); h oyun.profiller := oyun.profil_bul(p_kad); t timestamptz := oyun.simdi();
 begin
+  perform oyun.mod_log(p, case when p_onay then 'hesap_onay' else 'hesap_onay_kaldir' end, h.kad, p_not);
   if p_onay then
     insert into oyun.hesap_onay(user_id, yonetici, not_, zaman) values (h.id, p.id, oyun.metin_temizle(coalesce(p_not, ''), 300), t)
     on conflict (user_id) do update set yonetici = excluded.yonetici, not_ = excluded.not_, zaman = excluded.zaman;
@@ -282,7 +285,7 @@ end $$;
 
 create or replace function public.admin_kurallar(p jsonb default null) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
-declare y oyun.profiller := oyun.yonetici_zorunlu(); a oyun.ayarlar;
+declare y oyun.profiller := oyun.yetki_zorunlu('kurallar'); a oyun.ayarlar;
 begin
   if p is not null then
     update oyun.ayarlar set
@@ -292,11 +295,22 @@ begin
       cihaz_max_hesap    = oyun.sinir(coalesce((p ->> 'cihaz_max_hesap')::int, cihaz_max_hesap), 1, 5),
       parti_kurucu_sayi  = oyun.sinir(coalesce((p ->> 'parti_kurucu_sayi')::int, parti_kurucu_sayi), 1, 30),
       parti_kurucu_kidem = oyun.sinir(coalesce((p ->> 'parti_kurucu_kidem')::int, parti_kurucu_kidem), 0, 300),
-      parti_kurulus_gun  = oyun.sinir(coalesce((p ->> 'parti_kurulus_gun')::int, parti_kurulus_gun), 1, 30)
+      parti_kurulus_gun  = oyun.sinir(coalesce((p ->> 'parti_kurulus_gun')::int, parti_kurulus_gun), 1, 30),
+      -- 15_ekonomi3: parti ücreti, teşkilat, havale, banka
+      parti_kur_ucret    = oyun.sinir(coalesce((p ->> 'parti_kur_ucret')::numeric, parti_kur_ucret), 0, 1000000),
+      teskilat_ucret     = oyun.sinir(coalesce((p ->> 'teskilat_ucret')::numeric, teskilat_ucret), 0, 100000),
+      teskilat_zorunlu   = coalesce((p ->> 'teskilat_zorunlu')::boolean, teskilat_zorunlu),
+      havale_sinir       = oyun.sinir(coalesce((p ->> 'havale_sinir')::numeric, havale_sinir), 0, 10),
+      banka_acik         = coalesce((p ->> 'banka_acik')::boolean, banka_acik),
+      banka_reel_faiz    = oyun.sinir(coalesce((p ->> 'banka_reel_faiz')::numeric, banka_reel_faiz), -10, 30),
+      banka_tavan        = oyun.sinir(coalesce((p ->> 'banka_tavan')::numeric, banka_tavan), 0, 100000000)
     where id = 1;
+    perform oyun.mod_log(y, 'kurallar', null, p::text);
   end if;
   select * into a from oyun.ayarlar where id = 1;
   return jsonb_build_object('min_hesap_gun', a.min_hesap_gun, 'oy_min_kidem', a.oy_min_kidem, 'oy_il_gun', a.oy_il_gun,
     'cihaz_max_hesap', a.cihaz_max_hesap, 'parti_kurucu_sayi', a.parti_kurucu_sayi, 'parti_kurucu_kidem', a.parti_kurucu_kidem,
-    'parti_kurulus_gun', a.parti_kurulus_gun);
+    'parti_kurulus_gun', a.parti_kurulus_gun,
+    'parti_kur_ucret', a.parti_kur_ucret, 'teskilat_ucret', a.teskilat_ucret, 'teskilat_zorunlu', a.teskilat_zorunlu,
+    'havale_sinir', a.havale_sinir, 'banka_acik', a.banka_acik, 'banka_reel_faiz', a.banka_reel_faiz, 'banka_tavan', a.banka_tavan);
 end $$;

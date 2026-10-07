@@ -416,7 +416,7 @@ begin
     'bagis', jsonb_build_object('bugun', c.bagis_bugun, 'tavan', u.asgari),
     'ulke', jsonb_build_object('asgari', u.asgari, 'vergi', u.vergi, 'destek', u.destek, 'kidem_primi', u.kidem_primi,
                                'enflasyon', round(u.enflasyon, 1), 'tasinma_destek', u.tasinma_destek),
-    'etkiler', oyun.etkilerim(p.il_id, t),
+    'etkiler', oyun.etkilerim(p.il_id, t), 'banka', oyun.banka_ozet(p.id),
     'mulkler', coalesce((select jsonb_agg(jsonb_build_object('il', i.ad, 'tur', m.tur, 'bedel', m.bedel, 'gunluk', m.gunluk) order by m.alis)
                          from oyun.mulkler m join oyun.iller i on i.id = m.il_id where m.user_id = p.id), '[]'::jsonb),
     'paketler', (select jsonb_agg(jsonb_build_object('urun_id', urun_id, 'ad', ad, 'miktar', miktar) order by sira) from oyun.paketler),
@@ -442,6 +442,7 @@ begin
       format('Maaş (%s saat%s)', replace(round((g ->> 'saat')::numeric, 1)::text, '.', ','),
              case when (g ->> 'seri_bonus')::numeric > 0 then format(', seri +%%%s', g ->> 'seri_bonus') else '' end),
       t, (g ->> 'vergi_birikmis')::numeric);
+    perform oyun.haciz_uygula(p.id, tutar, t);   -- takipteki kredi: maaşın yarısına haciz (15_ekonomi3)
   end if;
   if ilk then
     kx := 1 + oyun.bonus(p.il_id, 'kidem_x', t) / 100;
@@ -536,6 +537,7 @@ declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); m nu
 begin
   if p.parti_id is null then raise exception 'Bağış için bir partiye üye olmalısın.'; end if;
   if m < 100 then raise exception 'En az 100 ₺ bağışlayabilirsin.'; end if;
+  perform oyun.takip_engel(p.id, 'bağış yapamazsın');
   c := oyun.cuzdanim(p.id);
   tavan := (select asgari from oyun.ulke where id = 1);
   if c.bagis_bugun + m > tavan then

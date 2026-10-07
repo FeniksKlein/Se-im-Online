@@ -526,6 +526,7 @@ begin
   perform oyun.meclis_tick(t);
   perform oyun.guvenlik_tick(t);
   perform oyun.gunluk_ekonomi(t);
+  perform oyun.banka_tick(t);
   perform oyun.push_hatirlatmalar(t);
   perform oyun.push_tetikle();
   return n;

@@ -591,6 +591,7 @@ const AUTH = {
     const ilId = psql(`select il_id from oyun.makamlar where tur='bel' and bit is null and user_id=(select id from oyun.profiller where kad='${baskanBot}')`);
     const sakin = psql(`select kad from oyun.profiller where il_id=${ilId} and kad like 'Bot%' and kad<>'${baskanBot}' limit 1`);
     if (sakin) {
+      psql(`select oyun.cuzdanim(id) from oyun.profiller where kad='${sakin}'; update oyun.cuzdan set para=greatest(para, 200000) where user_id=(select id from oyun.profiller where kad='${sakin}')`);   // teminat için yeterli para
       await girisYap(sakin); await bekle('arsa ihalesi');
       await foto('60-gundem-ihale');
       await page.locator('.olay', { hasText: 'arsa ihalesi' }).getByRole('button', { name: /Pey sür/ }).click(); await bekle('Kazanırsan günlük kira');
@@ -630,6 +631,60 @@ const AUTH = {
   psql(`update oyun.ayarlar set min_uygulama='0'`);
   await page.evaluate(() => basla()); await bekle('Gündem');
   ok('Zorunlu güncelleme: sunucu eski uygulamayı desteklemeyince güncelleme ekranı çıktı; sürüm uyunca oyun kaldığı yerden açıldı');
+
+  // ---- BANKA · PARA GÖNDERME · PARTİ ÜCRETİ VE İL TEŞKİLATI · MODERATÖRLER
+  await girisYap('Ercan');
+  psql(`update oyun.cuzdan set para=200000 where user_id=(select id from oyun.profiller where kad='Ercan')`);
+  await yenile('hayat'); await bekle('Bankaya git');
+  await page.locator('.kart', { hasText: 'Bankaya git' }).first().scrollIntoViewIfNeeded(); await foto('70-hayat-banka');
+  await tikla('🏦 Bankaya git'); await bekle('Vadesiz hesap');
+  await page.click('#bYatir'); await page.fill('#tmik', '50000'); await page.click('#tok'); await toastBekle('faiz işlemeye başladı');
+  await page.click('#bVadeli'); await page.fill('#tmik', '20000'); await page.selectOption('#tsec', '30'); await page.waitForTimeout(200);
+  await foto('71-vadeli-modal'); await page.click('#tok'); await toastBekle('Vadeli hesabın açıldı');
+  await page.click('#kCek'); await page.fill('#tmik', '15000'); await page.selectOption('#tsec', '15'); await page.waitForTimeout(200);
+  await foto('72-kredi-modal'); await page.click('#tok'); await toastBekle('Kredin cüzdanına geçti');
+  await foto('73-banka');
+  assert1(psql(`select vadesiz from oyun.banka_musteri m join oyun.profiller p on p.id=m.user_id where p.kad='Ercan'`) === '50000', 'vadesiz hesaba yatırılmadı');
+  assert1(psql(`select count(*) from oyun.krediler k join oyun.profiller p on p.id=k.user_id where p.kad='Ercan' and k.durum='aktif'`) === '1', 'kredi açılmadı');
+  ok('Banka: vadesiz hesaba yatırma, 30 gün vadeli hesap ve 15 gün kredi ekrandan yapıldı');
+  const alici = botlar[3];
+  const once = +psql(`select para from oyun.cuzdan c join oyun.profiller p on p.id=c.user_id where p.kad='${alici}'`);
+  await page.evaluate((k) => oyuncuKart(k), alici); await bekle('Özel mesaj gönder');
+  await page.click('#kp'); await bekle('Gönderdiğin para'); await page.fill('#pgMik', '2500'); await page.fill('#pgNot', 'Kampanya desteği'); await page.waitForTimeout(300);
+  await foto('74-para-gonder'); await page.click('#pgOk'); await toastBekle('gönderildi');
+  assert1(+psql(`select para from oyun.cuzdan c join oyun.profiller p on p.id=c.user_id where p.kad='${alici}'`) === once + 2500, 'para alıcıya geçmedi');
+  ok('Para gönderme: oyuncu kartından 2.500 ₺ gönderildi, alıcının cüzdanına geçti');
+
+  const kurucu = botlar[0];
+  psql(`update oyun.ayarlar set parti_kur_ucret=25000, teskilat_zorunlu=true; update oyun.cuzdan set para=60000 where user_id=(select id from oyun.profiller where kad='${kurucu}')`);
+  await girisYap(kurucu);
+  await page.evaluate(() => { D.sekme = 'parti'; D.yigin = []; ekranAc(partiKurEkrani); }); await bekle('Kuruluş ücreti');
+  await page.fill('#ad', 'Teşkilat Deneme Partisi'); await page.fill('#kisa', 'TDP'); await page.waitForTimeout(200);
+  await page.locator('#kurUcret').scrollIntoViewIfNeeded(); await foto('75-parti-kur-ucret');
+  await page.click('#kur'); await toastBekle('Partin kuruldu');
+  const tdp = psql(`select id from oyun.partiler where kisa='TDP'`);
+  const ucret = +psql(`select kurulus_ucret from oyun.partiler where id=${tdp}`);    // 25.000 ₺ × fiyat düzeyi
+  assert1(ucret >= 25000 && +psql(`select para from oyun.cuzdan c join oyun.profiller p on p.id=c.user_id where p.kad='${kurucu}'`) === 60000 - ucret, 'kuruluş ücreti alınmadı');
+  psql(`update oyun.partiler set kasa=20000 where id=${tdp}`);
+  await page.evaluate((id) => ekranAc(() => partiDetay(id)), +tdp); await bekle('İl teşkilatları');
+  await page.locator('#teskilatKart').scrollIntoViewIfNeeded(); await foto('76-teskilat');
+  await tikla('İl teşkilatı aç'); await page.selectOption('#tkil', '6'); await page.waitForTimeout(200);
+  await foto('77-teskilat-ac'); await page.click('#tkok'); await toastBekle('İl teşkilatı açıldı');
+  assert1(psql(`select count(*) from oyun.parti_teskilat where parti_id=${tdp}`) === '2', 'teşkilat açılmadı');
+  ok('Parti kurarken ücret gösterildi ve alındı; genel başkan Ankara il teşkilatını açtı');
+
+  psql(`select set_config('request.jwt.claim.sub', (select id::text from oyun.profiller where kad='Ercan'), false); select public.admin_moderator_ayarla('${botlar[1]}', array['sikayet','oyuncu_ara','sustur'])`);
+  await girisYap(botlar[1]);
+  await page.evaluate(() => sekmeAc('ben')); await tikla('Moderatör paneli'); await bekle('Moderatörsün');
+  await foto('78-moderator-paneli');
+  await girisYap('Ercan');
+  await page.evaluate(() => { D.yigin = []; sekmeAc('ben'); }); await tikla('Yönetici paneli'); await bekle('Moderatör ekibi');
+  await page.locator('#ymod').scrollIntoViewIfNeeded(); await foto('79-moderator-ekibi');
+  await page.locator('[data-mduz]').first().click(); await bekle('E-posta görme'); await foto('80-moderator-yetki');
+  await page.locator('[data-myetki="duyuru"]').check(); await page.click('#mkaydet'); await toastBekle('Moderatör kaydedildi');
+  assert1(psql(`select 'duyuru' = any(yetkiler) from oyun.moderatorler m join oyun.profiller p on p.id=m.user_id where p.kad='${botlar[1]}'`) === 't', 'yetki eklenmedi');
+  await page.locator('#ykayit').scrollIntoViewIfNeeded(); await foto('81-moderasyon-gunlugu');
+  ok('Moderatörler: yönetici bir oyuncuya yetki verdi; moderatör kısıtlı paneli gördü; yetki ekranından duyuru yetkisi eklendi');
 
   // XSS denemesi: kötü niyetli kullanıcı adı veritabanında reddedilmeli, parti adı da
   let xss = 'geçti';

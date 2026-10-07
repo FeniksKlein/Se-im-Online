@@ -55,7 +55,12 @@ begin
     ('iller',         'oyun.il_durum',      'select md5(coalesce(string_agg(il_id||''|''||gelisim||''|''||coalesce(kasa,0), '','' order by il_id), '''')) from oyun.il_durum'),
     ('satin_alma',    'oyun.satin_almalar', 'select count(*)::text from oyun.satin_almalar'),
     ('referandum',    'oyun.referandumlar', 'select count(*)::text from oyun.referandumlar'),
-    ('duzenlemeler',  'oyun.duzenlemeler',  'select md5(coalesce(string_agg(kod||''|''||deger||''|''||kaynak, '','' order by kod), '''')) from oyun.duzenlemeler')
+    ('duzenlemeler',  'oyun.duzenlemeler',  'select md5(coalesce(string_agg(kod||''|''||deger||''|''||kaynak, '','' order by kod), '''')) from oyun.duzenlemeler'),
+    ('banka',         'oyun.banka_musteri', 'select md5(coalesce(string_agg(user_id||''|''||vadesiz||''|''||kredi_notu, '','' order by user_id), '''')) from oyun.banka_musteri'),
+    ('vadeli',        'oyun.vadeli',        'select md5(coalesce(string_agg(id||''|''||user_id||''|''||anapara||''|''||durum, '','' order by id), '''')) from oyun.vadeli'),
+    ('krediler',      'oyun.krediler',      'select md5(coalesce(string_agg(id||''|''||user_id||''|''||kalan||''|''||durum, '','' order by id), '''')) from oyun.krediler'),
+    ('teskilat',      'oyun.parti_teskilat','select count(*)::text from oyun.parti_teskilat'),
+    ('moderator',     'oyun.moderatorler',  'select md5(coalesce(string_agg(user_id||''|''||array_to_string(yetkiler, '';''), '','' order by user_id), '''')) from oyun.moderatorler')
   ) x(ad, tablo, sorgu) loop
     if to_regclass(r.tablo) is null then continue; end if;
     begin

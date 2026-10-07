@@ -260,6 +260,7 @@ language plpgsql security definer set search_path = oyun, public, pg_temp as $$
 declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); m numeric := round(coalesce(p_miktar, 0)); c oyun.cuzdan; tavan numeric; il_ad text;
 begin
   if m < 100 then raise exception 'En az 100 ₺ bağışlayabilirsin.'; end if;
+  perform oyun.takip_engel(p.id, 'bağış yapamazsın');
   c := oyun.cuzdanim(p.id);
   tavan := (select asgari from oyun.ulke where id = 1);
   if c.bagis_bugun + m > tavan then

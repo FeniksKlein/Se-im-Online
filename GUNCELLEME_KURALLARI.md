@@ -9,7 +9,8 @@ Bu proje, yayındaki oyunun **hiçbir güncellemeyle sıfırlanmaması** üzerin
    - hesaplar, makamlar ve makam sahipleri;
    - cüzdanlar, toplam para ve kıdem;
    - partiler, seçimler, oylar, kanunlar;
-   - mülkler, ülke ve il durumu, kurallar.
+   - mülkler, ülke ve il durumu, kurallar;
+   - banka hesapları, vadeli hesaplar, krediler, il teşkilatları ve moderatörler.
    Tek bir değer değiştiyse güncelleme **kendiliğinden iptal olur**.
 4. **Silme koruması.** Oyun tabloları `TRUNCATE` ile boşaltılamaz, `DROP TABLE` ya da `DROP COLUMN` ile silinemez.
 5. **Sürüm kaydı.** Her güncelleme `oyun.surumler` tablosuna yazılır: sürüm, tarih, yedeğin adı, parmak izleri.

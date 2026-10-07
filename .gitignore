@@ -3,3 +3,4 @@ __pycache__/
 gelistirici/test/ekran/
 *.log
 .DS_Store
+gelistirici/dist/

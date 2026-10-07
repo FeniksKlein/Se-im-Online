@@ -226,6 +226,9 @@ textarea.alanmetin{width:100%;min-height:120px;padding:12px 14px;border-radius:1
 .eylem .kucuk{line-height:1.3}
 .eylem:disabled{opacity:.4}
 .cip{display:inline-flex;padding:3px 8px;border-radius:99px;font-size:11.5px;font-weight:700;background:rgba(50,215,75,.13);color:var(--good);margin:3px 4px 0 0;white-space:nowrap}
+.cip.notr{background:var(--panel3);color:var(--txt2)}
+details.acilir summary{cursor:pointer;font-size:12.5px;font-weight:800;color:var(--txt2);margin-top:10px}
+details.acilir ul{margin:6px 0 0 18px;font-size:12.5px;color:var(--mut)}
 .taahhut{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:700;background:rgba(217,164,65,.14);color:var(--gold2);margin:3px 4px 0 0}
 .taahhut.ok{background:rgba(50,215,75,.15);color:var(--good)}.taahhut.yok{background:var(--panel2);color:var(--mut)}
 .hareket{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
@@ -606,6 +609,7 @@ async function gundemEkrani(){
         ${makam ? `<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">${makam}</div>` : ""}</div>
     </div>
     ${p.hesap_engeli ? `<div class="kart"><b>Seçmen kartın henüz hazır değil</b><div class="alt">${e(p.hesap_engeli)} Şartları tamamlayınca oy kullanabilir, aday olabilir ve parti kurabilirsin. Bu sürede bir partiye katıl, her gün maaşını topla ve ilindeki durumu incele.</div><button class="btn ikinci" onclick="vatandaslikModal()">Şartları gör</button></div>` : ""}
+    ${p.kredi_uyari ? `<div class="olay oy" onclick="ekranAc(bankaEkrani)" style="cursor:pointer"><div class="baslik"><b>Kredi borcun gecikmede</b><span class="rozet kirmizi">Banka</span></div><p class="alt" style="margin-top:6px">${e(p.kredi_uyari)}</p><button class="btn altin">Bankaya git</button></div>` : ""}
     ${ihaleler.map(ihaleKart).join("")}
     ${meclisBekleyen.map(meclisSecimKart).join("")}
     ${!p.parti ? `<div class="kart"><b>Bir partiye katıl</b><div class="alt">Aday olmak ve parti içi seçimlerde oy kullanmak için parti üyeliği gerekir. Parti içi seçimlerde oy için başvurular açılmadan önce üye olmalısın.</div><button class="btn" onclick="sekmeAc('parti')">Partilere göz at</button></div>` : ""}
@@ -1573,11 +1577,13 @@ async function partiDetay(id){
       ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button>` : ""}
       ${p.uyesiyim && ben.gby ? `<button class="btn tehlike" onclick="gbyIstifa()">Yardımcılıktan istifa et</button>` : ""}</div>
     ${p.uyesiyim ? `<button class="btn tehlike" style="margin:0 0 12px" onclick="partidenAyril()">Partiden ayrıl</button>` : `<button class="btn" style="margin:0 0 12px" onclick="partiyeKatil(${p.id})">Partiye katıl</button>`}
+    <div id="teskilatKart"></div>
     <div id="kasaKart"></div>
     <div id="ittifakKart"></div>
     <div class="kart"><h2>Üyeler</h2>${p.uyeler.map(u => `<div class="liste-satir" onclick="oyuncuKart('${e(u.kad)}')" style="cursor:pointer"><div class="orta"><b>${e(u.kad)}${u.kad === p.gb ? ` <span class="rozet altin">GB</span>` : p.gby.some(g => g.kad === u.kad) ? ` <span class="rozet">GBY</span>` : ""}</b><div class="kucuk">${e(u.il)}</div></div>${makamAd(u.makam)}</div>`).join("") || `<div class="bos">Henüz üye yok. İlk üye sen ol!</div>`}</div>`, { geri: true });
   ittifakKartCiz(p.id);
   partiKasaCiz(p.id);
+  teskilatKartCiz(p.id);
 }
 async function partiKasaCiz(pid){
   const el = $("#kasaKart"); if (!el) return;
@@ -1720,8 +1726,12 @@ function partiKurEkrani(){
       <div class="alan"><label>Amblem</label><div class="amblemler">${VERI.amblem.map(a => `<button data-a="${a.id}" title="${e(a.ad)}">${amblemSvg(a.id, "#fff")}</button>`).join("")}</div></div>
       <p class="kucuk" style="margin-top:12px">Gerçek partileri çağrıştıran ad, kısaltma ve uygunsuz ifadeler kabul edilmez. Partiyi kurunca kurucu genel başkan olursun ve mevcut partinden ayrılırsın.</p>
       <p class="kucuk" style="margin-top:6px"><b>Kuruluş şartları</b> (gerçekte Siyasi Partiler Kanunu en az 30 kurucu arar): seçmen kartın hazır olmalı, yeterli kıdemin olmalı ve belirli süre içinde şartları taşıyan kurucu üyeler toplamalısın. Kuruluş tamamlanmadan parti seçime katılamaz. <a class="bag" href="#" onclick="vatandaslikModal();return false">Şartları gör</a></p>
+      <p class="kucuk" style="margin-top:6px" id="kurUcret"></p>
       <div class="hata-metin" id="hata"></div>
       <button class="btn altin" id="kur">Partiyi kur</button></div>`, { geri: true, sekmesiz: true });
+  API.rpc("vatandaslik").then(v => { const pk = v.parti_kurma, el = $("#kurUcret"); if (!el || pk.ucret == null) return;
+    el.innerHTML = `<b>Kuruluş ücreti: ${tlYaz(pk.ucret)}</b> (kuruluş harcı ve genel merkez binası, cüzdanından ödenir; cüzdanında ${tlYaz(pk.para)} var). Genel merkez senin ilinde partinin ilk il teşkilatı olur. Kuruluş süresinde yeterli kurucu toplanamazsa ücretin yarısı iade edilir.`;
+    if (pk.ucret > 0) $("#kur").textContent = `Partiyi kur (${tlYaz(pk.ucret)})`; }).catch(() => {});
   const ciz = () => {
     const ad = $("#ad").value || "Parti adı", kisa = ($("#kisa").value || "KISA").toLocaleUpperCase("tr");
     $("#onizleme").innerHTML = `<div style="display:flex;gap:12px;align-items:center">${amblemKutu({ renk, amblem: amb }, 56)}<div><b style="font-size:18px">${e(ad)}</b><div style="color:${renk};font-weight:800">${e(kisa)}</div></div></div>`;
@@ -1775,7 +1785,7 @@ async function benEkrani(){
       ${[["secim","Seçim hatırlatmaları","Başvurular, sandık açılışı ve sonuçlar"],["ozel","Özel mesajlar","Biri sana yazınca"],["propaganda","Propaganda ve duyurular","Adaylar, parti yönetimi, cumhurbaşkanı ve bakanlar"],["kisisel","Sana özel gelişmeler","Atama, seçilme, kanun ve ittifak bildirimleri"]]
         .map(([k, a, alt]) => `<label class="anahtar"><span><b>${a}</b><div class="kucuk">${alt}</div></span><input type="checkbox" data-ayar="${k}" ${(p.bildirim_ayar || {})[k] !== false ? "checked" : ""} onchange="bildirimAyarKaydet()"></label>`).join("")}
       <p class="kucuk" style="margin-top:6px">${PUSH.eklenti() ? "Telefon bildirimleri açık. Telefon ayarlarından da kapatabilirsin." : "Telefona bildirimler uygulama telefonda kurulduğunda gelir."}</p></div>
-    ${p.yonetici ? `<button class="btn altin" onclick="ekranAc(yoneticiEkrani)">Yönetici paneli</button>` : ""}
+    ${p.yonetici || (p.yetkiler && p.yetkiler.moderator) ? `<button class="btn altin" onclick="ekranAc(yoneticiEkrani)">${p.yonetici ? "Yönetici paneli" : "Moderatör paneli"}</button>` : ""}
     <button class="btn ikinci" onclick="cikisYap()">Çıkış yap</button>
     <button class="btn tehlike" onclick="hesapSil()">Hesabımı sil</button>`);
 }
@@ -1966,16 +1976,18 @@ async function oyuncuKart(kad){
     <div style="display:flex;gap:12px;align-items:center">${amblemKutu(k.parti, 56)}<div style="min-width:0"><h3 style="font-size:21px;font-weight:900">${e(k.kad)}</h3>
       ${k.unvan ? `<div style="color:var(--gold2);font-weight:700;font-size:14px">${e(k.unvan)}</div>` : ""}
       <div class="alt">${e(k.il_ad)} · ${partiRozet(k.parti, true)}${k.statu ? ` · <span style="color:var(--gold2)">${e(k.statu.ad)}</span>` : ""}</div></div></div>
-    ${(k.rozetler || []).length || (k.itibar && k.itibar.toplam) ? `<div class="rozetler">${k.rozetler.map(r => `<span class="rozet altin" title="${e(r.aciklama)}">★ ${e(r.ad)}</span>`).join("")}${itibarCip(k.itibar)}</div>` : ""}
+    ${(k.rozetler || []).length || (k.itibar && k.itibar.toplam) || k.borclu ? `<div class="rozetler">${k.borclu ? `<span class="rozet kirmizi" title="Kredi borcunu ödemediği için yasal takipte">Takipteki borçlu</span>` : ""}${(k.rozetler || []).map(r => `<span class="rozet altin" title="${e(r.aciklama)}">★ ${e(r.ad)}</span>`).join("")}${itibarCip(k.itibar)}</div>` : ""}
     ${(k.karneler || []).length ? `<div class="kart" style="margin-top:12px"><h2>Vaat karnesi</h2>${k.karneler.map(karneHtml).join("")}<div class="kucuk" style="margin-top:6px">Seçimde verdiği ölçülebilir vaatleri görevdeyken yerine getirip getirmediği her gün otomatik kontrol edilir.</div></div>` : ""}
     <div class="kart" style="margin-top:12px"><h2>Siyasi geçmiş</h2>${k.gecmis.map(g => `<div class="kv"><span class="k">${e(g.makam)}</span><span class="v kucuk">${tarih(g.bas)}${g.bit ? " – " + tarih(g.bit) : " – görevde"}</span></div>`).join("") || `<div class="alt">Henüz görev almadı.</div>`}
       <div class="kucuk" style="margin-top:6px">Katılım: ${tarih(k.katilim)}</div></div>
     ${k.ben ? "" : `<button class="btn" id="ko">Özel mesaj gönder</button>
+      <button class="btn ikinci" id="kp">💸 Para gönder</button>
       <button class="btn ikinci" id="ke">${k.engelledim ? "Engeli kaldır" : "Engelle"}</button>
       <button class="btn tehlike" id="ks">Oyuncuyu şikâyet et</button>`}
     <button class="btn ikinci" onclick="modalKapat()">Kapat</button>`;
   if (!k.ben) {
     $("#ko", m).onclick = () => { modalKapat(); ekranAc(() => ozelEkrani(k.kad)); };
+    $("#kp", m).onclick = () => paraGonderModal(k.kad);
     $("#ke", m).onclick = () => engelDegis(k.kad, !k.engelledim);
     $("#ks", m).onclick = () => sikayetModal("oyuncu", null, k.kad);
   }
@@ -2310,72 +2322,138 @@ async function yoneticiSupheCiz(){
     kutu.querySelectorAll("[data-onaykaldir]").forEach(b => b.onclick = async () => { try { await API.rpc("admin_hesap_onay", { p_kad: b.dataset.onaykaldir, p_onay: false, p_not: null }); yoneticiSupheCiz(); } catch (err) { toast(hataCevir(err.message), true); } });
   } catch (err) { kutu.innerHTML = `<div class="kucuk">${e(hataCevir(err.message))}</div>`; }
 }
+// Moderatör yetkileri (sunucudaki oyun.mod_yetki_tanim ile aynı adlar)
+const MOD_YETKI = { ozet: "Özet", sikayet: "Şikâyetler", sustur: "Susturma", hesap_kapat: "Hesap kapatma", oyuncu_ara: "Oyuncu inceleme",
+  eposta: "E-posta görme", duyuru: "Duyuru", coklu_hesap: "Çoklu hesap incelemesi", kurallar: "Kurallar ve ayarlar" };
+const MOD_ISLEM = { sustur1: "1 gün susturdu", sustur7: "7 gün susturdu", susturma_kaldir: "susturmayı kaldırdı", kapat: "hesabı kapattı", ac: "hesabı yeniden açtı",
+  duyuru: "duyuru gönderdi", kurallar: "kuralları değiştirdi", ayar: "ayarı değiştirdi", hesap_onay: "hesabı onayladı", hesap_onay_kaldir: "hesap onayını kaldırdı",
+  moderator_ata: "moderatör yaptı", moderator_yetki: "yetkilerini değiştirdi", moderator_cikar: "moderatörlükten aldı",
+  sikayet_yok_say: "şikâyet: sorun yok dedi", sikayet_gizle: "şikâyet: içeriği gizledi", sikayet_gizle_sustur1: "şikâyet: gizledi + 1 gün susturdu",
+  sikayet_gizle_sustur7: "şikâyet: gizledi + 7 gün susturdu", sikayet_kapat: "şikâyet: hesabı kapattı" };
+function yetkim(){
+  const p = D.durum && D.durum.profil, y = (p && p.yetkiler) || { yonetici: !!(p && p.yonetici), moderator: false, liste: [] };
+  return { y, var_: (k) => y.yonetici || (y.liste || []).includes(k) };
+}
 async function yoneticiEkrani(){
-  yukleniyor("Yönetici paneli");
-  let o, sk; try { [o, sk] = await Promise.all([API.rpc("admin_ozet"), API.rpc("admin_sikayetler", { p_durum: "yeni" })]); }
-  catch (err) { iskelet("Yönetici paneli", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
+  try { await durumYenile(); } catch (_) {}
+  const { y, var_ } = yetkim(), baslik = y.yonetici ? "Yönetici paneli" : "Moderatör paneli";
+  yukleniyor(baslik);
+  let o = null, sk = [];
+  try { [o, sk] = await Promise.all([var_("ozet") ? API.rpc("admin_ozet") : null, var_("sikayet") ? API.rpc("admin_sikayetler", { p_durum: "yeni" }) : []]); }
+  catch (err) { iskelet(baslik, `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
   const NEDEN = { hakaret: "hakaret", nefret: "nefret", taciz: "taciz", spam: "spam", uygunsuz: "uygunsuz", diger: "diğer" };
-  iskelet("Yönetici paneli", `
-    <div class="kart"><h2>Özet</h2><div class="gosterge">
+  const KARAR = [["yok_say","Sorun yok"],["gizle","Gizle"]].concat(var_("sustur") ? [["gizle_sustur1","Gizle + 1 gün sustur"],["gizle_sustur7","Gizle + 7 gün sustur"]] : [], var_("hesap_kapat") ? [["kapat","Hesabı kapat"]] : []);
+  iskelet(baslik, `
+    ${!y.yonetici ? `<div class="kart"><b>Moderatörsün</b><div class="alt">Yetkilerin: ${(y.liste || []).map(k => MOD_YETKI[k] || k).join(", ")}. Yaptığın her işlem kayda geçer ve oyunun yöneticisi tarafından görülür. Yöneticiye ve diğer moderatörlere işlem yapamazsın.</div></div>` : ""}
+    ${o ? `<div class="kart"><h2>Özet</h2><div class="gosterge">
       <div><div class="ad">Oyuncu</div><div class="deger">${fmt(o.oyuncu)}</div><div class="fark">+${o.yeni24} bugün</div></div>
       <div><div class="ad">Son 24 saat aktif</div><div class="deger">${fmt(o.aktif24)}</div><div class="fark">&nbsp;</div></div>
       <div><div class="ad">Mesaj (24 s)</div><div class="deger">${fmt(o.mesaj24)}</div><div class="fark">&nbsp;</div></div>
       <div><div class="ad">Açık şikâyet</div><div class="deger ${o.sikayet ? "kotu" : ""}">${o.sikayet}</div><div class="fark">&nbsp;</div></div>
       <div><div class="ad">Susturulmuş</div><div class="deger">${o.susturulmus}</div><div class="fark">kapalı: ${o.yasakli}</div></div>
-      <div><div class="ad">Push cihazı</div><div class="deger">${fmt(o.cihaz)}</div><div class="fark">${o.push_aktif ? "push açık" : "push kapalı"}</div></div></div></div>
-    <div class="kart"><h2>Açık şikâyetler (${sk.length})</h2><p class="kucuk">Apple, şikâyetlere 24 saat içinde bakılmasını istiyor.</p>
+      <div><div class="ad">Push cihazı</div><div class="deger">${fmt(o.cihaz)}</div><div class="fark">${o.push_aktif ? "push açık" : "push kapalı"}</div></div></div></div>` : ""}
+    ${var_("sikayet") ? `<div class="kart"><h2>Açık şikâyetler (${sk.length})</h2><p class="kucuk">Apple, şikâyetlere 24 saat içinde bakılmasını istiyor.</p>
       ${sk.map((x, i) => `<div class="kart" style="margin:10px 0 0;background:var(--panel2)">
         <div style="display:flex;justify-content:space-between;gap:8px"><b>${e(x.hedef)}</b><span class="rozet kirmizi">${x.sayi} şikâyet</span></div>
         <div class="kucuk">${{ mesaj: "Sohbet mesajı", ozel: "Özel mesaj", yayin: "Propaganda yayını", oyuncu: "Oyuncu" }[x.tur]} · ${x.nedenler.map(n => NEDEN[n] || n).join(", ")} · ${tarihSaat(x.ilk)} · toplam ${x.hedef_sikayet_toplam} şikâyet${x.gizli ? " · gizlendi" : ""}</div>
         ${x.icerik ? `<div style="margin-top:6px;padding:8px 10px;background:var(--panel);border-radius:10px;font-size:14px">${e(x.icerik)}</div>` : ""}
-        <div class="satir" style="flex-wrap:wrap;margin-top:6px">${[["yok_say","Sorun yok"],["gizle","Gizle"],["gizle_sustur1","Gizle + 1 gün sustur"],["gizle_sustur7","Gizle + 7 gün sustur"],["kapat","Hesabı kapat"]]
-          .map(([k, a]) => `<button class="rozet ${k === "kapat" ? "kirmizi" : ""}" style="padding:7px 10px" data-i="${i}" data-k="${k}">${a}</button>`).join("")}</div></div>`).join("") || `<div class="bos">Açık şikâyet yok.</div>`}</div>
-    <div class="kart"><h2>Oyuncu ara</h2><div class="satir"><input id="ykad" placeholder="Kullanıcı adı" autocapitalize="off" style="flex:1;padding:12px;border-radius:12px;background:var(--panel2);border:1px solid var(--line2)"><button class="btn yarim" style="margin:0;flex:none;width:auto" id="yara">Bul</button></div><div id="yoyuncu"></div></div>
-    <div class="kart"><h2>Çoklu hesap şüpheleri</h2><p class="kucuk">Aynı cihazda açılmış hesaplar ve aynı bağlantı adresini paylaşan kümeler. IP tek başına delil değildir (aile, okul, mobil operatör). Gerçek kişi olduğuna kanaat getirdiğin hesabı onayla; sahte hesabı kapat.</p><div id="ysuphe"><div class="kucuk">Yükleniyor…</div></div></div>
-    <div class="kart"><h2>Vatandaşlık ve parti kurma şartları</h2><div id="ykural"></div><button class="btn ikinci" id="ykuralkaydet">Kaydet</button></div>
-    <div class="kart"><h2>Tüm oyunculara duyuru</h2><textarea class="alanmetin" id="yduyuru" maxlength="600" style="min-height:80px" placeholder="Örn. Bu gece 03:00-03:30 arası bakım yapılacak."></textarea><button class="btn altin" id="ygonder">Duyuruyu gönder</button></div>
+        <div class="satir" style="flex-wrap:wrap;margin-top:6px">${KARAR.map(([k, a]) => `<button class="rozet ${k === "kapat" ? "kirmizi" : ""}" style="padding:7px 10px" data-i="${i}" data-k="${k}">${a}</button>`).join("")}</div></div>`).join("") || `<div class="bos">Açık şikâyet yok.</div>`}</div>` : ""}
+    ${var_("oyuncu_ara") ? `<div class="kart"><h2>Oyuncu ara</h2><div class="satir"><input id="ykad" placeholder="Kullanıcı adı" autocapitalize="off" style="flex:1;padding:12px;border-radius:12px;background:var(--panel2);border:1px solid var(--line2)"><button class="btn yarim" style="margin:0;flex:none;width:auto" id="yara">Bul</button></div><div id="yoyuncu"></div></div>` : ""}
+    ${y.yonetici ? `<div class="kart"><h2>Moderatör ekibi</h2><div id="ymod"><div class="kucuk">Yükleniyor…</div></div></div>` : ""}
+    ${var_("coklu_hesap") ? `<div class="kart"><h2>Çoklu hesap şüpheleri</h2><p class="kucuk">Aynı cihazda açılmış hesaplar ve aynı bağlantı adresini paylaşan kümeler. IP tek başına delil değildir (aile, okul, mobil operatör). Gerçek kişi olduğuna kanaat getirdiğin hesabı onayla; sahte hesabı kapat.</p><div id="ysuphe"><div class="kucuk">Yükleniyor…</div></div></div>` : ""}
+    ${var_("kurallar") ? `<div class="kart"><h2>Oyun kuralları</h2><div id="ykural"></div><button class="btn ikinci" id="ykuralkaydet">Kaydet</button></div>` : ""}
+    ${var_("duyuru") ? `<div class="kart"><h2>Tüm oyunculara duyuru</h2><textarea class="alanmetin" id="yduyuru" maxlength="600" style="min-height:80px" placeholder="Örn. Bu gece 03:00-03:30 arası bakım yapılacak."></textarea><button class="btn altin" id="ygonder">Duyuruyu gönder</button></div>` : ""}
+    ${y.yonetici ? `<div class="kart"><h2>Moderasyon günlüğü</h2><p class="kucuk">Yöneticinin ve moderatörlerin yaptığı her işlem. Yalnızca sen görürsün.</p><div id="ykayit"><div class="kucuk">Yükleniyor…</div></div></div>
     <div class="kart"><h2>Sürüm ve kalıcılık</h2><p class="kucuk">Güncellemeler oyunu sıfırlamaz: her güncellemeden önce yedek alınır, oyuncu verisi değişecek olursa güncelleme kendiliğinden iptal olur. Sunucu sürümü: <b id="ysunucu">…</b> · bu uygulama: <b>${e(window.UYGULAMA_SURUM)}</b></p>
       <div class="alan"><label>En düşük uygulama sürümü (bundan eski telefon uygulamalarından güncelleme istenir; 0 = istenmez)</label><input id="yminsurum" placeholder="0 ya da 2026.10.06-3"></div>
-      <button class="btn ikinci" id="yminkaydet">Kaydet</button></div>
-    <div class="kart"><h2>Ayarlar</h2><div class="alan"><label>Oy ve aday olmak için en az hesap yaşı (gün)</label><input id="yhesap" type="number" min="0" max="30" value="${o.min_hesap_gun}"></div><button class="btn ikinci" id="yayar">Kaydet</button>
-      <p class="kucuk" style="margin-top:6px">Açılış günlerinde 0 yapıp herkesin hemen oynamasını sağlayabilir, sonra 3'e çıkararak sahte hesapları engelleyebilirsin.</p></div>`, { geri: true });
-  yoneticiSupheCiz();
-  try { const sv = await API.rpc("surum"); $("#ysunucu").textContent = sv.sunucu || "—"; $("#yminsurum").value = sv.min_uygulama || "0";
-    $("#yminkaydet").onclick = async () => { try { await API.rpc("admin_min_uygulama", { p_surum: $("#yminsurum").value.trim() }); toast("Kaydedildi."); } catch (err) { toast(hataCevir(err.message), true); } }; } catch (_) {}
-  try {
-    const kr = await API.rpc("admin_kurallar", { p: null });
-    const AD = { min_hesap_gun: "Hesap yaşı (gün)", oy_min_kidem: "Oy için en az kıdem", oy_il_gun: "Seçmen kütüğü: ilde en az gün", cihaz_max_hesap: "Bir cihazda en fazla hesap",
-                 parti_kurucu_sayi: "Parti için kurucu üye sayısı", parti_kurucu_kidem: "Parti kurucusunun kıdemi", parti_kurulus_gun: "Kuruluş süresi (gün)" };
-    $("#ykural").innerHTML = Object.entries(AD).map(([k2, a2]) => `<div class="payinput"><span>${a2}</span><input data-kural-a="${k2}" type="number" value="${kr[k2]}" inputmode="numeric"></div>`).join("");
-    $("#ykuralkaydet").onclick = async () => { const v = {}; document.querySelectorAll("[data-kural-a]").forEach(i2 => v[i2.dataset.kuralA] = +i2.value);
-      try { await API.rpc("admin_kurallar", { p: v }); toast("Şartlar kaydedildi."); } catch (err) { toast(hataCevir(err.message), true); } };
-  } catch (_) {}
+      <button class="btn ikinci" id="yminkaydet">Kaydet</button></div>` : ""}`, { geri: true });
   document.querySelectorAll("[data-k][data-i]").forEach(b => b.onclick = async () => {
     const x = sk[+b.dataset.i];
     if (b.dataset.k === "kapat" && !await onayla("Hesabı kapat", `${e(x.hedef)} adlı oyuncunun hesabı kapatılacak; görevleri düşer, mesajları gizlenir.`, "Kapat", true)) return;
     try { await API.rpc("admin_sikayet_karar", { p_tur: x.tur, p_kayit: x.kayit_id || null, p_hedef_kad: x.hedef, p_islem: b.dataset.k }); toast("Karar uygulandı."); yoneticiEkrani(); }
     catch (err) { toast(hataCevir(err.message), true); }
   });
-  $("#yara").onclick = () => yoneticiOyuncu($("#ykad").value.trim());
-  $("#ygonder").onclick = async () => { try { const r = await API.rpc("admin_duyuru", { p_metin: $("#yduyuru").value }); toast(`Duyuru ${r.kitle} oyuncuya gönderildi.`); $("#yduyuru").value = ""; } catch (err) { toast(hataCevir(err.message), true); } };
-  $("#yayar").onclick = async () => { try { await API.rpc("admin_ayar", { p_min_hesap_gun: +$("#yhesap").value }); toast("Ayar kaydedildi."); } catch (err) { toast(hataCevir(err.message), true); } };
+  if ($("#yara")) $("#yara").onclick = () => yoneticiOyuncu($("#ykad").value.trim());
+  if ($("#ygonder")) $("#ygonder").onclick = async () => { try { const r = await API.rpc("admin_duyuru", { p_metin: $("#yduyuru").value }); toast(`Duyuru ${r.kitle} oyuncuya gönderildi.`); $("#yduyuru").value = ""; } catch (err) { toast(hataCevir(err.message), true); } };
+  if (var_("coklu_hesap")) yoneticiSupheCiz();
+  if (y.yonetici) { yoneticiModCiz(); yoneticiKayitCiz();
+    try { const sv = await API.rpc("surum"); $("#ysunucu").textContent = sv.sunucu || "—"; $("#yminsurum").value = sv.min_uygulama || "0";
+      $("#yminkaydet").onclick = async () => { try { await API.rpc("admin_min_uygulama", { p_surum: $("#yminsurum").value.trim() }); toast("Kaydedildi."); } catch (err) { toast(hataCevir(err.message), true); } }; } catch (_) {} }
+  if (var_("kurallar")) try {
+    const kr = await API.rpc("admin_kurallar", { p: null });
+    const AD = { min_hesap_gun: "Hesap yaşı (gün)", oy_min_kidem: "Oy için en az kıdem", oy_il_gun: "Seçmen kütüğü: ilde en az gün", cihaz_max_hesap: "Bir cihazda en fazla hesap",
+                 parti_kurucu_sayi: "Parti için kurucu üye sayısı", parti_kurucu_kidem: "Parti kurucusunun kıdemi", parti_kurulus_gun: "Kuruluş süresi (gün)",
+                 parti_kur_ucret: "Parti kuruluş ücreti (₺)", teskilat_ucret: "İl teşkilatı taban bedeli (₺ × il büyüklüğü 1-3)",
+                 havale_sinir: "Günlük para gönderme sınırı (asgari ücretin katı)", banka_reel_faiz: "Banka reel faizi (enflasyonun üstü, yıllık puan)", banka_tavan: "Kişi başı en fazla banka mevduatı (₺)" };
+    const AC = { teskilat_zorunlu: "Aday göstermek için il teşkilatı şartı", banka_acik: "Banka açık (yatırma, vadeli, kredi)" };
+    const kutu = $("#ykural");
+    if (kutu) kutu.innerHTML = Object.entries(AD).map(([k2, a2]) => `<div class="payinput"><span>${a2}</span><input data-kural-a="${k2}" type="number" value="${kr[k2]}" inputmode="decimal"></div>`).join("")
+      + Object.entries(AC).map(([k2, a2]) => `<label class="anahtar"><span><b>${a2}</b></span><input type="checkbox" data-kural-b="${k2}" ${kr[k2] ? "checked" : ""}></label>`).join("")
+      + `<p class="kucuk" style="margin-top:6px">Ücretler fiyat düzeyiyle (enflasyonla) kendiliğinden artar. Açılış günlerinde hesap yaşını 0 yapıp herkesin hemen oynamasını sağlayabilir, sonra 3'e çıkararak sahte hesapları engelleyebilirsin.</p>`;
+    if ($("#ykuralkaydet")) $("#ykuralkaydet").onclick = async () => { const v = {};
+      document.querySelectorAll("[data-kural-a]").forEach(i2 => v[i2.dataset.kuralA] = +i2.value);
+      document.querySelectorAll("[data-kural-b]").forEach(i2 => v[i2.dataset.kuralB] = i2.checked);
+      try { await API.rpc("admin_kurallar", { p: v }); toast("Kurallar kaydedildi."); } catch (err) { toast(hataCevir(err.message), true); } };
+  } catch (_) {}
 }
 async function yoneticiOyuncu(kad){
   const el = $("#yoyuncu"); if (!kad) return;
+  const { var_ } = yetkim();
   let o; try { o = await API.rpc("admin_oyuncu", { p_kad: kad }); } catch (err) { el.innerHTML = `<div class="hata-metin">${e(hataCevir(err.message))}</div>`; return; }
-  el.innerHTML = `<div style="margin-top:10px"><b style="font-size:17px">${e(o.kad)}</b> ${o.yasakli ? `<span class="rozet kirmizi">kapalı</span>` : ""}${o.susturma_bitis ? ` <span class="rozet sari">susturuldu: ${tarihSaat(o.susturma_bitis)}</span>` : ""}
-    <div class="kv"><span class="k">E-posta</span><span class="v">${e(o.eposta || "")}</span></div>
+  const ISLEM = (var_("sustur") ? [["sustur1","1 gün sustur"],["sustur7","7 gün sustur"],["susturma_kaldir","Susturmayı kaldır"]] : [])
+    .concat(var_("hesap_kapat") ? [[o.yasakli ? "ac" : "kapat", o.yasakli ? "Hesabı aç" : "Hesabı kapat"]] : []);
+  const bk = o.borc || {};
+  el.innerHTML = `<div style="margin-top:10px"><b style="font-size:17px">${e(o.kad)}</b> ${o.yonetici ? `<span class="rozet altin">yönetici</span>` : o.moderator ? `<span class="rozet altin">moderatör</span>` : ""} ${o.yasakli ? `<span class="rozet kirmizi">kapalı</span>` : ""}${o.susturma_bitis ? ` <span class="rozet sari">susturuldu: ${tarihSaat(o.susturma_bitis)}</span>` : ""}
+    ${o.eposta != null ? `<div class="kv"><span class="k">E-posta</span><span class="v">${e(o.eposta)}</span></div>` : ""}
     <div class="kv"><span class="k">İl / parti</span><span class="v">${e(o.il)} · ${partiRozet(o.parti, true)}</span></div>
     <div class="kv"><span class="k">Unvan</span><span class="v">${e(o.unvan || "—")}</span></div>
     <div class="kv"><span class="k">Katılım / son görülme</span><span class="v kucuk">${tarih(o.olusturma)} / ${o.son_gorulme ? tarihSaat(o.son_gorulme) : "—"}</span></div>
     <div class="kv"><span class="k">Hakkındaki şikâyet</span><span class="v">${o.sikayet}</span></div>
+    ${bk.kredi ? `<div class="kv"><span class="k">Kredi borcu</span><span class="v kotu">${tlYaz(bk.kredi)}${bk.uyari ? " · gecikmede" : ""}</span></div>` : ""}
     <div class="kucuk" style="margin-top:8px">Son mesajları:</div>${o.son_mesajlar.map(m => `<div class="kucuk" style="padding:4px 0;${m.gizli ? "text-decoration:line-through" : ""}">${tarihSaat(m.zaman)} · ${e(m.metin)}</div>`).join("") || `<div class="kucuk">—</div>`}
-    <div class="satir" style="flex-wrap:wrap;margin-top:8px">${[["sustur1","1 gün sustur"],["sustur7","7 gün sustur"],["susturma_kaldir","Susturmayı kaldır"],[o.yasakli ? "ac" : "kapat", o.yasakli ? "Hesabı aç" : "Hesabı kapat"]]
-      .map(([k, a]) => `<button class="rozet ${k === "kapat" ? "kirmizi" : ""}" style="padding:7px 10px" data-yk="${k}">${a}</button>`).join("")}</div></div>`;
+    ${ISLEM.length ? `<div class="satir" style="flex-wrap:wrap;margin-top:8px">${ISLEM.map(([k, a]) => `<button class="rozet ${k === "kapat" ? "kirmizi" : ""}" style="padding:7px 10px" data-yk="${k}">${a}</button>`).join("")}</div>` : ""}</div>`;
   el.querySelectorAll("[data-yk]").forEach(b => b.onclick = async () => {
     if (b.dataset.yk === "kapat" && !await onayla("Hesabı kapat", `${e(o.kad)} oyuna giremeyecek; görevleri düşer, mesajları gizlenir.`, "Kapat", true)) return;
     try { await API.rpc("admin_islem", { p_kad: o.kad, p_islem: b.dataset.yk }); toast("İşlem uygulandı."); yoneticiOyuncu(o.kad); } catch (err) { toast(hataCevir(err.message), true); }
   });
+}
+async function yoneticiModCiz(){
+  const el = $("#ymod"); if (!el) return;
+  let r; try { r = await API.rpc("admin_moderatorler"); } catch (err) { el.innerHTML = `<div class="kucuk">${e(hataCevir(err.message))}</div>`; return; }
+  D._modTanim = r.tanim;
+  el.innerHTML = `<p class="kucuk">Moderatörler yalnızca senin seçtiğin işleri yapabilir. Sana ya da birbirlerine işlem yapamaz, moderatör atayamaz; yaptıkları her şey aşağıdaki günlüğe yazılır.</p>
+    ${r.liste.map(x => `<div class="kart" style="margin:10px 0 0;background:var(--panel2)">
+      <div style="display:flex;justify-content:space-between;gap:8px"><b><a class="bag" href="#" onclick="oyuncuKart('${e(x.kad)}');return false">${e(x.kad)}</a></b><span class="kucuk">${x.islem_7gun} işlem / 7 gün${x.son_gorulme ? " · son " + tarihSaat(x.son_gorulme) : ""}</span></div>
+      <div style="margin-top:2px">${x.yetkiler.map(k => `<span class="cip notr">${e(MOD_YETKI[k] || k)}</span>`).join("")}</div>
+      <div class="satir" style="margin-top:8px"><button class="rozet" style="padding:7px 10px" data-mduz="${e(x.kad)}">Yetkileri düzenle</button><button class="rozet kirmizi" style="padding:7px 10px" data-mcik="${e(x.kad)}">Görevden al</button></div></div>`).join("") || `<div class="bos">Henüz moderatör yok.</div>`}
+    <button class="btn altin" id="ymodekle">+ Moderatör ekle</button>`;
+  el.querySelectorAll("[data-mduz]").forEach(b => b.onclick = () => modYetkiModal(b.dataset.mduz, (r.liste.find(x => x.kad === b.dataset.mduz) || {}).yetkiler || []));
+  el.querySelectorAll("[data-mcik]").forEach(b => b.onclick = async () => {
+    if (!await onayla("Moderatörü görevden al", `${e(b.dataset.mcik)} artık moderatör olmayacak; tüm yetkileri kalkar ve kendisine bildirim gider.`, "Görevden al", true)) return;
+    try { await API.rpc("admin_moderator_ayarla", { p_kad: b.dataset.mcik, p_yetkiler: [] }); toast("Moderatör görevden alındı."); yoneticiModCiz(); yoneticiKayitCiz(); } catch (err) { toast(hataCevir(err.message), true); }
+  });
+  $("#ymodekle").onclick = () => modYetkiModal(null, ["sikayet", "oyuncu_ara"]);
+}
+function modYetkiModal(kad, secili){
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">${kad ? e(kad) + " · yetkiler" : "Moderatör ekle"}</h3>
+    <p class="alt">Bu kişinin yapabileceği işleri seç. İstediğin zaman değiştirebilir ya da görevden alabilirsin.</p>
+    ${kad ? "" : `<div class="alan"><label>Oyuncunun kullanıcı adı</label><input id="mkad" autocapitalize="off" autocomplete="off" spellcheck="false"></div>`}
+    ${(D._modTanim || []).map(t => `<label class="anahtar"><span><b>${e(t.ad)}</b><div class="kucuk">${e(t.aciklama)}</div></span><input type="checkbox" data-myetki="${t.kod}" ${secili.includes(t.kod) ? "checked" : ""}></label>`).join("")}
+    <button class="btn altin" id="mkaydet">Kaydet</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
+  $("#mkaydet", m).onclick = async () => {
+    const k2 = kad || $("#mkad", m).value.trim(); if (!k2) return toast("Kullanıcı adını yaz.", true);
+    const y = [...m.querySelectorAll("[data-myetki]")].filter(i => i.checked).map(i => i.dataset.myetki);
+    if (!y.length) return toast("En az bir yetki seç. Görevden almak için \"Görevden al\" düğmesini kullan.", true);
+    try { await API.rpc("admin_moderator_ayarla", { p_kad: k2, p_yetkiler: y }); modalKapat(); toast("Moderatör kaydedildi."); yoneticiModCiz(); yoneticiKayitCiz(); }
+    catch (err) { toast(hataCevir(err.message), true); }
+  };
+}
+async function yoneticiKayitCiz(){
+  const el = $("#ykayit"); if (!el) return;
+  let l; try { l = await API.rpc("admin_mod_kayit", { p_limit: 40 }); } catch (err) { el.innerHTML = `<div class="kucuk">${e(hataCevir(err.message))}</div>`; return; }
+  el.innerHTML = l.map(x => `<div class="liste-satir"><div class="orta"><div style="font-size:14px"><b>${e(x.kad || "?")}</b> ${e(MOD_ISLEM[x.islem] || x.islem)}${x.hedef ? ` → <b>${e(x.hedef)}</b>` : ""}</div>
+      ${x.ayrinti ? `<div class="kucuk" style="overflow:hidden;text-overflow:ellipsis">${e(x.ayrinti.slice(0, 160))}</div>` : ""}<div class="kucuk">${tarihSaat(x.zaman)}</div></div></div>`).join("")
+    || `<div class="bos">Henüz kayıt yok.</div>`;
 }
 async function bildirimAyarKaydet(){
   const ayar = {}; document.querySelectorAll("[data-ayar]").forEach(i => ayar[i.dataset.ayar] = i.checked);
@@ -2417,7 +2495,9 @@ function hayatCiz(h){
   const desteklerBugun = (kb.gunluk_destek.devlet || 0) + (kb.gunluk_destek.belediye || 0);
   const stOran = st.sonraki_esik ? Math.min(100, (st.puan - st.bu_esik) * 100 / (st.sonraki_esik - st.bu_esik)) : 100;
   const reklamHazir = h.reklam.kalan > 0 && (!h.reklam.hazir || new Date(h.reklam.hazir).getTime() <= simdi());
-  const TUR_IK = { maas: "💼", destek: "🏛️", hemsehri: "🏙️", aday: "🗳️", tasinma: "🚚", reklam: "📣", reklam_odul: "📺", bagis: "🤝", parti_destek: "🤝", ikramiye: "🎁", iade: "🧾", yardim: "🆘", satin_alma: "🛒", kira: "🏡", ihale: "🔨", ihale_iade: "🔨", servet: "🏦", emlak: "🏠", ceza: "⚖️", hibe: "🎁", hosgeldin: "🏙️" };
+  const TUR_IK = { maas: "💼", destek: "🏛️", hemsehri: "🏙️", aday: "🗳️", tasinma: "🚚", reklam: "📣", reklam_odul: "📺", bagis: "🤝", parti_destek: "🤝", ikramiye: "🎁", iade: "🧾", yardim: "🆘", satin_alma: "🛒", kira: "🏡", ihale: "🔨", ihale_iade: "🔨", servet: "🏦", emlak: "🏠", ceza: "⚖️", hibe: "🎁", hosgeldin: "🏙️",
+    banka: "🏦", havale: "💸", kredi: "💳", haciz: "⚖️", parti_kur: "🏛️", parti_kur_iade: "🏛️" };
+  const bk = h.banka || { vadesiz: 0, vadeli: 0 };
   iskelet("Hayat", `
     <div class="kart">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
@@ -2434,6 +2514,13 @@ function hayatCiz(h){
     <div class="satir" style="margin-bottom:12px">
       <button class="btn yarim ikinci" style="margin:0" id="hReklam" ${reklamHazir ? "" : "disabled"}>📺 Reklam izle<br><span class="kucuk">+${tlYaz(kb.reklam_odul)} · ${h.reklam.kalan}/5</span></button>
       <button class="btn yarim ikinci" style="margin:0" id="hMagaza">🛒 Mağaza<br><span class="kucuk">₺ paketleri</span></button></div>
+    <div class="kart"><h2>Banka</h2>
+      ${bk.uyari ? `<div class="kucuk" style="color:var(--acc);font-weight:700;margin-bottom:6px">${e(bk.uyari)}</div>` : ""}
+      <div class="kv"><span class="k">Vadesiz hesap <span class="kucuk">(faiz işler)</span></span><span class="v">${tlYaz(bk.vadesiz)}</span></div>
+      ${bk.vadeli ? `<div class="kv"><span class="k">Vadeli hesaplar</span><span class="v">${tlYaz(bk.vadeli)}</span></div>` : ""}
+      ${bk.kredi ? `<div class="kv"><span class="k">Kredi borcu</span><span class="v kotu">${tlYaz(bk.kredi)}</span></div>` : ""}
+      <p class="kucuk" style="margin-top:6px">Paranı faize koy, kredi çek ya da başka bir oyuncuya para gönder.</p>
+      <div class="satir" style="margin-top:8px"><button class="btn yarim altin" style="margin:0" onclick="ekranAc(bankaEkrani)">🏦 Bankaya git</button><button class="btn yarim ikinci" style="margin:0" onclick="paraGonderModal()">💸 Para gönder</button></div></div>
     <div class="kart"><h2>Statü</h2>
       <div style="display:flex;justify-content:space-between"><b>${e(st.ad)}</b><span class="kucuk">${st.puan} kıdem puanı${st.sonraki_esik ? ` · ${e(st.sonraki_ad)}: ${st.sonraki_esik}` : ""}</span></div>
       <div class="bar"><i style="width:${stOran}%;background:var(--gold)"></i></div>
@@ -2573,6 +2660,178 @@ async function magazaModal(){
     }
     toast("Ödeme alındı; mağaza onayı biraz gecikebilir. Paran birkaç dakika içinde cüzdanında olacak.");
   });
+}
+
+/* =====================================================================
+   12d) BANKA · PARA GÖNDERME · İL TEŞKİLATLARI
+   ===================================================================== */
+const yuzde = (x) => "%" + fmt(x, 2);
+async function bankaEkrani(){
+  if (!D._banka) yukleniyor("Banka");
+  let b; try { b = await API.rpc("banka"); } catch (err) { iskelet("Banka", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
+  bankaCiz(b);
+}
+function bankaCiz(b){
+  D._banka = b; D._hayat = null;
+  if (D.durum && D.durum.profil && D.durum.profil.cuzdan) D.durum.profil.cuzdan.para = b.cuzdan;
+  const o = b.oranlar, v = b.vadesiz, k = b.kredi;
+  const acikV = b.vadeliler.filter(x => x.durum === "acik"), kapali = b.vadeliler.filter(x => x.durum !== "acik");
+  const DUR = { vade: "vadesi doldu", bozuldu: "bozuldu", haciz: "haciz" };
+  const notRenk = b.kredi_notu < 700 ? "var(--acc)" : b.kredi_notu < 1100 ? "var(--warn)" : "var(--good)";
+  iskelet("Banka", `
+    ${!b.acik ? `<div class="kart"><b>Banka şu an kapalı</b><div class="alt">Oyun yönetimi bankayı geçici olarak kapattı. Hesaplarındaki paran güvende, faizler işlemeye devam eder; yeni yatırma, vadeli hesap ve kredi şimdilik yapılamaz.</div></div>` : ""}
+    ${b.uyari ? `<div class="olay oy"><div class="baslik"><b>${k && k.durum === "takip" ? "Kredin yasal takipte" : "Taksitin gecikti"}</b><span class="rozet kirmizi">Uyarı</span></div><p class="alt" style="margin-top:6px">${e(b.uyari)}</p></div>` : ""}
+    <div class="kart"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+      <div><div class="kucuk">CÜZDANIN</div><div class="para">${tlYaz(b.cuzdan)}</div></div>
+      <div style="text-align:right"><div class="kucuk">BANKADAKİ PARAN</div><div style="font-size:20px;font-weight:800">${tlYaz(b.mevduat)}</div></div></div>
+      <p class="kucuk" style="margin-top:8px">Faizler enflasyona bağlıdır: enflasyon %${fmt(b.enflasyon, 1)}, bankanın yıllık politika faizi %${fmt(o.politika, 1)}. Kişi başı en fazla ${tlYaz(b.tavan)} mevduat tutulabilir. Bankadaki para da servet vergisine sayılır.</p></div>
+
+    <div class="kart"><h2>Vadesiz hesap</h2>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px"><div class="para" style="font-size:26px">${tlYaz(v.bakiye)}</div><span class="rozet altin">aylık ${yuzde(o.vadesiz)}</span></div>
+      <div class="kv"><span class="k">Bugün işleyen faiz <span class="kucuk">(gece hesaba eklenir)</span></span><span class="v iyi">+${fmt(v.birikmis, 2)} ₺</span></div>
+      <div class="kv"><span class="k">Günlük faiz kazancın</span><span class="v">${fmt(v.gunluk, 2)} ₺</span></div>
+      <div class="kv"><span class="k">Bugüne kadar kazandığın faiz</span><span class="v">${tlYaz(v.faiz_toplam)}</span></div>
+      <p class="kucuk" style="margin-top:6px">İstediğin an yatır, istediğin an çek. Faiz saat saat işler: para hesapta ne kadar durursa o kadar kazandırır.</p>
+      <div class="satir"><button class="btn yarim altin" id="bYatir" ${b.acik ? "" : "disabled"}>Yatır</button><button class="btn yarim ikinci" id="bCek" ${v.bakiye >= 1 ? "" : "disabled"}>Çek</button></div></div>
+
+    <div class="kart"><h2>Vadeli hesap</h2>
+      <p class="alt">Parayı belli bir süre bağla, daha yüksek faiz al. Faiz açılışta sabitlenir; vade dolunca anapara ve faiz cüzdanına yatar. Vadeden önce bozarsan durduğu gün kadar vadesiz faizi alırsın.</p>
+      <div class="kv"><span class="k">7 gün vadeli</span><span class="v">aylık ${yuzde(o.vadeli7)}</span></div>
+      <div class="kv"><span class="k">30 gün vadeli</span><span class="v">aylık ${yuzde(o.vadeli30)}</span></div>
+      ${acikV.map(x => `<div class="kart" style="margin:10px 0 0;background:var(--panel2)">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${tlYaz(x.anapara)}</b><span class="rozet">${x.gun} gün · aylık ${yuzde(x.oran)}</span></div>
+        <div class="kucuk">Vade: ${tarihSaat(x.vade)} · vadede faiz +${tlYaz(x.getiri)}</div>
+        <div class="kucuk">Şimdi bozarsan alacağın faiz: +${tlYaz(x.bozma)}</div>
+        <button class="rozet" style="padding:7px 10px;margin-top:6px" data-boz="${x.id}">Vadeden önce boz</button></div>`).join("")}
+      ${kapali.length ? `<div class="kucuk" style="margin-top:10px;font-weight:800;color:var(--txt2)">SON KAPANANLAR</div>${kapali.map(x => `<div class="kv"><span class="k">${tlYaz(x.anapara)} · ${x.gun} gün · ${DUR[x.durum] || x.durum}</span><span class="v iyi">+${tlYaz(x.getiri)}</span></div>`).join("")}` : ""}
+      ${acikV.length < 3 ? `<button class="btn altin" id="bVadeli" ${b.acik ? "" : "disabled"}>Vadeli hesap aç</button>` : `<p class="kucuk" style="margin-top:8px">Aynı anda en fazla 3 vadeli hesabın olabilir.</p>`}</div>
+
+    <div class="kart"><h2>Kredi</h2>
+      <div class="kv"><span class="k">Kredi notun</span><span class="v"><b>${b.kredi_notu}</b> <span class="kucuk">/ 1900 · ${e(b.not_ad)}</span></span></div>
+      <div class="bar"><i style="width:${b.kredi_notu * 100 / 1900}%;background:${notRenk}"></i></div>
+      ${k ? `<div style="margin-top:10px">
+          <div class="kv"><span class="k">Kalan borç</span><span class="v kotu">${tlYaz(k.kalan)}</span></div>
+          <div class="kv"><span class="k">Günlük taksit</span><span class="v">${tlYaz(k.taksit)} <span class="kucuk">(yaklaşık ${k.kalan_gun} gün)</span></span></div>
+          ${k.gecikmis ? `<div class="kv"><span class="k">Gecikmiş</span><span class="v kotu">${tlYaz(k.gecikmis)} · ${k.gecikme_gun} gün</span></div>` : ""}
+          <div class="kv"><span class="k">Çektiğin · faiz</span><span class="v">${tlYaz(k.anapara)} · aylık ${yuzde(k.oran)}</span></div>
+          <div class="kv"><span class="k">Bugün tamamını kapatırsan</span><span class="v">${tlYaz(k.erken_kapama)}</span></div>
+          <p class="kucuk" style="margin-top:6px">Taksit her gece 00:00'da önce cüzdanından, yetmezse vadesiz hesabından otomatik ödenir. Erken kapatırsan kalan günlerin faizi alınmaz.</p>
+          <div class="satir"><button class="btn yarim altin" id="kKapat">Tamamını öde</button><button class="btn yarim ikinci" id="kAra">Ara ödeme</button></div></div>`
+        : `<div class="kv"><span class="k">Kredi limitin</span><span class="v">${tlYaz(b.kredi_limit)}</span></div>
+          <div class="kv"><span class="k">Sana uygulanacak faiz</span><span class="v">aylık ${yuzde(b.kredi_oran)}</span></div>
+          <p class="kucuk" style="margin-top:6px">Limitin statüne, görevine ve kredi notuna göre belirlenir. Vade 7, 15 ya da 30 gün; borç her gün eşit taksitle ödenir.</p>
+          ${b.kara_liste ? `<p class="kucuk" style="color:var(--acc);font-weight:700">Takibe düşen kredin nedeniyle ${tarih(b.kara_liste)} tarihine kadar yeni kredi alamazsın.</p>`
+            : b.kredi_engel ? `<p class="kucuk" style="color:var(--gold2)">Kredi için seçmen kartın hazır olmalı: ${e(b.kredi_engel)}</p>` : ""}
+          <button class="btn altin" id="kCek" ${!b.acik || b.kara_liste || b.kredi_engel || b.kredi_limit < 1000 ? "disabled" : ""}>Kredi çek</button>`}
+      <details class="acilir"><summary>Taksidi ödemezsem ne olur?</summary><ul>
+        <li>Ödenmeyen tutara her gün %1 gecikme faizi eklenir, kredi notun düşer.</li>
+        <li>Borcun gecikmedeyken bankadaki paran bloke olur; para gönderemez, bağış yapamaz, vadeli hesap açamazsın.</li>
+        <li>3 gün üst üste ödenmezse kredi <b>yasal takibe</b> düşer: vadeli hesapların bozulup borca sayılır, toplanan maaşının yarısına haciz konur, kıdemin 5 puan düşer, oyuncu kartında "Takipteki borçlu" yazar.</li>
+        <li>Takipteki borç kapandıktan sonra 30 gün yeni kredi verilmez. Zamanında kapatılan her kredi notunu yükseltir.</li></ul></details></div>
+
+    <div class="kart"><h2>Para gönder</h2><p class="alt">Cüzdanından başka bir oyuncuya para gönder. Günlük sınır ${tlYaz(b.havale.tavan)} (bugün ${tlYaz(b.havale.bugun)} gönderdin).</p>
+      <button class="btn ikinci" onclick="paraGonderModal()">💸 Para gönder</button></div>
+
+    <div class="kart"><h2>Banka hareketleri</h2>${b.hareketler.map(x => {
+      const iyi = x.hesap === "kredi" ? x.tutar <= 0 : x.tutar >= 0;
+      return `<div class="hareket"><div style="min-width:0"><div>${{ vadesiz: "🏦", vadeli: "🔒", kredi: "💳" }[x.hesap] || "•"} ${e(x.aciklama)}</div><div class="kucuk">${tarihSaat(x.zaman)}</div></div>${x.tutar ? `<span class="t ${iyi ? "iyi" : "kotu"}">${x.tutar >= 0 ? "+" : ""}${tlYaz(x.tutar)}</span>` : ""}</div>`; }).join("") || `<div class="bos">Henüz banka hareketin yok.</div>`}</div>`, { geri: true });
+  const bagla = (id, fn) => { const el = $("#" + id); if (el) el.onclick = fn; };
+  bagla("bYatir", () => tutarModal({ baslik: "Vadesiz hesaba yatır", aciklama: `Cüzdanında ${tlYaz(b.cuzdan)} var. Faiz aylık ${yuzde(o.vadesiz)}; para hesapta durduğu kadar işler.`,
+    deger: Math.min(b.cuzdan, 10000), buton: "Yatır", gonder: (m) => API.rpc("banka_yatir", { p_miktar: m }), basari: "Paran bankada, faiz işlemeye başladı." }));
+  bagla("bCek", () => tutarModal({ baslik: "Vadesiz hesaptan çek", aciklama: `Hesabında ${tlYaz(v.bakiye)} var. Çektiğin para cüzdanına geçer.`,
+    deger: Math.floor(v.bakiye), tamami: Math.floor(v.bakiye), buton: "Cüzdana çek", gonder: (m) => API.rpc("banka_cek", { p_miktar: m }), basari: "Para cüzdanına geçti." }));
+  bagla("bVadeli", () => tutarModal({ baslik: "Vadeli hesap aç", aciklama: `Cüzdanından en az 1.000 ₺ bağla. Cüzdanında ${tlYaz(b.cuzdan)} var.`, deger: Math.min(Math.max(1000, b.cuzdan), 20000),
+    secenek: { ad: "Vade", liste: [[7, `7 gün · aylık ${yuzde(o.vadeli7)}`], [30, `30 gün · aylık ${yuzde(o.vadeli30)}`]] },
+    onizle: (m, g) => { const r = g === 7 ? o.vadeli7 : o.vadeli30, f = Math.round(m * r / 100 * g / 30); return `Vade sonunda <b>${tlYaz(m + f)}</b> alırsın (${tlYaz(f)} faiz).`; },
+    buton: "Vadeli hesabı aç", gonder: (m, g) => API.rpc("vadeli_ac", { p_miktar: m, p_gun: g }), basari: "Vadeli hesabın açıldı." }));
+  bagla("kCek", () => tutarModal({ baslik: "Kredi çek", aciklama: `Limitin ${tlYaz(b.kredi_limit)}, faizin aylık ${yuzde(b.kredi_oran)}. Para hemen cüzdanına geçer; yarından itibaren her gece taksit otomatik ödenir.`,
+    deger: Math.min(b.kredi_limit, 10000), secenek: { ad: "Vade", liste: [[7, "7 gün"], [15, "15 gün"], [30, "30 gün"]] },
+    onizle: (m, g) => { const top = Math.round(m * (1 + b.kredi_oran / 100 * g / 30)), tak = Math.ceil(top / g);
+      return `Toplam geri ödeme <b>${tlYaz(top)}</b> (${tlYaz(top - m)} faiz) · ${g} gün boyunca günde <b>${tlYaz(tak)}</b>. Taksit ödenmezse gecikme faizi işler, 3. günde yasal takip başlar.`; },
+    buton: "Krediyi çek", gonder: (m, g) => API.rpc("kredi_cek", { p_miktar: m, p_gun: g }), basari: "Kredin cüzdanına geçti." }));
+  bagla("kAra", () => tutarModal({ baslik: "Ara ödeme", aciklama: `Kalan borcun ${tlYaz(k.kalan)}. Ödeme önce cüzdanından, yetmezse vadesiz hesabından alınır; önce gecikmiş kısım kapanır, kredi daha erken biter.`,
+    deger: Math.min(k.taksit, k.kalan), buton: "Öde", gonder: (m) => API.rpc("kredi_ode", { p_miktar: m }), basari: "Ödemen alındı." }));
+  bagla("kKapat", async () => {
+    if (!await onayla("Krediyi kapat", `Bugün kapatırsan ${tlYaz(k.erken_kapama)} ödersin (kalan günlerin faizi alınmaz). Önce cüzdanından, yetmezse vadesiz hesabından alınır.`, "Tamamını öde")) return;
+    try { bankaCiz(await API.rpc("kredi_ode", { p_miktar: null })); toast("Kredin kapandı."); } catch (err) { toast(hataCevir(err.message), true); }
+  });
+  document.querySelectorAll("[data-boz]").forEach(bt => bt.onclick = async () => {
+    const x = acikV.find(y => y.id === +bt.dataset.boz);
+    if (!await onayla("Vadeli hesabı boz", `Vadeden önce bozarsan sabit faizi (${tlYaz(x.getiri)}) kaybedersin; durduğu süre için ${tlYaz(x.bozma)} vadesiz faizi alırsın. Anapara ve bu faiz cüzdanına geçer.`, "Boz", true)) return;
+    try { bankaCiz(await API.rpc("vadeli_boz", { p_id: x.id })); toast("Vadeli hesap bozuldu, para cüzdanında."); } catch (err) { toast(hataCevir(err.message), true); }
+  });
+}
+// Tutar (ve isteğe bağlı vade) soran ortak pencere
+function tutarModal(o){
+  const sec = o.secenek;
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">${o.baslik}</h3><p class="alt">${o.aciklama}</p>
+    <div class="alan"><label>Tutar (₺)</label><div class="satir" style="margin:0"><input id="tmik" type="number" min="1" step="100" value="${Math.max(0, Math.round(o.deger || 0))}" inputmode="numeric" style="flex:1">${o.tamami ? `<button class="rozet" style="padding:9px 12px" id="ttam">Tamamı</button>` : ""}</div></div>
+    ${sec ? `<div class="alan"><label>${sec.ad}</label><select id="tsec">${sec.liste.map(([d, a]) => `<option value="${d}">${a}</option>`).join("")}</select></div>` : ""}
+    <p class="kucuk" id="tonizle" style="min-height:18px"></p>
+    <button class="btn altin" id="tok">${o.buton}</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
+  const ciz = () => { if (o.onizle) $("#tonizle", m).innerHTML = o.onizle(Math.max(0, +$("#tmik", m).value || 0), sec ? +$("#tsec", m).value : null); };
+  $("#tmik", m).oninput = ciz; if (sec) $("#tsec", m).onchange = ciz; ciz();
+  if (o.tamami) $("#ttam", m).onclick = () => { $("#tmik", m).value = o.tamami; ciz(); };
+  $("#tok", m).onclick = async () => {
+    const b = $("#tok", m); b.disabled = true;
+    try { const r = await o.gonder(Math.round(+$("#tmik", m).value || 0), sec ? +$("#tsec", m).value : null); modalKapat(); toast(o.basari); bankaCiz(r); }
+    catch (err) { b.disabled = false; toast(hataCevir(err.message), true); }
+  };
+}
+async function paraGonderModal(kad){
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">Para gönder</h3>
+    <p class="alt">Gönderdiğin para hemen oyuncunun cüzdanına geçer ve ona bildirim gider. Gönderilen para geri alınamaz.</p>
+    <div class="alan"><label>Kime (kullanıcı adı)</label><input id="pgKad" value="${e(kad || "")}" autocapitalize="off" autocomplete="off" spellcheck="false"></div>
+    <div class="alan"><label>Tutar (₺)</label><input id="pgMik" type="number" min="100" step="100" value="1000" inputmode="numeric"></div>
+    <div class="alan"><label>Not (isteğe bağlı)</label><input id="pgNot" maxlength="100" placeholder="Örn. Kampanya desteği"></div>
+    <p class="kucuk" id="pgBilgi"></p>
+    <button class="btn altin" id="pgOk">Gönder</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
+  try { const b = await API.rpc("banka"); D._banka = b; const bi = $("#pgBilgi", m);
+    if (bi) bi.innerHTML = `Cüzdanında ${tlYaz(b.cuzdan)} var. Günlük sınır ${tlYaz(b.havale.tavan)}, bugün ${tlYaz(b.havale.bugun)} gönderdin.${b.havale.engel ? `<br><span style="color:var(--gold2)">Para göndermek için seçmen kartın hazır olmalı: ${e(b.havale.engel)}</span>` : ""}`; } catch (_) {}
+  const ok = $("#pgOk", m); if (!ok) return;
+  ok.onclick = async () => {
+    const hedef = $("#pgKad", m).value.trim();
+    if (!hedef) return toast("Kime göndereceğini yaz.", true);
+    ok.disabled = true;
+    try {
+      const r = await API.rpc("para_gonder", { p_kad: hedef, p_miktar: +$("#pgMik", m).value, p_aciklama: $("#pgNot", m).value });
+      modalKapat(); toast(`${r.alici} adlı oyuncuya ${tlYaz(r.miktar)} gönderildi.`);
+      D._hayat = null; D._banka = null; if (D.durum && D.durum.profil && D.durum.profil.cuzdan) D.durum.profil.cuzdan.para = r.para;
+      yenidenCiz();
+    } catch (err) { ok.disabled = false; toast(hataCevir(err.message), true); }
+  };
+}
+const ilBuyukluk = (mv) => mv >= 14 ? 3 : mv >= 8 ? 2 : 1;
+async function teskilatKartCiz(pid){
+  const el = $("#teskilatKart"); if (!el) return;
+  let t; try { t = await API.rpc("teskilatlar", { p_parti: pid }); } catch (_) { return; }
+  D._teskilat = t;
+  el.innerHTML = `<div class="kart"><h2>İl teşkilatları</h2>
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:20px">${t.sayi} <span class="kucuk">/ 81 il</span></b>${t.yetkili ? `<span class="kucuk">Kasa: ${tlYaz(t.kasa)}</span>` : ""}</div>
+    <div class="bar"><i style="width:${t.sayi * 100 / 81}%;background:var(--gold)"></i></div>
+    <div style="margin-top:6px">${t.sayi >= 81 ? `<span class="cip notr">Türkiye'nin 81 ilinde teşkilatlı</span>`
+      : t.iller.map(x => `<span class="cip notr">${x.genel_merkez ? "🏛️ " : ""}${e(x.ad)}${x.uye ? " · " + x.uye + " üye" : ""}</span>`).join("")}</div>
+    <p class="kucuk" style="margin-top:8px">${t.zorunlu ? "Parti yalnızca teşkilatı olan illerde milletvekili ve belediye başkanı adayı gösterebilir." : "Şu an aday göstermek için teşkilat şartı aranmıyor."}
+      İl binasının bedeli parti kasasından bir kez ödenir: küçük ilde ${tlYaz(t.ucretler["1"])}, orta ilde ${tlYaz(t.ucretler["2"])}, büyük ilde ${tlYaz(t.ucretler["3"])}. Teşkilatı genel başkan ve yardımcıları açar.</p>
+    ${t.yetkili && t.sayi < 81 ? `<button class="btn altin" onclick="teskilatAcModal(${pid})">İl teşkilatı aç</button>` : ""}</div>`;
+}
+function teskilatAcModal(pid){
+  const t = D._teskilat; if (!t) return;
+  const var_ = new Set(t.iller.map(x => x.il_id));
+  const iller = VERI.iller.filter(i => !var_.has(i.id)).sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
+  const bedel = (id) => t.ucretler[String(ilBuyukluk((VERI.iller.find(i => i.id === id) || {}).mv || 1))];
+  const benimIl = D.durum.profil.il_id;
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">İl teşkilatı aç</h3>
+    <p class="alt">Seçtiğin ilde partinin il binası açılır; parti o ilde aday gösterebilir hâle gelir ve o ildeki üyelere haber gider. Bedel parti kasasından düşer (kasada ${tlYaz(t.kasa)}).</p>
+    <div class="alan"><label>İl</label><select id="tkil">${iller.map(i => `<option value="${i.id}" ${i.id === benimIl ? "selected" : ""}>${e(i.ad)} — ${tlYaz(bedel(i.id))}</option>`).join("")}</select></div>
+    <p class="kucuk" id="tkbilgi"></p>
+    <button class="btn altin" id="tkok">Teşkilatı aç</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
+  const ciz = () => { const b = bedel(+$("#tkil", m).value); $("#tkbilgi", m).innerHTML = b > t.kasa ? `<span style="color:var(--acc)">Kasada yeterli para yok: ${tlYaz(b)} gerekli. Üyeler bağış yaparak kasayı doldurabilir.</span>` : `Bedel: ${tlYaz(b)}`; };
+  $("#tkil", m).onchange = ciz; ciz();
+  $("#tkok", m).onclick = async () => {
+    try { await API.rpc("teskilat_ac", { p_il: +$("#tkil", m).value }); modalKapat(); toast("İl teşkilatı açıldı."); teskilatKartCiz(pid); partiKasaCiz(pid); }
+    catch (err) { toast(hataCevir(err.message), true); }
+  };
 }
 
 /* =====================================================================

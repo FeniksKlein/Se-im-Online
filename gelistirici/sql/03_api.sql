@@ -153,7 +153,7 @@ alter table oyun.partiler add column if not exists kurulus_bit timestamptz;
 
 create or replace function public.parti_kur(p_ad text, p_kisa text, p_renk text, p_amblem text) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
-declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); gun int := (select parti_kur_gun from oyun.ayarlar where id = 1); yeni bigint;
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); gun int := (select parti_kur_gun from oyun.ayarlar where id = 1); yeni bigint; ucret numeric;
 begin
   p_ad := btrim(regexp_replace(p_ad, '\s+', ' ', 'g')); p_kisa := upper(btrim(p_kisa));
   if length(p_ad) < 5 or length(p_ad) > 40 then raise exception 'Parti adı 5-40 karakter olmalı.'; end if;
@@ -174,10 +174,13 @@ begin
   if p.son_parti_kur is not null and p.son_parti_kur + make_interval(days => gun) > t then
     raise exception 'En fazla % günde bir parti kurabilirsin.', gun;
   end if;
+  -- kuruluş harcı ve genel merkez binası (15_ekonomi3); para yetmezse parti kurulmaz
+  ucret := oyun.parti_kur_harci(p, p_ad, t);
   perform oyun._ayril(p.id, t);
   insert into oyun.partiler(ad, kisa, renk, amblem, gb, kurucu, kurulus, kurulus_bit)
   values (p_ad, p_kisa, lower(p_renk), p_amblem, p.id, p.id, t, t + make_interval(days => (select parti_kurulus_gun from oyun.ayarlar where id = 1)))
   returning id into yeni;
+  perform oyun.genel_merkez_ac(yeni, p, ucret, t);
   update oyun.profiller set parti_id = yeni, parti_at = t, son_parti_kur = t where id = p.id;
   perform oyun.olay('parti', format('%s, %s (%s) adıyla yeni bir parti kurmak için kuruluş dilekçesi verdi. Kurucu üyeler aranıyor.', p.kad, p_ad, p_kisa), p.il_id, yeni, t);
   perform oyun.parti_kurulus_kontrol(yeni, t);
@@ -277,6 +280,8 @@ begin
   if p_tur in ('mv_on','bel_on') and exists (select 1 from oyun.partiler where gb = p.id) then
     raise exception 'Genel başkan milletvekili ya da belediye başkanı adayı olamaz. Genel başkan yalnızca cumhurbaşkanı adayı olabilir.';
   end if;
+  -- il teşkilatı şartı (15_ekonomi3)
+  if oyun.teskilat_engeli(p, p_tur) is not null then raise exception '%', oyun.teskilat_engeli(p, p_tur); end if;
   if p_tur = 'cb_on' then
     select * into k from oyun.cb_kararlar where donem = s.donem and parti_id = p.parti_id;
     if k.yontem in ('kendisi','baskasi') then raise exception 'Genel başkan cumhurbaşkanı adayını doğrudan belirledi; ön seçim yapılmayacak.'; end if;
@@ -373,6 +378,7 @@ begin
       'hesap_engeli', oyun.uyari(p, t),
       'cb_mi', exists (select 1 from oyun.makamlar m where m.user_id = p.id and m.tur = 'cb' and m.bit is null),
       'yonetici', p.yonetici, 'bildirim_ayar', p.bildirim_ayar,
+      'yetkiler', oyun.yetkilerim(p.id), 'kredi_uyari', oyun.kredi_uyari(p.id),
       'cuzdan', oyun.cuzdan_ozet(p.id, t)),
     'okunmamis', oyun.okunmamis(p),
     'takvim', coalesce((select jsonb_agg(oyun.secim_ozet(s, p, t) order by coalesce(s.basvuru_bas, s.oy_bas), oyun.oncelik(s.tur))
@@ -506,6 +512,7 @@ begin
                from (select * from oyun.profiller where parti_id = pa.id order by parti_at limit 300) pr join oyun.iller i on i.id = pr.il_id), '[]'::jsonb),
     'vekil', (select count(*) from oyun.makamlar m where m.tur = 'mv' and m.bit is null and m.parti_id = pa.id),
     'belediye', (select count(*) from oyun.makamlar m where m.tur = 'bel' and m.bit is null and m.parti_id = pa.id),
+    'teskilat', (select count(*) from oyun.parti_teskilat t where t.parti_id = pa.id),
     'uyesiyim', p.parti_id = pa.id);
 end $$;
 

@@ -154,9 +154,11 @@ update oyun.profiller set yonetici = true where kad = 'KullaniciAdin';
 ```
 Bundan sonra **Ben → Yönetici paneli** açılır. Panelde şunları yapabilirsin:
 - Şikâyetleri görüp karar vermek: sorun yok, gizle, 1 ya da 7 gün sustur, hesabı kapat.
-- Oyuncu aramak (e-posta adresi yalnızca sana görünür).
+- Oyuncu aramak (e-posta adresi yalnızca sana ve "E-posta görme" yetkisi verdiğin moderatöre görünür).
 - Tüm oyunculara duyuru göndermek.
-- Hesap yaşı kuralını ayarlamak.
+- Oyun kurallarını ayarlamak: hesap yaşı, oy ve parti kurma şartları, parti kuruluş ücreti, il teşkilatı bedeli ve şartı, para gönderme sınırı, banka faizi ve tavanı, bankayı açıp kapama.
+- **Moderatör ekibi kurmak:** "Moderatör ekibi" kartında **+ Moderatör ekle** → kullanıcı adını yaz → yapabileceği işleri tek tek işaretle → Kaydet. Yetkileri sonradan "Yetkileri düzenle" ile değiştirir, "Görevden al" ile kaldırırsın. Moderatörler panele **Ben › Moderatör paneli**'nden girer, yalnızca verdiğin işleri yapabilir ve sana ya da birbirlerine işlem yapamaz.
+- **Moderasyon günlüğü:** Kimin, ne zaman, kime ne yaptığını gösterir. Yalnızca sen görürsün.
 
 ## 9) Telefona gelen bildirimler (push)
 
@@ -287,7 +289,10 @@ update oyun.ayarlar set baslangic_para = 10000;
 - **Oy için en az kıdem:** 10 ("Vatandaş" statüsü, yaklaşık 10 gün maaş toplamak).
 - **Seçmen kütüğü:** yerel ve genel seçimde ilinde en az 7 gündür kayıtlı olmak.
 - **Bir cihazda en fazla hesap:** 2. İkinci hesap yönetici onayına kadar oy kullanamaz.
-- **Parti kurmak:** 30 kıdem, 7 gün içinde 5 kurucu üye.
+- **Parti kurmak:** 30 kıdem, 7 gün içinde 5 kurucu üye, 25.000 ₺ kuruluş ücreti (fiyat düzeyiyle artar).
+- **İl teşkilatı:** Parti yalnızca teşkilatı olan illerde aday gösterebilir; il binası 2.000 / 4.000 / 6.000 ₺ (küçük / orta / büyük il), parti kasasından.
+- **Para gönderme:** Günde en fazla 1 aylık asgari ücret.
+- **Banka:** Faizler enflasyon + 5 puan üzerinden hesaplanır; kişi başı en fazla 2.000.000 ₺ mevduat.
 
 Açılış günlerinde oyuncu azken kıdem ve kurucu sayısını düşürüp oyuncu sayısı arttıkça yükseltebilirsin.
 

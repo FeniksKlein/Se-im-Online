@@ -263,6 +263,7 @@ begin
   return jsonb_build_object('kad', h.kad, 'il_ad', (select ad from oyun.iller where id = h.il_id), 'il_id', h.il_id,
     'parti', oyun.parti_json(h.parti_id), 'unvan', oyun.unvan(h.id), 'katilim', h.olusturma,
     'ben', h.id = p.id, 'engelledim', oyun.engelli(p.id, h.id), 'rozetler', oyun.rozetler(h.id),
+    'borclu', oyun.takipte(h.id),
     'karneler', oyun.karneler(h.id), 'statu', oyun.statu_json(h.id), 'itibar', oyun.itibar_json(h.id),
     'gecmis', coalesce((select jsonb_agg(jsonb_build_object('makam', oyun.makam_ad(m.tur, m.il_id, m.bakanlik), 'bas', m.bas, 'bit', m.bit) order by m.bas desc)
                         from (select * from oyun.makamlar where user_id = h.id order by bas desc limit 20) m), '[]'::jsonb));
@@ -294,7 +295,7 @@ end $$;
 
 create or replace function public.admin_ozet() returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
-declare p oyun.profiller := oyun.yonetici_zorunlu(); t timestamptz := oyun.simdi();
+declare p oyun.profiller := oyun.yetki_zorunlu('ozet'); t timestamptz := oyun.simdi();
 begin
   return jsonb_build_object(
     'oyuncu', (select count(*) from oyun.profiller where not yasakli),
@@ -312,7 +313,7 @@ end $$;
 
 create or replace function public.admin_sikayetler(p_durum text default 'yeni') returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
-declare p oyun.profiller := oyun.yonetici_zorunlu();
+declare p oyun.profiller := oyun.yetki_zorunlu('sikayet');
 begin
   return coalesce((select jsonb_agg(x order by x ->> 'ilk' desc) from (
     select jsonb_build_object('tur', s.tur, 'kayit_id', s.kayit_id, 'hedef', oyun.kad(s.hedef_user),
@@ -332,10 +333,17 @@ end $$;
 -- p_islem: yok_say | gizle | gizle_sustur1 | gizle_sustur7 | kapat (hesabı kapat)
 create or replace function public.admin_sikayet_karar(p_tur text, p_kayit bigint, p_hedef_kad text, p_islem text) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
-declare p oyun.profiller := oyun.yonetici_zorunlu(); t timestamptz := oyun.simdi(); h oyun.profiller;
+declare p oyun.profiller := oyun.yetki_zorunlu('sikayet'); t timestamptz := oyun.simdi(); h oyun.profiller;
 begin
   h := oyun.profil_bul(p_hedef_kad);
   if p_islem not in ('yok_say','gizle','gizle_sustur1','gizle_sustur7','kapat') then raise exception 'Geçersiz işlem.'; end if;
+  -- moderatör yetkileri (16_moderator): susturma ve hesap kapatma ayrı yetkilerdir
+  if p_islem in ('gizle_sustur1','gizle_sustur7') and not oyun.yetkili(p.id, 'sustur') then raise exception 'Susturma yetkin yok; yalnızca "Gizle" diyebilirsin.'; end if;
+  if p_islem = 'kapat' and not oyun.yetkili(p.id, 'hesap_kapat') then raise exception 'Hesap kapatma yetkin yok.'; end if;
+  if p_islem <> 'yok_say' then perform oyun.korunan_hedef(p, h.id); end if;
+  perform oyun.mod_log(p, 'sikayet_' || p_islem, h.kad, (case p_tur when 'mesaj' then (select metin from oyun.mesajlar where id = p_kayit)
+                                                                       when 'yayin' then (select metin from oyun.yayinlar where id = p_kayit)
+                                                                       when 'ozel' then (select metin from oyun.ozel where id = p_kayit) end));
   if p_islem = 'yok_say' then
     if p_tur = 'mesaj' then update oyun.mesajlar set gizli = false where id = p_kayit;
     elsif p_tur = 'yayin' then update oyun.yayinlar set gizli = false where id = p_kayit; end if;
@@ -356,10 +364,11 @@ end $$;
 
 create or replace function public.admin_oyuncu(p_kad text) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
-declare p oyun.profiller := oyun.yonetici_zorunlu(); h oyun.profiller; t timestamptz := oyun.simdi();
+declare p oyun.profiller := oyun.yetki_zorunlu('oyuncu_ara'); h oyun.profiller; t timestamptz := oyun.simdi();
 begin
   h := oyun.profil_bul(p_kad);
-  return jsonb_build_object('kad', h.kad, 'eposta', (select email from auth.users where id = h.id),
+  return jsonb_build_object('kad', h.kad, 'eposta', case when oyun.yetkili(p.id, 'eposta') then (select email from auth.users where id = h.id) end,
+    'moderator', exists (select 1 from oyun.moderatorler where user_id = h.id), 'borc', oyun.banka_ozet(h.id),
     'il', (select ad from oyun.iller where id = h.il_id), 'parti', oyun.parti_json(h.parti_id), 'unvan', oyun.unvan(h.id),
     'olusturma', h.olusturma, 'son_gorulme', h.son_gorulme, 'yasakli', h.yasakli, 'yonetici', h.yonetici,
     'susturma_bitis', case when h.susturma_bitis > t then h.susturma_bitis end,
@@ -371,10 +380,14 @@ end $$;
 -- p_islem: sustur1 | sustur7 | susturma_kaldir | kapat | ac
 create or replace function public.admin_islem(p_kad text, p_islem text) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
-declare p oyun.profiller := oyun.yonetici_zorunlu(); t timestamptz := oyun.simdi(); h oyun.profiller;
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); h oyun.profiller;
 begin
+  -- moderatör yetkileri (16_moderator)
+  p := oyun.yetki_zorunlu(case when p_islem in ('kapat','ac') then 'hesap_kapat' else 'sustur' end);
   h := oyun.profil_bul(p_kad);
   if h.id = p.id then raise exception 'Kendi hesabına işlem yapamazsın.'; end if;
+  perform oyun.korunan_hedef(p, h.id);
+  perform oyun.mod_log(p, p_islem, h.kad, null);
   if p_islem = 'sustur1' then update oyun.profiller set susturma_bitis = t + interval '1 day' where id = h.id;
   elsif p_islem = 'sustur7' then update oyun.profiller set susturma_bitis = t + interval '7 days' where id = h.id;
   elsif p_islem = 'susturma_kaldir' then update oyun.profiller set susturma_bitis = null where id = h.id;
@@ -386,18 +399,20 @@ end $$;
 
 create or replace function public.admin_duyuru(p_metin text) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
-declare p oyun.profiller := oyun.yonetici_zorunlu(); t timestamptz := oyun.simdi(); m text;
+declare p oyun.profiller := oyun.yetki_zorunlu('duyuru'); t timestamptz := oyun.simdi(); m text;
 begin
   m := oyun.metin_temizle(p_metin, 600);
+  perform oyun.mod_log(p, 'duyuru', null, m);
   insert into oyun.yayinlar(tur, gonderen, metin, zaman, unvan) values ('sistem', p.id, m, t, 'Oyun Yönetimi');
   return jsonb_build_object('tamam', true, 'kitle', (select count(*) from oyun.profiller where not yasakli));
 end $$;
 
 create or replace function public.admin_ayar(p_min_hesap_gun int) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
-declare p oyun.profiller := oyun.yonetici_zorunlu();
+declare p oyun.profiller := oyun.yetki_zorunlu('kurallar');
 begin
   if p_min_hesap_gun not between 0 and 30 then raise exception 'Hesap yaşı 0-30 gün olmalı.'; end if;
+  perform oyun.mod_log(p, 'ayar', null, 'min_hesap_gun=' || p_min_hesap_gun);
   update oyun.ayarlar set min_hesap_gun = p_min_hesap_gun where id = 1;
   return public.admin_ozet();
 end $$;

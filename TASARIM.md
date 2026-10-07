@@ -164,13 +164,32 @@ Her aday en fazla 280 karakterlik bir bildirge yazar ve makamına uygun **ölç�
 ### Rozetler
 Oyuncu kartında görünür: Cumhurbaşkanı, Bakan, Genel Başkan, Milletvekili, Belediye Başkanı, Kanun Yapıcı (teklifi yasalaştı), Parti Kurucusu, Hatip (10+ propaganda yayını), Sandık Neferi (ilk oy) ve Demokrasi Emektarı (20+ seçimde oy).
 
-### Yönetici paneli
-Yalnızca yöneticilere açılır. Panelde şunlar var:
+### Yönetici paneli ve moderatör ekibi
+Yönetici (oyunun sahibi) her şeyi yapar. Panelde şunlar var:
 - Özet: oyuncu sayısı, son 24 saatte aktif olanlar, mesajlar, açık şikâyetler, kayıtlı cihazlar.
 - Şikâyet kararları: sorun yok, gizle, gizle ve 1 ya da 7 gün sustur, hesabı kapat.
-- Oyuncu arama: e-posta, son mesajlar ve hakkındaki şikâyetler.
+- Oyuncu arama: e-posta, son mesajlar, hakkındaki şikâyetler ve kredi borcu.
 - Tüm oyunculara duyuru gönderme.
-- Hesap yaşı kuralının ayarı.
+- Oyun kuralları: hesap yaşı, oy ve parti kurma şartları, parti kuruluş ücreti, teşkilat bedeli ve şartı, günlük para gönderme sınırı, banka faizi, mevduat tavanı, bankayı açıp kapama.
+
+**Moderatör ekibi.** Yönetici istediği oyuncuyu moderatör yapar ve yetkilerini tek tek seçer:
+
+| Yetki | Ne yapar |
+|---|---|
+| Özet | Özet rakamları görür |
+| Şikâyetler | Şikâyet edilen içerikleri görür, "sorun yok" ya da "gizle" der |
+| Susturma | Oyuncuyu 1 / 7 gün susturur, susturmayı kaldırır |
+| Hesap kapatma | Hesabı kapatır ya da yeniden açar |
+| Oyuncu inceleme | Oyuncu bilgilerini ve son mesajlarını görür |
+| E-posta görme | İncelerken e-posta adresini de görür (kişisel veri) |
+| Duyuru | Tüm oyunculara duyuru gönderir |
+| Çoklu hesap incelemesi | Aynı cihazdaki hesapları görür, gerçek kişiyi onaylar |
+| Kurallar ve ayarlar | Oyun kurallarını değiştirir |
+
+- Moderatör yalnızca verilen yetkiyi kullanır; yöneticiye ve başka moderatörlere işlem yapamaz, moderatör atayamaz.
+- Moderatör atamak, yetki vermek ve zorunlu uygulama sürümü yalnızca yöneticinindir.
+- Her yetkili işlem **moderasyon günlüğüne** yazılır (kim, ne zaman, kime, ne yaptı). Günlüğü yalnızca yönetici görür.
+- Yetkileri boş bırakılan oyuncunun moderatörlüğü biter; kendisine bildirim gider.
 
 Kapatılan hesap oyuna giremez, görevleri düşer, mesajları gizlenir.
 
@@ -226,6 +245,9 @@ Yeni oyuncu 10.000 ₺ ile başlar.
 | **Ek propaganda hakkı** | 1.500 ₺. Günlük hak bitince bir yayın daha. Günde en fazla 3 |
 | **Partiye bağış** | Parti kasasına girer. Günde en fazla bir aylık asgari ücret kadar (şehir bağışıyla ortak sınır). Her asgari ücret tutarı **+1 kıdem puanı** kazandırır |
 | **Şehir kalkınma bağışı** | İlin gelişmişliğini artırır: her asgari ücret tutarı için **+0,005 gelişmişlik** (gelişmiş ilde maaşlar ve belediye geliri artar) ve **+1 kıdem puanı**. Ayın hayırseverleri listesi herkese açıktır |
+| **Parti kuruluşu** | 25.000 ₺ × fiyat düzeyi: kuruluş harcı ve genel merkez binası. Kurucunun cüzdanından ödenir. Kuruluş düşerse yarısı iade edilir |
+| **İl teşkilatı** (parti kasasından) | 2.000 ₺ × il büyüklüğü (1–3) × fiyat düzeyi. Bir kez ödenir |
+| **Para gönderme** | Başka bir oyuncuya; günde en fazla 1 aylık asgari ücret |
 
 **Verginin karşılığı:** "Hayat" ekranındaki vergi karnesi, son 7 günde ödediğin gelir vergisinin bütçe kanunundaki paylara göre hangi bakanlığa, belediyelere ve sosyal desteğe gittiğini gösterir; karşılığında sana işleyen hizmetleri (icraatlar, belediye hizmetleri) de listeler.
 
@@ -302,6 +324,43 @@ Süreli etkiler 7 gün, il seçilenler 14 gün sürer.
 | Çalışma ve Sosyal Güvenlik | İstihdam paketi: maaşlar +%10 | Esnaf kredisi: maaş +%5, geçim −%5 |
 
 Etkiler üst üste biner; indirimler en fazla %90'dır.
+
+### Parti kuruluş ücreti ve il teşkilatları
+- **Kuruluş ücreti.** Parti kuran oyuncu kuruluş harcını ve genel merkez binasını cüzdanından öder (25.000 ₺ × fiyat düzeyi; yönetici değiştirebilir). Parası yetmeyen parti kuramaz. Ücret parti kurma ekranında ve seçmen kartında görünür.
+- **Genel merkez.** Kurucunun ilinde partinin ilk il teşkilatı olarak açılır.
+- **Kuruluş düşerse** (süresi içinde yeterli kurucu toplanamazsa) bina satılır, ücretin yarısı kurucuya iade edilir.
+- **İl teşkilatı.** Parti yalnızca teşkilatı olan illerde milletvekili ve belediye başkanı adayı gösterebilir (gerçekte de partiler teşkilatlandıkları yerde seçime girer). Teşkilatı genel başkan ya da yardımcıları açar; il binasının bedeli parti kasasından bir kez ödenir: küçük ilde 2.000, orta ilde 4.000, büyük ilde 6.000 ₺ (× fiyat düzeyi). O ildeki üyelere bildirim gider. Parti sayfasında hangi illerde teşkilatlı olduğu görünür.
+- Oyunla gelen 5 parti 81 ilde teşkilatlıdır. Bu özellikten önce kurulmuş partiler, üyelerinin, adaylarının ve seçilmişlerinin bulunduğu illerde teşkilatlı sayıldı (kimsenin adaylığı güncelleme yüzünden düşmedi).
+- Yönetici teşkilat şartını panelden kapatabilir.
+
+### Para gönderme
+- Seçmen kartı hazır oyuncu, başka bir oyuncuya cüzdanından para gönderebilir (oyuncu kartında ya da Banka ekranında "Para gönder"). İsteğe bağlı 100 karakterlik not yazılır.
+- Alıcıya bildirim gider; iki tarafın hesap hareketlerinde görünür. Gönderilen para geri alınamaz.
+- En az 100 ₺; günde en fazla 1 aylık asgari ücret (yönetici katsayıyı değiştirebilir).
+- Aynı cihazda açılmış hesaplar arasında, seni engellemiş oyuncuya ve gecikmiş kredi borcun varken gönderilemez. Böylece çoklu hesapla para toplanamaz.
+
+### Banka
+Faizler enflasyona bağlıdır. **Politika faizi (yıllık) = enflasyon + 5 puan** (en az %10; reel faiz puanını yönetici ayarlar). Oranlar aylık gösterilir:
+
+| Ürün | Faiz (aylık) | Enflasyon %35 iken |
+|---|---|---|
+| Vadesiz hesap | politika ÷ 12 × 0,5 | %1,67 |
+| Vadeli 7 gün | politika ÷ 12 × 0,8 | %2,67 |
+| Vadeli 30 gün | politika ÷ 12 × 0,95 | %3,17 |
+| Kredi | politika ÷ 12 × 1,6 (kredi notuna göre ×0,9–1,2) | %5,33 |
+
+- **Vadesiz hesap:** İstenildiği an yatırılır ve çekilir. Faiz saat saat işler, para hesapta durduğu kadar kazandırır; işleyen faiz her gece 00:00'da hesaba eklenir.
+- **Vadeli hesap:** En az 1.000 ₺, 7 ya da 30 gün, aynı anda en fazla 3. Faiz açılışta sabitlenir; vade dolunca anapara ve faiz cüzdana yatar. Vadeden önce bozulursa durduğu gün kadar vadesiz faizi verilir.
+- **Mevduat tavanı:** Kişi başı 2.000.000 ₺ × fiyat düzeyi. Bankadaki para da servet vergisine sayılır.
+- **Kredi:** Seçmen kartı hazır oyuncu çeker. Vade 7, 15 ya da 30 gün; aynı anda tek kredi. Faiz basittir: geri ödeme = tutar × (1 + aylık faiz × gün / 30). Ertesi geceden başlayarak her gece eşit taksit önce cüzdandan, yetmezse vadesiz hesaptan otomatik ödenir. Ara ödeme ve erken kapama yapılabilir; erken kapamada işlememiş günlerin faizi alınmaz.
+- **Kredi limiti** = aylık asgari ücret × statü katsayısı (Yeni Gelen 0,5 · Vatandaş 1 · Saygın 1,5 · Kanaat Önderi 2 · Duayen 3 · Yaşayan Efsane 4) × görevdeyse 1,5 × kredi notu katsayısı.
+- **Kredi notu** (0–1900, başlangıç 1100): zamanında kapatılan kredi +60, ödenmeyen her gün −40, yasal takip −250. 700'ün altında kredi verilmez; 1100'ün altında limit yarıya iner ve faiz %20 artar, 1500 üstünde limit 1,5 kat (1700 üstünde 2 kat), faiz %10 düşer.
+
+**Ödemeyenin cezası:**
+1. Ödenmeyen tutara her gün **%1 gecikme faizi** eklenir, kredi notu düşer, oyuncuya bildirim ve gündemde uyarı gider.
+2. Gecikmiş borç varken bankadaki para **bloke** olur; oyuncu para gönderemez, partiye ya da şehre bağış yapamaz, vadeli hesap açamaz.
+3. **3 gün üst üste** ödenmezse kredi **yasal takibe** düşer: vadeli hesaplar bozulup borca sayılır, toplanan maaşın **yarısına haciz** konur, kıdem 5 puan düşer, oyuncu kartında herkese **"Takipteki borçlu"** yazar, Gündem'de haber çıkar.
+4. Takipteki borç kapanınca haciz kalkar ama 30 gün yeni kredi verilmez.
 
 ### Parti kasası
 - Aday adaylığı ücretleri, üye bağışları ve hazine yardımıyla dolar. Hazine yardımı son genel seçimde %3'ü geçen partilere oy oranıyla dağıtılır.
@@ -462,7 +521,9 @@ Karne oyuncu kartında, parti sayfasında, il sayfasında ve belediye ekranında
 | Kabine | 12 bakanlık ve atamalar |
 | Sosyal | Sohbet mesajları, özel mesajlar, propaganda yayınları, bildirimler, engellemeler, şikâyetler |
 | Devlet | Ülke göstergeleri ve günlük geçmişi, il gelişmişlikleri, bakanlık kasaları ve icraatları, kanun teklifleri ve vekil oyları, cumhurbaşkanlığı kararları, ittifaklar, Resmî Gazete |
-| Vatandaş | Cüzdan, maaş kumbarası, seri ve kıdem, hesap hareketleri (60 gün), süreli etkiler, belediye hizmetleri, parti kasası ve hareketleri, vaatler ve karneleri, satın almalar |
+| Vatandaş | Cüzdan, maaş kumbarası, seri ve kıdem, hesap hareketleri (60 gün), süreli etkiler, belediye hizmetleri, parti kasası ve hareketleri, il teşkilatları, vaatler ve karneleri, satın almalar |
+| Banka | Vadesiz hesaplar ve kredi notları, vadeli hesaplar, krediler, banka hareketleri (90 gün) |
+| Yönetim | Moderatörler ve yetkileri, moderasyon günlüğü |
 | Haberler | Oyun içi olay günlüğü |
 
 **Güvenlik:**

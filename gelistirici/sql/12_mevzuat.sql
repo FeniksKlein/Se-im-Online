@@ -313,17 +313,27 @@ $$;
 
 -- Günün ilk toplamasında: servet vergisi ve emlak vergisi
 create or replace function oyun.gunluk_kesinti(u uuid, t timestamptz) returns numeric language plpgsql as $$
-declare p oyun.profiller; c oyun.cuzdan; s numeric; muaf numeric; ks numeric := 0; em numeric; top numeric := 0; ilad text;
+declare p oyun.profiller; c oyun.cuzdan; s numeric; muaf numeric; ks numeric := 0; em numeric; top numeric := 0; ilad text; banka numeric; a numeric; b numeric;
 begin
   select * into p from oyun.profiller where id = u;
   select * into c from oyun.cuzdan where user_id = u;
   s := oyun.duz('servet_vergisi');
   if s > 0 then
     muaf := round(250000 * (select endeks from oyun.ulke where id = 1));
-    ks := floor(greatest(0, c.para - muaf) * s / 1000);
+    banka := oyun.mevduat_toplam(u);            -- bankadaki mevduat da servete dahildir (15_ekonomi3)
+    ks := floor(greatest(0, c.para + banka - muaf) * s / 1000);
     if ks > 0 then
-      perform oyun.para_islem(u, -ks, 'servet', format('Servet vergisi (binde %s, %s ₺ muafiyetin üstü)', replace(s::text, '.', ','), oyun.tl(muaf)), t);
-      top := top + ks;
+      a := least(ks, c.para);
+      if a > 0 then
+        perform oyun.para_islem(u, -a, 'servet', format('Servet vergisi (binde %s, %s ₺ muafiyetin üstü%s)', replace(s::text, '.', ','), oyun.tl(muaf),
+                                                       case when banka > 0 then ', banka mevduatı dahil' else '' end), t);
+      end if;
+      b := least(ks - a, floor(coalesce((select vadesiz from oyun.banka_musteri where user_id = u), 0)));
+      if b > 0 then
+        update oyun.banka_musteri set vadesiz = vadesiz - b where user_id = u;
+        perform oyun.banka_kayit(u, 'vadesiz', -b, 'Servet vergisi (cüzdan yetmedi)', t);
+      end if;
+      top := top + a + b;
     end if;
   end if;
   em := round(oyun.il_duz(p.il_id, 'emlak') * (select endeks from oyun.ulke where id = 1));
