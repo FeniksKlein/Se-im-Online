@@ -29,7 +29,10 @@ begin
     'meclis_aday_ol(bigint,text,boolean)','meclis_oy(bigint,text,text)','meclis_baskanlik()','grup_karar(bigint,text)','meclis_ihtar(text,text)','meclis_gorev_birak(text)',
     'oturum_kaydet(text,text)','arsa_teklif(bigint,numeric)','ihaleler()','vatandaslik()','admin_supheler()','admin_hesap_onay(text,boolean,text)','admin_kurallar(jsonb)','il_bagis(numeric)','il_bagis_durum()','vergi_karnem()','sohbet_ozet()',
     'cihaz_kaydet(text,text)','cihaz_sil(text)','bildirim_ayar_kaydet(jsonb)',
-    'teskilatlar(bigint)','teskilat_ac(int)','para_gonder(text,numeric,text)',
+    'teskilatlar(bigint)','teskilat_ac(int)','teskilat_ac2(int,text)','teskilat_gorev_ver(int,text)','teskilat_gorev_al(int)',
+    'parti_ad_degistir(text,text)','parti_tuzuk(bigint)','parti_tuzuk_teklif(text,text)','parti_tuzuk_oyla(bigint,text)',
+    'borc_affi_onizle(numeric)','borc_affi_kararname(numeric,text)','ekonomi_kanun_teklif(text,text,text,numeric)',
+    'para_gonder(text,numeric,text)',
     'banka()','banka_yatir(numeric)','banka_cek(numeric)','vadeli_ac(numeric,int)','vadeli_boz(bigint)','kredi_cek(numeric,int)','kredi_ode(numeric)',
     'admin_moderatorler()','admin_moderator_ayarla(text,text[])','admin_mod_kayit(int)']
   loop
