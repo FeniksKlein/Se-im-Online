@@ -114,7 +114,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.10.07-6', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.10.07-7', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -10638,7 +10638,7 @@ revoke all on function public.meclis_gorev_birak(text) from public, anon;
 grant execute on function public.meclis_gorev_birak(text) to authenticated;
 -- =====================================================================
 -- SEÇİM SİMÜLASYONU ONLINE — 19) SİYASİ EKONOMİ + PARTİ İÇİ DEMOKRASİ
--- Sürüm: 2026.10.07-6
+-- Sürüm: 2026.10.07-7
 -- Oyuncu verisini silmez; mevcut makam/para/seçim kayıtlarını korur.
 -- =====================================================================
 
@@ -11527,7 +11527,7 @@ end $$;
 create or replace function oyun.ekonomi_kanun_yururluk()
 returns trigger
 language plpgsql security definer
-set search_path='' as $
+set search_path='' as $econ$
 declare
   oz text;
   d numeric;
@@ -11573,7 +11573,7 @@ begin
   end if;
 
   return new;
-end $$;
+end $econ$;
 
 drop trigger if exists ekonomi_kanun_yururluk on oyun.kanunlar;
 create trigger ekonomi_kanun_yururluk
@@ -11634,7 +11634,7 @@ end $$;
 create or replace function public.politika_ayarla(p_kod text,p_deger numeric)
 returns jsonb
 language plpgsql security definer
-set search_path='oyun','public','pg_temp' as $
+set search_path='oyun','public','pg_temp' as $policy$
 declare
   p oyun.profiller:=oyun.profilim();
   t timestamptz:=oyun.simdi();
@@ -11697,7 +11697,7 @@ begin
   perform oyun.olay('ekonomi',format('%s %s: %s',unvan,p.kad,bas),null,p.parti_id,t);
 
   return jsonb_build_object('tamam',true,'kod',p_kod,'eski',eski,'yeni',yeni,'etki',pe);
-end $;
+end $policy$;
 
 insert into oyun.vaat_turleri(kapsam,kod,ad,birim,tip,yon,min,max,sira,aciklama)
 values(
