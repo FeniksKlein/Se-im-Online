@@ -80,16 +80,11 @@ begin
 end $$;
 
 create or replace function public.banka() returns jsonb
-language plpgsql security definer set search_path='' as $$
+language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
 declare
-  p oyun.profiller:=oyun.profilim();
-  t timestamptz:=oyun.simdi();
-  m oyun.banka_musteri;
-  k oyun.krediler;
-  o jsonb:=oyun.banka_oranlar();
-  c oyun.cuzdan:=oyun.cuzdanim(p.id);
-  hb numeric;
-  ul oyun.ulke;
+  p oyun.profiller:=oyun.profilim(); t timestamptz:=oyun.simdi();
+  m oyun.banka_musteri; k oyun.krediler; o jsonb:=oyun.banka_oranlar();
+  c oyun.cuzdan:=oyun.cuzdanim(p.id); hb numeric; ul oyun.ulke;
 begin
   m:=oyun.vadesiz_isle(p.id,t);
   k:=oyun.aktif_kredi(p.id);
@@ -99,32 +94,31 @@ begin
     'acik',(select banka_acik from oyun.ayarlar where id=1),
     'cuzdan',c.para,'oranlar',o,'enflasyon',round(ul.enflasyon,1),
     'vadesiz',jsonb_build_object(
-      'bakiye',m.vadesiz,'birikmis',round(m.faiz_birikmis,2),'faiz_toplam',m.faiz_toplam,
+      'bakiye',round(m.vadesiz,2),'birikmis',0,'faiz_toplam',round(m.faiz_toplam,2),
+      'saatlik',round(m.vadesiz*(o->>'vadesiz')::numeric/100/30/24,2),
       'gunluk',round(m.vadesiz*(o->>'vadesiz')::numeric/100/30,2)
     ),
     'vadeliler',coalesce((select jsonb_agg(jsonb_build_object(
-      'id',v.id,'anapara',v.anapara,'oran',v.oran,'gun',v.gun,'acilis',v.acilis,
-      'vade',v.vade,'durum',v.durum,'getiri',coalesce(v.getiri,round(v.anapara*v.oran/100*v.gun/30)),
-      'bozma',round(v.anapara*(o->>'vadesiz')::numeric/100/30*greatest(0,extract(epoch from(t-v.acilis))/86400))
+      'id',v.id,'anapara',v.anapara,'oran',v.oran,'gun',v.gun,'acilis',v.acilis,'vade',v.vade,'durum',v.durum,
+      'getiri',coalesce(v.getiri,round(v.anapara*v.oran/100*v.gun/30)),
+      'biriken',case when v.durum='acik' then oyun.vadeli_biriken(v,t) else v.getiri end,
+      'saatlik',round(v.anapara*v.oran/100/30/24,2),
+      'bozma',round(v.anapara*(o->>'vadesiz')::numeric/100/30/24*greatest(0,floor(extract(epoch from(t-v.acilis))/3600)),2)
     ) order by v.durum<>'acik',v.acilis desc)
       from (select * from oyun.vadeli where user_id=p.id and (durum='acik' or kapanis>t-interval '14 days') order by acilis desc limit 10)v),'[]'::jsonb),
     'kredi',case when k.id is not null then jsonb_build_object(
-      'id',k.id,'anapara',k.anapara,'oran',k.oran,'gun',k.gun,'toplam',k.toplam,
-      'taksit',k.taksit,'kalan',k.kalan,'gecikmis',k.gecikmis,'gecikme_gun',k.gecikme_gun,
-      'durum',k.durum,'acilis',k.acilis,'erken_kapama',oyun.erken_kapama(k),
-      'kalan_gun',ceil(greatest(0,k.kalan-k.gecikmis)/k.taksit)
+      'id',k.id,'anapara',k.anapara,'oran',k.oran,'gun',k.gun,'toplam',k.toplam,'taksit',k.taksit,
+      'kalan',k.kalan,'gecikmis',k.gecikmis,'gecikme_gun',k.gecikme_gun,'durum',k.durum,'acilis',k.acilis,
+      'erken_kapama',oyun.erken_kapama(k),'kalan_gun',ceil(greatest(0,k.kalan-k.gecikmis)/k.taksit)
     ) end,
     'kredi_notu',m.kredi_notu,'not_ad',oyun.not_ad(m.kredi_notu),
     'kredi_oran',oyun.kredi_orani(p.id),'kredi_limit',oyun.kredi_limiti(p.id),
     'kara_liste',case when m.kara_liste>t then m.kara_liste end,
-    'kredi_engel',oyun.uyari(p,t),
-    'tavan',oyun.banka_tavani(),'mevduat',oyun.mevduat_toplam(p.id),
+    'kredi_engel',oyun.uyari(p,t),'tavan',oyun.banka_tavani(),'mevduat',oyun.mevduat_toplam(p.id),
     'uyari',oyun.kredi_uyari(p.id),
     'havale',jsonb_build_object(
-      'bugun',hb,
-      'tavan',round(ul.asgari*(select havale_sinir from oyun.ayarlar where id=1)),
-      'engel',oyun.uyari(p,t),
-      'kaynak','vadesiz'
+      'bugun',hb,'tavan',round(ul.asgari*(select havale_sinir from oyun.ayarlar where id=1)),
+      'engel',oyun.uyari(p,t),'kaynak','vadesiz'
     ),
     'transferler',coalesce((select jsonb_agg(jsonb_build_object(
       'id',x.id,'zaman',x.zaman,'yon',case when x.gonderen=p.id then 'giden' else 'gelen' end,
