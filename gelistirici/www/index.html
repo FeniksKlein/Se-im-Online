@@ -2725,6 +2725,7 @@ function hayatCiz(h){
       ${bk.kredi ? `<div class="kv"><span class="k">Kredi borcu</span><span class="v kotu">${tlYaz(bk.kredi)}</span></div>` : ""}
       <p class="kucuk" style="margin-top:6px">Paranı faize koy, kredi çek ya da başka bir oyuncuya para gönder.</p>
       <div class="satir" style="margin-top:8px"><button class="btn yarim altin" style="margin:0" onclick="ekranAc(bankaEkrani)">🏦 Bankaya git</button><button class="btn yarim ikinci" style="margin:0" onclick="paraGonderModal()">💸 Para gönder</button></div></div>
+    <div class="kart"><h2>🏠 Gayrimenkul yatırımı</h2><p class="kucuk">İstediğin kadar daire, dükkân veya villa al. Her mülkün kirası satın alma tarihinden tam 7 gün sonra, ardından her 7 günde bir cüzdanına yatar.</p><button class="btn altin" onclick="ekranAc(mulkEkrani)">Mülklerim ve satın alma</button></div>
     <div class="kart"><h2>Statü</h2>
       <div style="display:flex;justify-content:space-between"><b>${e(st.ad)}</b><span class="kucuk">${st.puan} kıdem puanı${st.sonraki_esik ? ` · ${e(st.sonraki_ad)}: ${st.sonraki_esik}` : ""}</span></div>
       <div class="bar"><i style="width:${stOran}%;background:var(--gold)"></i></div>
@@ -2870,6 +2871,30 @@ async function magazaModal(){
    12d) BANKA · PARA GÖNDERME · İL TEŞKİLATLARI
    ===================================================================== */
 const yuzde = (x) => "%" + fmt(x, 2);
+async function mulkEkrani(){
+  yukleniyor("Gayrimenkul");
+  try { mulkCiz(await API.rpc("mulk_liste")); }
+  catch(err){ iskelet("Gayrimenkul",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true}); }
+}
+function mulkCiz(d){
+  iskelet("Gayrimenkul",`
+    <div class="kart"><h2>Gayrimenkul portföyüm</h2>
+      <div class="kv"><span class="k">Mülk sayısı</span><b>${fmt(d.adet)}</b></div>
+      <div class="kv"><span class="k">Toplam alış bedeli</span><b>${tlYaz(d.mulk_degeri)}</b></div>
+      <div class="kv"><span class="k">Haftalık toplam kira</span><b>${tlYaz(d.haftalik_toplam)}</b></div>
+      <div class="kv"><span class="k">Cüzdan</span><b>${tlYaz(d.cuzdan)}</b></div>
+      <p class="kucuk">Kira ilk kez satın alma anından 7 gün sonra, ardından her 7 günde bir otomatik olarak hak edilir. Oyun tekrar açıldığında bekleyen kiralar cüzdana aktarılır.</p></div>
+    <div class="kart"><h2>Yeni mülk satın al</h2>
+      ${[['daire','Daire',130000],['dukkan','Dükkân',260000],['villa','Villa',520000]].map(x=>`<div class="kv"><span>${e(x[1])}<div class="kucuk">Haftalık kira: ${tlYaz(Math.round(x[2]/13))}</div></span><button class="btn ikinci" style="width:auto;margin:0" onclick="mulkAl('${x[0]}',${x[2]})">${tlYaz(x[2])} · Al</button></div>`).join('')}
+    </div>
+    <div class="kart"><h2>Mülklerim (${fmt(d.adet)})</h2>
+      ${d.mulkler.length ? d.mulkler.map(m=>`<div class="olay"><b>${e({daire:'Daire',dukkan:'Dükkân',villa:'Villa'}[m.tip]||m.tip)} #${m.id} · ${e(m.il)}</b><div class="kv"><span>Haftalık kira</span><b>${tlYaz(m.haftalik)}</b></div><div class="kv"><span>Toplam kazanç</span><b>${tlYaz(m.toplam_kira)}</b></div><div class="kucuk">Sonraki kira: ${new Date(m.sonraki).toLocaleString('tr-TR')}</div></div>`).join('') : '<p class="alt">Henüz mülkün yok.</p>'}
+    </div>`,{geri:true});
+}
+async function mulkAl(tur,bedel){
+  if(!await onayla("Gayrimenkul satın al",`Bu mülkü ${tlYaz(bedel)} karşılığında satın almak istiyor musun? İlk kira 7 gün sonra ödenir.`,"Satın al"))return;
+  try {const d=await API.rpc("mulk_satin_al",{p_tip:tur});mulkCiz(d);bildir("Mülk satın alındı.");}catch(err){bildir(hataCevir(err.message),true);}
+}
 async function bankaEkrani(){
   if (!D._banka) yukleniyor("Banka");
   let b; try { b = await API.rpc("banka"); } catch (err) { iskelet("Banka", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
