@@ -40,6 +40,8 @@ begin
  if not found then raise exception 'Banka artik faal degil';end if;
  select * into k from oyun.oyb_kredi where id=p_id for update;
  if k.durum<>'basvuru' then raise exception 'Bu basvuru zaten karara baglandi';end if;
+ if exists(select 1 from oyun.sirket_ortaklari where sirket_id=k.banka_id and user_id=k.borclu and pay>0)
+ then raise exception 'Banka ortaklarina veya yoneticilerine kredi kullandirilamaz';end if;
  if not p_onay then
    update oyun.oyb_kredi set durum='reddedildi',kapanis=t where id=k.id;
    return jsonb_build_object('tamam',true,'onay',false);
