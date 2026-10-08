@@ -1,5 +1,5 @@
 -- Gayrimenkul: her mülk için satın alındığı andan itibaren 7 günde bir kira.
-create table if not exists oyun.mulkler (
+create table if not exists oyun.yatirim_mulkleri (
  id bigint generated always as identity primary key,
  user_id uuid not null references auth.users(id),
  il_id smallint not null references oyun.iller(id),
@@ -11,10 +11,10 @@ create table if not exists oyun.mulkler (
  toplam_kira numeric(16,2) not null default 0,
  kira_sayisi int not null default 0
 );
-create index if not exists mulkler_user_kira_idx on oyun.mulkler(user_id,sonraki_kira);
-alter table oyun.mulkler enable row level security;
-revoke all on oyun.mulkler from public,anon,authenticated;
-revoke all on sequence oyun.mulkler_id_seq from public,anon,authenticated;
+create index if not exists yatirim_mulkleri_user_kira_idx on oyun.yatirim_mulkleri(user_id,sonraki_kira);
+alter table oyun.yatirim_mulkleri enable row level security;
+revoke all on oyun.yatirim_mulkleri from public,anon,authenticated;
+revoke all on sequence oyun.yatirim_mulkleri_id_seq from public,anon,authenticated;
 
 create or replace function oyun.mulk_kira_tahsil(p_user uuid)
 returns void language plpgsql security definer
@@ -22,12 +22,12 @@ set search_path='oyun','public','pg_temp' as $$
 declare m record; n int; gelir numeric; t timestamptz:=oyun.simdi();
 begin
  perform pg_advisory_xact_lock(hashtextextended(p_user::text, 78113));
- for m in select * from oyun.mulkler where user_id=p_user and sonraki_kira<=t order by id for update loop
+ for m in select * from oyun.yatirim_mulkleri where user_id=p_user and sonraki_kira<=t order by id for update loop
    n:=floor(extract(epoch from (t-m.sonraki_kira))/604800)::int+1;
    n:=least(n,520);
    gelir:=round(m.haftalik_kira*n,2);
    perform oyun.para_islem(p_user,gelir,'kira',format('%s numaralı mülkten %s haftalık kira',m.id,n),t);
-   update oyun.mulkler
+   update oyun.yatirim_mulkleri
    set sonraki_kira=sonraki_kira+(n*interval '7 days'),
        toplam_kira=toplam_kira+gelir,
        kira_sayisi=kira_sayisi+n
@@ -56,7 +56,7 @@ begin
    'mulk_degeri',coalesce(sum(m.alis_bedeli),0),
    'cuzdan',(select para from oyun.cuzdan where user_id=u)
  ) into j
- from oyun.mulkler m join oyun.iller i on i.id=m.il_id where m.user_id=u;
+ from oyun.yatirim_mulkleri m join oyun.iller i on i.id=m.il_id where m.user_id=u;
  return j;
 end $$;
 
@@ -73,7 +73,7 @@ begin
  kira:=round(bedel/13,2);
  perform oyun.mulk_kira_tahsil(u);
  perform oyun.para_islem(u,-bedel,'emlak',format('%s satın alındı',p_tip),t);
- insert into oyun.mulkler(user_id,il_id,tip,alis_bedeli,haftalik_kira,satin_alma,sonraki_kira)
+ insert into oyun.yatirim_mulkleri(user_id,il_id,tip,alis_bedeli,haftalik_kira,satin_alma,sonraki_kira)
  values(u,p.il_id,p_tip,bedel,kira,t,t+interval '7 days');
  return public.mulk_liste();
 end $$;
