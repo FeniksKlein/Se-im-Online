@@ -3354,11 +3354,11 @@ async function sirketEkrani(){
   <div class="alan"><label>Devredilecek pay (%)</label><input id="sir_pay_${s.id}" type="number" min="1" max="${s.pay}" value="${s.pay}"></div>
   <div class="alan"><label>Satış bedeli (₺)</label><input id="sir_bedel_${s.id}" type="number" min="1" value="100000"></div>
   <button class="btn ikinci" onclick="sirketPayTeklif(${s.id})">Ortaklık / satış teklifi gönder</button>
-  ${s.sektor==='banka'?`<div class="alan"><label>7 günlük mevduat faizi (%)</label><input id="sir_faiz_${s.id}" type="number" min="0" max="3" step="0.01" value="${s.faiz}"></div><button class="btn ikinci" onclick="sirketFaiz(${s.id})">Banka faizini değiştir</button>`:''}
+  ${s.sektor==='banka'?`<button class="btn altin" onclick="oybYonetim(${s.id})">🏦 Bankamı yönet, krediler ve kâr payı</button><div class="alan"><label>7 günlük mevduat faizi (%)</label><input id="sir_faiz_${s.id}" type="number" min="0" max="3" step="0.01" value="${s.faiz}"></div><button class="btn ikinci" onclick="sirketFaiz(${s.id})">Banka faizini değiştir</button>`:''}
   </div>`).join(''):'<p class="alt">Henüz şirketin yok.</p>'}</div>
   <div class="kart"><h2>🏪 Satılık şirketler</h2><p class="alt">Başka oyuncuların satışa çıkardığı şirketlerin tamamını satın alabilirsin.</p>${d.pazar.length?d.pazar.map(s=>`<div class="kv"><span>${e(s.ad)} · ${e(s.sektor)} · ${fmt(s.fiyat)} ₺</span><button class="btn ikinci" onclick="sirketPazardanAl(${s.id})">Satın al</button></div>`).join(''):'<p class="alt">Şu anda satılık şirket yok.</p>'}</div>
   <div class="kart"><h2>Bana gelen ortaklık teklifleri</h2>${d.teklifler.length?d.teklifler.map(o=>`<div class="kv"><span>Şirket #${o.sirket_id} · %${o.pay} pay · ${fmt(o.bedel)} ₺</span><button class="btn ikinci" onclick="sirketTeklifKabul(${o.id})">Satın al</button></div>`).join(''):'<p class="alt">Bekleyen teklif yok.</p>'}</div>
-  <div class="kart"><h2>🏦 Oyuncu bankaları</h2><p class="alt">Bankalar 7 günlük vadeli mevduat kabul eder. Haftalık faiz üst sınırı %3. Banka sahipleri kendi bankalarına faizli mevduat yatıramaz.</p>
+  <div class="kart"><h2>🏦 Oyuncu bankaları</h2><p class="alt">Oyuncu bankalarında saatlik ve 7 günlük mevduat, vade ve erken çekim, gerçek oyunculara kredi, banka yönetimi ve ortaklara kâr payı dağıtımı bulunur.</p>
   <button class="btn ikinci" onclick="oyuncuBankaEkrani()">Banka listesini aç</button></div>
   `,{geri:true});
   sirketOnizleme();
@@ -3382,30 +3382,175 @@ async function sirketKarPayi(id){try{await API.rpc("sirket_kar_payi",{p_sirket:i
 async function sirketPayTeklif(id){try{await API.rpc("sirket_pay_teklif",{p_sirket:id,p_alici:document.getElementById("sir_alici_"+id).value,p_pay:Number(document.getElementById("sir_pay_"+id).value),p_bedel:Number(document.getElementById("sir_bedel_"+id).value)});toast("Ortaklık teklifi gönderildi");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketTeklifKabul(id){try{await API.rpc("sirket_pay_kabul",{p_teklif:id});toast("Şirket payı satın alındı");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketFaiz(id){try{await API.rpc("banka_faiz_belirle",{p_banka:id,p_faiz:Number(document.getElementById("sir_faiz_"+id).value)});toast("Faiz değiştirildi");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+
+function oybTarih(t){return t?new Date(t).toLocaleString("tr-TR",{dateStyle:"short",timeStyle:"short"}):"—"}
+function oybVadeEtiket(h){return h===168?"7 gün":h+" saat"}
+function oybVadeOrani(b,h){return Number((b.oranlar||{})[String(h)]||0)}
 async function oyuncuBankaEkrani(){
  yukleniyor("Oyuncu bankaları");
- try{const d=await API.rpc("oyuncu_banka_liste");const m=await API.rpc("banka_mevduat_tahsil");
- iskelet("Oyuncu bankaları",`<div class="kart"><h2>🏦 Bankalar</h2>${d.bankalar.map(b=>`<div class="kart"><h3>${e(b.ad)}</h3><p class="alt">7 günlük faiz: %${b.faiz} · Banka kasası: ${fmt(b.kasa)} ₺. Sahibi olduğun bankaya vadeli mevduat yatıramazsın. Banka ödemeleri rezerv kontrolüne tabidir.</p><div class="alan"><label>Yatırılacak tutar (₺)</label><input id="banka_tutar_${b.id}" type="number" min="1000" value="1000"></div><button class="btn ikinci" onclick="oyuncuBankaTeklif(${b.id})">Vade sonu ödemeyi kontrol et</button><div class="alt" id="banka_teklif_${b.id}" aria-live="polite"></div><button class="btn altin" onclick="oyuncuBankaYatir(${b.id})">Kontrol ederek mevduat yatır</button></div>`).join('')||'<p class="alt">Henüz oyuncu bankası yok.</p>'}</div><div class="kart"><h2>Mevduatlarım</h2>${m.mevduatlar.map(x=>`<div class="kv"><span>Banka #${x.banka} · ${fmt(x.tutar)} ₺</span><b>${x.iptal?'Anapara iade edildi':x.odendi?'Ödendi':x.durum==='banka_odeme_bekliyor'?'Banka ödemesi bekleniyor':new Date(x.vade).toLocaleDateString('tr-TR')}</b></div>`).join('')||'<p class="alt">Mevduat yok.</p>'}</div>`,{geri:true});
+ try{
+  const [d,p]=await Promise.all([API.rpc("oyb_liste"),API.rpc("oyb_portfoy")]);
+  const bankalar=d.bankalar||[],mevduatlar=p.mevduatlar||[],krediler=p.krediler||[];
+  iskelet("Oyuncu bankaları",`
+   <div class="kart"><h2>🏦 Oyuncu bankaları</h2>
+    <p class="alt">Devlet bankasındaki gibi 1, 3, 6, 12, 24 saatlik mevduat açabilir veya eski 7 günlük vadeyi seçebilirsin. Getiri, vade sonunda ödenir. Erken bozarsan faiz alamazsın. Oyuncu bankaları kredi verebildiği için ödeme riski taşır; devlet garantisi yoktur.</p>
+    ${bankalar.map(b=>`<div class="kart">
+     <h3>${e(b.ad)}</h3>
+     <p class="alt">Banka kasası: ${fmt(b.kasa)} ₺ · 7 günlük vade: %${fmt(b.faiz,2)} ${b.bankam?" · Ortağı olduğun banka":""}</p>
+     <div class="alan"><label>Vade seç</label><select id="oyb_saat_${b.id}" onchange="oybVadeOnizle(${b.id})">
+      ${[1,3,6,12,24,168].map(h=>`<option value="${h}">${oybVadeEtiket(h)} · vade getirisi %${fmt(oybVadeOrani(b,h),2)}</option>`).join("")}
+     </select></div>
+     <div class="alan"><label>Yatırılacak tutar (₺)</label><input id="oyb_tutar_${b.id}" type="number" min="1000" max="10000000" step="1000" value="1000" oninput="oybVadeOnizle(${b.id})"></div>
+     <div class="alt" id="oyb_onizleme_${b.id}">Getiriyi ve banka ödeme gücünü görmek için kontrol et.</div>
+     <button class="btn ikinci" onclick="oyuncuBankaTeklif(${b.id})">Beklenen getiri ve riski kontrol et</button>
+     <button class="btn altin" ${b.bankam?"disabled":""} onclick="oyuncuBankaYatir(${b.id})">Mevduat yatır</button>
+     ${b.bankam?"<p class='alt'>Kendi bankana faizli mevduat yatıramazsın.</p>":""}
+     <div class="kart" style="margin-top:14px;background:var(--panel2)">
+      <h3>💳 Bu bankadan kredi iste</h3>
+      <p class="alt">Krediyi banka sahibi onaylar. Borç hesabına para ancak onaylanınca geçer. Oranlar 24 saatlik %${fmt(b.kredi_faiz,2)} kredi faizinden hesaplanır.</p>
+      <div class="alan"><label>Kredi tutarı (₺)</label><input id="oyb_ktutar_${b.id}" type="number" min="1000" max="500000" step="1000" value="10000"></div>
+      <div class="alan"><label>Geri ödeme vadesi</label><select id="oyb_ksaat_${b.id}">
+       ${[1,3,6,12,24].map(h=>`<option value="${h}">${h} saat</option>`).join("")}
+      </select></div>
+      <button class="btn ikinci" ${b.bankam?"disabled":""} onclick="oybKrediBasvur(${b.id})">Kredi başvurusu gönder</button>
+     </div>
+     ${b.bankam?`<button class="btn altin" onclick="oybYonetim(${b.id})">🏦 Bankamı yönet / Kâr ve krediler</button>`:""}
+    </div>`).join("")||"<p class='alt'>Henüz oyuncu bankası yok.</p>"}
+   </div>
+   <div class="kart"><h2>📒 Mevduatlarım</h2>
+    ${mevduatlar.map(m=>`<div class="kart" style="margin:10px 0">
+     <b>${e(m.banka)} · ${fmt(m.anapara)} ₺</b>
+     <div class="kv"><span>Vade</span><b>${oybVadeEtiket(m.saat||168)}</b></div>
+     <div class="kv"><span>Getiri oranı</span><b>%${fmt(m.oran,2)}</b></div>
+     <div class="kv"><span>Beklenen faiz</span><b class="iyi">+${fmt(m.getiri)} ₺</b></div>
+     <div class="kv"><span>Vade sonu ödeme</span><b>${fmt(m.odeme)} ₺</b></div>
+     <div class="kv"><span>Çekim zamanı</span><b>${oybTarih(m.vade)}</b></div>
+     <div class="kv"><span>Durum</span><b>${m.iptal?"Faizsiz çekildi":m.kapandi?"Ödendi":m.durum==="odeme_bekliyor"?"⚠️ Banka ödemesi bekleniyor":"Vadeli hesap açık"}</b></div>
+     ${!m.kapandi?`<button class="btn ikinci" onclick="oybMevduatCek(${m.id},${m.durum==="aktif"})">${m.durum==="aktif"?"Erken çek (faizsiz)":"Vadesi doldu — cüzdana çek"}</button>`:""}
+     ${m.durum==="odeme_bekliyor"?"<p class='alt'>Banka kasası ödeme için yeterli değil. Alacağın kayıtlıdır; daha sonra tekrar çekebilirsin.</p>":""}
+    </div>`).join("")||"<p class='alt'>Henüz mevduatın yok.</p>"}
+   </div>
+   <div class="kart"><h2>💳 Oyuncu bankası kredilerim</h2>
+    ${krediler.map(k=>`<div class="kart" style="margin:10px 0">
+      <b>${e(k.banka)}</b>
+      <div class="kv"><span>Kredi / toplam borç</span><b>${fmt(k.anapara)} / ${fmt(k.toplam)} ₺</b></div>
+      <div class="kv"><span>Kalan borç</span><b>${fmt(k.kalan)} ₺</b></div>
+      <div class="kv"><span>Durum</span><b>${k.durum==="basvuru"?"Banka onayı bekleniyor":k.durum==="reddedildi"?"Reddedildi":k.durum==="odendi"?"Ödendi":k.durum==="gecikmis"?"⚠️ Vadesi geçti":"Aktif"}</b></div>
+      ${k.vade?`<div class="kv"><span>Son ödeme</span><b>${oybTarih(k.vade)}</b></div>`:""}
+      ${["aktif","gecikmis"].includes(k.durum)?`<div class="alan"><label>Ödenecek tutar</label><input id="oyb_kode_${k.id}" type="number" min="1" step="1" value="${Math.ceil(k.kalan)}"></div><button class="btn altin" onclick="oybKrediOde(${k.id})">Borcumu öde</button>`:""}
+     </div>`).join("")||"<p class='alt'>Oyuncu bankası kredin yok.</p>"}
+   </div>
+  `,{geri:true});
  }catch(err){iskelet("Oyuncu bankaları",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true})}
 }
+function oybVadeOnizle(id){const el=document.getElementById("oyb_onizleme_"+id);if(el)el.textContent="Faiz ve bakiye kontrolü için 'Beklenen getiri ve riski kontrol et' seç."}
 async function oyuncuBankaTeklif(id){
- const el=document.getElementById("banka_tutar_"+id),sonuc=document.getElementById("banka_teklif_"+id);
- if(!el||!sonuc)return;sonuc.textContent="Banka kasası ve vade ödeme gücü kontrol ediliyor...";
- try{const q=await API.rpc("banka_mevduat_teklif",{p_banka:id,p_tutar:Number(el.value)});
-  sonuc.textContent=(q.odeme_garantisi_icin_yeterli?"✅ ":"⚠️ ")+q.uyari+
-   " · Haftalık faiz: %"+q.haftalik_faiz+" · 7 gün sonunda: "+fmt(q.vade_sonu_odeme)+" ₺"+
-   " (faiz "+fmt(q.faiz_kazanci)+" ₺)";
- }catch(err){sonuc.textContent=hataCevir(err.message);}
+ const el=document.getElementById("oyb_onizleme_"+id);if(!el)return;
+ const tutar=Number(document.getElementById("oyb_tutar_"+id).value);
+ const saat=Number(document.getElementById("oyb_saat_"+id).value);
+ el.textContent="Banka durumu kontrol ediliyor...";
+ try{const q=await API.rpc("oyb_teklif",{p_banka:id,p_tutar:tutar,p_saat:saat});
+ el.textContent=(q.odeme_gucu_yeterli?"✅ ":"⚠️ ")+"Vade: "+oybVadeEtiket(saat)+" · Faiz %"+fmt(q.oran,2)+
+   " · Faiz geliri "+fmt(q.faiz_kazanci)+" ₺ · Vade sonu "+fmt(q.vade_sonu_odeme)+" ₺ · "+
+   oybTarih(q.vade)+" · "+q.uyari;
+ }catch(err){el.textContent=hataCevir(err.message)}
 }
 async function oyuncuBankaYatir(id){
- const el=document.getElementById("banka_tutar_"+id);if(!el)return;
- const tutar=Number(el.value);
+ const tutar=Number(document.getElementById("oyb_tutar_"+id).value);
+ const saat=Number(document.getElementById("oyb_saat_"+id).value);
  try{
-  const q=await API.rpc("banka_mevduat_teklif",{p_banka:id,p_tutar:tutar});
-  if(!q.odeme_garantisi_icin_yeterli){toast(q.uyari,true);await oyuncuBankaTeklif(id);return;}
-  if(!await onayla("Vadeli mevduat","Bu bankaya "+fmt(tutar)+" ₺ yatıracaksın. 7 gün sonunda toplam "+fmt(q.vade_sonu_odeme)+" ₺ ödemeyi banka kasası karşılayabiliyor. Onaylıyor musun?","Mevduat yatır"))return;
-  await API.rpc("banka_mevduat_yatir",{p_banka:id,p_tutar:tutar});
-  toast("Mevduat yatırıldı; vade sonu ödeme tutarı güvence kontrolünden geçti.");oyuncuBankaEkrani();
+  const q=await API.rpc("oyb_teklif",{p_banka:id,p_tutar:tutar,p_saat:saat});
+  if(!q.odeme_gucu_yeterli){toast(q.uyari,true);return;}
+  if(!await onayla("Mevduat yatır","Bu bankaya "+fmt(tutar)+" ₺ yatıracaksın. "+
+    oybVadeEtiket(saat)+" sonra "+fmt(q.vade_sonu_odeme)+" ₺ alman öngörülüyor. "+
+    "Banka kredi verdiği için ödeme riski taşır; erken çekimde faiz yok. Onaylıyor musun?","Yatır"))return;
+  await API.rpc("oyb_yatir",{p_banka:id,p_tutar:tutar,p_saat:saat});
+  toast("Mevduat açıldı; vade ve ödeme ayrıntıları Mevduatlarım bölümünde.");oyuncuBankaEkrani();
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybMevduatCek(id,erken){
+ if(erken&&!await onayla("Mevduatı erken boz","Vade tamamlanmadan çekersen faiz alamaz, yalnızca anaparayı geri alırsın. Onaylıyor musun?","Faizsiz çek"))return;
+ try{const r=await API.rpc("oyb_mevduat_cek",{p_id:id});
+  toast(fmt(r.odenen)+" ₺ cüzdanına aktarıldı"+(r.erken?" (faizsiz)":"")+".");oyuncuBankaEkrani();
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybKrediBasvur(id){
+ const tutar=Number(document.getElementById("oyb_ktutar_"+id).value);
+ const saat=Number(document.getElementById("oyb_ksaat_"+id).value);
+ if(!Number.isSafeInteger(tutar)||tutar<1000||tutar>500000){toast("Kredi 1.000 - 500.000 ₺ arasında olmalı.",true);return;}
+ if(!await onayla("Oyuncu bankası kredisi","Banka yöneticisine "+fmt(tutar)+" ₺, "+saat+
+ " saat vadeli kredi başvurusu gönderilsin mi? Faiz ve ödeme tutarı sunucuda kesinleşir.","Başvur"))return;
+ try{const r=await API.rpc("oyb_kredi_basvur",{p_banka:id,p_tutar:tutar,p_saat:saat});
+ toast("Başvuru gönderildi. Toplam geri ödeme "+fmt(r.toplam)+" ₺. Onay bekleniyor.");oyuncuBankaEkrani();
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybKrediOde(id){
+ const tutar=Number(document.getElementById("oyb_kode_"+id).value);
+ try{const r=await API.rpc("oyb_kredi_ode",{p_id:id,p_tutar:tutar});
+ toast(fmt(r.odendi)+" ₺ ödendi. Kalan "+fmt(r.kalan)+" ₺.");oyuncuBankaEkrani();
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybYonetim(id){
+ yukleniyor("Banka yönetimi");
+ try{
+ const b=await API.rpc("oyb_yonetim",{p_banka:id}),m=b.durum||{},oran=b.oranlar||{};
+ iskelet("Banka yönetimi",`
+  <div class="kart"><h2>🏦 ${e(b.ad)}</h2>
+   <p class="alt">Oyuncu mevduatları banka borcudur. Kredi olarak kullanılan para bankanın kasasından çıkar; müşteri geri ödemesiyle geri döner. Kâr payı yalnızca yükümlülükler ve kuruluş sermayesi korunduktan sonra dağıtılabilir.</p>
+   <div class="kv"><span>Kasa (nakit)</span><b>${fmt(m.kasa)} ₺</b></div>
+   <div class="kv"><span>Mevduat anaparası</span><b>${fmt(m.mevduat_anapara)} ₺</b></div>
+   <div class="kv"><span>Faiz dâhil toplam borç</span><b>${fmt(m.mevduat_yukumluluk)} ₺</b></div>
+   <div class="kv"><span>24 saatte vadesi gelen ödeme</span><b>${fmt(m.yaklasan_odeme)} ₺</b></div>
+   <div class="kv"><span>Asgari likidite</span><b>${fmt(m.asgari_likidite)} ₺</b></div>
+   <div class="kv"><span>Yeni kredi için kullanılabilir</span><b>${fmt(m.kredi_verilebilir)} ₺</b></div>
+   <div class="kv"><span>Dağıtılabilir kâr</span><b class="iyi">${fmt(m.dagitilabilir_kar)} ₺</b></div>
+   ${b.yonetebilir?`<div class="alan"><label>Ortaklara dağıtılacak kâr (₺)</label><input id="oyb_kar_${id}" type="number" min="1" max="${Math.max(0,Number(m.dagitilabilir_kar||0))}" value="${Math.floor(Number(m.dagitilabilir_kar||0))}"></div><button class="btn ikinci" onclick="oybKarDagit(${id})">Kâr payını ortaklara dağıt</button>`:"<p class='alt'>Ayar değiştirmek ve kâr dağıtmak için en az %50 ortaklık payı gerekir.</p>"}
+  </div>
+  <div class="kart"><h2>📊 Faiz oranlarını yönet</h2>
+   ${b.yonetebilir?[1,3,6,12,24].map(h=>`<div class="alan"><label>${h} saat mevduat getirisi (%)</label><input id="oyb_oran_${id}_${h}" type="number" min="0" step="0.01" max="${({1:.25,3:.80,6:1.75,12:4,24:8})[h]}" value="${oran[String(h)]}"></div><button class="btn ikinci" onclick="oybOranKaydet(${id},${h})">${h} saat faizini kaydet</button>`).join(""):"<p class='alt'>Faiz ayarları yöneticilere açıktır.</p>"}
+   <p class="alt">7 günlük faiz şirket ekranından yönetilir. Oran değişikliği eski mevduatları etkilemez.</p>
+   ${b.yonetebilir?`<div class="alan"><label>24 saatlik kredi faizi (%) (üst sınır %12)</label><input id="oyb_kfaiz_${id}" type="number" min="0" max="12" step="0.01" value="${b.kredi_faiz}"></div><button class="btn ikinci" onclick="oybKrediFaizKaydet(${id})">Kredi faizini kaydet</button>`:""}
+  </div>
+  <div class="kart"><h2>📋 Kredi başvuruları ve alacaklar</h2>
+   ${(b.krediler||[]).map(k=>`<div class="kart" style="margin:10px 0">
+    <b>${e(k.borclu)} · #${k.id}</b>
+    <div class="kv"><span>Anapara / geri ödeme</span><b>${fmt(k.anapara)} / ${fmt(k.toplam)} ₺</b></div>
+    <div class="kv"><span>Vade / faiz</span><b>${k.saat} saat · %${fmt(k.oran,2)}</b></div>
+    <div class="kv"><span>Durum</span><b>${e(k.durum)} · Kalan ${fmt(k.kalan)} ₺</b></div>
+    ${k.vade?`<div class="kv"><span>Ödeme tarihi</span><b>${oybTarih(k.vade)}</b></div>`:""}
+    ${b.yonetebilir&&k.durum==="basvuru"?`<div class="satir"><button class="btn yarim altin" onclick="oybKrediKarar(${id},${k.id},true)">Krediyi onayla</button><button class="btn yarim ikinci" onclick="oybKrediKarar(${id},${k.id},false)">Reddet</button></div>`:""}
+   </div>`).join("")||"<p class='alt'>Henüz kredi başvurusu yok.</p>"}
+  </div>
+  <div class="kart"><h2>📃 Banka gelir-gider hareketleri</h2>
+    ${(b.hareketler||[]).map(h=>`<div class="kv"><span>${e(h.aciklama)} · ${oybTarih(h.zaman)}</span><b>${fmt(h.tutar)} ₺</b></div>`).join("")||"<p class='alt'>Hareket bulunamadı.</p>"}
+  </div>
+  <button class="btn ikinci" onclick="oyuncuBankaEkrani()">Banka listesine dön</button>
+ `,{geri:true});
+ }catch(err){iskelet("Banka yönetimi",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true})}
+}
+async function oybOranKaydet(id,saat){
+ const oran=Number(document.getElementById("oyb_oran_"+id+"_"+saat).value);
+ try{await API.rpc("oyb_oran_ayarla",{p_banka:id,p_saat:saat,p_oran:oran});
+ toast("Yeni mevduatlar için faiz oranı güncellendi.");oybYonetim(id);
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybKrediFaizKaydet(id){
+ const faiz=Number(document.getElementById("oyb_kfaiz_"+id).value);
+ try{await API.rpc("oyb_kredi_faiz_ayarla",{p_banka:id,p_faiz:faiz});
+ toast("Yeni başvuruların kredi faizi güncellendi.");oybYonetim(id);
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybKrediKarar(banka,id,onay){
+ if(onay&&!await onayla("Kredi onayı","Bankanın kasasından kredi tutarı oyuncunun cüzdanına geçecek. Borç geri ödenmeme riski taşır. Onaylıyor musun?","Kredi ver"))return;
+ try{await API.rpc("oyb_kredi_karar",{p_id:id,p_onay:onay});
+ toast(onay?"Kredi kullandırıldı.":"Başvuru reddedildi.");oybYonetim(banka);
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybKarDagit(id){
+ const tutar=Number(document.getElementById("oyb_kar_"+id).value);
+ if(!Number.isSafeInteger(tutar)||tutar<1){toast("Kâr payı için pozitif tam TL gir.",true);return;}
+ try{await API.rpc("sirket_kar_payi",{p_sirket:id,p_tutar:tutar});
+ toast("Kâr payı ortaklara hisse oranında dağıtıldı.");oybYonetim(id);
  }catch(err){toast(hataCevir(err.message),true)}
 }
 async function ozelYasaEkrani(){
