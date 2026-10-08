@@ -48,7 +48,7 @@ create or replace function public.sirket_satiliga_cikar(p_sirket bigint,p_fiyat 
 returns jsonb language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
 declare u uuid:=auth.uid();
 begin
- if not exists(select 1 from oyun.sirket_ortaklari o join oyun.sirketler s on s.id=o.sirket_id where s.id=p_sirket and s.aktif and o.user_id=u and o.pay=100) then raise exception 'Yalnizca sirketin %100 sahibi tam satis ilani verebilir';end if;
+ if not exists(select 1 from oyun.sirket_ortaklari o join oyun.sirketler s on s.id=o.sirket_id where s.id=p_sirket and s.aktif and o.user_id=u and o.pay=100) then raise exception 'Yalnizca sirketin %%100 sahibi tam satis ilani verebilir';end if;
  if p_fiyat is not null and (p_fiyat<1000 or p_fiyat>1000000000 or p_fiyat<>round(p_fiyat)) then raise exception 'Fiyat 1000-1000000000 TL olmali';end if;
  update oyun.sirketler set satilik=p_fiyat where id=p_sirket;
  return jsonb_build_object('tamam',true);
