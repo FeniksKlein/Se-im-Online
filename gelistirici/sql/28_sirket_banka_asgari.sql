@@ -114,7 +114,7 @@ declare u uuid:=auth.uid();s oyun.sirketler;x record;t timestamptz:=oyun.simdi()
 begin
  perform oyun.sirket_hesapla(p_sirket);
  select * into s from oyun.sirketler where id=p_sirket for update;
- if not exists(select 1 from oyun.sirket_ortaklari where sirket_id=p_sirket and user_id=u and pay>=50) then raise exception 'Kar payi dagitimi icin en az %50 pay gerekli';end if;
+ if not exists(select 1 from oyun.sirket_ortaklari where sirket_id=p_sirket and user_id=u and pay>=50) then raise exception 'Kar payi dagitimi icin en az %%50 pay gerekli';end if;
  if p_tutar is null or p_tutar<=0 or p_tutar>greatest(s.kasa,0) then raise exception 'Sirket kasasinda yeterli para yok';end if;
  update oyun.sirketler set kasa=kasa-p_tutar where id=p_sirket;
  for x in select * from oyun.sirket_ortaklari where sirket_id=p_sirket loop
