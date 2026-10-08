@@ -1653,7 +1653,7 @@ async function kanunTeklifEkrani(tur0, kod0){
   try { mz = D._mevzuat = await API.rpc("mevzuat"); } catch (_) {}
   const u = D._karne || await API.rpc("ulke_karnesi");
   const TURLER = [["serbest","Kanun (serbest metin)"],["vergi","Gelir vergisi oranı kanunu"],["borc_affi","Kredi borç affı kanunu"],["duzenleme","Kural kanunu (mevzuat)"],["butce","Bütçe kanunu"],["secim","Seçim kanunu (baraj)"],["iptal","Kararname iptali"],["anayasa","Anayasa değişikliği"]];
-  iskelet("Kanun teklifi", `<div class="kart"><button class="btn altin" onclick="ekranAc(ekonomiYasaEkrani)">Ekonomik yasa paketleri (10 teklif)</button></div>
+  iskelet("Kanun teklifi", `<div class="kart"><button class="btn altin" onclick="ekranAc(ekonomiYasaEkrani)">Ekonomik yasa paketleri (10 teklif)</button><button class="btn ikinci" onclick="ekranAc(ozelYasaEkrani)">Asgari ücret / Dokunulmazlık yasası</button></div>
     <div class="kart"><div class="alan" style="margin-top:0"><label>Teklifin türü</label><select id="ktur">${TURLER.map(([k, a]) => `<option value="${k}" ${k === tur ? "selected" : ""}>${a}</option>`).join("")}</select></div>
       <p class="kucuk" id="tacik" style="margin-top:8px"></p>
       <div class="alan"><label>Başlık</label><input id="kbaslik" maxlength="120"></div>
@@ -2827,7 +2827,7 @@ function hayatCiz(h){
       <div class="satir" style="margin-top:8px"><button class="btn yarim altin" style="margin:0" onclick="ekranAc(bankaEkrani)">🏦 Bankaya git</button><button class="btn yarim ikinci" style="margin:0" onclick="paraGonderModal()">💸 Para gönder</button></div></div>
     <div class="kart" style="border:2px solid var(--gold);background:linear-gradient(130deg,rgba(226,178,75,.12),transparent)"><h2>🏠 Gayrimenkul · Haftalık kira</h2><p class="alt">Daire, dükkân ve villa satın al. Birden fazla mülk edin; her mülkün kirası 7 günde bir cüzdanına aktarılsın.</p><button class="btn altin" onclick="ekranAc(mulkEkrani)">🏠 Mülk satın al / Mülklerim</button></div>
     <div class="kart" style="border:2px solid var(--gold)"><h2>🎟️ Milli Piyango</h2><p class="alt">Her hafta çekiliş! Büyük ikramiye çok nadir çıkar, kazanan olmazsa haftaya devreder. Bilet satışından devlet hazinesi gelir elde eder.</p><button class="btn altin" onclick="ekranAc(piyangoEkrani)">🎟️ Bilet al / Çekilişi gör</button></div>
-    <div class="kart"><h2>Statü</h2>
+    <div class="kart" style="border:2px solid var(--gold)"><h2>🏢 Şirketler ve oyuncu bankaları</h2><p class="alt">Şirket kur, ortaklık oluştur, banka işlet, kâr payı al veya zarar et.</p><button class="btn altin" onclick="ekranAc(sirketEkrani)">Şirketlerim / Banka kur</button></div>\n    <div class="kart"><h2>Statü</h2>
       <div style="display:flex;justify-content:space-between"><b>${e(st.ad)}</b><span class="kucuk">${st.puan} kıdem puanı${st.sonraki_esik ? ` · ${e(st.sonraki_ad)}: ${st.sonraki_esik}` : ""}</span></div>
       <div class="bar"><i style="width:${stOran}%;background:var(--gold)"></i></div>
       <div style="margin-top:6px">${STATU.map(([a, p2], i) => `<span class="taahhut ${i <= STATU.findIndex(x => x[0] === st.ad) ? "" : "yok"}">${a}</span>`).join("")}</div>
@@ -3020,6 +3020,49 @@ async function piyangoAl(){
  if(!await onayla("Milli Piyango bileti","1.000 ₺ karşılığında rastgele 6 haneli bir piyango bileti almak istiyor musun? Kazanma ihtimali 1 / 1.000.000.","Bilet al"))return;
  try{piyangoCiz(await API.rpc("piyango_bilet_al",{p_adet:1}));}catch(err){bildir(hataCevir(err.message),true);}
 }
+async function sirketEkrani(){
+ yukleniyor("Şirketlerim");
+ try{
+  const d=await API.rpc("sirket_liste");
+  iskelet("Şirketler ve bankalar",`
+  <div class="kart"><h2>🏢 Şirket kur</h2><p class="alt">Sermaye koy, sektör seç; faaliyetler günlük gelir veya zarar oluşturur. Banka kurmak için en az 1.000.000 ₺ gerekir.</p>
+  <div class="alan"><label>Şirket adı</label><input id="sir_ad" maxlength="50" placeholder="Şirket adı"></div>
+  <div class="alan"><label>Sektör</label><select id="sir_sektor"><option value="tarim">Tarım</option><option value="sanayi">Sanayi</option><option value="teknoloji">Teknoloji</option><option value="ticaret">Ticaret</option><option value="insaat">İnşaat</option><option value="medya">Medya</option><option value="banka">Banka</option></select></div>
+  <div class="alan"><label>Kuruluş sermayesi (₺)</label><input id="sir_sermaye" type="number" min="100000" value="100000"></div>
+  <button class="btn altin" onclick="sirketKur()">Şirketi kur</button></div>
+  <div class="kart"><h2>Ortak olduğum şirketler</h2>
+  ${d.sirketler.length?d.sirketler.map(s=>`<div class="kart"><h3>${e(s.ad)} · ${e(s.sektor)}</h3><div class="kv"><span>Payım</span><b>%${s.pay}</b></div><div class="kv"><span>Şirket kasası</span><b>${fmt(s.kasa)} ₺</b></div>
+  ${s.pay>=50?`<div class="alan"><label>Dağıtılacak kâr payı</label><input id="sir_kar_${s.id}" type="number" min="1" placeholder="Tutar"></div><button class="btn ikinci" onclick="sirketKarPayi(${s.id})">Kâr payı dağıt</button>`:''}
+  <div class="alan"><label>Ortaklık/devretme: alıcı oyuncunun kullanıcı UUID'si</label><input id="sir_alici_${s.id}" placeholder="Oyuncu UUID"></div>
+  <div class="alan"><label>Devredilecek pay (%)</label><input id="sir_pay_${s.id}" type="number" min="1" max="${s.pay}" value="${s.pay}"></div>
+  <div class="alan"><label>Satış bedeli (₺)</label><input id="sir_bedel_${s.id}" type="number" min="1" value="100000"></div>
+  <button class="btn ikinci" onclick="sirketPayTeklif(${s.id})">Ortaklık / satış teklifi gönder</button>
+  ${s.sektor==='banka'?`<div class="alan"><label>7 günlük mevduat faizi (%)</label><input id="sir_faiz_${s.id}" type="number" min="0" max="15" value="${s.faiz}"></div><button class="btn ikinci" onclick="sirketFaiz(${s.id})">Banka faizini değiştir</button>`:''}
+  </div>`).join(''):'<p class="alt">Henüz şirketin yok.</p>'}</div>
+  <div class="kart"><h2>Bana gelen ortaklık teklifleri</h2>${d.teklifler.length?d.teklifler.map(o=>`<div class="kv"><span>Şirket #${o.sirket_id} · %${o.pay} pay · ${fmt(o.bedel)} ₺</span><button class="btn ikinci" onclick="sirketTeklifKabul(${o.id})">Satın al</button></div>`).join(''):'<p class="alt">Bekleyen teklif yok.</p>'}</div>
+  <div class="kart"><h2>🏦 Oyuncu bankaları</h2><p class="alt">Bankalar 7 günlük vadeli mevduat kabul eder. Banka kasası yetersizse vade ödemesi bekler.</p>
+  <button class="btn ikinci" onclick="oyuncuBankaEkrani()">Banka listesini aç</button></div>
+  `,{geri:true});
+ }catch(err){iskelet("Şirketler",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true});}
+}
+async function sirketKur(){try{await API.rpc("sirket_kur",{p_ad:document.getElementById("sir_ad").value,p_sektor:document.getElementById("sir_sektor").value,p_sermaye:Number(document.getElementById("sir_sermaye").value)});toast("Şirket kuruldu");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketKarPayi(id){try{await API.rpc("sirket_kar_payi",{p_sirket:id,p_tutar:Number(document.getElementById("sir_kar_"+id).value)});toast("Kâr payı dağıtıldı");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketPayTeklif(id){try{await API.rpc("sirket_pay_teklif",{p_sirket:id,p_alici:document.getElementById("sir_alici_"+id).value,p_pay:Number(document.getElementById("sir_pay_"+id).value),p_bedel:Number(document.getElementById("sir_bedel_"+id).value)});toast("Ortaklık teklifi gönderildi");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketTeklifKabul(id){try{await API.rpc("sirket_pay_kabul",{p_teklif:id});toast("Şirket payı satın alındı");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketFaiz(id){try{await API.rpc("banka_faiz_belirle",{p_banka:id,p_faiz:Number(document.getElementById("sir_faiz_"+id).value)});toast("Faiz değiştirildi");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+async function oyuncuBankaEkrani(){
+ yukleniyor("Oyuncu bankaları");
+ try{const d=await API.rpc("oyuncu_banka_liste");const m=await API.rpc("banka_mevduat_tahsil");
+ iskelet("Oyuncu bankaları",`<div class="kart"><h2>🏦 Bankalar</h2>${d.bankalar.map(b=>`<div class="kart"><h3>${e(b.ad)}</h3><p class="alt">7 günlük faiz: %${b.faiz} · Banka kasası: ${fmt(b.kasa)} ₺</p><div class="alan"><label>Yatırılacak tutar (₺)</label><input id="banka_tutar_${b.id}" type="number" min="1000" value="1000"></div><button class="btn ikinci" onclick="oyuncuBankaYatir(${b.id})">Mevduat yatır</button></div>`).join('')||'<p class="alt">Henüz oyuncu bankası yok.</p>'}</div><div class="kart"><h2>Mevduatlarım</h2>${m.mevduatlar.map(x=>`<div class="kv"><span>Banka #${x.banka} · ${fmt(x.tutar)} ₺</span><b>${x.odendi?'Ödendi':new Date(x.vade).toLocaleDateString('tr-TR')}</b></div>`).join('')||'<p class="alt">Mevduat yok.</p>'}</div>`,{geri:true});
+ }catch(err){iskelet("Oyuncu bankaları",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true})}
+}
+async function oyuncuBankaYatir(id){try{await API.rpc("banka_mevduat_yatir",{p_banka:id,p_tutar:Number(document.getElementById("banka_tutar_"+id).value)});toast("Mevduat yatırıldı");oyuncuBankaEkrani()}catch(err){toast(hataCevir(err.message),true)}}
+async function ozelYasaEkrani(){
+ const d=await API.rpc("ozel_yasa_durum");
+ iskelet("Asgari ücret ve dokunulmazlık",`<div class="kart"><h2>⚖️ Asgari ücret kanunu</h2><p class="alt">Mevcut asgari ücret: ${fmt(d.asgari)} ₺. Yeni tutar şirket personel giderlerini etkiler.</p><div class="alan"><label>Yeni asgari ücret (₺)</label><input id="ozel_asgari" type="number" min="10000" max="500000" value="${d.asgari}"></div><button class="btn altin" onclick="ozelYasaSun('asgari')">Meclise teklif et</button></div>
+ <div class="kart"><h2>🛡️ Siyasi dokunulmazlık kanunu</h2><p class="alt">Mevcut durum: ${d.dokunulmazlik?'Yürürlükte':'Yürürlükte değil'}. Bu kanun milletvekillerinin hukuki statüsüne ilişkin bir oyun kuralı belirler.</p><div class="alan"><label>Önerilen karar</label><select id="ozel_dokunulmazlik"><option value="1">Dokunulmazlık getirilsin</option><option value="0">Dokunulmazlık kaldırılsın</option></select></div><button class="btn altin" onclick="ozelYasaSun('dokunulmazlik')">Meclise teklif et</button></div>`,{geri:true});
+}
+async function ozelYasaSun(tur){const v=Number(document.getElementById("ozel_"+tur).value);try{await API.rpc("ozel_yasa_teklif",{p_tur:tur,p_deger:v});toast("Kanun teklifi Meclise sunuldu");ozelYasaEkrani()}catch(err){toast(hataCevir(err.message),true)}}
 async function bankaEkrani(){
   if (!D._banka) yukleniyor("Banka");
   let b; try { b = await API.rpc("banka"); } catch (err) { iskelet("Banka", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
