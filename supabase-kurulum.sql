@@ -14181,15 +14181,22 @@ begin
 end $$;
 create or replace function public.banka_mevduat_yatir(p_banka bigint,p_tutar numeric)
 returns jsonb language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
-declare u uuid:=auth.uid();s oyun.sirketler;t timestamptz:=oyun.simdi();
+declare u uuid:=auth.uid();s oyun.sirketler;t timestamptz:=oyun.simdi();v_borc numeric;v_anapara numeric;v_yeni_borc numeric;v_guvence numeric;
 begin
+ if u is null then raise exception 'Oturum gerekli';end if;
  select * into s from oyun.sirketler where id=p_banka and sektor='banka' and aktif for update;
  if s.id is null then raise exception 'Banka bulunamadi';end if;
- if p_tutar is null or p_tutar<1000 or p_tutar>10000000 then raise exception 'Tutar 1000-10000000 olmali';end if;
- perform oyun.para_islem(u,-p_tutar,'mevduat','Oyuncu bankasina vadeli mevduat',t);
+ if p_tutar is null or p_tutar<>round(p_tutar) or p_tutar<1000 or p_tutar>10000000 then raise exception 'Mevduat 1.000 - 10.000.000 TL arasinda tam sayi olmali';end if;
+ if exists(select 1 from oyun.sirket_ortaklari o where o.sirket_id=p_banka and o.user_id=u and o.pay>0) then raise exception 'Kendi bankana faizli mevduat yatiramazsin; baska bir oyuncu bankasi sec';end if;
+ if s.banka_faiz<0 or s.banka_faiz>3 then raise exception 'Banka faiz sinirini asiyor';end if;
+ select coalesce(sum(round(m.anapara*(1+m.faiz/100),2)),0),coalesce(sum(m.anapara),0) into v_borc,v_anapara from oyun.banka_mevduat m where m.banka_id=p_banka and not m.kapandi;
+ v_yeni_borc:=round(p_tutar*(1+s.banka_faiz/100),2);
+ v_guvence:=greatest(s.sermaye*0.10,(v_anapara+p_tutar)*0.10);
+ if s.kasa < v_borc+(v_yeni_borc-p_tutar)+v_guvence then raise exception 'Banka likiditesi/teminati yetersiz. Mevduat kabul edilemiyor';end if;
+ perform oyun.para_islem(u,-p_tutar,'mevduat','Oyuncu bankasina 7 gun vadeli mevduat',t);
  update oyun.sirketler set kasa=kasa+p_tutar where id=p_banka;
  insert into oyun.banka_mevduat(banka_id,user_id,anapara,faiz,vade) values(p_banka,u,p_tutar,s.banka_faiz,t+interval '7 days');
- return jsonb_build_object('tamam',true);
+ return jsonb_build_object('tamam',true,'banka',p_banka,'faiz',s.banka_faiz,'vade',t+interval '7 days');
 end $$;
 create or replace function public.banka_mevduat_tahsil()
 returns jsonb language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
@@ -14208,11 +14215,12 @@ end $$;
 create or replace function public.banka_faiz_belirle(p_banka bigint,p_faiz numeric)
 returns jsonb language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
 begin
- if p_faiz is null or p_faiz<0 or p_faiz>15 then raise exception 'Haftalik faiz 0-15 arasinda olmali';end if;
- if not exists(select 1 from oyun.sirket_ortaklari where sirket_id=p_banka and user_id=auth.uid() and pay>=50) then raise exception 'Banka yonetim yetkin yok';end if;
- update oyun.sirketler set banka_faiz=p_faiz where id=p_banka and sektor='banka';
+ if auth.uid() is null then raise exception 'Oturum gerekli';end if;
+ if p_faiz is null or p_faiz<0 or p_faiz>3 or p_faiz<>round(p_faiz,2) then raise exception 'Haftalik oyuncu bankasi faizi 0-3 arasinda ve en fazla iki ondalik olmali';end if;
+ if not exists(select 1 from oyun.sirket_ortaklari o join oyun.sirketler s on s.id=o.sirket_id where s.id=p_banka and s.sektor='banka' and s.aktif and o.user_id=auth.uid() and o.pay>=50) then raise exception 'Aktif banka yonetim yetkin yok';end if;
+ update oyun.sirketler set banka_faiz=p_faiz where id=p_banka and sektor='banka' and aktif;
  if not found then raise exception 'Banka bulunamadi';end if;
- return jsonb_build_object('tamam',true);
+ return jsonb_build_object('tamam',true,'faiz',p_faiz,'faiz_ust_sinir',3);
 end $$;
 
 -- Meclis teklifleri: asgari ucret ve milletvekili dokunulmazligi.
