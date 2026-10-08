@@ -46,7 +46,7 @@ begin
  end loop;
  select id into curid from oyun.piyango_donem where baslangic=bas;
  if curid is null then
-   select case when kazanan_adet=0 then ikramiye else 1000000 end
+   select case when kazanan_adet=0 and kazanan is null then ikramiye else 1000000 end
      into roll from oyun.piyango_donem where bitis<=bas order by bitis desc limit 1;
    insert into oyun.piyango_donem(baslangic,bitis,ikramiye)
       values(bas,bas+interval '7 days',coalesce(roll,1000000))
@@ -67,7 +67,7 @@ begin
  'biletler',coalesce((select jsonb_agg(jsonb_build_object('id',b.id,'numara',lpad(b.numara::text,6,'0')) order by b.id desc)
    from oyun.piyango_bilet b where b.donem_id=d and b.user_id=u),'[]'::jsonb),
  'sonuc',(select jsonb_build_object('kazanan_no',lpad(x.kazanan_no::text,6,'0'),
-   'devretti',x.kazanan_adet=0,'kazanan_adet',x.kazanan_adet,'ikramiye',x.ikramiye,
+   'devretti',(x.kazanan_adet=0 and x.kazanan is null),'kazanan_adet',greatest(x.kazanan_adet,case when x.kazanan is null then 0 else 1 end),'ikramiye',x.ikramiye,
    'kazancim',coalesce((select sum(o.tutar) from oyun.piyango_odul o where o.donem_id=x.id and o.user_id=u),0))
    from oyun.piyango_donem x where x.cekildi order by x.bitis desc limit 1))
  into result from oyun.piyango_donem p where p.id=d;
@@ -169,13 +169,21 @@ alter table oyun.piyasa_islem enable row level security;
 revoke all on oyun.piyasa_varlik,oyun.piyasa_fiyat,oyun.piyasa_pozisyon,oyun.piyasa_islem
  from public,anon,authenticated;
 insert into oyun.piyasa_varlik(kod,ad,sinif,fiyat,onceki,oynaklik,saat) values
- ('USD','ABD Doları / TL','doviz',42,42,0.008,date_trunc('hour',now())),
- ('EUR','Avro / TL','doviz',49,49,0.008,date_trunc('hour',now())),
- ('ALTIN','Gram Altın / TL','altin',5200,5200,0.012,date_trunc('hour',now())),
- ('SANAYI','Sanayi Hisseleri','hisse',120,120,0.024,date_trunc('hour',now())),
- ('TEKNO','Teknoloji Hisseleri','hisse',180,180,0.032,date_trunc('hour',now())),
- ('BANKA','Banka Hisseleri','hisse',140,140,0.028,date_trunc('hour',now()))
+ ('USD','ABD Doları / TL','doviz',42,42,0.002,date_trunc('hour',now())),
+ ('EUR','Avro / TL','doviz',49,49,0.002,date_trunc('hour',now())),
+ ('ALTIN','Gram Altın / TL','altin',5200,5200,0.003,date_trunc('hour',now())),
+ ('SANAYI','Sanayi Hisseleri','hisse',120,120,0.008,date_trunc('hour',now())),
+ ('TEKNO','Teknoloji Hisseleri','hisse',180,180,0.011,date_trunc('hour',now())),
+ ('BANKA','Banka Hisseleri','hisse',140,140,0.009,date_trunc('hour',now()))
 on conflict (kod) do nothing;
+-- Saatlik dalgalanmalar reelçi oyun ölçeğinde, fiyatlar oyuncuya göre değişmez.
+update oyun.piyasa_varlik set oynaklik=case kod
+ when 'USD' then 0.002 when 'EUR' then 0.002 when 'ALTIN' then 0.003
+ when 'SANAYI' then 0.008 when 'TEKNO' then 0.011 when 'BANKA' then 0.009
+ else oynaklik end
+where kod in ('USD','EUR','ALTIN','SANAYI','TEKNO','BANKA');
+insert into oyun.piyasa_fiyat(kod,saat,fiyat)
+ select kod,saat,fiyat from oyun.piyasa_varlik on conflict do nothing;
 
 create or replace function oyun.piyasa_guncelle()
 returns void language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
@@ -200,9 +208,9 @@ begin
      -- Her varlık için merkezî tek fiyat: hem pozitif hem negatif yön mümkün.
      sapma:=(random()*2-1)*r.oynaklik;
      deg:=case r.sinif
-       when 'doviz' then risk*0.0018 + sapma
-       when 'altin' then risk*0.0007 + sapma
-       else -risk*0.003 + greatest(-0.004,least(0.004,buy/1000)) + sapma end;
+       when 'doviz' then risk*0.00018 + sapma
+       when 'altin' then risk*0.00007 + sapma
+       else -risk*0.00025 + greatest(-0.0001,least(0.0001,buy/80000)) + sapma end;
      deg:=greatest(-r.oynaklik*1.2,least(r.oynaklik*1.2,deg));
      yeni:=greatest(0.000001,round(r.fiyat*(1+deg),6));
      insert into oyun.piyasa_fiyat(kod,saat,fiyat,makro)
