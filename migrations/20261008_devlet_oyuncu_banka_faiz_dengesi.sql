@@ -22,7 +22,7 @@ AS $function$
     'vadeli30',round(py / 365.0 * 30,3),
     'kredi',round(py/12*1.60,2),
     'gecikme_gunluk',1
-  ) from b
+  ) from x
 $function$
 ;
 
