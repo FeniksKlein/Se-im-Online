@@ -3320,17 +3320,17 @@ async function sirketEkrani(){
   <div class="kart" id="sir_kazanc_onizleme" style="background:var(--panel2);margin-top:12px" aria-live="polite"></div><p id="sir_sermaye_uyari" role="alert" class="alt" style="color:var(--acc2);display:none"></p>
   <button id="sir_kur_btn" class="btn altin" onclick="sirketKur()">Şirketi kur</button></div>
   <div class="kart"><h2>Ortak olduğum şirketler</h2>
-  ${d.sirketler.length?d.sirketler.map(s=>`<div class="kart"><h3>${e(s.ad)} · ${e(s.sektor)}</h3><div class="kv"><span>Payım</span><b>%${s.pay}</b></div><div class="kv"><span>Şirket kasası</span><b>${fmt(s.kasa)} ₺</b></div>  ${s.pay===100?`<div class="alan"><label>Sermaye artırımı (₺)</label><input id="sir_artis_${s.id}" type="number" min="10000" value="10000"></div><button class="btn altin" onclick="sirketSermayeArtir(${s.id})">Sermaye artır</button><div class="alan"><label>Şirketin tamamı için satış fiyatı (₺)</label><input id="sir_satis_${s.id}" type="number" min="1000" placeholder="Boş bırak: ilanı kaldır" value="${s.satilik??''}"></div><button class="btn ikinci" onclick="sirketSatisaCikar(${s.id})">Satış ilanını güncelle / kaldır</button>`:''}
+  ${d.sirketler.length?d.sirketler.map(s=>`<div class="kart"><h3>${e(s.ad)} · ${e(s.sektor)}</h3><div class="kv"><span>Payım</span><b>%${s.pay}</b></div><div class="kv"><span>Şirket kasası</span><b>${fmt(s.kasa)} ₺</b></div><div class="kv"><span>Dağıtılabilir kâr</span><b>${fmt(s.dagitilabilir_kar??0)} ₺</b></div><p class="alt">Haftalık hesaplama: ${s.sonraki_kazanc?new Date(s.sonraki_kazanc).toLocaleString("tr-TR"):"Belirsiz"}</p>  ${s.pay===100?`<div class="alan"><label>Sermaye artırımı (₺)</label><input id="sir_artis_${s.id}" type="number" min="10000" value="10000"></div><button class="btn altin" onclick="sirketSermayeArtir(${s.id})">Sermaye artır</button><div class="alan"><label>Şirketin tamamı için satış fiyatı (₺)</label><input id="sir_satis_${s.id}" type="number" min="1000" placeholder="Boş bırak: ilanı kaldır" value="${s.satilik??''}"></div><button class="btn ikinci" onclick="sirketSatisaCikar(${s.id})">Satış ilanını güncelle / kaldır</button>`:''}
   ${s.pay>=50?`<div class="alan"><label>Dağıtılacak kâr payı</label><input id="sir_kar_${s.id}" type="number" min="1" placeholder="Tutar"></div><button class="btn ikinci" onclick="sirketKarPayi(${s.id})">Kâr payı dağıt</button>`:''}
   <div class="alan"><label>Ortaklık/devretme: alıcı oyuncunun kullanıcı UUID'si</label><input id="sir_alici_${s.id}" placeholder="Oyuncu UUID"></div>
   <div class="alan"><label>Devredilecek pay (%)</label><input id="sir_pay_${s.id}" type="number" min="1" max="${s.pay}" value="${s.pay}"></div>
   <div class="alan"><label>Satış bedeli (₺)</label><input id="sir_bedel_${s.id}" type="number" min="1" value="100000"></div>
   <button class="btn ikinci" onclick="sirketPayTeklif(${s.id})">Ortaklık / satış teklifi gönder</button>
-  ${s.sektor==='banka'?`<div class="alan"><label>7 günlük mevduat faizi (%)</label><input id="sir_faiz_${s.id}" type="number" min="0" max="15" value="${s.faiz}"></div><button class="btn ikinci" onclick="sirketFaiz(${s.id})">Banka faizini değiştir</button>`:''}
+  ${s.sektor==='banka'?`<div class="alan"><label>7 günlük mevduat faizi (%)</label><input id="sir_faiz_${s.id}" type="number" min="0" max="3" step="0.01" value="${s.faiz}"></div><button class="btn ikinci" onclick="sirketFaiz(${s.id})">Banka faizini değiştir</button>`:''}
   </div>`).join(''):'<p class="alt">Henüz şirketin yok.</p>'}</div>
   <div class="kart"><h2>🏪 Satılık şirketler</h2><p class="alt">Başka oyuncuların satışa çıkardığı şirketlerin tamamını satın alabilirsin.</p>${d.pazar.length?d.pazar.map(s=>`<div class="kv"><span>${e(s.ad)} · ${e(s.sektor)} · ${fmt(s.fiyat)} ₺</span><button class="btn ikinci" onclick="sirketPazardanAl(${s.id})">Satın al</button></div>`).join(''):'<p class="alt">Şu anda satılık şirket yok.</p>'}</div>
   <div class="kart"><h2>Bana gelen ortaklık teklifleri</h2>${d.teklifler.length?d.teklifler.map(o=>`<div class="kv"><span>Şirket #${o.sirket_id} · %${o.pay} pay · ${fmt(o.bedel)} ₺</span><button class="btn ikinci" onclick="sirketTeklifKabul(${o.id})">Satın al</button></div>`).join(''):'<p class="alt">Bekleyen teklif yok.</p>'}</div>
-  <div class="kart"><h2>🏦 Oyuncu bankaları</h2><p class="alt">Bankalar 7 günlük vadeli mevduat kabul eder. Banka kasası yetersizse vade ödemesi bekler.</p>
+  <div class="kart"><h2>🏦 Oyuncu bankaları</h2><p class="alt">Bankalar 7 günlük vadeli mevduat kabul eder. Haftalık faiz üst sınırı %3. Banka sahipleri kendi bankalarına faizli mevduat yatıramaz.</p>
   <button class="btn ikinci" onclick="oyuncuBankaEkrani()">Banka listesini aç</button></div>
   `,{geri:true});
   sirketOnizleme();
@@ -3345,11 +3345,6 @@ async function sirketSatisIlani(id){
  if(!Number.isFinite(fiyat)||fiyat<0){toast("Geçersiz fiyat",true);return;}
  try{await API.rpc("sirket_satiliga_cikar",{p_sirket:id,p_fiyat:fiyat===0?null:fiyat});toast(fiyat===0?"Satış ilanı kaldırıldı":"Şirket satışa çıkarıldı");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
 }
-async function sirketSermayeArtir(id){
- const raw=prompt("Sermaye artırımı tutarı (10.000 - 10.000.000 ₺):","100000");if(raw===null)return;
- const tutar=Number(raw);if(!Number.isInteger(tutar)||tutar<10000||tutar>10000000){toast("Geçersiz tutar",true);return;}
- try{await API.rpc("sirket_sermaye_artir",{p_sirket:id,p_tutar:tutar});toast("Sermaye artırıldı; haftalık gelir potansiyeli yükseldi");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
-}
 async function sirketPazarAl(id){
  if(!confirm("Bu şirketi ilanda belirtilen fiyattan satın almak istiyor musun?"))return;
  try{await API.rpc("sirket_satilik_al",{p_sirket:id});toast("Şirket satın alındı");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
@@ -3362,7 +3357,7 @@ async function sirketFaiz(id){try{await API.rpc("banka_faiz_belirle",{p_banka:id
 async function oyuncuBankaEkrani(){
  yukleniyor("Oyuncu bankaları");
  try{const d=await API.rpc("oyuncu_banka_liste");const m=await API.rpc("banka_mevduat_tahsil");
- iskelet("Oyuncu bankaları",`<div class="kart"><h2>🏦 Bankalar</h2>${d.bankalar.map(b=>`<div class="kart"><h3>${e(b.ad)}</h3><p class="alt">7 günlük faiz: %${b.faiz} · Banka kasası: ${fmt(b.kasa)} ₺</p><div class="alan"><label>Yatırılacak tutar (₺)</label><input id="banka_tutar_${b.id}" type="number" min="1000" value="1000"></div><button class="btn ikinci" onclick="oyuncuBankaYatir(${b.id})">Mevduat yatır</button></div>`).join('')||'<p class="alt">Henüz oyuncu bankası yok.</p>'}</div><div class="kart"><h2>Mevduatlarım</h2>${m.mevduatlar.map(x=>`<div class="kv"><span>Banka #${x.banka} · ${fmt(x.tutar)} ₺</span><b>${x.odendi?'Ödendi':new Date(x.vade).toLocaleDateString('tr-TR')}</b></div>`).join('')||'<p class="alt">Mevduat yok.</p>'}</div>`,{geri:true});
+ iskelet("Oyuncu bankaları",`<div class="kart"><h2>🏦 Bankalar</h2>${d.bankalar.map(b=>`<div class="kart"><h3>${e(b.ad)}</h3><p class="alt">7 günlük faiz: %${b.faiz} · Banka kasası: ${fmt(b.kasa)} ₺. Sahibi olduğun bankaya vadeli mevduat yatıramazsın. Banka ödemeleri rezerv kontrolüne tabidir.</p><div class="alan"><label>Yatırılacak tutar (₺)</label><input id="banka_tutar_${b.id}" type="number" min="1000" value="1000"></div><button class="btn ikinci" onclick="oyuncuBankaYatir(${b.id})">Mevduat yatır</button></div>`).join('')||'<p class="alt">Henüz oyuncu bankası yok.</p>'}</div><div class="kart"><h2>Mevduatlarım</h2>${m.mevduatlar.map(x=>`<div class="kv"><span>Banka #${x.banka} · ${fmt(x.tutar)} ₺</span><b>${x.iptal?'Anapara iade edildi':x.odendi?'Ödendi':x.durum==='banka_odeme_bekliyor'?'Banka ödemesi bekleniyor':new Date(x.vade).toLocaleDateString('tr-TR')}</b></div>`).join('')||'<p class="alt">Mevduat yok.</p>'}</div>`,{geri:true});
  }catch(err){iskelet("Oyuncu bankaları",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true})}
 }
 async function oyuncuBankaYatir(id){try{await API.rpc("banka_mevduat_yatir",{p_banka:id,p_tutar:Number(document.getElementById("banka_tutar_"+id).value)});toast("Mevduat yatırıldı");oyuncuBankaEkrani()}catch(err){toast(hataCevir(err.message),true)}}
