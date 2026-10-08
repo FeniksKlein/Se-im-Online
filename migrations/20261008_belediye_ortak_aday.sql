@@ -112,3 +112,193 @@ begin
 end $function$;
 revoke all on function public.bel_destek_durum(bigint) from public,anon;
 grant execute on function public.bel_destek_durum(bigint) to authenticated;
+
+-- CB desteği artık ittifak dışı partilere de açık, fakat gerçek kesin aday şartı korunur.
+CREATE OR REPLACE FUNCTION public.cb_destek(p_parti bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'oyun', 'public', 'pg_temp'
+AS $function$
+declare
+  p oyun.profiller := oyun.profilim();
+  t timestamptz := oyun.simdi();
+  pa oyun.partiler;
+  s oyun.secimler;
+  hedef oyun.partiler;
+begin
+  pa := oyun.gb_partim(p);
+
+  select * into s
+  from oyun.secimler
+  where tur = 'cb'
+    and t >= basvuru_bas
+    and t < basvuru_bit
+  order by ara desc, basvuru_bit
+  limit 1;
+
+  if s.id is null then
+    raise exception 'Cumhurbaşkanı adayı belirleme dönemi şu anda açık değil.';
+  end if;
+
+  select * into hedef
+  from oyun.partiler
+  where id = p_parti and not kapali;
+
+  if hedef.id is null or hedef.id = pa.id then
+    raise exception 'Geçersiz parti.';
+  end if;
+
+  -- Gerçek oyun dışındaki partilere de aday desteği verilebilir.
+  -- Yalnızca resmen açıklanmış gerçek oyuncu adayı desteklenebilir.
+  if not exists(select 1 from oyun.adaylar a
+    where a.secim_id=s.id and a.parti_id=hedef.id)
+  then raise exception 'Hedef partinin resmen açıklanmış Cumhurbaşkanı adayı yok.';end if;
+  if exists(select 1 from oyun.cb_kararlar k
+    where k.donem=s.donem and k.parti_id=hedef.id and k.yontem='destek')
+  then raise exception 'Zaten başka adayı destekleyen parti hedef seçilemez.';end if;
+
+  insert into oyun.cb_kararlar(
+    donem, parti_id, yontem, aday, destek_parti, zaman
+  )
+  values (
+    s.donem, pa.id, 'destek', null, hedef.id, t
+  )
+  on conflict(donem,parti_id) do update
+    set yontem = 'destek',
+        aday = null,
+        destek_parti = excluded.destek_parti,
+        zaman = excluded.zaman;
+
+  delete from oyun.adaylar
+  where secim_id = s.id and parti_id = pa.id;
+
+  perform oyun.olay(
+    'ittifak',
+    format(
+      '%s, cumhurbaşkanlığı seçiminde %s''nin adayını destekleme kararı aldı.',
+      pa.kisa, hedef.kisa
+    ),
+    null, pa.id, t
+  );
+
+  return public.durum();
+end $function$
+;
+
+-- Belediye pusulasında ortak destek veren partileri göster; oylar tek oyuncu adayı üzerinde toplanır.
+CREATE OR REPLACE FUNCTION public.secim_detay(p_secim bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'oyun', 'public', 'pg_temp'
+AS $function$
+declare
+  p oyun.profiller:=oyun.profilim();
+  t timestamptz:=oyun.simdi();
+  s oyun.secimler;
+  onsecim bigint;
+  secenek jsonb;
+begin
+  select * into s from oyun.secimler where id=p_secim;
+  if s.id is null then raise exception 'Seçim bulunamadı.'; end if;
+
+  if s.tur='mv' then
+    select id into onsecim from oyun.secimler where tur='mv_on' and donem=s.donem;
+
+    select coalesce(jsonb_agg(x order by x->>'kisa'),'[]'::jsonb)
+    into secenek
+    from (
+      select oyun.parti_json(a.parti_id) || jsonb_build_object(
+        'hedef',a.parti_id,
+        'bagimsiz',false,
+        'beyanname',oyun.beyanname_json(a.parti_id,s.donem),
+        'liste',jsonb_agg(jsonb_build_object(
+          'kad',oyun.kad(a.user_id),
+          'sira',a.sira,
+          'vaat',a.vaat,
+          'vaatler',oyun.aday_vaatleri(a.user_id,s.id)
+        ) order by a.sira)
+      ) x
+      from oyun.adaylar a
+      where a.secim_id=onsecim
+        and a.il_id=p.il_id
+        and a.parti_id is not null
+        and a.sira is not null
+      group by a.parti_id
+    ) z;
+
+    select secenek || coalesce(jsonb_agg(
+      jsonb_build_object(
+        'hedef',-a.id,
+        'bagimsiz',true,
+        'ad',pr.kad,
+        'kad',pr.kad,
+        'kisa',null,
+        'renk','#8e8e93',
+        'amblem',null,
+        'il_id',a.il_id,
+        'vaat',a.vaat,
+        'vaatler',oyun.aday_vaatleri(a.user_id,s.id),
+        'beyanname',null,
+        'liste',jsonb_build_array(jsonb_build_object(
+          'kad',pr.kad,'sira',1,'vaat',a.vaat,
+          'vaatler',oyun.aday_vaatleri(a.user_id,s.id)
+        ))
+      ) order by a.basvuru_at,a.id
+    ),'[]'::jsonb)
+    into secenek
+    from oyun.adaylar a
+    join oyun.profiller pr on pr.id=a.user_id
+    where a.secim_id=s.id
+      and a.parti_id is null
+      and a.il_id=p.il_id;
+  else
+    select coalesce(jsonb_agg(
+      oyun.aday_json(a.id) || jsonb_build_object(
+        'hedef',a.id,
+        'oy',case when s.durum='bekliyor' then null else a.oy end,
+        'beyanname',case when s.tur in ('cb','cb2') and a.parti_id is not null
+                         then oyun.beyanname_json(a.parti_id,s.donem) end
+      )
+      order by a.parti_id nulls last,a.basvuru_at
+    ),'[]'::jsonb)
+    into secenek
+    from oyun.adaylar a
+    where a.secim_id=s.id and (
+      (s.tur in ('mv_on','bel_on') and a.il_id=p.il_id and a.parti_id=p.parti_id) or
+      (s.tur in ('kurultay','cb_on') and a.parti_id=p.parti_id) or
+      (s.tur='bel' and a.il_id=p.il_id) or
+      (s.tur in ('cb','cb2'))
+    );
+  end if;
+
+  return oyun.secim_ozet(s,p,t) || jsonb_build_object(
+    'secenekler',secenek,
+    'sonuc',s.sonuc,
+    'benim_il',p.il_id,
+    'benim_parti',p.parti_id,
+    'destekler',case when s.tur in ('cb','cb2') then coalesce((
+      select jsonb_object_agg(x.destek_parti::text,x.l)
+      from (
+        select k.destek_parti,jsonb_agg(oyun.parti_json(k.parti_id)) l
+        from oyun.cb_kararlar k
+        where k.donem=s.donem and k.yontem='destek'
+        group by k.destek_parti
+      ) x
+    ),'{}'::jsonb)
+    when s.tur='bel' then coalesce((
+      select jsonb_object_agg(z.hedef_parti::text,z.l)
+      from (
+        select d.hedef_parti_id hedef_parti,
+          jsonb_agg(oyun.parti_json(d.parti_id) order by d.parti_id) l
+        from oyun.bel_aday_destek d
+        join oyun.adaylar a on a.id=d.aday_id and a.secim_id=s.id
+          and a.parti_id=d.hedef_parti_id and a.il_id=p.il_id
+        where d.secim_id=s.id and d.il_id=p.il_id
+        group by d.hedef_parti_id
+      ) z
+    ),'{}'::jsonb) end
+  );
+end $function$
+;
