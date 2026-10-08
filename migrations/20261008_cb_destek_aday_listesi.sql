@@ -10,7 +10,7 @@ begin
  order by ara desc,basvuru_bit limit 1;
  return jsonb_build_object('secim_id',s.id,
   'secenekler',coalesce((select jsonb_agg(jsonb_build_object(
-     'parti_id',a.parti_id,'parti',pa.ad,'kisa',pa.kisa,'aday',pr.kad,
+     'parti_id',a.parti_id,'parti',pa.ad,'kisa',pa.kisa,'aday',pr.kad,'aday_id',a.id,
      'ittifak_ortagi',exists(select 1 from oyun.ittifak_uyeler x
       join oyun.ittifak_uyeler y on y.ittifak_id=x.ittifak_id
       where x.parti_id=p.parti_id and y.parti_id=a.parti_id))
