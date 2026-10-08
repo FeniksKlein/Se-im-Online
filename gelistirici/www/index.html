@@ -2938,13 +2938,14 @@ async function sirketEkrani(){
  try{
   const d=await API.rpc("sirket_liste");
   iskelet("Şirketler ve bankalar",`
-  <div class="kart"><h2>🏢 Şirket kur</h2><p class="alt">Sermaye koy, sektör seç; faaliyetler günlük gelir veya zarar oluşturur. Banka kurmak için en az 1.000.000 ₺ gerekir.</p>
+  <div class="kart"><h2>🏢 Şirket kur</h2><p class="alt">Sermaye koy, sektör seç; faaliyetler 7 günde bir gelir veya zarar oluşturur; kâr ortakların cüzdanına otomatik aktarılır. Banka kurmak için en az 1.000.000 ₺ gerekir.</p>
   <div class="alan"><label>Şirket adı</label><input id="sir_ad" maxlength="50" placeholder="Şirket adı"></div>
   <div class="alan"><label>Sektör</label><select id="sir_sektor"><option value="tarim">Tarım</option><option value="sanayi">Sanayi</option><option value="teknoloji">Teknoloji</option><option value="ticaret">Ticaret</option><option value="insaat">İnşaat</option><option value="medya">Medya</option><option value="banka">Banka</option></select></div>
   <div class="alan"><label>Kuruluş sermayesi (₺)</label><input id="sir_sermaye" type="number" min="100000" value="100000"></div>
   <button class="btn altin" onclick="sirketKur()">Şirketi kur</button></div>
   <div class="kart"><h2>Ortak olduğum şirketler</h2>
-  ${d.sirketler.length?d.sirketler.map(s=>`<div class="kart"><h3>${e(s.ad)} · ${e(s.sektor)}</h3><div class="kv"><span>Payım</span><b>%${s.pay}</b></div><div class="kv"><span>Şirket kasası</span><b>${fmt(s.kasa)} ₺</b></div>
+  ${d.sirketler.length?d.sirketler.map(s=>`<div class="kart"><h3>${e(s.ad)} · ${e(s.sektor)}</h3><div class="kv"><span>Payım</span><b>%${s.pay}</b></div><div class="kv"><span>Şirket kasası</span><b>${fmt(s.kasa)} ₺</b></div><div class="kv"><span>Yatırılan sermaye</span><b>${fmt(s.sermaye)} ₺</b></div><p class="kucuk">Her 7 günde bir net kâr ortakların payı oranında cüzdana geçer. Zarar olursa şirket kasası azalır.</p>
+  ${s.pay===100?`<div class="alan"><label>Sermaye artırımı (₺)</label><input id="sir_artis_${s.id}" type="number" min="10000" value="10000"></div><button class="btn altin" onclick="sirketSermayeArtir(${s.id})">Sermaye artır</button><div class="alan"><label>Şirketin tamamı için satış fiyatı (₺)</label><input id="sir_satis_${s.id}" type="number" min="1000" placeholder="Boş bırak: ilanı kaldır" value="${s.satilik??''}"></div><button class="btn ikinci" onclick="sirketSatisaCikar(${s.id})">Satış ilanını güncelle / kaldır</button>`:''}
   ${s.pay>=50?`<div class="alan"><label>Dağıtılacak kâr payı</label><input id="sir_kar_${s.id}" type="number" min="1" placeholder="Tutar"></div><button class="btn ikinci" onclick="sirketKarPayi(${s.id})">Kâr payı dağıt</button>`:''}
   <div class="alan"><label>Ortaklık/devretme: alıcı oyuncunun kullanıcı UUID'si</label><input id="sir_alici_${s.id}" placeholder="Oyuncu UUID"></div>
   <div class="alan"><label>Devredilecek pay (%)</label><input id="sir_pay_${s.id}" type="number" min="1" max="${s.pay}" value="${s.pay}"></div>
@@ -2952,12 +2953,16 @@ async function sirketEkrani(){
   <button class="btn ikinci" onclick="sirketPayTeklif(${s.id})">Ortaklık / satış teklifi gönder</button>
   ${s.sektor==='banka'?`<div class="alan"><label>7 günlük mevduat faizi (%)</label><input id="sir_faiz_${s.id}" type="number" min="0" max="15" value="${s.faiz}"></div><button class="btn ikinci" onclick="sirketFaiz(${s.id})">Banka faizini değiştir</button>`:''}
   </div>`).join(''):'<p class="alt">Henüz şirketin yok.</p>'}</div>
+  <div class="kart"><h2>🏪 Satılık şirketler</h2><p class="alt">Başka oyuncuların satışa çıkardığı şirketlerin tamamını satın alabilirsin.</p>${d.pazar.length?d.pazar.map(s=>`<div class="kv"><span>${e(s.ad)} · ${e(s.sektor)} · ${fmt(s.fiyat)} ₺</span><button class="btn ikinci" onclick="sirketPazardanAl(${s.id})">Satın al</button></div>`).join(''):'<p class="alt">Şu anda satılık şirket yok.</p>'}</div>
   <div class="kart"><h2>Bana gelen ortaklık teklifleri</h2>${d.teklifler.length?d.teklifler.map(o=>`<div class="kv"><span>Şirket #${o.sirket_id} · %${o.pay} pay · ${fmt(o.bedel)} ₺</span><button class="btn ikinci" onclick="sirketTeklifKabul(${o.id})">Satın al</button></div>`).join(''):'<p class="alt">Bekleyen teklif yok.</p>'}</div>
   <div class="kart"><h2>🏦 Oyuncu bankaları</h2><p class="alt">Bankalar 7 günlük vadeli mevduat kabul eder. Banka kasası yetersizse vade ödemesi bekler.</p>
   <button class="btn ikinci" onclick="oyuncuBankaEkrani()">Banka listesini aç</button></div>
   `,{geri:true});
  }catch(err){iskelet("Şirketler",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true});}
 }
+async function sirketSermayeArtir(id){const el=document.getElementById("sir_artis_"+id);try{await API.rpc("sirket_sermaye_artir",{p_sirket:id,p_tutar:Number(el.value)});toast("Sermaye artırıldı; sonraki haftalık kazanç hesabına yansıyacak.");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketSatisaCikar(id){const el=document.getElementById("sir_satis_"+id);try{await API.rpc("sirket_satiliga_cikar",{p_sirket:id,p_fiyat:el.value?Number(el.value):null});toast(el.value?"Şirket satışa çıkarıldı.":"Satış ilanı kaldırıldı.");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketPazardanAl(id){try{await API.rpc("sirket_satilik_al",{p_sirket:id});toast("Şirket satın alındı.");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketKur(){try{await API.rpc("sirket_kur",{p_ad:document.getElementById("sir_ad").value,p_sektor:document.getElementById("sir_sektor").value,p_sermaye:Number(document.getElementById("sir_sermaye").value)});toast("Şirket kuruldu");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketKarPayi(id){try{await API.rpc("sirket_kar_payi",{p_sirket:id,p_tutar:Number(document.getElementById("sir_kar_"+id).value)});toast("Kâr payı dağıtıldı");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketPayTeklif(id){try{await API.rpc("sirket_pay_teklif",{p_sirket:id,p_alici:document.getElementById("sir_alici_"+id).value,p_pay:Number(document.getElementById("sir_pay_"+id).value),p_bedel:Number(document.getElementById("sir_bedel_"+id).value)});toast("Ortaklık teklifi gönderildi");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
