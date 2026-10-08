@@ -14198,19 +14198,21 @@ begin
  insert into oyun.banka_mevduat(banka_id,user_id,anapara,faiz,vade) values(p_banka,u,p_tutar,s.banka_faiz,t+interval '7 days');
  return jsonb_build_object('tamam',true,'banka',p_banka,'faiz',s.banka_faiz,'vade',t+interval '7 days');
 end $$;
+alter table oyun.banka_mevduat add column if not exists iptal boolean not null default false;
 create or replace function public.banka_mevduat_tahsil()
 returns jsonb language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
-declare u uuid:=auth.uid();m record;t timestamptz:=oyun.simdi();pay numeric;
+declare u uuid:=auth.uid();m record;t timestamptz:=oyun.simdi();v_odeme numeric;
 begin
- for m in select * from oyun.banka_mevduat where user_id=u and not kapandi and vade<=t for update loop
-  pay:=round(m.anapara*(1+m.faiz/100),2);
-  update oyun.sirketler set kasa=kasa-pay where id=m.banka_id and kasa>=pay;
+ if u is null then raise exception 'Oturum gerekli';end if;
+ for m in select * from oyun.banka_mevduat where user_id=u and not kapandi and vade<=t order by vade,id for update loop
+  v_odeme:=round(m.anapara*(1+m.faiz/100),2);
+  update oyun.sirketler set kasa=kasa-v_odeme where id=m.banka_id and aktif and kasa>=v_odeme;
   if found then
-    perform oyun.para_islem(u,pay,'mevduat','Oyuncu bankasi mevduat vade odemesi',t);
+    perform oyun.para_islem(u,v_odeme,'mevduat','Oyuncu bankasi vadeli mevduat ve faiz odemesi',t);
     update oyun.banka_mevduat set kapandi=true where id=m.id;
   end if;
  end loop;
- return jsonb_build_object('mevduatlar',coalesce((select jsonb_agg(jsonb_build_object('id',id,'banka',banka_id,'tutar',anapara,'faiz',faiz,'vade',vade,'odendi',kapandi)) from oyun.banka_mevduat where user_id=u),'[]'::jsonb));
+ return jsonb_build_object('mevduatlar',coalesce((select jsonb_agg(jsonb_build_object('id',id,'banka',banka_id,'tutar',anapara,'faiz',faiz,'vade',vade,'odendi',kapandi,'iptal',iptal,'durum',case when iptal then 'anapara_iade' when kapandi then 'odendi' when vade<=t then 'banka_odeme_bekliyor' else 'vadede' end) order by id desc) from oyun.banka_mevduat where user_id=u),'[]'::jsonb));
 end $$;
 create or replace function public.banka_faiz_belirle(p_banka bigint,p_faiz numeric)
 returns jsonb language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
