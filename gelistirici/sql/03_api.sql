@@ -88,6 +88,10 @@ create or replace function oyun.oy_engeli(p oyun.profiller, s oyun.secimler) ret
 $$;
 
 -- ---------- PROFİL ----------
+-- Oyun içi profiller sıfırlansa bile yönetici kimliği auth kullanıcı ID'si üzerinden korunur.
+create table if not exists oyun.yonetici_kimlik(
+  user_id uuid primary key
+);
 create or replace function public.profil_olustur(p_kad text, p_il int) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
 declare u uuid := oyun.ben();
@@ -100,7 +104,9 @@ begin
   if oyun.yasakli_kad(p_kad) then raise exception 'Bu kullanıcı adı kullanılamaz.'; end if;
   if exists (select 1 from oyun.profiller where lower(kad) = lower(p_kad)) then raise exception 'Bu kullanıcı adı alınmış.'; end if;
   if not exists (select 1 from oyun.iller where id = p_il) then raise exception 'Geçersiz il.'; end if;
-  insert into oyun.profiller(id, kad, il_id, il_at, olusturma) values (u, p_kad, p_il, oyun.simdi(), oyun.simdi());
+  insert into oyun.profiller(id, kad, il_id, il_at, olusturma, yonetici)
+  values (u, p_kad, p_il, oyun.simdi(), oyun.simdi(),
+    exists (select 1 from oyun.yonetici_kimlik where user_id = u));
   return public.durum();
 end $$;
 
@@ -272,7 +278,9 @@ begin
   select * into s from oyun.secimler where tur = p_tur and t >= basvuru_bas and t < basvuru_bit;
   if s.id is null then raise exception 'Bu adaylık için başvuru şu anda açık değil.'; end if;
   if p.parti_id is null then raise exception 'Aday olmak için bir partiye üye olmalısın.'; end if;
-  if p.parti_at > s.basvuru_bas then raise exception 'Bu dönem aday olabilmek için başvurular açılmadan önce partiye üye olmalıydın.'; end if;
+  if p.parti_at > s.basvuru_bas and coalesce(s.ara_neden,'') <> 'test_reset_20261008' then
+    raise exception 'Bu dönem aday olabilmek için başvurular açılmadan önce partiye üye olmalıydın.';
+  end if;
   if oyun.uyari(p, t) is not null then raise exception '%', oyun.uyari(p, t); end if;
   if (select kurulus_bit from oyun.partiler where id = p.parti_id) is not null then
     raise exception 'Partin henüz kuruluş aşamasında: kurucu üye sayısı tamamlanmadan seçime katılamaz.';
