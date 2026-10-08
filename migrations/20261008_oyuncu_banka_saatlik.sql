@@ -58,9 +58,9 @@ declare s oyun.sirketler; y numeric; a numeric; yak numeric; al numeric; tampon 
 begin
   select * into s from oyun.sirketler where id=p_banka and sektor='banka';
   if s.id is null then raise exception 'Banka bulunamadi'; end if;
-  select coalesce(sum(round(anapara*(1+faiz/100),2)),0),
+  select coalesce(sum(round(anapara*(1+faiz/100))),0),
     coalesce(sum(anapara),0),
-    coalesce(sum(round(anapara*(1+faiz/100),2)) filter(where vade<=oyun.simdi()+interval '24 hours'),0)
+    coalesce(sum(round(anapara*(1+faiz/100))) filter(where vade<=oyun.simdi()+interval '24 hours'),0)
   into y,a,yak from oyun.banka_mevduat where banka_id=p_banka and not kapandi;
   select coalesce(sum(least(kalan,anapara) *
       case when vade<oyun.simdi() then .25 else .70 end),0)
@@ -102,8 +102,8 @@ begin
  select * into s from oyun.sirketler where id=p_banka and sektor='banka' and aktif;
  if not found then raise exception 'Banka bulunamadi';end if;
  f:=oyun.oyb_oran(p_banka,p_saat);
- yeni:=round(p_tutar*(1+f/100),2);
- select coalesce(sum(round(anapara*(1+faiz/100),2)),0),coalesce(sum(anapara),0)
+ yeni:=round(p_tutar*(1+f/100));
+ select coalesce(sum(round(anapara*(1+faiz/100))),0),coalesce(sum(anapara),0)
  into y,a from oyun.banka_mevduat where banka_id=p_banka and not kapandi;
  select coalesce(sum(least(kalan,anapara) * case when vade<oyun.simdi() then .25 else .70 end),0)
  into al from oyun.oyb_kredi where banka_id=p_banka and durum='aktif';
@@ -131,8 +131,8 @@ begin
  then raise exception 'Kendi bankana faizli mevduat yatiramazsin';end if;
  if exists(select 1 from oyun.banka_mevduat where banka_id=p_banka and not kapandi and vade<=t)
  then raise exception 'Bankanin gecikmis odemesi var; yeni mevduat kabul edilemiyor';end if;
- f:=oyun.oyb_oran(p_banka,p_saat); yeni:=round(p_tutar*(1+f/100),2);
- select coalesce(sum(round(anapara*(1+faiz/100),2)),0),coalesce(sum(anapara),0)
+ f:=oyun.oyb_oran(p_banka,p_saat); yeni:=round(p_tutar*(1+f/100));
+ select coalesce(sum(round(anapara*(1+faiz/100))),0),coalesce(sum(anapara),0)
  into y,a from oyun.banka_mevduat where banka_id=p_banka and not kapandi;
  select coalesce(sum(least(kalan,anapara) * case when vade<t then .25 else .70 end),0)
  into al from oyun.oyb_kredi where banka_id=p_banka and durum='aktif';
@@ -156,10 +156,10 @@ begin
  return jsonb_build_object(
  'mevduatlar',coalesce((select jsonb_agg(jsonb_build_object(
    'id',m.id,'banka_id',m.banka_id,'banka',s.ad,
-   'anapara',m.anapara,'oran',m.faiz,'getiri',round(m.anapara*m.faiz/100,2),
-   'odeme',round(m.anapara*(1+m.faiz/100),2),'saat',m.vade_saat,
+   'anapara',m.anapara,'oran',m.faiz,'getiri',round(m.anapara*m.faiz/100),
+   'odeme',round(m.anapara*(1+m.faiz/100)),'saat',m.vade_saat,
    'acilis',m.acilis,'vade',m.vade,'kapandi',m.kapandi,'iptal',m.iptal,
-   'cekilebilir',m.kapandi=false and s.kasa>=case when t<m.vade then m.anapara else round(m.anapara*(1+m.faiz/100),2) end,
+   'cekilebilir',m.kapandi=false and s.kasa>=case when t<m.vade then m.anapara else round(m.anapara*(1+m.faiz/100)) end,
    'durum',case when m.iptal then 'erken_bozuldu' when m.kapandi then 'odendi'
      when m.vade<=t then 'odeme_bekliyor' else 'aktif' end)
     order by m.id desc)
@@ -183,7 +183,7 @@ begin
  select * into s from oyun.sirketler where id=m.banka_id for update;
  select * into m from oyun.banka_mevduat where id=p_id and user_id=u for update;
  if m.kapandi then raise exception 'Bu mevduat daha once odendi veya kapatildi';end if;
- erken:=t<m.vade; odeme:=case when erken then m.anapara else round(m.anapara*(1+m.faiz/100),2) end;
+ erken:=t<m.vade; odeme:=case when erken then m.anapara else round(m.anapara*(1+m.faiz/100)) end;
  update oyun.sirketler set kasa=kasa-odeme where id=m.banka_id and kasa>=odeme;
  if not found then raise exception 'Banka kasasinda su an odeme icin yeterli nakit yok; mevduatin kayitli, daha sonra tekrar dene';end if;
  update oyun.banka_mevduat set kapandi=true,iptal=erken where id=m.id;
