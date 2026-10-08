@@ -658,7 +658,7 @@ function amblemSvg(id, renk){
 }
 function partiRozet(p, kisaltma){
   if (!p) return `<span class="parti" style="color:var(--mut)"><span class="nok" style="background:#555"></span>Bağımsız</span>`;
-  return `<span class="parti">${p.amblem?`<span style="width:17px;height:17px;display:inline-grid;place-items:center;flex:none">${amblemSvg(p.amblem,p.renk)}</span>`:`<span class="nok" style="background:${e(p.renk)}"></span>`}${e(kisaltma ? p.kisa : p.ad)}</span>`;
+  return `<span class="parti">${p.amblem?`<span style="width:17px;height:17px;display:inline-grid;place-items:center;flex:none">${amblemSvg(p.amblem,p.renk).replace('<svg','<svg style="width:17px;height:17px;display:block"')}</span>`:`<span class="nok" style="background:${e(p.renk)}"></span>`}${e(kisaltma ? p.kisa : p.ad)}</span>`;
 }
 function amblemKutu(p, boy){
   if (!p) return `<div class="amb" style="background:var(--panel2)"></div>`;
