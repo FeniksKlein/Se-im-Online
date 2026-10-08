@@ -7,7 +7,7 @@ returns boolean language sql immutable as $$
  ('mv','bskv'),('bskv','mv'),('mv','grup_bskv'),('grup_bskv','mv'),
  ('gby','grup_bskv'),('grup_bskv','gby'))
 $$;
-OR REPLACE FUNCTION public.aday_ol(p_tur text)
+CREATE OR REPLACE FUNCTION public.aday_ol(p_tur text)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
