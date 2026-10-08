@@ -2873,28 +2873,28 @@ function bankaCiz(b){
     <div class="kart"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
       <div><div class="kucuk">CÜZDANIN</div><div class="para">${tlYaz(b.cuzdan)}</div></div>
       <div style="text-align:right"><div class="kucuk">BANKADAKİ PARAN</div><div style="font-size:20px;font-weight:800">${tlYaz(b.mevduat)}</div></div></div>
-      <p class="kucuk" style="margin-top:8px">Faizler enflasyona bağlıdır: enflasyon %${fmt(b.enflasyon, 1)}, bankanın yıllık politika faizi %${fmt(o.politika, 1)}. Kişi başı en fazla ${tlYaz(b.tavan)} mevduat tutulabilir. Bankadaki para da servet vergisine sayılır.</p></div>
+      <p class="kucuk" style="margin-top:8px">Vadeli getiriler ekonomiye göre belirlenir: enflasyon %${fmt(b.enflasyon, 1)}, politika faizi %${fmt(o.politika, 1)}. Vadesiz hesap faiz kazandırmaz; yalnızca para tutma ve oyuncular arası banka transferi içindir. Kişi başı en fazla ${tlYaz(b.tavan)} mevduat tutulabilir.</p></div>
 
     <div class="kart"><h2>Vadesiz hesap</h2>
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px"><div class="para" style="font-size:26px">${tlYaz(v.bakiye)}</div><span class="rozet altin">aylık ${yuzde(o.vadesiz)}</span></div>
-      <div class="kv"><span class="k">Saatlik faiz kazancın <span class="kucuk">(her tamamlanan saatte bakiyeye eklenir)</span></span><span class="v iyi">+${fmt(v.saatlik, 2)} ₺</span></div>
-      <div class="kv"><span class="k">Günlük karşılığı</span><span class="v">${fmt(v.gunluk, 2)} ₺</span></div>
-      <div class="kv"><span class="k">Bugüne kadar kazandığın faiz</span><span class="v">${tlYaz(v.faiz_toplam)}</span></div>
-      <p class="kucuk" style="margin-top:6px">İstediğin an yatır, istediğin an çek. Faiz saat saat işler: para hesapta ne kadar durursa o kadar kazandırır.</p>
-      <div class="satir"><button class="btn yarim altin" id="bYatir" ${b.acik ? "" : "disabled"}>Yatır</button><button class="btn yarim ikinci" id="bCek" ${v.bakiye >= 1 ? "" : "disabled"}>Çek</button></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px"><div class="para" style="font-size:26px">${tlYaz(v.bakiye)}</div><span class="rozet">TRANSFER HESABI</span></div>
+      <div class="kv"><span class="k">Faiz</span><span class="v">Yok</span></div>
+      <p class="kucuk" style="margin-top:6px">Bu hesap para kazandırmaz. Oyuncular arası para transferi yalnızca vadesiz hesaptan yapılır. Cüzdanından para yatırabilir, ihtiyacında tekrar çekebilirsin.</p>
+      <div class="satir"><button class="btn yarim altin" id="bYatir" ${b.acik ? "" : "disabled"}>Transfer hesabına yatır</button><button class="btn yarim ikinci" id="bCek" ${v.bakiye >= 1 ? "" : "disabled"}>Cüzdana çek</button></div></div>
 
-    <div class="kart"><h2>Vadeli hesap</h2>
-      <p class="alt">Parayı belli bir süre bağla, daha yüksek faiz al. Faiz açılışta sabitlenir; vade dolunca anapara ve faiz cüzdanına yatar. Vadeden önce bozarsan durduğu saat kadar vadesiz faizi alırsın.</p>
-      <div class="kv"><span class="k">7 gün vadeli</span><span class="v">aylık ${yuzde(o.vadeli7)}</span></div>
-      <div class="kv"><span class="k">30 gün vadeli</span><span class="v">aylık ${yuzde(o.vadeli30)}</span></div>
-      ${acikV.map(x => `<div class="kart" style="margin:10px 0 0;background:var(--panel2)">
-        <div style="display:flex;justify-content:space-between;gap:8px"><b>${tlYaz(x.anapara)}</b><span class="rozet">${x.gun} gün · aylık ${yuzde(x.oran)}</span></div>
-        <div class="kucuk">Vade: ${tarihSaat(x.vade)} · vadede faiz +${tlYaz(x.getiri)}</div>
-        <div class="kucuk">Şu ana kadar biriken: <b class="iyi">+${tlYaz(x.biriken)}</b> · saatlik +${tlYaz(x.saatlik)}</div>
-        <div class="kucuk">Şimdi bozarsan alacağın faiz: +${tlYaz(x.bozma)}</div>
-        <button class="rozet" style="padding:7px 10px;margin-top:6px" data-boz="${x.id}">Vadeden önce boz</button></div>`).join("")}
-      ${kapali.length ? `<div class="kucuk" style="margin-top:10px;font-weight:800;color:var(--txt2)">SON KAPANANLAR</div>${kapali.map(x => `<div class="kv"><span class="k">${tlYaz(x.anapara)} · ${x.gun} gün · ${DUR[x.durum] || x.durum}</span><span class="v iyi">+${tlYaz(x.getiri)}</span></div>`).join("")}` : ""}
-      ${acikV.length < 3 ? `<button class="btn altin" id="bVadeli" ${b.acik ? "" : "disabled"}>Vadeli hesap aç</button>` : `<p class="kucuk" style="margin-top:8px">Aynı anda en fazla 3 vadeli hesabın olabilir.</p>`}</div>
+    <div class="kart"><h2>Saatlik vadeli hesap</h2>
+      <p class="alt">Yeni vadeler yalnızca saatliktir. Paranı 1, 3, 6, 12 veya 24 saat bağlarsın; vade tamamlanırsa yüksek getiriyi alırsın. Yeni saatlik vadeyi erken bozarsan faiz alamazsın.</p>
+      <div class="kv"><span class="k">1 saat</span><span class="v iyi">vade getirisi ${yuzde(o.vadeli1s)}</span></div>
+      <div class="kv"><span class="k">3 saat</span><span class="v iyi">vade getirisi ${yuzde(o.vadeli3s)}</span></div>
+      <div class="kv"><span class="k">6 saat</span><span class="v iyi">vade getirisi ${yuzde(o.vadeli6s)}</span></div>
+      <div class="kv"><span class="k">12 saat</span><span class="v iyi">vade getirisi ${yuzde(o.vadeli12s)}</span></div>
+      <div class="kv"><span class="k">24 saat</span><span class="v iyi">vade getirisi ${yuzde(o.vadeli24s)}</span></div>
+      ${acikV.map(x => { const yeni=x.oran_tur==="vade" && x.vade_saat; return `<div class="kart" style="margin:10px 0 0;background:var(--panel2)">
+        <div style="display:flex;justify-content:space-between;gap:8px"><b>${tlYaz(x.anapara)}</b><span class="rozet">${yeni ? x.vade_saat+" saat · vade getirisi "+yuzde(x.oran) : x.gun+" gün · aylık "+yuzde(x.oran)}</span></div>
+        <div class="kucuk">Vade: ${tarihSaat(x.vade)} · vade sonunda faiz <b class="iyi">+${tlYaz(x.getiri)}</b></div>
+        ${yeni ? `<div class="kucuk">Erken bozarsan faiz: <b>0 ₺</b></div>` : `<div class="kucuk">Eski hesap koşulu · şimdi bozarsan faiz +${tlYaz(x.bozma)}</div>`}
+        <button class="rozet" style="padding:7px 10px;margin-top:6px" data-boz="${x.id}">Vadeden önce boz</button></div>`; }).join("")}
+      ${kapali.length ? `<div class="kucuk" style="margin-top:10px;font-weight:800;color:var(--txt2)">SON KAPANANLAR</div>${kapali.map(x => `<div class="kv"><span class="k">${tlYaz(x.anapara)} · ${x.oran_tur==="vade" && x.vade_saat ? x.vade_saat+" saat" : x.gun+" gün"} · ${DUR[x.durum] || x.durum}</span><span class="v iyi">+${tlYaz(x.getiri)}</span></div>`).join("")}` : ""}
+      ${acikV.length < 3 ? `<button class="btn altin" id="bVadeli" ${b.acik ? "" : "disabled"}>Saatlik vadeli hesap aç</button>` : `<p class="kucuk" style="margin-top:8px">Aynı anda en fazla 3 vadeli hesabın olabilir.</p>`}</div>
 
     <div class="kart"><h2>Kredi</h2>
       <div class="kv"><span class="k">Kredi notun</span><span class="v"><b>${b.kredi_notu}</b> <span class="kucuk">/ 1900 · ${e(b.not_ad)}</span></span></div>
@@ -2927,14 +2927,14 @@ function bankaCiz(b){
       const iyi = x.hesap === "kredi" ? x.tutar <= 0 : x.tutar >= 0;
       return `<div class="hareket"><div style="min-width:0"><div>${{ vadesiz: "🏦", vadeli: "🔒", kredi: "💳" }[x.hesap] || "•"} ${e(x.aciklama)}</div><div class="kucuk">${tarihSaat(x.zaman)}</div></div>${x.tutar ? `<span class="t ${iyi ? "iyi" : "kotu"}">${x.tutar >= 0 ? "+" : ""}${tlYaz(x.tutar)}</span>` : ""}</div>`; }).join("") || `<div class="bos">Henüz banka hareketin yok.</div>`}</div>`, { geri: true });
   const bagla = (id, fn) => { const el = $("#" + id); if (el) el.onclick = fn; };
-  bagla("bYatir", () => tutarModal({ baslik: "Vadesiz hesaba yatır", aciklama: `Cüzdanında ${tlYaz(b.cuzdan)} var. Faiz aylık ${yuzde(o.vadesiz)}; para hesapta durduğu kadar işler.`,
-    deger: Math.min(b.cuzdan, 10000), buton: "Yatır", gonder: (m) => API.rpc("banka_yatir", { p_miktar: m }), basari: "Paran bankada, faiz işlemeye başladı." }));
+  bagla("bYatir", () => tutarModal({ baslik: "Transfer hesabına yatır", aciklama: `Cüzdanında ${tlYaz(b.cuzdan)} var. Vadesiz hesap faiz kazandırmaz; buradaki para oyuncular arası banka transferinde kullanılır.`,
+    deger: Math.min(b.cuzdan, 10000), buton: "Yatır", gonder: (m) => API.rpc("banka_yatir", { p_miktar: m }), basari: "Para transfer hesabına geçti." }));
   bagla("bCek", () => tutarModal({ baslik: "Vadesiz hesaptan çek", aciklama: `Hesabında ${tlYaz(v.bakiye)} var. Çektiğin para cüzdanına geçer.`,
     deger: Math.floor(v.bakiye), tamami: Math.floor(v.bakiye), buton: "Cüzdana çek", gonder: (m) => API.rpc("banka_cek", { p_miktar: m }), basari: "Para cüzdanına geçti." }));
-  bagla("bVadeli", () => tutarModal({ baslik: "Vadeli hesap aç", aciklama: `Cüzdanından en az 1.000 ₺ bağla. Cüzdanında ${tlYaz(b.cuzdan)} var.`, deger: Math.min(Math.max(1000, b.cuzdan), 20000),
-    secenek: { ad: "Vade", liste: [[7, `7 gün · aylık ${yuzde(o.vadeli7)}`], [30, `30 gün · aylık ${yuzde(o.vadeli30)}`]] },
-    onizle: (m, g) => { const r = g === 7 ? o.vadeli7 : o.vadeli30, f = Math.round(m * r / 100 * g / 30); return `Vade sonunda <b>${tlYaz(m + f)}</b> alırsın (${tlYaz(f)} faiz).`; },
-    buton: "Vadeli hesabı aç", gonder: (m, g) => API.rpc("vadeli_ac", { p_miktar: m, p_gun: g }), basari: "Vadeli hesabın açıldı." }));
+  bagla("bVadeli", () => tutarModal({ baslik: "Saatlik vadeli hesap aç", aciklama: `Cüzdanından en az 1.000 ₺ bağla. Cüzdanında ${tlYaz(b.cuzdan)} var. Vade dolmadan bozarsan yeni saatlik hesaplarda faiz alamazsın.`, deger: Math.min(Math.max(1000, b.cuzdan), 20000),
+    secenek: { ad: "Saatlik vade", liste: [[1, `1 saat · getiri ${yuzde(o.vadeli1s)}`], [3, `3 saat · getiri ${yuzde(o.vadeli3s)}`], [6, `6 saat · getiri ${yuzde(o.vadeli6s)}`], [12, `12 saat · getiri ${yuzde(o.vadeli12s)}`], [24, `24 saat · getiri ${yuzde(o.vadeli24s)}`]] },
+    onizle: (m, g) => { const r = ({1:o.vadeli1s,3:o.vadeli3s,6:o.vadeli6s,12:o.vadeli12s,24:o.vadeli24s})[g] || 0, f = Math.round(m * r / 100); return `${g} saat sonunda <b>${tlYaz(m + f)}</b> alırsın (<b class="iyi">+${tlYaz(f)}</b> faiz).`; },
+    buton: "Vadeli hesabı aç", gonder: (m, g) => API.rpc("vadeli_ac", { p_miktar: m, p_gun: g }), basari: "Saatlik vadeli hesabın açıldı." }));
   bagla("kCek", () => tutarModal({ baslik: "Kredi çek", aciklama: `Limitin ${tlYaz(b.kredi_limit)}, faizin aylık ${yuzde(b.kredi_oran)}. Para hemen cüzdanına geçer; yarından itibaren her gece taksit otomatik ödenir.`,
     deger: Math.min(b.kredi_limit, 10000), secenek: { ad: "Vade", liste: [[7, "7 gün"], [15, "15 gün"], [30, "30 gün"]] },
     onizle: (m, g) => { const top = Math.round(m * (1 + b.kredi_oran / 100 * g / 30)), tak = Math.ceil(top / g);
@@ -2948,7 +2948,8 @@ function bankaCiz(b){
   });
   document.querySelectorAll("[data-boz]").forEach(bt => bt.onclick = async () => {
     const x = acikV.find(y => y.id === +bt.dataset.boz);
-    if (!await onayla("Vadeli hesabı boz", `Vadeden önce bozarsan sabit faizi (${tlYaz(x.getiri)}) kaybedersin; durduğu süre için ${tlYaz(x.bozma)} vadesiz faizi alırsın. Anapara ve bu faiz cüzdanına geçer.`, "Boz", true)) return;
+    const erkenMetin = x.oran_tur === "vade" ? `Bu saatlik vadeyi erken bozarsan ${tlYaz(x.getiri)} hedef faizinin tamamını kaybedersin ve yalnızca ${tlYaz(x.anapara)} anaparan cüzdanına döner.` : `Bu eski vadeli hesabı erken bozarsan sabit faizi kaybedersin; mevcut eski sözleşme koşuluna göre ${tlYaz(x.bozma)} faiz alırsın.`;
+    if (!await onayla("Vadeli hesabı boz", erkenMetin, "Boz", true)) return;
     try { bankaCiz(await API.rpc("vadeli_boz", { p_id: x.id })); toast("Vadeli hesap bozuldu, para cüzdanında."); } catch (err) { toast(hataCevir(err.message), true); }
   });
 }
