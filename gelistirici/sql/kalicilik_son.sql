@@ -90,7 +90,7 @@ grant execute on function public.admin_min_uygulama(text) to authenticated;
 -- Katalog tabloları sıfırlamada korunur (iller, bakanlıklar, icraat/vaat/kural katalogları, ayarlar, sürümler)
 create or replace function oyun.katalog_tablo(t text) returns boolean language sql immutable as $$
   select t in ('ayarlar','iller','bakanliklar','icraatlar','vaat_turleri','duzenleme_tanim','belediye_hizmetleri','belediye_yatirimlari',
-               'paketler','gecici_eposta','surumler')
+               'paketler','gecici_eposta','surumler','yonetici_kimlik')
 $$;
 
 -- Oyunu sıfırlar: önce yedek alır, sonra oyun dünyasını boşaltır. Oyuncu hesapları (giriş bilgileri) kalır;
