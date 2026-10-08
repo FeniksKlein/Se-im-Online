@@ -1634,13 +1634,25 @@ async function kanunCb(id, karar){
     catch (err) { toast(hataCevir(err.message), true); }
   };
 }
+async function ekonomiYasaEkrani(){
+ const yasalar=[[3,"Artan oranlı gelir vergisi","Üst dilime ek puan",0,20],[5,"İlk konut muafiyeti","0=Kapalı, 1=Açık",0,1],[9,"Çoklu mülk vergisi","3. mülk ve sonrası kira vergisi %",0,40],[11,"Mevduat faizi vergisi","Faiz stopajı %",0,40],[21,"Piyango ikramiyesi vergisi","İkramiye stopajı %",0,40],[23,"Devlet tahvili","30 günlük faiz %",0,30],[29,"Vergi affı","Ceza affı %",0,100],[33,"Yeni parti kuruluş desteği","Tek seferlik TL",0,50000],[41,"Partilere hazine yardımı","Yardım çarpanı %",0,200],[51,"Belediyelere vergi payı","Pay %",2,30]];
+ let cur={};try{cur=await API.rpc("ekonomi_yasa_durum")}catch(_){}
+ const keys={3:"artan_vergi",5:"ilk_konut_muaf",9:"coklu_mulk_vergi",11:"faiz_stopaj",21:"piyango_stopaj",23:"tahvil_faiz",29:"vergi_affi",33:"yeni_parti_destek",41:"parti_yardim_carpan",51:"belediye_payi"};
+ iskelet("Ekonomik yasa teklifleri",`<div class="kart"><h2>Meclis ekonomi yasaları</h2><p class="alt">Teklifler önce görüşülür, sonra milletvekillerince oylanır ve mevcut Cumhurbaşkanı onayı/veto sürecinden geçer.</p></div>${yasalar.map(y=>`<div class="kart"><h3>${y[0]}. ${e(y[1])}</h3><p class="kucuk">${e(y[2])} · Geçerli değer: ${cur[keys[y[0]]]??"—"}</p><div class="alan"><label>Teklif edilen değer (${y[3]}–${y[4]})</label><input id="ekoy_${y[0]}" type="number" min="${y[3]}" max="${y[4]}" value="${cur[keys[y[0]]]??y[3]}" step="1"></div><button class="btn altin" onclick="ekonomiYasaSun(${y[0]},${y[3]},${y[4]})">Meclise teklif et</button></div>`).join("")}`,{geri:true});
+}
+async function ekonomiYasaSun(no,min,max){
+ const el=document.getElementById("ekoy_"+no),v=Number(el?.value);
+ if(!Number.isFinite(v)||v<min||v>max){bildir("Geçersiz değer.",true);return;}
+ if(!await onayla("Ekonomi yasa teklifi",`#${no} numaralı yasayı ${v} değeriyle Meclise sunmak istiyor musun?`,"Teklif et"))return;
+ try{await API.rpc("ekonomi_yasa_teklif",{p_no:no,p_deger:v});bildir("Kanun teklifi Meclise sunuldu.");ekranAc(ekonomiYasaEkrani);}catch(err){bildir(hataCevir(err.message),true);}
+}
 async function kanunTeklifEkrani(tur0, kod0){
   let tur = tur0 || "serbest", kararlar = [], mz = { kurallar: [], anayasa: [] };
   try { kararlar = (await API.rpc("kararnameler", { p_limit: 50 })).filter(k => k.durum === "yururlukte"); } catch (_) {}
   try { mz = D._mevzuat = await API.rpc("mevzuat"); } catch (_) {}
   const u = D._karne || await API.rpc("ulke_karnesi");
   const TURLER = [["serbest","Kanun (serbest metin)"],["vergi","Gelir vergisi oranı kanunu"],["borc_affi","Kredi borç affı kanunu"],["duzenleme","Kural kanunu (mevzuat)"],["butce","Bütçe kanunu"],["secim","Seçim kanunu (baraj)"],["iptal","Kararname iptali"],["anayasa","Anayasa değişikliği"]];
-  iskelet("Kanun teklifi", `
+  iskelet("Kanun teklifi", `<div class="kart"><button class="btn altin" onclick="ekranAc(ekonomiYasaEkrani)">Ekonomik yasa paketleri (10 teklif)</button></div>
     <div class="kart"><div class="alan" style="margin-top:0"><label>Teklifin türü</label><select id="ktur">${TURLER.map(([k, a]) => `<option value="${k}" ${k === tur ? "selected" : ""}>${a}</option>`).join("")}</select></div>
       <p class="kucuk" id="tacik" style="margin-top:8px"></p>
       <div class="alan"><label>Başlık</label><input id="kbaslik" maxlength="120"></div>
