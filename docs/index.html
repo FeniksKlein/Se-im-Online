@@ -3031,7 +3031,7 @@ async function sirketEkrani(){
   <div class="alan"><label>Kuruluş sermayesi (₺)</label><input id="sir_sermaye" type="number" min="100000" value="100000"></div>
   <button class="btn altin" onclick="sirketKur()">Şirketi kur</button></div>
   <div class="kart"><h2>Ortak olduğum şirketler</h2>
-  ${d.sirketler.length?d.sirketler.map(s=>`<div class="kart"><h3>${e(s.ad)} · ${e(s.sektor)}</h3><div class="kv"><span>Payım</span><b>%${s.pay}</b></div><div class="kv"><span>Şirket kasası</span><b>${fmt(s.kasa)} ₺</b></div><div class="kv"><span>Sermaye</span><b>${fmt(s.sermaye)} ₺</b></div><p class="alt">Her 7 günde bir şirket sonucu hesaplanır. Kâr ortakların cüzdanına, zarar şirket kasasına yansır.</p><div class="kv"><span>Yatırılan sermaye</span><b>${fmt(s.sermaye)} ₺</b></div><p class="kucuk">Her 7 günde bir net kâr ortakların payı oranında cüzdana geçer. Zarar olursa şirket kasası azalır.</p>
+  ${d.sirketler.length?d.sirketler.map(s=>`<div class="kart"><h3>${e(s.ad)} · ${e(s.sektor)}</h3><div class="kv"><span>Payım</span><b>%${s.pay}</b></div><div class="kv"><span>Şirket kasası</span><b>${fmt(s.kasa)} ₺</b></div><div class="kv"><span>Yatırılan sermaye</span><b>${fmt(s.sermaye)} ₺</b></div><p class="alt">Şirketin faaliyet kârı 7 günde bir ortakların cüzdanına aktarılır; zarar şirket kasasından düşer.</p>${s.pay===100?`<button class="btn ikinci" onclick="sirketSermayeArtir(${s.id})">📈 Sermaye artır</button><button class="btn altin" onclick="sirketSatisIlani(${s.id})">${s.satilik?"Satış fiyatını değiştir / ilanı kaldır":"🏷️ Şirketi satışa çıkar"}</button>`:""}<div class="kv"><span>Sermaye</span><b>${fmt(s.sermaye)} ₺</b></div><p class="alt">Her 7 günde bir şirket sonucu hesaplanır. Kâr ortakların cüzdanına, zarar şirket kasasına yansır.</p><div class="kv"><span>Yatırılan sermaye</span><b>${fmt(s.sermaye)} ₺</b></div><p class="kucuk">Her 7 günde bir net kâr ortakların payı oranında cüzdana geçer. Zarar olursa şirket kasası azalır.</p>
   ${s.pay===100?`<div class="alan"><label>Sermaye artırımı (₺)</label><input id="sir_artis_${s.id}" type="number" min="10000" value="10000"></div><button class="btn altin" onclick="sirketSermayeArtir(${s.id})">Sermaye artır</button><div class="alan"><label>Şirketin tamamı için satış fiyatı (₺)</label><input id="sir_satis_${s.id}" type="number" min="1000" placeholder="Boş bırak: ilanı kaldır" value="${s.satilik??''}"></div><button class="btn ikinci" onclick="sirketSatisaCikar(${s.id})">Satış ilanını güncelle / kaldır</button>`:''}
   ${s.pay>=50?`<div class="alan"><label>Dağıtılacak kâr payı</label><input id="sir_kar_${s.id}" type="number" min="1" placeholder="Tutar"></div><button class="btn ikinci" onclick="sirketKarPayi(${s.id})">Kâr payı dağıt</button>`:''}
   <div class="alan"><label>Ortaklık/devretme: alıcı oyuncunun kullanıcı UUID'si</label><input id="sir_alici_${s.id}" placeholder="Oyuncu UUID"></div>
@@ -3050,6 +3050,21 @@ async function sirketEkrani(){
 async function sirketSermayeArtir(id){const el=document.getElementById("sir_artis_"+id);try{await API.rpc("sirket_sermaye_artir",{p_sirket:id,p_tutar:Number(el.value)});toast("Sermaye artırıldı; sonraki haftalık kazanç hesabına yansıyacak.");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketSatisaCikar(id){const el=document.getElementById("sir_satis_"+id);try{await API.rpc("sirket_satiliga_cikar",{p_sirket:id,p_fiyat:el.value?Number(el.value):null});toast(el.value?"Şirket satışa çıkarıldı.":"Satış ilanı kaldırıldı.");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketPazardanAl(id){try{await API.rpc("sirket_satilik_al",{p_sirket:id});toast("Şirket satın alındı.");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketSatisIlani(id){
+ const raw=prompt("Şirketin tamamının satış fiyatı (₺). İlanı kaldırmak için 0 yaz:", "500000");
+ if(raw===null)return;const fiyat=Number(raw);
+ if(!Number.isFinite(fiyat)||fiyat<0){toast("Geçersiz fiyat",true);return;}
+ try{await API.rpc("sirket_satiliga_cikar",{p_sirket:id,p_fiyat:fiyat===0?null:fiyat});toast(fiyat===0?"Satış ilanı kaldırıldı":"Şirket satışa çıkarıldı");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
+}
+async function sirketSermayeArtir(id){
+ const raw=prompt("Sermaye artırımı tutarı (10.000 - 10.000.000 ₺):","100000");if(raw===null)return;
+ const tutar=Number(raw);if(!Number.isInteger(tutar)||tutar<10000||tutar>10000000){toast("Geçersiz tutar",true);return;}
+ try{await API.rpc("sirket_sermaye_artir",{p_sirket:id,p_tutar:tutar});toast("Sermaye artırıldı; haftalık gelir potansiyeli yükseldi");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
+}
+async function sirketPazarAl(id,ad,fiyat){
+ if(!confirm(ad+" şirketini "+Number(fiyat).toLocaleString("tr-TR")+" ₺ karşılığında satın almak istiyor musun?"))return;
+ try{await API.rpc("sirket_satilik_al",{p_sirket:id});toast("Şirket satın alındı");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
+}
 async function sirketKur(){try{await API.rpc("sirket_kur",{p_ad:document.getElementById("sir_ad").value,p_sektor:document.getElementById("sir_sektor").value,p_sermaye:Number(document.getElementById("sir_sermaye").value)});toast("Şirket kuruldu");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketKarPayi(id){try{await API.rpc("sirket_kar_payi",{p_sirket:id,p_tutar:Number(document.getElementById("sir_kar_"+id).value)});toast("Kâr payı dağıtıldı");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketPayTeklif(id){try{await API.rpc("sirket_pay_teklif",{p_sirket:id,p_alici:document.getElementById("sir_alici_"+id).value,p_pay:Number(document.getElementById("sir_pay_"+id).value),p_bedel:Number(document.getElementById("sir_bedel_"+id).value)});toast("Ortaklık teklifi gönderildi");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
