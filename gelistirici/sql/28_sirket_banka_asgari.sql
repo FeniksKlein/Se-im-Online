@@ -63,7 +63,7 @@ begin
  if u is null or not exists(select 1 from oyun.profiller where id=u) then raise exception 'Profil gerekli';end if;
  if p_ad is null or length(btrim(p_ad)) not between 3 and 50 then raise exception 'Sirket adi 3-50 karakter olmali';end if;
  if p_sektor not in ('tarim','sanayi','teknoloji','ticaret','insaat','medya','banka') then raise exception 'Gecersiz sektor';end if;
- if p_sermaye is null or p_sermaye<>round(p_sermaye) or p_sermaye<case when p_sektor='banka' then 1000000 else 100000 end or p_sermaye>100000000 then raise exception 'Sermaye alt siniri sirket icin 100.000, banka icin 1.000.000 TL';end if;
+ if p_sermaye is null or p_sermaye<>round(p_sermaye) or p_sermaye<(case when p_sektor='banka' then 1000000 else 100000 end) or p_sermaye>100000000 then raise exception 'Sermaye alt siniri sirket icin 100.000, banka icin 1.000.000 TL';end if;
  perform oyun.para_islem(u,-p_sermaye,'sirket','Sirket kurulus sermayesi',t);
  insert into oyun.sirketler(ad,sektor,kurucu,sermaye,kasa,son_islem,kurulus) values(btrim(p_ad),p_sektor,u,p_sermaye,p_sermaye,t,t) returning oyun.sirketler.id into id;
  insert into oyun.sirket_ortaklari values(id,u,100);
