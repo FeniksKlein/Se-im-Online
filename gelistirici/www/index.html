@@ -1451,6 +1451,7 @@ async function meclisHtml(){
     <button class="btn ikinci" onclick="ekranAc(()=>sohbetEkrani('meclis'))">TBMM Genel Kurulu</button></div>
     ${siyasiSistemHtml(s)}${divan}
     ${vekilim?`<button class="btn altin" style="margin:0 0 12px" onclick="ekranAc(kanunTeklifEkrani)">+ Kanun teklifi ver</button>`:""}
+    <div class="kart" style="border:2px solid var(--gold)"><h2>⚖️ Ekonomi yasası teklifleri</h2><p class="alt">Gelir vergisi, ilk konut, gayrimenkul, mevduat, piyango, tahvil, vergi affı, parti ve belediye yardımları: 10 farklı kanun teklifi. Yasalar görüşme, oylama ve Cumhurbaşkanı onayıyla yürürlüğe girer.</p><button class="btn altin" onclick="ekranAc(ekonomiYasaEkrani)">10 yasa teklifini incele / Meclise sun</button></div>
     <div class="kart"><h2>Gündemdeki teklifler</h2>${aktif.map(kanunSatir).join("")||`<div class="bos">Şu anda Meclis gündeminde teklif yok.${vekilim?"":" Kanun teklifini milletvekilleri verir."}</div>`}</div>
     ${biten.length?`<div class="kart"><h2>Sonuçlanan teklifler</h2>${biten.map(kanunSatir).join("")}</div>`:""}
     <div class="kart"><h2>Vekiller</h2>${Object.keys(ilg).length?Object.entries(ilg).map(([il,l])=>`<div class="liste-satir"><div class="orta"><b>${e(il)}</b><div class="kucuk">${l.map(v=>`<a href="#" onclick="oyuncuKart('${e(v.kad)}');return false" style="text-decoration:none;color:${e((pm[v.parti_id]||{}).renk||"#999")}">${e(v.kad)}</a>`).join(", ")}</div></div></div>`).join(""):`<div class="bos">Meclis henüz boş. İlk genel seçim ayın 1'inde.</div>`}</div>`;
@@ -1555,9 +1556,9 @@ async function ekonomiYasaEkrani(){
 }
 async function ekonomiYasaSun(no,min,max){
  const el=document.getElementById("ekoy_"+no),v=Number(el?.value);
- if(!Number.isFinite(v)||v<min||v>max){bildir("Geçersiz değer.",true);return;}
+ if(!Number.isFinite(v)||v<min||v>max){toast("Geçersiz değer.",true);return;}
  if(!await onayla("Ekonomi yasa teklifi",`#${no} numaralı yasayı ${v} değeriyle Meclise sunmak istiyor musun?`,"Teklif et"))return;
- try{await API.rpc("ekonomi_yasa_teklif",{p_no:no,p_deger:v});bildir("Kanun teklifi Meclise sunuldu.");ekranAc(ekonomiYasaEkrani);}catch(err){bildir(hataCevir(err.message),true);}
+ try{await API.rpc("ekonomi_yasa_teklif",{p_no:no,p_deger:v});toast("Kanun teklifi Meclise sunuldu.");ekranAc(ekonomiYasaEkrani);}catch(err){toast(hataCevir(err.message),true);}
 }
 async function kanunTeklifEkrani(tur0, kod0){
   let tur = tur0 || "serbest", kararlar = [], mz = { kurallar: [], anayasa: [] };
