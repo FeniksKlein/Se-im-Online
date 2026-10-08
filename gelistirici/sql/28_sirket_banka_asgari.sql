@@ -58,16 +58,18 @@ begin
 end $$;
 create or replace function public.sirket_kur(p_ad text,p_sektor text,p_sermaye numeric)
 returns jsonb language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
-declare u uuid:=auth.uid();id bigint;t timestamptz:=oyun.simdi();
+declare u uuid:=auth.uid();v_yeni_id bigint;v_min_sermaye numeric;t timestamptz:=oyun.simdi();
 begin
- if u is null or not exists(select 1 from oyun.profiller where id=u) then raise exception 'Profil gerekli';end if;
+ if u is null or not exists(select 1 from oyun.profiller pr where pr.id=u) then raise exception 'Profil gerekli';end if;
  if p_ad is null or length(btrim(p_ad)) not between 3 and 50 then raise exception 'Sirket adi 3-50 karakter olmali';end if;
  if p_sektor not in ('tarim','sanayi','teknoloji','ticaret','insaat','medya','banka') then raise exception 'Gecersiz sektor';end if;
- if p_sermaye is null or p_sermaye<>round(p_sermaye) or p_sermaye<(case when p_sektor='banka' then 1000000 else 100000 end) or p_sermaye>100000000 then raise exception 'Sermaye alt siniri sirket icin 100.000, banka icin 1.000.000 TL';end if;
+ v_min_sermaye:=case when p_sektor='banka' then 1000000 else 100000 end;
+ if p_sermaye is null or p_sermaye<>round(p_sermaye) or p_sermaye<=0 or p_sermaye>100000000 then raise exception 'Kurulus sermayesi 1 ile 100.000.000 TL arasinda bir tam sayi olmali';end if;
+ if p_sermaye<v_min_sermaye then raise exception 'Bu sektor icin en az % TL kurulus sermayesi gerekli',v_min_sermaye;end if;
  perform oyun.para_islem(u,-p_sermaye,'sirket','Sirket kurulus sermayesi',t);
- insert into oyun.sirketler(ad,sektor,kurucu,sermaye,kasa,son_islem,kurulus) values(btrim(p_ad),p_sektor,u,p_sermaye,p_sermaye,t,t) returning oyun.sirketler.id into id;
- insert into oyun.sirket_ortaklari values(id,u,100);
- return jsonb_build_object('id',id);
+ insert into oyun.sirketler(ad,sektor,kurucu,sermaye,kasa,son_islem,kurulus) values(btrim(p_ad),p_sektor,u,p_sermaye,p_sermaye,t,t) returning oyun.sirketler.id into v_yeni_id;
+ insert into oyun.sirket_ortaklari(sirket_id,user_id,pay) values(v_yeni_id,u,100);
+ return jsonb_build_object('id',v_yeni_id);
 end $$;
 create or replace function public.sirket_liste()
 returns jsonb language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
@@ -76,8 +78,10 @@ begin
  if u is null then raise exception 'Oturum gerekli';end if;
  for x in select distinct s.id from oyun.sirketler s join oyun.sirket_ortaklari o on o.sirket_id=s.id where o.user_id=u and s.aktif loop perform oyun.sirket_hesapla(x.id);end loop;
  return jsonb_build_object('sirketler',coalesce((select jsonb_agg(jsonb_build_object('id',s.id,'ad',s.ad,'sektor',s.sektor,'kasa',s.kasa,'sermaye',s.sermaye,'pay',o.pay,'satilik',s.satilik,'faiz',s.banka_faiz)) from oyun.sirketler s join oyun.sirket_ortaklari o on o.sirket_id=s.id where o.user_id=u and s.aktif),'[]'::jsonb),
- 'pazar',coalesce((select jsonb_agg(jsonb_build_object('id',id,'ad',ad,'sektor',sektor,'fiyat',satilik)) from oyun.sirketler where satilik is not null and aktif),'[]'::jsonb),
- 'teklifler',coalesce((select jsonb_agg(jsonb_build_object('id',id,'sirket_id',sirket_id,'pay',pay,'bedel',bedel)) from oyun.sirket_teklif where alici=u and durum='bekliyor'),'[]'::jsonb));
+ 'pazar',coalesce((select jsonb_agg(jsonb_build_object('id',s2.id,'ad',s2.ad,'sektor',s2.sektor,'fiyat',s2.satilik)) from oyun.sirketler s2 where s2.satilik is not null and s2.aktif),'[]'::jsonb),
+ 'teklifler',coalesce((select jsonb_agg(jsonb_build_object('id',st.id,'sirket_id',st.sirket_id,'pay',st.pay,'bedel',st.bedel)) from oyun.sirket_teklif st where st.alici=u and st.durum='bekliyor'),'[]'::jsonb),
+ 'asgari',(select ul.asgari from oyun.ulke ul where ul.id=1),
+ 'sirket_asgari_sermaye',100000,'banka_asgari_sermaye',1000000);
 end $$;
 create or replace function public.sirket_pay_teklif(p_sirket bigint,p_alici uuid,p_pay numeric,p_bedel numeric)
 returns jsonb language plpgsql security definer set search_path='oyun','public','pg_temp' as $$

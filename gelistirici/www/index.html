@@ -2933,16 +2933,50 @@ async function piyangoAl(){
  if(!await onayla("Milli Piyango bileti","1.000 ₺ karşılığında rastgele 6 haneli bir piyango bileti almak istiyor musun? Kazanma ihtimali 1 / 1.000.000.","Bilet al"))return;
  try{piyangoCiz(await API.rpc("piyango_bilet_al",{p_adet:1}));}catch(err){bildir(hataCevir(err.message),true);}
 }
+let _sirketEkonomi={asgari:NaN,normal:100000,banka:1000000};
+let _sirketSonMin=100000;
+function sirketOnizleme(sektorDegisti=false){
+ const sektor=document.getElementById("sir_sektor"),sermaye=document.getElementById("sir_sermaye");
+ const alt=document.getElementById("sir_alt_limit"),onizleme=document.getElementById("sir_kazanc_onizleme");
+ const uyari=document.getElementById("sir_sermaye_uyari"),btn=document.getElementById("sir_kur_btn");
+ if(!sektor||!sermaye||!alt||!onizleme||!uyari||!btn)return;
+ const min=sektor.value==="banka"?_sirketEkonomi.banka:_sirketEkonomi.normal;
+ if(sektorDegisti&&Number(sermaye.value)===_sirketSonMin)sermaye.value=String(min);
+ _sirketSonMin=min;sermaye.min=String(min);sermaye.max="100000000";sermaye.step="1";
+ alt.textContent="Bu sektörde en az "+fmt(min)+" ₺, en fazla 100.000.000 ₺ sermaye gerekir.";
+ const tutar=Number(sermaye.value);let hata="";
+ if(!sermaye.value.trim()||!Number.isSafeInteger(tutar)||tutar<=0)hata="Geçerli ve pozitif bir tam sayı gir.";
+ else if(tutar<min)hata="Bu sektör için en az "+fmt(min)+" ₺ gerekli; girdiğin sermaye "+fmt(tutar)+" ₺.";
+ else if(tutar>100000000)hata="En yüksek kuruluş sermayesi 100.000.000 ₺.";
+ uyari.textContent=hata;uyari.style.display=hata?"block":"none";btn.disabled=Boolean(hata);
+ if(hata){onizleme.textContent="Haftalık kazanç tahmini için geçerli bir sermaye gir.";return;}
+ const oran={tarim:.12,sanayi:.15,teknoloji:.20,ticaret:.14,insaat:.18,medya:.16,banka:.08}[sektor.value];
+ const asgari=Number(_sirketEkonomi.asgari);
+ if(!Number.isFinite(asgari)||asgari<=0||!Number.isFinite(oran)){onizleme.textContent="Canlı ekonomi bilgisi alınamadı, tahmin yapılamıyor.";return;}
+ const gelirMin=tutar*oran*.6,gelirMax=tutar*oran*1.4;
+ const giderMin=tutar*.025+asgari*.5,giderMax=tutar*.08+asgari*1.5;
+ const netMin=gelirMin-giderMax,netMax=gelirMax-giderMin,netOrt=tutar*oran-tutar*.0525-asgari;
+ const para=x=>fmt(Math.round(x))+" ₺";
+ onizleme.innerHTML='<h3 style="margin-bottom:8px">📊 7 günlük faaliyet tahmini</h3>'
+ +'<div class="kv"><span>Olası brüt gelir</span><b>'+para(gelirMin)+' – '+para(gelirMax)+'</b></div>'
+ +'<div class="kv"><span>Olası giderler</span><b>'+para(giderMin)+' – '+para(giderMax)+'</b></div>'
+ +'<div class="kv"><span>Olası net kâr / zarar</span><b>'+para(netMin)+' – '+para(netMax)+'</b></div>'
+ +'<div class="kv"><span>Ortalama senaryo</span><b>'+para(netOrt)+'</b></div>'
+ +'<p class="alt" style="margin-top:8px">Bunlar garanti kazanç değildir; mevcut 7 günlük oyun formülüne göre olası sonuçlardır. Kâr ortakların paylarına göre cüzdana geçer, zarar şirket kasasını azaltır. Asgari ücret değişirse tahmin değişir.</p>';
+}
 async function sirketEkrani(){
  yukleniyor("Şirketlerim");
  try{
   const d=await API.rpc("sirket_liste");
+  _sirketEkonomi={asgari:Number(d.asgari),normal:Number(d.sirket_asgari_sermaye||100000),banka:Number(d.banka_asgari_sermaye||1000000)};
+  _sirketSonMin=_sirketEkonomi.normal;
   iskelet("Şirketler ve bankalar",`
-  <div class="kart"><h2>🏢 Şirket kur</h2><p class="alt">Sermaye koy, sektör seç; faaliyetler 7 günde bir gelir veya zarar oluşturur; kâr ortakların cüzdanına otomatik aktarılır. Banka kurmak için en az 1.000.000 ₺ gerekir.</p>
+  <div class="kart"><h2>🏢 Şirket kur</h2><p class="alt">Asgari sermaye: şirketlerde 100.000 ₺, bankalarda 1.000.000 ₺. Bütçene göre 7 günlük gelir, gider ve kâr/zarar tahminlerini incele.</p>
   <div class="alan"><label>Şirket adı</label><input id="sir_ad" maxlength="50" placeholder="Şirket adı"></div>
-  <div class="alan"><label>Sektör</label><select id="sir_sektor"><option value="tarim">Tarım</option><option value="sanayi">Sanayi</option><option value="teknoloji">Teknoloji</option><option value="ticaret">Ticaret</option><option value="insaat">İnşaat</option><option value="medya">Medya</option><option value="banka">Banka</option></select></div>
-  <div class="alan"><label>Kuruluş sermayesi (₺)</label><input id="sir_sermaye" type="number" min="100000" value="100000"></div>
-  <button class="btn altin" onclick="sirketKur()">Şirketi kur</button></div>
+  <div class="alan"><label>Sektör</label><select id="sir_sektor" onchange="sirketOnizleme(true)"><option value="tarim">Tarım</option><option value="sanayi">Sanayi</option><option value="teknoloji">Teknoloji</option><option value="ticaret">Ticaret</option><option value="insaat">İnşaat</option><option value="medya">Medya</option><option value="banka">Banka</option></select></div>
+  <div class="alan"><label>Kuruluş sermayesi (₺)</label><input id="sir_sermaye" type="number" min="100000" max="100000000" step="1" value="100000" oninput="sirketOnizleme()"><p class="alt" id="sir_alt_limit" style="margin-top:6px"></p></div>
+  <div class="kart" id="sir_kazanc_onizleme" style="background:var(--panel2);margin-top:12px" aria-live="polite"></div><p id="sir_sermaye_uyari" role="alert" class="alt" style="color:var(--acc2);display:none"></p>
+  <button id="sir_kur_btn" class="btn altin" onclick="sirketKur()">Şirketi kur</button></div>
   <div class="kart"><h2>Ortak olduğum şirketler</h2>
   ${d.sirketler.length?d.sirketler.map(s=>`<div class="kart"><h3>${e(s.ad)} · ${e(s.sektor)}</h3><div class="kv"><span>Payım</span><b>%${s.pay}</b></div><div class="kv"><span>Şirket kasası</span><b>${fmt(s.kasa)} ₺</b></div>  ${s.pay===100?`<div class="alan"><label>Sermaye artırımı (₺)</label><input id="sir_artis_${s.id}" type="number" min="10000" value="10000"></div><button class="btn altin" onclick="sirketSermayeArtir(${s.id})">Sermaye artır</button><div class="alan"><label>Şirketin tamamı için satış fiyatı (₺)</label><input id="sir_satis_${s.id}" type="number" min="1000" placeholder="Boş bırak: ilanı kaldır" value="${s.satilik??''}"></div><button class="btn ikinci" onclick="sirketSatisaCikar(${s.id})">Satış ilanını güncelle / kaldır</button>`:''}
   ${s.pay>=50?`<div class="alan"><label>Dağıtılacak kâr payı</label><input id="sir_kar_${s.id}" type="number" min="1" placeholder="Tutar"></div><button class="btn ikinci" onclick="sirketKarPayi(${s.id})">Kâr payı dağıt</button>`:''}
@@ -2957,6 +2991,7 @@ async function sirketEkrani(){
   <div class="kart"><h2>🏦 Oyuncu bankaları</h2><p class="alt">Bankalar 7 günlük vadeli mevduat kabul eder. Banka kasası yetersizse vade ödemesi bekler.</p>
   <button class="btn ikinci" onclick="oyuncuBankaEkrani()">Banka listesini aç</button></div>
   `,{geri:true});
+  sirketOnizleme();
  }catch(err){iskelet("Şirketler",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true});}
 }
 async function sirketSermayeArtir(id){const el=document.getElementById("sir_artis_"+id);try{await API.rpc("sirket_sermaye_artir",{p_sirket:id,p_tutar:Number(el.value)});toast("Sermaye artırıldı; sonraki haftalık kazanç hesabına yansıyacak.");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}}
@@ -2977,7 +3012,7 @@ async function sirketPazarAl(id){
  if(!confirm("Bu şirketi ilanda belirtilen fiyattan satın almak istiyor musun?"))return;
  try{await API.rpc("sirket_satilik_al",{p_sirket:id});toast("Şirket satın alındı");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
 }
-async function sirketKur(){try{await API.rpc("sirket_kur",{p_ad:document.getElementById("sir_ad").value,p_sektor:document.getElementById("sir_sektor").value,p_sermaye:Number(document.getElementById("sir_sermaye").value)});toast("Şirket kuruldu");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketKur(){const ad=document.getElementById("sir_ad").value.trim(),sektor=document.getElementById("sir_sektor").value,sermaye=Number(document.getElementById("sir_sermaye").value),min=sektor==="banka"?_sirketEkonomi.banka:_sirketEkonomi.normal;if(ad.length<3||ad.length>50){toast("Şirket adı 3-50 karakter olmalı.",true);return;}if(!Number.isSafeInteger(sermaye)||sermaye<min||sermaye>100000000){sirketOnizleme();toast("Bu sektör için en az "+fmt(min)+" ₺, en fazla 100.000.000 ₺ sermaye gerekir.",true);return;}try{await API.rpc("sirket_kur",{p_ad:ad,p_sektor:sektor,p_sermaye:sermaye});toast("Şirket kuruldu");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketKarPayi(id){try{await API.rpc("sirket_kar_payi",{p_sirket:id,p_tutar:Number(document.getElementById("sir_kar_"+id).value)});toast("Kâr payı dağıtıldı");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketPayTeklif(id){try{await API.rpc("sirket_pay_teklif",{p_sirket:id,p_alici:document.getElementById("sir_alici_"+id).value,p_pay:Number(document.getElementById("sir_pay_"+id).value),p_bedel:Number(document.getElementById("sir_bedel_"+id).value)});toast("Ortaklık teklifi gönderildi");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketTeklifKabul(id){try{await API.rpc("sirket_pay_kabul",{p_teklif:id});toast("Şirket payı satın alındı");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
