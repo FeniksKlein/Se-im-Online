@@ -2974,8 +2974,8 @@ async function sirketSermayeArtir(id){
  const tutar=Number(raw);if(!Number.isInteger(tutar)||tutar<10000||tutar>10000000){toast("Geçersiz tutar",true);return;}
  try{await API.rpc("sirket_sermaye_artir",{p_sirket:id,p_tutar:tutar});toast("Sermaye artırıldı; haftalık gelir potansiyeli yükseldi");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
 }
-async function sirketPazarAl(id,ad,fiyat){
- if(!confirm(ad+" şirketini "+Number(fiyat).toLocaleString("tr-TR")+" ₺ karşılığında satın almak istiyor musun?"))return;
+async function sirketPazarAl(id){
+ if(!confirm("Bu şirketi ilanda belirtilen fiyattan satın almak istiyor musun?"))return;
  try{await API.rpc("sirket_satilik_al",{p_sirket:id});toast("Şirket satın alındı");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
 }
 async function sirketKur(){try{await API.rpc("sirket_kur",{p_ad:document.getElementById("sir_ad").value,p_sektor:document.getElementById("sir_sektor").value,p_sermaye:Number(document.getElementById("sir_sermaye").value)});toast("Şirket kuruldu");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
