@@ -2725,7 +2725,7 @@ function hayatCiz(h){
       ${bk.kredi ? `<div class="kv"><span class="k">Kredi borcu</span><span class="v kotu">${tlYaz(bk.kredi)}</span></div>` : ""}
       <p class="kucuk" style="margin-top:6px">Paranı faize koy, kredi çek ya da başka bir oyuncuya para gönder.</p>
       <div class="satir" style="margin-top:8px"><button class="btn yarim altin" style="margin:0" onclick="ekranAc(bankaEkrani)">🏦 Bankaya git</button><button class="btn yarim ikinci" style="margin:0" onclick="paraGonderModal()">💸 Para gönder</button></div></div>
-    <div class="kart"><h2>🏠 Gayrimenkul yatırımı</h2><p class="kucuk">İstediğin kadar daire, dükkân veya villa al. Her mülkün kirası satın alma tarihinden tam 7 gün sonra, ardından her 7 günde bir cüzdanına yatar.</p><button class="btn altin" onclick="ekranAc(mulkEkrani)">Mülklerim ve satın alma</button></div>
+    <div class="kart" style="border:2px solid var(--gold);background:linear-gradient(130deg,rgba(226,178,75,.12),transparent)"><h2>🏠 Gayrimenkul · Haftalık kira</h2><p class="alt">Daire, dükkân ve villa satın al. Birden fazla mülk edin; her mülkün kirası 7 günde bir cüzdanına aktarılsın.</p><button class="btn altin" onclick="ekranAc(mulkEkrani)">🏠 Mülk satın al / Mülklerim</button></div>
     <div class="kart"><h2>Statü</h2>
       <div style="display:flex;justify-content:space-between"><b>${e(st.ad)}</b><span class="kucuk">${st.puan} kıdem puanı${st.sonraki_esik ? ` · ${e(st.sonraki_ad)}: ${st.sonraki_esik}` : ""}</span></div>
       <div class="bar"><i style="width:${stOran}%;background:var(--gold)"></i></div>
