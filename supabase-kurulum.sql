@@ -14129,7 +14129,7 @@ declare u uuid:=auth.uid();x record;
 begin
  if u is null then raise exception 'Oturum gerekli';end if;
  for x in select distinct s.id from oyun.sirketler s join oyun.sirket_ortaklari o on o.sirket_id=s.id where o.user_id=u and s.aktif loop perform oyun.sirket_hesapla(x.id);end loop;
- return jsonb_build_object('sirketler',coalesce((select jsonb_agg(jsonb_build_object('id',s.id,'ad',s.ad,'sektor',s.sektor,'kasa',s.kasa,'sermaye',s.sermaye,'pay',o.pay,'satilik',s.satilik,'faiz',s.banka_faiz)) from oyun.sirketler s join oyun.sirket_ortaklari o on o.sirket_id=s.id where o.user_id=u and s.aktif),'[]'::jsonb),
+ return jsonb_build_object('sirketler',coalesce((select jsonb_agg(jsonb_build_object('id',s.id,'ad',s.ad,'sektor',s.sektor,'kasa',s.kasa,'sermaye',s.sermaye,'sonraki_kazanc',s.sonraki_kazanc,'dagitilabilir_kar',greatest(0,s.kasa-s.sermaye-coalesce((select sum(round(m.anapara*(1+m.faiz/100),2)) from oyun.banka_mevduat m where m.banka_id=s.id and not m.kapandi),0)),'pay',o.pay,'satilik',s.satilik,'faiz',s.banka_faiz)) from oyun.sirketler s join oyun.sirket_ortaklari o on o.sirket_id=s.id where o.user_id=u and s.aktif),'[]'::jsonb),
  'pazar',coalesce((select jsonb_agg(jsonb_build_object('id',s2.id,'ad',s2.ad,'sektor',s2.sektor,'fiyat',s2.satilik)) from oyun.sirketler s2 where s2.satilik is not null and s2.aktif),'[]'::jsonb),
  'teklifler',coalesce((select jsonb_agg(jsonb_build_object('id',st.id,'sirket_id',st.sirket_id,'pay',st.pay,'bedel',st.bedel)) from oyun.sirket_teklif st where st.alici=u and st.durum='bekliyor'),'[]'::jsonb),
  'asgari',(select ul.asgari from oyun.ulke ul where ul.id=1),
@@ -14151,9 +14151,9 @@ declare u uuid:=auth.uid();o oyun.sirket_teklif;ownpay numeric;t timestamptz:=oy
 begin
  select * into o from oyun.sirket_teklif where id=p_teklif for update;
  if o.alici is distinct from u or o.durum<>'bekliyor' then raise exception 'Teklif bulunamadi';end if;
- perform pg_advisory_xact_lock(o.sirket_id);
+ perform pg_advisory_xact_lock(98763,hashtext(o.sirket_id::text));
  select pay into ownpay from oyun.sirket_ortaklari where sirket_id=o.sirket_id and user_id=o.satici for update;
- if ownpay<o.pay then raise exception 'Saticinin payi yetersiz';end if;
+ if ownpay is null or ownpay<o.pay then raise exception 'Saticinin payi yetersiz';end if;
  perform oyun.para_islem(u,-o.bedel,'sirket','Sirket payi satin alimi',t);
  perform oyun.para_islem(o.satici,o.bedel,'sirket','Sirket payi satisi',t);
  update oyun.sirket_ortaklari set pay=pay-o.pay where sirket_id=o.sirket_id and user_id=o.satici;
@@ -14161,6 +14161,7 @@ begin
  insert into oyun.sirket_ortaklari(sirket_id,user_id,pay) values(o.sirket_id,u,o.pay)
  on conflict(sirket_id,user_id) do update set pay=oyun.sirket_ortaklari.pay+excluded.pay;
  update oyun.sirket_teklif set durum='kabul' where id=p_teklif;
+ update oyun.sirketler set satilik=null where id=o.sirket_id;
  update oyun.sirket_teklif set durum='iptal' where sirket_id=o.sirket_id and satici=o.satici and durum='bekliyor' and id<>p_teklif;
  return jsonb_build_object('tamam',true);
 end $$;
@@ -14171,7 +14172,7 @@ begin
  perform oyun.sirket_hesapla(p_sirket);
  select * into s from oyun.sirketler where id=p_sirket for update;
  if not exists(select 1 from oyun.sirket_ortaklari where sirket_id=p_sirket and user_id=u and pay>=50) then raise exception 'Kar payi dagitimi icin en az %%50 pay gerekli';end if;
- if p_tutar is null or p_tutar<=0 or p_tutar>greatest(s.kasa,0) then raise exception 'Sirket kasasinda yeterli para yok';end if;
+ if p_tutar is null or p_tutar<1 or p_tutar<>round(p_tutar) or p_tutar>greatest(0,s.kasa-s.sermaye-coalesce((select sum(round(m.anapara*(1+m.faiz/100),2)) from oyun.banka_mevduat m where m.banka_id=p_sirket and not m.kapandi),0)) then raise exception 'Dagitilabilir kar yetersiz. Kurulus sermayesi ve mevduat borclari dagitilamaz';end if;
  update oyun.sirketler set kasa=kasa-p_tutar where id=p_sirket;
  for x in select * from oyun.sirket_ortaklari where sirket_id=p_sirket loop
  perform oyun.para_islem(x.user_id,round(p_tutar*x.pay/100,2),'sirket','Sirket kar payi',t);
@@ -14286,7 +14287,7 @@ begin
   if net<0 then
    update oyun.sirketler set kasa=kasa+net where id=p_id;
   else
-   distributed:=least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net));
+   distributed:=case when s.sektor='banka' then least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net-s.sermaye-coalesce((select sum(round(m.anapara*(1+m.faiz/100),2)) from oyun.banka_mevduat m where m.banka_id=p_id and not m.kapandi),0))) else least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net)) end;
    for x in select * from oyun.sirket_ortaklari where sirket_id=p_id loop
     perform oyun.para_islem(x.user_id,round(distributed*x.pay/100,2),'sirket',format('Sirket #%s haftalik net kar payi',p_id),t);
    end loop;
