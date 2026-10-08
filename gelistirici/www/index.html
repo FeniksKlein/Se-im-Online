@@ -568,10 +568,14 @@ function olayKarti(s){
   let cls = "", etiket = "", aksiyon = "";
   if (s.asama === "basvuru" && tur.aday) {
     cls = "basvuru"; etiket = `<span class="rozet altin">Başvuru açık</span>`;
-    const partiIci = !p.parti ? "Aday olmak için bir partiye üye olmalısın." : null;
+    const partiIci = !p.parti ? "Parti içi adaylık için parti üyeliği gerekir. Bağımsız aday olabilirsin." : null;
+    if (s.bagimsiz_adayim) {
+      aksiyon = `<span class="rozet yesil">✓ Bağımsız adaylığın alındı</span><button class="btn ikinci" onclick="bagimsizAdayCek(${s.id})">Bağımsız adaylıktan çekil</button>`;
+    } else {
     aksiyon = s.adayim
       ? `<div class="satir"><span class="rozet yesil" style="margin-top:12px">✓ Başvurun alındı</span></div><button class="btn altin" onclick="ekranAc(bildirimEkrani)">${IKON.megafon} Propaganda yap</button><button class="btn ikinci" onclick="vaatModal(${s.id})">Seçim bildirgeni yaz</button><button class="btn ikinci" onclick="adaylikCek(${s.id})">Başvuruyu geri çek</button>`
       : partiIci ? `<p class="alt" style="margin-top:10px">${partiIci}</p>` : `<button class="btn altin" onclick="adayOl('${s.tur}')">${tur.aday}</button>`;
+    }
   } else if (s.asama === "basvuru" && s.tur === "cb") {
     return "";  // GB'nin kararı ayrı kartta
   } else if (s.asama === "oy") {
@@ -630,7 +634,7 @@ async function gundemEkrani(){
     ${p.kredi_uyari ? `<div class="olay oy" onclick="ekranAc(bankaEkrani)" style="cursor:pointer"><div class="baslik"><b>Kredi borcun gecikmede</b><span class="rozet kirmizi">Banka</span></div><p class="alt" style="margin-top:6px">${e(p.kredi_uyari)}</p><button class="btn altin">Bankaya git</button></div>` : ""}
     ${ihaleler.map(ihaleKart).join("")}
     ${meclisBekleyen.map(meclisSecimKart).join("")}
-    ${!p.parti ? `<div class="kart"><b>Bir partiye katıl</b><div class="alt">Aday olmak ve parti içi seçimlerde oy kullanmak için parti üyeliği gerekir. Parti içi seçimlerde oy için başvurular açılmadan önce üye olmalısın.</div><button class="btn" onclick="sekmeAc('parti')">Partilere göz at</button></div>` : ""}
+    ${!p.parti ? `<div class="kart"><b>Bir partiye katıl</b><div class="alt">Parti içi adaylık ve ön seçim oyu için üyelik gerekir. Partisiz olarak milletvekili, belediye başkanı veya Cumhurbaşkanı adayı olabilirsin.</div><button class="btn" onclick="sekmeAc('parti')">Partilere göz at</button></div>` : ""}
     ${refler.map(r => r.durum === "sonuclandi" ? `<div class="olay basvuru" onclick="ekranAc(()=>referandumEkrani(${r.id}))" style="cursor:pointer"><div class="baslik"><b>Halk oylaması sonuçlandı</b><span class="rozet ${r.sonuc === "kabul" ? "yesil" : ""}">${r.sonuc === "kabul" ? "Kabul" : "Ret"}</span></div><div style="margin-top:6px;font-weight:700">${e(r.baslik)}</div><div class="kucuk">%${fmt(r.evet * 100 / Math.max(1, r.evet + r.hayir), 1)} Evet · %${fmt(r.hayir * 100 / Math.max(1, r.evet + r.hayir), 1)} Hayır</div></div>` : refKart(r)).join("")}
     ${oylanacak.length ? `<div class="olay oy"><div class="baslik"><b>Meclis'te oyunu bekleyen ${oylanacak.length} teklif var</b><span class="rozet kirmizi">Vekil</span></div>
       ${oylanacak.map(k => `<div class="liste-satir" onclick="ekranAc(()=>kanunEkrani(${k.id}))" style="cursor:pointer"><div class="orta"><b>${e(k.baslik)}</b><div class="kucuk">${k.durum === "israr" ? "Israr oylaması" : "Oylama"} bitişi ${tarihSaat(k.durum === "israr" ? k.israr_bit : k.oy_bit)}</div></div><span>›</span></div>`).join("")}</div>` : ""}
@@ -667,6 +671,15 @@ async function adayOl(tur){
   const ek = uyari + (ucret != null ? `<br><br>Başvuru ücreti: <b>${tlYaz(ucret)}</b> (partinin kasasına gider, iade edilmez). Cüzdanında ${tlYaz(para)} var.${para < ucret ? " <span style='color:var(--acc2)'>Paran yetmiyor: maaşını topla, reklam izle ya da genel başkandan kampanya desteği iste.</span>" : ""}` : "");
   if (!await onayla(TUR[tur].aday, metin + ek, ucret ? `${tlYaz(ucret)} öde ve başvur` : "Başvur")) return;
   try { await islem(() => API.rpc("aday_ol", { p_tur: tur }), "Başvurun alındı. Şimdi seçim bildirgeni ve vaatlerini yaz."); yenidenCiz(); } catch (_) {}
+}
+async function bagimsizAdayOl(sid,tur,ucret){
+  const ad = {mv_on:"milletvekili",bel_on:"belediye başkanı",cb_on:"Cumhurbaşkanı"}[tur];
+  if (!await onayla("Bağımsız adaylık", `Herhangi bir partiye bağlı olmadan ${e(ad)} adayı olacaksın. Ön seçime girmezsin; doğrudan asıl seçim pusulasına eklenirsin. Başvuru harcı: <b>${tlYaz(ucret)}</b>.`, "Bağımsız aday ol")) return;
+  try { await islem(()=>API.rpc("bagimsiz_aday_ol",{p_on_secim:sid}),"Bağımsız adaylığın kaydedildi."); yenidenCiz(); } catch(_){}
+}
+async function bagimsizAdayCek(sid){
+  if (!await onayla("Bağımsız adaylıktan çekil","Adaylığını geri çekeceksin. Başvuru harcı iade edilmez.","Geri çek",true)) return;
+  try { await islem(()=>API.rpc("bagimsiz_adaylik_geri_cek",{p_on_secim:sid}),"Bağımsız adaylığın geri çekildi."); yenidenCiz(); } catch(_){}
 }
 async function adaylikCek(sid){
   if (!await onayla("Başvuruyu geri çek", "Adaylığından çekileceksin. Başvuru süresi bitmediyse yeniden başvurabilirsin.", "Geri çek", true)) return;
@@ -712,7 +725,7 @@ async function secimEkrani(sid){
 }
 function secenekSatir(x, mv, destekler){
   const dst = destekler && destekler[String(x.parti_id)];
-  if (mv) return `<div class="pusula-secenek" data-h="${x.hedef}">${amblemKutu(x)}<div style="flex:1;min-width:0"><b>${e(x.ad)}</b>
+  if (mv) return `<div class="pusula-secenek" data-h="${x.hedef}">${x.bagimsiz ? amblemKutu(null) : amblemKutu(x)}<div style="flex:1;min-width:0"><b>${e(x.ad)}${x.bagimsiz ? ' (Bağımsız)' : ''}</b>
       <div class="kucuk">Liste: ${x.liste.slice(0, 4).map(l => `${l.sira}. ${e(l.kad)}`).join(", ")}${x.liste.length > 4 ? ` +${x.liste.length - 4}` : ""}</div>${x.liste[0] && x.liste[0].vaat ? `<div class="vaat">“${e(x.liste[0].vaat)}” — ${e(x.liste[0].kad)}</div>` : ""}${x.beyanname && x.beyanname.vaatler.length ? `<div class="kucuk" style="margin-top:4px;color:var(--gold2);font-weight:700">Seçim beyannamesi</div>${vaatHtml(x.beyanname.vaatler)}` : ""}</div><div class="daire"></div></div>`;
   return `<div class="pusula-secenek" data-h="${x.hedef}">${amblemKutu({ renk: x.renk, amblem: (partiBul(x.parti_id) || {}).amblem })}
     <div style="flex:1;min-width:0"><b>${e(x.kad)}</b> ${itibarCip(x.itibar)}<div class="kucuk">${x.kisa ? `<span style="color:${e(x.renk)}">${e(x.kisa)}</span>` : "Bağımsız"}${x.il_id ? " · " + e(ilAd(x.il_id)) : ""}${dst ? ` · Destekleyen: ${dst.map(d => `<span style="color:${e(d.renk)}">${e(d.kisa)}</span>`).join(", ")}` : ""}</div>${x.vaat ? `<div class="vaat">“${e(x.vaat)}”</div>` : ""}${vaatHtml(x.vaatler)}${x.beyanname && x.beyanname.vaatler.length ? `<div class="kucuk" style="margin-top:4px;color:var(--gold2);font-weight:700">Partisinin beyannamesi</div>${vaatHtml(x.beyanname.vaatler)}` : ""}</div><div class="daire"></div></div>`;
@@ -722,7 +735,7 @@ const partiBul = (id) => PARTI_ON.find(p => p.id === id);
 function pusulaHtml(s){
   if (s.oy_verdim) return `<div class="kart" style="text-align:center"><div style="font-size:44px">🗳️</div><b>Oyunu kullandın</b><div class="alt">Sonuçlar ${saatYaz(s.sonuc_at)}'de açıklanacak. Oyun gizlidir.</div></div>`;
   if (s.oy_engeli) return `<div class="kart"><b>Bu seçimde oy kullanamıyorsun</b><div class="alt">${e(s.oy_engeli)}</div></div>`;
-  if (!s.secenekler.length) return `<div class="kart"><div class="bos">${s.tur === "mv" ? "İlinde aday listesi olan parti yok." : "Bu seçimde sana uygun aday yok."}</div></div>`;
+  if (!s.secenekler.length) return `<div class="kart"><div class="bos">${s.tur === "mv" ? "İlinde aday listesi veya bağımsız aday yok." : "Bu seçimde sana uygun aday yok."}</div></div>`;
   const aciklama = {
     mv: `${e(ilAd(s.benim_il))} için bir partiye oy ver. Sandalyeler partilerin aldığı oya göre D'Hondt usulüyle dağıtılır; parti listesindeki sırayla vekiller belirlenir.`,
     mv_on: "Partinin ilindeki aday adaylarından birine oy ver. En çok oy alan listenin başına yazılır.",
@@ -752,7 +765,7 @@ function pusulaBagla(s){
   };
 }
 function adayListesiHtml(s){
-  if (s.tur === "mv") return `<h2>Adaylar</h2><p class="alt">Parti listeleri ön seçimden sonra belli olur.</p>${s.secenekler.map(x => `<div class="liste-satir">${amblemKutu(x)}<div class="orta"><b>${e(x.ad)}</b><div class="kucuk">${x.liste.map(l => `${l.sira}. ${e(l.kad)}`).join(", ")}</div></div></div>`).join("") || `<div class="bos">Henüz liste yok.</div>`}`;
+  if (s.tur === "mv") return `<h2>Adaylar</h2><p class="alt">Parti listeleri ön seçimden sonra belli olur.</p>${s.secenekler.map(x => `<div class="liste-satir">${x.bagimsiz ? amblemKutu(null) : amblemKutu(x)}<div class="orta"><b>${e(x.ad)}${x.bagimsiz ? ' (Bağımsız)' : ''}</b><div class="kucuk">${x.liste.map(l => `${l.sira}. ${e(l.kad)}`).join(", ")}</div></div></div>`).join("") || `<div class="bos">Henüz liste yok.</div>`}`;
   return `<h2>Adaylar</h2>${s.secenekler.map(x => `<div class="liste-satir"><div class="orta"><b>${e(x.kad)}</b> ${itibarCip(x.itibar)}<div class="kucuk">${x.kisa ? `<span style="color:${e(x.renk)}">${e(x.kisa)}</span>` : ""}${x.il_id ? " · " + e(ilAd(x.il_id)) : ""}</div>${x.vaat ? `<div class="vaat">“${e(x.vaat)}”</div>` : ""}${vaatHtml(x.vaatler)}</div></div>`).join("") || `<div class="bos">Henüz aday yok.</div>`}
     <p class="kucuk" style="margin-top:8px">Sandık ${tarihSaat(s.oy_bas)}'de açılır.</p>`;
 }
@@ -768,13 +781,15 @@ function sonucHtml(s){
   if (s.tur === "mv") {
     const benim = (r.iller || {})[String(s.benim_il)];
     const pmap = Object.fromEntries((r.ulusal || []).map(p => [p.parti_id, p]));
+    const bag = r.bagimsizlar || [];
     return `<div class="kart"><h2>Türkiye geneli</h2><div class="alt">${r.toplam} geçerli oy · Baraj %${r.baraj} · ${r.dolu} sandalye doldu, ${r.bos} boş</div>
-      ${meclisSvg((r.ulusal || []).filter(p => p.sandalye > 0).map(p => ({ renk: p.renk, n: p.sandalye })))}
+      ${meclisSvg([...(r.ulusal || []).filter(p => p.sandalye > 0).map(p => ({ renk: p.renk, n: p.sandalye })), ...(r.bagimsiz_sandalye ? [{renk:"#8e8e93",n:r.bagimsiz_sandalye}] : [])])}
       <table class="tablo" style="margin-top:8px"><tr><th>Parti</th><th class="s">Oy %</th><th class="s">Sandalye</th></tr>
       ${(r.ulusal || []).map(p => `<tr><td>${partiRozet(p, true)} ${p.gecti ? "" : `<span class="rozet kirmizi">baraj altı</span>`}</td><td class="s">%${p.yuzde}</td><td class="s"><b>${p.sandalye}</b></td></tr>`).join("")}</table></div>
       ${benim ? `<div class="kart"><h2>${e(ilAd(s.benim_il))} (${benim.mv} sandalye)</h2>
         <table class="tablo"><tr><th>Parti</th><th class="s">Oy</th><th class="s">Sandalye</th></tr>${Object.entries(benim.partiler).sort((a, b) => b[1].oy - a[1].oy).map(([pid, v]) => `<tr><td>${partiRozet(pmap[pid], true)}</td><td class="s">${v.oy}</td><td class="s"><b>${v.sandalye}</b></td></tr>`).join("")}</table>
-        ${benim.secilen.length ? `<div class="alt" style="margin-top:10px">Seçilenler: ${benim.secilen.map(x => `<span style="color:${e((pmap[x.parti_id] || {}).renk)}">${e(x.kad)}</span>`).join(", ")}</div>` : ""}</div>` : ""}
+        ${(benim.bagimsizlar || []).map(x => `<div class="liste-satir"><b>Bağımsız: ${e(x.kad)}</b><span>${x.oy} oy · ${x.sandalye} sandalye</span></div>`).join("")}
+         ${benim.secilen.length ? `<div class="alt" style="margin-top:10px">Seçilenler: ${benim.secilen.map(x => `<span style="color:${e((pmap[x.parti_id] || {}).renk)}">${e(x.kad)}${x.parti_id == null ? ' (Bağımsız)' : ''}</span>`).join(", ")}</div>` : ""}</div>` : ""}
       <div class="kart"><h2>İl il sonuçlar</h2>${Object.entries(r.iller || {}).sort((a, b) => ilAd(+a[0]).localeCompare(ilAd(+b[0]), "tr")).map(([il, v]) =>
         `<div class="liste-satir"><div class="orta"><b>${e(ilAd(+il))}</b><div class="kucuk">${v.gecerli} oy · ${Object.entries(v.partiler).filter(x => x[1].sandalye).map(([pid, x]) => `<span style="color:${e((pmap[pid] || {}).renk)}">${e((pmap[pid] || {}).kisa)} ${x.sandalye}</span>`).join(" · ") || "sandalye dağılmadı"}</div></div><span class="kucuk">${v.mv} sandalye</span></div>`).join("") || `<div class="bos">Hiç oy kullanılmadı.</div>`}</div>`;
   }
