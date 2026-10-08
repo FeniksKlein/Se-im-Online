@@ -66,7 +66,7 @@ async function basinEkrani() {
   catch (err) { iskelet('Basın / Gazeteler', `<div class="kart"><p>${e(hataCevir(err.message))}</p><button class="btn ikinci" onclick="basinEkrani()">Tekrar dene</button></div>`); return; }
   iskelet('Basın / Gazeteler', `<div class="kart basin-manset"><div class="kucuk">OYUNCULARIN SESİ</div><h1>Basın meydanı</h1><p class="alt">Haberler, köşe yazıları ve açıkça etiketlenmiş siyasi yayınlar.</p></div>
     <div class="kart" id="basinBenim"><h2>${d.benim ? 'Gazetem' : 'Kendi gazeteni kur'}</h2><p class="alt">${d.benim ? e(d.benim.ad) + ' · Kasa: ' + tlYaz(d.benim.kasa) : 'Kuruluş bedeli: ' + tlYaz(d.kurulus_ucreti) + '. Ücretsiz veya ücretli yayın yapabilirsin.'}</p></div>
-    <div id="basinTeklifler"></div><h2>Gazete büfesi</h2><div id="basinListe" class="basin-grid"></div>`, { geri: true });
+    <div id="basinTeklifler"></div><div id="basinYazarlik"></div><h2>Gazete büfesi</h2><div id="basinListe" class="basin-grid"></div>`, { geri: true });
   $('#basinBenim').appendChild(basinDugme(d.benim ? 'Gazetemi yönet' : 'Gazete kur', () => d.benim ? ekranAc(() => gazeteEkrani(d.benim.id)) : gazeteKurModal(d.kurulus_ucreti), 'altin'));
   for (const t of d.teklifler || []) {
     const el = document.createElement('section'); el.className = 'kart';
@@ -79,6 +79,8 @@ async function basinEkrani() {
     }
     $('#basinTeklifler').appendChild(el);
   }
+  const yazarlik=(d.gazeteler||[]).filter(g=>g.yaziyim);
+  if(yazarlik.length)$('#basinYazarlik').innerHTML='<section class="kart"><h2>✍️ Köşe yazarı olduğum gazeteler</h2>'+yazarlik.map(g=>'<div class="kv"><span>'+e(g.ad)+'</span><button class="btn ikinci" onclick="ekranAc(()=>gazeteEkrani('+Number(g.id)+'))">Yazı yaz</button></div>').join('')+'</section>';
   const liste = $('#basinListe');
   for (const g of d.gazeteler || []) {
     const el = document.createElement('article'); el.className = 'kart basin-gazete';
@@ -102,7 +104,7 @@ async function gazeteEkrani(id, veri) {
     catch (err) { iskelet('Gazete', `<div class="kart">${e(hataCevir(err.message))}<button class="btn ikinci" onclick="yenidenCiz()">Tekrar dene</button></div>`); return; }
   }
   iskelet('Basın / Gazeteler', `<header class="kart basin-manset"><div class="kucuk">OYUNCU GAZETESİ</div><h1>${e(g.ad)}</h1><p>${e(g.slogan)}</p><p class="kucuk">Sahibi: ${e(g.sahip)} · ${fmt(g.abone, 0)} abone</p><span class="rozet ${g.abonelik_ucret > 0 ? 'altin' : 'yesil'}">${g.abonelik_ucret > 0 ? tlYaz(g.abonelik_ucret) + ' / ay' : 'Ücretsiz gazete'}</span>${g.abonelik_bitis ? `<p class="kucuk">Abonelik bitişi: ${e(tarihSaat(g.abonelik_bitis))}</p>` : ''}<div id="gazEylem"></div></header>
-    <div id="gazYonetim"></div><div id="gazYayinlar">${(g.yayinlar || []).map(y => `<article class="kart basin-yazi"><span class="rozet ${y.tur === 'propaganda' ? 'kirmizi' : ''}">${e(BASIN_TUR[y.tur] || y.tur)}</span>${y.tur === 'propaganda' ? `<p class="basin-propaganda">Bu yayın siyasi propagandadır. Hedef parti: ${e(y.hedef_parti && (y.hedef_parti.ad || y.hedef_parti.kisa) || 'Belirtilmemiş')}</p>` : ''}<h2>${e(y.baslik)}</h2><div class="kucuk">${e(y.yazar)} · ${e(tarihSaat(y.zaman))}</div><div class="basin-metin">${e(y.metin)}</div>${y.kilitli ? '<div class="basin-kilit">🔒 Önizleme · Tam yazıyı okumak için gazeteye abone ol.</div>' : ''}</article>`).join('') || '<div class="bos">Henüz yazı yayımlanmamış.</div>'}</div>`, { geri: true });
+    <div id="gazYonetim"></div><div id="gazYayinlar">${(g.yayinlar || []).map(y => `<article class="kart basin-yazi"><span class="rozet ${y.tur === 'propaganda' ? 'kirmizi' : ''}">${e(BASIN_TUR[y.tur] || y.tur)}</span>${y.tur === 'propaganda' ? `<p class="basin-propaganda">Bu yayın siyasi propagandadır. Hedef parti: ${e(y.hedef_parti && (y.hedef_parti.ad || y.hedef_parti.kisa) || 'Belirtilmemiş')}</p>` : ''}<h2>${e(y.baslik)}</h2><div class="kucuk">${e(y.yazar)} · ${e(tarihSaat(y.zaman))}</div><div class="basin-metin">${e(y.metin)}</div>${y.kilitli ? '<div class="basin-kilit">🔒 Önizleme · Tam yazıyı okumak için gazeteye abone ol.</div>' : ''}${y.tur==='kose' && !y.kilitli && g.erisim ? `<div style="margin-top:10px"><button class="btn ikinci" onclick="gazeteKoseYorumGoster(${Number(y.id)},${Number(g.id)})">💬 Yorumları gör / yorum yaz</button><div id="gaz_kose_yorum_${Number(y.id)}"></div></div>` : ''}</article>`).join('') || '<div class="bos">Henüz yazı yayımlanmamış.</div>'}</div>`, { geri: true });
   const eylem = $('#gazEylem');
   if (!g.erisim && g.abonelik_ucret > 0) eylem.appendChild(basinDugme('Abone ol · ' + tlYaz(g.abonelik_ucret), () => {
     basinForm('Gazeteye abone ol', `<p>${e(g.ad)} için cüzdanından ${tlYaz(g.abonelik_ucret)} ödenir. Abonelik bitişi işlemden sonra gösterilir.</p>`, 'Öde ve abone ol', 'gazete_abone_ol', () => ({ p_gazete: g.id }), r => gazeteEkrani(g.id, r));
@@ -110,11 +112,11 @@ async function gazeteEkrani(id, veri) {
   if (g.sahibim || (g.yazarlar || []).some(y => y.benim)) eylem.appendChild(basinDugme('Yazı yayımla', () => gazeteYayinModal(g), 'altin'));
   if (g.sahibim) {
     const yon = $('#gazYonetim');
-    yon.innerHTML = `<section class="kart"><h2>Gazete kasası</h2><b>${tlYaz(g.kasa)}</b><p class="kucuk">Abonelik gelirleri kasaya eklenir; yazar ücretleri buradan ödenir.</p><div id="gazSahipEylem"></div><details><summary>Son kasa hareketleri</summary>${(g.hareketler || []).map(h => `<div class="liste-satir"><div class="orta">${e(h.aciklama)}<div class="kucuk">${e(tarihSaat(h.zaman))}</div></div><b>${tlYaz(h.tutar)}</b></div>`).join('') || '<p class="kucuk">Henüz hareket yok.</p>'}</details></section><section class="kart"><h2>Yazar kadrosu</h2><div id="gazYazarlar"></div></section>`;
+    yon.innerHTML = `<section class="kart"><h2>Gazete kasası</h2><b>${tlYaz(g.kasa)}</b><p class="kucuk">Abonelik gelirleri kasaya eklenir; yazar ücretleri buradan ödenir.</p><div id="gazSahipEylem"></div><details><summary>Son kasa hareketleri</summary>${(g.hareketler || []).map(h => `<div class="liste-satir"><div class="orta">${e(h.aciklama)}<div class="kucuk">${e(tarihSaat(h.zaman))}</div></div><b>${tlYaz(h.tutar)}</b></div>`).join('') || '<p class="kucuk">Henüz hareket yok.</p>'}</details></section><section class="kart"><h2>✍️ Köşe yazarları</h2><p class="alt">Oyuncu kullanıcı adıyla teklif gönder. Kabul eden yazar burada görünür ve yazı başına ücret alır.</p><div id="gazYazarlar"></div></section>`;
     const yer = $('#gazSahipEylem');
     yer.appendChild(basinDugme('Kasadan para çek', () => basinForm('Gazete geliri çek', `<p class="alt">Kasa: ${tlYaz(g.kasa)}</p>` + basinAlan('gazMiktar', 'Çekilecek tutar (₺)', 'type="number" min="100" step="1" required'), 'Cüzdanıma aktar', 'gazete_para_cek', m => ({ p_gazete: g.id, p_miktar: +$('#gazMiktar', m).value }), r => gazeteEkrani(g.id, r))));
     yer.appendChild(basinDugme('Slogan ve abonelik ayarları', () => basinForm('Gazete ayarları', basinAlan('gazSlogan', 'Slogan', 'maxlength="100"', g.slogan) + basinAlan('gazAbone', 'Aylık abonelik (₺) — ücretsiz için 0', 'type="number" min="0" step="1" required', g.abonelik_ucret), 'Kaydet', 'gazete_ayar', m => ({ p_gazete: g.id, p_slogan: $('#gazSlogan', m).value, p_abonelik: +$('#gazAbone', m).value }), r => gazeteEkrani(g.id, r))));
-    yer.appendChild(basinDugme('Köşe yazarlığı teklif et', () => basinForm('Yazarlık teklifi', basinAlan('gazKad', 'Oyuncunun kullanıcı adı', 'required maxlength="20"') + basinAlan('gazUcret', 'Yazı başına ücret (₺)', 'type="number" min="0" max="10000" step="1" required', 0), 'Teklif gönder', 'gazete_yazar_teklif', m => ({ p_gazete: g.id, p_kad: $('#gazKad', m).value.trim(), p_ucret: +$('#gazUcret', m).value }), r => gazeteEkrani(g.id, r))));
+    yer.appendChild(basinDugme('✍️ Köşe yazarı işe al', () => basinForm('Yazarlık teklifi', basinAlan('gazKad', 'Oyuncunun kullanıcı adı', 'required maxlength="20"') + basinAlan('gazUcret', 'Yazı başına ücret (₺)', 'type="number" min="0" max="10000" step="1" required', 0), 'Teklif gönder', 'gazete_yazar_teklif', m => ({ p_gazete: g.id, p_kad: $('#gazKad', m).value.trim(), p_ucret: +$('#gazUcret', m).value }), r => gazeteEkrani(g.id, r))));
     for (const y of g.yazarlar || []) {
       const el = document.createElement('div'); el.className = 'basin-yazar';
       el.innerHTML = `<b>${e(y.kad)}</b><div class="kucuk">Yazı başına ${tlYaz(y.ucret)}</div>`;
@@ -123,6 +125,32 @@ async function gazeteEkrani(id, veri) {
     }
     if (!(g.yazarlar || []).length) $('#gazYazarlar').innerHTML = '<p class="kucuk">Henüz kabul edilmiş yazar yok. Yukarıdan teklif gönderebilirsin.</p>';
   }
+}
+async function gazeteKoseYorumGoster(yayinId,gazeteId){
+ const host=document.getElementById("gaz_kose_yorum_"+yayinId);if(!host)return;
+ host.textContent="Köşe yazısı yorumları yükleniyor...";
+ try{
+  const d=await API.rpc("gazete_kose_yorumlar",{p_yayin:yayinId,p_limit:50});
+  host.innerHTML='<section class="kart" style="margin-top:10px"><h3>💬 Yorumlar ('+fmt(d.yorum_sayisi,0)+')</h3>'+
+   (d.yorumlar||[]).map(x=>'<div class="liste-satir"><div class="orta"><b>'+e(x.kad)+'</b> <span class="kucuk">'+e(tarihSaat(x.zaman))+'</span><div class="basin-metin">'+e(x.metin)+'</div></div>'+
+    (x.silebilir?'<button type="button" class="btn ikinci" onclick="gazeteKoseYorumSil('+Number(x.id)+','+yayinId+','+gazeteId+')">Kaldır</button>':'')+'</div>').join('')+
+   (d.yorumlar.length?'':'<p class="alt">Henüz yorum yapılmamış. İlk yorumu sen yazabilirsin.</p>')+
+   '<div class="alan"><label for="gaz_yorum_metin_'+yayinId+'">Senin yorumun (2–500 karakter)</label><textarea id="gaz_yorum_metin_'+yayinId+'" rows="3" minlength="2" maxlength="500" placeholder="Bu köşe yazısı hakkında ne düşünüyorsun?"></textarea></div>'+
+   '<button class="btn altin" type="button" onclick="gazeteKoseYorumYaz('+yayinId+','+gazeteId+')">Yorum gönder</button>'+
+   '<p class="kucuk">30 saniyede bir, 24 saatte en fazla 25 yorum. Yorumunu sen veya gazetenin sahibi kaldırabilir.</p></section>';
+ }catch(err){host.textContent=hataCevir(err.message);}
+}
+async function gazeteKoseYorumYaz(yayinId,gazeteId){
+ const el=document.getElementById("gaz_yorum_metin_"+yayinId);if(!el)return;
+ const metin=el.value.trim();
+ if(metin.length<2||metin.length>500){toast("Yorum 2–500 karakter olmalı.",true);return;}
+ try{await API.rpc("gazete_kose_yorum_yaz",{p_yayin:yayinId,p_metin:metin});toast("Yorumun yayımlandı.");await gazeteKoseYorumGoster(yayinId,gazeteId)}
+ catch(err){toast(hataCevir(err.message),true);}
+}
+async function gazeteKoseYorumSil(yorumId,yayinId,gazeteId){
+ if(!await onayla("Yorumu kaldır","Seçilen yorumu kaldırmak istiyor musun?","Kaldır"))return;
+ try{await API.rpc("gazete_kose_yorum_sil",{p_yorum:yorumId});toast("Yorum kaldırıldı.");await gazeteKoseYorumGoster(yayinId,gazeteId)}
+ catch(err){toast(hataCevir(err.message),true);}
 }
 async function gazeteYayinModal(g) {
   let partiler;
@@ -3357,10 +3385,29 @@ async function sirketFaiz(id){try{await API.rpc("banka_faiz_belirle",{p_banka:id
 async function oyuncuBankaEkrani(){
  yukleniyor("Oyuncu bankaları");
  try{const d=await API.rpc("oyuncu_banka_liste");const m=await API.rpc("banka_mevduat_tahsil");
- iskelet("Oyuncu bankaları",`<div class="kart"><h2>🏦 Bankalar</h2>${d.bankalar.map(b=>`<div class="kart"><h3>${e(b.ad)}</h3><p class="alt">7 günlük faiz: %${b.faiz} · Banka kasası: ${fmt(b.kasa)} ₺. Sahibi olduğun bankaya vadeli mevduat yatıramazsın. Banka ödemeleri rezerv kontrolüne tabidir.</p><div class="alan"><label>Yatırılacak tutar (₺)</label><input id="banka_tutar_${b.id}" type="number" min="1000" value="1000"></div><button class="btn ikinci" onclick="oyuncuBankaYatir(${b.id})">Mevduat yatır</button></div>`).join('')||'<p class="alt">Henüz oyuncu bankası yok.</p>'}</div><div class="kart"><h2>Mevduatlarım</h2>${m.mevduatlar.map(x=>`<div class="kv"><span>Banka #${x.banka} · ${fmt(x.tutar)} ₺</span><b>${x.iptal?'Anapara iade edildi':x.odendi?'Ödendi':x.durum==='banka_odeme_bekliyor'?'Banka ödemesi bekleniyor':new Date(x.vade).toLocaleDateString('tr-TR')}</b></div>`).join('')||'<p class="alt">Mevduat yok.</p>'}</div>`,{geri:true});
+ iskelet("Oyuncu bankaları",`<div class="kart"><h2>🏦 Bankalar</h2>${d.bankalar.map(b=>`<div class="kart"><h3>${e(b.ad)}</h3><p class="alt">7 günlük faiz: %${b.faiz} · Banka kasası: ${fmt(b.kasa)} ₺. Sahibi olduğun bankaya vadeli mevduat yatıramazsın. Banka ödemeleri rezerv kontrolüne tabidir.</p><div class="alan"><label>Yatırılacak tutar (₺)</label><input id="banka_tutar_${b.id}" type="number" min="1000" value="1000"></div><button class="btn ikinci" onclick="oyuncuBankaTeklif(${b.id})">Vade sonu ödemeyi kontrol et</button><div class="alt" id="banka_teklif_${b.id}" aria-live="polite"></div><button class="btn altin" onclick="oyuncuBankaYatir(${b.id})">Kontrol ederek mevduat yatır</button></div>`).join('')||'<p class="alt">Henüz oyuncu bankası yok.</p>'}</div><div class="kart"><h2>Mevduatlarım</h2>${m.mevduatlar.map(x=>`<div class="kv"><span>Banka #${x.banka} · ${fmt(x.tutar)} ₺</span><b>${x.iptal?'Anapara iade edildi':x.odendi?'Ödendi':x.durum==='banka_odeme_bekliyor'?'Banka ödemesi bekleniyor':new Date(x.vade).toLocaleDateString('tr-TR')}</b></div>`).join('')||'<p class="alt">Mevduat yok.</p>'}</div>`,{geri:true});
  }catch(err){iskelet("Oyuncu bankaları",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true})}
 }
-async function oyuncuBankaYatir(id){try{await API.rpc("banka_mevduat_yatir",{p_banka:id,p_tutar:Number(document.getElementById("banka_tutar_"+id).value)});toast("Mevduat yatırıldı");oyuncuBankaEkrani()}catch(err){toast(hataCevir(err.message),true)}}
+async function oyuncuBankaTeklif(id){
+ const el=document.getElementById("banka_tutar_"+id),sonuc=document.getElementById("banka_teklif_"+id);
+ if(!el||!sonuc)return;sonuc.textContent="Banka kasası ve vade ödeme gücü kontrol ediliyor...";
+ try{const q=await API.rpc("banka_mevduat_teklif",{p_banka:id,p_tutar:Number(el.value)});
+  sonuc.textContent=(q.odeme_garantisi_icin_yeterli?"✅ ":"⚠️ ")+q.uyari+
+   " · Haftalık faiz: %"+q.haftalik_faiz+" · 7 gün sonunda: "+fmt(q.vade_sonu_odeme)+" ₺"+
+   " (faiz "+fmt(q.faiz_kazanci)+" ₺)";
+ }catch(err){sonuc.textContent=hataCevir(err.message);}
+}
+async function oyuncuBankaYatir(id){
+ const el=document.getElementById("banka_tutar_"+id);if(!el)return;
+ const tutar=Number(el.value);
+ try{
+  const q=await API.rpc("banka_mevduat_teklif",{p_banka:id,p_tutar:tutar});
+  if(!q.odeme_garantisi_icin_yeterli){toast(q.uyari,true);await oyuncuBankaTeklif(id);return;}
+  if(!await onayla("Vadeli mevduat","Bu bankaya "+fmt(tutar)+" ₺ yatıracaksın. 7 gün sonunda toplam "+fmt(q.vade_sonu_odeme)+" ₺ ödemeyi banka kasası karşılayabiliyor. Onaylıyor musun?","Mevduat yatır"))return;
+  await API.rpc("banka_mevduat_yatir",{p_banka:id,p_tutar:tutar});
+  toast("Mevduat yatırıldı; vade sonu ödeme tutarı güvence kontrolünden geçti.");oyuncuBankaEkrani();
+ }catch(err){toast(hataCevir(err.message),true)}
+}
 async function ozelYasaEkrani(){
  const d=await API.rpc("ozel_yasa_durum");
  iskelet("Asgari ücret ve dokunulmazlık",`<div class="kart"><h2>⚖️ Asgari ücret kanunu</h2><p class="alt">Mevcut asgari ücret: ${fmt(d.asgari)} ₺. Yeni tutar şirket personel giderlerini etkiler.</p><div class="alan"><label>Yeni asgari ücret (₺)</label><input id="ozel_asgari" type="number" min="10000" max="500000" value="${d.asgari}"></div><button class="btn altin" onclick="ozelYasaSun('asgari')">Meclise teklif et</button></div>
