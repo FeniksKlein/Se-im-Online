@@ -30,6 +30,7 @@ window.UYGULAMA_SURUM = "__SURUM__";   // derleme sırasında SURUM dosyasından
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="veri.js"></script>
 <script src="basin.js"></script>
+<script src="piyasa.js"></script>
 <style>
 .basin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
 .basin-grid .kart{margin:0}.basin-manset{text-align:center;border-top:3px solid var(--gold);border-bottom:3px double var(--line2)}
@@ -2739,7 +2740,9 @@ function hayatCiz(h){
       <p class="kucuk" style="margin-top:6px">Paranı faize koy, kredi çek ya da başka bir oyuncuya para gönder.</p>
       <div class="satir" style="margin-top:8px"><button class="btn yarim altin" style="margin:0" onclick="ekranAc(bankaEkrani)">🏦 Bankaya git</button><button class="btn yarim ikinci" style="margin:0" onclick="paraGonderModal()">💸 Para gönder</button></div></div>
     <div class="kart" style="border:2px solid var(--gold);background:linear-gradient(130deg,rgba(226,178,75,.12),transparent)"><h2>🏠 Gayrimenkul · Haftalık kira</h2><p class="alt">Daire, dükkân ve villa satın al. Birden fazla mülk edin; her mülkün kirası 7 günde bir cüzdanına aktarılsın.</p><button class="btn altin" onclick="ekranAc(mulkEkrani)">🏠 Mülk satın al / Mülklerim</button></div>
-    <div class="kart" style="border:2px solid var(--gold)"><h2>🎟️ Milli Piyango</h2><p class="alt">Her hafta çekiliş! Büyük ikramiye çok nadir çıkar, kazanan olmazsa haftaya devreder. Bilet satışından devlet hazinesi gelir elde eder.</p><button class="btn altin" onclick="ekranAc(piyangoEkrani)">🎟️ Bilet al / Çekilişi gör</button></div>
+    <div class="kart" style="border:2px solid var(--gold)"><h2>🎟️ Milli Piyango</h2><p class="alt">Her biletin büyük ikramiye şansı %1. Birden fazla kazanan varsa ikramiye bölüşülür, hiç kazanan yoksa devreder. Bilet bedelinin %30’u hazineye gider.</p><button class="btn altin" onclick="ekranAc(piyangoEkrani)">🎟️ Bilet al / Çekilişi gör</button></div>
+    <div class="kart" style="border:2px solid var(--gold)"><h2>🎰 Kazı Kazan · 100 ₺</h2><p class="alt">0, 100, 200, 1.000, 5.000 veya 10.000 ₺ ödül. Sonuç anında belli olur, oyundaki devlet hazinesi etkilenir.</p><button class="btn altin" onclick="ekranAc(kazikazanEkrani)">🎟️ Kazı Kazan aç</button></div>
+    <div class="kart" style="border:2px solid var(--gold);background:linear-gradient(130deg,rgba(50,215,75,.08),transparent)"><h2>📈 Yatırım · Borsa / Döviz / Altın</h2><p class="alt">Dolar, avro, gram altın ve hisse grupları: herkes için aynı fiyat, her saat değişim, risk ve gerçek kâr/zarar. İktidarın ekonomi politikaları fiyatları etkiler.</p><button class="btn altin" onclick="ekranAc(piyasaEkrani)">📊 Piyasaları aç / Portföyüm</button></div>
     <div class="kart" style="border:2px solid var(--gold)"><h2>🏢 Şirketler ve oyuncu bankaları</h2><p class="alt">Şirket kur, ortaklık oluştur, banka işlet, kâr payı al veya zarar et.</p><button class="btn altin" onclick="ekranAc(sirketEkrani)">Şirketlerim / Banka kur</button></div>\n    <div class="kart"><h2>Statü</h2>
       <div style="display:flex;justify-content:space-between"><b>${e(st.ad)}</b><span class="kucuk">${st.puan} kıdem puanı${st.sonraki_esik ? ` · ${e(st.sonraki_ad)}: ${st.sonraki_esik}` : ""}</span></div>
       <div class="bar"><i style="width:${stOran}%;background:var(--gold)"></i></div>
@@ -2917,7 +2920,7 @@ function piyangoCiz(d){
   iskelet("Milli Piyango",`
   <div class="kart" style="border:2px solid var(--gold)">
     <h2>🎟️ Milli Piyango</h2><div class="kucuk">Büyük ikramiye</div><div class="para">${tlYaz(d.ikramiye)}</div>
-    <p class="alt">Haftalık çekiliş · 6 haneli numara · Bir biletin kazanma ihtimali 1 / 1.000.000. Kazanan yoksa ikramiye sonraki haftaya devreder.</p>
+    <p class="alt">Haftalık çekiliş · 6 haneli numara · Biletin son 2 hanesi, çekiliş numarasının son 2 hanesiyle eşleşirse kazanır (%1, yaklaşık 100 bilette 1). Birden fazla kazanan çıkarsa ikramiye bölünür.</p>
     <div class="kv"><span>Bilet bedeli</span><b>${tlYaz(d.bilet_bedeli)}</b></div>
     <div class="kv"><span>Çekiliş</span><b>${new Date(d.bitis).toLocaleString('tr-TR')}</b></div>
     <div class="kv"><span>Satılan bilet</span><b>${fmt(d.bilet_sayisi)}</b></div>
@@ -2926,11 +2929,11 @@ function piyangoCiz(d){
   <div class="kart"><h2>Biletlerim (${d.biletler.length})</h2>
     ${d.biletler.length?d.biletler.map(b=>`<div class="kv"><span>Bilet #${b.id}</span><b>${e(b.numara)}</b></div>`).join(''):'<p class="alt">Henüz biletin yok.</p>'}
   </div>
-  ${d.sonuc?`<div class="kart"><h2>Son çekiliş</h2><div class="para">${e(d.sonuc.kazanan_no)}</div><p class="alt">${d.sonuc.devretti?'Kazanan yok, büyük ikramiye devretti.':'Büyük ikramiye kazanıldı!'}</p></div>`:''}
+  ${d.sonuc?`<div class="kart"><h2>Son çekiliş</h2><div class="para">${e(d.sonuc.kazanan_no)}</div><p class="alt">${d.sonuc.devretti?'Kazanan yok, büyük ikramiye devretti.':fmt(d.sonuc.kazanan_adet)+' bilet kazandı, büyük ikramiye paylaşıldı!'}${d.sonuc.kazancim>0?' Senin kazancın: '+tlYaz(d.sonuc.kazancim):''}</p></div>`:''}
   <div class="kucuk">Bilet gelirinin %30'u devlet hazinesine, %70'i ikramiye havuzuna aktarılır. Yalnızca oyun içi sanal paradır.</div>`,{geri:true});
 }
 async function piyangoAl(){
- if(!await onayla("Milli Piyango bileti","1.000 ₺ karşılığında rastgele 6 haneli bir piyango bileti almak istiyor musun? Kazanma ihtimali 1 / 1.000.000.","Bilet al"))return;
+ if(!await onayla("Milli Piyango bileti","1.000 ₺ karşılığında rastgele 6 haneli bir piyango bileti almak istiyor musun? Kazanma ihtimali %1, birden fazla kazanan çıkarsa ikramiye paylaşılır.","Bilet al"))return;
  try{piyangoCiz(await API.rpc("piyango_bilet_al",{p_adet:1}));}catch(err){bildir(hataCevir(err.message),true);}
 }
 let _sirketEkonomi={asgari:NaN,normal:100000,banka:1000000};
