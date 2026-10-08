@@ -57,46 +57,45 @@ function tgHaberOku(id){
   </article><button class="btn altin" onclick="otomatikGazeteEkrani()">← Gazete ana sayfasına dön</button>
  `,{geri:true});
 }
-async function serbestBagisEkrani(){
- yukleniyor("Bağış / Para Gönder");
- try{
-  const [dest,gecmis]=await Promise.all([API.rpc("bagis_hedefleri"),API.rpc("bagis_gecmisim")]);
-  const turler=[["oyuncu","👤 Oyuncuya"],["parti","🏛️ Siyasi partiye"],["sirket","🏢 Şirkete"],["gazete","📰 Oyuncu gazetesine"],["il","🏙️ İle / belediye kalkınmasına"],["devlet","🇹🇷 Devlet hazinesine"]];
-  const history=(gecmis.hareketler||[]).slice(0,15).map(x=>`<div class="kv">
-    <span>${e(x.alici)}<span class="kucuk"> · ${tgTarih(x.tarih)}</span></span><b>−${tlYaz(x.tutar)}</b></div>`).join("");
-  iskelet("Serbest bağış / para gönder",`
-    <div class="kart"><h2>🤝 İstediğin kadar bağış yap</h2>
-      <p class="alt">Günlük bağış tavanı yoktur. Tek sınır cüzdanında gerçekten bulunan oyun parasıdır. Para alıcının cüzdanına, kurumun kasasına veya kamu hazinesine geçer. İşlem kayıt altına alınır.</p>
-      <div class="alan"><label>Alıcı türü</label><select id="serbest_bagis_tur">${turler.map(([id,ad])=>`<option value="${id}">${ad}</option>`).join("")}</select></div>
-      <div id="serbest_bagis_hedef_alan"></div>
-      <div class="alan"><label>Bağış tutarı (₺)</label><input id="serbest_bagis_tutar" type="number" min="1" step="1" value="1000" inputmode="numeric"/></div>
-      <div class="alan"><label>Not (isteğe bağlı)</label><input id="serbest_bagis_not" maxlength="150" placeholder="Örnek: Kampanyalar için destek"/></div>
-      <button class="btn altin" id="serbest_bagis_gonder">Bağışla / Gönder</button>
-      <p class="kucuk">Not: Bağış geri alınamaz. Şirket bağışı karşılığında ortaklık hissesi verilmez. Bağış, banka mevduatı veya kredi işlemi değildir.</p>
-    </div>
-    <div class="kart"><h2>📜 Bağış geçmişim</h2>${history||"<p class='alt'>Henüz serbest bağış kaydın yok.</p>"}</div>
-  `,{geri:true});
-  const sel=document.getElementById("serbest_bagis_tur"),area=document.getElementById("serbest_bagis_hedef_alan");
-  const draw=()=>{
-   const k=sel.value, data=dest[({parti:"partiler",sirket:"sirketler",gazete:"gazeteler",il:"iller"})[k]]||[];
-   if(k==="oyuncu"){area.innerHTML=`<div class="alan"><label>Oyuncu kullanıcı adı</label><input id="serbest_bagis_alici" maxlength="40" autocomplete="off" placeholder="Oyuncu adı"/></div>`;return;}
-   if(k==="devlet"){area.innerHTML="<p class='alt'>Bağış doğrudan devlet hazinesine aktarılır.</p>";return;}
-   area.innerHTML=`<div class="alan"><label>Alıcı ${e(k)}</label>
-     <select id="serbest_bagis_alici">${data.map(x=>`<option value="${x.id}">${e(x.ad)}</option>`).join("")}</select></div>`;
-  };
-  sel.onchange=draw;draw();
-  const btn=document.getElementById("serbest_bagis_gonder");
-  btn.onclick=async()=>{
+
+/* Alıcı bağış sırasında değiştirilmez; işlem doğrudan ziyaret edilen sayfaya aittir. */
+function bagisHedefModal(tur, hedefId, hedefAdi, sonra){
+ const turAdi={oyuncu:"Oyuncuya para hediye et",parti:"Partiye bağış yap",gazete:"Gazeteye bağış yap"};
+ if(!Object.prototype.hasOwnProperty.call(turAdi,tur))throw new Error("Desteklenmeyen bağış türü");
+ const hedef=String(hedefId||"").trim(), ad=String(hedefAdi||"");
+ if(!hedef||!ad){toast("Bağışın alıcısı belirlenemedi.",true);return;}
+ const m=modal(`<h3 style="font-size:19px;font-weight:800">🎁 ${e(turAdi[tur])}</h3>
+  <p class="alt">Bağış doğrudan <b>${e(ad)}</b> ${tur==="oyuncu"?"oyuncusunun cüzdanına":tur==="parti"?"partisinin kasasına":"gazetesinin kasasına"} aktarılır. Günlük üst sınır yok; cüzdanında yeterli paran olması gerekir.</p>
+  <div class="kart" style="background:var(--panel2);margin:12px 0">
+    <div class="kv"><span>Alıcı</span><b>${e(ad)}</b></div>
+    <div class="kv"><span>İşlem</span><b>${tur==="oyuncu"?"Para hediyesi":"Karşılıksız bağış"}</b></div>
+  </div>
+  <div class="alan"><label for="bhTutar">Gönderilecek tutar (₺)</label>
+    <input id="bhTutar" type="number" min="1" step="1" value="1000" inputmode="numeric" required></div>
+  <div class="alan"><label for="bhNot">Açıklama (isteğe bağlı)</label>
+    <input id="bhNot" maxlength="150" placeholder="Bağışınla ilgili notun"></div>
+  <p class="kucuk">Bu işlem geri alınamaz. Başka bir oyuncuyu veya kurumu seçmek için ilgili sayfaya gitmelisin.</p>
+  <button class="btn altin" id="bhOnay">Bağışı / para gönderimini onayla</button>
+  <button class="btn ikinci" id="bhVazgec">Vazgeç</button>`);
+ const btn=$("#bhOnay",m), cancel=$("#bhVazgec",m);
+ cancel.onclick=()=>modalKapat();
+ btn.onclick=async()=>{
    if(btn.disabled)return;
-   const tur=sel.value,tutar=Number(document.getElementById("serbest_bagis_tutar").value),
-     id=tur==="devlet"?"1":document.getElementById("serbest_bagis_alici")?.value,
-     aciklama=document.getElementById("serbest_bagis_not").value.trim();
-   if(!Number.isSafeInteger(tutar)||tutar<1||!id?.trim()){toast("Geçerli alıcı ve pozitif tam TL tutarı gir.",true);return;}
-   if(!await onayla("Bağış onayı",tlYaz(tutar)+" tutarında bağış yapmak üzeresin. Bu işlem geri alınamaz. Devam edilsin mi?","Bağışla"))return;
+   const raw=$("#bhTutar",m).value.trim();
+   const miktar=Number(raw), note=$("#bhNot",m).value.trim();
+   if(!raw||!Number.isSafeInteger(miktar)||miktar<1){toast("Pozitif tam sayı olarak bir TL tutarı gir.",true);return;}
    btn.disabled=true;
-   try{const x=await API.rpc("serbest_bagis",{p_tur:tur,p_id:id,p_tutar:tutar,p_aciklama:aciklama||null});
-    D._hayat=null;toast(tlYaz(tutar)+" "+x.hedef+" hesabına aktarıldı.");serbestBagisEkrani();}
-   catch(err){btn.disabled=false;toast(hataCevir(err.message),true)}
-  };
- }catch(err){iskelet("Bağış / Para Gönder",`<div class="kart"><p class="alt">${e(hataCevir(err.message))}</p></div>`,{geri:true});}
+   const kabul=await onayla("Bağışı onayla",
+    `${e(ad)} adlı alıcıya ${tlYaz(miktar)} gönderilecek. Cüzdanından düşecek ve işlem geri alınamayacak. Devam edilsin mi?`,"Evet, gönder");
+   if(!kabul)return;
+   try{
+     const sonuc=await API.rpc("serbest_bagis",{
+        p_tur:tur,p_id:hedef,p_tutar:miktar,p_aciklama:note||null
+     });
+     modalKapat();
+     D._hayat=null;
+     toast(`${tlYaz(miktar)} ${sonuc.hedef||ad} hesabına aktarıldı.`);
+     if(typeof sonra==="function")await sonra();
+   }catch(err){toast(hataCevir(err.message),true);}
+ };
 }
