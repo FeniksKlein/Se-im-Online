@@ -574,7 +574,7 @@ function olayKarti(s){
     } else {
     aksiyon = s.adayim
       ? `<div class="satir"><span class="rozet yesil" style="margin-top:12px">✓ Başvurun alındı</span></div><button class="btn altin" onclick="ekranAc(bildirimEkrani)">${IKON.megafon} Propaganda yap</button><button class="btn ikinci" onclick="vaatModal(${s.id})">Seçim bildirgeni yaz</button><button class="btn ikinci" onclick="adaylikCek(${s.id})">Başvuruyu geri çek</button>`
-      : partiIci ? `<p class="alt" style="margin-top:10px">${partiIci}</p>` : `<button class="btn altin" onclick="adayOl('${s.tur}')">${tur.aday}</button>`;
+      : partiIci ? `<p class="alt" style="margin-top:10px">${partiIci}</p>${['mv_on','bel_on','cb_on'].includes(s.tur) ? `<button class="btn altin" onclick="bagimsizAdayOl(${s.id},'${s.tur}',${s.bagimsiz_ucret || 0})">${{mv_on:'Bağımsız milletvekili adayı ol',bel_on:'Bağımsız belediye başkanı adayı ol',cb_on:'Bağımsız Cumhurbaşkanı adayı ol'}[s.tur]}</button>` : ''}` : `<button class="btn altin" onclick="adayOl('${s.tur}')">${tur.aday}</button>`;
     }
   } else if (s.asama === "basvuru" && s.tur === "cb") {
     return "";  // GB'nin kararı ayrı kartta
