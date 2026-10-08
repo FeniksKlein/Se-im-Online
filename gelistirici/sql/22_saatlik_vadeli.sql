@@ -242,7 +242,11 @@ begin
     'vadesiz',jsonb_build_object(
       'bakiye',round(m.vadesiz,2),
       'faiz_yok',true,
-      'amac','transfer'
+      'amac','transfer',
+      'saatlik',0,
+      'gunluk',0,
+      'birikmis',0,
+      'faiz_toplam',round(coalesce(m.faiz_toplam,0),2)
     ),
     'vadeliler',coalesce((select jsonb_agg(jsonb_build_object(
       'id',v.id,'anapara',v.anapara,'oran',v.oran,'gun',v.gun,
@@ -252,6 +256,9 @@ begin
         then round(v.anapara*v.oran/100,2)
         else round(v.anapara*v.oran/100*v.gun/30,2) end),
       'biriken',case when v.durum='acik' then oyun.vadeli_biriken(v,t) else v.getiri end,
+      'saatlik',case when v.oran_tur='vade' and v.vade_saat is not null
+        then round((v.anapara*v.oran/100)/greatest(1,v.vade_saat),2)
+        else round(v.anapara*v.oran/100/30/24,2) end,
       'bozma',case when v.oran_tur='vade' then 0
         else round(v.anapara*greatest(0.01,(o->>'politika')::numeric/12*0.70)/100/30/24*
           greatest(0,floor(extract(epoch from(t-v.acilis))/3600)),2) end
