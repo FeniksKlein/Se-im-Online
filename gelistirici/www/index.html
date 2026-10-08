@@ -31,6 +31,8 @@ window.UYGULAMA_SURUM = "__SURUM__";   // derleme sırasında SURUM dosyasından
 <script src="veri.js"></script>
 <script src="basin.js"></script>
 <script src="piyasa.js"></script>
+<script src="siyasi_hayat.js"></script>
+<script src="parti_yasam.js"></script>
 <style>
 .basin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
 .basin-grid .kart{margin:0}.basin-manset{text-align:center;border-top:3px solid var(--gold);border-bottom:3px double var(--line2)}
@@ -320,7 +322,7 @@ function amblemSvg(id, renk){
 }
 function partiRozet(p, kisaltma){
   if (!p) return `<span class="parti" style="color:var(--mut)"><span class="nok" style="background:#555"></span>Bağımsız</span>`;
-  return `<span class="parti"><span class="nok" style="background:${e(p.renk)}"></span>${e(kisaltma ? p.kisa : p.ad)}</span>`;
+  return `<span class="parti">${p.amblem?`<span style="width:17px;height:17px;display:inline-grid;place-items:center;flex:none">${amblemSvg(p.amblem,p.renk)}</span>`:`<span class="nok" style="background:${e(p.renk)}"></span>`}${e(kisaltma ? p.kisa : p.ad)}</span>`;
 }
 function amblemKutu(p, boy){
   if (!p) return `<div class="amb" style="background:var(--panel2)"></div>`;
@@ -654,6 +656,7 @@ async function gundemEkrani(){
       return `<div class="takvim-satir"><div class="gun"><b>${pr.g}</b><span>${AYLAR[pr.a - 1].slice(0, 3)}</span></div>
         <div style="flex:1"><b>${secimTakvimAdi(s)}</b><div class="alt">${s.basvuru_bas ? "Başvuru " + tarih(s.basvuru_bas) + " · " : ""}Oylama ${tarih(s.oy_bas)} ${saatYaz(s.oy_bas)}–${saatYaz(s.oy_bit)}</div></div></div>`;
     }).join("") : `<div class="bos">Yaklaşan seçim yok.</div>`}</div>
+    <div class="kart" style="border:1px solid var(--gold)"><h2>📊 Bu haftanın siyasi anketi</h2><p class="alt">Ülkedeki oyuncular hangi partiyi destekliyor? Oy ver, sonuçları gör.</p><button class="btn altin" onclick="ekranAc(anketEkrani)">Haftalık ankete katıl</button></div>
     <div class="kart"><h2>Son gelişmeler</h2>${haber.length ? haber.map(h => `<div class="liste-satir"><div class="orta"><div style="font-size:14px">${e(h.metin)}</div><div class="kucuk">${tarihSaat(h.zaman)}</div></div></div>`).join("") : `<div class="bos">Henüz haber yok.</div>`}</div>`;
   iskelet("Gündem", govde);
 }
@@ -1450,7 +1453,7 @@ async function meclisHtml(){
     <div class="kucuk" style="text-align:center">Kabul için: dolu sandalyelerin 1/3'ü oylamaya katılmalı, kabul oyu retten fazla ve en az ${m.dolu?Math.floor(m.dolu/4)+1:"—"} olmalı · Veto sonrası ısrar için ${m.dolu?cogunluk:"—"}</div>
     ${m.partiler.map(p=>`<div class="kv"><span class="k">${partiRozet(p)}</span><span class="v">${p.n} <span class="kucuk">(%${(p.n*100/Math.max(1,m.dolu)).toFixed(1)})</span></span></div>`).join("")}
     <button class="btn ikinci" onclick="ekranAc(()=>sohbetEkrani('meclis'))">TBMM Genel Kurulu</button></div>
-    ${siyasiSistemHtml(s)}${divan}
+    ${siyasiSistemHtml(s)}${divan}<div class="kart"><h2>Meclis İşlemleri</h2><div class="satir"><button class="btn yarim altin" onclick="ekranAc(maasEkrani)">💰 Maaş oylamaları</button><button class="btn yarim ikinci" onclick="ekranAc(bakanSoruEkrani)">📝 Bakanlara sorular</button></div></div>
     ${vekilim?`<button class="btn altin" style="margin:0 0 12px" onclick="ekranAc(kanunTeklifEkrani)">+ Kanun teklifi ver</button>`:""}
     <div class="kart" style="border:2px solid var(--gold)"><h2>⚖️ Ekonomi yasası teklifleri</h2><p class="alt">Gelir vergisi, ilk konut, gayrimenkul, mevduat, piyango, tahvil, vergi affı, parti ve belediye yardımları: 10 farklı kanun teklifi. Yasalar görüşme, oylama ve Cumhurbaşkanı onayıyla yürürlüğe girer.</p><button class="btn altin" onclick="ekranAc(ekonomiYasaEkrani)">10 yasa teklifini incele / Meclise sun</button></div>
     <div class="kart"><h2>Gündemdeki teklifler</h2>${aktif.map(kanunSatir).join("")||`<div class="bos">Şu anda Meclis gündeminde teklif yok.${vekilim?"":" Kanun teklifini milletvekilleri verir."}</div>`}</div>
@@ -1752,7 +1755,7 @@ async function partiDetay(id){
       ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn ikinci" onclick="partiAdModal(${p.id})">Parti adını değiştir</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
       ${p.uyesiyim && ben.gby ? `<button class="btn tehlike" onclick="gbyIstifa()">Yardımcılıktan istifa et</button>` : ""}<button class="btn ikinci" onclick="ekranAc(()=>partiTuzukEkrani(${p.id}))">Parti tüzüğü ve üye oylamaları</button></div>
     ${p.uyesiyim ? `<button class="btn tehlike" style="margin:0 0 12px" onclick="partidenAyril()">Partiden ayrıl</button>` : `<button class="btn" style="margin:0 0 12px" onclick="partiyeKatil(${p.id})">Partiye katıl</button>`}
-    <div id="teskilatKart"></div>
+    <div class="kart"><h2>Parti içi yaşam</h2><button class="btn ikinci" onclick="ekranAc(()=>grupToplantiEkrani(${p.id}))">🎙️ Grup toplantıları / Konuşmalar</button><button class="btn ikinci" onclick="ekranAc(()=>partiDisiplinEkrani(${p.id}))">⚖️ Disiplin ve ihraç oylamaları</button></div><div id="teskilatKart"></div>
     <div id="kasaKart"></div>
     <div id="ittifakKart"></div>
     <div class="kart"><h2>Üyeler</h2>${p.uyeler.map(u => `<div class="liste-satir" onclick="oyuncuKart('${e(u.kad)}')" style="cursor:pointer"><div class="orta"><b>${e(u.kad)}${u.kad === p.gb ? ` <span class="rozet altin">GB</span>` : p.gby.some(g => g.kad === u.kad) ? ` <span class="rozet">GBY</span>` : ""}</b><div class="kucuk">${e(u.il)}</div></div>${makamAd(u.makam)}</div>`).join("") || `<div class="bos">Henüz üye yok. İlk üye sen ol!</div>`}</div>`, { geri: true });
@@ -1909,7 +1912,7 @@ function ekIstifaButonlari(p){
 // Tek görev kuralı (sunucudaki ile aynı): kimse aynı anda iki görev taşıyamaz. İstisna: vekil + GB yardımcısı, genel başkan + cumhurbaşkanı.
 function gorevCakisma(yeni){
   const p = D.durum.profil, roller = p.makamlar.map(m => m.tur).concat(p.gb ? ["gb"] : [], p.gby ? ["gby"] : []);
-  const uyumlu = (a, b) => (a === b && (a === "gb" || a === "gby")) || [["mv","gby"],["gby","mv"],["gb","cb"],["cb","gb"]].some(c => c[0] === a && c[1] === b);
+  const uyumlu = (a, b) => (a === b && (a === "gb" || a === "gby")) || [["mv","gby"],["gby","mv"],["gb","cb"],["cb","gb"],["gb","mv"],["mv","gb"]].some(c => c[0] === a && c[1] === b);
   const AD = { mv: "milletvekilliğin", bel: "belediye başkanlığın", cb: "cumhurbaşkanlığın", bakan: "bakanlığın", gb: "genel başkanlığın", gby: "genel başkan yardımcılığın" };
   return roller.filter(r => !uyumlu(r, yeni)).map(r => AD[r]);
 }
@@ -2739,7 +2742,7 @@ function hayatCiz(h){
       ${bk.kredi ? `<div class="kv"><span class="k">Kredi borcu</span><span class="v kotu">${tlYaz(bk.kredi)}</span></div>` : ""}
       <p class="kucuk" style="margin-top:6px">Paranı faize koy, kredi çek ya da başka bir oyuncuya para gönder.</p>
       <div class="satir" style="margin-top:8px"><button class="btn yarim altin" style="margin:0" onclick="ekranAc(bankaEkrani)">🏦 Bankaya git</button><button class="btn yarim ikinci" style="margin:0" onclick="paraGonderModal()">💸 Para gönder</button></div></div>
-    <div class="kart" style="border:2px solid var(--gold);background:linear-gradient(130deg,rgba(226,178,75,.12),transparent)"><h2>🏠 Gayrimenkul · Haftalık kira</h2><p class="alt">Daire, dükkân ve villa satın al. Birden fazla mülk edin; her mülkün kirası 7 günde bir cüzdanına aktarılsın.</p><button class="btn altin" onclick="ekranAc(mulkEkrani)">🏠 Mülk satın al / Mülklerim</button></div>
+    <div class="kart" style="border:2px solid var(--gold);background:linear-gradient(130deg,rgba(226,178,75,.12),transparent)"><h2>🏠 Gayrimenkul · Haftalık kira / Mülk satışı</h2><p class="alt">Daire, dükkân ve villa satın al. Birden fazla mülk edin; her mülkün kirası 7 günde bir cüzdanına aktarılsın.</p><button class="btn altin" onclick="ekranAc(mulkEkrani)">🏠 Mülk satın al / Mülklerim</button></div>
     <div class="kart" style="border:2px solid var(--gold)"><h2>🎟️ Milli Piyango</h2><p class="alt">Her biletin büyük ikramiye şansı %1. Birden fazla kazanan varsa ikramiye bölüşülür, hiç kazanan yoksa devreder. Bilet bedelinin %30’u hazineye gider.</p><button class="btn altin" onclick="ekranAc(piyangoEkrani)">🎟️ Bilet al / Çekilişi gör</button></div>
     <div class="kart" style="border:2px solid var(--gold)"><h2>🎰 Kazı Kazan · 100 ₺</h2><p class="alt">0, 100, 200, 1.000, 5.000 veya 10.000 ₺ ödül. Sonuç anında belli olur, oyundaki devlet hazinesi etkilenir.</p><button class="btn altin" onclick="ekranAc(kazikazanEkrani)">🎟️ Kazı Kazan aç</button></div>
     <div class="kart" style="border:2px solid var(--gold);background:linear-gradient(130deg,rgba(50,215,75,.08),transparent)"><h2>📈 Yatırım · Borsa / Döviz / Altın</h2><p class="alt">Dolar, avro, gram altın ve hisse grupları: herkes için aynı fiyat, her saat değişim, risk ve gerçek kâr/zarar. İktidarın ekonomi politikaları fiyatları etkiler.</p><button class="btn altin" onclick="ekranAc(piyasaEkrani)">📊 Piyasaları aç / Portföyüm</button></div>
@@ -2904,8 +2907,8 @@ function mulkCiz(d){
     <div class="kart"><h2>Yeni mülk satın al</h2>
       ${[['daire','Daire',130000],['dukkan','Dükkân',260000],['villa','Villa',520000]].map(x=>`<div class="kv"><span>${e(x[1])}<div class="kucuk">Haftalık kira: ${tlYaz(Math.round(x[2]/13))}</div></span><button class="btn ikinci" style="width:auto;margin:0" onclick="mulkAl('${x[0]}',${x[2]})">${tlYaz(x[2])} · Al</button></div>`).join('')}
     </div>
-    <div class="kart"><h2>Mülklerim (${fmt(d.adet)})</h2>
-      ${d.mulkler.length ? d.mulkler.map(m=>`<div class="olay"><b>${e({daire:'Daire',dukkan:'Dükkân',villa:'Villa'}[m.tip]||m.tip)} #${m.id} · ${e(m.il)}</b><div class="kv"><span>Haftalık kira</span><b>${tlYaz(m.haftalik)}</b></div><div class="kv"><span>Toplam kazanç</span><b>${tlYaz(m.toplam_kira)}</b></div><div class="kucuk">Sonraki kira: ${new Date(m.sonraki).toLocaleString('tr-TR')}</div></div>`).join('') : '<p class="alt">Henüz mülkün yok.</p>'}
+    <div class="kart"><h2>Mülklerim (${fmt(d.adet)})</h2><button class="btn altin" onclick="ekranAc(emlakPazarEkrani)">🏠 Diğer oyuncuların satılık mülklerini gör</button>
+      ${d.mulkler.length ? d.mulkler.map(m=>`<div class="olay"><b>${e({daire:'Daire',dukkan:'Dükkân',villa:'Villa'}[m.tip]||m.tip)} #${m.id} · ${e(m.il)}</b><div class="kv"><span>Haftalık kira</span><b>${tlYaz(m.haftalik)}</b></div><div class="kv"><span>Toplam kazanç</span><b>${tlYaz(m.toplam_kira)}</b></div><div class="kucuk">Sonraki kira: ${new Date(m.sonraki).toLocaleString('tr-TR')}</div><button class="btn ikinci" onclick="mulkIlanModal(${m.id},${m.alis})">Bu mülkü satılığa çıkar</button></div>`).join('') : '<p class="alt">Henüz mülkün yok.</p>'}
     </div>`,{geri:true});
 }
 async function mulkAl(tur,bedel){
