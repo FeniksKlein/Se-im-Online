@@ -346,3 +346,5 @@ end $function$
 
 update oyun.ayarlar set meclis_olcek=0 where id=1;
 select oyun.dagit_mv_sandalye(600);
+update oyun.meclis_olcek_kayit k set sandalye=600,anayasal=600
+ where exists(select 1 from oyun.secimler s where s.id=k.secim_id and s.durum='bekliyor');
