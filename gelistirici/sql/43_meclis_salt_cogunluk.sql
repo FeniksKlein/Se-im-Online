@@ -79,3 +79,10 @@ begin
   end if;
 end $function$
 ;
+
+-- 600 milletvekili seçilebilecek; boş koltuklar yasama çoğunluğuna dahil edilmeyecek.
+update oyun.ayarlar set meclis_olcek=0 where id=1;
+select oyun.dagit_mv_sandalye(600);
+update oyun.meclis_olcek_kayit set sandalye=600,anayasal=600
+ where secim_id in (select id from oyun.secimler
+                   where tur='mv_on' and durum='bekliyor' and oy_bas>oyun.simdi());
