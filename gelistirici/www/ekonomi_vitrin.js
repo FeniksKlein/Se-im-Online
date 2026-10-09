@@ -91,14 +91,15 @@ function sirketVitrinListeCiz(){
  const sort=$("#vitSirketSort").value,tur=$("#vitSirketTur").value;
  const key={kazanc:"net_kazanc",vergi:"vergi",sermaye:"sermaye"}[sort];
  const l=vitSirketler.filter(x=>!tur||x.sektor===tur).sort((a,b)=>key?Number(b[key]||0)-Number(a[key]||0)||a.id-b.id:new Date(b.kurulus)-new Date(a.kurulus));
- el.innerHTML=l.map((x,i)=>`<button class="kart vit-banka" onclick="sirketDetayEkrani(${x.id})">
- <div class="vit-bas"><span class="vit-logo">🏢</span><span class="orta"><b>${i+1}. ${e(x.ad)}</b><span class="kucuk">${e(vitSektor[x.sektor]||x.sektor)} · En büyük ortak: ${e((x.ortaklar||[])[0]?.kad||x.sahip)}</span></span><span class="ok">›</span></div>
+ const tumuSifir=(sort==="vergi"||sort==="kazanc")&&l.length>0&&l.every(x=>Number(x[sort==="vergi"?"vergi":"net_kazanc"]||0)===0);
+ el.innerHTML=(tumuSifir?'<div class="kart"><p class="alt">Henüz '+(sort==="vergi"?"şirketler adına ödenmiş vergi":"şirket faaliyet kazancı")+' kaydı yok. Bu nedenle gerçek bir sıralama henüz oluşmadı; şirketleri aşağıdan keşfedebilirsin.</p></div>':'')+l.map((x,i)=>`<button class="kart vit-banka" onclick="sirketDetayEkrani(${x.id})">
+ <div class="vit-bas"><span class="vit-logo">🏢</span><span class="orta"><b>${tumuSifir?'':(i+1)+'. '}${e(x.ad)}</b><span class="kucuk">${e(vitSektor[x.sektor]||x.sektor)} · En büyük ortak: ${e((x.ortaklar||[])[0]?.kad||x.sahip)}</span></span><span class="ok">›</span></div>
  <div class="vit-stats"><span><small>Net kazanç</small><b>${vitTL(x.net_kazanc)}</b></span><span><small>Kayıtlı vergi</small><b>${vitTL(x.vergi)}</b></span><span><small>Şirket kasası</small><b>${vitTL(x.kasa)}</b></span></div></button>`).join("")||'<div class="kart"><p class="alt">Bu kriterlerde şirket bulunmuyor.</p></div>';
 }
 function sirketDetayEkrani(id){
  const x=vitSirketler.find(z=>z.id===id);if(!x){sirketVitrinEkrani();return;}
  iskelet(e(x.ad),`<div class="kart vit-manset"><h2>🏢 ${e(x.ad)}</h2><p class="alt">${e(vitSektor[x.sektor]||x.sektor)} · Kuruluş ${tarihSaat(x.kurulus)}</p>
- <div class="kv"><span>Kurucu</span><b>${e(x.sahip)}</b></div><div class="kv"><span>Sermaye</span><b>${vitTL(x.sermaye)}</b></div>
+ <div class="kv"><span>Kurucu</span><b>${e(x.kurucu||x.sahip)}</b></div><div class="kv"><span>En büyük pay sahibi</span><b>${e(x.sahip)}</b></div><div class="kv"><span>Sermaye</span><b>${vitTL(x.sermaye)}</b></div>
  <div class="kv"><span>Şirket kasası</span><b>${vitTL(x.kasa)}</b></div></div>
  <div class="kart"><h2>Pay sahipleri</h2>${(x.ortaklar||[]).map(o=>`<div class="kv"><span>${e(o.kad)}</span><b>%${fmt(o.pay,2)}</b></div>`).join("")||'<p class="alt">Ortak bulunamadı.</p>'}</div>
  <div class="kart"><h2>Şirket faaliyet raporu</h2><div class="kv"><span>Gerçekleşen brüt gelir</span><b>${vitTL(x.toplam_gelir)}</b></div>
