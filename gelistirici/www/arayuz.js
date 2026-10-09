@@ -230,7 +230,7 @@ function yapilacakSatir(o) {
 }
 function ilkAdimlarHtml(ia) {
   if (!ia || !ia.yeni || ia.bitti) return "";
-  const git = { maas: "sekmeAc('hayat')", kimlik: "portreModal()", parti: "partiTestiModal()", sohbet: "sekmeAc('sohbet')", anket: "ekranAc(anketEkrani)", oy: "" };
+  const git = { maas: "sekmeAc('hayat')", kimlik: "portreModal()", parti: "sekmeAc('parti')", sohbet: "sekmeAc('sohbet')", anket: "ekranAc(anketEkrani)", oy: "" };
   const n = ia.adimlar.filter(a => a.tamam).length;
   return `<div class="kart"><h2>İlk adımların</h2><div class="alt">${n} / ${ia.adimlar.length} tamam. Her adım seni siyasete bir adım yaklaştırır.</div>
     <div class="adimlar">${ia.adimlar.map(a => `<i class="${a.tamam ? "tamam" : ""}"></i>`).join("")}</div>
@@ -320,73 +320,35 @@ function pusulaSvg(partiler, ben) {
     ${ben ? `<g><circle cx="${olc(ben.eko)}" cy="${olc(-ben.toplum)}" r="9" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="3 2.5"/><text x="${olc(ben.eko)}" y="${olc(-ben.toplum) + 23}" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">Sen</text></g>` : ""}
   </svg>`;
 }
-const TEST_SORU = [
-  ["eko", -1, "Devlet büyük şirketleri ve enerjiyi kendisi işletmeli."],
-  ["eko", 1, "Vergiler düşük olmalı; ekonomiyi piyasa yönetmeli."],
-  ["eko", -1, "Asgari ücret her yıl enflasyonun üstünde artırılmalı."],
-  ["eko", 1, "Özelleştirme ekonomiyi güçlendirir."],
-  ["toplum", 1, "Gelenekler ve aile değerleri yasalarla korunmalı."],
-  ["toplum", -1, "Devlet yurttaşların yaşam tarzına karışmamalı."],
-  ["toplum", 1, "Ülkenin birliği için güçlü bir merkezî yönetim şart."],
-  ["toplum", -1, "İfade özgürlüğü olabildiğince geniş olmalı."]
-];
-function testSonucuOku() { try { return JSON.parse(localStorage.getItem("parti_testi") || "null"); } catch (_) { return null; } }
-async function partiTestiModal() {
-  let kim = []; try { kim = await API.rpc("parti_kimlikleri"); } catch (err) { return toast(hataCevir(err.message), true); }
-  const cevap = new Array(TEST_SORU.length).fill(null);
-  const OLCEK = [["-2", "Hiç"], ["-1", "Pek değil"], ["0", "Kararsız"], ["1", "Katılırım"], ["2", "Tamamen"]];
-  const m = modal(`<h3>Hangi parti bana yakın?</h3><p class="alt">Sekiz cümleye ne kadar katıldığını seç. Sonuç yalnızca bu telefonda kalır.</p>
-    ${TEST_SORU.map((s, i) => `<div class="test-soru"><p>${e(s[2])}</p><div class="test-olcek" data-i="${i}">${OLCEK.map(([v, a]) => `<button type="button" data-v="${v}">${a}</button>`).join("")}</div></div>`).join("")}
-    <div id="testSonuc"></div><button class="btn" id="testBitir" disabled>Sonucu göster</button>`);
-  m.querySelectorAll(".test-olcek").forEach(g => g.onclick = (ev) => {
-    const b = ev.target.closest("button"); if (!b) return;
-    cevap[+g.dataset.i] = +b.dataset.v; g.querySelectorAll("button").forEach(x => x.classList.toggle("secili", x === b));
-    $("#testBitir", m).disabled = cevap.some(x => x === null);
-  });
-  $("#testBitir", m).onclick = () => {
-    const puan = { eko: 0, toplum: 0 };
-    TEST_SORU.forEach(([ek, yon], i) => { puan[ek] += yon * cevap[i]; });
-    const ben = { eko: Math.round(puan.eko / 8 * 5 * 10) / 10, toplum: Math.round(puan.toplum / 8 * 5 * 10) / 10 };
-    try { localStorage.setItem("parti_testi", JSON.stringify(ben)); } catch (_) {}
-    const sirali = kim.filter(p => p.belirlendi).map(p => ({ p, d: Math.hypot(p.eko - ben.eko, p.toplum - ben.toplum) })).sort((a, b) => a.d - b.d);
-    const uye = D.durum.profil.parti;
-    $("#testSonuc", m).innerHTML = `<div class="kart" style="background:var(--bg);margin-top:14px"><h2>Sana en yakın partiler</h2>
-      <p class="alt">Ekonomide ${EKSEN_YAZI.eko(Math.round(ben.eko))}, toplumsal konularda ${EKSEN_YAZI.toplum(Math.round(ben.toplum))} görünüyorsun.</p>
-      <div class="pusula-alan">${pusulaSvg(kim.filter(p => p.belirlendi), ben)}</div>
-      ${sirali.slice(0, 3).map(({ p, d }) => `<div class="liste-satir">${amblemKutu(p.parti)}<div class="orta"><b>${e(p.parti.ad)}</b><div class="kucuk">%${Math.max(0, Math.round(100 - d * 100 / 14.2))} uyum${p.slogan ? " · “" + e(p.slogan) + "”" : ""}</div></div>
-        ${uye && uye.id === p.parti.id ? `<span class="rozet yesil">Üyesin</span>` : `<button class="btn altin" style="width:auto;margin:0;padding:8px 12px" onclick="modalKapat();ekranAc(()=>partiDetay(${p.parti.id}))">İncele</button>`}</div>`).join("")}</div>`;
-    $("#testBitir", m).remove();
-    $("#testSonuc", m).scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-}
 async function partiKimlikModal(pid) {
-  let kim = []; try { kim = await API.rpc("parti_kimlikleri"); } catch (err) { return toast(hataCevir(err.message), true); }
-  const p = kim.find(x => x.parti.id === pid) || { eko: 0, toplum: 0, slogan: "" };
-  const m = modal(`<h3>Partinin kimliği</h3><p class="alt">Partinin siyasi konumu parti pusulasında ve "Hangi parti bana yakın?" testinde görünür. Konum günde bir kez değiştirilebilir; değişiklik Gündem'e haber olur.</p>
-    <div class="alan"><label for="pkEko">Ekonomi: <b id="pkEkoY"></b></label><input id="pkEko" type="range" min="-5" max="5" step="1" value="${p.eko}" style="width:100%"></div>
-    <div class="alan"><label for="pkTop">Toplum: <b id="pkTopY"></b></label><input id="pkTop" type="range" min="-5" max="5" step="1" value="${p.toplum}" style="width:100%"></div>
-    <div class="alan"><label for="pkSlogan">Slogan (en fazla 80 karakter)</label><input id="pkSlogan" maxlength="80" value="${e(p.slogan || "")}"></div>
-    <div class="hata-metin" id="pkHata"></div><button class="btn" id="pkKaydet">Kimliği kaydet</button>`);
-  const yaz = () => { $("#pkEkoY", m).textContent = EKSEN_YAZI.eko(+$("#pkEko", m).value); $("#pkTopY", m).textContent = EKSEN_YAZI.toplum(+$("#pkTop", m).value); };
-  $("#pkEko", m).oninput = yaz; $("#pkTop", m).oninput = yaz; yaz();
-  $("#pkKaydet", m).onclick = async () => {
-    const b = $("#pkKaydet", m); b.disabled = true;
-    try { await API.rpc("parti_kimlik_ayarla", { p_eko: +$("#pkEko", m).value, p_toplum: +$("#pkTop", m).value, p_slogan: $("#pkSlogan", m).value }); modalKapat(); toast("Parti kimliği kaydedildi."); yenidenCiz(); }
-    catch (err) { b.disabled = false; $("#pkHata", m).textContent = hataCevir(err.message); }
+  let kim = [];
+  try { kim = await API.rpc("parti_kimlikleri"); }
+  catch(err) { toast(hataCevir(err.message), true); return; }
+  const p = kim.find(x=>x.parti.id===pid);
+  if(!p) return;
+  const m = modal('<h3>Parti sloganı</h3><p class="alt">Partinin ideolojileri yalnızca üyelerin çoğunluk onayıyla değiştirilir.</p>'+
+    '<div class="alan"><label for="pkSlogan">Parti sloganı (en fazla 80 karakter)</label><input id="pkSlogan" maxlength="80" value="'+e(p.slogan||"")+'"></div>'+
+    '<div class="hata-metin" id="pkHata"></div><button class="btn" id="pkKaydet">Sloganı kaydet</button>');
+  $("#pkKaydet",m).onclick=async()=>{
+    const b=$("#pkKaydet",m);b.disabled=true;
+    try{
+      await API.rpc("parti_kimlik_ayarla",{p_eko:p.eko,p_toplum:p.toplum,p_slogan:$("#pkSlogan",m).value});
+      modalKapat();toast("Parti sloganı güncellendi.");partiKimlikKartCiz(pid);
+    }catch(err){b.disabled=false;$("#pkHata",m).textContent=hataCevir(err.message);}
   };
 }
 async function partiKimlikKartCiz(pid) {
-  const yer = $("#partiKimlikKart"); if (!yer) return;
-  let kim; try { kim = await API.rpc("parti_kimlikleri"); } catch (_) { return; }
-  const p = kim.find(x => x.parti.id === pid); if (!p) return;
-  const gb = D.durum.profil.gb && D.durum.profil.parti && D.durum.profil.parti.id === pid;
-  if (!$("#partiKimlikKart")) return;
-  $("#partiKimlikKart").innerHTML = `<div class="kart cizgili" style="--parti:${e(p.parti.renk)}">
-    ${p.slogan ? `<div style="font-family:var(--disp);font-size:22px;line-height:1.15">“${e(p.slogan)}”</div>` : ""}
-    <div class="alt" style="margin-top:6px">${p.belirlendi ? `Ekonomide ${EKSEN_YAZI.eko(p.eko)}, toplumsal konularda ${EKSEN_YAZI.toplum(p.toplum)}.` : "Genel başkan partinin siyasi konumunu henüz açıklamadı."}</div>
-    ${gb ? `<button class="btn altin" onclick="partiKimlikModal(${pid})">Konumu ve sloganı belirle</button>` : ""}</div>`;
+  const yer=$("#partiKimlikKart"); if(!yer) return;
+  let kim; try { kim=await API.rpc("parti_kimlikleri"); } catch(_){return;}
+  const p=kim.find(x=>x.parti.id===pid);if(!p)return;
+  const gb=!!(D.durum.profil.gb && D.durum.profil.parti && D.durum.profil.parti.id===pid);
+  if(!$("#partiKimlikKart"))return;
+  $("#partiKimlikKart").innerHTML='<div class="kart cizgili" style="--parti:'+e(p.parti.renk)+'">'+
+    '<h3>Parti ideolojileri</h3><div class="alt">'+e(ideolojiYaz(p.ideolojiler))+'</div>'+
+    (p.slogan?'<p class="alt">“'+e(p.slogan)+'”</p>':'')+
+    '<button class="btn ikinci" onclick="ideolojiOylamaModal('+pid+')">İdeoloji oylamasını gör'+(gb?' / değişiklik öner':'')+'</button>'+
+    (gb?'<button class="btn ikinci" onclick="partiKimlikModal('+pid+')">Sloganı düzenle</button>':'')+'</div>';
 }
-
 /* =====================================================================
    CUMHURİYET TARİHİ — oyunun hiç silinmeyen geçmişi
    ===================================================================== */
