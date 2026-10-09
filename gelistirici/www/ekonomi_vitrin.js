@@ -105,14 +105,14 @@ function sirketDetayEkrani(id){
  <div class="kart"><h2>Şirket faaliyet raporu</h2><div class="kv"><span>Gerçekleşen brüt gelir</span><b>${vitTL(x.toplam_gelir)}</b></div>
  <div class="kv"><span>Gerçekleşen net kâr / zarar</span><b>${vitTL(x.net_kazanc)}</b></div><div class="kv"><span>Kaydedilen vergi</span><b>${vitTL(x.vergi)}</b></div>
  <p class="kucuk">Kayıtlara geçmiş tüm dönemlerin toplamıdır; eksik eski veriler hesaplanmaz.</p>
- ${x.satilik?`<div class="kv"><span>Satılık fiyatı</span><b>${vitTL(x.satilik)}</b></div><button class="btn altin" onclick="sirketPazardanAl(${x.id})">Satın al</button>`:""}</div>
+ ${x.satilik?`<div class="kv"><span>Satılık fiyatı</span><b>${vitTL(x.satilik)}</b></div><button class="btn altin" onclick="sirketPazarAl(${x.id})">Satın al</button>`:""}</div>
  <button class="btn ikinci" onclick="sirketVitrinEkrani()">Şirketlere dön</button>`,{geri:true});
 }
 async function sirketPazarEkrani(){
  yukleniyor("Satılık şirketler");
  try{const d=await API.rpc("sirket_liste"),l=(d.pazar||[]).filter(x=>x.sektor!=="banka");
  iskelet("Satılık şirketler",`<div class="kart"><h2>Satılık şirketler</h2></div>
- ${l.map(x=>`<div class="kart"><h3>${e(x.ad)}</h3><p class="alt">${e(vitSektor[x.sektor]||x.sektor)}</p><div class="kv"><span>Fiyat</span><b>${vitTL(x.fiyat)}</b></div><button class="btn altin" onclick="sirketPazardanAl(${x.id})">Satın al</button></div>`).join("")||'<div class="kart">Satılık şirket bulunmuyor.</div>'}`,{geri:true});
+ ${l.map(x=>`<div class="kart"><h3>${e(x.ad)}</h3><p class="alt">${e(vitSektor[x.sektor]||x.sektor)}</p><div class="kv"><span>Fiyat</span><b>${vitTL(x.fiyat)}</b></div><button class="btn altin" onclick="sirketPazarAl(${x.id})">Satın al</button></div>`).join("")||'<div class="kart">Satılık şirket bulunmuyor.</div>'}`,{geri:true});
  }catch(err){iskelet("Şirket pazarı",'<div class="kart">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
 window.oyuncuBankaEkrani=bankaRehberiEkrani;
