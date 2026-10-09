@@ -3024,13 +3024,6 @@ function hayatCiz(h){
     <div class="satir" style="margin-bottom:12px">
       <button class="btn yarim ikinci" style="margin:0" id="hReklam" ${reklamHazir ? "" : "disabled"}>Reklam izle<br><span class="kucuk">+${tlYaz(kb.reklam_odul)} · ${h.reklam.kalan}/5</span></button>
       <button class="btn yarim ikinci" style="margin:0" id="hMagaza">Mağaza<br><span class="kucuk">₺ paketleri</span></button></div>
-    <div class="kart"><h2>Banka</h2>
-      ${bk.uyari ? `<div class="kucuk" style="color:var(--acc);font-weight:700;margin-bottom:6px">${e(bk.uyari)}</div>` : ""}
-      <div class="kv"><span class="k">Vadesiz hesap <span class="kucuk">(faiz işler)</span></span><span class="v">${tlYaz(bk.vadesiz)}</span></div>
-      ${bk.vadeli ? `<div class="kv"><span class="k">Vadeli hesaplar</span><span class="v">${tlYaz(bk.vadeli)}</span></div>` : ""}
-      ${bk.kredi ? `<div class="kv"><span class="k">Kredi borcu</span><span class="v kotu">${tlYaz(bk.kredi)}</span></div>` : ""}
-      <p class="kucuk" style="margin-top:6px">Paranı faize koy, kredi çek ya da başka bir oyuncuya para gönder.</p>
-      <div class="satir" style="margin-top:8px"><button class="btn yarim" style="margin:0" onclick="ekranAc(bankaEkrani)">Bankaya git</button><button class="btn yarim ikinci" style="margin:0" onclick="paraGonderModal()">Para gönder</button></div></div>
     <div class="bolum-bas"><h2>Şans oyunları</h2><span class="kucuk">Sanal para; gerçek para kazanılmaz</span></div>
     <div class="kart">
       <button class="giris-satir" onclick="ekranAc(piyangoEkrani)"><span class="yik">${IKON.bilet}</span><span class="orta"><b>Milli Piyango</b><span class="kucuk">Haftalık çekiliş; bilet bedelinin %30’u hazineye</span></span><span class="ok">›</span></button>
@@ -3197,7 +3190,7 @@ function mulkCiz(d){
     <div class="kart"><h2>Yeni mülk satın al</h2>
       ${[['daire','Daire',130000],['dukkan','Dükkân',260000],['villa','Villa',520000]].map(x=>`<div class="kv"><span>${e(x[1])}<div class="kucuk">Haftalık kira: ${tlYaz(Math.round(x[2]/13))}</div></span><button class="btn ikinci" style="width:auto;margin:0" onclick="mulkAl('${x[0]}',${x[2]})">${tlYaz(x[2])} · Al</button></div>`).join('')}
     </div>
-    <div class="kart"><h2>Mülklerim (${fmt(d.adet)})</h2><button class="btn altin" onclick="ekranAc(emlakPazarEkrani)">Diğer oyuncuların satılık mülklerini gör</button>
+    <div class="kart"><h2>Mülklerim (${fmt(d.adet)})</h2>
       ${d.mulkler.length ? d.mulkler.map(m=>`<div class="olay"><b>${e({daire:'Daire',dukkan:'Dükkân',villa:'Villa'}[m.tip]||m.tip)} #${m.id} · ${e(m.il)}</b><div class="kv"><span>Haftalık kira</span><b>${tlYaz(m.haftalik)}</b></div><div class="kv"><span>Toplam kazanç</span><b>${tlYaz(m.toplam_kira)}</b></div><div class="kucuk">Sonraki kira: ${new Date(m.sonraki).toLocaleString('tr-TR')}</div><button class="btn ikinci" onclick="mulkIlanModal(${m.id},${m.alis})">Bu mülkü satılığa çıkar</button></div>`).join('') : '<p class="alt">Henüz mülkün yok.</p>'}
     </div>`,{geri:true});
 }
