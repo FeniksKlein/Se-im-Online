@@ -265,7 +265,9 @@ declare p oyun.profiller:=oyun.profilim(); b oyun.kurucu_basvuru; t timestamptz:
 begin
  select * into b from oyun.kurucu_basvuru where id=p_basvuru for update;
  if b.id is null or b.kurucu is distinct from p.id or b.durum<>'bekliyor' or b.bit<=t then raise exception 'Aktif kurucu başvurun yok.'; end if;
- select count(*) into n from oyun.kurucu_davet where basvuru_id=b.id and durum='evet';
+ select count(*) into n from oyun.kurucu_davet d join oyun.profiller h on h.id=d.user_id
+ where d.basvuru_id=b.id and d.durum='evet' and not h.yasakli
+ and oyun.uyari(h,t) is null;
  if n<3 then raise exception 'Parti için senden başka en az 3 kişinin onayı gerekli. Şu an: %.',n; end if;
  if oyun.uyari(p,t) is not null then raise exception 'Kurucu şartı: %',oyun.uyari(p,t); end if;
  if p.son_parti_kur is not null and p.son_parti_kur+make_interval(days=>(select parti_kur_gun from oyun.ayarlar where id=1))>t then raise exception 'Parti kurma bekleme süren dolmadı.'; end if;
@@ -279,7 +281,8 @@ begin
  values(b.ad,b.kisa,b.renk,b.amblem,p.id,p.id,t,null) returning id into yeni;
  perform oyun.genel_merkez_ac(yeni,p,ucret,t);
  update oyun.profiller set parti_id=yeni,parti_at=t,son_parti_kur=t where id=p.id;
- for uy in select user_id from oyun.kurucu_davet where basvuru_id=b.id and durum='evet' loop
+ for uy in select d.user_id from oyun.kurucu_davet d join oyun.profiller h on h.id=d.user_id
+   where d.basvuru_id=b.id and d.durum='evet' and not h.yasakli and oyun.uyari(h,t) is null loop
   perform oyun._ayril(uy,t);
   update oyun.profiller set parti_id=yeni,parti_at=t where id=uy and not yasakli;
   perform oyun.bildir(uy,format('%s kuruluşuna verdiğin onay kabul edildi. Kurucular kuruluna katıldın!',b.ad),t);
