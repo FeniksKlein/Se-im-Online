@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.10.09-5', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.10.09-6', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -20974,7 +20974,9 @@ create or replace function public.sirket_vitrini()
 returns jsonb language sql stable security definer set search_path='' as $$
  select jsonb_build_object('sirketler',
  coalesce((select jsonb_agg(jsonb_build_object(
-   'id',s.id,'ad',s.ad,'sektor',s.sektor,'sahip',p.kad,
+   'id',s.id,'ad',s.ad,'sektor',s.sektor,'kurucu',p.kad,
+   'sahip',coalesce((select x.kad from oyun.sirket_ortaklari o join oyun.profiller x on x.id=o.user_id
+       where o.sirket_id=s.id and o.pay>0 order by o.pay desc,o.user_id limit 1),p.kad),
    'sermaye',s.sermaye,'kasa',s.kasa,'kurulus',s.kurulus,
    'aktif',s.aktif,'satilik',s.satilik,
    'ortaklar',coalesce((select jsonb_agg(jsonb_build_object('kad',x.kad,'pay',o.pay) order by o.pay desc)
