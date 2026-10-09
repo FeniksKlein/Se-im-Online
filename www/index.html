@@ -2584,41 +2584,6 @@ async function gbyIstifa(){
   try { await islem(() => API.rpc("istifa", { p_gorev: "gby" }), "İstifan alındı."); yenidenCiz(); } catch (_) {}
 }
 const RENKLER = ["#c62828","#e53935","#ef6c00","#f9a825","#2e7d32","#00897b","#0277bd","#1565c0","#283593","#6a1b9a","#ad1457","#5d4037"];
-function partiKurEkrani(){
-  let renk = RENKLER[6], amb = VERI.amblem[0].id;
-  iskelet("Parti kur", `
-    <div class="kart" id="onizleme"></div>
-    <div class="kart">
-      <div class="alan"><label>Parti adı (5-40 karakter)</label><input id="ad" maxlength="40" placeholder="Örn. Yarın Partisi"></div>
-      <div class="alan"><label>Kısa ad (2-6 harf)</label><input id="kisa" maxlength="6" placeholder="Örn. YP" style="text-transform:uppercase"></div>
-      <div class="alan"><label>Renk</label><div class="renkler">${RENKLER.map(r => `<button data-r="${r}" style="background:${r}"></button>`).join("")}</div></div>
-      <div class="alan"><label>Amblem</label><div class="amblemler">${VERI.amblem.map(a => `<button data-a="${a.id}" title="${e(a.ad)}">${amblemSvg(a.id, "#fff")}</button>`).join("")}</div></div>
-      <p class="kucuk" style="margin-top:12px">Gerçek partileri çağrıştıran ad, kısaltma ve uygunsuz ifadeler kabul edilmez. Partiyi kurunca kurucu genel başkan olursun ve mevcut partinden ayrılırsın.</p>
-      <p class="kucuk" style="margin-top:6px"><b>Kuruluş şartları</b> (gerçekte Siyasi Partiler Kanunu en az 30 kurucu arar): seçmen kartın hazır olmalı, yeterli kıdemin olmalı ve belirli süre içinde şartları taşıyan kurucu üyeler toplamalısın. Kuruluş tamamlanmadan parti seçime katılamaz. <a class="bag" href="#" onclick="vatandaslikModal();return false">Şartları gör</a></p>
-      <p class="kucuk" style="margin-top:6px" id="kurUcret"></p>
-      <div class="hata-metin" id="hata"></div>
-      <button class="btn altin" id="kur">Partiyi kur</button></div>`, { geri: true, sekmesiz: true });
-  API.rpc("vatandaslik").then(v => { const pk = v.parti_kurma, el = $("#kurUcret"); if (!el || pk.ucret == null) return;
-    el.innerHTML = `<b>Kuruluş ücreti: ${tlYaz(pk.ucret)}</b> (kuruluş harcı ve genel merkez binası, cüzdanından ödenir; cüzdanında ${tlYaz(pk.para)} var). Genel merkez senin ilinde partinin ilk il teşkilatı olur. Kuruluş süresinde yeterli kurucu toplanamazsa ücretin yarısı iade edilir.`;
-    if (pk.ucret > 0) $("#kur").textContent = `Partiyi kur (${tlYaz(pk.ucret)})`; }).catch(() => {});
-  const ciz = () => {
-    const ad = $("#ad").value || "Parti adı", kisa = ($("#kisa").value || "KISA").toLocaleUpperCase("tr");
-    $("#onizleme").innerHTML = `<div style="display:flex;gap:12px;align-items:center">${amblemKutu({ renk, amblem: amb }, 56)}<div><b style="font-size:18px">${e(ad)}</b><div style="color:${renk};font-weight:800">${e(kisa)}</div></div></div>`;
-    document.querySelectorAll(".renkler button").forEach(b => b.classList.toggle("secili", b.dataset.r === renk));
-    document.querySelectorAll(".amblemler button").forEach(b => { b.classList.toggle("secili", b.dataset.a === amb); b.querySelector("svg").style.color = renk; });
-  };
-  document.querySelectorAll(".renkler button").forEach(b => b.onclick = () => { renk = b.dataset.r; ciz(); });
-  document.querySelectorAll(".amblemler button").forEach(b => b.onclick = () => { amb = b.dataset.a; ciz(); });
-  $("#ad").oninput = ciz; $("#kisa").oninput = ciz; ciz();
-  $("#kur").onclick = async () => {
-    $("#hata").textContent = ""; $("#kur").disabled = true;
-    try {
-      await API.rpc("parti_kur", { p_ad: $("#ad").value, p_kisa: $("#kisa").value.toLocaleUpperCase("tr"), p_renk: renk, p_amblem: amb });
-      toast("Partin kuruldu! Genel başkan sensin."); D.yigin = []; D.sekme = "parti"; partilerEkrani();
-    } catch (err) { $("#hata").textContent = hataCevir(err.message); $("#kur").disabled = false; }
-  };
-}
-
 /* =====================================================================
    10) BEN (profil)
    ===================================================================== */
