@@ -108,7 +108,7 @@ async function ideolojiOylamaModal(pid){
 
 /* Eski doğrudan parti kurma ekranının yerine kurucu onaylı akış. */
 function partiKurEkrani(){
-  const ozelKurucu=!!(D.durum&&D.durum.profil&&(D.durum.profil.kad||"").toLocaleLowerCase("tr")==="eyetkin");
+  const ozelKurucu=!!(D.durum&&D.durum.profil&&["eyetkin","celal"].includes((D.durum.profil.kad||"").toLocaleLowerCase("tr")));
   let renk=RENKLER[6],amb=VERI.amblem[0].id;
   iskelet("Parti kur",
     '<div class="kart" id="onizleme"></div>'+
