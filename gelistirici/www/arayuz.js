@@ -299,7 +299,7 @@ function sonucHaritasi(r, pmap) {
 }
 
 /* =====================================================================
-   PARTİ PUSULASI ve "Hangi parti bana yakın?" testi
+   PARTİ KİMLİĞİ VE ÜYE OYLAMALARI
    ===================================================================== */
 const EKSEN_YAZI = {
   eko: (v) => v <= -3 ? "devletçi" : v < 0 ? "sosyal devletçi" : v === 0 ? "merkez" : v < 3 ? "piyasa yanlısı" : "serbest piyasacı",
