@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.10.09-12', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.10.10-1', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -9019,16 +9019,14 @@ begin
     and a.user_id <> p.id;
 
   if p_tur = 'propaganda' then
-    ozet := oyun.metin_temizle(
-      format(
-        E'📰 %s · PROPAGANDA · %s\n%s\n%s',
-        g.ad,
-        hedef_kisa,
-        p_baslik,
-        p_metin
-      ),
-      600
-    );
+    -- Yazının kendisi 5.000 karaktere kadar gazetede yayımlanır; oyun yayın akışına
+    -- (en fazla 600 karakter) yalnız başlık ve yazının başından bir özet gider.
+    ozet := format(E'📰 %s · PROPAGANDA · %s\n%s\n', g.ad, hedef_kisa, p_baslik);
+    ozet := ozet || case
+      when char_length(ozet) + char_length(p_metin) <= 600 then p_metin
+      else rtrim(left(p_metin, greatest(0, 599 - char_length(ozet)))) || '…'
+    end;
+    ozet := oyun.metin_temizle(left(ozet, 600), 600);
 
     insert into oyun.yayinlar(
       tur, gonderen, metin, zaman, hedef_il,

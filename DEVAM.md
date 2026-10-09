@@ -101,3 +101,8 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - **Canlıya uygulandı** (9 Ekim 23:56, Supabase migration `parti_miting_bagimsiz_20261009`): 26 oyuncu, 22 adaylık, 6 miting korundu; dakikalık motor sonrasında hatasız çalışıyor. Not: canlıda motor her dakika veri değiştirdiği için `parmak_izi` önce/sonra karşılaştırması anlamlı değil; sayımlarla doğrulandı.
 - Test: `python3 test/parti_miting.py` (hepsi.sh'e eklendi, `miting_canli` da). Migration eski sürümlü veritabanına uygulandı: oyuncu verisi parmak izi değişmedi, iki kez çalıştırılabiliyor.
 
+## 2026-10-10 · 2026.10.10-1 gazete propaganda yazısı 600 karakter hatası
+- Propaganda türünde 600 karakterden uzun yazı "Mesaj en fazla 600 karakter olabilir" hatası veriyordu: yazının tamamı oyun yayın akışına (yayinlar.metin ≤ 600) kopyalanmaya çalışılıyordu. Artık yazı 5.000 karaktere kadar gazetede yayımlanır, akışa başlık + yazının başı (600'de kesilip "…") gider. Haber ve köşe yazısında sorun yoktu.
+- Kaynak: `17_basin_teskilat.sql` (`gazete_yayinla`); `migrations/20261010_gazete_propaganda_uzun_yazi.sql`. **Canlıya uygulandı** (Supabase migration `gazete_propaganda_uzun_yazi_20261010`).
+- Test: `python3 test/gazete_uzun.py` (hepsi.sh'te).
+
