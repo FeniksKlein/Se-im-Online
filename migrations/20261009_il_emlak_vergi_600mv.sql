@@ -87,7 +87,7 @@ end $$;
 revoke all on function public.mulk_satin_al_il(smallint,text) from public,anon;
 grant execute on function public.mulk_satin_al_il(smallint,text) to authenticated;
 
--- Kira ve yerel emlak vergisi birlikte tahakkuk ettirilir; belediye kasası milyon TL birimindedir.
+-- Kira ve yerel emlak vergisi birlikte tahakkuk ettirilir; belediye kasası MİLYAR TL birimindedir.
 create or replace function oyun.mulk_kira_tahsil(p_user uuid)
 returns void language plpgsql security definer set search_path='' as $$
 declare m record;n int;gross numeric;tax numeric;etax numeric;t timestamptz:=oyun.simdi();
@@ -107,7 +107,7 @@ begin
       least(520,floor(extract(epoch from(t-m.sonraki_vergi))/604800)::int+1);
     if etax>0 then
       perform oyun.para_islem(p_user,-etax,'emlak_vergisi',format('Mulk #%s haftalık %s belediye emlak vergisi',m.id,oyun.emlak_vergi_oran_il(m.il_id)),t,etax);
-      update oyun.il_durum set kasa=kasa+etax/1000000 where il_id=m.il_id;
+      update oyun.il_durum set kasa=kasa+etax/1000000000 where il_id=m.il_id;
       insert into oyun.emlak_vergi_kayit(mulk_id,user_id,il_id,zaman,tutar,hafta) values
        (m.id,p_user,m.il_id,t,etax,least(520,floor(extract(epoch from(t-m.sonraki_vergi))/604800)::int+1));
     end if;
@@ -207,3 +207,28 @@ update oyun.ayarlar set meclis_olcek=0 where id=1 and meclis_olcek<>0;
 select oyun.dagit_mv_sandalye(600);
 update oyun.meclis_olcek_kayit set sandalye=600 where secim_id in
  (select id from oyun.secimler where tur='mv_on' and durum='bekliyor');
+
+-- Detay ekranında kanun karar yeter sayısı da görevdeki vekillerin yarıdan fazlasıdır.
+do $pl$ declare def text;begin
+ def:=pg_get_functiondef('public.kanun_detay(bigint)'::regprocedure);
+ if position('floor(dolu / 4.0) + 1' in def)>0 then
+  execute replace(def,'floor(dolu / 4.0) + 1','floor(dolu / 2.0) + 1');
+ end if;
+end $pl$;
+
+-- Haftalık kira + emlak vergisini oyun hiç açılmasa da sunucu tick'inde tahsil et.
+create or replace function oyun.emlak_haftalik_tick(p_t timestamptz)
+returns void language plpgsql security definer set search_path='' as $$
+declare x record;
+begin
+ for x in select distinct user_id from oyun.yatirim_mulkleri where sonraki_kira<=p_t order by user_id limit 500 loop
+  perform oyun.mulk_kira_tahsil(x.user_id);
+ end loop;
+end $$;
+do $pl$ declare def text;begin
+ def:=pg_get_functiondef('oyun.tick()'::regprocedure);
+ if position('oyun.emlak_haftalik_tick(t)' in def)=0 then
+  if position('perform oyun.banka_tick(t);' in def)=0 then raise exception 'Tick bankası çağrısı bulunamadı.';end if;
+  execute replace(def,'perform oyun.banka_tick(t);','perform oyun.banka_tick(t); perform oyun.emlak_haftalik_tick(t);');
+ end if;
+end $pl$;
