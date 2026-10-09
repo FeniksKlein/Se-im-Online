@@ -384,6 +384,19 @@ details.acilir ul{margin:6px 0 0 18px;font-size:13px;color:var(--mut)}
 .ideoloji-izgara{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
 .ideoloji-kutu{background:var(--panel2);border:1px solid var(--line);border-radius:12px;min-height:43px;padding:10px 6px;color:var(--txt);font-size:13px;font-weight:700;cursor:pointer}
 .ideoloji-kutu.secili{border-color:var(--ink2);background:rgba(126,106,242,.16);color:var(--ink2)}
+/* Ekonomi vitrinleri */
+.vit-ana-izgara{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0 0 14px}
+.vit-ana-kart{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px 12px;color:var(--txt);min-width:0;min-height:132px}
+.vit-ana-kart:first-child{grid-column:span 2;border-color:var(--ink2)}.vit-ana-kart b{font-size:18px}.vit-ana-kart span:last-child{font-size:12px;color:var(--mut);line-height:1.4}.vit-ikon{font-size:29px}
+.vit-banka{display:block;width:100%;text-align:left;color:var(--txt);margin:10px 0;border:1px solid var(--line);cursor:pointer}
+.vit-bas{display:flex;align-items:center;gap:12px}.vit-logo{display:grid;place-items:center;width:52px;height:52px;flex:none;background:var(--bg);border-radius:13px;font-size:28px}.vit-bas .orta{flex:1;min-width:0}.vit-bas .orta b{display:block;font-size:18px}.vit-bas .orta .kucuk{display:block;margin-top:3px}
+.vit-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:14px}.vit-stats span{background:var(--bg);padding:10px 6px;border-radius:9px;min-width:0}.vit-stats small{font-size:10px;color:var(--mut);display:block}.vit-stats b{font-size:13px;display:block;overflow-wrap:anywhere;margin-top:5px}
+.vit-ozet{display:flex;gap:8px;margin:10px 0}.vit-ozet span{flex:1;padding:13px;background:var(--panel);border-radius:12px;color:var(--mut);font-size:12px}.vit-ozet b{display:block;font-size:24px;color:var(--txt)}
+.vit-dugme{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.vit-dugme .btn{margin:0;padding:11px 6px;font-size:14px}
+.vit-manset{border:1px solid var(--line2)}.vit-emlak-fiyat{font-size:28px;font-weight:800;color:var(--txt);margin:14px 0}
+.vit-kayit{padding:12px 0;border-bottom:1px solid var(--line)}.vit-filtre{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.vit-gazete{margin-top:12px}.vit-gb{border:1px solid var(--ink2)}
+@media(max-width:365px){.vit-stats b{font-size:11px}.vit-dugme .btn{font-size:12px}}
 /* ---- Portre ---- */
 .portre{display:block;border-radius:50%;overflow:hidden;flex:none}
 .portre-buyuk{width:84px;height:84px}
@@ -858,6 +871,9 @@ async function gundemEkrani(){
   const govde = `
     ${seritHtml(haber)}
     ${sahneHtml(d.takvim)}
+    <div class="kart vit-gazete"><h2>📰 Gazeteler</h2>
+      <div class="vit-dugme"><button class="btn altin" onclick="ekranAc(basinEkrani)">Oyuncu gazeteleri</button><button class="btn ikinci" onclick="otomatikGazeteEkrani()">Türkiye Gündem</button></div>
+      <p class="kucuk">Haberler, köşe yazıları ve canlı siyasi gelişmeler</p></div>
     <div class="bolum-bas"><h2>Bugün</h2><span class="kucuk">${is.length ? is.length + " iş" : ""}</span></div>
     <div class="kart">${is.length ? is.map(yapilacakSatir).join("") : `<div class="bos" style="padding:8px 0">Bugün acil bir işin yok. Sohbete uğra ya da gazeteleri oku.</div>`}</div>
     ${ilkAdimlarHtml(ia)}
@@ -882,8 +898,6 @@ async function gundemEkrani(){
       ${ms.length ? `<div class="meclis-serit" aria-label="Meclis dağılımı">${ms.map(x => `<i style="flex:${x.n};background:${e(x.renk || "#8E97B5")}"></i>`).join("")}</div>
         <div class="kucuk">TBMM ${meclis.dolu} vekil · ${ms.map(x => `<span style="color:${e(x.renk || "#8E97B5")}">${e(x.kisa || "Bağımsız")}</span> ${x.n}`).join(" · ")}</div>` : ""}
       <div style="margin-top:6px">
-        <button class="giris-satir" onclick="otomatikGazeteEkrani()"><span class="yik">${IKON.gazete}</span><span class="orta"><b>Türkiye Gündem</b><span class="kucuk">Oyundaki gelişmelerden otomatik gazete</span></span><span class="ok">›</span></button>
-        <button class="giris-satir" onclick="ekranAc(basinEkrani)"><span class="yik">${IKON.kalem}</span><span class="orta"><b>Oyuncu gazeteleri</b><span class="kucuk">Haberler, köşe yazıları; kendi gazeteni kur</span></span><span class="ok">›</span></button>
         <button class="giris-satir" onclick="ekranAc(anketEkrani)"><span class="yik">${IKON.anket}</span><span class="orta"><b>Haftalık siyasi anket</b><span class="kucuk">Oyuncular hangi partiyi destekliyor?</span></span><span class="ok">›</span></button>
         <button class="giris-satir" onclick="D.devletSekme='tarih';sekmeAc('devlet')"><span class="yik">${IKON.tarih}</span><span class="orta"><b>Cumhuriyet tarihi</b><span class="kucuk">Cumhurbaşkanları, Meclis dönemleri, rekorlar</span></span><span class="ok">›</span></button>
       </div></div>
@@ -2015,13 +2029,16 @@ async function partiDetay(id){
       <p class="alt" style="margin-top:6px">Parti, ${tarihSaat(p.kurulus_bit)} tarihine kadar şartları taşıyan ${p.kurucu_gerekli} kurucu üyeye ulaşırsa kurulur ve seçimlere katılabilir; ulaşamazsa kuruluş düşer. Seçmen kartı hazır her üye kurucu sayılır.</p>
       ${p.uyesiyim && p.kurucu_engelim ? `<div class="kucuk" style="color:var(--gold2)">Sen henüz kurucu sayılmıyorsun: ${e(p.kurucu_engelim)}</div>` : ""}
       ${!p.uyesiyim ? `<button class="btn altin" onclick="partiyeKatil(${p.id})">Kurucu üye ol</button>` : ""}</div>` : ""}
+    ${gbyim ? `<div class="kart vit-gb"><h2>Parti kimliğini yönet</h2><div class="vit-dugme">
+      <button class="btn altin" onclick="partiAmblemModal(${p.id})">Amblemi değiştir</button>
+      <button class="btn ikinci" onclick="partiKimlikModal(${p.id})">Sloganı düzenle</button></div></div>` : ""}
     <div id="partiKimlikKart"></div>
     <div id="partiAdayKart"></div>
     <div class="kart"><h2>Yönetim</h2>
       <div class="kv"><span class="k">Genel Başkan</span><span class="v">${p.gb ? `<a class="bag" href="#" onclick="oyuncuKart('${e(p.gb)}');return false">${e(p.gb)}</a>` : "— (genel başkansız)"}</span></div>
       ${!p.gb && p.uyesiyim && !araKurultay ? `<button class="btn" onclick="gbUslen(${p.id})">Genel başkanlığı üstlen</button>` : ""}${araKurultay ? `<div class="kucuk" style="margin-top:8px;color:var(--gold2)">Olağanüstü kurultay süreci başladı; yeni genel başkan seçimle belirlenecek.</div>` : ""}
       ${[1,2,3,4,5,6].map(i => { const g = p.gby.find(x => x.sira === i); return `<div class="kv"><span class="k">GB Yardımcısı ${i}</span><span class="v">${g ? `<a class="bag" href="#" onclick="oyuncuKart('${e(g.kad)}');return false">${e(g.kad)}</a>` : "—"}</span></div>`; }).join("")}
-      ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn ikinci" onclick="partiAdModal(${p.id})">Parti adını değiştir</button><button class="btn altin" onclick="partiAmblemModal(${p.id})">Parti amblemini değiştir</button><button class="btn altin" onclick="ucretModal(${p.id})">Adaylık ücretlerini değiştir</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
+      ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn ikinci" onclick="partiAdModal(${p.id})">Parti adını değiştir</button><button class="btn altin" onclick="ucretModal(${p.id})">Adaylık ücretlerini değiştir</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
       ${p.uyesiyim && ben.gby ? `<button class="btn tehlike" onclick="gbyIstifa()">Yardımcılıktan istifa et</button>` : ""}<button class="btn ikinci" onclick="ekranAc(()=>partiTuzukEkrani(${p.id}))">Parti tüzüğü ve üye oylamaları</button></div>
     ${p.uyesiyim ? `<button class="btn tehlike" style="margin:0 0 12px" onclick="partidenAyril()">Partiden ayrıl</button>` : `<button class="btn" style="margin:0 0 12px" onclick="partiyeKatil(${p.id})">Partiye katıl</button>`}
     <div class="kart"><h2>Parti içi yaşam</h2><button class="btn ikinci" onclick="ekranAc(()=>grupToplantiEkrani(${p.id}))">Grup toplantıları / Konuşmalar</button><button class="btn ikinci" onclick="ekranAc(()=>partiDisiplinEkrani(${p.id}))">Disiplin ve ihraç oylamaları</button></div><div id="teskilatKart"></div>
@@ -2983,6 +3000,12 @@ function hayatCiz(h){
       <div class="para" style="font-size:48px;margin-top:2px">${tlYaz(h.para)}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><span class="rozet altin">${e(st.ad)}</span>${kb.seri > 1 ? `<span class="rozet">${h.bugun_toplandi ? kb.seri : kb.seri - 1} günlük seri</span>` : ""}${bk.vadesiz ? `<span class="rozet">Bankada ${tlYaz(bk.vadesiz + (bk.vadeli || 0))}</span>` : ""}</div>
     </section>
+    <div class="bolum-bas"><h2>Ekonomi ve ticaret</h2><span class="kucuk">Hızlı erişim</span></div>
+    <div class="vit-ana-izgara">
+      <button class="vit-ana-kart" onclick="bankaRehberiEkrani()"><span class="vit-ikon">🏦</span><b>Oyuncu bankaları</b><span>Mevduat ve kredi fırsatları</span></button>
+      <button class="vit-ana-kart" onclick="sirketVitrinEkrani()"><span class="vit-ikon">🏢</span><b>Şirketler</b><span>Oyundaki şirketleri keşfet</span></button>
+      <button class="vit-ana-kart" onclick="emlakYeniEkrani()"><span class="vit-ikon">🏡</span><b>Satılık mülkler</b><span>İlanları gör, pazarlık yap</span></button>
+    </div>
     <div class="olay ${dolu ? "oy" : "basvuru"}" style="margin-top:4px">
       <div class="baslik"><b>Maaş kumbarası</b><span class="rozet ${dolu ? "kirmizi" : "altin"}">${dolu ? "Doldu!" : fmt(kb.saat, 1) + " / " + fmt(kb.kapasite || 16) + " saat"}</span></div>
       <div class="sayac" style="font-size:30px">${tlYaz(kb.birikmis)}</div>
@@ -2991,15 +3014,12 @@ function hayatCiz(h){
       ${desteklerBugun ? `<div class="kucuk" style="margin-top:4px;color:var(--good)">Bugünkü destekler ilk toplamada yatar: ${kb.gunluk_destek.devlet ? tlYaz(kb.gunluk_destek.devlet) + " devlet" : ""}${kb.gunluk_destek.devlet && kb.gunluk_destek.belediye ? " + " : ""}${kb.gunluk_destek.belediye ? tlYaz(kb.gunluk_destek.belediye) + " belediye" : ""}</div>` : ""}
       ${kb.seri > 1 ? `<div class="kucuk" style="margin-top:4px">${kb.seri}. gün serisi: maaşa +%${fmt(kb.seri_bonus)}${h.bugun_toplandi ? "" : " (bugün topla, seri sürsün)"}</div>` : `<div class="kucuk" style="margin-top:4px">Her gün gelip toplarsan seri kurarsın: her gün +%5, en fazla +%30.</div>`}
       <button class="btn ${dolu || !h.bugun_toplandi ? "" : "ikinci"}" id="hTopla" ${kb.birikmis >= 1 || !h.bugun_toplandi ? "" : "disabled"}>Topla</button></div>
-    <div class="bolum-bas"><h2>Para işleri</h2></div>
+    <div class="bolum-bas"><h2>Diğer para işlemleri</h2></div>
     <div class="kart">
-      <button class="giris-satir" onclick="ekranAc(bankaEkrani)"><span class="yik">${IKON.banka}</span><span class="orta"><b>Devlet bankası</b><span class="kucuk">Vadesiz, vadeli hesap ve kredi</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="oyuncuBankaEkrani()"><span class="yik">${IKON.banka}</span><span class="orta"><b>Oyuncu bankaları</b><span class="kucuk">Oyuncuların kurduğu bankalarda faiz ve kredi</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="sirketEkrani()"><span class="yik">${IKON.sirket}</span><span class="orta"><b>Şirketler</b><span class="kucuk">Şirket kur, ortak ol, kâr payı al</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="ekranAc(mulkEkrani)"><span class="yik">${IKON.ev}</span><span class="orta"><b>Gayrimenkul</b><span class="kucuk">Daire, dükkân ve villa; haftalık kira</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="ekranAc(piyasaEkrani)"><span class="yik">${IKON.grafik}</span><span class="orta"><b>Piyasalar</b><span class="kucuk">Döviz, altın ve hisseler; saatlik fiyat</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="paraGonderModal()"><span class="yik">${IKON.para}</span><span class="orta"><b>Para gönder</b><span class="kucuk">Başka bir oyuncuya banka havalesi</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="ticaretGecmisimEkrani()"><span class="yik">${IKON.fis}</span><span class="orta"><b>Alım-satım geçmişim</b><span class="kucuk">Kimden, kime, kaça</span></span><span class="ok">›</span></button>
+      <button class="giris-satir" onclick="ekranAc(bankaEkrani)"><span class="yik">${IKON.banka}</span><span class="orta"><b>Devlet bankası</b><span class="kucuk">Vadeli ve vadesiz hesap</span></span><span class="ok">›</span></button>
+      <button class="giris-satir" onclick="ekranAc(piyasaEkrani)"><span class="yik">${IKON.grafik}</span><span class="orta"><b>Piyasalar</b><span class="kucuk">Altın, döviz, hisse</span></span><span class="ok">›</span></button>
+      <button class="giris-satir" onclick="paraGonderModal()"><span class="yik">${IKON.para}</span><span class="orta"><b>Para gönder</b><span class="kucuk">Banka havalesi</span></span><span class="ok">›</span></button>
+      <button class="giris-satir" onclick="ticaretGecmisimEkrani()"><span class="yik">${IKON.fis}</span><span class="orta"><b>Alım-satım geçmişim</b><span class="kucuk">Geçmiş işlemlerim</span></span><span class="ok">›</span></button>
     </div>
     <div class="satir" style="margin-bottom:12px">
       <button class="btn yarim ikinci" style="margin:0" id="hReklam" ${reklamHazir ? "" : "disabled"}>Reklam izle<br><span class="kucuk">+${tlYaz(kb.reklam_odul)} · ${h.reklam.kalan}/5</span></button>
@@ -3714,5 +3734,7 @@ window.addEventListener("load", () => {
 <script src="otomatik_gazete.js"></script>
 <script src="arayuz.js"></script>
 <script src="kurucu_ideoloji.js"></script>
+<script src="ekonomi_vitrin.js"></script>
+<script src="emlak_vitrin.js"></script>
 </body>
 </html>
