@@ -50,7 +50,7 @@ ok("Vatandaşlık şartları: hesap yaşı, doğrulanmış e-posta, cihaz doğru
 # ---------------- 3) OY: SEÇMEN KÜTÜĞÜ, ŞÜPHELİ HESAP, CİHAZ BAŞINA TEK OY ----------------
 u8 = hesap("yeni@t.com"); oturum(u8, "cihaz-Y", "iz-Y"); profil(u8, "YeniGelen", 6)
 q(f"update oyun.profiller set olusturma='2026-10-01 00:00+03', il_at='2026-10-01 00:00+03' where id='{u8}'"); kidem(u8, 12)
-q(f"update oyun.profiller set il_id=34, il_at='2026-10-08 00:00+03' where id='{u8}'")          # 2 gün önce İstanbul'a taşındı
+q(f"update oyun.profiller set il_id=34, il_at='2026-10-08 00:00+03', son_il_degis='2026-10-08 00:00+03' where id='{u8}'")          # 2 gün önce İstanbul'a taşındı
 sid = q("""insert into oyun.secimler(tur,donem,oy_bas,oy_bit,sonuc_at,durum) values ('bel','2026-91','2026-10-10 08:00+03','2026-10-10 17:00+03','2026-10-10 18:00+03','bekliyor') returning id""").split("\n")[0]
 aid = q(f"insert into oyun.adaylar(secim_id,user_id,parti_id,il_id) values ({sid},'{u5}',1,34) returning id").split("\n")[0]
 rpc(u1, "oy_ver", int(sid), int(aid))
@@ -95,7 +95,7 @@ assert q("select kapali from oyun.partiler where kisa='SYP'") == "t" and q(f"sel
 ok("Parti kuruluşu: kurucuda kıdem şartı; şartları taşıyan 3 kurucu toplanınca kuruluş tamamlandı; 7 günde tamamlanmayan kuruluş düştü")
 
 # ---------------- 5) ARSA İHALESİ VE İMAR BARIŞI ----------------
-q("update oyun.ayarlar set oy_min_kidem=0, oy_il_gun=0, cihaz_zorunlu=false, min_hesap_gun=0")
+q("update oyun.ayarlar set oy_min_kidem=0, oy_il_gun=0, cihaz_zorunlu=false, min_hesap_gun=0, ihmal_gun_secim=0, ihmal_gun_atama=0")   # bu bölüm görev ihmalini sınamıyor
 baskan = u5; q(f"insert into oyun.makamlar(tur,user_id,il_id,parti_id,bas) values ('bel','{baskan}',34,{pid},'2026-10-10 00:00+03')")
 uzak = hesap("uzak@t.com"); profil(uzak, "Uzakta", 6)
 q("update oyun.il_durum set kasa=5 where il_id=34")

@@ -136,7 +136,8 @@ begin
                      where n2.nspname = p_sema and c2.relname = liste and b.attname = a.attname and not b.attisdropped);
       ok := true;
       begin
-        execute format('insert into oyun.%I (%s) select %s from %I.%I', liste, sutunlar, sutunlar, p_sema, liste);
+        -- overriding system value: "generated always as identity" sütunlu tablolar da yedekten dönebilsin
+        execute format('insert into oyun.%I (%s) overriding system value select %s from %I.%I', liste, sutunlar, sutunlar, p_sema, liste);
       exception when foreign_key_violation then ok := false;
       end;
       if ok then kalan := array_remove(kalan, liste); end if;

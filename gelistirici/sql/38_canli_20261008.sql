@@ -2213,8 +2213,12 @@ create trigger ajans_ittifak_uyelik after insert or delete on oyun.ittifak_uyele
  for each row execute function oyun.ajans_ittifak_trigger();
 
 -- Her 5 dakikada bir. Cron veri taramasi idempotenttir; haber tekrarlamaz.
-select cron.schedule('turkiye-gundem-otomatik-gazete','*/5 * * * *',
- 'select oyun.ajans_derle()');
+-- (Kurulum dosyasında pg_cron henüz yoksa atlanır; 04_zamanlayici.sql işi yine kurar.)
+do $$ begin
+  if to_regnamespace('cron') is not null then
+    perform cron.schedule('turkiye-gundem-otomatik-gazete','*/5 * * * *','select oyun.ajans_derle()');
+  end if;
+end $$;
 
 
 -- ---- 20261008_turkiye_gundem_genis_haber_kaynaklari ----

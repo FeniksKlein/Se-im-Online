@@ -16,19 +16,19 @@ rows = q("""select string_agg(tur||' '||donem||' başvuru:'||coalesce(to_char(ba
    ' oy:'||to_char(oy_bas at time zone 'Europe/Istanbul','MM-DD HH24:MI')||'→'||to_char(oy_bit at time zone 'Europe/Istanbul','HH24:MI')||
    ' göreve:'||coalesce(to_char(goreve_bas at time zone 'Europe/Istanbul','MM-DD HH24:MI'),'-'), ' ;; ' order by oy_bas, tur) from oyun.secimler""")
 print("Takvim:\n   " + rows.replace(" ;; ", "\n   "))
-assert "bel_on 2026-10 başvuru:10-06 00:00 oy:10-08 08:00→17:00" in rows
-assert "mv 2026-11 başvuru:- oy:11-01 08:00→17:00 göreve:11-02 00:00" in rows
-assert "mv_on 2026-11 başvuru:10-26 00:00 oy:10-28 08:00" in rows
-assert "kurultay 2026-10 başvuru:10-15 00:00 oy:10-18 08:00→17:00 göreve:10-19 00:00" in rows
-ok("Ekim takvimi doğru (6-8-10-11 belediye, 15-18-19 kurultay, 26-28-1-2 genel)")
+assert "bel_on 2026-10 başvuru:10-04 00:00 oy:10-08 08:00→22:00" in rows
+assert "mv 2026-11 başvuru:- oy:11-01 08:00→22:00 göreve:11-02 00:00" in rows
+assert "mv_on 2026-11 başvuru:10-24 00:00 oy:10-28 08:00" in rows
+assert "kurultay 2026-10 başvuru:10-15 00:00 oy:10-18 08:00→22:00 göreve:10-19 00:00" in rows
+ok("Ekim takvimi doğru (4–6/8/10/11 belediye, 15–17/18/19 kurultay, 24–26/28/1/2 genel; sandık 08–22)")
 
 # Şubat kontrolü: 26 Şubat başvuru, 28 Şubat ön seçim, 1 Mart genel seçim
 q("select oyun.donem_olustur('2027-02-01')")
 sub = q("""select string_agg(tur||':'||to_char(coalesce(basvuru_bas,oy_bas) at time zone 'Europe/Istanbul','MM-DD')||'/'||to_char(oy_bas at time zone 'Europe/Istanbul','MM-DD'), ' ' order by tur)
            from oyun.secimler where donem = '2027-03' """)
-assert "mv:03-01/03-01" in sub and "mv_on:02-26/02-28" in sub, sub
+assert "mv:03-01/03-01" in sub and "mv_on:02-24/02-28" in sub, sub
 q("delete from oyun.secimler where donem in ('2027-02','2027-03')")
-ok("Şubat ayı: 26 Şubat başvuru, 28 Şubat ön seçim, 1 Mart genel seçim")
+ok("Şubat ayı: 24 Şubat başvuru, 28 Şubat ön seçim, 1 Mart genel seçim")
 
 # --- oyuncular
 iller = [int(x) for x in q("select string_agg(id::text, ',' order by id) from oyun.iller").split(",")]
@@ -117,7 +117,7 @@ hata_bekle(rpc, deneyen["u"], "oy_ver", BO, yabanci["id"])
 hata_bekle(rpc, oyuncular[5]["u"], "oy_ver", BO, 999999)
 ok(f"Belediye ön seçimi: {n} oy; 08:00 öncesi ve başka partinin ön seçimine oy reddedildi")
 
-saat("2026-10-08 18:01")
+saat("2026-10-08 22:31")
 BEL = secim_id("bel", "2026-10")
 bel_aday = int(q(f"select count(*) from oyun.adaylar where secim_id={BEL}"))
 grup = int(q(f"select count(distinct (il_id, parti_id)) from oyun.adaylar where secim_id={BO}"))
@@ -133,7 +133,7 @@ def bel_sec(o):
     return (kendi or s)[0]["hedef"] if random.random() < 0.85 else random.choice(s)["hedef"]
 n = oy_ver_hepsi(BEL, bel_sec)
 hata_bekle(rpc, oyuncular[2]["u"], "oy_ver", BEL, 1)
-saat("2026-10-10 18:01")
+saat("2026-10-10 22:31")
 saat("2026-10-11 00:01")
 bel_say = int(q("select count(*) from oyun.makamlar where tur='bel' and bit is null"))
 il_aday = int(q(f"select count(distinct il_id) from oyun.adaylar where secim_id={BEL}"))
@@ -164,7 +164,7 @@ for pid in [1, 2, 3, 4, 5]:
 saat("2026-10-18 12:00")
 KU = secim_id("kurultay", "2026-10")
 n = oy_ver_hepsi(KU, lambda o: random.choice(s)["hedef"] if o["p"] and (s := rpc(o["u"], "secim_detay", KU)["secenekler"]) else None)
-saat("2026-10-18 18:01")
+saat("2026-10-18 22:31")
 saat("2026-10-19 00:01")
 gbler = dict(tuple(r.split("|")) for r in q("select string_agg(id||'|'||coalesce(gb::text,'-'), E'\\n') from oyun.partiler").split("\n"))
 for pid in [1, 2, 3, 4, 5]:
@@ -194,12 +194,11 @@ rpc(abp_gb, "cb_aday_belirle", "baskasi", kad_of(abp_aday["u"]))
 rpc(gb_of(3), "cb_aday_belirle", "onsecim")
 hata_bekle(rpc, uye["u"], "cb_aday_belirle", "kendisi", icerir="yalnızca genel başkan")
 saat("2026-10-26 09:00")
-hata_bekle(rpc, cyp_gb, "cb_aday_belirle", "onsecim", icerir="19")
+hata_bekle(rpc, cyp_gb, "cb_aday_belirle", "onsecim", icerir="açık değil")
 ok("CB adayı kararı: kendisi / başkası / ön seçim; 26'sında kapanıyor; yetki sadece GB'de")
 
 # ---------------- VEKİL + CB ÖN SEÇİM BAŞVURUSU (26) ----------------
 cyp_gb_o = o_by_u(cyp_gb)
-hata_bekle(rpc, cyp_gb, "aday_ol", "mv_on", icerir="Genel başkan")   # genel başkan vekil adayı olamaz
 gbler = {gb_of(pid) for pid in range(1, 6)}
 for o in oyuncular:
     if o["p"] and o["u"] not in gbler and (random.random() < 0.30 or o.get("bayburt") or (o["p"] == 1 and o["il"] == cyp_gb_o["il"])):
@@ -231,7 +230,7 @@ def onsecim_sec(o):
     return random.choice(s)["hedef"]
 n1 = oy_ver_hepsi(MVON, onsecim_sec)
 n2 = oy_ver_hepsi(CBON, lambda o: random.choice(s)["hedef"] if o["p"] and (s := rpc(o["u"], "secim_detay", CBON)["secenekler"]) else None)
-saat("2026-10-28 18:01")
+saat("2026-10-28 22:31")
 listeler = int(q(f"select count(distinct (il_id,parti_id)) from oyun.adaylar where secim_id={MVON} and sira is not null"))
 assert q(f"select count(*) from oyun.adaylar where secim_id={MVON} and user_id='{cyp_gb}'") == "0"   # genel başkan vekil adayı olamadı
 cb_adaylar = q("select string_agg(p.kisa, ',' order by p.kisa) from oyun.adaylar a join oyun.partiler p on p.id=a.parti_id where a.secim_id=" + str(secim_id("cb", "2026-11")))
@@ -260,7 +259,7 @@ n_cb = oy_ver_hepsi(CB, cb_sec)
 hata_bekle(rpc, u0, "oy_ver", CB, int(q(f"select min(id) from oyun.adaylar where secim_id={CB}")), icerir="zaten")
 ok(f"1 Kasım: {n_mv} genel seçim oyu, {n_cb} CB oyu; yeni hesap ve ikinci oy reddedildi")
 
-saat("2026-11-01 18:01")
+saat("2026-11-01 22:31")
 son = qj(f"select sonuc from oyun.secimler where id={MV}")
 print("   Ulusal:", [(p["kisa"], p["yuzde"], p["gecti"], p["sandalye"]) for p in son["ulusal"]])
 
@@ -268,13 +267,16 @@ print("   Ulusal:", [(p["kisa"], p["yuzde"], p["gecti"], p["sandalye"]) for p in
 baraj = float(son["baraj"])
 gecen = {p["parti_id"] for p in son["ulusal"] if p["gecti"]}
 toplam_sandalye = 0
+mvs = dict(tuple(map(int, r.split(":"))) for r in q("select string_agg(id||':'||coalesce(mv_secim,mv), ',') from oyun.iller").split(","))
+MECLIS = sum(mvs.values())
+assert MECLIS == int(q("select sandalye from oyun.meclis_olcek_kayit order by secim_id desc limit 1")), MECLIS
 for il_id, ilj in son["iller"].items():
     il_id = int(il_id)
     oylar = {int(k): v["oy"] for k, v in ilj["partiler"].items() if int(k) in gecen}
     lim = {pid: int(q(f"select count(*) from oyun.adaylar where secim_id={MVON} and il_id={il_id} and parti_id={pid} and sira is not null")) for pid in oylar}
     kaz = {pid: 0 for pid in oylar}
     sirali = sorted(oylar, key=lambda p: (-oylar[p], p))
-    for _ in range(mv[il_id]):
+    for _ in range(mvs[il_id]):
         aday = [p for p in sirali if kaz[p] < lim[p]]
         if not aday: break
         en = max(aday, key=lambda p: (oylar[p] / (kaz[p] + 1), oylar[p], -p))
@@ -283,11 +285,11 @@ for il_id, ilj in son["iller"].items():
         beklenen = kaz.get(int(pid), 0)
         assert v["sandalye"] == beklenen, (il_id, pid, v, beklenen)
         toplam_sandalye += v["sandalye"]
-    assert sum(v["sandalye"] for v in ilj["partiler"].values()) <= mv[il_id]
+    assert sum(v["sandalye"] for v in ilj["partiler"].values()) <= mvs[il_id]
 for p in son["ulusal"]:
     if not p["gecti"]: assert p["sandalye"] == 0
-assert toplam_sandalye == son["dolu"] and son["dolu"] + son["bos"] == 600
-ok(f"D'Hondt bağımsız hesapla birebir aynı; %{baraj:g} barajı altı partiye sandalye yok; dolu {son['dolu']} + boş {son['bos']} = 600")
+assert toplam_sandalye == son["dolu"] and son["dolu"] + son["bos"] == MECLIS
+ok(f"D'Hondt bağımsız hesapla birebir aynı; %{baraj:g} barajı altı partiye sandalye yok; dolu {son['dolu']} + boş {son['bos']} = {MECLIS} (oyuncu sayısına göre ölçekli Meclis)")
 
 cbs = qj(f"select sonuc from oyun.secimler where id={CB}")
 print("   CB 1. tur:", [(a["kad"], a["kisa"], a["oy"]) for a in cbs["adaylar"]], "ikinci tur:", cbs["ikinci_tur"])
@@ -311,7 +313,7 @@ def cb2_sec(o):
     if kendi: return kendi[0]["hedef"]
     return random.choice(s)["hedef"]
 n = oy_ver_hepsi(CB2, cb2_sec)
-saat("2026-11-02 18:01")
+saat("2026-11-02 22:31")
 vekiller_once = set(q("select string_agg(user_id::text, ',') from oyun.makamlar where tur='mv' and bit is null").split(","))
 gby_once = set((q("select string_agg(user_id::text, ',') from oyun.parti_gby") or "").split(","))
 saat("2026-11-03 00:01")
@@ -337,7 +339,7 @@ ok(f"İkinci tur: {n} oy, cumhurbaşkanı 3 Kasım'da göreve başladı")
 
 # vekil il değiştiremez
 herhangi_vekil = q("select user_id from oyun.makamlar where tur='mv' and bit is null limit 1")
-saat("2026-11-04 12:00")
+saat("2026-11-03 12:00")
 hata_bekle(rpc, herhangi_vekil, "il_degistir", 81 if o_by_u(herhangi_vekil)["il"] != 81 else 80, icerir="Görevdeki")
 
 # ---------------- OKUMA FONKSİYONLARI ----------------

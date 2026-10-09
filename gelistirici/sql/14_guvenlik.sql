@@ -137,7 +137,7 @@ create or replace function oyun.oy_engeli(p oyun.profiller, s oyun.secimler) ret
          then format('Seçmen kütüğü: bu ilde oy kullanabilmek için seçimden en az %s gün önce bu ile kayıtlı olmalısın.', (select oy_il_gun from oyun.ayarlar where id = 1)) end,
     case when s.tur in ('mv_on','bel_on','kurultay','cb_on') then
       case when p.parti_id is null then 'Bu parti içi seçimde oy için bir partiye üye olmalısın.'
-           when p.parti_at > s.basvuru_bas and coalesce(s.ara_neden,'') <> 'test_reset_20261008'
+           when p.parti_at > s.basvuru_bas
              then 'Parti içi seçimde oy için başvurular açılmadan önce üye olmuş olmalısın.' end
     end)
 $$;

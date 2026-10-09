@@ -15,6 +15,8 @@ update oyun.ayarlar set baslangic = now() where id = 1 and not exists (select 1 
 -- Varsa eski zamanlayıcıyı kaldır, yenisini kur
 select cron.unschedule(jobid) from cron.job where jobname = 'secim-motoru';
 select cron.schedule('secim-motoru', '* * * * *', 'select oyun.tick()');
+-- Türkiye Gündem otomatik gazetesi (5 dakikada bir)
+select cron.schedule('turkiye-gundem-otomatik-gazete', '*/5 * * * *', 'select oyun.ajans_derle()');
 
 -- İlk takvimi hemen üret
 select oyun.tick();
