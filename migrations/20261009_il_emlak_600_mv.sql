@@ -218,5 +218,5 @@ create trigger emlak_kanun_yururluk after update of durum on oyun.kanunlar
 
 -- Gelecekteki seçimlerde 600 sandalye; salt çoğunluk mevcut görevdeki vekiller üzerinden.
 update oyun.ayarlar set meclis_olcek=0 where id=1;
-perform oyun.dagit_mv_sandalye(600);
+select oyun.dagit_mv_sandalye(600);
 commit;
