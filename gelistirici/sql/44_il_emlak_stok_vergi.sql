@@ -126,3 +126,25 @@ revoke all on function public.mulk_satin_al(text) from public,anon;
 grant execute on function public.mulk_satin_al(text) to authenticated;
 
 -- Haftalık vergi, kira tahsilinde ve oyuncu mülklerini kontrol ederken işler.
+
+CREATE OR REPLACE FUNCTION oyun.mulk_kira_tahsil(p_user uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'oyun', 'public', 'pg_temp'
+AS $function$
+declare m record;n int;gross numeric;tax numeric;t timestamptz:=oyun.simdi();
+begin
+ perform pg_advisory_xact_lock(hashtextextended(p_user::text,78113));
+ for m in select * from oyun.yatirim_mulkleri where user_id=p_user and sonraki_kira<=t order by id for update loop
+  n:=least(520,floor(extract(epoch from (t-m.sonraki_kira))/604800)::int+1);
+  gross:=round(m.haftalik_kira*n,2);
+  tax:=case when (select count(*) from oyun.yatirim_mulkleri x where x.user_id=p_user and (x.satin_alma<m.satin_alma or (x.satin_alma=m.satin_alma and x.id<=m.id)))>=3
+       then round(gross*oyun.yasa_oran('coklu_mulk_vergi')/100,2) else 0 end;
+  perform oyun.para_islem(p_user,gross-tax,'kira',format('Mulk #%s: %s haftalik kira, vergi %s TL',m.id,n,tax),t,tax);
+  if tax>0 then update oyun.ulke set hazine=hazine+tax/1000000 where id=1;end if;
+  update oyun.yatirim_mulkleri set sonraki_kira=sonraki_kira+n*interval '7 days',toplam_kira=toplam_kira+gross-tax,kira_sayisi=kira_sayisi+n where id=m.id;
+ end loop;
+ perform oyun.mulk_haftalik_vergi(p_user);
+end $function$
+;
