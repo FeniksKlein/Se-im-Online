@@ -20795,6 +20795,7 @@ begin
  select * into o from oyun.ideoloji_teklif where id=p_teklif for update;
  if o.id is null or o.durum<>'acik' or o.bit<=t then raise exception 'Bu oylama kapanmış.'; end if;
  if p.parti_id is distinct from o.parti_id then raise exception 'Yalnızca parti üyesi oy kullanabilir.'; end if;
+ if p_evet is null then raise exception 'Geçerli bir EVET veya HAYIR oyu seçmelisin.'; end if;
  update oyun.ideoloji_secmen set oy=p_evet,zaman=t
   where teklif_id=o.id and user_id=p.id and oy is null;
  if not found then raise exception 'Bu oylamada oy hakkın yok veya oyunu zaten kullandın.'; end if;
