@@ -143,7 +143,7 @@ function partiKurEkrani(){
     $("#onizleme").innerHTML='<div style="display:flex;gap:12px;align-items:center">'+amblemKutu({renk,amblem:amb},56)+
       '<div><b style="font-size:18px">'+e(ad)+'</b><div style="color:'+renk+';font-weight:800">'+e(kisa)+'</div></div></div>';
     document.querySelectorAll(".renkler button").forEach(b=>b.classList.toggle("secili",b.dataset.r===renk));
-    document.querySelectorAll(".amblemler button").forEach(b=>{b.classList.toggle("secili",b.dataset.a===amb));b.querySelector("svg").style.color=renk;});
+    document.querySelectorAll(".amblemler button").forEach(b=>{b.classList.toggle("secili",b.dataset.a===amb);b.querySelector("svg").style.color=renk;});
   };
   document.querySelectorAll(".renkler button").forEach(b=>b.onclick=()=>{renk=b.dataset.r;ciz();});
   document.querySelectorAll(".amblemler button").forEach(b=>b.onclick=()=>{amb=b.dataset.a;ciz();});
