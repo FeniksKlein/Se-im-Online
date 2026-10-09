@@ -92,7 +92,7 @@ function sirketVitrinListeCiz(){
  const key={kazanc:"net_kazanc",vergi:"vergi",sermaye:"sermaye"}[sort];
  const l=vitSirketler.filter(x=>!tur||x.sektor===tur).sort((a,b)=>key?Number(b[key]||0)-Number(a[key]||0)||a.id-b.id:new Date(b.kurulus)-new Date(a.kurulus));
  el.innerHTML=l.map((x,i)=>`<button class="kart vit-banka" onclick="sirketDetayEkrani(${x.id})">
- <div class="vit-bas"><span class="vit-logo">🏢</span><span class="orta"><b>${i+1}. ${e(x.ad)}</b><span class="kucuk">${e(vitSektor[x.sektor]||x.sektor)} · ${e(x.sahip)}</span></span><span class="ok">›</span></div>
+ <div class="vit-bas"><span class="vit-logo">🏢</span><span class="orta"><b>${i+1}. ${e(x.ad)}</b><span class="kucuk">${e(vitSektor[x.sektor]||x.sektor)} · En büyük ortak: ${e((x.ortaklar||[])[0]?.kad||x.sahip)}</span></span><span class="ok">›</span></div>
  <div class="vit-stats"><span><small>Net kazanç</small><b>${vitTL(x.net_kazanc)}</b></span><span><small>Kayıtlı vergi</small><b>${vitTL(x.vergi)}</b></span><span><small>Şirket kasası</small><b>${vitTL(x.kasa)}</b></span></div></button>`).join("")||'<div class="kart"><p class="alt">Bu kriterlerde şirket bulunmuyor.</p></div>';
 }
 function sirketDetayEkrani(id){
