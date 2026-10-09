@@ -244,22 +244,140 @@ function mitingHtml(liste) {
   return `<div class="bolum-bas"><h2>Meydanlar</h2><span class="kucuk">Mitingler</span></div><div class="kart">${liste.map(m => {
     const canli = new Date(m.bas).getTime() <= t && new Date(m.bit).getTime() > t, bitti = new Date(m.bit).getTime() <= t;
     const pr = trParca(m.bas);
-    return `<div class="miting ${canli ? "canli" : ""}"><div class="zaman"><b>${canli ? "Canlı" : `${pr.s}:${pr.d}`}</b><span>${pr.g} ${AYLAR[pr.a - 1].slice(0, 3)}</span></div>
-      <div class="orta" style="flex:1;min-width:0"><b>${e(m.baslik)}</b><div class="kucuk">${e(m.kad)} · ${e(m.il)}${m.parti ? ` · <span style="color:${e(m.parti.renk)}">${e(m.parti.kisa)}</span>` : ""} · ${m.katilim} kişi</div></div>
-      ${canli && m.benim_ilim && !m.katildim && !m.benim ? `<button class="btn canli" style="width:auto;margin:0;padding:9px 14px" onclick="mitingKatil(${m.id})">Katıl</button>`
-        : m.katildim ? `<span class="rozet yesil">Oradasın</span>` : bitti ? `<span class="rozet">Bitti</span>` : ""}</div>`;
+    const dugme = canli && m.benim ? `<span class="btn canli mt-kucuk">Kürsüye çık</span>`
+      : canli && m.benim_ilim && !m.katildim ? `<span class="btn canli mt-kucuk">Katıl</span>`
+      : canli ? `<span class="rozet kirmizi">${m.katildim ? "Oradasın" : "İzle"}</span>`
+      : bitti ? `<span class="rozet">${m.cosku != null ? "Coşku " + m.cosku : "Bitti"}</span>` : "";
+    return `<button class="miting ${canli ? "canli" : ""}" style="width:100%;text-align:left" onclick="mitingAc(${m.id})"><div class="zaman"><b>${canli ? "Canlı" : `${pr.s}:${pr.d}`}</b><span>${pr.g} ${AYLAR[pr.a - 1].slice(0, 3)}</span></div>
+      <div class="orta" style="flex:1;min-width:0"><b>${e(m.baslik)}</b><div class="kucuk">${e(m.kad)} · ${e(m.il)}${m.parti ? ` · <span style="color:${e(m.parti.renk)}">${e(m.parti.kisa)}</span>` : ""} · ${m.katilim} kişi${m.konusma ? ` · ${m.konusma} konuşma` : ""}</div></div>${dugme}</button>`;
   }).join("")}</div>`;
 }
+function mitingAc(id) { ekranAc(() => mitingMeydanEkrani(id)); }
+// Eski çağrılar (Gündem kartı vb.) artık meydanı açar ve katılır
 async function mitingKatil(id) {
-  try { const r = await API.rpc("miting_katil", { p_id: id }); toast(`Meydandasın: ${r.katilim} kişi${r.kidem ? " · +1 kıdem" : ""}.`); yenidenCiz(); }
+  try { const r = await API.rpc("miting_katil", { p_id: id }); toast(`Meydandasın: ${r.katilim} kişi${r.kidem ? " · +1 kıdem" : ""}.`); }
   catch (err) { toast(hataCevir(err.message), true); }
+  mitingAc(id);
+}
+
+const MT_TEPKI = [["alkis", "Alkış"], ["tezahurat", "Tezahürat"], ["islik", "Islık"], ["yuh", "Yuh"]];
+const MT_SLOGAN = ["Halk burada!", "Sonuna kadar!", "Hesap soracağız!", "Bu meydan bizim!"];
+let MT = null;   // açık meydanın son verisi
+
+async function mitingMeydanEkrani(id) {
+  yukleniyor("Miting");
+  let d;
+  try { d = await API.rpc("miting_meydan", { p_id: id }); }
+  catch (err) { iskelet("Miting", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
+  MT = d;
+  const sloganlar = [...(d.slogan ? [d.slogan] : []), ...MT_SLOGAN];
+  iskelet(`${e(d.il)} mitingi`, `
+    <div id="mtSahne">${mtSahneHtml(d)}</div>
+    <div class="bolum-bas"><h2>Kürsü</h2><span class="kucuk" id="mtKursuNot">${mtKursuNot(d)}</span></div>
+    ${d.benim ? `<div class="kart mt-yaz" id="mtYazKart" ${d.canli ? "" : "hidden"}>
+        <textarea id="mtMetin" maxlength="400" rows="3" placeholder="Meydana seslen: vaadini, hikâyeni, çağrını anlat…"></textarea>
+        ${d.slogan ? `<button class="mt-cip" onclick="$('#mtMetin').value+=(($('#mtMetin').value?' ':'')+${e(JSON.stringify(d.slogan))})">Parti sloganı: ${e(d.slogan)}</button>` : ""}
+        <button class="btn canli" id="mtKonus">${IKON.megafon} Kürsüden söyle</button></div>` : ""}
+    <div id="mtKursu">${mtKursuHtml(d)}</div>
+    <div class="bolum-bas"><h2>Meydandan sesler</h2><span class="kucuk">Sloganlar</span></div>
+    <div class="kart" id="mtSesKart">
+      <div id="mtSesler" class="mt-sesler">${mtSeslerHtml(d)}</div>
+      <div id="mtSloganAlan" ${d.katildim && d.canli && !d.benim ? "" : "hidden"}>
+        <div class="mt-cipler">${sloganlar.map(x => `<button class="mt-cip" data-slogan="${e(x)}">${e(x)}</button>`).join("")}</div>
+        <div class="mt-satir"><input id="mtSlogan" maxlength="80" placeholder="Kendi sloganın…"><button class="btn" id="mtSloganAt" style="width:auto;margin:0">Slogan at</button></div>
+      </div>
+    </div>`, { geri: true });
+  mtBagla(id);
+  portreleriTazele($("#mtSahne"));
+  if (!d.bitti) D.canli = setInterval(() => { if (!document.hidden) mtTazele(id); }, 4000);
+}
+function mtSure(d) {
+  const t = simdi(), bas = new Date(d.bas).getTime(), bit = new Date(d.bit).getTime();
+  if (t < bas) { const p = trParca(d.bas); return `${p.g} ${AYLAR[p.a - 1]} ${p.s}:${p.d}'de başlıyor`; }
+  if (t < bit) return `Bitişe ${Math.max(1, Math.ceil((bit - t) / 60000))} dk`;
+  return "Miting sona erdi";
+}
+function mtSahneHtml(d) {
+  const renk = d.parti ? d.parti.renk : "var(--ink)";
+  const kalabalik = d.son_katilanlar.slice(0, 10).map(k => portre(k, null, 30)).join("");
+  return `<div class="kart mt-sahne" style="--parti:${e(renk)}">
+    <div class="mt-ust">${d.canli ? `<span class="rozet kirmizi">Canlı</span>` : d.bitti ? `<span class="rozet">Bitti</span>` : `<span class="rozet altin">Yakında</span>`}
+      <span class="kucuk">${mtSure(d)}</span></div>
+    <h2 class="mt-baslik">${e(d.baslik)}</h2>
+    <div class="mt-hatip">${portre(d.kad, d.parti && d.parti.renk, 46)}<div><b>${e(d.kad)}</b><div class="kucuk">${d.unvan ? e(d.unvan) + " · " : ""}${d.parti ? `<span style="color:${e(d.parti.renk)}">${e(d.parti.ad || d.parti.kisa)}</span> · ` : ""}${e(d.il)} meydanı</div></div></div>
+    <div class="mt-olcu"><div><span class="kucuk">Kalabalık</span><b>${fmt(d.katilim)}</b></div>
+      <div style="flex:1"><span class="kucuk">Coşku · ${e(d.cosku_ad || "")}</span><div class="mt-bar"><i style="width:${d.cosku}%"></i></div></div><b class="mt-cosku">${d.cosku}</b></div>
+    ${kalabalik ? `<div class="mt-kalabalik">${kalabalik}${d.katilim > 10 ? `<span class="kucuk">+${d.katilim - 10}</span>` : ""}</div>` : ""}
+    ${d.canli && d.katilabilir && !d.katildim ? `<button class="btn canli" onclick="mtKatil(${d.id})">Mitinge katıl</button>` : ""}
+    ${!d.katilabilir && !d.benim && d.canli ? `<p class="kucuk" style="margin-top:8px">Canlı izliyorsun. Katılmak, tepki vermek ve slogan atmak yalnız ${e(d.il)}'de yaşayanlara açık.</p>` : ""}
+    ${d.benim && !d.canli && !d.bitti ? `<p class="kucuk" style="margin-top:8px">Miting başladığında bu ekrandan kürsüye çıkıp konuşacaksın; katılanlar her sözüne tepki verecek.</p>` : ""}
+  </div>`;
+}
+function mtKursuNot(d) { return d.benim && d.canli ? `${d.konusma_kalan} kez daha konuşabilirsin` : d.katildim && d.canli && !d.benim ? "Her söze tepki ver" : ""; }
+function mtKursuHtml(d) {
+  if (!d.konusmalar.length) return `<div class="kart"><p class="alt">${d.canli ? (d.benim ? "Meydan seni bekliyor. İlk sözünü söyle." : `${e(d.kad)} henüz kürsüye çıkmadı.`) : d.bitti ? "Bu mitingde kürsüden konuşulmadı." : "Konuşmalar miting başlayınca burada görünecek."}</p></div>`;
+  const tepkiVer = d.canli && d.katildim && !d.benim;
+  return d.konusmalar.slice().reverse().map(k => {
+    const p = trParca(k.zaman);
+    return `<div class="kart mt-soz"><div class="kucuk">${p.s}:${p.d}</div><p>${e(k.metin)}</p>
+      <div class="mt-tepkiler">${MT_TEPKI.map(([kod, ad]) => tepkiVer
+        ? `<button class="mt-tepki ${kod} ${k.tepkim === kod ? "secili" : ""}" data-konusma="${k.id}" data-tur="${kod}">${ad} <b>${k[kod]}</b></button>`
+        : `<span class="mt-tepki ${kod}">${ad} <b>${k[kod]}</b></span>`).join("")}</div></div>`;
+  }).join("");
+}
+function mtSeslerHtml(d) {
+  if (!d.sloganlar.length) return `<p class="alt">${d.canli ? "Meydan sessiz. İlk sloganı sen at." : "Slogan atılmadı."}</p>`;
+  return d.sloganlar.slice().reverse().slice(0, 25).map(s => `<div class="mt-ses"><b>${e(s.kad)}</b> ${e(s.metin)}</div>`).join("");
+}
+function mtCiz(d) {
+  const once = MT; MT = d;
+  const sahne = $("#mtSahne"); if (!sahne) return;
+  sahne.innerHTML = mtSahneHtml(d);
+  $("#mtKursuNot").textContent = mtKursuNot(d);
+  if (!once || JSON.stringify(once.konusmalar) !== JSON.stringify(d.konusmalar) || once.katildim !== d.katildim || once.canli !== d.canli) $("#mtKursu").innerHTML = mtKursuHtml(d);
+  if (!once || JSON.stringify(once.sloganlar) !== JSON.stringify(d.sloganlar)) $("#mtSesler").innerHTML = mtSeslerHtml(d);
+  const yk = $("#mtYazKart"); if (yk) yk.hidden = !d.canli;
+  const sa = $("#mtSloganAlan"); if (sa) sa.hidden = !(d.katildim && d.canli && !d.benim);
+  if (once && d.cosku !== once.cosku) { const c = $(".mt-cosku"); if (c) c.classList.add("degisti"); }
+  portreleriTazele(sahne);
+  if (d.bitti) canliDurdur();
+}
+async function mtTazele(id) { try { if (MT && MT.id === id && $("#mtSahne")) mtCiz(await API.rpc("miting_meydan", { p_id: id })); } catch (_) {} }
+async function mtKatil(id) {
+  try { const r = await API.rpc("miting_katil", { p_id: id }); toast(`Meydandasın: ${r.katilim} kişi${r.kidem ? " · +1 kıdem" : ""}.`); mtCiz(await API.rpc("miting_meydan", { p_id: id })); }
+  catch (err) { toast(hataCevir(err.message), true); }
+}
+function mtBagla(id) {
+  const kursu = $("#mtKursu");
+  kursu.addEventListener("click", async ev => {
+    const b = ev.target.closest("button.mt-tepki"); if (!b) return;
+    b.disabled = true;
+    try { mtCiz(await API.rpc("miting_tepki", { p_konusma: +b.dataset.konusma, p_tur: b.dataset.tur })); }
+    catch (err) { toast(hataCevir(err.message), true); b.disabled = false; }
+  });
+  const konus = $("#mtKonus");
+  if (konus) konus.onclick = async () => {
+    const ta = $("#mtMetin"), m = ta.value.trim(); if (!m) return;
+    konus.disabled = true;
+    try { mtCiz(await API.rpc("miting_konus", { p_id: id, p_metin: m })); ta.value = ""; }
+    catch (err) { toast(hataCevir(err.message), true); }
+    konus.disabled = false;
+  };
+  const at = async (metin) => {
+    if (!metin) return;
+    try { mtCiz(await API.rpc("miting_slogan_at", { p_id: id, p_metin: metin })); const i = $("#mtSlogan"); if (i) i.value = ""; }
+    catch (err) { toast(hataCevir(err.message), true); }
+  };
+  const sk = $("#mtSesKart");
+  sk.addEventListener("click", ev => { const c = ev.target.closest("[data-slogan]"); if (c) at(c.dataset.slogan); });
+  const sb = $("#mtSloganAt"); if (sb) sb.onclick = () => at($("#mtSlogan").value.trim());
 }
 function mitingDuzenleModal(h) {
   const t = new Date(simdi() + 2 * 3600e3); t.setMinutes(0, 0, 0);
   const p = trParca(t), iki = (n) => String(n).padStart(2, "0");
   const deger = `${p.y}-${iki(p.a)}-${iki(p.g)}T${p.s}:00`;
   const son = trParca(h.son);
-  const m = modal(`<h3>Miting düzenle</h3><p class="alt">${e(h.il)} meydanında bir saatlik miting. Başladığında ildeki herkese haber gider; katılanlar günde bir kez +1 kıdem kazanır. Bedel: <b>${tlYaz(h.bedel)}</b>. Oylama ${son.g} ${AYLAR[son.a - 1]} ${son.s}:${son.d}'de bitiyor.</p>
+  const m = modal(`<h3>Miting düzenle</h3><p class="alt">${e(h.il)} meydanında bir saatlik miting. Başladığında ildeki herkese haber gider. Miting süresince kürsüden konuşursun; katılanlar her sözüne alkış, tezahürat, ıslık ya da yuhla tepki verir, slogan atar. Katılanlar günde bir kez +1 kıdem kazanır. Bedel: <b>${tlYaz(h.bedel)}</b>. Oylama ${son.g} ${AYLAR[son.a - 1]} ${son.s}:${son.d}'de bitiyor.</p>
     <div class="alan"><label for="mtBaslik">Mitingin adı</label><input id="mtBaslik" maxlength="80" placeholder="Örnek: Gündoğdu'da emek buluşması"></div>
     <div class="alan"><label for="mtZaman">Başlangıç (Türkiye saati)</label><input id="mtZaman" type="datetime-local" value="${deger}"></div>
     <div class="hata-metin" id="mtHata"></div><button class="btn" id="mtTamam">Mitingi duyur · ${tlYaz(h.bedel)}</button>`);

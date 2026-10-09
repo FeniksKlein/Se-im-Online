@@ -373,6 +373,39 @@ details.acilir ul{margin:6px 0 0 18px;font-size:13px;color:var(--mut)}
 .miting .zaman b{display:block;font-family:var(--disp);font-size:21px;line-height:1}
 .miting .zaman span{font-size:11.5px;color:var(--mut)}
 .miting.canli .zaman b{color:var(--al2)}
+.mt-kucuk{width:auto;margin:0;padding:9px 14px;font-size:14px}
+.mt-sahne{position:relative;overflow:hidden;border-top:4px solid var(--parti)}
+.mt-sahne::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 70% at 50% -10%,color-mix(in srgb,var(--parti) 22%,transparent),transparent 70%);pointer-events:none}
+.mt-sahne>*{position:relative}
+.mt-ust{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mt-baslik{font-family:var(--disp);font-size:27px;line-height:1.08;margin:10px 0 12px}
+.mt-hatip{display:flex;align-items:center;gap:11px}
+.mt-hatip b{font-size:16px}
+.mt-olcu{display:flex;align-items:flex-end;gap:14px;margin-top:14px}
+.mt-olcu b{font-family:var(--disp);font-size:26px;line-height:1;display:block}
+.mt-bar{height:9px;border-radius:9px;background:var(--panel3);overflow:hidden;margin-top:6px}
+.mt-bar i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--al),var(--warn) 55%,var(--good));transition:width .8s ease}
+.mt-cosku.degisti{animation:mtPop .6s ease}
+@keyframes mtPop{40%{transform:scale(1.35);color:var(--warn)}}
+.mt-kalabalik{display:flex;align-items:center;gap:0;margin-top:12px;flex-wrap:wrap}
+.mt-kalabalik .portre{margin-right:-6px;border:2px solid var(--panel);border-radius:50%}
+.mt-kalabalik .kucuk{margin-left:12px}
+.mt-soz p{font-size:16.5px;line-height:1.45;margin:4px 0 10px;color:var(--txt);border-left:3px solid var(--ink);padding-left:10px;user-select:text;-webkit-user-select:text}
+.mt-tepkiler{display:flex;flex-wrap:wrap;gap:6px}
+.mt-tepki{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:999px;background:var(--panel2);font-size:13px;font-weight:700;color:var(--txt2)}
+.mt-tepki b{font-family:var(--disp);font-size:15px}
+button.mt-tepki:active{transform:scale(.94)}
+.mt-tepki.secili.alkis,.mt-tepki.secili.tezahurat{background:rgba(52,201,138,.18);color:var(--good)}
+.mt-tepki.secili.islik,.mt-tepki.secili.yuh{background:var(--albg);color:var(--al2)}
+.mt-yaz textarea{width:100%;padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--line2);outline:none;font-size:16px;resize:vertical}
+.mt-cip{display:inline-block;padding:7px 11px;border-radius:999px;background:var(--inkbg);color:var(--ink2);font-size:13px;font-weight:700;margin:8px 6px 0 0}
+.mt-cipler{display:flex;flex-wrap:wrap;margin:6px 0 4px}
+.mt-satir{display:flex;gap:8px;margin-top:8px}
+.mt-satir input{flex:1;min-width:0;padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--line2);outline:none;font-size:16px}
+.mt-sesler{max-height:260px;overflow:auto}
+.mt-ses{padding:7px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+.mt-ses:last-child{border-bottom:0}
+.mt-ses b{color:var(--ink2);margin-right:4px}
 .giris-satir{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer;width:100%;text-align:left}
 .giris-satir:last-child{border-bottom:0}
 .giris-satir .yik{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;flex:none;background:var(--bg);color:var(--ink2)}
@@ -857,7 +890,9 @@ async function gundemEkrani(){
   const is = [];
   aktif.filter(s => s.asama === "oy" && !s.oy_verdim && !s.oy_engeli).forEach(s => is.push({ cls: "acil", ikon: IKON.sandik, bas: `Oy ver: ${secimTakvimAdi(s)}`, alt: `Sandık ${saatYaz(s.oy_bit)}'de kapanıyor`, git: `ekranAc(()=>secimEkrani(${s.id}))` }));
   if (p.kredi_uyari) is.push({ cls: "acil", ikon: IKON.uyari, bas: "Kredi borcun gecikmede", alt: e(p.kredi_uyari), git: "ekranAc(bankaEkrani)" });
-  if (canliMiting) is.push({ cls: "acil", ikon: IKON.insanlar, bas: `Mitinge katıl: ${e(canliMiting.kad)}`, alt: `${e(canliMiting.il)} meydanı · ${canliMiting.katilim} kişi`, git: `mitingKatil(${canliMiting.id})` });
+  if (canliMiting) is.push({ cls: "acil", ikon: IKON.insanlar, bas: `Mitinge katıl: ${e(canliMiting.kad)}`, alt: `${e(canliMiting.il)} meydanı · ${canliMiting.katilim} kişi`, git: `mitingAc(${canliMiting.id})` });
+  const benimCanli = (mitingler || []).find(m => m.benim && new Date(m.bas).getTime() <= t && new Date(m.bit).getTime() > t);
+  if (benimCanli) is.push({ cls: "acil", ikon: IKON.insanlar, bas: "Mitingin başladı: kürsüye çık", alt: `${e(benimCanli.il)} meydanı · ${benimCanli.katilim} kişi`, git: `mitingAc(${benimCanli.id})` });
   if (oylanacak.length) is.push({ cls: "acil", ikon: IKON.meclis, bas: `Meclis'te ${oylanacak.length} teklif oyunu bekliyor`, alt: e(oylanacak[0].baslik), git: `ekranAc(()=>kanunEkrani(${oylanacak[0].id}))` });
   if (onaylanacak.length) is.push({ cls: "eylem-mor", ikon: IKON.kalem, bas: `Onayını bekleyen ${onaylanacak.length} kanun`, alt: e(onaylanacak[0].baslik), git: `ekranAc(()=>kanunEkrani(${onaylanacak[0].id}))` });
   if (cz.dolu || cz.gunun_ilki) is.push({ cls: "eylem-mor", ikon: IKON.kumbara, bas: cz.dolu ? "Kumbaran doldu" : "Bugünkü maaşını topla", alt: cz.birikmis ? tlYaz(cz.birikmis) + " birikti" + (cz.gunun_ilki ? " · seri ve günlük destekler" : "") : "Seri ve günlük destekler", git: "sekmeAc('hayat')" });
@@ -2540,7 +2575,7 @@ const METIN = {
     <h4>Görev ihmali</h4>
     <p>Makam bir sorumluluktur. 3 gün oyuna girmeyen bakan ve genel başkan yardımcısı, 7 gün girmeyen cumhurbaşkanı, belediye başkanı ve genel başkan önce bildirimle uyarılır, yine girmezse görevden düşer. Seçilmiş makam boşalınca olağanüstü seçim takvimi kendiliğinden açılır.</p>
     <h4>Mitingler</h4>
-    <p>Bir seçimde aday olan oyuncu, oylama bitmeden ilinde bir saatlik miting düzenleyebilir (bedeli ilin büyüklüğüne göre). Miting başlayınca ildeki herkese bildirim gider; katılan oyuncu günde bir kez +1 kıdem kazanır. Miting bitince kaç kişinin katıldığı Gündem'e haber olur.</p>
+    <p>Bir seçimde aday olan oyuncu, oylama bitmeden ilinde bir saatlik miting düzenleyebilir (bedeli ilin büyüklüğüne göre). Miting başlayınca ildeki herkese bildirim gider. Miting boyunca aday kürsüden en fazla 20 kez konuşur; katılanlar her söze alkış, tezahürat, ıslık ya da yuhla tepki verir ve slogan atar. Tepkilerden meydanın coşkusu (0-100) hesaplanır. Başka illerden oyuncular mitingi canlı izleyebilir. Katılan oyuncu günde bir kez +1 kıdem kazanır. Miting bitince katılım, coşku ve en çok alkışlanan söz Gündem'e haber olur.</p>
     <h4>Para hediyesi</h4>
     <p>Başka bir oyuncuya, onun şirketine ya da gazetesine aktardığın para (hediye ve banka havalesi birlikte) günlük sınıra tabidir. Partine, şehrine ve hazineye bağış sınırsızdır. Böylece satın alınan para başka hesaplara taşınıp oy toplamakta kullanılamaz.</p>
     <h4>Anayasa değişikliği ve halk oylaması</h4>

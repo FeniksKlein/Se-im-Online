@@ -87,3 +87,8 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Meclis: 600 sandalye seçime açık (`meclis_olcek=0`); kanun kabulü dolu sandalyelerin salt çoğunluğu (11 vekil → 6 evet).
 - Arayüz: Hayat'taki yinelenen "Banka" kartı ve Gayrimenkul'deki "Diğer oyuncuların satılık mülklerini gör" düğmesi kaldırıldı; Gayrimenkul ekranında il seçerek alım, vergi ve borç bilgisi var.
 - Test: `python3 test/emlak_il.py` (kur_yerel sonrası). Not: `simulasyon`, `guvenlik`, `kalicilik` testleri 41_kurucu_ideoloji'deki "3 kurucu onayı" kuralı yüzünden bu değişiklikten önce de kırıktı (test bakımı gerekiyor).
+
+## 2026-10-09 · 2026.10.09-9 canlı miting meydanı
+- `46_miting_canli.sql` (+ `migrations/20261009_miting_canli.sql`): düzenleyen aday miting süresince kürsüden konuşur (20 konuşma, 400 karakter, 15 sn arayla); katılanlar her söze alkış/tezahürat/ıslık/yuh verir (değiştirilebilir), 80 karakterlik slogan atar (20 sn arayla, en fazla 30). Coşku 0-100 tepkilerden; bitince Gündem haberi (katılım, coşku, en çok alkışlanan söz). Başka ilden canlı izleme. Moderatör `miting_icerik_sil` (şikâyet yetkisi).
+- Arayüz: `arayuz.js` → `mitingMeydanEkrani` (4 sn'de bir tazelenir). Meydanlar listesindeki her satır meydanı açar; adayın mitingi başlayınca Gündem'de "kürsüye çık" kartı çıkar.
+- Test: `python3 test/miting_canli.py`.
