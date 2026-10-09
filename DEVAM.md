@@ -98,5 +98,6 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Bağımsız aday partiye katılınca adaylığı düşer (eskiden katılım engelleniyordu); oy verme sürerken engel.
 - Arayüz: parti ekranında "Parti mitingleri" kartı (`arayuz.js` → `partiMitingKartCiz`, `partiMitingModal`), GB için yardımcı yetki düğmeleri; bağımsız adaya katılım uyarısı.
 - `48_eyetkin_parti.sql`: temiz kurulumda Eyetkin profili yoksa artık hata vermeden atlanıyor (49'daki CELAL düzeltmesiyle aynı). Canlıya etkisi yok.
+- **Canlıya uygulandı** (9 Ekim 23:56, Supabase migration `parti_miting_bagimsiz_20261009`): 26 oyuncu, 22 adaylık, 6 miting korundu; dakikalık motor sonrasında hatasız çalışıyor. Not: canlıda motor her dakika veri değiştirdiği için `parmak_izi` önce/sonra karşılaştırması anlamlı değil; sayımlarla doğrulandı.
 - Test: `python3 test/parti_miting.py` (hepsi.sh'e eklendi, `miting_canli` da). Migration eski sürümlü veritabanına uygulandı: oyuncu verisi parmak izi değişmedi, iki kez çalıştırılabiliyor.
 
