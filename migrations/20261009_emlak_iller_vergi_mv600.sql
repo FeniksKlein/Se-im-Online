@@ -314,7 +314,7 @@ begin
   if k.tur='serbest' and k.veri->>'eylem'='emlak_vergisi' then
     oran:=(k.veri->>'oran')::numeric;
     if oran is null or oran<0 or oran>2 then raise exception 'Geçersiz emlak vergisi kanunu.'; end if;
-    update oyun.emlak_ulusal_vergi set oran=oran,guncelleme=t where id=1;
+    update oyun.emlak_ulusal_vergi set oran=(k.veri->>'oran')::numeric,guncelleme=t where id=1;
     insert into oyun.bildirimler(user_id,zaman,metin)
      select id,t,format('Meclis, haftalık emlak vergisinin ulusal oranını %s%% olarak belirledi. Gelir mülkün bulunduğu belediyeye aktarılır.',oran)
      from oyun.profiller where not yasakli and son_gorulme>t-interval '14 days';
