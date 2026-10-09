@@ -13,8 +13,8 @@ async function partiAdayKartiCiz(pid){
    `<span class="alt">${cb&&cb.asama==="onsecim_bekliyor"?"Üyelerin ön seçimi bekleniyor":cb&&cb.asama==="destek_bekliyor"?"Desteklenen partinin kesin adayı henüz belli değil":"Kesin Cumhurbaşkanı adayı henüz açıklanmadı"}</span>`;
   const rows=(array)=>array.map(a=>`<div class="kv"><span>${e(a.kad)} · ${e(a.il||"Türkiye geneli")}</span><b>${e(a.tur==="mv_on"?"Milletvekili":a.tur==="cb_on"||a.tur==="cb"?"Cumhurbaşkanı":a.tur==="bel"?"Belediye":"Aday")}</b></div>`).join("");
   el.innerHTML=`<div class="kart" style="border:1px solid var(--gold)">
-    <h2>🗳️ Adaylarımız ve desteklediğimiz adaylar</h2>
-    <div class="kart" style="background:var(--panel2)"><h3>🇹🇷 Cumhurbaşkanı adayımız</h3>${name}
+    <h2>Adaylarımız ve desteklediğimiz adaylar</h2>
+    <div class="kart" style="background:var(--panel2)"><h3>Cumhurbaşkanı adayımız</h3>${name}
       ${cb&&(cb.destekleyenler||[]).length?`<div class="kucuk">Destekleyenler: ${cb.destekleyenler.map(p=>e(p.kisa)).join(", ")}</div>`:""}
     </div>
     ${(d.kesin_adaylar||[]).length?`<h3>Kesinleşmiş adaylarımız</h3>${rows(d.kesin_adaylar)}`:""}
@@ -26,8 +26,8 @@ async function partiAdayKartiCiz(pid){
         ${d.genel_baskan_mi&&b.acik?`<button class="btn ikinci" onclick="belDestekGeriCek(${pid},${x.il_id})">Geri çek</button>`:""}
       </div>`).join("")}`:""}
     ${d.genel_baskan_mi?`<button class="btn ikinci" onclick="cbKararModal()">Cumhurbaşkanı adayını belirle / destekle</button>
-     <button class="btn ikinci" onclick="belDestekModal(${pid})">🏙️ Belediye ortak adayını açıkla / destekle</button>
-     <button class="btn altin" onclick="partiAdayTanitModal(${pid})">📣 Bir adayı tanıt</button>`:""}
+     <button class="btn ikinci" onclick="belDestekModal(${pid})">Belediye ortak adayını açıkla / destekle</button>
+     <button class="btn altin" onclick="partiAdayTanitModal(${pid})">Bir adayı tanıt</button>`:""}
     ${(d.tanitimlar||[]).length?`<h3>Aday tanıtımları</h3>
       ${d.tanitimlar.map(t=>`<div class="kart" style="background:var(--panel2);margin-top:8px"><b>${e(t.kad)}</b>
       <span class="rozet">${t.kitle==="herkes"?"Herkese açık":"Yalnız üyelere"}</span>
@@ -46,7 +46,7 @@ async function partiAdayTanitModal(pid){
   }
   a=[...new Map(a.map(x=>[x.id,x])).values()];
   if(!a.length){toast("Henüz tanıtılabilecek aday bulunmuyor.",true);return;}
-  const m=modal(`<h3>📣 Aday tanıtımı</h3><p class="alt">24 saatte en fazla 3 aday tanıtımı. Kitleyi genel başkan seçer.</p>
+  const m=modal(`<h3>Aday tanıtımı</h3><p class="alt">24 saatte en fazla 3 aday tanıtımı. Kitleyi genel başkan seçer.</p>
    <div class="alan"><label>Aday</label><select id="adt_kisi">${a.map(x=>`<option value="${x.id}">${e(x.kad)} · ${e(x.il||"Türkiye")}</option>`).join("")}</select></div>
    <div class="alan"><label>Kim görsün?</label><select id="adt_kitle"><option value="herkes">Herkes</option><option value="uyeler">Yalnız parti üyeleri</option></select></div>
    <div class="alan"><label>Aday tanıtımı (20–600 karakter)</label><textarea id="adt_metin" class="alanmetin" maxlength="600" placeholder="Adayın tecrübesi, çalışmaları ve hedefleri..."></textarea></div>
@@ -62,7 +62,7 @@ async function belDestekModal(pid){
   const b=await API.rpc("bel_destek_durum",{p_parti:pid});
   if(!b.acik){toast("Belediye ön seçimi sonuçlandıktan sonra, oy verme başlamadan ortak aday açıklayabilirsin.",true);return;}
   if(!(b.adaylar||[]).length){toast("Henüz başka partinin kesinleşmiş belediye adayı yok.",true);return;}
-  const m=modal(`<h3>🏙️ Belediye ortak adayı</h3><p class="alt">Bir başka partinin kesinleşmiş gerçek adayını desteklersin. Aynı ilde kendi adayın varsa pusuladan çekilir. İttifak ortağıysa ittifakın ortak adayı olur.</p>
+  const m=modal(`<h3>Belediye ortak adayı</h3><p class="alt">Bir başka partinin kesinleşmiş gerçek adayını desteklersin. Aynı ilde kendi adayın varsa pusuladan çekilir. İttifak ortağıysa ittifakın ortak adayı olur.</p>
    <div class="alan"><label>Desteklenecek aday</label><select id="bel_hedef">${b.adaylar.map(x=>`<option value="${x.id}">${e(x.il)} · ${e(x.kad)} · ${e(x.parti)}${x.ortak?" (ittifak)":""}</option>`).join("")}</select></div>
    <button class="btn altin" id="bel_karar">Adayı destekle</button>`);
   document.getElementById("bel_karar").onclick=async()=>{
@@ -84,7 +84,7 @@ function sirketMiniFinans(s,asgari){
  const gelir=Number(s.sermaye)*rate,gider=Number(s.sermaye)*.0525+Number(asgari||0);
  const net=gelir-gider;
  return `<div class="kart" style="background:var(--panel2);margin:10px 0">
-  <h3>📊 7 günlük faaliyet tahmini</h3>
+  <h3>7 günlük faaliyet tahmini</h3>
   <div class="kv"><span>Ortalama gelir</span><b>${fmt(Math.round(gelir))} ₺</b></div>
   <div class="kv"><span>Ortalama gider</span><b>${fmt(Math.round(gider))} ₺</b></div>
   <div class="kv"><span>Net kâr / zarar tahmini</span><b style="color:${net<0?"var(--acc2)":"var(--good)"}">${fmt(Math.round(net))} ₺</b></div>
@@ -105,20 +105,20 @@ async function sirketFinansDetay(id){
    <p class="alt">${e(h.aciklama||"")}</p>
   </div>`).join("");
   iskelet("Şirket finans raporu",`
-   <div class="kart"><h2>🏢 ${e(x.ad)}</h2><p class="alt">${e(x.sektor)} · Hisse payın: %${fmt(x.benim_payim,2)}</p>
+   <div class="kart"><h2>${e(x.ad)}</h2><p class="alt">${e(x.sektor)} · Hisse payın: %${fmt(x.benim_payim,2)}</p>
     <div class="kv"><span>Şirket sermayesi</span><b>${fmt(x.sermaye)} ₺</b></div>
     <div class="kv"><span>Şirketin mevcut kasası</span><b>${fmt(x.kasa)} ₺</b></div>
     <div class="kv"><span>Dağıtılabilecek kâr</span><b>${fmt(x.dagitilabilir_kar)} ₺</b></div>
     <div class="kv"><span>Sonraki 7 günlük hesap</span><b>${tarihSaat(x.sonraki_hesaplama)}</b></div>
    </div>
-   <div class="kart"><h2>📈 Bir sonraki 7 günün tahmini</h2>
+   <div class="kart"><h2>Bir sonraki 7 günün tahmini</h2>
      <div class="kv"><span>Olası brüt gelir</span><b>${fmt(x.tahmini_gelir_min)} – ${fmt(x.tahmini_gelir_max)} ₺</b></div>
      <div class="kv"><span>Olası gider</span><b>${fmt(x.tahmini_gider_min)} – ${fmt(x.tahmini_gider_max)} ₺</b></div>
      <div class="kv"><span>Net kâr/zarar aralığı</span><b>${fmt(x.tahmini_net_min)} – ${fmt(x.tahmini_net_max)} ₺</b></div>
      <div class="kv"><span>Ortalama net tahmin</span><b>${fmt(x.tahmini_ortalama_net)} ₺</b></div>
      <p class="alt">Gelir sermaye ve sektör kapasitesinden; gider asgari ücret ve işletme maliyetlerinden oluşur. Gerçek sonuçlar değişebilir. Bankalarda kredi, mevduat ve faiz yükümlülükleri ayrıca izlenir.</p>
    </div>
-   <div class="kart"><h2>📜 Gerçekleşen son şirket hareketleri</h2>${rows||"<p class='alt'>Henüz faaliyet hareketi yok.</p>"}</div>
+   <div class="kart"><h2>Gerçekleşen son şirket hareketleri</h2>${rows||"<p class='alt'>Henüz faaliyet hareketi yok.</p>"}</div>
    <button class="btn ikinci" onclick="sirketEkrani()">Şirketlerime geri dön</button>
   `,{geri:true});
  }catch(err){iskelet("Şirket finans raporu",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true})}

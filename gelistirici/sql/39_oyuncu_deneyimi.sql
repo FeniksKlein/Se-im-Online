@@ -1172,6 +1172,46 @@ AS $function$
                   + 0.03 * (oyun.duz('seri_tavan') - 30) + 0.5 * (oyun.duz('kumbara_saat') - (select varsayilan from oyun.duzenleme_tanim where kod = 'kumbara_saat')) + 0.04 * oyun.duz('vekil_kesinti'))
 $function$;
 
+-- İl detayı: bu dönemin sandalye sayısı
+CREATE OR REPLACE FUNCTION public.il_detay(p_il integer)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'oyun', 'public', 'pg_temp'
+AS $function$
+declare p oyun.profiller := oyun.profilim(); i oyun.iller; t timestamptz := oyun.simdi();
+begin
+  select * into i from oyun.iller where id = p_il;
+  if i.id is null then raise exception 'İl bulunamadı.'; end if;
+  return jsonb_build_object(
+    'id', i.id, 'ad', i.ad, 'mv', coalesce(i.mv_secim, i.mv), 'mv_nufus', i.mv,
+    'oyuncu', (select count(*) from oyun.profiller where il_id = i.id),
+    'partiler', coalesce((select jsonb_agg(oyun.parti_json(x.parti_id) || jsonb_build_object('uye', x.n) order by x.n desc)
+                 from (select parti_id, count(*) n from oyun.profiller where il_id = i.id and parti_id is not null group by parti_id) x), '[]'::jsonb),
+    'bel', (select jsonb_build_object('kad', oyun.kad(m.user_id), 'parti', oyun.parti_json(m.parti_id), 'bas', m.bas)
+            from oyun.makamlar m where m.tur = 'bel' and m.il_id = i.id and m.bit is null limit 1),
+    'vekiller', coalesce((select jsonb_agg(jsonb_build_object('kad', oyun.kad(m.user_id), 'parti', oyun.parti_json(m.parti_id), 'kaynak', m.kaynak) order by m.parti_id, m.bas)
+                 from oyun.makamlar m where m.tur = 'mv' and m.il_id = i.id and m.bit is null), '[]'::jsonb),
+    'adaylar', coalesce((select jsonb_agg(oyun.aday_json(a.id) || jsonb_build_object('tur', s.tur) order by s.tur, a.parti_id, a.sira nulls last, a.basvuru_at)
+                 from oyun.adaylar a join oyun.secimler s on s.id = a.secim_id
+                 where a.il_id = i.id and (s.durum = 'bekliyor' or (s.tur = 'mv_on' and exists
+                   (select 1 from oyun.secimler m where m.tur = 'mv' and m.donem = s.donem and m.durum = 'bekliyor')))), '[]'::jsonb),
+    'benim_ilim', p.il_id = i.id,
+    'durum', (select jsonb_build_object('gelisim', round(d.gelisim, 1), 'memnuniyet', round(d.memnuniyet, 1), 'kasa', round(d.kasa, 2))
+              from oyun.il_durum d where d.il_id = i.id),
+    'projeler', coalesce((select jsonb_agg(jsonb_build_object('ad', k.ad, 'zaman', k.zaman, 'baskan', oyun.kad(k.baskan)) order by k.zaman desc)
+                 from (select x.*, coalesce(b.ad, y.ad) ad from oyun.belediye_proje_kayit x
+                       left join oyun.belediye_hizmetleri b on b.kod = x.kod left join oyun.belediye_yatirimlari y on y.kod = x.kod
+                       where x.il_id = i.id order by x.zaman desc limit 5) k), '[]'::jsonb),
+    -- ilde yaşayanlara şu an işleyen belediye hizmetleri ve bakanlık tedbirleri
+    'hizmetler', oyun.il_hizmet_json(i.id, t),
+    'il_carpan', oyun.il_carpan(i.id),
+    'kent_vergisi', (select kent_vergisi from oyun.il_durum where il_id = i.id),
+    'hemsehri', (select hemsehri from oyun.il_durum where il_id = i.id),
+    'tasinma', case when p.il_id <> i.id then oyun.tasinma_ucreti(p.il_id, i.id, t) end,
+    'bel_vaatler', (select oyun.vaat_listesi_makam(m.id) from oyun.makamlar m where m.tur = 'bel' and m.il_id = i.id and m.bit is null limit 1));
+end $function$;
+
 -- =====================================================================
 --  Para aktarma: havale ve hediyeler aynı günlük sınıra tabi
 -- =====================================================================
@@ -1633,8 +1673,8 @@ begin
   perform oyun.para_islem(p.id, -bedel, 'miting', format('%s mitingi (ses sistemi, sahne, ulaşım)', (select ad from oyun.iller where id = il)), t);
   insert into oyun.mitingler(user_id, secim_id, il_id, parti_id, baslik, bas, bit, bedel)
     values (p.id, s.id, il, p.parti_id, b, p_bas, p_bas + interval '1 hour', bedel) returning id into mid;
-  perform oyun.olay('secim', format('%s, %s tarihinde %s''de “%s” mitingi düzenleyecek.', p.kad,
-    to_char(p_bas at time zone 'Europe/Istanbul', 'DD.MM HH24:MI'), (select ad from oyun.iller where id = il), b), il, p.parti_id, t);
+  perform oyun.olay('secim', format('%s, %s mitingi düzenleyecek: “%s” (%s).', p.kad,
+    (select ad from oyun.iller where id = il), b, to_char(p_bas at time zone 'Europe/Istanbul', 'DD.MM HH24:MI')), il, p.parti_id, t);
   return jsonb_build_object('id', mid, 'bedel', bedel);
 end $$;
 
@@ -1683,7 +1723,7 @@ begin
            where not x.duyuruldu and x.bas <= t and x.bit > t loop
     update oyun.mitingler set duyuruldu = true where id = m.id;
     insert into oyun.bildirimler(user_id, zaman, metin)
-      select pr.id, t, format('%s %s''de miting yapıyor: “%s”. Bir saat içinde Gündem''den katılabilirsin.', m.kad, m.il_ad, m.baslik)
+      select pr.id, t, format('%s şu an %s mitinginde: “%s”. Bir saat içinde Gündem''den katılabilirsin.', m.kad, m.il_ad, m.baslik)
       from oyun.profiller pr where pr.il_id = m.il_id and pr.id <> m.user_id and not pr.yasakli;
     if oyun.push_acik() then
       perform oyun.push_konuya('s_il_' || m.il_id, null, format('%s meydanda!', m.kad),
@@ -1708,7 +1748,7 @@ begin
   foreach f in array array['aktarim_hakki()','ilk_adimlar()','tarih_arsivi()','parti_kimlikleri()','parti_kimlik_ayarla(int,int,text)',
     'kimlik_guncelle(text,text)','kimlikler(text[])','miting_duzenle(bigint,timestamptz,text)','miting_katil(bigint)','mitingler()',
     'miting_haklarim()','admin_transferler_sayfa(integer,integer,text,numeric)','para_gonder(text,numeric,text)','meclis()','harita()',
-    'admin_kurallar(jsonb)','vatandaslik()','oy_ver(bigint,bigint)'] loop
+    'admin_kurallar(jsonb)','vatandaslik()','oy_ver(bigint,bigint)','il_detay(integer)'] loop
     execute format('revoke all on function public.%s from public, anon', f);
     execute format('grant execute on function public.%s to authenticated', f);
   end loop;

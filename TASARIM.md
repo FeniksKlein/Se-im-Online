@@ -5,24 +5,24 @@
 Oyunun saati gerçek hayatın saatidir. Bugün 2 Ekim 2026 ise oyunda da 2 Ekim 2026'dır.
 
 - Saat **sunucudan** alınır (Türkiye saati). Telefonun saati değiştirilse bile hiçbir şey değişmez; kimse saatini ileri alıp hile yapamaz.
-- Seçim motoru sunucuda **her dakika** kendiliğinden çalışır. Sandığı açar ve kapatır, 18:00'de oyları sayar, kazananları göreve başlatır, görev süresi biteni görevden alır.
+- Seçim motoru sunucuda **her dakika** kendiliğinden çalışır. Sandığı açar ve kapatır, 22:30'da oyları sayar, kazananları göreve başlatır, görev süresi biteni görevden alır.
 - Hiç kimse uygulamayı açmasa bile takvim işler.
 
 ## 2. Aylık takvim
 
 | Gün | Olay |
 |---|---|
-| 6 | Belediye başkanı aday adaylığı başvurusu |
-| 8 | Belediye ön seçimi (partinin ildeki üyeleri), 08:00–17:00 |
-| 10 | İl belediye başkanlığı seçimi (ildeki herkes), 08:00–17:00, sonuç 18:00 |
+| 4–6 | Belediye başkanı aday adaylığı başvurusu (3 gün) |
+| 8 | Belediye ön seçimi (partinin ildeki üyeleri), 08:00–22:00 |
+| 10 | İl belediye başkanlığı seçimi (ildeki herkes), 08:00–22:00, sonuç 22:30 |
 | 11 | Belediye başkanları göreve başlar (görev 1 ay) |
 | 15–17 | Genel başkanlık başvurusu |
 | 18 | Kurultay: partinin üyeleri genel başkanı seçer |
 | 19 | Yeni genel başkan göreve başlar, 6 yardımcısını atar |
 | 19–25 | Genel başkan cumhurbaşkanı adayını belirler: kendisi, başka bir üye ya da üyelerin ön seçimi |
-| 26 | Milletvekili aday adaylığı (ve CB ön seçimi başvurusu) |
-| 28 | Vekil ön seçimi: partinin ildeki üyeleri liste sırasını belirler |
-| 1 | Genel seçim + cumhurbaşkanlığı seçimi, 08:00–17:00, sonuç 18:00 |
+| 24–26 | Milletvekili aday adaylığı (3 gün); CB ön seçimi başvurusu 26–27 |
+| 28 | Vekil ve CB ön seçimleri, 08:00–22:00: partinin ildeki üyeleri liste sırasını belirler |
+| 1 | Genel seçim + cumhurbaşkanlığı seçimi, 08:00–22:00, sonuç 22:30 |
 | 2 | Vekiller göreve başlar. CB'de kimse %50'yi geçemediyse ilk iki aday 2. tura girer, kazanan 3'ünde göreve başlar |
 
 ## 3. Makamlar
@@ -211,8 +211,8 @@ Oyunda NPC halk yok; seçmen de vatandaş da gerçek oyuncular. Bu yüzden beled
 ### Para nasıl kazanılır?
 | Yol | Nasıl çalışır |
 |---|---|
-| **Maaş kumbarası** | Maaş saat saat kumbarada birikir. 8 saatte dolar ve durur. Oyuncu girip "Topla"ya basınca cüzdana geçer. Günde 3 kez gelen kaybetmez. Kumbara dolunca telefona bildirim gider |
-| **Günlük seri** | Her gün en az bir kez toplayan oyuncunun maaşına her gün +%5 eklenir, en fazla +%30. Bir gün kaçırılırsa seri sıfırlanır |
+| **Maaş kumbarası** | Maaş saat saat kumbarada birikir. 16 saatte dolar ve durur (yasayla 12–24 saat). Oyuncu girip "Topla"ya basınca cüzdana geçer. Günde 3 kez gelen kaybetmez. Kumbara dolunca telefona bildirim gider |
+| **Günlük seri** | Her gün en az bir kez toplayan oyuncunun maaşına her gün +%5 eklenir, en fazla +%30. Kaçırılan her gün seri bir basamak geri gider (sıfırlanmaz) |
 | **Statü (kıdem)** | Oyuna girilen her gün +1, kullanılan her oy +3 kıdem puanı. Basamaklar: Yeni Gelen (0), Vatandaş (10), Saygın Vatandaş (30), Kanaat Önderi (75), Duayen (150), Yaşayan Efsane (300). Her basamak maaşa **kıdem primi** kadar ekler (başlangıçta %10; hükümet belirler) |
 | **Makam maaşı** | Görevdekiler asgari ücretin yanında makam maaşı da alır (aşağıdaki tablo) |
 | **Ödüllü reklam** | Reklam izleyen 2 saatlik maaşı kadar ödül alır. Günde 5 kez, aralarında en az 60 saniye |
@@ -551,3 +551,47 @@ Karne oyuncu kartında, parti sayfasında, il sayfasında ve belediye ekranında
 - **Reklam ve satın alma:** KURULUM.md, 10. bölüm (AdMob ve RevenueCat).
 - **Mağaza:** Capacitor ile paketleme ve mağazaya gönderim.
 - **Denge:** Gerçek oyuncularla ekonomi, propaganda ve belediye dengesinin ayarlanması.
+
+## 10. Oyuncu deneyimi güncellemesi (2026-10-09)
+
+**Neden:** Gerçek oyuncuların ilk günlerde sıkılmaması, az oyuncuyla da seçimlerin yarış olması ve çalışan/öğrenci oyuncuların takvimi kaçırmaması için.
+
+### Yeni oyuncu
+- Seçmen kartı için önerilen kıdem şartı **3** (her gün maaş toplamak +1). Hesap yaşı şartı (3 gün) aynen sürer.
+- Seçmen kütüğü beklemesi (ilde 7 gün) yalnızca **il değiştirenlere** uygulanır; hesabı açtığın ilk ilde bekleme yoktur.
+- Gündem'de yeni oyuncuya **İlk adımlar** listesi: ilk maaş, portre, partiye katılma, il kahvesinde tanışma, haftalık anket, ilk oy.
+
+### Meclis oyuncu sayısına göre ölçeklenir
+- Genel seçimin başvuruları açılırken sandalye sayısı = son 14 günde oyuna giren oyuncu × **meclis ölçeği** (varsayılan 0,25; yönetici panelinden değişir, 0 = kapalı).
+- En az 81 (her ile bir), en fazla anayasadaki sayı (600). Sandalyeler illere nüfus ağırlığıyla dağıtılır. Gündem'e haber olur.
+
+### Görev ihmali
+- 3 gün oyuna girmeyen **bakan** ve **genel başkan yardımcısı**, 7 gün girmeyen **cumhurbaşkanı**, **belediye başkanı** ve **genel başkan** görevden düşer.
+- Önce bildirimle uyarılır (atamada 1, seçilmiş görevde 2 gün süre). Seçilmiş makam boşalınca olağanüstü seçim takvimi açılır.
+- Genel başkansız kalan partide otomatik halef önce son 7 günde oyuna girmiş üyeler arasından seçilir. Süreler yönetici panelinden değişir (0 = kapalı).
+
+### Mitingler
+- Bir seçimde aday olan oyuncu, oylama bitmeden ilinde **1 saatlik** miting düzenler (15 dk–3 gün sonrasına). Bedeli 1.500 ₺ × il büyüklüğü × fiyat düzeyi.
+- Aynı ilde aynı saatte tek miting olur. Başlayınca ildeki herkese bildirim ve push gider; ildeki oyuncular katılır, katılan günde bir kez **+1 kıdem** kazanır.
+- Bitince "X, İzmir mitinginde N kişiye seslendi" haberi Gündem'e düşer.
+
+### Para hediyesi
+- Oyuncuya, şirkete ya da gazeteye aktarılan para (hediye + banka havalesi birlikte) **günlük aktarma sınırına** tabidir ve seçmen kartı ister.
+- Partiye, şehre ve hazineye bağış sınırsızdır; kıdem kazancı yalnız bu kamusal bağışlardan (günde en fazla 1).
+- Hediyeler yönetici panelindeki transfer listesinde "hediye" kanalıyla görünür.
+
+### Kimlik ve tarih
+- **Portre:** oyuncu ten, saç (başörtüsü dahil), bıyık/sakal, gözlük, kıyafet ve arka plan seçerek kendi portresini çizer; 160 karakterlik biyografi yazar. Oyuncu kartında, sohbette, sonuçlarda görünür.
+- **Parti kimliği:** genel başkan partinin ekonomi (devletçi ↔ serbest piyasa) ve toplum (özgürlükçü ↔ muhafazakâr) konumunu ve sloganını belirler (konum günde bir kez değişir). Partiler ekranında siyasi harita; "Hangi parti bana yakın?" 8 soruluk test.
+- **Cumhuriyet tarihi** (Devlet › Tarih): cumhurbaşkanları, Meclis dönemleri, kanunlar, partiler ve rekorlar. Oyun hiç sıfırlanmadığı için tarih birikir.
+
+### Arayüz kimliği: "Seçim gecesi stüdyosu"
+- Lacivert stüdyo zemini; oy pusulası kâğıdı; **tercih mührü moru** oyuncunun eylemleri için; **canlı kırmızısı** sandık açık / son dakika için; diğer renkleri partiler taşır.
+- Başlık ve rakamlar **Kurul Display** (TeX Gyre Heros Cn'nin Türkçe alt kümesi, GUST lisansı) — dosyaya gömülü, internet istemez. Metin telefonun kendi yazı tipi.
+- Oy verme kâğıt pusula üzerinde "TERCİH" mührüyle; sonuçlar seçim gecesi yayını gibi sahnelenir (sandalye şeridi, yarım daire Meclis, il haritası).
+- Gündem: kayan haber şeridi, sıradaki an için büyük geri sayım, ayın seçim takvimi şeridi, "Bugün" yapılacaklar listesi; dakikalık yenilemede kaydırma konumu korunur.
+
+### Düzeltilen hatalar
+- Genel seçim sayımı "aday_id is ambiguous" hatasıyla duruyordu; ilk genel seçimde motor kilitlenirdi.
+- Yedekten dönüş, kimlik sütunu "generated always" olan tablolarda hata veriyordu.
+- Tam kurulum dosyası temiz bir veritabanında çalışmıyordu.

@@ -1,0 +1,9 @@
+Kurul Display — oyunun başlık ve rakam yazı tipi.
+
+Kaynak: TeX Gyre Heros Cn (GUST e-foundry), GUST Font License / LPPL 1.3c.
+Bu klasördeki dosyalar o yazı tipinin Latin + Türkçe karakter alt kümesidir (WOFF).
+Lisansın isteği doğrultusunda türetilmiş yazı tipine yeni ad verildi: "Kurul Display".
+Lisans metni: GUST-FONT-LICENSE.txt
+
+Derleme (build/derle.js) bu dosyaları base64 olarak tek HTML dosyasına gömer;
+uygulama yazı tipi için internete bağlanmaz.

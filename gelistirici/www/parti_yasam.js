@@ -5,7 +5,7 @@ async function grupToplantiEkrani(pid){
   catch(err){iskelet("Parti Grup Toplantıları",'<div class="bos">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
 function grupToplantiCiz(pid,d){
-  let h='<div class="kart"><h2>🎙️ Genel başkanın grup konuşmaları</h2><p class="alt">Parti genel başkanı üyelerine konuşma yayımlayabilir; duyurular arşivlenir ve üyeler bildirim alır.</p>';
+  let h='<div class="kart"><h2>Genel başkanın grup konuşmaları</h2><p class="alt">Parti genel başkanı üyelerine konuşma yayımlayabilir; duyurular arşivlenir ve üyeler bildirim alır.</p>';
   if(d.yazabilirim)h+='<button class="btn altin" onclick="grupKonusmaModal('+pid+')">Yeni grup konuşması yap</button>';
   h+='</div>';
   (d.kayitlar||[]).forEach(function(k){h+='<div class="kart"><h3>'+e(k.baslik)+'</h3><p class="kucuk">'+e(k.yazan)+' · '+tarihSaat(k.tarih)+'</p><p style="white-space:pre-wrap;margin-top:10px">'+e(k.metin)+'</p></div>';});
@@ -22,7 +22,7 @@ async function partiDisiplinEkrani(pid){
   catch(err){iskelet("Parti Disiplin Kurulu",'<div class="bos">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
 function partiDisiplinCiz(pid,d){
-  let h='<div class="kart"><h2>⚖️ Parti disiplin kurulu</h2><p class="alt">Genel başkan üyeyi disiplin oylamasına sevk edebilir. İhraç için 24 saatlik oylamada hedef üye hariç seçmenlerin çoğunluğu gerekir. Genel başkan bu yolla ihraç edilemez.</p>';
+  let h='<div class="kart"><h2>Parti disiplin kurulu</h2><p class="alt">Genel başkan üyeyi disiplin oylamasına sevk edebilir. İhraç için 24 saatlik oylamada hedef üye hariç seçmenlerin çoğunluğu gerekir. Genel başkan bu yolla ihraç edilemez.</p>';
   if(d.gb_miyim)h+='<button class="btn altin" onclick="partiDisiplinModal('+pid+')">Üyeyi disipline sevk et</button>';
   h+='</div>';
   (d.kayitlar||[]).forEach(function(k){

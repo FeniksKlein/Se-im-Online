@@ -6,8 +6,8 @@ async function ticaretGecmisimEkrani(){
  try{
   const d=await API.rpc("ticaret_gecmisim");
   const kayitlar=d.kayitlar||[];
-  const baslik={mulk_oyuncu:"🏠 Oyuncudan gayrimenkul",mulk_devlet:"🏡 Devletten gayrimenkul",sirket_tam:"🏢 Şirketin tamamı",sirket_hisse:"📊 Şirket hissesi"};
-  let h='<div class="kart"><h2>🧾 Alım–satım geçmişim</h2><p class="alt">Tamamlanan işlemler: mülk, işyeri, şirket ve şirket hissesi. Yalnızca alıcı veya satıcı olduğun işlemleri görürsün. Eski şirket tam satışlarında geriye dönük taraf ve bedel bilgisi yoksa kayıt üretilemez.</p></div>';
+  const baslik={mulk_oyuncu:"Oyuncudan gayrimenkul",mulk_devlet:"Devletten gayrimenkul",sirket_tam:"Şirketin tamamı",sirket_hisse:"Şirket hissesi"};
+  let h='<div class="kart"><h2>Alım–satım geçmişim</h2><p class="alt">Tamamlanan işlemler: mülk, işyeri, şirket ve şirket hissesi. Yalnızca alıcı veya satıcı olduğun işlemleri görürsün. Eski şirket tam satışlarında geriye dönük taraf ve bedel bilgisi yoksa kayıt üretilemez.</p></div>';
   h+=kayitlar.length?kayitlar.map(x=>`<div class="kart">
     <div class="kv"><b>${e(baslik[x.tur]||"Alım-satım")}</b><span class="rozet ${x.benim_rolum==="alici"?"altin":""}">${x.benim_rolum==="alici"?"Satın aldım":"Sattım"}</span></div>
     <h3 style="margin:7px 0 12px">${e(x.varlik)}</h3>
@@ -28,7 +28,7 @@ async function emlakPazarEkrani(){
 }
 function emlakPazarCiz(d){
   const ilanlar=d.ilanlar||[];
-  let h='<div class="kart"><h2>🏠 Oyuncular arası gayrimenkul pazarı</h2><p class="alt">Daire, dükkân ve villalarını satışa çıkarabilir veya başka bir oyuncudan satın alabilirsin. Haftalık kira getirisi başlangıç mülk değerinin %2,5’i temel alınarak hesaplanır; satış ilanındaki fiyat kirayı otomatik artırmaz. Satış bedelinin %2’si işlem vergisi olarak hazineye gider.</p><button class="btn ikinci" onclick="ekranAc(mulkEkrani)">Kendi mülklerim</button></div>';
+  let h='<div class="kart"><h2>Oyuncular arası gayrimenkul pazarı</h2><p class="alt">Daire, dükkân ve villalarını satışa çıkarabilir veya başka bir oyuncudan satın alabilirsin. Haftalık kira getirisi başlangıç mülk değerinin %2,5’i temel alınarak hesaplanır; satış ilanındaki fiyat kirayı otomatik artırmaz. Satış bedelinin %2’si işlem vergisi olarak hazineye gider.</p><button class="btn ikinci" onclick="ekranAc(mulkEkrani)">Kendi mülklerim</button></div>';
   if(!ilanlar.length)h+='<div class="kart"><p class="alt">Henüz satılık mülk yok. İlk ilanı sen verebilirsin.</p></div>';
   ilanlar.forEach(function(x){
     h+='<div class="kart"><div class="kv"><b>'+e({daire:'Daire',dukkan:'Dükkân',villa:'Villa'}[x.tip]||x.tip)+' #'+x.mulk_id+' · '+e(x.il)+'</b><span class="rozet altin">'+(x.benim?'Senin ilanın':'Satılık')+'</span></div>';
@@ -62,7 +62,7 @@ async function maasEkrani(){
 }
 function maasCiz(d){
   const o=d.oranlar||{};
-  let h='<div class="kart"><h2>⚖️ Meclis maaş düzenlemeleri</h2><p class="alt">Cumhurbaşkanı kendi maaşını, milletvekilleri vekil maaşını değiştirmeyi önerebilir. Teklif 24 saat milletvekili oyuna açık kalır. Kabul edilirse tüm ilgili makamlara aynı oran uygulanır.</p>';
+  let h='<div class="kart"><h2>Meclis maaş düzenlemeleri</h2><p class="alt">Cumhurbaşkanı kendi maaşını, milletvekilleri vekil maaşını değiştirmeyi önerebilir. Teklif 24 saat milletvekili oyuna açık kalır. Kabul edilirse tüm ilgili makamlara aynı oran uygulanır.</p>';
   h+='<div class="kv"><span>Cumhurbaşkanı maaş katsayısı</span><b>×'+fmt(o.cb||1,2)+'</b></div><div class="kv"><span>Milletvekili maaş katsayısı</span><b>×'+fmt(o.mv||1,2)+'</b></div>';
   if(d.cb_miyim)h+='<button class="btn altin" onclick="maasTeklifModal(\'cb\','+Number(o.cb||1)+')">Cumhurbaşkanı maaşı teklif et</button>';
   if(d.vekil_miyim)h+='<button class="btn altin" onclick="maasTeklifModal(\'mv\','+Number(o.mv||1)+')">Milletvekili maaşı teklif et</button>';
@@ -91,7 +91,7 @@ async function bakanSoruEkrani(){
 }
 function bakanSoruCiz(d){
   D._bakanSoru=d;
-  let h='<div class="kart"><h2>📝 Yazılı soru önergeleri</h2><p class="alt">Milletvekilleri bakanlara günde üç soru sorabilir. Bakan cevapları Meclis arşivinde tüm oyunculara açık tutulur.</p>';
+  let h='<div class="kart"><h2>Yazılı soru önergeleri</h2><p class="alt">Milletvekilleri bakanlara günde üç soru sorabilir. Bakan cevapları Meclis arşivinde tüm oyunculara açık tutulur.</p>';
   if(d.vekilim)h+='<button class="btn altin" onclick="bakanSoruModal()">Bakanlığa yazılı soru ver</button>';
   h+='</div>';
   (d.sorular||[]).forEach(function(s){
@@ -118,7 +118,7 @@ async function anketEkrani(){
   catch(err){iskelet("Haftalık Siyasi Anket",'<div class="bos">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
 function anketCiz(d){
-  let h='<div class="kart"><h2>🗳️ Haftalık parti anketi</h2><p class="alt">Sadece oyuna kayıtlı oyuncuların katıldığı oyun içi ankettir; gerçek Türkiye kamuoyunu temsil etmez. Oy her hafta yenilenir.</p><div class="kv"><span>Hafta</span><b>'+e(d.hafta)+'</b></div><div class="kv"><span>Katılım</span><b>'+fmt(d.toplam)+' oyuncu</b></div></div>';
+  let h='<div class="kart"><h2>Haftalık parti anketi</h2><p class="alt">Sadece oyuna kayıtlı oyuncuların katıldığı oyun içi ankettir; gerçek Türkiye kamuoyunu temsil etmez. Oy her hafta yenilenir.</p><div class="kv"><span>Hafta</span><b>'+e(d.hafta)+'</b></div><div class="kv"><span>Katılım</span><b>'+fmt(d.toplam)+' oyuncu</b></div></div>';
   (d.partiler||[]).sort((a,b)=>b.oy-a.oy).forEach(function(x){
     const oran=d.toplam?100*x.oy/d.toplam:0;
     h+='<div class="kart"><div class="kv"><span><b>'+e(x.ad)+'</b></span><b>%'+fmt(oran,1)+' · '+fmt(x.oy)+' oy</b></div><div class="bar"><i style="width:'+oran+'%;background:'+e(x.renk)+'"></i></div>';

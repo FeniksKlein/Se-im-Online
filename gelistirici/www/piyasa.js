@@ -5,10 +5,10 @@ async function kazikazanEkrani(){
   catch(err){iskelet("Kazı Kazan",'<div class="bos">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
 function kazikazanCiz(d,son){
-  var html='<div class="kart" style="border:2px solid var(--gold)"><h2>🎰 Kazı Kazan · 100 ₺</h2>';
-  if(son){html+='<div style="background:var(--panel2);text-align:center;padding:22px 12px;border-radius:16px;margin:12px 0"><p class="kucuk">KARTININ ÖDÜLÜ</p><div class="para '+(son.odul>100?'iyi':son.odul===0?'kotu':'')+'" style="font-size:40px">'+tlYaz(son.odul)+'</div><b>'+(son.odul===0?'Bu kart boş çıktı.':son.odul===100?'Bilet paranı geri aldın.':'Ödül cüzdanına yatırıldı!')+'</b></div>';}
+  var html='<div class="kart" style="border:2px solid var(--gold)"><h2>Kazı Kazan · 100 ₺</h2>';
+  if(son){html+='<div style="background:var(--panel2);text-align:center;padding:22px 12px;border-radius:16px;margin:12px 0"><p class="kucuk">Kartının ödülü</p><div class="para '+(son.odul>100?'iyi':son.odul===0?'kotu':'')+'" style="font-size:40px">'+tlYaz(son.odul)+'</div><b>'+(son.odul===0?'Bu kart boş çıktı.':son.odul===100?'Bilet paranı geri aldın.':'Ödül cüzdanına yatırıldı!')+'</b></div>';}
   html+='<div class="kv"><span>Cüzdanım</span><b>'+tlYaz(son?son.cuzdan:d.cuzdan)+'</b></div>';
-  html+='<button class="btn altin" onclick="kazikazanOyna()">🎟️ 100 ₺’ye yeni kart aç</button><p class="kucuk">Sanal oyun parası. Kartın sonucu sunucuda belirlenir, kazanma garantisi yoktur.</p></div>';
+  html+='<button class="btn altin" onclick="kazikazanOyna()">100 ₺’ye yeni kart aç</button><p class="kucuk">Sanal oyun parası. Kartın sonucu sunucuda belirlenir, kazanma garantisi yoktur.</p></div>';
   html+='<div class="kart"><h2>Olasılık ve ödüller</h2>';
   [[0,"72%"],[100,"18%"],[200,"7%"],[1000,"2,5%"],[5000,"0,45%"],[10000,"0,05%"]].forEach(function(x){html+='<div class="kv"><span>'+tlYaz(x[0])+'</span><b>'+x[1]+'</b></div>';});
   html+='<p class="kucuk">Ortalama beklenen ödül 84,50 ₺/kart; uzun vadede devletin beklenen net payı 15,50 ₺/kart. Tek bir oyun sonucu değişebilir.</p></div>';
@@ -35,7 +35,7 @@ async function piyasaEkrani(){
 function piyasaCiz(d){
   D._piyasa=d;
   var liste=d.varliklar||[],makro=d.makro||{},portfoy=liste.reduce(function(s,x){return s+Number(x.deger||0);},0);
-  var html='<div class="kart" style="border:2px solid var(--gold)"><h2>📊 Tüm oyuncular için ortak piyasa</h2>';
+  var html='<div class="kart" style="border:2px solid var(--gold)"><h2>Tüm oyuncular için ortak piyasa</h2>';
   html+='<div class="kv"><span>Cüzdan</span><b>'+tlYaz(d.cuzdan)+'</b></div><div class="kv"><span>Portföy değeri</span><b>'+tlYaz(portfoy)+'</b></div>';
   html+='<p class="kucuk">Fiyat saati: '+tarihSaat(d.saat)+' · Her saat tek sunucu fiyatı. Herkes aynı fiyatı görür. Fiyatlar yükselebilir veya düşebilir. Bu fiyatlar gerçek borsa verileri değil, oyun ekonomisinin simülasyonudur.</p>';
   html+='<button class="btn ikinci" onclick="piyasaEkrani()">↻ Fiyatları yenile</button></div>';
@@ -53,7 +53,7 @@ function piyasaCiz(d){
     html+='<div class="satir"><button class="btn yarim altin" data-piyasa-kod="'+e(x.kod)+'" data-piyasa-yon="al">Al</button><button class="btn yarim ikinci" data-piyasa-kod="'+e(x.kod)+'" data-piyasa-yon="sat" '+(Number(x.miktar)<=0?'disabled':'')+'>Sat</button></div></div>';
   });
   html+='<div class="kart"><h2>Son işlemlerim</h2>';
-  (d.islemler||[]).forEach(function(x){html+='<div class="kv"><span>'+ (x.yon==='al'?'🟢 Alış':'🔴 Satış')+' · '+e(x.kod)+'<div class="kucuk">'+tarihSaat(x.zaman)+' · '+fmt(x.miktar,6)+' adet · komisyon '+tlYaz(x.komisyon)+'</div></span><b>'+tlYaz(x.brut)+'</b></div>';});
+  (d.islemler||[]).forEach(function(x){html+='<div class="kv"><span>'+ (x.yon==='al'?'▲ Alış':'▼ Satış')+' · '+e(x.kod)+'<div class="kucuk">'+tarihSaat(x.zaman)+' · '+fmt(x.miktar,6)+' adet · komisyon '+tlYaz(x.komisyon)+'</div></span><b>'+tlYaz(x.brut)+'</b></div>';});
   html+='<p class="kucuk">Alış ve satışta %0,3 komisyon (en az 1 ₺) hazineye gider. Açığa satış ve kaldıraç yoktur.</p></div>';
   iskelet("Yatırım Borsası",html,{geri:true});
   document.querySelectorAll('[data-piyasa-kod]').forEach(function(b){b.onclick=function(){piyasaEmir(b.dataset.piyasaKod,b.dataset.piyasaYon);};});

@@ -3,7 +3,7 @@ async function partiAmblemModal(pid) {
   let p; try { p=await API.rpc("parti_detay",{p_parti:pid}); }
   catch(err){toast(hataCevir(err.message),true);return;}
   let secim=p.amblem;
-  const m=modal(`<h3>🎨 Parti amblemini değiştir</h3>
+  const m=modal(`<h3>Parti amblemini değiştir</h3>
     <p class="alt">Yalnızca görevdeki genel başkan değiştirebilir. Parti rengi korunur; seçimin üyelere ve seçim ekranına yansır. Önceki amblem kayıt altında kalır.</p>
     <div class="kart" style="text-align:center;background:var(--panel2)">
       <div id="paAmblemOnizle" style="width:64px;height:64px;display:grid;place-items:center;margin:0 auto 10px;border-radius:16px;background:${e(p.renk)}22"></div>
@@ -40,7 +40,7 @@ window.ucretModal=async function(pid){
   catch(err){toast(hataCevir(err.message),true);return;}
   if(!t.genel_baskan_miyim){toast("Adaylık ücretlerini yalnızca parti genel başkanı belirleyebilir.",true);return;}
   const UC=[["mv_on","Milletvekili aday adaylığı"],["bel_on","Belediye başkanı aday adaylığı"],["kurultay","Genel başkanlık adaylığı"],["cb_on","Cumhurbaşkanı aday adaylığı"]];
-  const m=modal(`<h3>💰 Parti adaylık ücretlerini belirle</h3>
+  const m=modal(`<h3>Parti adaylık ücretlerini belirle</h3>
     <p class="alt">Her adaylık türü için taban ücretin 0–3 katı belirlenir (0 = ücretsiz). Ücretler parti kasasına girer. Mevcut ödemeler değişmez. Tabanlar ülke ekonomisine bağlıdır.</p>
     <p class="alt">Belediye adaylığı ücretleri illerin milletvekili sayısına göre değişir. Aşağıdaki TL tutarları senin iline (${e(t.il||"")}) göre örnektir.</p>
     ${UC.map(([tur,ad])=>`<div class="kart" style="background:var(--panel2);margin:8px 0">

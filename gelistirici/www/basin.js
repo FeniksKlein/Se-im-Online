@@ -32,10 +32,10 @@ async function basinEkrani() {
   let d;
   try { d = await API.rpc('basin'); }
   catch (err) { iskelet('Basın / Gazeteler', `<div class="kart"><p>${e(hataCevir(err.message))}</p><button class="btn ikinci" onclick="basinEkrani()">Tekrar dene</button></div>`); return; }
-  iskelet('Basın / Gazeteler', `<div class="kart basin-manset"><div class="kucuk">OYUNCULARIN SESİ</div><h1>Basın meydanı</h1><p class="alt">Haberler, köşe yazıları ve açıkça etiketlenmiş siyasi yayınlar.</p></div>
-    <div class="kart tg-kart-kisa"><h2>📰 TÜRKİYE GÜNDEM · OTOMATİK GAZETE</h2>
+  iskelet('Basın / Gazeteler', `<div class="kart basin-manset"><div class="kucuk">Oyuncuların sesi</div><h1>Basın meydanı</h1><p class="alt">Haberler, köşe yazıları ve açıkça etiketlenmiş siyasi yayınlar.</p></div>
+    <div class="kart tg-kart-kisa"><h2>Türkiye Gündem · otomatik gazete</h2>
   <p class="alt">Cumhurbaşkanı adayları, parti değişimleri, seçim beyannameleri ve ittifaklar; bütün gerçek gelişmeler tek gazetede. Ücretsiz ve 5 dakikada bir güncellenir.</p>
-  <button class="btn altin" onclick="otomatikGazeteEkrani()">📰 Son dakika ve manşetleri oku</button></div>
+  <button class="btn altin" onclick="otomatikGazeteEkrani()">Son dakika ve manşetleri oku</button></div>
   <div class="kart" id="basinBenim"><h2>${d.benim ? 'Gazetem' : 'Kendi gazeteni kur'}</h2><p class="alt">${d.benim ? e(d.benim.ad) + ' · Kasa: ' + tlYaz(d.benim.kasa) : 'Kuruluş bedeli: ' + tlYaz(d.kurulus_ucreti) + '. Ücretsiz veya ücretli yayın yapabilirsin.'}</p></div>
     <div id="basinTeklifler"></div><div id="basinYazarlik"></div><h2>Gazete büfesi</h2><div id="basinListe" class="basin-grid"></div>`, { geri: true });
   $('#basinBenim').appendChild(basinDugme(d.benim ? 'Gazetemi yönet' : 'Gazete kur', () => d.benim ? ekranAc(() => gazeteEkrani(d.benim.id)) : gazeteKurModal(d.kurulus_ucreti), 'altin'));
@@ -51,7 +51,7 @@ async function basinEkrani() {
     $('#basinTeklifler').appendChild(el);
   }
   const yazarlik=(d.gazeteler||[]).filter(g=>g.yaziyim);
-  if(yazarlik.length)$('#basinYazarlik').innerHTML='<section class="kart"><h2>✍️ Köşe yazarı olduğum gazeteler</h2>'+yazarlik.map(g=>'<div class="kv"><span>'+e(g.ad)+'</span><button class="btn ikinci" onclick="ekranAc(()=>gazeteEkrani('+Number(g.id)+'))">Yazı yaz</button></div>').join('')+'</section>';
+  if(yazarlik.length)$('#basinYazarlik').innerHTML='<section class="kart"><h2>Köşe yazarı olduğum gazeteler</h2>'+yazarlik.map(g=>'<div class="kv"><span>'+e(g.ad)+'</span><button class="btn ikinci" onclick="ekranAc(()=>gazeteEkrani('+Number(g.id)+'))">Yazı yaz</button></div>').join('')+'</section>';
   const liste = $('#basinListe');
   for (const g of d.gazeteler || []) {
     const el = document.createElement('article'); el.className = 'kart basin-gazete';
@@ -74,21 +74,21 @@ async function gazeteEkrani(id, veri) {
     try { g = await API.rpc('gazete_detay', { p_gazete: id }); }
     catch (err) { iskelet('Gazete', `<div class="kart">${e(hataCevir(err.message))}<button class="btn ikinci" onclick="yenidenCiz()">Tekrar dene</button></div>`); return; }
   }
-  iskelet('Basın / Gazeteler', `<header class="kart basin-manset"><div class="kucuk">OYUNCU GAZETESİ</div><h1>${e(g.ad)}</h1><p>${e(g.slogan)}</p><p class="kucuk">Sahibi: ${e(g.sahip)} · ${fmt(g.abone, 0)} abone</p><span class="rozet ${g.abonelik_ucret > 0 ? 'altin' : 'yesil'}">${g.abonelik_ucret > 0 ? tlYaz(g.abonelik_ucret) + ' / ay' : 'Ücretsiz gazete'}</span>${g.abonelik_bitis ? `<p class="kucuk">Abonelik bitişi: ${e(tarihSaat(g.abonelik_bitis))}</p>` : ''}<div id="gazEylem"></div></header>
-    <div id="gazYonetim"></div><div id="gazYayinlar">${(g.yayinlar || []).map(y => `<article class="kart basin-yazi"><span class="rozet ${y.tur === 'propaganda' ? 'kirmizi' : ''}">${e(BASIN_TUR[y.tur] || y.tur)}</span>${y.tur === 'propaganda' ? `<p class="basin-propaganda">Bu yayın siyasi propagandadır. Hedef parti: ${e(y.hedef_parti && (y.hedef_parti.ad || y.hedef_parti.kisa) || 'Belirtilmemiş')}</p>` : ''}<h2>${e(y.baslik)}</h2><div class="kucuk">${e(y.yazar)} · ${e(tarihSaat(y.zaman))}</div><div class="basin-metin">${e(y.metin)}</div>${y.kilitli ? '<div class="basin-kilit">🔒 Önizleme · Tam yazıyı okumak için gazeteye abone ol.</div>' : ''}${y.tur==='kose' && !y.kilitli && g.erisim ? `<div style="margin-top:10px"><button class="btn ikinci" onclick="gazeteKoseYorumGoster(${Number(y.id)},${Number(g.id)})">💬 Yorumları gör / yorum yaz</button><div id="gaz_kose_yorum_${Number(y.id)}"></div></div>` : ''}</article>`).join('') || '<div class="bos">Henüz yazı yayımlanmamış.</div>'}</div>`, { geri: true });
+  iskelet('Basın / Gazeteler', `<header class="kart basin-manset"><div class="kucuk">Oyuncu gazetesi</div><h1>${e(g.ad)}</h1><p>${e(g.slogan)}</p><p class="kucuk">Sahibi: ${e(g.sahip)} · ${fmt(g.abone, 0)} abone</p><span class="rozet ${g.abonelik_ucret > 0 ? 'altin' : 'yesil'}">${g.abonelik_ucret > 0 ? tlYaz(g.abonelik_ucret) + ' / ay' : 'Ücretsiz gazete'}</span>${g.abonelik_bitis ? `<p class="kucuk">Abonelik bitişi: ${e(tarihSaat(g.abonelik_bitis))}</p>` : ''}<div id="gazEylem"></div></header>
+    <div id="gazYonetim"></div><div id="gazYayinlar">${(g.yayinlar || []).map(y => `<article class="kart basin-yazi"><span class="rozet ${y.tur === 'propaganda' ? 'kirmizi' : ''}">${e(BASIN_TUR[y.tur] || y.tur)}</span>${y.tur === 'propaganda' ? `<p class="basin-propaganda">Bu yayın siyasi propagandadır. Hedef parti: ${e(y.hedef_parti && (y.hedef_parti.ad || y.hedef_parti.kisa) || 'Belirtilmemiş')}</p>` : ''}<h2>${e(y.baslik)}</h2><div class="kucuk">${e(y.yazar)} · ${e(tarihSaat(y.zaman))}</div><div class="basin-metin">${e(y.metin)}</div>${y.kilitli ? '<div class="basin-kilit">Önizleme · Tam yazıyı okumak için gazeteye abone ol.</div>' : ''}${y.tur==='kose' && !y.kilitli && g.erisim ? `<div style="margin-top:10px"><button class="btn ikinci" onclick="gazeteKoseYorumGoster(${Number(y.id)},${Number(g.id)})">Yorumları gör / yorum yaz</button><div id="gaz_kose_yorum_${Number(y.id)}"></div></div>` : ''}</article>`).join('') || '<div class="bos">Henüz yazı yayımlanmamış.</div>'}</div>`, { geri: true });
   const eylem = $('#gazEylem');
   if (!g.erisim && g.abonelik_ucret > 0) eylem.appendChild(basinDugme('Abone ol · ' + tlYaz(g.abonelik_ucret), () => {
     basinForm('Gazeteye abone ol', `<p>${e(g.ad)} için cüzdanından ${tlYaz(g.abonelik_ucret)} ödenir. Abonelik bitişi işlemden sonra gösterilir.</p>`, 'Öde ve abone ol', 'gazete_abone_ol', () => ({ p_gazete: g.id }), r => gazeteEkrani(g.id, r));
   }, 'altin'));
-  eylem.appendChild(basinDugme('🤝 Bu gazeteye bağış yap', () => aliciBagisModal('gazete',g.id,g.ad), 'ikinci'));
+  eylem.appendChild(basinDugme('Bu gazeteye bağış yap', () => aliciBagisModal('gazete',g.id,g.ad), 'ikinci'));
   if (g.sahibim || (g.yazarlar || []).some(y => y.benim)) eylem.appendChild(basinDugme('Yazı yayımla', () => gazeteYayinModal(g), 'altin'));
   if (g.sahibim) {
     const yon = $('#gazYonetim');
-    yon.innerHTML = `<section class="kart"><h2>Gazete kasası</h2><b>${tlYaz(g.kasa)}</b><p class="kucuk">Abonelik gelirleri kasaya eklenir; yazar ücretleri buradan ödenir.</p><div id="gazSahipEylem"></div><details><summary>Son kasa hareketleri</summary>${(g.hareketler || []).map(h => `<div class="liste-satir"><div class="orta">${e(h.aciklama)}<div class="kucuk">${e(tarihSaat(h.zaman))}</div></div><b>${tlYaz(h.tutar)}</b></div>`).join('') || '<p class="kucuk">Henüz hareket yok.</p>'}</details></section><section class="kart"><h2>✍️ Köşe yazarları</h2><p class="alt">Oyuncu kullanıcı adıyla teklif gönder. Kabul eden yazar burada görünür ve yazı başına ücret alır.</p><div id="gazYazarlar"></div></section>`;
+    yon.innerHTML = `<section class="kart"><h2>Gazete kasası</h2><b>${tlYaz(g.kasa)}</b><p class="kucuk">Abonelik gelirleri kasaya eklenir; yazar ücretleri buradan ödenir.</p><div id="gazSahipEylem"></div><details><summary>Son kasa hareketleri</summary>${(g.hareketler || []).map(h => `<div class="liste-satir"><div class="orta">${e(h.aciklama)}<div class="kucuk">${e(tarihSaat(h.zaman))}</div></div><b>${tlYaz(h.tutar)}</b></div>`).join('') || '<p class="kucuk">Henüz hareket yok.</p>'}</details></section><section class="kart"><h2>Köşe yazarları</h2><p class="alt">Oyuncu kullanıcı adıyla teklif gönder. Kabul eden yazar burada görünür ve yazı başına ücret alır.</p><div id="gazYazarlar"></div></section>`;
     const yer = $('#gazSahipEylem');
     yer.appendChild(basinDugme('Kasadan para çek', () => basinForm('Gazete geliri çek', `<p class="alt">Kasa: ${tlYaz(g.kasa)}</p>` + basinAlan('gazMiktar', 'Çekilecek tutar (₺)', 'type="number" min="100" step="1" required'), 'Cüzdanıma aktar', 'gazete_para_cek', m => ({ p_gazete: g.id, p_miktar: +$('#gazMiktar', m).value }), r => gazeteEkrani(g.id, r))));
     yer.appendChild(basinDugme('Slogan ve abonelik ayarları', () => basinForm('Gazete ayarları', basinAlan('gazSlogan', 'Slogan', 'maxlength="100"', g.slogan) + basinAlan('gazAbone', 'Aylık abonelik (₺) — ücretsiz için 0', 'type="number" min="0" step="1" required', g.abonelik_ucret), 'Kaydet', 'gazete_ayar', m => ({ p_gazete: g.id, p_slogan: $('#gazSlogan', m).value, p_abonelik: +$('#gazAbone', m).value }), r => gazeteEkrani(g.id, r))));
-    yer.appendChild(basinDugme('✍️ Köşe yazarı işe al', () => basinForm('Yazarlık teklifi', basinAlan('gazKad', 'Oyuncunun kullanıcı adı', 'required maxlength="20"') + basinAlan('gazUcret', 'Yazı başına ücret (₺)', 'type="number" min="0" max="10000" step="1" required', 0), 'Teklif gönder', 'gazete_yazar_teklif', m => ({ p_gazete: g.id, p_kad: $('#gazKad', m).value.trim(), p_ucret: +$('#gazUcret', m).value }), r => gazeteEkrani(g.id, r))));
+    yer.appendChild(basinDugme('Köşe yazarı işe al', () => basinForm('Yazarlık teklifi', basinAlan('gazKad', 'Oyuncunun kullanıcı adı', 'required maxlength="20"') + basinAlan('gazUcret', 'Yazı başına ücret (₺)', 'type="number" min="0" max="10000" step="1" required', 0), 'Teklif gönder', 'gazete_yazar_teklif', m => ({ p_gazete: g.id, p_kad: $('#gazKad', m).value.trim(), p_ucret: +$('#gazUcret', m).value }), r => gazeteEkrani(g.id, r))));
     for (const y of g.yazarlar || []) {
       const el = document.createElement('div'); el.className = 'basin-yazar';
       el.innerHTML = `<b>${e(y.kad)}</b><div class="kucuk">Yazı başına ${tlYaz(y.ucret)}</div>`;
@@ -103,7 +103,7 @@ async function gazeteKoseYorumGoster(yayinId,gazeteId){
  host.textContent="Köşe yazısı yorumları yükleniyor...";
  try{
   const d=await API.rpc("gazete_kose_yorumlar",{p_yayin:yayinId,p_limit:50});
-  host.innerHTML='<section class="kart" style="margin-top:10px"><h3>💬 Yorumlar ('+fmt(d.yorum_sayisi,0)+')</h3>'+
+  host.innerHTML='<section class="kart" style="margin-top:10px"><h3>Yorumlar ('+fmt(d.yorum_sayisi,0)+')</h3>'+
    (d.yorumlar||[]).map(x=>'<div class="liste-satir"><div class="orta"><b>'+e(x.kad)+'</b> <span class="kucuk">'+e(tarihSaat(x.zaman))+'</span><div class="basin-metin">'+e(x.metin)+'</div></div>'+
     (x.silebilir?'<button type="button" class="btn ikinci" onclick="gazeteKoseYorumSil('+Number(x.id)+','+yayinId+','+gazeteId+')">Kaldır</button>':'')+'</div>').join('')+
    (d.yorumlar.length?'':'<p class="alt">Henüz yorum yapılmamış. İlk yorumu sen yazabilirsin.</p>')+

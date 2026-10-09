@@ -146,7 +146,7 @@ d = rpc(ali, "miting_duzenle", mvon, "2026-10-25 12:00+03", "Gündoğdu Meydanı
 assert int(q(f"select para from oyun.cuzdan where user_id='{ali}'")) == para_once - d["bedel"]
 hata_bekle(rpc, veli, "miting_katil", d["id"], icerir="başlamadı")
 saat("2026-10-25 12:05")
-assert "miting yapıyor" in q(f"select metin from oyun.bildirimler where user_id='{veli}' order by zaman desc limit 1")
+assert "mitinginde" in q(f"select metin from oyun.bildirimler where user_id='{veli}' order by zaman desc limit 1")
 kidem_once = float(q(f"select kidem from oyun.cuzdan where user_id='{veli}'"))
 r = rpc(veli, "miting_katil", d["id"]); assert r["katilim"] == 1 and r["kidem"] is True
 hata_bekle(rpc, ayse, "miting_katil", d["id"], icerir="bu ilde")
