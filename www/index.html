@@ -3680,24 +3680,24 @@ async function sirketYonetimEkrani(){
   sirketOnizleme();
  }catch(err){iskelet("Şirketler",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true});}
 }
-async function sirketSermayeArtir(id){const el=document.getElementById("sir_artis_"+id);try{await API.rpc("sirket_sermaye_artir",{p_sirket:id,p_tutar:Number(el.value)});toast("Sermaye artırıldı; sonraki haftalık kazanç hesabına yansıyacak.");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}}
-async function sirketSatisaCikar(id){const el=document.getElementById("sir_satis_"+id);try{await API.rpc("sirket_satiliga_cikar",{p_sirket:id,p_fiyat:el.value?Number(el.value):null});toast(el.value?"Şirket satışa çıkarıldı.":"Satış ilanı kaldırıldı.");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}}
-async function sirketPazardanAl(id){try{await API.rpc("sirket_satilik_al",{p_sirket:id});toast("Şirket satın alındı.");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketSermayeArtir(id){const el=document.getElementById("sir_artis_"+id);try{await API.rpc("sirket_sermaye_artir",{p_sirket:id,p_tutar:Number(el.value)});toast("Sermaye artırıldı; sonraki haftalık kazanç hesabına yansıyacak.");sirketYonetimEkrani()}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketSatisaCikar(id){const el=document.getElementById("sir_satis_"+id);try{await API.rpc("sirket_satiliga_cikar",{p_sirket:id,p_fiyat:el.value?Number(el.value):null});toast(el.value?"Şirket satışa çıkarıldı.":"Satış ilanı kaldırıldı.");sirketYonetimEkrani()}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketPazardanAl(id){try{await API.rpc("sirket_satilik_al",{p_sirket:id});toast("Şirket satın alındı.");sirketYonetimEkrani()}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketSatisIlani(id){
  const raw=prompt("Şirketin tamamının satış fiyatı (₺). İlanı kaldırmak için 0 yaz:", "500000");
  if(raw===null)return;const fiyat=Number(raw);
  if(!Number.isFinite(fiyat)||fiyat<0){toast("Geçersiz fiyat",true);return;}
- try{await API.rpc("sirket_satiliga_cikar",{p_sirket:id,p_fiyat:fiyat===0?null:fiyat});toast(fiyat===0?"Satış ilanı kaldırıldı":"Şirket satışa çıkarıldı");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
+ try{await API.rpc("sirket_satiliga_cikar",{p_sirket:id,p_fiyat:fiyat===0?null:fiyat});toast(fiyat===0?"Satış ilanı kaldırıldı":"Şirket satışa çıkarıldı");sirketYonetimEkrani()}catch(err){toast(hataCevir(err.message),true)}
 }
 async function sirketPazarAl(id){
  if(!confirm("Bu şirketi ilanda belirtilen fiyattan satın almak istiyor musun?"))return;
- try{await API.rpc("sirket_satilik_al",{p_sirket:id});toast("Şirket satın alındı");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
+ try{await API.rpc("sirket_satilik_al",{p_sirket:id});toast("Şirket satın alındı");sirketYonetimEkrani()}catch(err){toast(hataCevir(err.message),true)}
 }
-async function sirketKur(){const ad=document.getElementById("sir_ad").value.trim(),sektor=document.getElementById("sir_sektor").value,sermaye=Number(document.getElementById("sir_sermaye").value),min=sektor==="banka"?_sirketEkonomi.banka:_sirketEkonomi.normal;if(ad.length<3||ad.length>50){toast("Şirket adı 3-50 karakter olmalı.",true);return;}if(!Number.isSafeInteger(sermaye)||sermaye<min||sermaye>100000000){sirketOnizleme();toast("Bu sektör için en az "+fmt(min)+" ₺, en fazla 100.000.000 ₺ sermaye gerekir.",true);return;}try{await API.rpc("sirket_kur",{p_ad:ad,p_sektor:sektor,p_sermaye:sermaye});toast("Şirket kuruldu");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
-async function sirketKarPayi(id){try{await API.rpc("sirket_kar_payi",{p_sirket:id,p_tutar:Number(document.getElementById("sir_kar_"+id).value)});toast("Kâr payı dağıtıldı");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
-async function sirketPayTeklif(id){try{await API.rpc("sirket_pay_teklif",{p_sirket:id,p_alici:document.getElementById("sir_alici_"+id).value,p_pay:Number(document.getElementById("sir_pay_"+id).value),p_bedel:Number(document.getElementById("sir_bedel_"+id).value)});toast("Ortaklık teklifi gönderildi");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
-async function sirketTeklifKabul(id){try{await API.rpc("sirket_pay_kabul",{p_teklif:id});toast("Şirket payı satın alındı");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
-async function sirketFaiz(id){try{await API.rpc("banka_faiz_belirle",{p_banka:id,p_faiz:Number(document.getElementById("sir_faiz_"+id).value)});toast("Faiz değiştirildi");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketKur(){const ad=document.getElementById("sir_ad").value.trim(),sektor=document.getElementById("sir_sektor").value,sermaye=Number(document.getElementById("sir_sermaye").value),min=sektor==="banka"?_sirketEkonomi.banka:_sirketEkonomi.normal;if(ad.length<3||ad.length>50){toast("Şirket adı 3-50 karakter olmalı.",true);return;}if(!Number.isSafeInteger(sermaye)||sermaye<min||sermaye>100000000){sirketOnizleme();toast("Bu sektör için en az "+fmt(min)+" ₺, en fazla 100.000.000 ₺ sermaye gerekir.",true);return;}try{await API.rpc("sirket_kur",{p_ad:ad,p_sektor:sektor,p_sermaye:sermaye});toast("Şirket kuruldu");sirketYonetimEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketKarPayi(id){try{await API.rpc("sirket_kar_payi",{p_sirket:id,p_tutar:Number(document.getElementById("sir_kar_"+id).value)});toast("Kâr payı dağıtıldı");sirketYonetimEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketPayTeklif(id){try{await API.rpc("sirket_pay_teklif",{p_sirket:id,p_alici:document.getElementById("sir_alici_"+id).value,p_pay:Number(document.getElementById("sir_pay_"+id).value),p_bedel:Number(document.getElementById("sir_bedel_"+id).value)});toast("Ortaklık teklifi gönderildi");sirketYonetimEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketTeklifKabul(id){try{await API.rpc("sirket_pay_kabul",{p_teklif:id});toast("Şirket payı satın alındı");sirketYonetimEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+async function sirketFaiz(id){try{await API.rpc("banka_faiz_belirle",{p_banka:id,p_faiz:Number(document.getElementById("sir_faiz_"+id).value)});toast("Faiz değiştirildi");sirketYonetimEkrani();}catch(err){toast(hataCevir(err.message),true)}}
 
 function oybTarih(t){return t?new Date(t).toLocaleString("tr-TR",{dateStyle:"short",timeStyle:"short"}):"—"}
 function oybVadeEtiket(h){return h===168?"7 gün":h+" saat"}
@@ -5087,7 +5087,7 @@ function sirketVitrinListeCiz(){
  const key={kazanc:"net_kazanc",vergi:"vergi",sermaye:"sermaye"}[sort];
  const l=vitSirketler.filter(x=>!tur||x.sektor===tur).sort((a,b)=>key?Number(b[key]||0)-Number(a[key]||0)||a.id-b.id:new Date(b.kurulus)-new Date(a.kurulus));
  el.innerHTML=l.map((x,i)=>`<button class="kart vit-banka" onclick="sirketDetayEkrani(${x.id})">
- <div class="vit-bas"><span class="vit-logo">🏢</span><span class="orta"><b>${i+1}. ${e(x.ad)}</b><span class="kucuk">${e(vitSektor[x.sektor]||x.sektor)} · ${e(x.sahip)}</span></span><span class="ok">›</span></div>
+ <div class="vit-bas"><span class="vit-logo">🏢</span><span class="orta"><b>${i+1}. ${e(x.ad)}</b><span class="kucuk">${e(vitSektor[x.sektor]||x.sektor)} · En büyük ortak: ${e((x.ortaklar||[])[0]?.kad||x.sahip)}</span></span><span class="ok">›</span></div>
  <div class="vit-stats"><span><small>Net kazanç</small><b>${vitTL(x.net_kazanc)}</b></span><span><small>Kayıtlı vergi</small><b>${vitTL(x.vergi)}</b></span><span><small>Şirket kasası</small><b>${vitTL(x.kasa)}</b></span></div></button>`).join("")||'<div class="kart"><p class="alt">Bu kriterlerde şirket bulunmuyor.</p></div>';
 }
 function sirketDetayEkrani(id){
