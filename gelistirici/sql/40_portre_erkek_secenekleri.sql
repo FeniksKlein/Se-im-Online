@@ -1,6 +1,5 @@
 -- 2026-10-09 - Portre ozellestirme: daha fazla erkek sac/sakal ve bagimsiz sac rengi.
 -- Eski 6 bolumlu avatarlar gecerli kalir; yeni kodda 7. bolum sac rengidir.
-begin;
 alter table oyun.oyuncu_kimlik
   drop constraint if exists oyuncu_kimlik_avatar_check;
 alter table oyun.oyuncu_kimlik
@@ -24,4 +23,3 @@ begin
 end $$;
 revoke all on function public.kimlik_guncelle(text,text) from public,anon;
 grant execute on function public.kimlik_guncelle(text,text) to authenticated;
-commit;
