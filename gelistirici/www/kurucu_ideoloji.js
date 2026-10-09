@@ -63,7 +63,7 @@ async function kurucuDavetModal(){
       try{
         await API.rpc("parti_kur_tamamla",{p_basvuru:b.id});
         modalKapat();toast("Kurucular kuruluyla partin resmen kuruldu.");
-        D.yigin=[];D.sekme="partiler";await durumYenile();partilerEkrani();
+        D.yigin=[];D.sekme="parti";await durumYenile();partilerEkrani();
       }catch(err){btn.disabled=false;toast(hataCevir(err.message),true);}
     };
     m.querySelector("#kurucuIptal").onclick=async()=>{
@@ -103,5 +103,55 @@ async function ideolojiOylamaModal(pid){
     try{await API.rpc("ideoloji_teklif_ver",{p_ideolojiler:sec});
       toast("Üyelere ideoloji değişikliği oylaması gönderildi.");ideolojiOylamaModal(pid);
     }catch(err){teklif.disabled=false;toast(hataCevir(err.message),true);}
+  };
+}
+
+/* Eski doğrudan parti kurma ekranının yerine kurucu onaylı akış. */
+function partiKurEkrani(){
+  let renk=RENKLER[6],amb=VERI.amblem[0].id;
+  iskelet("Parti kur",
+    '<div class="kart" id="onizleme"></div>'+
+    '<div class="kart">'+
+    '<div class="alan"><label>Parti adı (5–40 karakter)</label><input id="ad" maxlength="40" placeholder="Örn. Yarın Partisi"></div>'+
+    '<div class="alan"><label>Kısa ad (2–6 harf)</label><input id="kisa" maxlength="6" placeholder="Örn. YP" style="text-transform:uppercase"></div>'+
+    '<div class="alan"><label>Renk</label><div class="renkler">'+RENKLER.map(r=>'<button data-r="'+r+'" style="background:'+r+'"></button>').join("")+'</div></div>'+
+    '<div class="alan"><label>Amblem</label><div class="amblemler">'+VERI.amblem.map(a=>'<button data-a="'+a.id+'" title="'+e(a.ad)+'">'+amblemSvg(a.id,"#fff")+'</button>').join("")+'</div></div>'+
+    ideolojiSecimHtml([],"kurulusIdeoloji")+
+    '<div class="alan"><label for="kurucuNick">Kurucu adayı oyuncu adları (en az 3)</label>'+
+    '<textarea id="kurucuNick" class="alanmetin" rows="4" placeholder="Her satıra bir kullanıcı adı yaz"></textarea></div>'+
+    '<p class="alt">Oyunculara kurucular kurulu daveti gönderilir. Kurucu dışında en az 3 kişi EVET demedikçe parti kurulmaz. Onay verenler kuruluş tamamlandığında yeni partiye katılır.</p>'+
+    '<p class="kucuk" id="kurUcret">Kuruluş sermayesi hesaplanıyor…</p>'+
+    '<div class="hata-metin" id="hata"></div>'+
+    '<button class="btn altin" id="kur">Kurucu davetlerini gönder</button>'+
+    '<button class="btn ikinci" id="kurDavetGor">Kurucu davetlerini gör</button></div>',
+    {geri:true,sekmesiz:true});
+  const secilen=ideolojiSecimBagla(document);
+  API.rpc("vatandaslik").then(v=>{
+    const pk=v.parti_kurma,el=$("#kurUcret");if(!el||!pk)return;
+    el.innerHTML='<b>Gerekli sermaye: '+tlYaz(Math.max(25000,pk.ucret||0))+'</b> · Cüzdandaki: '+tlYaz(pk.para||0)+
+      '. Başvuru ücretsizdir; sermaye yalnızca kuruluş tamamlandığında alınır.';
+  }).catch(()=>{});
+  const ciz=()=>{
+    const ad=$("#ad").value||"Parti adı",kisa=($("#kisa").value||"KISA").toLocaleUpperCase("tr");
+    $("#onizleme").innerHTML='<div style="display:flex;gap:12px;align-items:center">'+amblemKutu({renk,amblem:amb},56)+
+      '<div><b style="font-size:18px">'+e(ad)+'</b><div style="color:'+renk+';font-weight:800">'+e(kisa)+'</div></div></div>';
+    document.querySelectorAll(".renkler button").forEach(b=>b.classList.toggle("secili",b.dataset.r===renk));
+    document.querySelectorAll(".amblemler button").forEach(b=>{b.classList.toggle("secili",b.dataset.a===amb);b.querySelector("svg").style.color=renk;});
+  };
+  document.querySelectorAll(".renkler button").forEach(b=>b.onclick=()=>{renk=b.dataset.r;ciz();});
+  document.querySelectorAll(".amblemler button").forEach(b=>b.onclick=()=>{amb=b.dataset.a;ciz();});
+  $("#ad").oninput=ciz;$("#kisa").oninput=ciz;ciz();
+  $("#kurDavetGor").onclick=()=>kurucuDavetModal();
+  $("#kur").onclick=async()=>{
+    const ideolojiler=secilen(),nickler=$("#kurucuNick").value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
+    if(ideolojiler.length<1||ideolojiler.length>3){$("#hata").textContent="En az 1 en fazla 3 ideoloji seç.";return;}
+    if(new Set(nickler.map(x=>x.toLocaleLowerCase("tr"))).size<3){$("#hata").textContent="Kendinden başka en az üç farklı oyuncunun kullanıcı adını yaz.";return;}
+    $("#hata").textContent="";$("#kur").disabled=true;
+    try{
+      await API.rpc("parti_kur_baslat",{p_ad:$("#ad").value,p_kisa:$("#kisa").value.toLocaleUpperCase("tr"),
+        p_renk:renk,p_amblem:amb,p_ideolojiler:ideolojiler,p_kadlar:nickler});
+      toast("Kurucu adaylarına bildirim gönderildi. En az üç kabul bekleniyor.");
+      sekmeAc("parti");kurucuDavetModal();
+    }catch(err){$("#hata").textContent=hataCevir(err.message);$("#kur").disabled=false;}
   };
 }
