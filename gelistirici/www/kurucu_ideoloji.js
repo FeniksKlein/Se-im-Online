@@ -155,3 +155,5 @@ function partiKurEkrani(){
     }catch(err){$("#hata").textContent=hataCevir(err.message);$("#kur").disabled=false;}
   };
 }
+// Eski sürümün parti kurma fonksiyonunun bu ekranı ezmesini önle.
+window.partiKurEkrani = partiKurEkrani;
