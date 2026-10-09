@@ -1244,7 +1244,7 @@ async function gundemEkrani(){
   if (davetler.length) is.push({ ikon: IKON.parti, bas: "İttifak daveti", alt: davetler.map(x => e(x.ad)).join(", "), git: `ekranAc(()=>partiDetay(${pp.parti ? pp.parti.id : 0}))` });
   aktif.filter(s => s.asama === "basvuru" && TUR[s.tur].aday && !s.adayim && !s.bagimsiz_adayim).forEach(s => is.push({ ikon: IKON.kalem, bas: `Başvuru açık: ${secimTakvimAdi(s)}`, alt: `Kapanış ${tarihSaat(s.basvuru_bit)}`, git: `document.getElementById('sec${s.id}').scrollIntoView({behavior:'smooth'})` }));
   if (p.hesap_engeli) is.push({ ikon: IKON.uyari, bas: "Seçmen kartın henüz hazır değil", alt: e(p.hesap_engeli), git: "vatandaslikModal()" });
-  if (!p.parti) is.push({ ikon: IKON.pusula, bas: "Sana yakın partiyi bul", alt: "Sekiz soruluk kısa test", git: "partiTestiModal()" });
+  if (!p.parti) is.push({ ikon: IKON.parti, bas: "Partilerin ideolojilerini incele", alt: "Partilerin ideolojilerini gör, bir partiye katıl", git: "sekmeAc(\'parti\')" });
 
   const cb = d.cb, ms = meclis && meclis.partiler ? meclis.partiler.filter(x => x.n > 0) : [];
   const govde = `
