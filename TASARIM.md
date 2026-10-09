@@ -575,6 +575,21 @@ Karne oyuncu kartında, parti sayfasında, il sayfasında ve belediye ekranında
 - Aynı ilde aynı saatte tek miting olur. Başlayınca ildeki herkese bildirim ve push gider; ildeki oyuncular katılır, katılan günde bir kez **+1 kıdem** kazanır.
 - Bitince "X, İzmir mitinginde N kişiye seslendi" haberi Gündem'e düşer.
 
+### Parti mitingi: il dışı miting yetkisi (2026-10-09, modül 50)
+- **Genel başkan** 81 ilin herhangi birinde parti adına miting düzenler; ikametgâhı değişmez.
+- **Genel başkan yardımcıları**, genel başkan kendilerine "miting yetkisi" verirse aynı hakka sahip olur. Genel başkan bu yetkiyi dilediği yardımcıya verir, dilediği an geri alır.
+- Yetki geri alınırsa (ya da düzenleyen görevini veya üyeliğini kaybederse) başlamamış mitingleri iptal olur, bedeli ödeyene iade edilir.
+- Bedel aday mitinginin bedelidir (ilin büyüklüğüne göre). Parti kasası ya da düzenleyenin kendi cebi öder; kasa yetmezse miting açılmaz.
+- Sınırlar: her yetkili günde en fazla 1 parti mitingi; aynı partinin aynı ildeki iki parti mitingi arasında en az 3 gün; genel, belediye ve cumhurbaşkanlığı seçimlerinin oy verme saatlerinde parti mitingi yapılmaz.
+- Başlayınca o ildeki herkese ve partinin tüm üyelerine bildirim gider. Kürsü, tepki, slogan ve coşku canlı meydanla aynıdır; katılıp tepki verenler o ilde yaşayanlardır, diğer illerden üyeler canlı izler.
+- Mitingin etkisi harcanan paraya bağlı değildir; meydanın coşkusu katılan gerçek oyuncuların tepkilerinden hesaplanır.
+
+### Bağımsız adayın partiye katılması (2026-10-09, modül 50)
+- Bağımsız aday, oy verme başlamadan önce istediği an bir partiye katılabilir (ya da parti kurabilir). Katıldığı anda bağımsız adaylığı düşer; başvuru harcı iade edilmez. Uygulama katılmadan önce uyarı gösterir.
+- Başvuru süresi hâlâ açıksa yeni partisinden aday adayı olabilir; kapanmışsa o dönem aday olamaz.
+- Oy verme sürerken pusula kilitlidir; bağımsız aday ancak sandık kapandıktan sonra katılabilir.
+- Seçilmiş bağımsız vekil partiye katılırsa vekilliği sürer; Meclis grubu üyeliğe göre sayıldığı için sandalyesi yeni partisine geçer.
+
 ### Para hediyesi
 - Oyuncuya, şirkete ya da gazeteye aktarılan para (hediye + banka havalesi birlikte) **günlük aktarma sınırına** tabidir ve seçmen kartı ister.
 - Partiye, şehre ve hazineye bağış sınırsızdır; kıdem kazancı yalnız bu kamusal bağışlardan (günde en fazla 1).

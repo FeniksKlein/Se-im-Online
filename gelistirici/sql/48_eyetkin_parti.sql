@@ -12,8 +12,10 @@ revoke all on oyun_yonetim.ozel_parti_kurma_izni from public, anon, authenticate
 
 do $eyetkin_kimlik$
 begin
+  -- Temiz kurulumda henuz Eyetkin profili yoksa atlanir (49_celal_parti ile ayni); canli veritabaninda zaten tanimli.
   if (select count(*) from oyun.profiller where lower(kad)=lower('Eyetkin'))<>1 then
-    raise exception 'Eyetkin profili tekil bulunamadi. Istisna yetkisi tanimlanmadi.';
+    raise notice 'Eyetkin profili tekil bulunamadi; istisna yetkisi atlandi.';
+    return;
   end if;
   insert into oyun_yonetim.ozel_parti_kurma_izni(user_id)
   select id from oyun.profiller where lower(kad)=lower('Eyetkin')

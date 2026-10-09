@@ -2076,7 +2076,7 @@ async function partiDetay(id){
       ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn ikinci" onclick="partiAdModal(${p.id})">Parti adını değiştir</button><button class="btn altin" onclick="ucretModal(${p.id})">Adaylık ücretlerini değiştir</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
       ${p.uyesiyim && ben.gby ? `<button class="btn tehlike" onclick="gbyIstifa()">Yardımcılıktan istifa et</button>` : ""}<button class="btn ikinci" onclick="ekranAc(()=>partiTuzukEkrani(${p.id}))">Parti tüzüğü ve üye oylamaları</button></div>
     ${p.uyesiyim ? `<button class="btn tehlike" style="margin:0 0 12px" onclick="partidenAyril()">Partiden ayrıl</button>` : `<button class="btn" style="margin:0 0 12px" onclick="partiyeKatil(${p.id})">Partiye katıl</button>`}
-    <div class="kart"><h2>Parti içi yaşam</h2><button class="btn ikinci" onclick="ekranAc(()=>grupToplantiEkrani(${p.id}))">Grup toplantıları / Konuşmalar</button><button class="btn ikinci" onclick="ekranAc(()=>partiDisiplinEkrani(${p.id}))">Disiplin ve ihraç oylamaları</button></div><div id="teskilatKart"></div>
+    <div class="kart"><h2>Parti içi yaşam</h2><button class="btn ikinci" onclick="ekranAc(()=>grupToplantiEkrani(${p.id}))">Grup toplantıları / Konuşmalar</button><button class="btn ikinci" onclick="ekranAc(()=>partiDisiplinEkrani(${p.id}))">Disiplin ve ihraç oylamaları</button></div>${p.uyesiyim ? `<div id="partiMitingKart"></div>` : ""}<div id="teskilatKart"></div>
     <div id="kasaKart"></div>
     <div id="ittifakKart"></div>
     <div class="kart"><h2>Üyeler</h2>${p.uyeler.map(u => `<div class="liste-satir" onclick="oyuncuKart('${e(u.kad)}')" style="cursor:pointer"><div class="orta"><b>${e(u.kad)}${u.kad === p.gb ? ` <span class="rozet altin">GB</span>` : p.gby.some(g => g.kad === u.kad) ? ` <span class="rozet">GBY</span>` : ""}</b><div class="kucuk">${e(u.il)}</div></div>${makamAd(u.makam)}</div>`).join("") || `<div class="bos">Henüz üye yok. İlk üye sen ol!</div>`}</div>`, { geri: true });
@@ -2085,6 +2085,7 @@ async function partiDetay(id){
   ittifakKartCiz(p.id);
   partiKasaCiz(p.id);
   teskilatKartCiz(p.id);
+  if (p.uyesiyim && typeof partiMitingKartCiz === "function") partiMitingKartCiz(p.id);
 }
 async function partiKasaCiz(pid){
   const el = $("#kasaKart"); if (!el) return;
@@ -2173,6 +2174,8 @@ async function ittifakAyril(pid){
 async function partiyeKatil(id){
   const ben = D.durum.profil;
   const not = ben.parti ? `Şu anki partinden (${e(ben.parti.kisa)}) ayrılacaksın; varsa sonuçlanmamış adaylıkların düşer.` : "";
+  const bagimsiz = !ben.parti && (D.durum.takvim || []).some(x => x.bagimsiz_adayim);
+  if (bagimsiz && !await onayla("Bağımsız adaylığın düşecek", "Partiye katılırsan bağımsız adaylığın iptal edilecek. Başvuru harcı geri verilmez. Başvuru süresi hâlâ açıksa partinden aday adayı olabilirsin. Devam edilsin mi?", "Devam et", true)) return;
   if (!await onayla("Partiye katıl", `${not} Başvuru süresi açıkken partiye yeni katılmış olsan da aday olabilirsin. Parti içi seçimlerde oy kullanmak için başvuru açılmadan önce üye olma şartı devam eder.`, "Katıl")) return;
   try { await islem(() => API.rpc("partiye_katil", { p_parti: id }), "Partiye katıldın."); yenidenCiz(); } catch (_) {}
 }
@@ -2576,6 +2579,8 @@ const METIN = {
     <p>Makam bir sorumluluktur. 3 gün oyuna girmeyen bakan ve genel başkan yardımcısı, 7 gün girmeyen cumhurbaşkanı, belediye başkanı ve genel başkan önce bildirimle uyarılır, yine girmezse görevden düşer. Seçilmiş makam boşalınca olağanüstü seçim takvimi kendiliğinden açılır.</p>
     <h4>Mitingler</h4>
     <p>Bir seçimde aday olan oyuncu, oylama bitmeden ilinde bir saatlik miting düzenleyebilir (bedeli ilin büyüklüğüne göre). Miting başlayınca ildeki herkese bildirim gider. Miting boyunca aday kürsüden en fazla 20 kez konuşur; katılanlar her söze alkış, tezahürat, ıslık ya da yuhla tepki verir ve slogan atar. Tepkilerden meydanın coşkusu (0-100) hesaplanır. Başka illerden oyuncular mitingi canlı izleyebilir. Katılan oyuncu günde bir kez +1 kıdem kazanır. Miting bitince katılım, coşku ve en çok alkışlanan söz Gündem'e haber olur.</p>
+    <p>Genel başkan, 81 ilin herhangi birinde parti adına miting düzenleyebilir. Genel başkan bir yardımcısına "miting yetkisi" verirse o yardımcı da aynı hakka sahip olur; yetki geri alınınca başlamamış mitingleri iptal olur ve bedeli iade edilir. Bedeli parti kasası ya da düzenleyen öder. Her yetkili günde en fazla 1 parti mitingi yapar; aynı partinin aynı ildeki iki mitingi arasında en az 3 gün olmalı; seçim günlerinde oy verme saatlerinde miting yapılmaz. Parti mitingi başlayınca o ildeki herkese ve partinin tüm üyelerine bildirim gider.</p>
+    <p>Bağımsız aday, oy verme başlamadan önce bir partiye katılabilir; o anda bağımsız adaylığı düşer ve başvuru harcı geri verilmez. Başvuru süresi açıksa yeni partisinden aday adayı olabilir. Oy verme sürerken pusula kilitlidir; sandık kapandıktan sonra katılabilir. Seçilmiş bağımsız vekil partiye katılırsa vekilliği sürer ve sandalyesi yeni partisine geçer.</p>
     <h4>Para hediyesi</h4>
     <p>Başka bir oyuncuya, onun şirketine ya da gazetesine aktardığın para (hediye ve banka havalesi birlikte) günlük sınıra tabidir. Partine, şehrine ve hazineye bağış sınırsızdır. Böylece satın alınan para başka hesaplara taşınıp oy toplamakta kullanılamaz.</p>
     <h4>Anayasa değişikliği ve halk oylaması</h4>

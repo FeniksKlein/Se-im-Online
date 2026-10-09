@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.10.09-9', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.10.09-12', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -21548,6 +21548,727 @@ begin
   n := case when coalesce(a, 0) <= 0 then anayasal else least(anayasal, greatest(81, ceil(aktif * a)::int)) end;
   return jsonb_build_object('aktif', aktif, 'sandalye', n, 'anayasal', anayasal, 'olcek', a);
 end $$;
+-- =====================================================================
+--  46 · CANLI MİTİNG MEYDANI
+--  Miting artık bir "katıl" düğmesinden ibaret değil:
+--    • Düzenleyen aday miting süresince kürsüden konuşur (en fazla 20 konuşma, her biri 400 karakter).
+--    • Katılanlar her konuşmaya tepki verir: alkış (+1), tezahürat (+2), ıslık (-1), yuh (-2).
+--      Tepki değiştirilebilir, her konuşmaya kişi başı bir tepki.
+--    • Katılanlar kısa slogan atabilir (80 karakter, 20 saniyede bir, mitingte en fazla 30).
+--    • Meydanın coşkusu (0-100) tepkilerden hesaplanır; miting bitince Gündem'e
+--      katılım, coşku ve en çok alkış alan cümle haber olur.
+--    • Başka ilden oyuncular mitingi canlı izleyebilir; tepki ve slogan yalnız katılanlardan.
+--  Mevcut mitingler, katılımlar ve kıdem ödülü aynen korunur.
+-- =====================================================================
+
+create table if not exists oyun.miting_konusma(
+  id        bigint generated always as identity primary key,
+  miting_id bigint not null references oyun.mitingler(id) on delete cascade,
+  user_id   uuid not null references oyun.profiller(id) on delete cascade,
+  metin     text not null check (length(metin) between 1 and 400),
+  zaman     timestamptz not null default now(),
+  silindi   boolean not null default false
+);
+create index if not exists miting_konusma_m on oyun.miting_konusma(miting_id, id);
+
+create table if not exists oyun.miting_tepki(
+  konusma_id bigint not null references oyun.miting_konusma(id) on delete cascade,
+  miting_id  bigint not null references oyun.mitingler(id) on delete cascade,
+  user_id    uuid not null references oyun.profiller(id) on delete cascade,
+  tur        text not null check (tur in ('alkis','tezahurat','islik','yuh')),
+  zaman      timestamptz not null default now(),
+  primary key (konusma_id, user_id)
+);
+create index if not exists miting_tepki_m on oyun.miting_tepki(miting_id);
+
+create table if not exists oyun.miting_slogan(
+  id        bigint generated always as identity primary key,
+  miting_id bigint not null references oyun.mitingler(id) on delete cascade,
+  user_id   uuid not null references oyun.profiller(id) on delete cascade,
+  metin     text not null check (length(metin) between 1 and 80),
+  zaman     timestamptz not null default now(),
+  silindi   boolean not null default false
+);
+create index if not exists miting_slogan_m on oyun.miting_slogan(miting_id, id);
+
+alter table oyun.mitingler add column if not exists cosku smallint;   -- bitince yazılır
+
+do $$ declare t text; begin
+  foreach t in array array['miting_konusma','miting_tepki','miting_slogan'] loop
+    execute format('alter table oyun.%I enable row level security', t);
+    execute format('revoke all on oyun.%I from public, anon, authenticated', t);
+    if to_regproc('oyun.bosaltma_korumasi') is not null then
+      execute format('drop trigger if exists bosaltma_korumasi on oyun.%I', t);
+      execute format('create trigger bosaltma_korumasi before truncate on oyun.%I for each statement execute function oyun.bosaltma_korumasi()', t);
+    end if;
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Hesaplar
+-- ---------------------------------------------------------------------
+create or replace function oyun.miting_tepki_puan(p_tur text) returns int language sql immutable as $$
+  select case p_tur when 'alkis' then 1 when 'tezahurat' then 2 when 'islik' then -1 when 'yuh' then -2 else 0 end
+$$;
+
+-- Coşku 0-100: herkes her konuşmayı alkışlasa 75, tezahürat etse 100, yuhalasa 0. Tepki yoksa 50.
+create or replace function oyun.miting_cosku(p_miting bigint) returns int language sql stable set search_path = '' as $$
+  with k as (select count(*) n from oyun.miting_konusma where miting_id = p_miting and not silindi),
+       c as (select count(*) n from oyun.miting_katilim k join oyun.mitingler m on m.id = k.miting_id where k.miting_id = p_miting and k.user_id <> m.user_id),
+       tp as (select coalesce(sum(oyun.miting_tepki_puan(t.tur)), 0) net
+              from oyun.miting_tepki t join oyun.miting_konusma x on x.id = t.konusma_id and not x.silindi
+              where t.miting_id = p_miting)
+  select greatest(0, least(100, round(50 + 25.0 * tp.net / greatest(1, c.n * greatest(1, k.n)))))::int from k, c, tp
+$$;
+
+create or replace function oyun.miting_cosku_ad(c int) returns text language sql immutable as $$
+  select case when c is null then null when c >= 85 then 'Meydan coştu' when c >= 65 then 'Coşkulu'
+              when c >= 45 then 'Ilık' when c >= 25 then 'Soğuk' else 'Yuhalandı' end
+$$;
+
+create or replace function oyun.miting_canli_mi(m oyun.mitingler, t timestamptz) returns boolean language sql immutable as $$
+  select t >= m.bas and t < m.bit
+$$;
+
+-- ---------------------------------------------------------------------
+-- Meydan ekranı
+-- ---------------------------------------------------------------------
+create or replace function public.miting_meydan(p_id bigint) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare u uuid := auth.uid(); t timestamptz := oyun.simdi(); m oyun.mitingler; ben oyun.profiller; n int; c int;
+begin
+  select * into m from oyun.mitingler where id = p_id;
+  if m.id is null then raise exception 'Miting bulunamadı.'; end if;
+  select * into ben from oyun.profiller where id = u;
+  select count(*) into n from oyun.miting_katilim where miting_id = m.id and user_id <> m.user_id;
+  c := coalesce(case when t >= m.bit then m.cosku end, oyun.miting_cosku(m.id));
+  return jsonb_build_object(
+    'id', m.id, 'baslik', m.baslik, 'bas', m.bas, 'bit', m.bit, 'simdi', t,
+    'canli', t >= m.bas and t < m.bit, 'bitti', t >= m.bit,
+    'il', (select ad from oyun.iller where id = m.il_id), 'il_id', m.il_id,
+    'kad', (select kad from oyun.profiller where id = m.user_id),
+    'unvan', oyun.unvan(m.user_id),
+    'parti', oyun.parti_json(m.parti_id),
+    'slogan', (select k.slogan from oyun.parti_kimlik k where k.parti_id = m.parti_id),
+    'secim_tur', (select tur from oyun.secimler where id = m.secim_id),
+    'katilim', n, 'cosku', c, 'cosku_ad', oyun.miting_cosku_ad(c),
+    'benim', m.user_id = u,
+    'katildim', exists (select 1 from oyun.miting_katilim where miting_id = m.id and user_id = u),
+    'katilabilir', ben.id is not null and ben.il_id = m.il_id and m.user_id <> u,
+    'konusma_kalan', greatest(0, 20 - (select count(*) from oyun.miting_konusma where miting_id = m.id)),
+    'son_katilanlar', (select coalesce(jsonb_agg(x.kad order by x.zaman desc), '[]'::jsonb) from (
+        select p.kad, k.zaman from oyun.miting_katilim k join oyun.profiller p on p.id = k.user_id
+        where k.miting_id = m.id and k.user_id <> m.user_id order by k.zaman desc limit 12) x),
+    'konusmalar', (select coalesce(jsonb_agg(jsonb_build_object('id', x.id, 'metin', x.metin, 'zaman', x.zaman,
+        'alkis', (select count(*) from oyun.miting_tepki r where r.konusma_id = x.id and r.tur = 'alkis'),
+        'tezahurat', (select count(*) from oyun.miting_tepki r where r.konusma_id = x.id and r.tur = 'tezahurat'),
+        'islik', (select count(*) from oyun.miting_tepki r where r.konusma_id = x.id and r.tur = 'islik'),
+        'yuh', (select count(*) from oyun.miting_tepki r where r.konusma_id = x.id and r.tur = 'yuh'),
+        'tepkim', (select r.tur from oyun.miting_tepki r where r.konusma_id = x.id and r.user_id = u)) order by x.id), '[]'::jsonb)
+      from oyun.miting_konusma x where x.miting_id = m.id and not x.silindi),
+    'sloganlar', (select coalesce(jsonb_agg(jsonb_build_object('id', y.id, 'kad', y.kad, 'metin', y.metin, 'zaman', y.zaman) order by y.id), '[]'::jsonb) from (
+        select s.id, p.kad, s.metin, s.zaman from oyun.miting_slogan s join oyun.profiller p on p.id = s.user_id
+        where s.miting_id = m.id and not s.silindi order by s.id desc limit 40) y)
+  );
+end $$;
+
+-- Düzenleyen aday kürsüden konuşur
+create or replace function public.miting_konus(p_id bigint, p_metin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); m oyun.mitingler; x text; son timestamptz;
+begin
+  select * into m from oyun.mitingler where id = p_id for update;
+  if m.id is null then raise exception 'Miting bulunamadı.'; end if;
+  if m.user_id <> p.id then raise exception 'Kürsüde yalnız mitingi düzenleyen aday konuşabilir.'; end if;
+  if t < m.bas then raise exception 'Miting henüz başlamadı; konuşmanı başlangıç saatinde yapabilirsin.'; end if;
+  if t >= m.bit then raise exception 'Miting sona erdi.'; end if;
+  if (select count(*) from oyun.miting_konusma where miting_id = m.id) >= 20 then
+    raise exception 'Bir mitingde en fazla 20 kez kürsüye çıkabilirsin.';
+  end if;
+  select max(zaman) into son from oyun.miting_konusma where miting_id = m.id;
+  if son is not null and son > t - interval '15 seconds' then
+    raise exception 'Meydan önceki sözünü alkışlıyor; 15 saniye bekle.';
+  end if;
+  perform oyun.yazabilir_mi(p, t);
+  x := oyun.metin_temizle(p_metin, 400);
+  insert into oyun.miting_konusma(miting_id, user_id, metin, zaman) values (m.id, p.id, x, t);
+  insert into oyun.miting_katilim(miting_id, user_id, zaman) values (m.id, p.id, t) on conflict do nothing;
+  update oyun.profiller set son_mesaj = t where id = p.id;
+  return public.miting_meydan(m.id);
+end $$;
+
+-- Katılan oyuncu bir konuşmaya tepki verir (değiştirebilir)
+create or replace function public.miting_tepki(p_konusma bigint, p_tur text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); k oyun.miting_konusma; m oyun.mitingler;
+begin
+  if p_tur not in ('alkis','tezahurat','islik','yuh') then raise exception 'Geçersiz tepki.'; end if;
+  select * into k from oyun.miting_konusma where id = p_konusma and not silindi;
+  if k.id is null then raise exception 'Konuşma bulunamadı.'; end if;
+  select * into m from oyun.mitingler where id = k.miting_id;
+  if t < m.bas or t >= m.bit then raise exception 'Miting canlı değil; tepki verilemez.'; end if;
+  if m.user_id = p.id then raise exception 'Kendi konuşmana tepki veremezsin.'; end if;
+  if not exists (select 1 from oyun.miting_katilim where miting_id = m.id and user_id = p.id) then
+    raise exception 'Tepki vermek için önce mitinge katıl.';
+  end if;
+  insert into oyun.miting_tepki(konusma_id, miting_id, user_id, tur, zaman) values (k.id, m.id, p.id, p_tur, t)
+  on conflict (konusma_id, user_id) do update set tur = excluded.tur, zaman = excluded.zaman;
+  return public.miting_meydan(m.id);
+end $$;
+
+-- Katılan oyuncu kısa slogan atar
+create or replace function public.miting_slogan_at(p_id bigint, p_metin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); m oyun.mitingler; x text; son timestamptz;
+begin
+  select * into m from oyun.mitingler where id = p_id;
+  if m.id is null then raise exception 'Miting bulunamadı.'; end if;
+  if t < m.bas or t >= m.bit then raise exception 'Miting canlı değil.'; end if;
+  if m.user_id = p.id then raise exception 'Kürsüdesin; meydana kürsüden seslen.'; end if;
+  if not exists (select 1 from oyun.miting_katilim where miting_id = m.id and user_id = p.id) then
+    raise exception 'Slogan atmak için önce mitinge katıl.';
+  end if;
+  select max(zaman) into son from oyun.miting_slogan where miting_id = m.id and user_id = p.id;
+  if son is not null and son > t - interval '20 seconds' then raise exception 'Sesin kısıldı; 20 saniye sonra yeniden slogan atabilirsin.'; end if;
+  if (select count(*) from oyun.miting_slogan where miting_id = m.id and user_id = p.id) >= 30 then
+    raise exception 'Bu mitingde yeterince slogan attın.';
+  end if;
+  perform oyun.yazabilir_mi(p, t);
+  x := oyun.metin_temizle(p_metin, 80);
+  insert into oyun.miting_slogan(miting_id, user_id, metin, zaman) values (m.id, p.id, x, t);
+  update oyun.profiller set son_mesaj = t where id = p.id;
+  return public.miting_meydan(m.id);
+end $$;
+
+-- Moderatör: uygunsuz konuşma ya da sloganı kaldırır (şikâyet yetkisi)
+create or replace function public.miting_icerik_sil(p_tur text, p_id bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare mid bigint;
+begin
+  perform oyun.yetki_zorunlu('sikayet');
+  if p_tur = 'konusma' then update oyun.miting_konusma set silindi = true where id = p_id returning miting_id into mid;
+  elsif p_tur = 'slogan' then update oyun.miting_slogan set silindi = true where id = p_id returning miting_id into mid;
+  else raise exception 'Geçersiz içerik türü.'; end if;
+  if mid is null then raise exception 'İçerik bulunamadı.'; end if;
+  return public.miting_meydan(mid);
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Mevcut fonksiyonların genişletilmesi
+-- ---------------------------------------------------------------------
+create or replace function public.mitingler() returns jsonb language sql stable security definer set search_path = '' as $$
+  select coalesce(jsonb_agg(jsonb_build_object('id', m.id, 'kad', p.kad, 'parti', oyun.parti_json(m.parti_id), 'il_id', m.il_id,
+      'il', (select ad from oyun.iller where id = m.il_id), 'baslik', m.baslik, 'bas', m.bas, 'bit', m.bit,
+      'katilim', (select count(*) from oyun.miting_katilim c where c.miting_id = m.id),
+      'katildim', exists (select 1 from oyun.miting_katilim c where c.miting_id = m.id and c.user_id = auth.uid()),
+      'benim_ilim', m.il_id = (select il_id from oyun.profiller where id = auth.uid()),
+      'benim', m.user_id = auth.uid(),
+      'konusma', (select count(*) from oyun.miting_konusma k where k.miting_id = m.id and not k.silindi),
+      'cosku', coalesce(m.cosku, case when m.bas <= oyun.simdi() then oyun.miting_cosku(m.id) end),
+      'secim_tur', (select tur from oyun.secimler where id = m.secim_id)) order by m.bas), '[]'::jsonb)
+  from oyun.mitingler m join oyun.profiller p on p.id = m.user_id
+  where m.bit > oyun.simdi() - interval '6 hours' and m.bas < oyun.simdi() + interval '3 days'
+$$;
+
+create or replace function oyun.miting_tick(t timestamptz) returns void language plpgsql set search_path = '' as $$
+declare m record; n int; c int; enIyi text; konusma int;
+begin
+  for m in select x.*, p.kad, i.ad il_ad from oyun.mitingler x join oyun.profiller p on p.id = x.user_id join oyun.iller i on i.id = x.il_id
+           where not x.duyuruldu and x.bas <= t and x.bit > t loop
+    update oyun.mitingler set duyuruldu = true where id = m.id;
+    insert into oyun.bildirimler(user_id, zaman, metin)
+      select pr.id, t, format('%s şu an %s meydanında: “%s”. Bir saat içinde Gündem''den mitinge katılıp konuşmaları dinleyebilir, tepki verebilirsin.', m.kad, m.il_ad, m.baslik)
+      from oyun.profiller pr where pr.il_id = m.il_id and pr.id <> m.user_id and not pr.yasakli;
+    perform oyun.bildir(m.user_id, format('%s mitingin başladı. Meydan seni bekliyor: Gündem''den mitingine girip kürsüden konuş.', m.il_ad), t);
+    if oyun.push_acik() then
+      perform oyun.push_konuya('s_il_' || m.il_id, null, format('%s meydanda!', m.kad),
+        format('%s mitingi başladı: “%s”. Katılmak için dokun.', m.il_ad, m.baslik), jsonb_build_object('ekran', 'gundem'));
+    end if;
+  end loop;
+  for m in select x.*, p.kad, i.ad il_ad from oyun.mitingler x join oyun.profiller p on p.id = x.user_id join oyun.iller i on i.id = x.il_id
+           where not x.sonuc_yazildi and x.bit <= t loop
+    select count(*) into n from oyun.miting_katilim where miting_id = m.id and user_id <> m.user_id;
+    select count(*) into konusma from oyun.miting_konusma where miting_id = m.id and not silindi;
+    c := oyun.miting_cosku(m.id);
+    select left(k.metin, 120) into enIyi from oyun.miting_konusma k
+      where k.miting_id = m.id and not k.silindi
+        and exists (select 1 from oyun.miting_tepki r where r.konusma_id = k.id and oyun.miting_tepki_puan(r.tur) > 0)
+      order by (select sum(oyun.miting_tepki_puan(r.tur)) from oyun.miting_tepki r where r.konusma_id = k.id) desc, k.id limit 1;
+    update oyun.mitingler set sonuc_yazildi = true, duyuruldu = true, cosku = c where id = m.id;
+    if konusma = 0 then
+      perform oyun.olay('secim', format('%s, %s meydanında %s kişiyi topladı ama kürsüye hiç çıkmadı: “%s”.', m.kad, m.il_ad, n, m.baslik), m.il_id, m.parti_id, t);
+    else
+      perform oyun.olay('secim', format('%s %s mitingi: %s kişi, coşku %s/100 (%s).%s', m.kad, m.il_ad, n, c, lower(oyun.miting_cosku_ad(c)),
+        case when enIyi is not null then format(' En çok alkışlanan söz: “%s”', enIyi) else '' end), m.il_id, m.parti_id, t);
+    end if;
+    perform oyun.bildir(m.user_id, format('%s mitingin sona erdi: %s kişi katıldı, %s kez kürsüye çıktın, meydanın coşkusu %s/100.', m.il_ad, n, konusma, c), t);
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Yetkiler
+-- ---------------------------------------------------------------------
+revoke all on function public.miting_meydan(bigint), public.miting_konus(bigint, text), public.miting_tepki(bigint, text),
+  public.miting_slogan_at(bigint, text), public.miting_icerik_sil(text, bigint) from public, anon;
+grant execute on function public.miting_meydan(bigint), public.miting_konus(bigint, text), public.miting_tepki(bigint, text),
+  public.miting_slogan_at(bigint, text), public.miting_icerik_sil(text, bigint) to authenticated;
+revoke all on function oyun.miting_cosku(bigint), oyun.miting_tick(timestamptz) from public, anon, authenticated;
+-- Oyun test sifirlamasi sonrasi oncelikli 13 hesabin kimlik bazli acilis bakiyesi.
+-- Ayrı yonetim semasi sifirlama tarafindan temizlenmez, oyunculara acik degildir.
+create schema if not exists oyun_yonetim;
+revoke all on schema oyun_yonetim from public, anon, authenticated;
+create table if not exists oyun_yonetim.onceki_test_oyuncu (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  kad text not null,
+  eklendi timestamptz not null default now()
+);
+alter table oyun_yonetim.onceki_test_oyuncu enable row level security;
+revoke all on oyun_yonetim.onceki_test_oyuncu from public, anon, authenticated;
+
+create or replace function oyun.test_oncelikli_baslangic()
+returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  -- Yalnizca eski hesap kimligi eslesirse: kullanici adi taklidi bonus vermez.
+  if exists (select 1 from oyun_yonetim.onceki_test_oyuncu o
+             where o.user_id = new.user_id) then
+    new.para := 1000000;
+  end if;
+  return new;
+end
+$$;
+drop trigger if exists test_oncelikli_baslangic on oyun.cuzdan;
+create trigger test_oncelikli_baslangic
+before insert on oyun.cuzdan for each row
+execute function oyun.test_oncelikli_baslangic();
+
+create or replace function oyun.test_yonetici_profilini_koru()
+returns trigger
+language plpgsql security definer set search_path = ''
+as $$
+begin
+  if exists (select 1 from oyun.yonetici_kimlik k where k.user_id = new.id)
+     and not new.yonetici then
+    update oyun.profiller set yonetici = true where id = new.id;
+  end if;
+  return null;
+end
+$$;
+drop trigger if exists test_yonetici_profilini_koru on oyun.profiller;
+create trigger test_yonetici_profilini_koru
+after insert on oyun.profiller for each row
+execute function oyun.test_yonetici_profilini_koru();
+-- 2026-10-09 · Eyetkin hesabina ozel ucretsiz ve tek kisilik parti kurma.
+-- Genel kurucu daveti ve 25.000 TL kurallari diger oyuncular icin degismez.
+-- Yetki kullanici adina degil, mevcut Supabase Auth kullanici kimligine baglidir.
+
+create table if not exists oyun_yonetim.ozel_parti_kurma_izni (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  aciklama text not null default 'Eyetkin - test istisnasi',
+  tanimlama timestamptz not null default now()
+);
+alter table oyun_yonetim.ozel_parti_kurma_izni enable row level security;
+revoke all on oyun_yonetim.ozel_parti_kurma_izni from public, anon, authenticated;
+
+do $eyetkin_kimlik$
+begin
+  -- Temiz kurulumda henuz Eyetkin profili yoksa atlanir (49_celal_parti ile ayni); canli veritabaninda zaten tanimli.
+  if (select count(*) from oyun.profiller where lower(kad)=lower('Eyetkin'))<>1 then
+    raise notice 'Eyetkin profili tekil bulunamadi; istisna yetkisi atlandi.';
+    return;
+  end if;
+  insert into oyun_yonetim.ozel_parti_kurma_izni(user_id)
+  select id from oyun.profiller where lower(kad)=lower('Eyetkin')
+  on conflict (user_id) do nothing;
+end
+$eyetkin_kimlik$;
+
+create or replace function public.eyetkin_parti_kur(
+  p_ad text, p_kisa text, p_renk text, p_amblem text, p_ideolojiler text[]
+) returns jsonb
+language plpgsql security definer set search_path='' as $eyetkin$
+declare
+  p oyun.profiller;
+  t timestamptz:=oyun.simdi();
+  yeni bigint;
+begin
+  if auth.uid() is null or not exists (
+      select 1 from oyun_yonetim.ozel_parti_kurma_izni k where k.user_id=auth.uid()
+  ) then
+    raise exception 'Bu parti kurma istisnasi sadece yetkili hesaba aciktir.';
+  end if;
+  p:=oyun.profilim();
+  if p.id is distinct from auth.uid() then
+    raise exception 'Hesap dogrulanamadi.';
+  end if;
+
+  -- Normal parti kurma akisi ile ayni ad, kisa ad, renk ve amblem kontrolleri.
+  p_ad:=btrim(regexp_replace(coalesce(p_ad,''),'\s+',' ','g'));
+  p_kisa:=upper(btrim(coalesce(p_kisa,'')));
+  if length(p_ad) not between 5 and 40
+      or p_ad !~ '^[A-Za-zçğıöşüÇĞİÖŞÜâîûÂÎÛ'' .-]+$' then
+    raise exception 'Parti adi 5-40 harften olusmali.';
+  end if;
+  if p_kisa !~ '^[A-ZÇĞİÖŞÜ]{2,6}$'
+      or p_renk !~ '^#[0-9a-fA-F]{6}$'
+      or p_amblem !~ '^[a-z_]{2,20}$' then
+    raise exception 'Parti kisaltmasi, rengi veya amblemi gecersiz.';
+  end if;
+  if not oyun.ideoloji_gecerli(p_ideolojiler) then
+    raise exception '1 ile 3 arasinda gecerli ideoloji secmelisin.';
+  end if;
+  if oyun.yasakli_ad(p_ad) or oyun.yasakli_kisa(p_kisa) then
+    raise exception 'Yasakli veya gercek siyasi partiyle karisabilecek ad kullanilamaz.';
+  end if;
+  if exists (
+      select 1 from oyun.partiler
+      where not kapali and (lower(ad)=lower(p_ad) or lower(kisa)=lower(p_kisa))
+  ) then
+    raise exception 'Bu parti adi veya kisaltmasi kullanimda.';
+  end if;
+  if oyun.uyari(p,t) is not null then
+    raise exception 'Parti kurma sarti: %', oyun.uyari(p,t);
+  end if;
+  if oyun.kidem_puani(p.id)<(select parti_kurucu_kidem from oyun.ayarlar where id=1) then
+    raise exception 'Parti kurma kidemin yetersiz.';
+  end if;
+  if p.son_parti_kur is not null
+      and p.son_parti_kur + make_interval(days=>(select parti_kur_gun from oyun.ayarlar where id=1))>t then
+    raise exception 'Parti kurma bekleme suren dolmadi.';
+  end if;
+
+  -- Yalnizca bu hesap icin: kurucu davetlerini ve para kesintisini atla.
+  perform oyun._ayril(p.id,t);
+  insert into oyun.partiler(ad,kisa,renk,amblem,gb,kurucu,kurulus,kurulus_bit,kurulus_ucret)
+  values(p_ad,p_kisa,lower(p_renk),p_amblem,p.id,p.id,t,null,0)
+  returning id into yeni;
+  perform oyun.genel_merkez_ac(yeni,p,0,t);
+  update oyun.profiller
+     set parti_id=yeni,parti_at=t,son_parti_kur=t
+   where id=p.id;
+  insert into oyun.parti_kimlik(parti_id,ideolojiler,guncelleme)
+  values(yeni,p_ideolojiler,t);
+  update oyun.kurucu_basvuru
+     set durum='iptal'
+   where kurucu=p.id and durum='bekliyor';
+  perform oyun.olay(
+    'parti', format('%s (%s) partisi %s tarafindan kuruldu.',p_ad,p_kisa,p.kad),
+    p.il_id,yeni,t
+  );
+  return jsonb_build_object('parti_id',yeni,'kurucu_sayi',1,'sermaye',0,'tamam',true);
+end
+$eyetkin$;
+
+revoke all on function public.eyetkin_parti_kur(text,text,text,text,text[]) from public, anon, authenticated;
+grant execute on function public.eyetkin_parti_kur(text,text,text,text,text[]) to authenticated;
+-- CELAL ve Eyetkin parti kurulusu icin ayni 0 TL / 0 davet istisnasini kullanir.
+-- Istisna oyuncu adina degil auth kullanici kimligine baglidir; diger oyunculara acilmaz.
+-- Temiz kurulumda henuz CELAL profili yoksa atlanir; canli migrasyonda zaten eklenmistir.
+insert into oyun_yonetim.ozel_parti_kurma_izni(user_id,aciklama)
+select id,'CELAL - test istisnasi' from oyun.profiller
+where lower(kad)=lower('CELAL')
+on conflict (user_id) do update set aciklama=excluded.aciklama;
+-- =====================================================================
+--  50 · İL DIŞI PARTİ MİTİNGİ + BAĞIMSIZ ADAYIN PARTİYE KATILMASI
+--
+--  1) Parti mitingi
+--    • Genel başkan 81 ilin herhangi birinde parti adına miting düzenler.
+--    • Genel başkan yardımcıları, genel başkan "miting yetkisi" verirse aynı hakka sahip olur.
+--      Yetki her an geri alınabilir; geri alınınca başlamamış mitingler iptal olur, para iade edilir.
+--    • Bedel ilin büyüklüğüne göredir (aday mitinginin bedeliyle aynı); parti kasası ya da
+--      düzenleyenin kendi cebi öder.
+--    • Her yetkili günde en fazla 1 parti mitingi; aynı partiden aynı ilde 3 gün içinde ikinci
+--      parti mitingi olmaz; genel / belediye / cumhurbaşkanlığı seçimlerinin oy verme saatlerinde
+--      parti mitingi yapılamaz.
+--    • Miting başlayınca o ildeki herkese ve partinin tüm üyelerine bildirim gider. Kürsü, tepki,
+--      slogan ve coşku canlı miting meydanının (46) aynısıdır; tepkiyi yalnız o ilde yaşayanlar verir.
+--    • Aday mitingleri (39/46) değişmeden çalışır.
+--
+--  2) Bağımsız aday partiye katılabilir
+--    • Oy verme başlamadan önce partiye katılan (ya da parti kuran) bağımsız adayın adaylığı
+--      kendiliğinden düşer; başvuru harcı iade edilmez.
+--    • Oy verme sürerken pusula kilitlidir; sandık kapanınca katılabilir.
+--    • Seçimi kazanmış bağımsız vekil partiye katılabilir; Meclis grubu üyeliğe göre sayıldığı
+--      için sandalyesi yeni partisine geçer.
+--  Mevcut mitingler, adaylıklar ve oyuncu verisi aynen korunur.
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- Şema (yalnız ekleme)
+-- ---------------------------------------------------------------------
+alter table oyun.mitingler alter column secim_id drop not null;      -- parti mitingi bir seçime bağlı değildir
+alter table oyun.mitingler add column if not exists tur text not null default 'aday';
+alter table oyun.mitingler add column if not exists odeyen text not null default 'kisi';
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'mitingler_tur_chk') then
+    alter table oyun.mitingler add constraint mitingler_tur_chk check (tur in ('aday','parti'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'mitingler_odeyen_chk') then
+    alter table oyun.mitingler add constraint mitingler_odeyen_chk check (odeyen in ('kisi','parti'));
+  end if;
+end $$;
+create index if not exists mitingler_parti on oyun.mitingler(parti_id, il_id, bas) where tur = 'parti';
+
+alter table oyun.parti_gby add column if not exists miting_yetkisi boolean not null default false;
+
+-- ---------------------------------------------------------------------
+-- Yardımcılar
+-- ---------------------------------------------------------------------
+-- Oyuncunun parti mitingi yetkisi: 'gb', 'gby' ya da null
+create or replace function oyun.parti_miting_yetki(u uuid) returns text language sql stable set search_path = '' as $$
+  select case
+    when exists (select 1 from oyun.profiller p join oyun.partiler pa on pa.id = p.parti_id
+                 where p.id = u and pa.gb = u and not pa.kapali) then 'gb'
+    when exists (select 1 from oyun.profiller p join oyun.parti_gby g on g.parti_id = p.parti_id and g.user_id = u
+                 join oyun.partiler pa on pa.id = p.parti_id
+                 where p.id = u and g.miting_yetkisi and not pa.kapali) then 'gby'
+  end
+$$;
+
+-- [p_bas, p_bit) aralığı bir genel / belediye / CB seçiminin oy verme saatlerine değiyor mu?
+create or replace function oyun.miting_secim_yasagi(p_bas timestamptz, p_bit timestamptz) returns text
+language sql stable set search_path = '' as $$
+  select case s.tur when 'mv' then 'genel seçim' when 'bel' then 'belediye seçimi' else 'cumhurbaşkanlığı seçimi' end
+  from oyun.secimler s
+  where s.tur in ('mv','bel','cb','cb2') and s.durum = 'bekliyor'
+    and s.oy_bas < p_bit and s.oy_bit > p_bas
+  order by s.oy_bas limit 1
+$$;
+
+-- Başlamamış bir parti mitingini iptal eder; parayı ödeyene geri verir
+create or replace function oyun.parti_miting_iptal(p_id bigint, p_neden text, t timestamptz) returns void
+language plpgsql set search_path = '' as $$
+declare m oyun.mitingler; ilad text;
+begin
+  delete from oyun.mitingler where id = p_id and tur = 'parti' and bas > t returning * into m;
+  if m.id is null then return; end if;
+  select ad into ilad from oyun.iller where id = m.il_id;
+  if m.bedel > 0 then
+    if m.odeyen = 'parti' and exists (select 1 from oyun.partiler where id = m.parti_id) then
+      update oyun.partiler set kasa = kasa + m.bedel where id = m.parti_id;
+      insert into oyun.parti_hareket(parti_id, zaman, tutar, aciklama, tur)
+        values (m.parti_id, t, m.bedel, format('%s mitingi iptal edildi, bedel iade', ilad), 'miting');
+    else
+      perform oyun.para_islem(m.user_id, m.bedel, 'miting', format('%s mitingi iptal edildi, bedel iade', ilad), t);
+    end if;
+  end if;
+  perform oyun.bildir(m.user_id, format('%s mitingin iptal edildi: %s. Bedeli iade edildi.', ilad, p_neden), t);
+end $$;
+
+-- Yetkisini kaybedenin (yetki geri alındı, görev bitti, partiden ayrıldı) başlamamış mitingleri düşer
+create or replace function oyun.parti_miting_temizle(t timestamptz) returns void language plpgsql set search_path = '' as $$
+declare r record;
+begin
+  for r in select m.id, m.user_id, m.parti_id from oyun.mitingler m
+           where m.tur = 'parti' and m.bas > t loop
+    if (select parti_id from oyun.profiller where id = r.user_id) is distinct from r.parti_id
+       or oyun.parti_miting_yetki(r.user_id) is null then
+      perform oyun.parti_miting_iptal(r.id, 'parti adına miting yetkin kalmadı', t);
+    end if;
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Parti mitingi düzenle
+-- ---------------------------------------------------------------------
+create or replace function public.parti_miting_duzenle(p_il int, p_bas timestamptz, p_baslik text, p_kasadan boolean default true)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); pa oyun.partiler; yetki text;
+        ilad text; b text; bedel numeric; yasak text; mid bigint; gun date;
+begin
+  select * into pa from oyun.partiler where id = p.parti_id and not kapali for update;
+  if pa.id is null then raise exception 'Parti mitingi için bir partiye üye olmalısın.'; end if;
+  yetki := oyun.parti_miting_yetki(p.id);
+  if yetki is null then
+    raise exception 'Parti adına miting yalnız genel başkan ve miting yetkisi verilmiş genel başkan yardımcıları tarafından düzenlenebilir.';
+  end if;
+  select ad into ilad from oyun.iller where id = p_il;
+  if ilad is null then raise exception 'Geçersiz il.'; end if;
+  if p_bas is null or p_bas < t + interval '15 minutes' then raise exception 'Mitingi en erken 15 dakika sonrasına koyabilirsin.'; end if;
+  if p_bas > t + interval '3 days' then raise exception 'Mitingi en fazla 3 gün sonrasına planlayabilirsin.'; end if;
+  yasak := oyun.miting_secim_yasagi(p_bas, p_bas + interval '1 hour');
+  if yasak is not null then raise exception 'Seçim yasağı: % oy verme saatlerinde miting yapılamaz. Başka bir saat seç.', yasak; end if;
+  b := oyun.metin_temizle(p_baslik, 80);
+  if length(b) < 3 then raise exception 'Miting başlığı en az 3 karakter olmalı.'; end if;
+  gun := (p_bas at time zone 'Europe/Istanbul')::date;
+  if exists (select 1 from oyun.mitingler m where m.user_id = p.id and m.tur = 'parti'
+             and (m.bas at time zone 'Europe/Istanbul')::date = gun) then
+    raise exception 'Aynı gün için zaten bir parti mitingi düzenledin. Günde en fazla 1 parti mitingi yapılabilir.';
+  end if;
+  if exists (select 1 from oyun.mitingler m where m.parti_id = pa.id and m.tur = 'parti' and m.il_id = p_il
+             and m.bas > p_bas - interval '3 days' and m.bas < p_bas + interval '3 days') then
+    raise exception 'Partin % ilinde 3 gün içinde zaten miting yapıyor ya da yaptı. Aynı ilde iki parti mitingi arasında en az 3 gün olmalı.', ilad;
+  end if;
+  if exists (select 1 from oyun.mitingler m where m.il_id = p_il and m.bas < p_bas + interval '1 hour' and m.bit > p_bas) then
+    raise exception 'Bu saatte % meydanında başka bir miting var. Başka bir saat seç.', ilad;
+  end if;
+  bedel := oyun.miting_bedel(p_il::smallint);
+  if coalesce(p_kasadan, true) then
+    if pa.kasa < bedel then
+      raise exception '% mitingi için parti kasasında % ₺ olmalı (kasada % ₺ var). Bedeli kendi cebinden de ödeyebilirsin.',
+        ilad, oyun.tl(bedel), oyun.tl(pa.kasa);
+    end if;
+    update oyun.partiler set kasa = kasa - bedel where id = pa.id;
+    insert into oyun.parti_hareket(parti_id, zaman, tutar, aciklama, tur)
+      values (pa.id, t, -bedel, format('%s mitingi (sahne, ses, ulaşım) · %s', ilad, p.kad), 'miting');
+  else
+    perform oyun.para_islem(p.id, -bedel, 'miting', format('%s parti mitingi (sahne, ses, ulaşım)', ilad), t);
+  end if;
+  insert into oyun.mitingler(user_id, secim_id, il_id, parti_id, baslik, bas, bit, bedel, tur, odeyen)
+    values (p.id, null, p_il, pa.id, b, p_bas, p_bas + interval '1 hour', bedel, 'parti',
+            case when coalesce(p_kasadan, true) then 'parti' else 'kisi' end)
+    returning id into mid;
+  perform oyun.olay('parti', format('%s %s %s, %s mitingi düzenleyecek: “%s” (%s).', pa.kisa,
+      case yetki when 'gb' then 'Genel Başkanı' else 'Genel Başkan Yardımcısı' end, p.kad, ilad, b,
+      to_char(p_bas at time zone 'Europe/Istanbul', 'DD.MM HH24:MI')), p_il::smallint, pa.id, t);
+  return jsonb_build_object('id', mid, 'bedel', bedel, 'il', ilad, 'odeyen', case when coalesce(p_kasadan, true) then 'parti' else 'kisi' end);
+end $$;
+
+-- Parti ekranı için: yetkim, kasa, il bedelleri, yaklaşan parti mitingleri, GB ise yardımcıların yetkileri
+create or replace function public.parti_miting_bilgi() returns jsonb language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); pa oyun.partiler; yetki text;
+begin
+  select * into pa from oyun.partiler where id = p.parti_id;
+  if pa.id is null then return jsonb_build_object('yetki', null); end if;
+  yetki := oyun.parti_miting_yetki(p.id);
+  return jsonb_build_object(
+    'yetki', yetki,
+    'kasa', round(pa.kasa),
+    'cuzdan', (select round(para) from oyun.cuzdan where user_id = p.id),
+    'il_id', p.il_id,
+    'iller', case when yetki is not null then (select jsonb_agg(jsonb_build_object('id', i.id, 'ad', i.ad, 'bedel', oyun.miting_bedel(i.id)) order by i.ad)
+                                               from oyun.iller i) end,
+    'yaklasan', (select coalesce(jsonb_agg(jsonb_build_object('id', m.id, 'kad', x.kad, 'il', i.ad, 'baslik', m.baslik, 'bas', m.bas, 'bit', m.bit,
+                    'odeyen', m.odeyen, 'bedel', m.bedel) order by m.bas), '[]'::jsonb)
+                 from oyun.mitingler m join oyun.profiller x on x.id = m.user_id join oyun.iller i on i.id = m.il_id
+                 where m.tur = 'parti' and m.parti_id = pa.id and m.bit > oyun.simdi()),
+    'yardimcilar', case when yetki = 'gb' then (select coalesce(jsonb_agg(jsonb_build_object('sira', g.sira, 'kad', x.kad, 'yetki', g.miting_yetkisi) order by g.sira), '[]'::jsonb)
+                   from oyun.parti_gby g join oyun.profiller x on x.id = g.user_id where g.parti_id = pa.id) end
+  );
+end $$;
+
+-- Genel başkan bir yardımcısına miting yetkisi verir / geri alır
+create or replace function public.gby_miting_yetkisi(p_kad text, p_ver boolean) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); pa oyun.partiler; h oyun.profiller; r record;
+begin
+  select * into pa from oyun.partiler where id = p.parti_id and not kapali for update;
+  if pa.id is null or pa.gb is distinct from p.id then raise exception 'Miting yetkisini yalnız genel başkan verebilir.'; end if;
+  select * into h from oyun.profiller where lower(kad) = lower(btrim(p_kad));
+  if h.id is null or not exists (select 1 from oyun.parti_gby where parti_id = pa.id and user_id = h.id) then
+    raise exception 'Bu oyuncu partinin genel başkan yardımcısı değil.';
+  end if;
+  update oyun.parti_gby set miting_yetkisi = coalesce(p_ver, false) where parti_id = pa.id and user_id = h.id;
+  if coalesce(p_ver, false) then
+    perform oyun.bildir(h.id, format('Genel Başkan %s sana parti adına miting yetkisi verdi: artık 81 ilin herhangi birinde %s mitingi düzenleyebilirsin.', p.kad, pa.kisa), t);
+  else
+    for r in select id from oyun.mitingler where user_id = h.id and tur = 'parti' and bas > t loop
+      perform oyun.parti_miting_iptal(r.id, 'genel başkan miting yetkini geri aldı', t);
+    end loop;
+    perform oyun.bildir(h.id, format('Genel Başkan %s parti adına miting yetkini geri aldı.', p.kad), t);
+  end if;
+  return public.parti_miting_bilgi();
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Liste: parti mitingi işareti
+-- ---------------------------------------------------------------------
+create or replace function public.mitingler() returns jsonb language sql stable security definer set search_path = '' as $$
+  select coalesce(jsonb_agg(jsonb_build_object('id', m.id, 'kad', p.kad, 'parti', oyun.parti_json(m.parti_id), 'il_id', m.il_id,
+      'il', (select ad from oyun.iller where id = m.il_id), 'baslik', m.baslik, 'bas', m.bas, 'bit', m.bit,
+      'katilim', (select count(*) from oyun.miting_katilim c where c.miting_id = m.id),
+      'katildim', exists (select 1 from oyun.miting_katilim c where c.miting_id = m.id and c.user_id = auth.uid()),
+      'benim_ilim', m.il_id = (select il_id from oyun.profiller where id = auth.uid()),
+      'benim', m.user_id = auth.uid(),
+      'tur', m.tur,
+      'partim', m.parti_id is not null and m.parti_id = (select parti_id from oyun.profiller where id = auth.uid()),
+      'konusma', (select count(*) from oyun.miting_konusma k where k.miting_id = m.id and not k.silindi),
+      'cosku', coalesce(m.cosku, case when m.bas <= oyun.simdi() then oyun.miting_cosku(m.id) end),
+      'secim_tur', (select tur from oyun.secimler where id = m.secim_id)) order by m.bas), '[]'::jsonb)
+  from oyun.mitingler m join oyun.profiller p on p.id = m.user_id
+  where m.bit > oyun.simdi() - interval '6 hours' and m.bas < oyun.simdi() + interval '3 days'
+$$;
+
+-- ---------------------------------------------------------------------
+-- Dakikalık motor: parti mitingi başlayınca partinin başka illerdeki üyelerine de haber gider
+-- ---------------------------------------------------------------------
+create or replace function oyun.miting_tick(t timestamptz) returns void language plpgsql set search_path = '' as $$
+declare m record; n int; c int; enIyi text; konusma int;
+begin
+  perform oyun.parti_miting_temizle(t);
+  for m in select x.*, p.kad, i.ad il_ad, pa.kisa parti_kisa from oyun.mitingler x join oyun.profiller p on p.id = x.user_id join oyun.iller i on i.id = x.il_id
+           left join oyun.partiler pa on pa.id = x.parti_id
+           where not x.duyuruldu and x.bas <= t and x.bit > t loop
+    update oyun.mitingler set duyuruldu = true where id = m.id;
+    insert into oyun.bildirimler(user_id, zaman, metin)
+      select pr.id, t, format('%s şu an %s meydanında: “%s”. Bir saat içinde Gündem''den mitinge katılıp konuşmaları dinleyebilir, tepki verebilirsin.', m.kad, m.il_ad, m.baslik)
+      from oyun.profiller pr where pr.il_id = m.il_id and pr.id <> m.user_id and not pr.yasakli;
+    if m.tur = 'parti' then
+      insert into oyun.bildirimler(user_id, zaman, metin)
+        select pr.id, t, format('%s mitingi başladı: %s, %s meydanında “%s”. Gündem''den canlı izleyebilirsin.', m.parti_kisa, m.kad, m.il_ad, m.baslik)
+        from oyun.profiller pr where pr.parti_id = m.parti_id and pr.il_id <> m.il_id and pr.id <> m.user_id and not pr.yasakli;
+    end if;
+    perform oyun.bildir(m.user_id, format('%s mitingin başladı. Meydan seni bekliyor: Gündem''den mitingine girip kürsüden konuş.', m.il_ad), t);
+    if oyun.push_acik() then
+      perform oyun.push_konuya('s_il_' || m.il_id, null, format('%s meydanda!', m.kad),
+        format('%s mitingi başladı: “%s”. Katılmak için dokun.', m.il_ad, m.baslik), jsonb_build_object('ekran', 'gundem'));
+    end if;
+  end loop;
+  for m in select x.*, p.kad, i.ad il_ad from oyun.mitingler x join oyun.profiller p on p.id = x.user_id join oyun.iller i on i.id = x.il_id
+           where not x.sonuc_yazildi and x.bit <= t loop
+    select count(*) into n from oyun.miting_katilim where miting_id = m.id and user_id <> m.user_id;
+    select count(*) into konusma from oyun.miting_konusma where miting_id = m.id and not silindi;
+    c := oyun.miting_cosku(m.id);
+    select left(k.metin, 120) into enIyi from oyun.miting_konusma k
+      where k.miting_id = m.id and not k.silindi
+        and exists (select 1 from oyun.miting_tepki r where r.konusma_id = k.id and oyun.miting_tepki_puan(r.tur) > 0)
+      order by (select sum(oyun.miting_tepki_puan(r.tur)) from oyun.miting_tepki r where r.konusma_id = k.id) desc, k.id limit 1;
+    update oyun.mitingler set sonuc_yazildi = true, duyuruldu = true, cosku = c where id = m.id;
+    if konusma = 0 then
+      perform oyun.olay('secim', format('%s, %s meydanında %s kişiyi topladı ama kürsüye hiç çıkmadı: “%s”.', m.kad, m.il_ad, n, m.baslik), m.il_id, m.parti_id, t);
+    else
+      perform oyun.olay('secim', format('%s %s mitingi: %s kişi, coşku %s/100 (%s).%s', m.kad, m.il_ad, n, c, lower(oyun.miting_cosku_ad(c)),
+        case when enIyi is not null then format(' En çok alkışlanan söz: “%s”', enIyi) else '' end), m.il_id, m.parti_id, t);
+    end if;
+    perform oyun.bildir(m.user_id, format('%s mitingin sona erdi: %s kişi katıldı, %s kez kürsüye çıktın, meydanın coşkusu %s/100.', m.il_ad, n, konusma, c), t);
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- 2) Bağımsız aday partiye katılır: adaylık düşer (eskiden katılım engelleniyordu)
+-- ---------------------------------------------------------------------
+create or replace function oyun.bagimsiz_parti_kilidi()
+returns trigger language plpgsql set search_path = '' as $$
+declare t timestamptz := oyun.simdi(); r record; gorev text;
+begin
+  if old.parti_id is null and new.parti_id is not null then
+    if exists (select 1 from oyun.adaylar a join oyun.secimler s on s.id = a.secim_id
+               where a.user_id = new.id and a.parti_id is null and s.tur in ('mv','bel','cb','cb2')
+                 and s.durum = 'bekliyor' and t >= s.oy_bas and t < s.oy_bit) then
+      raise exception 'Oy verme sürüyor; bağımsız adaylığın pusulada. Sandık kapandıktan sonra partiye katılabilirsin.';
+    end if;
+    for r in delete from oyun.adaylar a using oyun.secimler s
+             where a.secim_id = s.id and a.user_id = new.id and a.parti_id is null
+               and s.tur in ('mv','bel','cb','cb2') and s.durum = 'bekliyor' and t < s.oy_bas
+             returning a.il_id, s.tur loop
+      gorev := case r.tur when 'mv' then 'milletvekili' when 'bel' then 'belediye başkanı' else 'cumhurbaşkanı' end;
+      perform oyun.olay('secim', format('%s, bağımsız %s adaylığından çekilip partiye katıldı.', new.kad, gorev), r.il_id, new.parti_id, t);
+      perform oyun.bildir(new.id, format('Partiye katıldığın için bağımsız %s adaylığın düştü. Başvuru harcı iade edilmez.', gorev), t);
+    end loop;
+  end if;
+  return new;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Yetkiler
+-- ---------------------------------------------------------------------
+revoke all on function public.parti_miting_duzenle(int, timestamptz, text, boolean), public.parti_miting_bilgi(),
+  public.gby_miting_yetkisi(text, boolean) from public, anon;
+grant execute on function public.parti_miting_duzenle(int, timestamptz, text, boolean), public.parti_miting_bilgi(),
+  public.gby_miting_yetkisi(text, boolean) to authenticated;
+revoke all on function oyun.parti_miting_iptal(bigint, text, timestamptz), oyun.parti_miting_temizle(timestamptz),
+  oyun.miting_tick(timestamptz) from public, anon, authenticated;
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 6) YETKİLER
 --  Yalnızca giriş yapmış oyuncular bu fonksiyonları çağırabilir.

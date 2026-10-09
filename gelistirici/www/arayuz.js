@@ -249,7 +249,7 @@ function mitingHtml(liste) {
       : canli ? `<span class="rozet kirmizi">${m.katildim ? "Oradasın" : "İzle"}</span>`
       : bitti ? `<span class="rozet">${m.cosku != null ? "Coşku " + m.cosku : "Bitti"}</span>` : "";
     return `<button class="miting ${canli ? "canli" : ""}" style="width:100%;text-align:left" onclick="mitingAc(${m.id})"><div class="zaman"><b>${canli ? "Canlı" : `${pr.s}:${pr.d}`}</b><span>${pr.g} ${AYLAR[pr.a - 1].slice(0, 3)}</span></div>
-      <div class="orta" style="flex:1;min-width:0"><b>${e(m.baslik)}</b><div class="kucuk">${e(m.kad)} · ${e(m.il)}${m.parti ? ` · <span style="color:${e(m.parti.renk)}">${e(m.parti.kisa)}</span>` : ""} · ${m.katilim} kişi${m.konusma ? ` · ${m.konusma} konuşma` : ""}</div></div>${dugme}</button>`;
+      <div class="orta" style="flex:1;min-width:0"><b>${e(m.baslik)}</b><div class="kucuk">${m.tur === "parti" ? "Parti mitingi · " : ""}${e(m.kad)} · ${e(m.il)}${m.parti ? ` · <span style="color:${e(m.parti.renk)}">${e(m.parti.kisa)}</span>` : ""} · ${m.katilim} kişi${m.konusma ? ` · ${m.konusma} konuşma` : ""}</div></div>${dugme}</button>`;
   }).join("")}</div>`;
 }
 function mitingAc(id) { ekranAc(() => mitingMeydanEkrani(id)); }
@@ -516,4 +516,54 @@ function hemisiklSvg() {
   }
   noktalar.sort((a, b) => b[2] - a[2]);
   return `<svg class="hemisikl" viewBox="0 0 360 180" aria-hidden="true">${noktalar.map(([x, y], i) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5.6" fill="${dizi[i] || "#3A4675"}" style="animation-delay:${(i * 0.005).toFixed(3)}s"/>`).join("")}</svg>`;
+}
+
+/* =====================================================================
+   PARTİ MİTİNGİ — genel başkan ve yetkili yardımcılar 81 ilde parti adına miting yapar
+   ===================================================================== */
+async function partiMitingKartCiz(pid) {
+  const el = $("#partiMitingKart"); if (!el) return;
+  let b; try { b = await API.rpc("parti_miting_bilgi"); } catch (_) { el.innerHTML = ""; return; }
+  D._pmiting = b;
+  const yak = (b.yaklasan || []).map(m => {
+    const p = trParca(m.bas);
+    return `<button class="liste-satir" style="width:100%;text-align:left;cursor:pointer" onclick="mitingAc(${m.id})"><div class="orta"><b>${e(m.baslik)}</b><div class="kucuk">${e(m.il)} · ${p.g} ${AYLAR[p.a - 1].slice(0, 3)} ${p.s}:${p.d} · ${e(m.kad)} · ${m.odeyen === "parti" ? "parti kasası" : "kendi cebinden"}</div></div></button>`;
+  }).join("");
+  const yrd = b.yetki === "gb" ? `<h3 style="font-size:15px;margin-top:14px">Yardımcıların miting yetkisi</h3>${(b.yardimcilar || []).length
+      ? b.yardimcilar.map(y => `<div class="kv"><span class="k">${y.sira}. ${e(y.kad)}</span><span class="v"><button class="btn ${y.yetki ? "tehlike" : "ikinci"} mt-kucuk" style="width:auto;margin:0" onclick="gbyMitingYetki('${e(y.kad)}',${!y.yetki},${pid})">${y.yetki ? "Yetkiyi al" : "Yetki ver"}</button></span></div>`).join("")
+      : `<p class="kucuk">Henüz yardımcın yok. Yardımcı atadıktan sonra miting yetkisi verebilirsin.</p>`}
+      <p class="kucuk">Yetkisi geri alınan yardımcının başlamamış mitingleri iptal olur, bedeli iade edilir.</p>` : "";
+  if (!b.yetki && !yak) { el.innerHTML = ""; return; }
+  el.innerHTML = `<div class="kart"><h2>Parti mitingleri</h2>
+    ${b.yetki ? `<p class="alt">${b.yetki === "gb" ? "Genel başkan olarak" : "Genel başkanın verdiği yetkiyle"} 81 ilin herhangi birinde parti adına miting düzenleyebilirsin. Günde en fazla 1 miting; aynı ilde iki parti mitingi arasında en az 3 gün; seçim günlerinde oy verme saatlerinde miting yok.</p>
+      <button class="btn" onclick="partiMitingModal(${pid})">${IKON.megafon} Parti mitingi düzenle</button>` : ""}
+    ${yak ? `<h3 style="font-size:15px;margin-top:12px">Yaklaşan</h3>${yak}` : ""}
+    ${yrd}</div>`;
+}
+async function gbyMitingYetki(kad, ver, pid) {
+  if (!ver && !await onayla("Miting yetkisini al", `${kad} artık parti adına başka illerde miting düzenleyemeyecek. Başlamamış mitingleri iptal olur.`, "Yetkiyi al", true)) return;
+  try { await API.rpc("gby_miting_yetkisi", { p_kad: kad, p_ver: ver }); toast(ver ? "Miting yetkisi verildi." : "Miting yetkisi geri alındı."); partiMitingKartCiz(pid); }
+  catch (err) { toast(hataCevir(err.message), true); }
+}
+function partiMitingModal(pid) {
+  const b = D._pmiting; if (!b || !b.iller) return;
+  const t = new Date(simdi() + 2 * 3600e3); t.setMinutes(0, 0, 0);
+  const p = trParca(t), iki = (n) => String(n).padStart(2, "0");
+  const deger = `${p.y}-${iki(p.a)}-${iki(p.g)}T${p.s}:00`;
+  const m = modal(`<h3>Parti mitingi düzenle</h3><p class="alt">Bir saatlik miting. Başladığında o ildeki herkese ve partinin tüm üyelerine haber gider. Kürsüden konuşursun; o ilde yaşayanlar katılıp tepki verir, diğer illerden üyeler canlı izler.</p>
+    <div class="alan"><label for="pmIl">İl</label><select id="pmIl">${b.iller.map(i => `<option value="${i.id}" ${i.id === b.il_id ? "selected" : ""}>${e(i.ad)} · ${tlYaz(i.bedel)}</option>`).join("")}</select></div>
+    <div class="alan"><label for="pmBaslik">Mitingin adı</label><input id="pmBaslik" maxlength="80" placeholder="Örnek: Büyük Erzurum buluşması"></div>
+    <div class="alan"><label for="pmZaman">Başlangıç (Türkiye saati)</label><input id="pmZaman" type="datetime-local" value="${deger}"></div>
+    <div class="alan"><label for="pmOde">Bedeli kim ödesin?</label><select id="pmOde"><option value="1">Parti kasası (${tlYaz(b.kasa)})</option><option value="0">Kendi cebimden (${tlYaz(b.cuzdan || 0)})</option></select></div>
+    <div class="hata-metin" id="pmHata"></div><button class="btn" id="pmTamam">Mitingi duyur</button>`);
+  const fiyat = () => { const i = b.iller.find(x => x.id === +$("#pmIl", m).value); $("#pmTamam", m).textContent = `Mitingi duyur · ${tlYaz(i ? i.bedel : 0)}`; };
+  $("#pmIl", m).onchange = fiyat; fiyat();
+  $("#pmTamam", m).onclick = async () => {
+    const btn = $("#pmTamam", m); btn.disabled = true;
+    try {
+      const r = await API.rpc("parti_miting_duzenle", { p_il: +$("#pmIl", m).value, p_bas: $("#pmZaman", m).value + ":00+03:00",
+        p_baslik: $("#pmBaslik", m).value, p_kasadan: $("#pmOde", m).value === "1" });
+      modalKapat(); toast(`${r.il} mitingi duyuruldu.`); partiMitingKartCiz(pid);
+    } catch (err) { btn.disabled = false; $("#pmHata", m).textContent = hataCevir(err.message); }
+  };
 }

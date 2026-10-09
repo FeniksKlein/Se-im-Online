@@ -92,3 +92,11 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - `46_miting_canli.sql` (+ `migrations/20261009_miting_canli.sql`): düzenleyen aday miting süresince kürsüden konuşur (20 konuşma, 400 karakter, 15 sn arayla); katılanlar her söze alkış/tezahürat/ıslık/yuh verir (değiştirilebilir), 80 karakterlik slogan atar (20 sn arayla, en fazla 30). Coşku 0-100 tepkilerden; bitince Gündem haberi (katılım, coşku, en çok alkışlanan söz). Başka ilden canlı izleme. Moderatör `miting_icerik_sil` (şikâyet yetkisi).
 - Arayüz: `arayuz.js` → `mitingMeydanEkrani` (4 sn'de bir tazelenir). Meydanlar listesindeki her satır meydanı açar; adayın mitingi başlayınca Gündem'de "kürsüye çık" kartı çıkar.
 - Test: `python3 test/miting_canli.py`.
+
+## 2026-10-09 · 2026.10.09-12 il dışı parti mitingi + bağımsız adayın partiye katılması
+- `50_parti_miting_bagimsiz.sql` (+ `migrations/20261009_parti_miting_bagimsiz.sql`): genel başkan 81 ilde parti mitingi düzenler (`parti_miting_duzenle`); GB yardımcısına `gby_miting_yetkisi` ile yetki verir/geri alır (geri alınınca başlamamış mitingler iptal + iade). Parti kasası ya da kendi cebi öder. Günde 1, aynı ilde 3 gün arayla, seçim oy saatlerinde yasak. Başlayınca partinin başka illerdeki üyelerine de bildirim. `mitingler.tur` ('aday'/'parti'), `mitingler.odeyen`, `parti_gby.miting_yetkisi` eklendi; `secim_id` artık boş olabilir.
+- Bağımsız aday partiye katılınca adaylığı düşer (eskiden katılım engelleniyordu); oy verme sürerken engel.
+- Arayüz: parti ekranında "Parti mitingleri" kartı (`arayuz.js` → `partiMitingKartCiz`, `partiMitingModal`), GB için yardımcı yetki düğmeleri; bağımsız adaya katılım uyarısı.
+- `48_eyetkin_parti.sql`: temiz kurulumda Eyetkin profili yoksa artık hata vermeden atlanıyor (49'daki CELAL düzeltmesiyle aynı). Canlıya etkisi yok.
+- Test: `python3 test/parti_miting.py` (hepsi.sh'e eklendi, `miting_canli` da). Migration eski sürümlü veritabanına uygulandı: oyuncu verisi parmak izi değişmedi, iki kez çalıştırılabiliyor.
+
