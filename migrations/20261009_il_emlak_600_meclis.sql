@@ -98,8 +98,8 @@ begin
   onceki_vergi:=case when (select count(*) from oyun.yatirim_mulkleri x where x.user_id=p_user
              and (x.satin_alma<m.satin_alma or(x.satin_alma=m.satin_alma and x.id<=m.id)))>=3
         then round(gross*oyun.yasa_oran('coklu_mulk_vergi')/100,2) else 0 end;
-  select count(*) into tax_weeks from generate_series(0,n-1) v
-    where m.sonraki_kira+v*interval '7 days'>=bas;
+  select count(*) into tax_weeks from generate_series(0,n-1) as v(hafta)
+    where m.sonraki_kira+v.hafta*interval '7 days'>=bas;
   emlak_vergi:=round(m.alis_bedeli*oyun.emlak_vergi_oran(m.il_id)*tax_weeks/100,2);
   perform oyun.para_islem(p_user,gross-onceki_vergi-emlak_vergi,'kira',
     format('Mülk #%s: %s haftalık kira; merkez vergi %s TL, belediye emlak vergisi %s TL',
