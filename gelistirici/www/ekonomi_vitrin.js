@@ -104,7 +104,7 @@ function sirketDetayEkrani(id){
  <div class="kart"><h2>Şirket faaliyet raporu</h2><div class="kv"><span>Gerçekleşen brüt gelir</span><b>${vitTL(x.toplam_gelir)}</b></div>
  <div class="kv"><span>Gerçekleşen net kâr / zarar</span><b>${vitTL(x.net_kazanc)}</b></div><div class="kv"><span>Kaydedilen vergi</span><b>${vitTL(x.vergi)}</b></div>
  <p class="kucuk">Kayıtlara geçmiş tüm dönemlerin toplamıdır; eksik eski veriler hesaplanmaz.</p>
- ${x.satilik?`<div class="kv"><span>Satılık fiyatı</span><b>${vitTL(x.satilik)}</b></div><button class="btn altin" onclick="sirketPazarAl(${x.id})">Satın al</button>`:""}</div>
+ ${x.satilik?`<div class="kv"><span>Satılık fiyatı</span><b>${vitTL(x.satilik)}</b></div><button class="btn altin" onclick="sirketPazardanAl(${x.id})">Satın al</button>`:""}</div>
  <button class="btn ikinci" onclick="sirketVitrinEkrani()">Şirketlere dön</button>`,{geri:true});
 }
 async function sirketPazarEkrani(){
