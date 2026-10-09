@@ -112,7 +112,7 @@ grant execute on function public.mulk_satin_al(text) to authenticated;
 -- Belediye başkanı emlak vergisini kendi ilinde 24 saatte bir belirleyebilir.
 create or replace function public.emlak_vergi_belediye_ayarla(p_oran numeric)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare u uuid:=auth.uid(); il smallint; son timestamptz; eski numeric; t timestamptz:=oyun.simdi(); ad text;
+declare u uuid:=auth.uid(); il smallint; son timestamptz; eski numeric; t timestamptz:=oyun.simdi(); ilad text;
 begin
  select il_id into il from oyun.makamlar where user_id=u and tur='bel' and bit is null order by bas desc limit 1;
  if il is null then raise exception 'Yalnızca görevdeki belediye başkanı oran değiştirebilir.'; end if;
@@ -122,9 +122,9 @@ begin
  if coalesce(eski,oyun.duz('emlak_mulk'))=p_oran then raise exception 'Vergi oranında değişiklik yok.'; end if;
  insert into oyun.il_emlak_vergi(il_id,oran,baskan,zaman) values(il,p_oran,u,t)
  on conflict(il_id) do update set oran=excluded.oran,baskan=excluded.baskan,zaman=excluded.zaman;
- select ad into ad from oyun.iller where id=il;
+ select i.ad into ilad from oyun.iller i where i.id=il;
  perform oyun.olay('belediye',format('%s Belediyesi haftalık mülk vergisini %s%% olarak belirledi.',ad,p_oran),il,null,t);
- return jsonb_build_object('il',ad,'oran',p_oran,'degisim',t);
+ return jsonb_build_object('il',ilad,'oran',p_oran,'degisim',t);
 end $$;
 revoke all on function public.emlak_vergi_belediye_ayarla(numeric) from public,anon;
 grant execute on function public.emlak_vergi_belediye_ayarla(numeric) to authenticated;
