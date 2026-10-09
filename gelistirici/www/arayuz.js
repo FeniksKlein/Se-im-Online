@@ -30,17 +30,21 @@ Object.assign(IKON, {
    ===================================================================== */
 const PORTRE = {
   ten: ["#F2D3B8", "#E5BA92", "#D09D70", "#B07A4F", "#8A5A3B", "#5E3B26"],
-  sac: ["#1C1715", "#3A291D", "#6A472B", "#A26E3C", "#8E9096", "#2B2B30"],
+  sac: ["#1C1715", "#3A291D", "#6A472B", "#A26E3C", "#8E9096", "#2B2B30", "#080A0F", "#B34D32", "#E4BE6D", "#F0F0EB"],
+  sacRenkAd: ["Siyah", "Koyu kahve", "Kahverengi", "Açık kahve", "Gri", "Koyu kül", "Kuzguni siyah", "Kızıl", "Sarı", "Beyaz"],
   kiyafet: ["#1F2A47", "#2E2E35", "#4A4F5A", "#5E2434", "#26442F", "#3B3F92", "#6A5A3D", "#E9ECF3"],
   zemin: ["#2B3A6B", "#3E2F6E", "#1F4D5A", "#5A3A2A", "#2F4F3A", "#4A2B45", "#5B4A1F", "#33415C"],
-  sacAd: ["Saçsız", "Kısa", "Yandan ayrık", "Kıvırcık", "Uzun", "Topuz", "Küt", "Başörtüsü", "Açılmış", "At kuyruğu"],
-  yuzAd: ["Yok", "Bıyık", "Kısa sakal", "Gür sakal", "Keçi sakalı"],
+  sacAd: ["Saçsız", "Kısa", "Yandan ayrık", "Kıvırcık", "Uzun", "Topuz", "Küt", "Başörtüsü", "Açılmış", "At kuyruğu", "Asker tıraşı", "Sıfıra yakın", "Yanları kısa", "Undercut", "Pompadour", "Geri taranmış", "Dağınık kısa", "Dalgalı", "Keskin yan ayrım", "Klasik beyefendi", "Dikenli", "Düşük fade"],
+  yuzAd: ["Yok", "Bıyık", "Kısa sakal", "Gür sakal", "Keçi sakalı", "Kalın bıyık", "Burma bıyık", "Üç günlük sakal", "Kirli sakal", "Top sakal", "Uzun sakal", "Çene çizgisi", "Nal bıyık"],
   gozAd: ["Yok", "Yuvarlak", "Köşeli"]
 };
 function portreKodCoz(kod) {
-  const p = String(kod || "").split("-").map(n => parseInt(n, 10));
-  if (p.length !== 6 || p.some(n => !Number.isFinite(n))) return null;
-  return { ten: p[0] % 6, sac: p[1] % 10, yuz: p[2] % 5, goz: p[3] % 3, kiyafet: p[4] % 8, zemin: p[5] % 8 };
+  if (!/^[0-9]{1,2}(-[0-9]{1,2}){5,6}$/.test(String(kod || ""))) return null;
+  const p = String(kod).split("-").map(Number);
+  const ten = p[0] % PORTRE.ten.length, sac = p[1] % PORTRE.sacAd.length, zemin = p[5] % PORTRE.zemin.length;
+  // Eski 6 parçalı kodların orijinal saç rengini koru.
+  const sacRenk = p.length === 7 ? p[6] % PORTRE.sac.length : (zemin * 7 + sac * 3 + ten) % 6;
+  return { ten, sac, yuz: p[2] % PORTRE.yuzAd.length, goz: p[3] % PORTRE.gozAd.length, kiyafet: p[4] % PORTRE.kiyafet.length, zemin, sacRenk };
 }
 function portreSvg(kod, yedek) {
   const k = portreKodCoz(kod);
@@ -49,7 +53,7 @@ function portreSvg(kod, yedek) {
     const bas = ad.replace(/[^A-Za-zÇĞİÖŞÜçğıöşü]/g, "").slice(0, 2).toLocaleUpperCase("tr") || "?";
     return `<svg class="portre" viewBox="0 0 64 64" role="img" aria-label="${e(ad)}"><rect width="64" height="64" fill="${e(renk)}"/><text x="32" y="41" text-anchor="middle" font-family="Kurul Display,Arial Narrow,sans-serif" font-weight="700" font-size="25" fill="#fff">${e(bas)}</text></svg>`;
   }
-  const ten = PORTRE.ten[k.ten], sac = PORTRE.sac[(k.zemin * 7 + k.sac * 3 + k.ten) % 6], kiy = PORTRE.kiyafet[k.kiyafet], zem = PORTRE.zemin[k.zemin];
+  const ten = PORTRE.ten[k.ten], sac = PORTRE.sac[k.sacRenk], kiy = PORTRE.kiyafet[k.kiyafet], zem = PORTRE.zemin[k.zemin];
   const golge = "rgba(0,0,0,.14)", cizgi = "#1B2140";
   let arka = "", on = "";
   // saç (arka katman: uzun saç, at kuyruğu, başörtüsü)
@@ -65,13 +69,33 @@ function portreSvg(kod, yedek) {
     6: `<path d="M20 34V24c0-8 5-12 12-12s12 4 12 12v10l-3-1V24c-3-3-6-4-9-4s-6 1-9 4v9z" fill="${sac}"/>`,
     7: `<path d="M21 27c1-8 6-12 11-12s10 4 11 12c-3-3-7-5-11-5s-8 2-11 5z" fill="${kiy === "#E9ECF3" ? "#6A4E80" : kiy}" opacity=".9"/>`,
     8: `<path d="M21 24c0-3 1-5 2-6v8zM43 24c0-3-1-5-2-6v8z" fill="${sac}"/>`,
-    9: `<path d="M21 25c0-9 5-13 11-13s11 4 11 13c-2-5-6-7-11-7s-9 2-11 7z" fill="${sac}"/>`
+    9: `<path d="M21 25c0-9 5-13 11-13s11 4 11 13c-2-5-6-7-11-7s-9 2-11 7z" fill="${sac}"/>`,
+    10: '<path d="M22 21q10-7 20 0v3q-10-4-20 0z" fill="' + sac + '"/>',
+    11: '<path d="M23 22q9-4 18 0v2q-9-2-18 0z" fill="' + sac + '"/>',
+    12: '<path d="M21 24q0-13 11-13t11 13l-4-3-3-5q-4 4-15 8z" fill="' + sac + '"/>',
+    13: '<path d="M21 25q-1-14 11-14t11 14l-5-4-11-1-6 5z" fill="' + sac + '"/>',
+    14: '<path d="M20 25q2-17 14-17 10 0 10 16-8-5-13-3-4 1-11 4z" fill="' + sac + '"/>',
+    15: '<path d="M20 24q4-15 16-15 7 1 8 12-10-3-20 4z" fill="' + sac + '"/>',
+    16: '<path d="M20 25l4-11 5 4 4-8 4 7 5-3 3 11-7-5-6 2-7-2z" fill="' + sac + '"/>',
+    17: '<path d="M19 26q-1-10 7-14l4 2 6-3q10 3 9 15-4-3-8-7-7 5-18 7z" fill="' + sac + '"/>',
+    18: '<path d="M21 25q0-13 11-13t11 13q-5-4-10-5l-5-5-1 6-6 4z" fill="' + sac + '"/>',
+    19: '<path d="M21 25q0-13 11-13t11 13q-8-7-13-5-5 1-9 5z" fill="' + sac + '"/>',
+    20: '<path d="M21 24l3-11 5 5 3-10 4 9 5-5 2 12-6-4-5 3-6-3z" fill="' + sac + '"/>',
+    21: '<path d="M20 27v-5q3-14 12-12 11 1 12 13v4l-5-7q-5-4-11 0z" fill="' + sac + '"/>'
   }[k.sac] || "";
   const yuz = {
     1: `<path d="M27 35.5c2-1.6 3.6-1.6 5 0 1.4-1.6 3-1.6 5 0-1.6 1.2-3.4 1.6-5 .4-1.6 1.2-3.4.8-5-.4z" fill="${sac}"/>`,
     2: `<path d="M22 31c1 7 5 11 10 11s9-4 10-11c-1 3-3 5-5 5h-10c-2 0-4-2-5-5z" fill="${sac}" opacity=".85"/>`,
     3: `<path d="M21 28c0 11 5 17 11 17s11-6 11-17c-1 4-3 7-6 7H27c-3 0-5-3-6-7z" fill="${sac}"/><path d="M27 35.5c2-1.4 3.6-1.4 5 0 1.4-1.4 3-1.4 5 0" stroke="${sac}" stroke-width="2.2" fill="none"/>`,
-    4: `<path d="M29 39h6l-1 5h-4z" fill="${sac}"/><path d="M27.5 35.5c2-1.2 3.4-1.2 4.5 0 1.1-1.2 2.5-1.2 4.5 0" stroke="${sac}" stroke-width="1.8" fill="none"/>`
+    4: `<path d="M29 39h6l-1 5h-4z" fill="${sac}"/><path d="M27.5 35.5c2-1.2 3.4-1.2 4.5 0 1.1-1.2 2.5-1.2 4.5 0" stroke="${sac}" stroke-width="1.8" fill="none"/>`,
+    5: '<path d="M26 35q3-2 6 0 3-2 6 0l1 3q-4-1-7 0-3-1-7 0z" fill="' + sac + '"/>',
+    6: '<path d="M26 36q6-3 6 0 0-3 6 0 2 1 4-2-1 5-8 4h-4q-7 1-8-4 2 3 4 2z" fill="' + sac + '"/>',
+    7: '<path d="M22 33q2 10 10 10t10-10" fill="none" stroke="' + sac + '" stroke-width="2.2" stroke-dasharray="1 1.7"/>',
+    8: '<path d="M22 32q1 11 10 11t10-11" fill="none" stroke="' + sac + '" stroke-width="2.7" opacity=".7"/>',
+    9: '<path d="M26 35q3-3 6 0 3-3 6 0" fill="none" stroke="' + sac + '" stroke-width="2"/>',
+    10: '<path d="M20 30q0 13 12 17 12-4 12-17-3 10-10 10h-4q-7 0-10-10z" fill="' + sac + '"/>',
+    11: '<path d="M22 34q2 10 10 10t10-10" fill="none" stroke="' + sac + '" stroke-width="3"/>',
+    12: '<path d="M26 35h12m-12 0-2 6m14-6 2 6" fill="none" stroke="' + sac + '" stroke-width="3" stroke-linecap="round"/>'
   }[k.yuz] || "";
   const goz = k.goz === 1 ? `<g fill="none" stroke="${cizgi}" stroke-width="1.6"><circle cx="27.5" cy="28" r="3.6"/><circle cx="36.5" cy="28" r="3.6"/><path d="M31.1 28h1.8"/></g>`
     : k.goz === 2 ? `<g fill="none" stroke="${cizgi}" stroke-width="1.6"><rect x="23.6" y="25.2" width="7.6" height="5.4" rx="1.2"/><rect x="32.8" y="25.2" width="7.6" height="5.4" rx="1.2"/><path d="M31.2 27.6h1.6"/></g>` : "";
@@ -125,16 +149,17 @@ async function portreModal() {
   const ben = D.durum && D.durum.profil; if (!ben) return;
   await kimlikYukle([ben.kad]);
   const k0 = kimlik(ben.kad) || {};
-  let k = portreKodCoz(k0.avatar) || { ten: 1, sac: 1, yuz: 0, goz: 0, kiyafet: 0, zemin: 0 };
-  const kodYaz = () => [k.ten, k.sac, k.yuz, k.goz, k.kiyafet, k.zemin].join("-");
-  const secici = (alan, sayi, ciz) => `<div class="alan"><label>${{ ten: "Ten", sac: "Saç", yuz: "Bıyık ve sakal", goz: "Gözlük", kiyafet: "Kıyafet", zemin: "Arka plan" }[alan]}</label>
+  let k = portreKodCoz(k0.avatar) || { ten: 1, sac: 1, yuz: 0, goz: 0, kiyafet: 0, zemin: 0, sacRenk: 1 };
+  const kodYaz = () => [k.ten, k.sac, k.yuz, k.goz, k.kiyafet, k.zemin, k.sacRenk].join("-");
+  const secici = (alan, sayi, ciz) => `<div class="alan"><label>${{ ten: "Ten", sac: "Saç", yuz: "Bıyık ve sakal", sacRenk: "Saç rengi", goz: "Gözlük", kiyafet: "Kıyafet", zemin: "Arka plan" }[alan]}</label>
     <div class="portre-secici" data-alan="${alan}">${Array.from({ length: sayi }, (_, i) => `<button type="button" data-i="${i}" aria-label="${e(ciz(i, true))}" class="${k[alan] === i ? "secili" : ""}">${ciz(i)}</button>`).join("")}</div></div>`;
   const renkKutu = (r) => `<span style="background:${r}"></span>`;
   const m = modal(`<h3>Portren</h3><p class="alt">Oyuncu kartında, sohbette ve aday listelerinde görünür.</p>
     <div style="display:flex;justify-content:center;margin:12px 0" id="ptOnizle"></div>
     ${secici("ten", 6, (i, a) => a ? "Ten " + (i + 1) : renkKutu(PORTRE.ten[i]))}
-    ${secici("sac", 10, (i, a) => a ? PORTRE.sacAd[i] : "")}
-    ${secici("yuz", 5, (i, a) => a ? PORTRE.yuzAd[i] : "")}
+    ${secici("sac", PORTRE.sacAd.length, (i, a) => a ? PORTRE.sacAd[i] : "")}
+    ${secici("yuz", PORTRE.yuzAd.length, (i, a) => a ? PORTRE.yuzAd[i] : "")}
+    ${secici("sacRenk", PORTRE.sac.length, (i, a) => a ? PORTRE.sacRenkAd[i] : renkKutu(PORTRE.sac[i]))}
     ${secici("goz", 3, (i, a) => a ? PORTRE.gozAd[i] : "")}
     ${secici("kiyafet", 8, (i, a) => a ? "Kıyafet " + (i + 1) : renkKutu(PORTRE.kiyafet[i]))}
     ${secici("zemin", 8, (i, a) => a ? "Zemin " + (i + 1) : renkKutu(PORTRE.zemin[i]))}
@@ -146,7 +171,7 @@ async function portreModal() {
     $("#ptOnizle", m).innerHTML = portreSvg(kodYaz(), { ad: ben.kad }).replace('class="portre"', 'class="portre portre-buyuk"');
     ["sac", "yuz", "goz"].forEach(alan => m.querySelectorAll(`.portre-secici[data-alan="${alan}"] button`).forEach(b => {
       const k2 = Object.assign({}, k, { [alan]: +b.dataset.i });
-      b.innerHTML = portreSvg([k2.ten, k2.sac, k2.yuz, k2.goz, k2.kiyafet, k2.zemin].join("-"), { ad: "" }).replace('class="portre"', 'class="portre" style="width:88%;height:88%"');
+      b.innerHTML = portreSvg([k2.ten, k2.sac, k2.yuz, k2.goz, k2.kiyafet, k2.zemin, k2.sacRenk].join("-"), { ad: "" }).replace('class="portre"', 'class="portre" style="width:88%;height:88%"');
     }));
   };
   ciz();
