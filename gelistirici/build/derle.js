@@ -7,7 +7,9 @@ html=html.replace('<script src="veri.js"></script>',()=>'<script>'+veri+'</scrip
 html=html.replace('<script src="basin.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www/basin.js'),'utf8')+'</script>');
 html=html.replace('<script src="piyasa.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www/piyasa.js'),'utf8')+'</script>');
 html=html.replace('<script src="siyasi_hayat.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www/siyasi_hayat.js'),'utf8')+'</script>');
-html=html.replace('<script src="parti_yasam.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www/parti_yasam.js'),'utf8')+'</script>');
+// Ayrı modüller tek dosyaya gömülür (sıra önemli değildir; hepsi global fonksiyon tanımlar)
+for (const m of ['parti_yasam.js','aday_sirket_ek.js','parti_kimlik_ek.js','otomatik_gazete.js'])
+  html=html.replace(`<script src="${m}"></script>`,()=>'<script>'+fs.readFileSync(path.join(kok,'www',m),'utf8')+'</script>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});

@@ -149,7 +149,7 @@ begin
     'adaylar', adaylar_j,
     'ikinci_tur', true
   );
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION oyun.ara_secim_olustur(p_tur text, p_parti bigint, p_il smallint, t timestamp with time zone)
  RETURNS jsonb
@@ -380,7 +380,7 @@ begin
       'oy_bas', oyun.tr_an(ikinci_gun,8), 'goreve_bas', asil_bas
     );
   end if;
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION oyun.gb_halef(t timestamp with time zone)
  RETURNS void
@@ -445,7 +445,7 @@ begin
       null, pa.id, t
     );
   end loop;
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION oyun.oy_engeli(p oyun.profiller, s oyun.secimler)
  RETURNS text
@@ -497,7 +497,7 @@ AS $function$
         end
     end
   )
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION oyun.push_hatirlatmalar(t timestamp with time zone)
  RETURNS void
@@ -705,7 +705,7 @@ begin
   end loop;
 
   perform oyun.kumbara_hatirlat(t);
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION oyun.secim_ozet(s oyun.secimler, p oyun.profiller, t timestamp with time zone)
  RETURNS jsonb
@@ -744,7 +744,7 @@ AS $function$
       then (select count(*) from oyun.oylar o where o.secim_id = s.id)
     end
   )
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION oyun.tbmm_ara_secim(t timestamp with time zone)
  RETURNS bigint
@@ -772,7 +772,7 @@ begin
   end if;
 
   return sid;
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.aday_ol(p_tur text)
  RETURNS jsonb
@@ -868,7 +868,7 @@ begin
 
   perform oyun.aday_ucreti_al(p,p_tur,t);
   return public.durum();
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.cb_aday_belirle(p_yontem text, p_kad text DEFAULT NULL::text)
  RETURNS jsonb
@@ -945,7 +945,7 @@ begin
   end if;
 
   return public.durum();
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.cb_destek(p_parti bigint)
  RETURNS jsonb
@@ -1017,7 +1017,7 @@ begin
   );
 
   return public.durum();
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.durum()
  RETURNS jsonb
@@ -1156,7 +1156,7 @@ begin
       )
     end
   );
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.genel_baskanlik_uslen()
  RETURNS jsonb
@@ -1225,7 +1225,7 @@ begin
   );
 
   return public.durum();
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.istifa(p_gorev text)
  RETURNS jsonb
@@ -1441,7 +1441,7 @@ begin
   end if;
 
   return public.durum();
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.meclis_gorev_birak(p_tur text)
  RETURNS jsonb
@@ -1482,7 +1482,7 @@ begin
   end if;
 
   return public.meclis_baskanlik();
-end $function$
+end $function$;
 
 revoke all on function public.istifa(text) from public, anon;
 grant execute on function public.istifa(text) to authenticated;

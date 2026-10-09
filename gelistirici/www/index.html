@@ -38,7 +38,15 @@ window.UYGULAMA_SURUM = "__SURUM__";   // derleme sırasında SURUM dosyasından
 .basin-grid .kart{margin:0}.basin-manset{text-align:center;border-top:3px solid var(--gold);border-bottom:3px double var(--line2)}
 .kart.basin-manset h1,.kart.basin-gazete h2,.kart.basin-yazi h2{font-family:Georgia,'Times New Roman',serif;overflow-wrap:anywhere;line-height:1.2;text-transform:none;letter-spacing:normal;color:var(--txt)}
 .kart.basin-manset h1{font-size:clamp(28px,7vw,42px);margin:12px 0}.kart.basin-yazi h2{font-size:27px;margin:12px 0}.kart.basin-gazete h2{font-size:25px;margin:14px 0}
-.basin-metin{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;margin:18px 0;font-size:16px}
+.basin-metin{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;margin:18px 0;font-size:16px;color:var(--txt);opacity:1;-webkit-text-fill-color:var(--txt)}
+ .kart.basin-yazi{background:var(--panel);color:var(--txt);opacity:1}
+ #gazYayinlar .basin-metin{background:var(--panel2);border:1px solid var(--line2);padding:14px;border-radius:12px;user-select:text;-webkit-user-select:text}
+ #basinForm #gazMetin{display:block;box-sizing:border-box;width:100%;min-height:260px;padding:14px;
+ font-family:inherit;font-size:16px;line-height:1.6;color:var(--txt)!important;-webkit-text-fill-color:var(--txt);
+ caret-color:#fff;background:var(--panel2)!important;border:1px solid var(--line2);
+ border-radius:12px;outline:none;opacity:1;resize:vertical;user-select:text;-webkit-user-select:text}
+ #basinForm #gazMetin:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(210,174,96,.16)}
+ #gazSayac{font-variant-numeric:tabular-nums;font-weight:700;color:var(--txt2);display:block;margin-top:6px;text-align:right}
 .basin-son,.basin-yazar{border-top:1px solid var(--line2);margin-top:14px;padding-top:14px;overflow-wrap:anywhere}
 .basin-propaganda,.basin-kilit{padding:12px;background:var(--panel2);border-left:3px solid var(--gold);margin:12px 0;line-height:1.6}
 #basinListe,#gazYonetim,#gazYayinlar{overflow-wrap:anywhere}#basinForm textarea{width:100%;resize:vertical}#gazHedefAlan[hidden]{display:none}
@@ -248,6 +256,41 @@ details.acilir ul{margin:6px 0 0 18px;font-size:12.5px;color:var(--mut)}
 .ust .para-cip{width:auto;border-radius:99px;padding:0 11px;font-weight:800;font-size:13px;color:var(--gold2);white-space:nowrap}
 .sekmeler .nokta{position:absolute;top:4px;right:calc(50% - 16px);width:9px;height:9px;border-radius:50%;background:var(--acc);border:2px solid var(--bg)}
 .payinput input{padding:9px 10px;border-radius:10px;background:var(--panel2);border:1px solid var(--line2);font-size:16px;text-align:right;width:100%}
+
+/* TÜRKİYE GÜNDEM — otomatik oyun gazetesi. */
+.tg-kapak{border:1px solid #917b51;background:linear-gradient(140deg,#2b2721 0%,#101318 67%,#161922 100%);padding:24px 18px 22px;border-radius:20px;text-align:center;margin-bottom:12px;color:#f7f1e2}
+.tg-kapak h1{font-size:clamp(33px,9vw,49px);letter-spacing:-1.7px;line-height:1.08;font-weight:950;margin:10px 0;color:#fff;word-break:normal}
+.tg-kapak h1 span{color:#e7b861}.tg-saat{font-size:10px;letter-spacing:1.8px;font-weight:900;color:#c4b9a6}
+.tg-slogan{font-size:14px;color:#d2cabb;font-family:Georgia,serif;font-style:italic}
+.tg-baslik-alt{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;border-top:1px solid #726044;margin-top:16px;padding-top:10px;font-size:10px;color:#c4bbb0}
+.tg-tanitim{background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:14px;margin:10px 0}
+.tg-tanitim span{font-size:11px;font-weight:900;letter-spacing:1px;color:#edbf64}
+.tg-tanitim p{font-size:12px;line-height:1.7;color:var(--txt2);margin:8px 0 0}
+.tg-secimler{display:flex;gap:8px;overflow-x:auto;padding:10px 0 15px;scrollbar-width:thin}
+.tg-filtre{flex:none;border:1px solid var(--line2);background:var(--panel2);color:var(--txt2);border-radius:20px;padding:9px 12px;font-size:12px;font-weight:750}
+.tg-filtre.secili{color:#1a1b20;background:#e9be67;border-color:#e9be67}
+.tg-manset{position:relative;border:1px solid #98764e;border-radius:19px;padding:22px 18px;background:linear-gradient(135deg,#302316,#1d1c22);margin-bottom:16px;color:#f8f3e8;cursor:pointer}
+.tg-ust{display:inline-block;background:#bd463e;color:white;border-radius:6px;padding:5px 8px;font-size:10px;font-weight:900;letter-spacing:1px;margin-bottom:12px}
+.tg-kategori,.tg-gorev{font-size:11px;font-weight:900;letter-spacing:.7px;color:#e7b861;margin-bottom:6px;display:block}
+.tg-manset h2{font-size:clamp(23px,6.5vw,32px);line-height:1.18;font-weight:950;margin:7px 0 12px;color:white}
+.tg-manset p{color:#ddd8cc;line-height:1.6;font-size:14px;margin:0 0 16px}
+.tg-meta{font-size:11px;color:#aeb0b9;line-height:1.5}
+.tg-bolum-bas{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:16px 0 12px;padding-bottom:8px;border-bottom:3px double #ae8a52}
+.tg-bolum-bas h2{font-size:19px;letter-spacing:.3px;margin:0}
+.tg-bolum-bas span{font-size:11px;color:var(--mut)}
+.tg-liste{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:11px}
+.tg-haber{padding:18px 15px;border:1px solid var(--line2);border-radius:16px;background:var(--panel);display:flex;flex-direction:column;gap:6px}
+.tg-haber h3{font-size:18px;line-height:1.3;margin:5px 0;color:var(--txt)}
+.tg-haber p{font-size:13px;line-height:1.55;color:var(--txt2);margin:0 0 5px;flex:1}
+.tg-oku{border:0;background:none;color:#e9be67;text-align:left;padding:10px 0 0;font-weight:850;font-size:13px;cursor:pointer}
+.tg-detay{border:1px solid var(--line2);background:var(--panel);border-radius:18px;padding:21px 16px;margin:10px 0;color:var(--txt)}
+.tg-detay h1{font-size:clamp(25px,7vw,34px);line-height:1.22;font-weight:900;margin:10px 0}
+.tg-ozet{font-size:16px;font-weight:650;line-height:1.55;margin:18px 0;padding:12px 0;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2)}
+.tg-tam{white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;line-height:1.85;color:var(--txt);-webkit-text-fill-color:var(--txt);opacity:1}
+.tg-dipnot{font-size:11px;line-height:1.6;color:var(--mut);margin-top:22px;padding-top:14px;border-top:1px solid var(--line2)}
+.tg-kart-kisa{border:1px solid #ad8a52!important;background:linear-gradient(130deg,#332b1b,var(--panel))!important}
+.tg-kart-kisa h2{color:#f5d18b}
+
 </style>
 </head>
 <body>
@@ -626,6 +669,9 @@ async function gundemEkrani(){
   const gelecek = d.takvim.filter(s => s.asama === "yakinda");
   const makam = p.makamlar.map(m => `<span class="rozet altin">${e(makamYaz(m))}</span>`).join(" ");
   const govde = `
+    <div class="kart tg-kart-kisa"><h2>📰 TÜRKİYE GÜNDEM</h2>
+    <p class="alt">Oyundaki gerçek gelişmeler otomatik haber oluyor: adaylar, partiler, ittifaklar ve seçimler.</p>
+    <button class="btn altin" onclick="otomatikGazeteEkrani()">Bugünün gazetesini oku →</button></div>
     <div class="kart"><h2>📰 Basın / Gazeteler</h2><p class="alt">Oyuncuların haberlerini ve köşe yazılarını oku, kendi gazeteni kur.</p><button class="btn altin" onclick="ekranAc(basinEkrani)">Basına göz at</button></div>
     <div class="kart" style="display:flex;gap:12px;align-items:center">
       ${amblemKutu(p.parti, 52)}
@@ -691,8 +737,8 @@ async function adaylikCek(sid){
 }
 async function cbKararModal(){
   const pd = await API.rpc("parti_detay", { p_parti: D.durum.profil.parti.id });
-  const itt = await API.rpc("ittifak_bilgi", { p_parti: D.durum.profil.parti.id });
-  const ortaklar = itt.ittifak ? itt.ittifak.uyeler.filter(x => x.id !== D.durum.profil.parti.id) : [];
+  const destekSecenekleri = await API.rpc("cb_destek_secenekleri");
+  const ortaklar = destekSecenekleri.secenekler || [];
   const uyeler = pd.uyeler.filter(u => u.kad !== D.durum.profil.kad);
   const m = modal(`<h3 style="font-size:19px;font-weight:800">Cumhurbaşkanı adayı</h3>
     <p class="alt">Genel seçimle birlikte yapılacak cumhurbaşkanlığı seçimi için partinin adayını nasıl belirleyeceğini seç.</p>
@@ -700,8 +746,8 @@ async function cbKararModal(){
     <div class="alan"><label>veya bir üyeyi aday göster</label><select id="uye"><option value="">Üye seç…</option>${uyeler.map(u => `<option>${e(u.kad)}</option>`).join("")}</select></div>
     <button class="btn ikinci" id="k2">Seçtiğim üyeyi aday göster</button>
     <button class="btn ikinci" id="k3">Üyeler ön seçimle belirlesin</button>
-    ${ortaklar.length ? `<div class="alan"><label>veya ittifak ortağının adayını destekle (kendi adayını çıkarmazsın)</label><select id="ortak">${ortaklar.map(o => `<option value="${o.id}">${e(o.ad)}</option>`).join("")}</select></div>
-      <button class="btn ikinci" id="k4">Ortağın adayını destekle</button>` : ""}
+    ${ortaklar.length ? `<div class="alan"><label>veya başka partinin kesinleşmiş Cumhurbaşkanı adayını destekle (kendi adayını çıkarmazsın)</label><select id="ortak">${ortaklar.map(o => `<option value="${o.parti_id}">${e(o.parti)} · ${e(o.aday)}${o.ittifak_ortagi?" (ittifak ortağı)":""}</option>`).join("")}</select></div>
+      <button class="btn ikinci" id="k4">Bu adayı ortak destekle</button>` : ""}
     <p class="kucuk" style="margin-top:8px">Ön seçimde 26'sında başvuru alınır, 28'inde partinin üyeleri oy verir.</p>`);
   const gonder = async (y, kad) => { try { await islem(() => API.rpc("cb_aday_belirle", { p_yontem: y, p_kad: kad || null }), "Kararın kaydedildi."); modalKapat(); yenidenCiz(); } catch (_) {} };
   $("#k1", m).onclick = () => gonder("kendisi");
@@ -877,6 +923,7 @@ async function ilDetay(id){
     ${Object.entries(grup).map(([t, l]) => `<div class="kart"><h2>${TUR[t].ad} adayları</h2>${l.map(a => `<div class="liste-satir"><div class="orta"><b>${a.sira ? a.sira + ". " : ""}${e(a.kad)}</b> ${itibarCip(a.itibar)}${a.vaat ? `<div class="vaat">“${e(a.vaat)}”</div>` : ""}${vaatHtml(a.vaatler)}</div><span style="color:${e(a.renk)};font-weight:700">${e(a.kisa)}</span></div>`).join("")}</div>`).join("")}
     ${d.partiler.length ? `<div class="kart"><h2>Partilerin üye sayısı</h2>${d.partiler.map(x => `<div class="kv"><span class="k">${partiRozet(x)}</span><span class="v">${x.uye}</span></div>`).join("")}</div>` : ""}
     ${p && !d.benim_ilim ? `<button class="btn ikinci" onclick="ilDegistir(${d.id}, ${d.tasinma == null ? "null" : d.tasinma})">Bu ile taşın${d.tasinma != null ? ` (${fmt(d.tasinma)} ₺)` : ""}</button>` : ""}
+    <button class="btn altin" onclick="aliciBagisModal('il',${d.id},decodeURIComponent('${encodeURIComponent(d.ad).replace(/\x27/g,"%27")}'))">🤝 Bu şehre bağış yap</button>
     <button class="btn ikinci" onclick="modalKapat()">Kapat</button>`;
 }
 async function ilDegistir(id, ucret){
@@ -935,7 +982,7 @@ async function devletEkrani(){
     `<button class="${D.devletSekme === k ? "aktif" : ""}" onclick="D.devletSekme='${k}';devletEkrani()">${a}</button>`).join("")}</div>`;
   try {
     await durumYenile();
-    if (D.devletSekme === "hukumet") { iskelet("Devlet", seg + await hukumetHtml()); politikaBagla(); return; }
+    if (D.devletSekme === "hukumet") { iskelet("Devlet", seg + `<div class="kart"><button class="btn ikinci" onclick="aliciBagisModal('devlet',1,'Türkiye Cumhuriyeti Hazinesi')">🤝 Devlet hazinesine bağış yap</button></div>` + await hukumetHtml()); politikaBagla(); return; }
     if (D.devletSekme === "meclis") return iskelet("Devlet", seg + await meclisHtml());
     if (D.devletSekme === "mevzuat") { iskelet("Devlet", seg + await mevzuatHtml()); kuralBagla(); return; }
     return iskelet("Devlet", seg + await gazeteHtml());
@@ -1741,24 +1788,26 @@ async function partiDetay(id){
   const makamAd = (m) => (m || "").split(",").filter(Boolean).map(x => `<span class="rozet altin">${MAKAM_AD[x]}</span>`).join(" ");
   iskelet(e(p.kisa), `
     <div class="kart" style="text-align:center"><div class="amb" style="margin:0 auto 10px;width:72px;height:72px;border-radius:20px;background:${e(p.renk)}22">${amblemSvg(p.amblem, p.renk).replace("<svg", '<svg style="width:42px;height:42px;color:' + e(p.renk) + '"')}</div>
-      <h3 style="font-size:21px">${e(p.ad)}</h3><div class="alt">${p.sistem ? "Kurucu parti" : `${tarih(p.kurulus)} tarihinde ${e(p.kurucu || "")} kurdu`}</div>
+      <h3 style="font-size:21px">${e(p.ad)}</h3><button class="btn altin" onclick="aliciBagisModal('parti',${p.id},decodeURIComponent('${encodeURIComponent(p.ad).replace(/\x27/g,"%27")}'))">🤝 Bu partiye bağış yap</button><div class="alt">${p.sistem ? "Kurucu parti" : `${tarih(p.kurulus)} tarihinde ${e(p.kurucu || "")} kurdu`}</div>
       <div style="display:flex;justify-content:center;gap:16px;margin-top:12px">
         <div><b style="font-size:20px">${p.uye}</b><div class="kucuk">üye</div></div><div><b style="font-size:20px">${p.vekil}</b><div class="kucuk">vekil</div></div><div><b style="font-size:20px">${p.belediye}</b><div class="kucuk">belediye</div></div></div></div>
     ${p.kurulus_bit ? `<div class="olay basvuru"><div class="baslik"><b>Kuruluş aşamasında</b><span class="rozet altin">${p.kurucu_gecerli} / ${p.kurucu_gerekli} kurucu</span></div>
       <p class="alt" style="margin-top:6px">Parti, ${tarihSaat(p.kurulus_bit)} tarihine kadar şartları taşıyan ${p.kurucu_gerekli} kurucu üyeye ulaşırsa kurulur ve seçimlere katılabilir; ulaşamazsa kuruluş düşer. Seçmen kartı hazır her üye kurucu sayılır.</p>
       ${p.uyesiyim && p.kurucu_engelim ? `<div class="kucuk" style="color:var(--gold2)">Sen henüz kurucu sayılmıyorsun: ${e(p.kurucu_engelim)}</div>` : ""}
       ${!p.uyesiyim ? `<button class="btn altin" onclick="partiyeKatil(${p.id})">Kurucu üye ol</button>` : ""}</div>` : ""}
+    <div id="partiAdayKart"></div>
     <div class="kart"><h2>Yönetim</h2>
       <div class="kv"><span class="k">Genel Başkan</span><span class="v">${p.gb ? `<a class="bag" href="#" onclick="oyuncuKart('${e(p.gb)}');return false">${e(p.gb)}</a>` : "— (genel başkansız)"}</span></div>
       ${!p.gb && p.uyesiyim && !araKurultay ? `<button class="btn" onclick="gbUslen(${p.id})">Genel başkanlığı üstlen</button>` : ""}${araKurultay ? `<div class="kucuk" style="margin-top:8px;color:var(--gold2)">Olağanüstü kurultay süreci başladı; yeni genel başkan seçimle belirlenecek.</div>` : ""}
       ${[1,2,3,4,5,6].map(i => { const g = p.gby.find(x => x.sira === i); return `<div class="kv"><span class="k">GB Yardımcısı ${i}</span><span class="v">${g ? `<a class="bag" href="#" onclick="oyuncuKart('${e(g.kad)}');return false">${e(g.kad)}</a>` : "—"}</span></div>`; }).join("")}
-      ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn ikinci" onclick="partiAdModal(${p.id})">Parti adını değiştir</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
+      ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn ikinci" onclick="partiAdModal(${p.id})">Parti adını değiştir</button><button class="btn altin" onclick="partiAmblemModal(${p.id})">🎨 Parti amblemini değiştir</button><button class="btn altin" onclick="ucretModal(${p.id})">💰 Adaylık ücretlerini değiştir</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
       ${p.uyesiyim && ben.gby ? `<button class="btn tehlike" onclick="gbyIstifa()">Yardımcılıktan istifa et</button>` : ""}<button class="btn ikinci" onclick="ekranAc(()=>partiTuzukEkrani(${p.id}))">Parti tüzüğü ve üye oylamaları</button></div>
     ${p.uyesiyim ? `<button class="btn tehlike" style="margin:0 0 12px" onclick="partidenAyril()">Partiden ayrıl</button>` : `<button class="btn" style="margin:0 0 12px" onclick="partiyeKatil(${p.id})">Partiye katıl</button>`}
     <div class="kart"><h2>Parti içi yaşam</h2><button class="btn ikinci" onclick="ekranAc(()=>grupToplantiEkrani(${p.id}))">🎙️ Grup toplantıları / Konuşmalar</button><button class="btn ikinci" onclick="ekranAc(()=>partiDisiplinEkrani(${p.id}))">⚖️ Disiplin ve ihraç oylamaları</button></div><div id="teskilatKart"></div>
     <div id="kasaKart"></div>
     <div id="ittifakKart"></div>
     <div class="kart"><h2>Üyeler</h2>${p.uyeler.map(u => `<div class="liste-satir" onclick="oyuncuKart('${e(u.kad)}')" style="cursor:pointer"><div class="orta"><b>${e(u.kad)}${u.kad === p.gb ? ` <span class="rozet altin">GB</span>` : p.gby.some(g => g.kad === u.kad) ? ` <span class="rozet">GBY</span>` : ""}</b><div class="kucuk">${e(u.il)}</div></div>${makamAd(u.makam)}</div>`).join("") || `<div class="bos">Henüz üye yok. İlk üye sen ol!</div>`}</div>`, { geri: true });
+  partiAdayKartiCiz(p.id);
   ittifakKartCiz(p.id);
   partiKasaCiz(p.id);
   teskilatKartCiz(p.id);
@@ -1782,12 +1831,12 @@ async function partiKasaCiz(pid){
     ${UC.map(([t, ad]) => `<div class="kv"><span class="k">${ad}</span><span class="v">${tlYaz(k.ucretler[t])} <span class="kucuk">×${fmt(k.carpanlar[t], 2)}</span></span></div>`).join("")}
     ${k.hareketler.slice(0, 5).map(x => `<div class="hareket"><div style="min-width:0"><div>${e(x.aciklama)}</div><div class="kucuk">${tarihSaat(x.zaman)}</div></div><span class="t ${x.tutar >= 0 ? "iyi" : "kotu"}">${x.tutar >= 0 ? "+" : ""}${tlYaz(x.tutar)}</span></div>`).join("")}
     <p class="kucuk" style="margin-top:6px">Kasa; aday ücretleri, üye bağışları ve son genel seçimde %3'ü geçen partilere ödenen hazine yardımıyla dolar. Genel başkan kasadan üyelere kampanya desteği verir.</p>
-    ${k.uye_mi ? `<button class="btn ikinci" onclick="bagisModal(${pid})">Partine bağış yap</button>` : ""}
+
     ${k.gb_mi ? `<button class="btn altin" onclick="destekModal(${pid}, ${k.kasa})">Üyeye kampanya desteği ver</button><button class="btn ikinci" onclick="ucretModal(${pid})">Aday ücretlerini ayarla</button>` : ""}</div>`;
 }
 function bagisModal(pid){
   const h = D._hayat;
-  const m = modal(`<h3 style="font-size:19px;font-weight:800">Partine bağış</h3><p class="alt">Bağışın parti kasasına girer; genel başkan bu parayla adaylara kampanya desteği verebilir. Kişi başı günlük bağış sınırı 1 aylık asgari ücrettir.${h ? ` Cüzdanında ${tlYaz(h.para)} var.` : ""}</p>
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">Partine bağış</h3><p class="alt">Bağışın parti kasasına girer; genel başkan bu parayla adaylara kampanya desteği verebilir. Günlük bağış sınırı yoktur; cüzdanında yeterli oyun parası bulunması gerekir.${h ? ` Cüzdanında ${tlYaz(h.para)} var.` : ""}</p>
     <div class="alan"><label>Tutar (₺)</label><input id="bmik" type="number" min="100" step="100" value="1000" inputmode="numeric"></div><button class="btn altin" id="bok">Bağışla</button>`);
   $("#bok", m).onclick = async () => { try { await API.rpc("bagis_yap", { p_miktar: +$("#bmik", m).value }); modalKapat(); toast("Bağışın için teşekkürler!"); D._hayat = null; partiKasaCiz(pid); } catch (err) { toast(hataCevir(err.message), true); } };
 }
@@ -1850,7 +1899,7 @@ async function ittifakAyril(pid){
 async function partiyeKatil(id){
   const ben = D.durum.profil;
   const not = ben.parti ? `Şu anki partinden (${e(ben.parti.kisa)}) ayrılacaksın; varsa sonuçlanmamış adaylıkların düşer.` : "";
-  if (!await onayla("Partiye katıl", `${not} Parti içi seçimlerde oy kullanabilmek ve aday olabilmek için başvurular açılmadan önce üye olmuş olmalısın.`, "Katıl")) return;
+  if (!await onayla("Partiye katıl", `${not} Başvuru süresi açıkken partiye yeni katılmış olsan da aday olabilirsin. Parti içi seçimlerde oy kullanmak için başvuru açılmadan önce üye olma şartı devam eder.`, "Katıl")) return;
   try { await islem(() => API.rpc("partiye_katil", { p_parti: id }), "Partiye katıldın."); yenidenCiz(); } catch (_) {}
 }
 async function partidenAyril(){
@@ -2188,12 +2237,14 @@ async function oyuncuKart(kad){
     <div class="kart" style="margin-top:12px"><h2>Siyasi geçmiş</h2>${k.gecmis.map(g => `<div class="kv"><span class="k">${e(g.makam)}</span><span class="v kucuk">${tarih(g.bas)}${g.bit ? " – " + tarih(g.bit) : " – görevde"}</span></div>`).join("") || `<div class="alt">Henüz görev almadı.</div>`}
       <div class="kucuk" style="margin-top:6px">Katılım: ${tarih(k.katilim)}</div></div>
     ${k.ben ? "" : `<button class="btn" id="ko">Özel mesaj gönder</button>
-      <button class="btn ikinci" id="kp">💸 Para gönder</button>
+      <button class="btn altin" id="kh">🎁 Cüzdandan para hediye et</button>
+      <button class="btn ikinci" id="kp">🏦 Vadesiz hesaptan havale</button>
       <button class="btn ikinci" id="ke">${k.engelledim ? "Engeli kaldır" : "Engelle"}</button>
       <button class="btn tehlike" id="ks">Oyuncuyu şikâyet et</button>`}
     <button class="btn ikinci" onclick="modalKapat()">Kapat</button>`;
   if (!k.ben) {
     $("#ko", m).onclick = () => { modalKapat(); ekranAc(() => ozelEkrani(k.kad)); };
+    $("#kh", m).onclick = () => aliciBagisModal("oyuncu",k.kad,k.kad);
     $("#kp", m).onclick = () => paraGonderModal(k.kad);
     $("#ke", m).onclick = () => engelDegis(k.kad, !k.engelledim);
     $("#ks", m).onclick = () => sikayetModal("oyuncu", null, k.kad);
@@ -2277,7 +2328,7 @@ const METIN = {
     <h4>Para nasıl kazanılır (Hayat sekmesi)</h4>
     <p><b>Maaş kumbarası:</b> maaşın saat saat birikir ama en fazla 8 saatlik birikir (bu süreyi mevzuat değiştirebilir); gelip "Topla" demezsen birikme durur. Kumbara dolunca telefonuna bildirim gelir. <b>Seri:</b> her gün gelip toplarsan maaşına +%5 eklenir (en fazla +%30); bir gün atlarsan sıfırlanır. <b>Statü:</b> topladığın her gün +1, kullandığın her oy +3 kıdem puanı kazandırır: Yeni Gelen → Vatandaş → Saygın Vatandaş → Kanaat Önderi → Duayen → Yaşayan Efsane. Her basamak maaşına kıdem primi kadar ekler. <b>Reklam izle:</b> günde 5 kez, her biri 2 saatlik maaş. Mağazadan ₺ paketi de alınabilir.</p>
     <p>Maaşın = asgari ücret × statü × ilinin refahı × destekler. Seçilmiş makamlar ayrıca maaş alır (gerçek oranlarla: cumhurbaşkanı, bakan, milletvekili asgari ücretin yaklaşık 11-13 katı; il belediye başkanı ilin büyüklüğüne göre 6-11 katı). Kesintiler: gelir vergisi (asgari ücret muaftır), kent vergisi ve günlük geçim masrafı (enflasyonla artar).</p>
-    <p>Paranı aday adaylığı başvuru ücretine (partinin kasasına gider, ücreti genel başkan belirler), başka ile taşınmaya, ek propaganda hakkına ve partine bağışa harcarsın. Kişi başı günlük bağış sınırı 1 aylık asgari ücrettir.</p>
+    <p>Paranı aday adaylığı başvuru ücretine (partinin kasasına gider, ücreti genel başkan belirler), başka ile taşınmaya, ek propaganda hakkına ve partine bağışa harcarsın. Oyunda günlük bağış limiti yoktur; oyuncular gerçek cüzdan bakiyeleri kadar başka oyunculara, partilere, kurumlara ve şehirlere bağış yapabilir.</p>
     <h4>Belediyeler</h4>
     <p>Belediye kasası her gün ilin büyüklüğüne, gelişmişliğine, belediye payına ve kent vergisine göre gelir alır. Belediye başkanı kent vergisini (%0-5) ve her hemşehriye günlük desteği belirler; kent lokantası, ücretsiz toplu ulaşım, kira yardımı (geçim masrafını düşürür) ve istihdam ofisi (maaşları artırır) gibi hizmetler açar. Hizmetlerin gideri her gece kasadan düşer; para yetmezse kapanır. Altyapı ve raylı sistem yatırımları ilin gelişmişliğini kalıcı artırır.</p>
     <h4>Vaatler</h4>
@@ -2289,7 +2340,7 @@ const METIN = {
     <p>Türkiye Meydanı (herkes), il kahvesi (ilindekiler), parti sohbeti (üyeler) ve TBMM Genel Kurulu (vekiller, bakanlar ve cumhurbaşkanı konuşur, herkes izler) kanalları vardır. Oyuncular birbirine özel mesaj gönderebilir.</p>
     <p>Görev ve adaylıklar propaganda hakkı verir: cumhurbaşkanı ve bakanlar tüm Türkiye'ye günde 1, genel başkan partisine günde 3, yardımcıları günde 1, vekil ve belediye başkanı iline günde 1, adaylar her seçim için seçmenlerine günde 1 yayın gönderebilir. Yayınlar seçmenlerin bildirim kutusuna düşer.</p>
     <h4>Kurallar</h4>
-    <p>• Oy ve aday olabilmek için hesabının en az 3 günlük olması gerekir.<br>• Parti içi seçimlerde (ön seçim, kurultay) oy ve adaylık için, başvurular açılmadan önce partiye üye olmalısın.<br>• Bir kişi aynı anda tek seçilmiş görev tutabilir (vekil, belediye başkanı veya cumhurbaşkanı). Yeni görevine başlayınca eskisi düşer; boşalan vekilliğe listedeki sıradaki aday gelir.<br>• İlini 30 günde bir değiştirebilirsin (taşınma masraflıdır); seçim dönemlerinde (6–11 ve 26–2 arası) il değiştirilemez.<br>• Görev süreleri 1 aydır.<br>• Birden fazla hesap açmak, hesap satmak, hakaret, küfür, taciz, nefret söylemi ve spam yasaktır. 3 kişinin şikâyet ettiği mesaj otomatik gizlenir; 24 saatte çok sayıda şikâyet alan hesap 24 saat susturulur; ağır ihlallerde hesap kapatılır.</p></div>`,
+    <p>• Oy ve aday olabilmek için hesabının en az 3 günlük olması gerekir.<br>• Parti içi seçimlerde (ön seçim, kurultay) adaylık için başvuru süresi içinde parti üyesi olman yeterlidir. Oy kullanmak için başvurular açılmadan önce partiye üye olmuş olmalısın.<br>• Bir kişi aynı anda tek seçilmiş görev tutabilir (vekil, belediye başkanı veya cumhurbaşkanı). Yeni görevine başlayınca eskisi düşer; boşalan vekilliğe listedeki sıradaki aday gelir.<br>• İlini 30 günde bir değiştirebilirsin (taşınma masraflıdır); seçim dönemlerinde (6–11 ve 26–2 arası) il değiştirilemez.<br>• Görev süreleri 1 aydır.<br>• Birden fazla hesap açmak, hesap satmak, hakaret, küfür, taciz, nefret söylemi ve spam yasaktır. 3 kişinin şikâyet ettiği mesaj otomatik gizlenir; 24 saatte çok sayıda şikâyet alan hesap 24 saat susturulur; ağır ihlallerde hesap kapatılır.</p></div>`,
   gizlilik: () => `<h3 style="font-size:20px;font-weight:900">Gizlilik ve KVKK Aydınlatma Metni</h3><div class="metin">
     <p>Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında Seçim Simülasyonu Online oyununda işlenen kişisel verileri açıklar. Veri sorumlusu: FeniksKlein / Gülveren Games. İletişim: ${e(AYAR.ILETISIM)}</p>
     <h4>Hangi verileri işliyoruz?</h4>
@@ -2724,6 +2775,14 @@ function hayatCiz(h){
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
         <div><div class="kucuk">CÜZDAN</div><div class="para">${tlYaz(h.para)}</div></div>
         <div style="text-align:right"><span class="rozet altin">${e(st.ad)}</span><div class="kucuk" style="margin-top:6px">🔥 ${h.bugun_toplandi ? kb.seri : kb.seri - 1} günlük seri</div></div></div></div>
+    
+    <div class="kart" style="border:2px solid var(--gold);background:linear-gradient(135deg,rgba(226,178,75,.13),transparent);margin-top:10px">
+      <h2>🏦 Bankacılık ve 🏢 İş Dünyası</h2>
+      <p class="alt">Bankalar, şirketler, ortaklıklar ve ticaret kayıtların artık tek dokunuşla burada.</p>
+      <div class="satir" style="margin:8px 0"><button class="btn yarim altin" style="margin:0" onclick="ekranAc(bankaEkrani)">🏛️ Devlet bankası</button><button class="btn yarim altin" style="margin:0" onclick="oyuncuBankaEkrani()">🏦 Oyuncu bankaları</button></div>
+      <div class="satir" style="margin:8px 0"><button class="btn yarim altin" style="margin:0" onclick="sirketEkrani()">🏢 Şirket kur / yönet</button><button class="btn yarim ikinci" style="margin:0" onclick="ekranAc(mulkEkrani)">🏠 Gayrimenkul</button></div>
+      <button class="btn ikinci" onclick="ticaretGecmisimEkrani()">🧾 Alım–satım geçmişim · kimden, kime, kaça?</button>
+    </div>
     <div class="olay ${dolu ? "oy" : "basvuru"}">
       <div class="baslik"><b>Maaş kumbarası</b><span class="rozet ${dolu ? "kirmizi" : "altin"}">${dolu ? "Doldu!" : fmt(kb.saat, 1) + " / " + fmt(kb.kapasite || 8) + " saat"}</span></div>
       <div class="sayac" style="font-size:30px">${tlYaz(kb.birikmis)}</div>
@@ -2746,7 +2805,7 @@ function hayatCiz(h){
     <div class="kart" style="border:2px solid var(--gold)"><h2>🎟️ Milli Piyango</h2><p class="alt">Her biletin büyük ikramiye şansı %1. Birden fazla kazanan varsa ikramiye bölüşülür, hiç kazanan yoksa devreder. Bilet bedelinin %30’u hazineye gider.</p><button class="btn altin" onclick="ekranAc(piyangoEkrani)">🎟️ Bilet al / Çekilişi gör</button></div>
     <div class="kart" style="border:2px solid var(--gold)"><h2>🎰 Kazı Kazan · 100 ₺</h2><p class="alt">0, 100, 200, 1.000, 5.000 veya 10.000 ₺ ödül. Sonuç anında belli olur, oyundaki devlet hazinesi etkilenir.</p><button class="btn altin" onclick="ekranAc(kazikazanEkrani)">🎟️ Kazı Kazan aç</button></div>
     <div class="kart" style="border:2px solid var(--gold);background:linear-gradient(130deg,rgba(50,215,75,.08),transparent)"><h2>📈 Yatırım · Borsa / Döviz / Altın</h2><p class="alt">Dolar, avro, gram altın ve hisse grupları: herkes için aynı fiyat, her saat değişim, risk ve gerçek kâr/zarar. İktidarın ekonomi politikaları fiyatları etkiler.</p><button class="btn altin" onclick="ekranAc(piyasaEkrani)">📊 Piyasaları aç / Portföyüm</button></div>
-    <div class="kart" style="border:2px solid var(--gold)"><h2>🏢 Şirketler ve oyuncu bankaları</h2><p class="alt">Şirket kur, ortaklık oluştur, banka işlet, kâr payı al veya zarar et.</p><button class="btn altin" onclick="ekranAc(sirketEkrani)">Şirketlerim / Banka kur</button></div>\n    <div class="kart"><h2>Statü</h2>
+    \n    <div class="kart"><h2>Statü</h2>
       <div style="display:flex;justify-content:space-between"><b>${e(st.ad)}</b><span class="kucuk">${st.puan} kıdem puanı${st.sonraki_esik ? ` · ${e(st.sonraki_ad)}: ${st.sonraki_esik}` : ""}</span></div>
       <div class="bar"><i style="width:${stOran}%;background:var(--gold)"></i></div>
       <div style="margin-top:6px">${STATU.map(([a, p2], i) => `<span class="taahhut ${i <= STATU.findIndex(x => x[0] === st.ad) ? "" : "yok"}">${a}</span>`).join("")}</div>
@@ -2804,7 +2863,7 @@ async function ilBagisModal(){
   const m = modal(`<div class="yukleniyor">Yükleniyor…</div>`);
   let d; try { d = await API.rpc("il_bagis_durum"); } catch (err) { modalKapat(); toast(hataCevir(err.message), true); return; }
   m.querySelector(".modal").innerHTML = `<h3 style="font-size:19px;font-weight:800">${e(d.il_ad)} kalkınma bağışı</h3>
-    <p class="alt">Bağışlar ilin gelişmişliğini artırır (şu an ${fmt(d.gelisim, 2)}/100). Parti bağışıyla birlikte günlük sınır: ${tlYaz(d.tavan)} (bugün ${tlYaz(d.bugun)}).</p>
+    <p class="alt">Bağışlar ilin gelişmişliğini artırır (şu an ${fmt(d.gelisim, 2)}/100). Günlük bağış sınırı yoktur; cüzdanındaki para kadar bağış yapabilirsin.</p>
     <div class="alan"><label>Bağış (₺)</label><input id="ibmik" type="number" min="100" step="100" value="1000" inputmode="numeric"></div>
     <div class="kv"><span class="k">Bu ay şehre toplam katkı</span><span class="v">${tlYaz(d.ay_toplam)}</span></div>
     <div class="kv"><span class="k">Senin toplam bağışın</span><span class="v">${tlYaz(d.benim_toplam)}</span></div>
@@ -2898,7 +2957,7 @@ async function mulkEkrani(){
 }
 function mulkCiz(d){
   iskelet("Gayrimenkul",`
-    <div class="kart"><h2>Gayrimenkul portföyüm</h2>
+    <div class="kart"><h2>Gayrimenkul portföyüm</h2><button class="btn ikinci" onclick="ticaretGecmisimEkrani()">🧾 Geçmiş mülk alım–satımlarım</button>
       <div class="kv"><span class="k">Mülk sayısı</span><b>${fmt(d.adet)}</b></div>
       <div class="kv"><span class="k">Toplam alış bedeli</span><b>${tlYaz(d.mulk_degeri)}</b></div>
       <div class="kv"><span class="k">Haftalık toplam kira</span><b>${tlYaz(d.haftalik_toplam)}</b></div>
@@ -2977,6 +3036,7 @@ async function sirketEkrani(){
   _sirketEkonomi={asgari:Number(d.asgari),normal:Number(d.sirket_asgari_sermaye||100000),banka:Number(d.banka_asgari_sermaye||1000000)};
   _sirketSonMin=_sirketEkonomi.normal;
   iskelet("Şirketler ve bankalar",`
+  <div class="kart"><button class="btn altin" onclick="ticaretGecmisimEkrani()">🧾 Şirket / hisse alım–satım geçmişim</button><div class="satir" style="margin-top:8px"><button class="btn yarim ikinci" style="margin:0" onclick="oyuncuBankaEkrani()">🏦 Oyuncu bankalarına git</button><button class="btn yarim ikinci" style="margin:0" onclick="ekranAc(bankaEkrani)">🏛️ Devlet bankası</button></div></div>
   <div class="kart"><h2>🏢 Şirket kur</h2><p class="alt">Asgari sermaye: şirketlerde 100.000 ₺, bankalarda 1.000.000 ₺. Bütçene göre 7 günlük gelir, gider ve kâr/zarar tahminlerini incele.</p>
   <div class="alan"><label>Şirket adı</label><input id="sir_ad" maxlength="50" placeholder="Şirket adı"></div>
   <div class="alan"><label>Sektör</label><select id="sir_sektor" onchange="sirketOnizleme(true)"><option value="tarim">Tarım</option><option value="sanayi">Sanayi</option><option value="teknoloji">Teknoloji</option><option value="ticaret">Ticaret</option><option value="insaat">İnşaat</option><option value="medya">Medya</option><option value="banka">Banka</option></select></div>
@@ -2984,17 +3044,17 @@ async function sirketEkrani(){
   <div class="kart" id="sir_kazanc_onizleme" style="background:var(--panel2);margin-top:12px" aria-live="polite"></div><p id="sir_sermaye_uyari" role="alert" class="alt" style="color:var(--acc2);display:none"></p>
   <button id="sir_kur_btn" class="btn altin" onclick="sirketKur()">Şirketi kur</button></div>
   <div class="kart"><h2>Ortak olduğum şirketler</h2>
-  ${d.sirketler.length?d.sirketler.map(s=>`<div class="kart"><h3>${e(s.ad)} · ${e(s.sektor)}</h3><div class="kv"><span>Payım</span><b>%${s.pay}</b></div><div class="kv"><span>Şirket kasası</span><b>${fmt(s.kasa)} ₺</b></div>  ${s.pay===100?`<div class="alan"><label>Sermaye artırımı (₺)</label><input id="sir_artis_${s.id}" type="number" min="10000" value="10000"></div><button class="btn altin" onclick="sirketSermayeArtir(${s.id})">Sermaye artır</button><div class="alan"><label>Şirketin tamamı için satış fiyatı (₺)</label><input id="sir_satis_${s.id}" type="number" min="1000" placeholder="Boş bırak: ilanı kaldır" value="${s.satilik??''}"></div><button class="btn ikinci" onclick="sirketSatisaCikar(${s.id})">Satış ilanını güncelle / kaldır</button>`:''}
+  ${d.sirketler.length?d.sirketler.map(s=>`<div class="kart"><h3>${e(s.ad)} · ${e(s.sektor)}</h3><div class="kv"><span>Payım</span><b>%${s.pay}</b></div><div class="kv"><span>Şirket kasası</span><b>${fmt(s.kasa)} ₺</b></div><button class="btn ikinci" onclick="aliciBagisModal('sirket',${s.id},decodeURIComponent('${encodeURIComponent(s.ad).replace(/\x27/g,"%27")}'))">🤝 Bu şirkete bağış yap</button>${sirketMiniFinans(s,d.asgari)}<div class="kv"><span>Dağıtılabilir kâr</span><b>${fmt(s.dagitilabilir_kar??0)} ₺</b></div><p class="alt">Haftalık hesaplama: ${s.sonraki_kazanc?new Date(s.sonraki_kazanc).toLocaleString("tr-TR"):"Belirsiz"}</p>  ${s.pay===100?`<div class="alan"><label>Sermaye artırımı (₺)</label><input id="sir_artis_${s.id}" type="number" min="10000" value="10000"></div><button class="btn altin" onclick="sirketSermayeArtir(${s.id})">Sermaye artır</button><div class="alan"><label>Şirketin tamamı için satış fiyatı (₺)</label><input id="sir_satis_${s.id}" type="number" min="1000" placeholder="Boş bırak: ilanı kaldır" value="${s.satilik??''}"></div><button class="btn ikinci" onclick="sirketSatisaCikar(${s.id})">Satış ilanını güncelle / kaldır</button>`:''}
   ${s.pay>=50?`<div class="alan"><label>Dağıtılacak kâr payı</label><input id="sir_kar_${s.id}" type="number" min="1" placeholder="Tutar"></div><button class="btn ikinci" onclick="sirketKarPayi(${s.id})">Kâr payı dağıt</button>`:''}
   <div class="alan"><label>Ortaklık/devretme: alıcı oyuncunun kullanıcı UUID'si</label><input id="sir_alici_${s.id}" placeholder="Oyuncu UUID"></div>
   <div class="alan"><label>Devredilecek pay (%)</label><input id="sir_pay_${s.id}" type="number" min="1" max="${s.pay}" value="${s.pay}"></div>
   <div class="alan"><label>Satış bedeli (₺)</label><input id="sir_bedel_${s.id}" type="number" min="1" value="100000"></div>
   <button class="btn ikinci" onclick="sirketPayTeklif(${s.id})">Ortaklık / satış teklifi gönder</button>
-  ${s.sektor==='banka'?`<div class="alan"><label>7 günlük mevduat faizi (%)</label><input id="sir_faiz_${s.id}" type="number" min="0" max="15" value="${s.faiz}"></div><button class="btn ikinci" onclick="sirketFaiz(${s.id})">Banka faizini değiştir</button>`:''}
+  ${s.sektor==='banka'?`<button class="btn altin" onclick="oybYonetim(${s.id})">🏦 Bankamı yönet, krediler ve kâr payı</button><div class="alan"><label>7 günlük mevduat faizi (%)</label><input id="sir_faiz_${s.id}" type="number" min="0" max="1.8" step="0.01" value="${s.faiz}"></div><button class="btn ikinci" onclick="sirketFaiz(${s.id})">Banka faizini değiştir</button>`:''}
   </div>`).join(''):'<p class="alt">Henüz şirketin yok.</p>'}</div>
   <div class="kart"><h2>🏪 Satılık şirketler</h2><p class="alt">Başka oyuncuların satışa çıkardığı şirketlerin tamamını satın alabilirsin.</p>${d.pazar.length?d.pazar.map(s=>`<div class="kv"><span>${e(s.ad)} · ${e(s.sektor)} · ${fmt(s.fiyat)} ₺</span><button class="btn ikinci" onclick="sirketPazardanAl(${s.id})">Satın al</button></div>`).join(''):'<p class="alt">Şu anda satılık şirket yok.</p>'}</div>
   <div class="kart"><h2>Bana gelen ortaklık teklifleri</h2>${d.teklifler.length?d.teklifler.map(o=>`<div class="kv"><span>Şirket #${o.sirket_id} · %${o.pay} pay · ${fmt(o.bedel)} ₺</span><button class="btn ikinci" onclick="sirketTeklifKabul(${o.id})">Satın al</button></div>`).join(''):'<p class="alt">Bekleyen teklif yok.</p>'}</div>
-  <div class="kart"><h2>🏦 Oyuncu bankaları</h2><p class="alt">Bankalar 7 günlük vadeli mevduat kabul eder. Banka kasası yetersizse vade ödemesi bekler.</p>
+  <div class="kart"><h2>🏦 Oyuncu bankaları</h2><p class="alt">Oyuncu bankalarında saatlik ve 7 günlük mevduat, vade ve erken çekim, gerçek oyunculara kredi, banka yönetimi ve ortaklara kâr payı dağıtımı bulunur.</p>
   <button class="btn ikinci" onclick="oyuncuBankaEkrani()">Banka listesini aç</button></div>
   `,{geri:true});
   sirketOnizleme();
@@ -3009,11 +3069,6 @@ async function sirketSatisIlani(id){
  if(!Number.isFinite(fiyat)||fiyat<0){toast("Geçersiz fiyat",true);return;}
  try{await API.rpc("sirket_satiliga_cikar",{p_sirket:id,p_fiyat:fiyat===0?null:fiyat});toast(fiyat===0?"Satış ilanı kaldırıldı":"Şirket satışa çıkarıldı");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
 }
-async function sirketSermayeArtir(id){
- const raw=prompt("Sermaye artırımı tutarı (10.000 - 10.000.000 ₺):","100000");if(raw===null)return;
- const tutar=Number(raw);if(!Number.isInteger(tutar)||tutar<10000||tutar>10000000){toast("Geçersiz tutar",true);return;}
- try{await API.rpc("sirket_sermaye_artir",{p_sirket:id,p_tutar:tutar});toast("Sermaye artırıldı; haftalık gelir potansiyeli yükseldi");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
-}
 async function sirketPazarAl(id){
  if(!confirm("Bu şirketi ilanda belirtilen fiyattan satın almak istiyor musun?"))return;
  try{await API.rpc("sirket_satilik_al",{p_sirket:id});toast("Şirket satın alındı");sirketEkrani()}catch(err){toast(hataCevir(err.message),true)}
@@ -3023,13 +3078,184 @@ async function sirketKarPayi(id){try{await API.rpc("sirket_kar_payi",{p_sirket:i
 async function sirketPayTeklif(id){try{await API.rpc("sirket_pay_teklif",{p_sirket:id,p_alici:document.getElementById("sir_alici_"+id).value,p_pay:Number(document.getElementById("sir_pay_"+id).value),p_bedel:Number(document.getElementById("sir_bedel_"+id).value)});toast("Ortaklık teklifi gönderildi");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketTeklifKabul(id){try{await API.rpc("sirket_pay_kabul",{p_teklif:id});toast("Şirket payı satın alındı");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketFaiz(id){try{await API.rpc("banka_faiz_belirle",{p_banka:id,p_faiz:Number(document.getElementById("sir_faiz_"+id).value)});toast("Faiz değiştirildi");sirketEkrani();}catch(err){toast(hataCevir(err.message),true)}}
+
+function oybTarih(t){return t?new Date(t).toLocaleString("tr-TR",{dateStyle:"short",timeStyle:"short"}):"—"}
+function oybVadeEtiket(h){return h===168?"7 gün":h+" saat"}
+function oybVadeOrani(b,h){return Number((b.oranlar||{})[String(h)]||0)}
 async function oyuncuBankaEkrani(){
  yukleniyor("Oyuncu bankaları");
- try{const d=await API.rpc("oyuncu_banka_liste");const m=await API.rpc("banka_mevduat_tahsil");
- iskelet("Oyuncu bankaları",`<div class="kart"><h2>🏦 Bankalar</h2>${d.bankalar.map(b=>`<div class="kart"><h3>${e(b.ad)}</h3><p class="alt">7 günlük faiz: %${b.faiz} · Banka kasası: ${fmt(b.kasa)} ₺</p><div class="alan"><label>Yatırılacak tutar (₺)</label><input id="banka_tutar_${b.id}" type="number" min="1000" value="1000"></div><button class="btn ikinci" onclick="oyuncuBankaYatir(${b.id})">Mevduat yatır</button></div>`).join('')||'<p class="alt">Henüz oyuncu bankası yok.</p>'}</div><div class="kart"><h2>Mevduatlarım</h2>${m.mevduatlar.map(x=>`<div class="kv"><span>Banka #${x.banka} · ${fmt(x.tutar)} ₺</span><b>${x.odendi?'Ödendi':new Date(x.vade).toLocaleDateString('tr-TR')}</b></div>`).join('')||'<p class="alt">Mevduat yok.</p>'}</div>`,{geri:true});
+ try{
+  const [d,p]=await Promise.all([API.rpc("oyb_liste"),API.rpc("oyb_portfoy")]);
+  const bankalar=d.bankalar||[],mevduatlar=p.mevduatlar||[],krediler=p.krediler||[];
+  iskelet("Oyuncu bankaları",`
+   <div class="kart"><h2>🏦 Oyuncu bankaları</h2>
+    <p class="alt">Devlet bankasındaki gibi 1, 3, 6, 12, 24 saatlik mevduat açabilir veya eski 7 günlük vadeyi seçebilirsin. Getiri, vade sonunda ödenir. Erken bozarsan faiz alamazsın. Oyuncu bankaları kredi verebildiği için ödeme riski taşır; devlet garantisi yoktur.</p>
+    ${bankalar.map(b=>`<div class="kart">
+     <h3>${e(b.ad)}</h3>
+     <p class="alt">Banka kasası: ${fmt(b.kasa)} ₺ · 7 günlük vade: %${fmt(b.faiz,2)} ${b.bankam?" · Ortağı olduğun banka":""}</p>
+     <div class="alan"><label>Vade seç</label><select id="oyb_saat_${b.id}" onchange="oybVadeOnizle(${b.id})">
+      ${[1,3,6,12,24,168].map(h=>`<option value="${h}">${oybVadeEtiket(h)} · vade getirisi %${fmt(oybVadeOrani(b,h),2)}</option>`).join("")}
+     </select></div>
+     <div class="alan"><label>Yatırılacak tutar (₺)</label><input id="oyb_tutar_${b.id}" type="number" min="1000" max="10000000" step="1000" value="1000" oninput="oybVadeOnizle(${b.id})"></div>
+     <div class="alt" id="oyb_onizleme_${b.id}">Getiriyi ve banka ödeme gücünü görmek için kontrol et.</div>
+     <button class="btn ikinci" onclick="oyuncuBankaTeklif(${b.id})">Beklenen getiri ve riski kontrol et</button>
+     <button class="btn altin" ${b.bankam?"disabled":""} onclick="oyuncuBankaYatir(${b.id})">Mevduat yatır</button>
+     ${b.bankam?"<p class='alt'>Kendi bankana faizli mevduat yatıramazsın.</p>":""}
+     <div class="kart" style="margin-top:14px;background:var(--panel2)">
+      <h3>💳 Bu bankadan kredi iste</h3>
+      <p class="alt">Krediyi banka sahibi onaylar. Borç hesabına para ancak onaylanınca geçer. Oranlar 24 saatlik %${fmt(b.kredi_faiz,2)} kredi faizinden hesaplanır.</p>
+      <div class="alan"><label>Kredi tutarı (₺)</label><input id="oyb_ktutar_${b.id}" type="number" min="1000" max="500000" step="1000" value="10000"></div>
+      <div class="alan"><label>Geri ödeme vadesi</label><select id="oyb_ksaat_${b.id}">
+       ${[1,3,6,12,24].map(h=>`<option value="${h}">${h} saat</option>`).join("")}
+      </select></div>
+      <button class="btn ikinci" ${b.bankam?"disabled":""} onclick="oybKrediBasvur(${b.id})">Kredi başvurusu gönder</button>
+     </div>
+     ${b.bankam?`<button class="btn altin" onclick="oybYonetim(${b.id})">🏦 Bankamı yönet / Kâr ve krediler</button>`:""}
+    </div>`).join("")||"<p class='alt'>Henüz oyuncu bankası yok.</p>"}
+   </div>
+   <div class="kart"><h2>📒 Mevduatlarım</h2>
+    ${mevduatlar.map(m=>`<div class="kart" style="margin:10px 0">
+     <b>${e(m.banka)} · ${fmt(m.anapara)} ₺</b>
+     <div class="kv"><span>Vade</span><b>${oybVadeEtiket(m.saat||168)}</b></div>
+     <div class="kv"><span>Getiri oranı</span><b>%${fmt(m.oran,2)}</b></div>
+     <div class="kv"><span>Beklenen faiz</span><b class="iyi">+${fmt(m.getiri)} ₺</b></div>
+     <div class="kv"><span>Vade sonu ödeme</span><b>${fmt(m.odeme)} ₺</b></div>
+     <div class="kv"><span>Çekim zamanı</span><b>${oybTarih(m.vade)}</b></div>
+     <div class="kv"><span>Durum</span><b>${m.iptal?"Faizsiz çekildi":m.kapandi?"Ödendi":m.durum==="odeme_bekliyor"?"⚠️ Banka ödemesi bekleniyor":"Vadeli hesap açık"}</b></div>
+     ${!m.kapandi?`<button class="btn ikinci" onclick="oybMevduatCek(${m.id},${m.durum==="aktif"})">${m.durum==="aktif"?"Erken çek (faizsiz)":"Vadesi doldu — cüzdana çek"}</button>`:""}
+     ${m.durum==="odeme_bekliyor"?"<p class='alt'>Banka kasası ödeme için yeterli değil. Alacağın kayıtlıdır; daha sonra tekrar çekebilirsin.</p>":""}
+    </div>`).join("")||"<p class='alt'>Henüz mevduatın yok.</p>"}
+   </div>
+   <div class="kart"><h2>💳 Oyuncu bankası kredilerim</h2>
+    ${krediler.map(k=>`<div class="kart" style="margin:10px 0">
+      <b>${e(k.banka)}</b>
+      <div class="kv"><span>Kredi / toplam borç</span><b>${fmt(k.anapara)} / ${fmt(k.toplam)} ₺</b></div>
+      <div class="kv"><span>Kalan borç</span><b>${fmt(k.kalan)} ₺</b></div>
+      <div class="kv"><span>Durum</span><b>${k.durum==="basvuru"?"Banka onayı bekleniyor":k.durum==="reddedildi"?"Reddedildi":k.durum==="iptal"?"İptal edildi":k.durum==="odendi"?"Ödendi":k.durum==="gecikmis"?"⚠️ Vadesi geçti":"Aktif"}</b></div>
+      ${k.vade?`<div class="kv"><span>Son ödeme</span><b>${oybTarih(k.vade)}</b></div>`:""}
+      ${k.durum==="basvuru"?`<button class="btn ikinci" onclick="oybKrediBasvuruIptal(${k.id})">❌ Bekleyen başvurumu iptal et</button>`:""}
+      ${["aktif","gecikmis"].includes(k.durum)?`<div class="alan"><label>Ödenecek tutar</label><input id="oyb_kode_${k.id}" type="number" min="1" step="1" value="${Math.ceil(k.kalan)}"></div><button class="btn altin" onclick="oybKrediOde(${k.id})">Borcumu öde</button>`:""}
+     </div>`).join("")||"<p class='alt'>Oyuncu bankası kredin yok.</p>"}
+   </div>
+  `,{geri:true});
  }catch(err){iskelet("Oyuncu bankaları",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true})}
 }
-async function oyuncuBankaYatir(id){try{await API.rpc("banka_mevduat_yatir",{p_banka:id,p_tutar:Number(document.getElementById("banka_tutar_"+id).value)});toast("Mevduat yatırıldı");oyuncuBankaEkrani()}catch(err){toast(hataCevir(err.message),true)}}
+function oybVadeOnizle(id){const el=document.getElementById("oyb_onizleme_"+id);if(el)el.textContent="Faiz ve bakiye kontrolü için 'Beklenen getiri ve riski kontrol et' seç."}
+async function oyuncuBankaTeklif(id){
+ const el=document.getElementById("oyb_onizleme_"+id);if(!el)return;
+ const tutar=Number(document.getElementById("oyb_tutar_"+id).value);
+ const saat=Number(document.getElementById("oyb_saat_"+id).value);
+ el.textContent="Banka durumu kontrol ediliyor...";
+ try{const q=await API.rpc("oyb_teklif",{p_banka:id,p_tutar:tutar,p_saat:saat});
+ el.textContent=(q.odeme_gucu_yeterli?"✅ ":"⚠️ ")+"Vade: "+oybVadeEtiket(saat)+" · Faiz %"+fmt(q.oran,2)+
+   " · Faiz geliri "+fmt(q.faiz_kazanci)+" ₺ · Vade sonu "+fmt(q.vade_sonu_odeme)+" ₺ · "+
+   oybTarih(q.vade)+" · "+q.uyari;
+ }catch(err){el.textContent=hataCevir(err.message)}
+}
+async function oyuncuBankaYatir(id){
+ const tutar=Number(document.getElementById("oyb_tutar_"+id).value);
+ const saat=Number(document.getElementById("oyb_saat_"+id).value);
+ try{
+  const q=await API.rpc("oyb_teklif",{p_banka:id,p_tutar:tutar,p_saat:saat});
+  if(!q.odeme_gucu_yeterli){toast(q.uyari,true);return;}
+  if(!await onayla("Mevduat yatır","Bu bankaya "+fmt(tutar)+" ₺ yatıracaksın. "+
+    oybVadeEtiket(saat)+" sonra "+fmt(q.vade_sonu_odeme)+" ₺ alman öngörülüyor. "+
+    "Banka kredi verdiği için ödeme riski taşır; erken çekimde faiz yok. Onaylıyor musun?","Yatır"))return;
+  await API.rpc("oyb_yatir",{p_banka:id,p_tutar:tutar,p_saat:saat});
+  toast("Mevduat açıldı; vade ve ödeme ayrıntıları Mevduatlarım bölümünde.");oyuncuBankaEkrani();
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybMevduatCek(id,erken){
+ if(erken&&!await onayla("Mevduatı erken boz","Vade tamamlanmadan çekersen faiz alamaz, yalnızca anaparayı geri alırsın. Onaylıyor musun?","Faizsiz çek"))return;
+ try{const r=await API.rpc("oyb_mevduat_cek",{p_id:id});
+  toast(fmt(r.odenen)+" ₺ cüzdanına aktarıldı"+(r.erken?" (faizsiz)":"")+".");oyuncuBankaEkrani();
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybKrediBasvur(id){
+ const tutar=Number(document.getElementById("oyb_ktutar_"+id).value);
+ const saat=Number(document.getElementById("oyb_ksaat_"+id).value);
+ if(!Number.isSafeInteger(tutar)||tutar<1000||tutar>500000){toast("Kredi 1.000 - 500.000 ₺ arasında olmalı.",true);return;}
+ if(!await onayla("Oyuncu bankası kredisi","Banka yöneticisine "+fmt(tutar)+" ₺, "+saat+
+ " saat vadeli kredi başvurusu gönderilsin mi? Faiz ve ödeme tutarı sunucuda kesinleşir.","Başvur"))return;
+ try{const r=await API.rpc("oyb_kredi_basvur",{p_banka:id,p_tutar:tutar,p_saat:saat});
+ toast("Başvuru gönderildi. Toplam geri ödeme "+fmt(r.toplam)+" ₺. Onay bekleniyor.");oyuncuBankaEkrani();
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybKrediBasvuruIptal(id){
+ if(!await onayla("Kredi başvurusunu iptal et","Bu başvuru hâlâ onay bekliyorsa iptal edilecek. Onaylanmış krediyi bu işlemle iptal edemezsin. Devam edilsin mi?","Başvurumu iptal et"))return;
+ try{const r=await API.rpc("oyb_kredi_basvuru_iptal",{p_id:id});
+ if(r.tamam){toast("Kredi başvurun iptal edildi.");oyuncuBankaEkrani();}
+ }catch(err){toast(hataCevir(err.message),true);oyuncuBankaEkrani();}
+}
+async function oybKrediOde(id){
+ const tutar=Number(document.getElementById("oyb_kode_"+id).value);
+ try{const r=await API.rpc("oyb_kredi_ode",{p_id:id,p_tutar:tutar});
+ toast(fmt(r.odendi)+" ₺ ödendi. Kalan "+fmt(r.kalan)+" ₺.");oyuncuBankaEkrani();
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybYonetim(id){
+ yukleniyor("Banka yönetimi");
+ try{
+ const b=await API.rpc("oyb_yonetim",{p_banka:id}),m=b.durum||{},oran=b.oranlar||{};
+ iskelet("Banka yönetimi",`
+  <div class="kart"><h2>🏦 ${e(b.ad)}</h2>
+   <p class="alt">Oyuncu mevduatları banka borcudur. Kredi olarak kullanılan para bankanın kasasından çıkar; müşteri geri ödemesiyle geri döner. Kâr payı yalnızca yükümlülükler ve kuruluş sermayesi korunduktan sonra dağıtılabilir.</p>
+   <div class="kv"><span>Kasa (nakit)</span><b>${fmt(m.kasa)} ₺</b></div>
+   <div class="kv"><span>Mevduat anaparası</span><b>${fmt(m.mevduat_anapara)} ₺</b></div>
+   <div class="kv"><span>Faiz dâhil toplam borç</span><b>${fmt(m.mevduat_yukumluluk)} ₺</b></div>
+   <div class="kv"><span>24 saatte vadesi gelen ödeme</span><b>${fmt(m.yaklasan_odeme)} ₺</b></div>
+   <div class="kv"><span>Asgari likidite</span><b>${fmt(m.asgari_likidite)} ₺</b></div>
+   <div class="kv"><span>Yeni kredi için kullanılabilir</span><b>${fmt(m.kredi_verilebilir)} ₺</b></div>
+   <div class="kv"><span>Dağıtılabilir kâr</span><b class="iyi">${fmt(m.dagitilabilir_kar)} ₺</b></div>
+   ${b.yonetebilir?`<div class="alan"><label>Ortaklara dağıtılacak kâr (₺)</label><input id="oyb_kar_${id}" type="number" min="1" max="${Math.max(0,Number(m.dagitilabilir_kar||0))}" value="${Math.floor(Number(m.dagitilabilir_kar||0))}"></div><button class="btn ikinci" onclick="oybKarDagit(${id})">Kâr payını ortaklara dağıt</button>`:"<p class='alt'>Ayar değiştirmek ve kâr dağıtmak için en az %50 ortaklık payı gerekir.</p>"}
+  </div>
+  <div class="kart"><h2>📊 Faiz oranlarını yönet</h2>
+   ${b.yonetebilir?[1,3,6,12,24].map(h=>`<div class="alan"><label>${h} saat mevduat getirisi (%)</label><input id="oyb_oran_${id}_${h}" type="number" min="0" step="0.01" max="${({1:.03,3:.07,6:.12,12:.18,24:.30})[h]}" value="${oran[String(h)]}"></div><button class="btn ikinci" onclick="oybOranKaydet(${id},${h})">${h} saat faizini kaydet</button>`).join(""):"<p class='alt'>Faiz ayarları yöneticilere açıktır.</p>"}
+   <p class="alt">7 günlük faiz şirket ekranından yönetilir. Oran değişikliği eski mevduatları etkilemez.</p>
+   ${b.yonetebilir?`<div class="alan"><label>24 saatlik kredi faizi (%) (üst sınır %1)</label><input id="oyb_kfaiz_${id}" type="number" min="0" max="1" step="0.01" value="${b.kredi_faiz}"></div><button class="btn ikinci" onclick="oybKrediFaizKaydet(${id})">Kredi faizini kaydet</button>`:""}
+  </div>
+  <div class="kart"><h2>📋 Kredi başvuruları ve alacaklar</h2>
+   ${(b.krediler||[]).map(k=>`<div class="kart" style="margin:10px 0">
+    <b>${e(k.borclu)} · #${k.id}</b>
+    <div class="kv"><span>Anapara / geri ödeme</span><b>${fmt(k.anapara)} / ${fmt(k.toplam)} ₺</b></div>
+    <div class="kv"><span>Vade / faiz</span><b>${k.saat} saat · %${fmt(k.oran,2)}</b></div>
+    <div class="kv"><span>Durum</span><b>${e(k.durum==="iptal"?"Oyuncu iptal etti":k.durum)} · Kalan ${fmt(k.kalan)} ₺</b></div>
+    ${k.vade?`<div class="kv"><span>Ödeme tarihi</span><b>${oybTarih(k.vade)}</b></div>`:""}
+    ${b.yonetebilir&&k.durum==="basvuru"?`<div class="satir"><button class="btn yarim altin" onclick="oybKrediKarar(${id},${k.id},true)">Krediyi onayla</button><button class="btn yarim ikinci" onclick="oybKrediKarar(${id},${k.id},false)">Reddet</button></div>`:""}
+   </div>`).join("")||"<p class='alt'>Henüz kredi başvurusu yok.</p>"}
+  </div>
+  <div class="kart"><h2>📃 Banka gelir-gider hareketleri</h2>
+    ${(b.hareketler||[]).map(h=>`<div class="kv"><span>${e(h.aciklama)} · ${oybTarih(h.zaman)}</span><b>${fmt(h.tutar)} ₺</b></div>`).join("")||"<p class='alt'>Hareket bulunamadı.</p>"}
+  </div>
+  <button class="btn ikinci" onclick="oyuncuBankaEkrani()">Banka listesine dön</button>
+ `,{geri:true});
+ }catch(err){iskelet("Banka yönetimi",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true})}
+}
+async function oybOranKaydet(id,saat){
+ const oran=Number(document.getElementById("oyb_oran_"+id+"_"+saat).value);
+ try{await API.rpc("oyb_oran_ayarla",{p_banka:id,p_saat:saat,p_oran:oran});
+ toast("Yeni mevduatlar için faiz oranı güncellendi.");oybYonetim(id);
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybKrediFaizKaydet(id){
+ const faiz=Number(document.getElementById("oyb_kfaiz_"+id).value);
+ try{await API.rpc("oyb_kredi_faiz_ayarla",{p_banka:id,p_faiz:faiz});
+ toast("Yeni başvuruların kredi faizi güncellendi.");oybYonetim(id);
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybKrediKarar(banka,id,onay){
+ if(onay&&!await onayla("Kredi onayı","Bankanın kasasından kredi tutarı oyuncunun cüzdanına geçecek. Borç geri ödenmeme riski taşır. Onaylıyor musun?","Kredi ver"))return;
+ try{await API.rpc("oyb_kredi_karar",{p_id:id,p_onay:onay});
+ toast(onay?"Kredi kullandırıldı.":"Başvuru reddedildi.");oybYonetim(banka);
+ }catch(err){toast(hataCevir(err.message),true)}
+}
+async function oybKarDagit(id){
+ const tutar=Number(document.getElementById("oyb_kar_"+id).value);
+ if(!Number.isSafeInteger(tutar)||tutar<1){toast("Kâr payı için pozitif tam TL gir.",true);return;}
+ try{await API.rpc("sirket_kar_payi",{p_sirket:id,p_tutar:tutar});
+ toast("Kâr payı ortaklara hisse oranında dağıtıldı.");oybYonetim(id);
+ }catch(err){toast(hataCevir(err.message),true)}
+}
 async function ozelYasaEkrani(){
  const d=await API.rpc("ozel_yasa_durum");
  iskelet("Asgari ücret ve dokunulmazlık",`<div class="kart"><h2>⚖️ Asgari ücret kanunu</h2><p class="alt">Mevcut asgari ücret: ${fmt(d.asgari)} ₺. Yeni tutar şirket personel giderlerini etkiler.</p><div class="alan"><label>Yeni asgari ücret (₺)</label><input id="ozel_asgari" type="number" min="10000" max="500000" value="${d.asgari}"></div><button class="btn altin" onclick="ozelYasaSun('asgari')">Meclise teklif et</button></div>
@@ -3063,7 +3289,7 @@ function bankaCiz(b){
       <div class="satir"><button class="btn yarim altin" id="bYatir" ${b.acik ? "" : "disabled"}>Transfer hesabına yatır</button><button class="btn yarim ikinci" id="bCek" ${v.bakiye >= 1 ? "" : "disabled"}>Cüzdana çek</button></div></div>
 
     <div class="kart"><h2>Saatlik vadeli hesap</h2>
-      <p class="alt">Yeni vadeler yalnızca saatliktir. Paranı 1, 3, 6, 12 veya 24 saat bağlarsın; vade tamamlanırsa yüksek getiriyi alırsın. Yeni saatlik vadeyi erken bozarsan faiz alamazsın.</p>
+      <p class="alt">Yeni vadeler yalnızca saatliktir. Paranı 1, 3, 6, 12 veya 24 saat bağlarsın; vade tamamlanırsa belirlenen faiz getirisini alırsın. Yeni saatlik vadeyi erken bozarsan faiz alamazsın.</p>
       <div class="kv"><span class="k">1 saat</span><span class="v iyi">vade getirisi ${yuzde(o.vadeli1s)}</span></div>
       <div class="kv"><span class="k">3 saat</span><span class="v iyi">vade getirisi ${yuzde(o.vadeli3s)}</span></div>
       <div class="kv"><span class="k">6 saat</span><span class="v iyi">vade getirisi ${yuzde(o.vadeli6s)}</span></div>
@@ -3274,5 +3500,8 @@ window.addEventListener("load", () => {
   basla();
 });
 </script>
+<script src="aday_sirket_ek.js"></script>
+<script src="parti_kimlik_ek.js"></script>
+<script src="otomatik_gazete.js"></script>
 </body>
 </html>

@@ -1,5 +1,26 @@
 /* Seçim Simülasyonu Online — emlak, parlamento ve parti hayatı.
    Sunucu işlemleri RPC ile, oyuncu arayüzü sadece görünüm ile ilgilenir. */
+
+async function ticaretGecmisimEkrani(){
+ yukleniyor("Alım-satım geçmişim");
+ try{
+  const d=await API.rpc("ticaret_gecmisim");
+  const kayitlar=d.kayitlar||[];
+  const baslik={mulk_oyuncu:"🏠 Oyuncudan gayrimenkul",mulk_devlet:"🏡 Devletten gayrimenkul",sirket_tam:"🏢 Şirketin tamamı",sirket_hisse:"📊 Şirket hissesi"};
+  let h='<div class="kart"><h2>🧾 Alım–satım geçmişim</h2><p class="alt">Tamamlanan işlemler: mülk, işyeri, şirket ve şirket hissesi. Yalnızca alıcı veya satıcı olduğun işlemleri görürsün. Eski şirket tam satışlarında geriye dönük taraf ve bedel bilgisi yoksa kayıt üretilemez.</p></div>';
+  h+=kayitlar.length?kayitlar.map(x=>`<div class="kart">
+    <div class="kv"><b>${e(baslik[x.tur]||"Alım-satım")}</b><span class="rozet ${x.benim_rolum==="alici"?"altin":""}">${x.benim_rolum==="alici"?"Satın aldım":"Sattım"}</span></div>
+    <h3 style="margin:7px 0 12px">${e(x.varlik)}</h3>
+    ${x.pay?`<div class="kv"><span>Devredilen hisse</span><b>%${fmt(x.pay,2)}</b></div>`:""}
+    <div class="kv"><span>Satış / alış bedeli</span><b>${tlYaz(x.bedel)}</b></div>
+    <div class="kv"><span>Satıcı</span><b>${e(x.satici)}</b></div>
+    <div class="kv"><span>Alıcı</span><b>${e(x.alici)}</b></div>
+    <div class="kv"><span>İşlem tarihi</span><b>${tarihSaat(x.tarih)}</b></div>
+  </div>`).join(""):'<div class="kart"><p class="alt">Henüz tamamlanmış alım-satım işlemin yok.</p></div>';
+  iskelet("Alım-satım geçmişim",h,{geri:true});
+ }catch(err){iskelet("Alım-satım geçmişim",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true});}
+}
+
 async function emlakPazarEkrani(){
   yukleniyor("Gayrimenkul Pazarı");
   try{emlakPazarCiz(await API.rpc("mulk_pazar"));}
@@ -7,7 +28,7 @@ async function emlakPazarEkrani(){
 }
 function emlakPazarCiz(d){
   const ilanlar=d.ilanlar||[];
-  let h='<div class="kart"><h2>🏠 Oyuncular arası gayrimenkul pazarı</h2><p class="alt">Daire, dükkân ve villalarını istediğin fiyatla satışa çıkarabilir veya başka bir oyuncunun mülkünü satın alabilirsin. Satış tamamlanınca bedelin %2’si hazineye işlem vergisi olarak gider.</p><button class="btn ikinci" onclick="ekranAc(mulkEkrani)">Kendi mülklerim</button></div>';
+  let h='<div class="kart"><h2>🏠 Oyuncular arası gayrimenkul pazarı</h2><p class="alt">Daire, dükkân ve villalarını satışa çıkarabilir veya başka bir oyuncudan satın alabilirsin. Haftalık kira getirisi başlangıç mülk değerinin %2,5’i temel alınarak hesaplanır; satış ilanındaki fiyat kirayı otomatik artırmaz. Satış bedelinin %2’si işlem vergisi olarak hazineye gider.</p><button class="btn ikinci" onclick="ekranAc(mulkEkrani)">Kendi mülklerim</button></div>';
   if(!ilanlar.length)h+='<div class="kart"><p class="alt">Henüz satılık mülk yok. İlk ilanı sen verebilirsin.</p></div>';
   ilanlar.forEach(function(x){
     h+='<div class="kart"><div class="kv"><b>'+e({daire:'Daire',dukkan:'Dükkân',villa:'Villa'}[x.tip]||x.tip)+' #'+x.mulk_id+' · '+e(x.il)+'</b><span class="rozet altin">'+(x.benim?'Senin ilanın':'Satılık')+'</span></div>';

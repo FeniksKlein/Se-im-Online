@@ -6,7 +6,7 @@ create or replace function oyun.sirket_hesapla(p_id bigint)
 returns void language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
 declare s oyun.sirketler;n int;i int;net numeric;income numeric;cost numeric;w numeric;t timestamptz:=oyun.simdi();x record;distributed numeric;rate numeric;
 begin
- perform pg_advisory_xact_lock(p_id,98763);
+ perform pg_advisory_xact_lock(98763,hashtext(p_id::text));
  select * into s from oyun.sirketler where id=p_id for update;
  if s.id is null or not s.aktif or s.sonraki_kazanc>t then return;end if;
  n:=least(52,floor(extract(epoch from (t-s.sonraki_kazanc))/604800)::int+1);
@@ -20,7 +20,7 @@ begin
   if net<0 then
    update oyun.sirketler set kasa=kasa+net where id=p_id;
   else
-   distributed:=least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net));
+   distributed:=case when s.sektor='banka' then least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net-s.sermaye-coalesce((select sum(round(m.anapara*(1+m.faiz/100),2)) from oyun.banka_mevduat m where m.banka_id=p_id and not m.kapandi),0))) else least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net)) end;
    for x in select * from oyun.sirket_ortaklari where sirket_id=p_id loop
     perform oyun.para_islem(x.user_id,round(distributed*x.pay/100,2),'sirket',format('Sirket #%s haftalik net kar payi',p_id),t);
    end loop;
@@ -58,7 +58,7 @@ returns jsonb language plpgsql security definer set search_path='oyun','public',
 declare u uuid:=auth.uid();s oyun.sirketler;oldowner uuid;t timestamptz:=oyun.simdi();
 begin
  if u is null then raise exception 'Oturum gerekli';end if;
- perform pg_advisory_xact_lock(p_sirket,98763);
+ perform pg_advisory_xact_lock(98763,hashtext(p_sirket::text));
  select * into s from oyun.sirketler where id=p_sirket and aktif and satilik is not null for update;
  if s.id is null then raise exception 'Satis ilani bulunamadi';end if;
  select user_id into oldowner from oyun.sirket_ortaklari where sirket_id=p_sirket and pay=100 for update;

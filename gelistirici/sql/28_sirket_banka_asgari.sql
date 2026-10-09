@@ -77,7 +77,7 @@ declare u uuid:=auth.uid();x record;
 begin
  if u is null then raise exception 'Oturum gerekli';end if;
  for x in select distinct s.id from oyun.sirketler s join oyun.sirket_ortaklari o on o.sirket_id=s.id where o.user_id=u and s.aktif loop perform oyun.sirket_hesapla(x.id);end loop;
- return jsonb_build_object('sirketler',coalesce((select jsonb_agg(jsonb_build_object('id',s.id,'ad',s.ad,'sektor',s.sektor,'kasa',s.kasa,'sermaye',s.sermaye,'pay',o.pay,'satilik',s.satilik,'faiz',s.banka_faiz)) from oyun.sirketler s join oyun.sirket_ortaklari o on o.sirket_id=s.id where o.user_id=u and s.aktif),'[]'::jsonb),
+ return jsonb_build_object('sirketler',coalesce((select jsonb_agg(jsonb_build_object('id',s.id,'ad',s.ad,'sektor',s.sektor,'kasa',s.kasa,'sermaye',s.sermaye,'sonraki_kazanc',s.sonraki_kazanc,'dagitilabilir_kar',greatest(0,s.kasa-s.sermaye-coalesce((select sum(round(m.anapara*(1+m.faiz/100),2)) from oyun.banka_mevduat m where m.banka_id=s.id and not m.kapandi),0)),'pay',o.pay,'satilik',s.satilik,'faiz',s.banka_faiz)) from oyun.sirketler s join oyun.sirket_ortaklari o on o.sirket_id=s.id where o.user_id=u and s.aktif),'[]'::jsonb),
  'pazar',coalesce((select jsonb_agg(jsonb_build_object('id',s2.id,'ad',s2.ad,'sektor',s2.sektor,'fiyat',s2.satilik)) from oyun.sirketler s2 where s2.satilik is not null and s2.aktif),'[]'::jsonb),
  'teklifler',coalesce((select jsonb_agg(jsonb_build_object('id',st.id,'sirket_id',st.sirket_id,'pay',st.pay,'bedel',st.bedel)) from oyun.sirket_teklif st where st.alici=u and st.durum='bekliyor'),'[]'::jsonb),
  'asgari',(select ul.asgari from oyun.ulke ul where ul.id=1),
@@ -99,9 +99,9 @@ declare u uuid:=auth.uid();o oyun.sirket_teklif;ownpay numeric;t timestamptz:=oy
 begin
  select * into o from oyun.sirket_teklif where id=p_teklif for update;
  if o.alici is distinct from u or o.durum<>'bekliyor' then raise exception 'Teklif bulunamadi';end if;
- perform pg_advisory_xact_lock(o.sirket_id);
+ perform pg_advisory_xact_lock(98763,hashtext(o.sirket_id::text));
  select pay into ownpay from oyun.sirket_ortaklari where sirket_id=o.sirket_id and user_id=o.satici for update;
- if ownpay<o.pay then raise exception 'Saticinin payi yetersiz';end if;
+ if ownpay is null or ownpay<o.pay then raise exception 'Saticinin payi yetersiz';end if;
  perform oyun.para_islem(u,-o.bedel,'sirket','Sirket payi satin alimi',t);
  perform oyun.para_islem(o.satici,o.bedel,'sirket','Sirket payi satisi',t);
  update oyun.sirket_ortaklari set pay=pay-o.pay where sirket_id=o.sirket_id and user_id=o.satici;
@@ -109,6 +109,7 @@ begin
  insert into oyun.sirket_ortaklari(sirket_id,user_id,pay) values(o.sirket_id,u,o.pay)
  on conflict(sirket_id,user_id) do update set pay=oyun.sirket_ortaklari.pay+excluded.pay;
  update oyun.sirket_teklif set durum='kabul' where id=p_teklif;
+ update oyun.sirketler set satilik=null where id=o.sirket_id;
  update oyun.sirket_teklif set durum='iptal' where sirket_id=o.sirket_id and satici=o.satici and durum='bekliyor' and id<>p_teklif;
  return jsonb_build_object('tamam',true);
 end $$;
@@ -119,7 +120,7 @@ begin
  perform oyun.sirket_hesapla(p_sirket);
  select * into s from oyun.sirketler where id=p_sirket for update;
  if not exists(select 1 from oyun.sirket_ortaklari where sirket_id=p_sirket and user_id=u and pay>=50) then raise exception 'Kar payi dagitimi icin en az %%50 pay gerekli';end if;
- if p_tutar is null or p_tutar<=0 or p_tutar>greatest(s.kasa,0) then raise exception 'Sirket kasasinda yeterli para yok';end if;
+ if p_tutar is null or p_tutar<1 or p_tutar<>round(p_tutar) or p_tutar>greatest(0,s.kasa-s.sermaye-coalesce((select sum(round(m.anapara*(1+m.faiz/100),2)) from oyun.banka_mevduat m where m.banka_id=p_sirket and not m.kapandi),0)) then raise exception 'Dagitilabilir kar yetersiz. Kurulus sermayesi ve mevduat borclari dagitilamaz';end if;
  update oyun.sirketler set kasa=kasa-p_tutar where id=p_sirket;
  for x in select * from oyun.sirket_ortaklari where sirket_id=p_sirket loop
  perform oyun.para_islem(x.user_id,round(p_tutar*x.pay/100,2),'sirket','Sirket kar payi',t);
@@ -128,38 +129,48 @@ begin
 end $$;
 create or replace function public.banka_mevduat_yatir(p_banka bigint,p_tutar numeric)
 returns jsonb language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
-declare u uuid:=auth.uid();s oyun.sirketler;t timestamptz:=oyun.simdi();
+declare u uuid:=auth.uid();s oyun.sirketler;t timestamptz:=oyun.simdi();v_borc numeric;v_anapara numeric;v_yeni_borc numeric;v_guvence numeric;
 begin
+ if u is null then raise exception 'Oturum gerekli';end if;
  select * into s from oyun.sirketler where id=p_banka and sektor='banka' and aktif for update;
  if s.id is null then raise exception 'Banka bulunamadi';end if;
- if p_tutar is null or p_tutar<1000 or p_tutar>10000000 then raise exception 'Tutar 1000-10000000 olmali';end if;
- perform oyun.para_islem(u,-p_tutar,'mevduat','Oyuncu bankasina vadeli mevduat',t);
+ if p_tutar is null or p_tutar<>round(p_tutar) or p_tutar<1000 or p_tutar>10000000 then raise exception 'Mevduat 1.000 - 10.000.000 TL arasinda tam sayi olmali';end if;
+ if exists(select 1 from oyun.sirket_ortaklari o where o.sirket_id=p_banka and o.user_id=u and o.pay>0) then raise exception 'Kendi bankana faizli mevduat yatiramazsin; baska bir oyuncu bankasi sec';end if;
+ if s.banka_faiz<0 or s.banka_faiz>3 then raise exception 'Banka faiz sinirini asiyor';end if;
+ select coalesce(sum(round(m.anapara*(1+m.faiz/100),2)),0),coalesce(sum(m.anapara),0) into v_borc,v_anapara from oyun.banka_mevduat m where m.banka_id=p_banka and not m.kapandi;
+ v_yeni_borc:=round(p_tutar*(1+s.banka_faiz/100),2);
+ v_guvence:=greatest(s.sermaye*0.10,(v_anapara+p_tutar)*0.10);
+ if s.kasa < v_borc+(v_yeni_borc-p_tutar)+v_guvence then raise exception 'Banka likiditesi/teminati yetersiz. Mevduat kabul edilemiyor';end if;
+ perform oyun.para_islem(u,-p_tutar,'mevduat','Oyuncu bankasina 7 gun vadeli mevduat',t);
  update oyun.sirketler set kasa=kasa+p_tutar where id=p_banka;
  insert into oyun.banka_mevduat(banka_id,user_id,anapara,faiz,vade) values(p_banka,u,p_tutar,s.banka_faiz,t+interval '7 days');
- return jsonb_build_object('tamam',true);
+ return jsonb_build_object('tamam',true,'banka',p_banka,'faiz',s.banka_faiz,'vade',t+interval '7 days');
 end $$;
+alter table oyun.banka_mevduat add column if not exists iptal boolean not null default false;
 create or replace function public.banka_mevduat_tahsil()
 returns jsonb language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
-declare u uuid:=auth.uid();m record;t timestamptz:=oyun.simdi();pay numeric;
+declare u uuid:=auth.uid();m record;t timestamptz:=oyun.simdi();v_odeme numeric;
 begin
- for m in select * from oyun.banka_mevduat where user_id=u and not kapandi and vade<=t for update loop
-  pay:=round(m.anapara*(1+m.faiz/100),2);
-  update oyun.sirketler set kasa=kasa-pay where id=m.banka_id and kasa>=pay;
+ if u is null then raise exception 'Oturum gerekli';end if;
+ for m in select * from oyun.banka_mevduat where user_id=u and not kapandi and vade<=t order by vade,id for update loop
+  v_odeme:=round(m.anapara*(1+m.faiz/100),2);
+  update oyun.sirketler set kasa=kasa-v_odeme where id=m.banka_id and aktif and kasa>=v_odeme;
   if found then
-    perform oyun.para_islem(u,pay,'mevduat','Oyuncu bankasi mevduat vade odemesi',t);
+    perform oyun.para_islem(u,v_odeme,'mevduat','Oyuncu bankasi vadeli mevduat ve faiz odemesi',t);
     update oyun.banka_mevduat set kapandi=true where id=m.id;
   end if;
  end loop;
- return jsonb_build_object('mevduatlar',coalesce((select jsonb_agg(jsonb_build_object('id',id,'banka',banka_id,'tutar',anapara,'faiz',faiz,'vade',vade,'odendi',kapandi)) from oyun.banka_mevduat where user_id=u),'[]'::jsonb));
+ return jsonb_build_object('mevduatlar',coalesce((select jsonb_agg(jsonb_build_object('id',id,'banka',banka_id,'tutar',anapara,'faiz',faiz,'vade',vade,'odendi',kapandi,'iptal',iptal,'durum',case when iptal then 'anapara_iade' when kapandi then 'odendi' when vade<=t then 'banka_odeme_bekliyor' else 'vadede' end) order by id desc) from oyun.banka_mevduat where user_id=u),'[]'::jsonb));
 end $$;
 create or replace function public.banka_faiz_belirle(p_banka bigint,p_faiz numeric)
 returns jsonb language plpgsql security definer set search_path='oyun','public','pg_temp' as $$
 begin
- if p_faiz is null or p_faiz<0 or p_faiz>15 then raise exception 'Haftalik faiz 0-15 arasinda olmali';end if;
- if not exists(select 1 from oyun.sirket_ortaklari where sirket_id=p_banka and user_id=auth.uid() and pay>=50) then raise exception 'Banka yonetim yetkin yok';end if;
- update oyun.sirketler set banka_faiz=p_faiz where id=p_banka and sektor='banka';
+ if auth.uid() is null then raise exception 'Oturum gerekli';end if;
+ if p_faiz is null or p_faiz<0 or p_faiz>3 or p_faiz<>round(p_faiz,2) then raise exception 'Haftalik oyuncu bankasi faizi 0-3 arasinda ve en fazla iki ondalik olmali';end if;
+ if not exists(select 1 from oyun.sirket_ortaklari o join oyun.sirketler s on s.id=o.sirket_id where s.id=p_banka and s.sektor='banka' and s.aktif and o.user_id=auth.uid() and o.pay>=50) then raise exception 'Aktif banka yonetim yetkin yok';end if;
+ update oyun.sirketler set banka_faiz=p_faiz where id=p_banka and sektor='banka' and aktif;
  if not found then raise exception 'Banka bulunamadi';end if;
- return jsonb_build_object('tamam',true);
+ return jsonb_build_object('tamam',true,'faiz',p_faiz,'faiz_ust_sinir',3);
 end $$;
 
 -- Meclis teklifleri: asgari ucret ve milletvekili dokunulmazligi.
