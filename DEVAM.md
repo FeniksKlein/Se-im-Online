@@ -78,3 +78,12 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Sunucu (`39_oyuncu_deneyimi.sql`): yeni oyuncu seçmen kartı kolaylığı, Meclis ölçeği, sandık 08–22 / sonuç 22:30 / başvurular 3 gün, hediye sınırı, kumbara 16 saat ve yumuşak seri, görev ihmali, ilk adımlar, tarih arşivi, parti kimliği, portre/biyografi, mitingler. Ayrıntı: TASARIM.md §10.
 - Hata düzeltmeleri: genel seçim sayımı ("aday_id is ambiguous" — motoru kilitlerdi), yedekten dönüş (identity sütunları), temiz kurulum.
 - Arayüz baştan giydirildi (CSS sistemi, yazı tipi, emoji temizliği); Gündem, Hayat, pusula, sonuç, Partiler, Profil, oyuncu kartı, sohbet, karşılama yeniden düzenlendi.
+
+## 2026-10-09 · 2026.10.09-8 il bazlı emlak + mülk vergisi + 600 sandalye (tek geçerli migration)
+- 9 Ekim öğleden sonra aynı istek için ~23 birbirinin yerine geçen deneme migration'ı üretilmişti (çoğu hatalı). Hepsi `migrations/_iptal_20261009/` klasörüne taşındı — **çalıştırılmaz**.
+- Tek geçerli dosya: `migrations/20261009_emlak_meclis_son.sql` (= kaynak `43_meclis_salt_cogunluk.sql` + `44_il_emlak_stok_vergi.sql` + `45_emlak_temizlik.sql`). Denemelerden hangisi canlıda çalışmış olursa olsun tetikleyici, fonksiyon ve kural kalıntılarını temizler. `bash gelistirici/test/emlak_gecis.sh` bunu doğrular.
+- Emlak: il başına nüfusa (iller.mv) göre sınırlı stok (İstanbul 100 / Bayburt 8 daire), fiyat ve kira il büyüklüğü + gelişmişlik (%60 `il_kalkinma` SEGE'ye yakın kademe, %40 belediye gelişim puanı). Her ilden alınabilir (`mulk_il_satin_al`, `mulk_il_stok`).
+- Haftalık mülk vergisi: il rayiç bedeli × `mulk_vergi_ulusal` (yalnız TBMM kanunu; kararname yolu kapalı) × `mulk_vergi_yerel` (belediye başkanı çarpanı). Para mülkün ilinin belediye kasasına (milyar ₺) gider, `emlak_vergi_tahsilat` tablosuna yazılır. Para yetmezse `vergi_borc`; tapu devrinde satıcıdan kesilir.
+- Meclis: 600 sandalye seçime açık (`meclis_olcek=0`); kanun kabulü dolu sandalyelerin salt çoğunluğu (11 vekil → 6 evet).
+- Arayüz: Hayat'taki yinelenen "Banka" kartı ve Gayrimenkul'deki "Diğer oyuncuların satılık mülklerini gör" düğmesi kaldırıldı; Gayrimenkul ekranında il seçerek alım, vergi ve borç bilgisi var.
+- Test: `python3 test/emlak_il.py` (kur_yerel sonrası). Not: `simulasyon`, `guvenlik`, `kalicilik` testleri 41_kurucu_ideoloji'deki "3 kurucu onayı" kuralı yüzünden bu değişiklikten önce de kırıktı (test bakımı gerekiyor).

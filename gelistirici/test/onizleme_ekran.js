@@ -31,6 +31,9 @@ const ADIM = {
   sirket: async p => { await ac(p); await p.evaluate(() => sirketEkrani()); await p.waitForTimeout(1200); },
   piyasa: async p => { await ac(p); await p.evaluate(() => ekranAc(piyasaEkrani)); await p.waitForTimeout(1200); },
   pusula_parti: async p => { await ac(p); await p.evaluate(() => typeof partiTestiModal === 'function' && partiTestiModal()); await p.waitForTimeout(700); },
+  mulk: async p => { await ac(p); await p.evaluate(() => ekranAc(mulkEkrani)); await p.waitForTimeout(1500); },
+  mulk_alt: async p => { await ADIM.mulk(p); await p.evaluate(() => { const m = document.querySelector('#icerik'); m.scrollTop = 520; }); await p.waitForTimeout(300); },
+  mulk_il: async p => { await ADIM.mulk(p); await p.evaluate(() => { mulkSecIl = 69; $('#mulkStokAlan').innerHTML = mulkStokHtml(); const m = document.querySelector('#icerik'); m.scrollTop = 520; }); await p.waitForTimeout(300); },
   portre: async p => { await ac(p); await p.evaluate(() => typeof portreModal === 'function' && portreModal()); await p.waitForTimeout(700); },
 };
 async function ac(p) { await p.goto('http://127.0.0.1:8788/?kad=' + encodeURIComponent(kad)); await p.waitForSelector('.sekmeler', { timeout: 15000 }); await p.waitForTimeout(1400); }

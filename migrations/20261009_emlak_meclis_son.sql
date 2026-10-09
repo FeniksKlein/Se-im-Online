@@ -1,3 +1,96 @@
+-- 2026-10-09 · TEK GEÇERLİ GÜNCELLEME: il bazlı emlak stoğu ve fiyatı, haftalık mülk vergisi (belediyeye),
+-- 600 sandalyelik Meclis ve dolu sandalyeye göre salt çoğunluk. Aynı gün üretilen deneme migration'larının
+-- (migrations/_iptal_20261009) yerine geçer; onlardan hangisi çalıştırılmış olursa olsun kalıntılarını temizler.
+-- Kaynak: gelistirici/sql/43_meclis_salt_cogunluk.sql, 44_il_emlak_stok_vergi.sql, 45_emlak_temizlik.sql
+begin;
+-- 600 potansiyel sandalye, dolu vekiller üzerinden salt çoğunluk.
+CREATE OR REPLACE FUNCTION oyun.kanun_tick(t timestamp with time zone)
+ RETURNS void
+ LANGUAGE plpgsql
+AS $function$
+declare k oyun.kanunlar; c record; dolu int; cb uuid; s record;
+begin
+  select * into s from oyun.kanun_suresi();
+  -- anayasa değişikliği: görüşme bitince imza sayısı dolu sandalyelerin üçte birine ulaşmadıysa teklif düşer
+  for k in select * from oyun.kanunlar where durum = 'gorusmede' and tur = 'anayasa' and t >= oy_bas order by oy_bas loop
+    dolu := oyun.dolu_sandalye();
+    if (select count(*) from oyun.kanun_oylari where kanun_id = k.id and asama = 'imza') < ceil(dolu / 3.0) then
+      update oyun.kanunlar set durum = 'ret', sonuc_at = k.oy_bas,
+        sonuc_metin = format('Yeterli imza toplanamadı: %s imza, en az %s gerekliydi (dolu sandalyelerin üçte biri).',
+                             (select count(*) from oyun.kanun_oylari where kanun_id = k.id and asama = 'imza'), ceil(dolu / 3.0)) where id = k.id;
+      perform oyun.bildir(k.teklif_eden, format('"%s" anayasa değişikliği teklifin yeterli imza toplayamadı.', k.baslik), k.oy_bas);
+    end if;
+  end loop;
+  update oyun.kanunlar set durum = 'oylamada' where durum = 'gorusmede' and t >= oy_bas;
+  for k in select * from oyun.kanunlar where durum = 'oylamada' and tur = 'anayasa' and t >= oy_bit order by oy_bit loop
+    select * into c from oyun.kanun_say(k.id, 'ilk');
+    dolu := oyun.dolu_sandalye();
+    cb := oyun.aktif_cb();
+    if dolu > 0 and c.kabul >= ceil(dolu * 2 / 3.0) and cb is not null then
+      update oyun.kanunlar set durum = 'cb_onayinda', cb_bit = k.oy_bit + s.cb,
+        sonuc_metin = format('Gizli oylamada %s kabul, %s ret, %s çekimser: üçte iki çoğunluk sağlandı.', c.kabul, c.ret, c.cekimser) where id = k.id;
+      perform oyun.bildir(cb, format('"%s" anayasa değişikliği Meclis''ten üçte iki çoğunlukla geçti. 48 saat içinde yayımla ya da halkoyuna sun.', k.baslik), k.oy_bit);
+      perform oyun.olay('meclis', format('"%s" anayasa değişikliği üçte iki çoğunlukla kabul edildi (%s kabul). Cumhurbaşkanına sunuldu.', k.baslik, c.kabul), null, k.teklif_parti, k.oy_bit);
+    elsif dolu > 0 and c.kabul >= ceil(dolu * 3 / 5.0) then
+      update oyun.kanunlar set sonuc_metin = format('Gizli oylamada %s kabul, %s ret, %s çekimser: beşte üç çoğunlukla kabul edildi, halkoyuna sunuluyor.', c.kabul, c.ret, c.cekimser) where id = k.id;
+      perform oyun.referandum_baslat(k.id, k.oy_bit);
+    else
+      update oyun.kanunlar set durum = 'ret', sonuc_at = k.oy_bit,
+        sonuc_metin = format('Reddedildi: gizli oylamada %s kabul oyu çıktı; halkoyuna sunulması için en az %s (beşte üç) gerekliydi.', c.kabul, ceil(dolu * 3 / 5.0)) where id = k.id;
+      perform oyun.bildir(k.teklif_eden, format('"%s" anayasa değişikliği teklifin Meclis''te gerekli çoğunluğu alamadı.', k.baslik), k.oy_bit);
+    end if;
+  end loop;
+  for k in select * from oyun.kanunlar where durum = 'oylamada' and tur <> 'anayasa' and t >= oy_bit order by oy_bit loop
+    select * into c from oyun.kanun_say(k.id, 'ilk');
+    dolu := oyun.dolu_sandalye();
+    if dolu > 0 and c.kabul >= floor(dolu / 2.0) + 1 then
+      cb := oyun.aktif_cb();
+      if cb is null then
+        perform oyun.kanun_yururluk(k.id, k.oy_bit, format('Meclis''te %s kabul, %s ret oyla kabul edildi (cumhurbaşkanı makamı boş).', c.kabul, c.ret));
+      else
+        update oyun.kanunlar set durum = 'cb_onayinda', cb_bit = k.oy_bit + s.cb,
+          sonuc_metin = format('Meclis''te %s kabul, %s ret, %s çekimser oyla kabul edildi.', c.kabul, c.ret, c.cekimser) where id = k.id;
+        perform oyun.bildir(cb, format('"%s" kanunu Meclis''ten geçti ve onayınızı bekliyor. 48 saat içinde onaylayın ya da veto edin.', k.baslik), k.oy_bit);
+        perform oyun.olay('meclis', format('"%s" Meclis''te kabul edildi (%s kabul, %s ret). Cumhurbaşkanının onayına sunuldu.', k.baslik, c.kabul, c.ret), null, k.teklif_parti, k.oy_bit);
+      end if;
+    else
+      update oyun.kanunlar set durum = 'ret', sonuc_at = k.oy_bit,
+        sonuc_metin = format('Salt çoğunluk sağlanamadı: %s kabul, %s ret, %s çekimser (dolu %s sandalyeden en az %s EVET gerekir).', c.kabul, c.ret, c.cekimser, dolu, floor(dolu / 2.0) + 1)
+      where id = k.id;
+      perform oyun.bildir(k.teklif_eden, format('"%s" teklifin Meclis''te kabul edilmedi.', k.baslik), k.oy_bit);
+    end if;
+  end loop;
+  for k in select * from oyun.kanunlar where durum = 'cb_onayinda' and t >= cb_bit order by cb_bit loop
+    perform oyun.kanun_yururluk(k.id, k.cb_bit, case when k.tur = 'anayasa' then 'Cumhurbaşkanı süresi içinde halkoyuna sunmadığı için yayımlanarak yürürlüğe girdi.'
+                                                    else 'Cumhurbaşkanı süresi içinde karar vermediği için kendiliğinden yürürlüğe girdi.' end);
+  end loop;
+  for k in select * from oyun.kanunlar where durum = 'israr' and t >= israr_bit order by israr_bit loop
+    select * into c from oyun.kanun_say(k.id, 'israr');
+    dolu := oyun.dolu_sandalye();
+    if dolu > 0 and c.kabul >= floor(dolu / 2.0) + 1 then
+      perform oyun.kanun_yururluk(k.id, k.israr_bit, format('Veto sonrası Meclis %s oyla ısrar etti.', c.kabul));
+    else
+      update oyun.kanunlar set durum = 'dustu', sonuc_at = k.israr_bit,
+        sonuc_metin = format('Veto sonrası ısrar için %s oy gerekiyordu, %s kabul oyu çıktı. Kanun düştü.', floor(dolu / 2.0) + 1, c.kabul) where id = k.id;
+      perform oyun.bildir(k.teklif_eden, format('"%s" veto sonrası ısrar oylamasında düştü.', k.baslik), k.israr_bit);
+    end if;
+  end loop;
+  -- seçim döneminde kabul edilen baraj, seçim bitince uygulanır
+  if (select bekleyen_baraj from oyun.ulke where id = 1) is not null
+     and not exists (select 1 from oyun.secimler o join oyun.secimler g on g.donem = o.donem and g.tur = 'mv'
+                     where o.tur = 'mv_on' and t >= o.basvuru_bas and g.durum = 'bekliyor') then
+    update oyun.ayarlar set baraj = (select bekleyen_baraj from oyun.ulke where id = 1) where id = 1;
+    update oyun.ulke set bekleyen_baraj = null where id = 1;
+  end if;
+end $function$
+;
+
+-- 600 milletvekili seçilebilecek; boş koltuklar yasama çoğunluğuna dahil edilmeyecek.
+update oyun.ayarlar set meclis_olcek=0 where id=1;
+select oyun.dagit_mv_sandalye(600);
+update oyun.meclis_olcek_kayit set sandalye=600,anayasal=600
+ where secim_id in (select id from oyun.secimler
+                   where tur='mv_on' and durum='bekliyor' and oy_bas>oyun.simdi());
 -- =====================================================================
 --  44 · İL BAZLI EMLAK: SINIRLI STOK, İL FİYATI, HAFTALIK MÜLK VERGİSİ
 --
@@ -293,3 +386,80 @@ begin
 end $$;
 revoke all on function public.belediye_emlak_ozet() from public, anon;
 grant execute on function public.belediye_emlak_ozet() to authenticated;
+-- =====================================================================
+--  45 · 9 EKİM DENEME GEÇİŞLERİNİN TEMİZLİĞİ
+--  9 Ekim'de aynı emlak/meclis isteği için birbirinin yerine geçen ~20 deneme migration'ı üretildi.
+--  Canlıda hangileri çalıştırılmış olursa olsun bu modül onların bıraktığı tetikleyicileri,
+--  eski satın alma kapılarını ve ölü kuralları kaldırır; geçerli tanım 43 ve 44 modülleridir.
+--  Temiz bir kurulumda hiçbir şey yapmaz.
+-- =====================================================================
+do $$
+declare r record;
+begin
+  -- 1) Kanunlar ve mülk tablosundaki deneme tetikleyicileri (geçerli olan yalnız mulk_devir_vergi)
+  for r in select tgname, tgrelid::regclass rel from pg_trigger
+           where not tgisinternal and tgrelid in ('oyun.kanunlar'::regclass, 'oyun.yatirim_mulkleri'::regclass)
+             and tgname like 'emlak%' loop
+    execute format('drop trigger if exists %I on %s', r.tgname, r.rel);
+  end loop;
+
+  -- 2) Deneme sürümlerinde kalan, yeni stok/fiyat kuralını atlayabilecek fonksiyonlar
+  for r in select p.oid::regprocedure f from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where (n.nspname, p.proname) in (
+             ('oyun','emlak_bedel'),('oyun','emlak_bolge_fiyat'),('oyun','emlak_bolge_kira'),('oyun','emlak_devri_vergi_sifirla'),
+             ('oyun','emlak_efektif_oran'),('oyun','emlak_fiyat'),('oyun','emlak_haftalik_oran'),('oyun','emlak_haftalik_tick'),
+             ('oyun','emlak_il_bilgi'),('oyun','emlak_il_fiyat'),('oyun','emlak_il_stok'),('oyun','emlak_kanun_etki'),
+             ('oyun','emlak_kanun_yururluk'),('oyun','emlak_kapasite'),('oyun','emlak_kira'),('oyun','emlak_oran'),
+             ('oyun','emlak_sehir_fiyat'),('oyun','emlak_sehir_kapasite'),('oyun','emlak_stok'),('oyun','emlak_vergi_borclandir'),
+             ('oyun','emlak_vergi_kanun_uygula'),('oyun','emlak_vergi_kanun_yururluk'),('oyun','emlak_vergi_kanun_yururluk_trigger'),
+             ('oyun','emlak_vergi_oran'),('oyun','emlak_vergi_oran_il'),('oyun','emlak_vergi_orani'),('oyun','emlak_vergi_tahsil'),
+             ('oyun','emlak_vergi_tick'),('oyun','emlak_vergisi_oran'),('oyun','kanun_karar_yeter'),('oyun','mulk_il_fiyat'),
+             ('public','belediye_emlak_vergi_ayarla'),('public','belediye_emlak_vergisi'),('public','belediye_emlak_vergisi_ayarla'),
+             ('public','emlak_belediye_durum'),('public','emlak_belediye_oran'),('public','emlak_belediye_oran_ayarla'),
+             ('public','emlak_il_katalog'),('public','emlak_il_listesi'),('public','emlak_il_piyasa'),('public','emlak_il_rehberi'),
+             ('public','emlak_il_stok'),('public','emlak_iller'),('public','emlak_kanun_teklif'),('public','emlak_piyasa'),
+             ('public','emlak_sehirler'),('public','emlak_vergi_belediye'),('public','emlak_vergi_belediye_ayar'),
+             ('public','emlak_vergi_belediye_ayarla'),('public','emlak_vergi_bilgi'),('public','emlak_vergi_durum'),
+             ('public','emlak_vergi_kanun_teklif'),('public','emlak_vergi_oranlari'),('public','emlak_vergi_yasa_teklif'),
+             ('public','emlak_vergisi_kanun_teklif'),('public','mulk_katalog'),('public','mulk_satin_al_il'),('public','mulk_sehir_satin_al')) loop
+    execute format('drop function if exists %s cascade', r.f);
+  end loop;
+
+  -- 2b) Eski uygulamanın çağırdığı tek parametreli mulk_satin_al dışındaki deneme kopyaları
+  for r in select p.oid::regprocedure f from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.proname = 'mulk_satin_al' and p.pronargs <> 1 loop
+    execute format('drop function if exists %s', r.f);
+  end loop;
+
+  -- 3) Deneme sütunlarındaki NOT NULL kısıtları yeni mülk eklemeyi engellemesin
+  for r in select attname from pg_attribute
+           where attrelid = 'oyun.yatirim_mulkleri'::regclass and attnum > 0 and not attisdropped and attnotnull
+             and attname in ('emlak_vergi_son','emlak_vergi_sonraki','sonraki_emlak_vergi','sonraki_vergi','vergi_borcu','toplam_vergi') loop
+    execute format('alter table oyun.yatirim_mulkleri alter column %I drop not null', r.attname);
+  end loop;
+end $$;
+
+-- 4) Deneme sürümlerinin bekleyen "emlak vergisi" serbest kanun teklifleri düşer (artık "Kural düzenlemesi" kanunuyla değişir)
+update oyun.kanunlar set durum = 'dustu', sonuc_at = oyun.simdi(),
+  sonuc_metin = 'Teklif, mülk vergisi sisteminin yenilenmesiyle düştü. Haftalık mülk vergisi artık "Kural düzenlemesi" kanunuyla değiştirilir.'
+where tur = 'serbest' and durum in ('gorusmede','oylamada','cb_onayinda','israr')
+  and (veri ->> 'ozel_tur' = 'emlak_vergisi' or baslik ilike '%emlak vergi%');
+
+-- 5) Deneme kurallarının kalıntıları (geçerli kodlar: mulk_vergi_ulusal, mulk_vergi_yerel)
+delete from oyun.il_duzenleme where kod in ('emlak_haftalik_oran','emlak_mulk','emlak_mulk_carpan','emlak_ulusal_oran','emlak_vergi_carpan','emlak_vergi_ulke','yatirim_emlak_vergisi');
+delete from oyun.duzenlemeler where kod in ('emlak_haftalik_oran','emlak_mulk','emlak_mulk_carpan','emlak_ulusal_oran','emlak_vergi_carpan','emlak_vergi_ulke','yatirim_emlak_vergisi');
+delete from oyun.duzenleme_tanim where kod in ('emlak_haftalik_oran','emlak_mulk','emlak_mulk_carpan','emlak_ulusal_oran','emlak_vergi_carpan','emlak_vergi_ulke','yatirim_emlak_vergisi');
+delete from oyun.yasa_ekonomi_ayar where kod = 'emlak_haftalik_baz';
+
+-- 6) Bir deneme sürümü Meclis ölçeğini sabit 600'e bağlamıştı; asıl tanım (39) geri yüklenir.
+create or replace function oyun.meclis_olcek_hesap(t timestamptz) returns jsonb
+language plpgsql stable set search_path = '' as $$
+declare a numeric := (select meclis_olcek from oyun.ayarlar where id = 1);
+        anayasal int := coalesce((select round(deger)::int from oyun.anayasa where kod = 'milletvekili_sayisi'), 600);
+        aktif int := (select count(*) from oyun.profiller where not yasakli and son_gorulme > t - interval '14 days');
+        n int;
+begin
+  n := case when coalesce(a, 0) <= 0 then anayasal else least(anayasal, greatest(81, ceil(aktif * a)::int)) end;
+  return jsonb_build_object('aktif', aktif, 'sandalye', n, 'anayasal', anayasal, 'olcek', a);
+end $$;
+commit;

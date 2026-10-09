@@ -1723,7 +1723,7 @@ async function meclisHtml(){
   let divan="";try{divan=await meclisDivanHtml();}catch(_){}
   return `<div class="kart"><h2>Türkiye Büyük Millet Meclisi</h2>${meclisSvg(m.partiler, m.toplam)}
     <div class="alt" style="text-align:center;margin-top:-4px"><b style="color:var(--txt);font-size:20px">${m.dolu}</b> / ${toplam} sandalye dolu · ${Math.max(0,toplam-m.dolu)} boş</div>
-    <div class="kucuk" style="text-align:center">Kabul için: dolu sandalyelerin 1/3'ü oylamaya katılmalı, kabul oyu retten fazla ve en az ${m.dolu?Math.floor(m.dolu/4)+1:"—"} olmalı · Veto sonrası ısrar için ${m.dolu?cogunluk:"—"}</div>
+    <div class="kucuk" style="text-align:center">Kanun kabulü için dolu ${m.dolu?fmt(m.dolu):"—"} sandalyenin salt çoğunluğu: en az ${m.dolu?cogunluk:"—"} evet (600 sandalyenin hepsi dolmasa da yalnız seçilmiş vekiller sayılır) · Veto sonrası ısrar için de ${m.dolu?cogunluk:"—"}</div>
     ${m.partiler.map(p=>`<div class="kv"><span class="k">${partiRozet(p)}</span><span class="v">${p.n} <span class="kucuk">(%${(p.n*100/Math.max(1,m.dolu)).toFixed(1)})</span></span></div>`).join("")}
     <button class="btn ikinci" onclick="ekranAc(()=>sohbetEkrani('meclis'))">TBMM Genel Kurulu</button></div>
     ${siyasiSistemHtml(s)}${divan}<div class="kart"><h2>Meclis İşlemleri</h2><div class="satir"><button class="btn yarim altin" onclick="ekranAc(maasEkrani)">Maaş oylamaları</button><button class="btn yarim ikinci" onclick="ekranAc(bakanSoruEkrani)">Bakanlara sorular</button></div></div>
@@ -3174,29 +3174,59 @@ async function magazaModal(){
    12d) BANKA · PARA GÖNDERME · İL TEŞKİLATLARI
    ===================================================================== */
 const yuzde = (x) => "%" + fmt(x, 2);
+let mulkStok=[], mulkSecIl=null;
 async function mulkEkrani(){
   yukleniyor("Gayrimenkul");
-  try { mulkCiz(await API.rpc("mulk_liste")); }
+  try {
+    const [d, st] = await Promise.all([API.rpc("mulk_liste"), API.rpc("mulk_il_stok").catch(()=>[])]);
+    mulkStok = (st||[]).slice().sort((a,b)=>a.il.localeCompare(b.il,"tr"));
+    if (mulkSecIl == null) { const b = mulkStok.find(x=>x.benim_ilim); mulkSecIl = b ? b.il_id : (mulkStok[0]||{}).il_id; }
+    mulkCiz(d);
+  }
   catch(err){ iskelet("Gayrimenkul",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true}); }
+}
+const MULK_AD = {daire:"Daire",dukkan:"Dükkân",villa:"Villa"};
+function mulkStokHtml(){
+  if (!mulkStok.length) return `<p class="alt">Satılık mülk listesi yüklenemedi.</p>`;
+  const il = mulkStok.find(x=>x.il_id===mulkSecIl) || mulkStok[0];
+  return `<div class="alan"><label>Hangi ilden?</label><select id="mulkIl" onchange="mulkSecIl=Number(this.value);$('#mulkStokAlan').innerHTML=mulkStokHtml()">
+      ${mulkStok.map(x=>`<option value="${x.il_id}" ${x.il_id===il.il_id?"selected":""}>${e(x.il)}${x.benim_ilim?" (yaşadığın il)":""}</option>`).join("")}</select></div>
+    <p class="kucuk">Gelişmişlik ${fmt(il.gelismislik)}/100 · Haftalık mülk vergisi ${yuzde(il.vergi_oran)} (belediye çarpanı ${fmt(il.carpan)})</p>
+    ${il.urunler.map(u=>`<div class="kv"><span>${e(MULK_AD[u.tip]||u.tip)}<div class="kucuk">Kira ${tlYaz(u.kira)}/hafta · Vergi ${tlYaz(u.vergi)}/hafta</div><div class="kucuk">${u.kalan>0?`Satılık: ${fmt(u.kalan)} / ${fmt(u.kontenjan)}`:`Bu ilde satılık yeni ${e((MULK_AD[u.tip]||u.tip).toLocaleLowerCase("tr"))} kalmadı`}</div></span>
+      <button class="btn ikinci" style="width:auto;margin:0;white-space:nowrap;flex-shrink:0" ${u.kalan>0?"":"disabled"} onclick="mulkAl('${u.tip}',${il.il_id},${u.fiyat})">${tlYaz(u.fiyat)} · Al</button></div>`).join("")}`;
 }
 function mulkCiz(d){
   iskelet("Gayrimenkul",`
     <div class="kart"><h2>Gayrimenkul portföyüm</h2><button class="btn ikinci" onclick="ticaretGecmisimEkrani()">Geçmiş mülk alım–satımlarım</button>
       <div class="kv"><span class="k">Mülk sayısı</span><b>${fmt(d.adet)}</b></div>
-      <div class="kv"><span class="k">Toplam alış bedeli</span><b>${tlYaz(d.mulk_degeri)}</b></div>
+      <div class="kv"><span class="k">Bugünkü değeri</span><b>${tlYaz(d.piyasa_degeri ?? d.mulk_degeri)}</b></div>
       <div class="kv"><span class="k">Haftalık toplam kira</span><b>${tlYaz(d.haftalik_toplam)}</b></div>
+      ${d.haftalik_vergi!=null?`<div class="kv"><span class="k">Haftalık mülk vergisi</span><b>${tlYaz(d.haftalik_vergi)}</b></div>`:""}
+      ${d.vergi_borc>0?`<div class="kv"><span class="k">Ödenmemiş vergi</span><b class="kotu">${tlYaz(d.vergi_borc)}</b></div>`:""}
       <div class="kv"><span class="k">Cüzdan</span><b>${tlYaz(d.cuzdan)}</b></div>
-      <p class="kucuk">Kira ilk kez satın alma anından 7 gün sonra, ardından her 7 günde bir otomatik olarak hak edilir. Oyun tekrar açıldığında bekleyen kiralar cüzdana aktarılır.</p></div>
+      <p class="kucuk">Kira ve mülk vergisi satın almadan 7 gün sonra, sonra her 7 günde bir işler; oyunu açtığında bekleyenler hesaplanır. Vergi, mülkün bulunduğu ilin belediyesine gider. Oranı TBMM kanunla, o ilin belediye başkanı çarpanla belirler. Parası yetmeyen oyuncunun vergisi borç olarak kalır ve mülk satılırken satıcıdan kesilir.</p></div>
     <div class="kart"><h2>Yeni mülk satın al</h2>
-      ${[['daire','Daire',130000],['dukkan','Dükkân',260000],['villa','Villa',520000]].map(x=>`<div class="kv"><span>${e(x[1])}<div class="kucuk">Haftalık kira: ${tlYaz(Math.round(x[2]/13))}</div></span><button class="btn ikinci" style="width:auto;margin:0" onclick="mulkAl('${x[0]}',${x[2]})">${tlYaz(x[2])} · Al</button></div>`).join('')}
-    </div>
+      <p class="alt">Her ilde nüfusuna göre sınırlı sayıda yeni mülk var. Fiyat ve kira ilin büyüklüğüne ve gelişmişliğine göre değişir. Yaşamadığın bir ilden de alabilirsin.</p>
+      <div id="mulkStokAlan">${mulkStokHtml()}</div></div>
     <div class="kart"><h2>Mülklerim (${fmt(d.adet)})</h2>
-      ${d.mulkler.length ? d.mulkler.map(m=>`<div class="olay"><b>${e({daire:'Daire',dukkan:'Dükkân',villa:'Villa'}[m.tip]||m.tip)} #${m.id} · ${e(m.il)}</b><div class="kv"><span>Haftalık kira</span><b>${tlYaz(m.haftalik)}</b></div><div class="kv"><span>Toplam kazanç</span><b>${tlYaz(m.toplam_kira)}</b></div><div class="kucuk">Sonraki kira: ${new Date(m.sonraki).toLocaleString('tr-TR')}</div><button class="btn ikinci" onclick="mulkIlanModal(${m.id},${m.alis})">Bu mülkü satılığa çıkar</button></div>`).join('') : '<p class="alt">Henüz mülkün yok.</p>'}
+      ${d.mulkler.length ? d.mulkler.map(m=>`<div class="olay"><b>${e(MULK_AD[m.tip]||m.tip)} #${m.id} · ${e(m.il)}</b>
+        <div class="kv"><span>Haftalık kira</span><b>${tlYaz(m.haftalik)}</b></div>
+        ${m.vergi!=null?`<div class="kv"><span>Haftalık mülk vergisi</span><b>${tlYaz(m.vergi)}</b></div>`:""}
+        ${m.vergi_borc>0?`<div class="kv"><span>Ödenmemiş vergi</span><b class="kotu">${tlYaz(m.vergi_borc)}</b></div>`:""}
+        ${m.deger!=null?`<div class="kv"><span>Bugünkü değeri</span><b>${tlYaz(m.deger)}</b></div>`:""}
+        <div class="kv"><span>Toplam kazanç</span><b>${tlYaz(m.toplam_kira)}</b></div>
+        <div class="kucuk">Sonraki kira: ${new Date(m.sonraki).toLocaleString('tr-TR')}</div>
+        <button class="btn ikinci" onclick="mulkIlanModal(${m.id},${m.deger ?? m.alis})">Bu mülkü satılığa çıkar</button></div>`).join('') : '<p class="alt">Henüz mülkün yok.</p>'}
     </div>`,{geri:true});
 }
-async function mulkAl(tur,bedel){
-  if(!await onayla("Gayrimenkul satın al",`Bu mülkü ${tlYaz(bedel)} karşılığında satın almak istiyor musun? İlk kira 7 gün sonra ödenir.`,"Satın al"))return;
-  try {const d=await API.rpc("mulk_satin_al",{p_tip:tur});mulkCiz(d);bildir("Mülk satın alındı.");}catch(err){bildir(hataCevir(err.message),true);}
+async function mulkAl(tur,il,bedel){
+  const x = mulkStok.find(y=>y.il_id===il);
+  if(!await onayla("Gayrimenkul satın al",`${e(x?x.il:"")} ilinden bir ${e((MULK_AD[tur]||tur).toLocaleLowerCase("tr"))} ${tlYaz(bedel)} karşılığında satın alınsın mı? İlk kira ve ilk mülk vergisi 7 gün sonra işler.`,"Satın al"))return;
+  try {
+    const d=await API.rpc("mulk_il_satin_al",{p_tip:tur,p_il:il});
+    mulkStok = (await API.rpc("mulk_il_stok").catch(()=>mulkStok)).slice().sort((a,b)=>a.il.localeCompare(b.il,"tr"));
+    mulkCiz(d); bildir("Mülk satın alındı.");
+  } catch(err){ bildir(hataCevir(err.message),true); }
 }
 async function piyangoEkrani(){
   yukleniyor("Milli Piyango");
