@@ -3016,10 +3016,10 @@ function hayatCiz(h){
       <button class="btn ${dolu || !h.bugun_toplandi ? "" : "ikinci"}" id="hTopla" ${kb.birikmis >= 1 || !h.bugun_toplandi ? "" : "disabled"}>Topla</button></div>
     <div class="bolum-bas"><h2>Diğer para işlemleri</h2></div>
     <div class="kart">
-      <button class="giris-satir" onclick="ekranAc(bankaEkrani)"><span class="yik">${IKON.banka}</span><span class="orta"><b>Devlet bankası</b><span class="kucuk">Vadeli ve vadesiz hesap</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="ekranAc(piyasaEkrani)"><span class="yik">${IKON.grafik}</span><span class="orta"><b>Piyasalar</b><span class="kucuk">Altın, döviz, hisse</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="paraGonderModal()"><span class="yik">${IKON.para}</span><span class="orta"><b>Para gönder</b><span class="kucuk">Banka havalesi</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="ticaretGecmisimEkrani()"><span class="yik">${IKON.fis}</span><span class="orta"><b>Alım-satım geçmişim</b><span class="kucuk">Geçmiş işlemlerim</span></span><span class="ok">›</span></button>
+      <button class="giris-satir" onclick="ekranAc(bankaEkrani)"><span class="yik">🏦</span><span class="orta"><b>Devlet bankası</b><span class="kucuk">Vadeli ve vadesiz hesap</span></span><span class="ok">›</span></button>
+      <button class="giris-satir" onclick="ekranAc(piyasaEkrani)"><span class="yik">📈</span><span class="orta"><b>Piyasalar</b><span class="kucuk">Altın, döviz, hisse</span></span><span class="ok">›</span></button>
+      <button class="giris-satir" onclick="paraGonderModal()"><span class="yik">💸</span><span class="orta"><b>Para gönder</b><span class="kucuk">Banka havalesi</span></span><span class="ok">›</span></button>
+      <button class="giris-satir" onclick="ticaretGecmisimEkrani()"><span class="yik">🧾</span><span class="orta"><b>Alım-satım geçmişim</b><span class="kucuk">Geçmiş işlemlerim</span></span><span class="ok">›</span></button>
     </div>
     <div class="satir" style="margin-bottom:12px">
       <button class="btn yarim ikinci" style="margin:0" id="hReklam" ${reklamHazir ? "" : "disabled"}>Reklam izle<br><span class="kucuk">+${tlYaz(kb.reklam_odul)} · ${h.reklam.kalan}/5</span></button>
