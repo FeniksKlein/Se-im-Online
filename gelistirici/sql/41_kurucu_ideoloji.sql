@@ -206,6 +206,8 @@ begin
  if p.son_parti_kur is not null and p.son_parti_kur+make_interval(days=>(select parti_kur_gun from oyun.ayarlar where id=1))>t then
    raise exception 'Yeni parti kurmak için bekleme süren dolmalı.'; end if;
  if (select para from oyun.cuzdanim(p.id))<greatest(25000,oyun.parti_kur_ucreti()) then raise exception 'Parti için en az % ₺ sermaye gerekli.', oyun.tl(greatest(25000,oyun.parti_kur_ucreti())); end if;
+ -- Yedi günlük süresi geçmiş başvuruları kapat; yeni başvuruyu engellemesinler.
+ update oyun.kurucu_basvuru set durum='suresi_doldu' where durum='bekliyor' and bit<=t;
  insert into oyun.kurucu_basvuru(kurucu,ad,kisa,renk,amblem,ideolojiler,bas,bit)
  values(p.id,p_ad,p_kisa,lower(p_renk),p_amblem,p_ideolojiler,t,t+interval '7 days')
  returning id into idd;
@@ -229,6 +231,7 @@ declare p oyun.profiller:=oyun.profilim(); b oyun.kurucu_basvuru; n int;
 begin
  select * into b from oyun.kurucu_basvuru where id=p_basvuru for update;
  if b.id is null or b.durum<>'bekliyor' or b.bit<=oyun.simdi() then raise exception 'Bu kurucu daveti geçerli değil.'; end if;
+ if p_kabul and oyun.uyari(p,oyun.simdi()) is not null then raise exception 'Kurucu olmak için seçmen kartın hazır olmalı: %',oyun.uyari(p,oyun.simdi()); end if;
  update oyun.kurucu_davet set durum=case when p_kabul then 'evet' else 'hayir' end,cevap_at=oyun.simdi()
  where basvuru_id=b.id and user_id=p.id and durum='bekliyor';
  if not found then raise exception 'Davetin yok veya daha önce yanıtladın.'; end if;
