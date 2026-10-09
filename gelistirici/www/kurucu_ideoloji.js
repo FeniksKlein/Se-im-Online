@@ -108,18 +108,19 @@ async function ideolojiOylamaModal(pid){
 
 /* Eski doğrudan parti kurma ekranının yerine kurucu onaylı akış. */
 function partiKurEkrani(){
-  const ozelKurucu=!!(D.durum&&D.durum.profil&&["eyetkin","celal"].includes((D.durum.profil.kad||"").toLocaleLowerCase("tr")));
+  const serbestAd=!!(D.durum&&D.durum.profil&&(D.durum.profil.kad||"").toLocaleLowerCase("tr")==="matestappen");
+  const ozelKurucu=!!(D.durum&&D.durum.profil&&["eyetkin","celal","matestappen"].includes((D.durum.profil.kad||"").toLocaleLowerCase("tr")));
   let renk=RENKLER[6],amb=VERI.amblem[0].id;
   iskelet("Parti kur",
     '<div class="kart" id="onizleme"></div>'+
     '<div class="kart">'+
-    '<div class="alan"><label>Parti adı (5–40 karakter)</label><input id="ad" maxlength="40" placeholder="Örn. Yarın Partisi"></div>'+
+    '<div class="alan"><label>Parti adı ('+(serbestAd?'1–80 karakter, serbest':'5–40 karakter')+')</label><input id="ad" maxlength="'+(serbestAd?'80':'40')+'" placeholder="Örn. Yarın Partisi"></div>'+
     '<div class="alan"><label>Kısa ad (2–6 harf)</label><input id="kisa" maxlength="6" placeholder="Örn. YP" style="text-transform:uppercase"></div>'+
     '<div class="alan"><label>Renk</label><div class="renkler">'+RENKLER.map(r=>'<button data-r="'+r+'" style="background:'+r+'"></button>').join("")+'</div></div>'+
     '<div class="alan"><label>Amblem</label><div class="amblemler">'+VERI.amblem.map(a=>'<button data-a="'+a.id+'" title="'+e(a.ad)+'">'+amblemSvg(a.id,"#fff")+'</button>').join("")+'</div></div>'+
     ideolojiSecimHtml([],"kurulusIdeoloji")+
     (ozelKurucu
-      ? '<p class="alt">Bu hesaba özel: 3 kurucu üye bulmadan ve kuruluş ücreti ödemeden partini hemen kurabilirsin.</p>'
+      ? '<p class="alt">'+(serbestAd?'Bu hesap için parti adı serbest: 1–80 karakter. Mevcut başka partinin adını ya da kısaltmasını kullanamazsın. ':'')+'3 kurucu üye bulmadan ve kuruluş ücreti ödemeden partini hemen kurabilirsin.</p>'
       : '<div class="alan"><label for="kurucuNick">Kurucu adayı oyuncu adları (en az 3)</label>'+
         '<textarea id="kurucuNick" class="alanmetin" rows="4" placeholder="Her satıra bir kullanıcı adı yaz"></textarea></div>'+
         '<p class="alt">Oyunculara kurucular kurulu daveti gönderilir. Kurucu dışında en az 3 kişi EVET demedikçe parti kurulmaz. Onay verenler kuruluş tamamlandığında yeni partiye katılır.</p>')+
@@ -158,7 +159,7 @@ function partiKurEkrani(){
     $("#hata").textContent="";$("#kur").disabled=true;
     try{
       if(ozelKurucu){
-        await API.rpc("eyetkin_parti_kur",{
+        await API.rpc(serbestAd?"matestappen_parti_kur":"eyetkin_parti_kur",{
           p_ad:$("#ad").value,p_kisa:$("#kisa").value.toLocaleUpperCase("tr"),
           p_renk:renk,p_amblem:amb,p_ideolojiler:ideolojiler
         });
