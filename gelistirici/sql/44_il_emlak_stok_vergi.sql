@@ -48,6 +48,16 @@ select i.id, case
 from oyun.iller i
 on conflict (il_id) do nothing;
 
+-- Yeni tablolar da TRUNCATE korumasına girsin (tam kurulumda kalicilik_son zaten ekler; migration için burada)
+do $$ begin
+  if to_regproc('oyun.bosaltma_korumasi') is not null then
+    drop trigger if exists bosaltma_korumasi on oyun.emlak_vergi_tahsilat;
+    create trigger bosaltma_korumasi before truncate on oyun.emlak_vergi_tahsilat for each statement execute function oyun.bosaltma_korumasi();
+    drop trigger if exists bosaltma_korumasi on oyun.il_kalkinma;
+    create trigger bosaltma_korumasi before truncate on oyun.il_kalkinma for each statement execute function oyun.bosaltma_korumasi();
+  end if;
+end $$;
+
 -- Kurallar: ulusal oran (Meclis) ve il çarpanı (belediye başkanı)
 insert into oyun.duzenleme_tanim(kod, kapsam, ad, birim, varsayilan, min, max, adim, tur, aciklama, oyuncu, devlet, sira) values
 ('mulk_vergi_ulusal','ulke','Haftalık mülk vergisi','yuzde',0.5,0.1,3.0,0.1,'gelir',

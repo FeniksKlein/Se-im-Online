@@ -4,9 +4,13 @@
 set -e
 cd "$(dirname "$0")/.."
 P="psql -h /tmp -U postgres -d oyun_test -q -v ON_ERROR_STOP=1"
-FN="oyun._emlak_pazarlik_tamamla oyun.kanun_tick oyun.kanun_yururluk oyun.meclis_olcek_hesap oyun.mulk_kira_tahsil public.kanun_detay public.mulk_il_satin_al public.mulk_il_stok public.mulk_ilan_satin_al public.mulk_liste public.mulk_satin_al"
+FN="$(cat ../migrations/_iptal_20261009/*.sql | grep -oiE "create or replace function (oyun|public)\.[a-z_0-9]+" | awk '{print tolower($5)}' | sort -u) public.mulk_il_satin_al public.mulk_il_stok public.mulk_liste oyun.mulk_haftalik_vergi"
 GECICI=$(mktemp -d)
-dok() { for f in $FN; do psql -h /tmp -U postgres -d oyun_test -Atc "select string_agg(pg_get_functiondef(p.oid), E'\n' order by p.oid::regprocedure::text) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname||'.'||p.proname='$f'" > "$GECICI/$1_$f"; done; }
+dok() {
+  psql -h /tmp -U postgres -d oyun_test -Atc "select tgrelid::regclass||'.'||tgname from pg_trigger where not tgisinternal order by 1" > "$GECICI/$1_tetikleyiciler"
+  psql -h /tmp -U postgres -d oyun_test -Atc "select n.nspname||'.'||p.oid::regprocedure from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('oyun','public') order by 1" > "$GECICI/$1_fonksiyonlar"
+  psql -h /tmp -U postgres -d oyun_test -Atc "select kod from oyun.duzenleme_tanim order by 1" > "$GECICI/$1_kurallar"
+  for f in $FN; do psql -h /tmp -U postgres -d oyun_test -Atc "select string_agg(pg_get_functiondef(p.oid), E'\n' order by p.oid::regprocedure::text) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname||'.'||p.proname='$f'" > "$GECICI/$1_$f"; done; }
 
 # 1) 43-45 olmadan kur (canlının 9 Ekim öğleden önceki hâli) + eski mülkler
 cp build/sql_birlestir.js "$GECICI/sb.js"
@@ -30,6 +34,6 @@ dok karma
 
 # 4) Temiz kurulumla karşılaştır
 bash kur_yerel.sh >/dev/null 2>&1; dok temiz
-fark=0; for f in $FN; do cmp -s "$GECICI/karma_$f" "$GECICI/temiz_$f" || { echo "FARKLI: $f"; fark=1; }; done
+fark=0; for f in tetikleyiciler fonksiyonlar kurallar $FN; do cmp -s "$GECICI/karma_$f" "$GECICI/temiz_$f" || { echo "FARKLI: $f"; diff "$GECICI/karma_$f" "$GECICI/temiz_$f" | head -6; fark=1; }; done
 [ $fark = 0 ] && echo "emlak_gecis: canlı geçişi temiz kurulumla aynı"
 rm -rf "$GECICI"; exit $fark

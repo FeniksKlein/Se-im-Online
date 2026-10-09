@@ -16,24 +16,11 @@ begin
   end loop;
 
   -- 2) Deneme sürümlerinde kalan, yeni stok/fiyat kuralını atlayabilecek fonksiyonlar
+  --    (geçerli emlak_* fonksiyonları yalnız emlak_pazarlik_* ve _emlak_pazarlik_tamamla)
   for r in select p.oid::regprocedure f from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-           where (n.nspname, p.proname) in (
-             ('oyun','emlak_bedel'),('oyun','emlak_bolge_fiyat'),('oyun','emlak_bolge_kira'),('oyun','emlak_devri_vergi_sifirla'),
-             ('oyun','emlak_efektif_oran'),('oyun','emlak_fiyat'),('oyun','emlak_haftalik_oran'),('oyun','emlak_haftalik_tick'),
-             ('oyun','emlak_il_bilgi'),('oyun','emlak_il_fiyat'),('oyun','emlak_il_stok'),('oyun','emlak_kanun_etki'),
-             ('oyun','emlak_kanun_yururluk'),('oyun','emlak_kapasite'),('oyun','emlak_kira'),('oyun','emlak_oran'),
-             ('oyun','emlak_sehir_fiyat'),('oyun','emlak_sehir_kapasite'),('oyun','emlak_stok'),('oyun','emlak_vergi_borclandir'),
-             ('oyun','emlak_vergi_kanun_uygula'),('oyun','emlak_vergi_kanun_yururluk'),('oyun','emlak_vergi_kanun_yururluk_trigger'),
-             ('oyun','emlak_vergi_oran'),('oyun','emlak_vergi_oran_il'),('oyun','emlak_vergi_orani'),('oyun','emlak_vergi_tahsil'),
-             ('oyun','emlak_vergi_tick'),('oyun','emlak_vergisi_oran'),('oyun','kanun_karar_yeter'),('oyun','mulk_il_fiyat'),
-             ('public','belediye_emlak_vergi_ayarla'),('public','belediye_emlak_vergisi'),('public','belediye_emlak_vergisi_ayarla'),
-             ('public','emlak_belediye_durum'),('public','emlak_belediye_oran'),('public','emlak_belediye_oran_ayarla'),
-             ('public','emlak_il_katalog'),('public','emlak_il_listesi'),('public','emlak_il_piyasa'),('public','emlak_il_rehberi'),
-             ('public','emlak_il_stok'),('public','emlak_iller'),('public','emlak_kanun_teklif'),('public','emlak_piyasa'),
-             ('public','emlak_sehirler'),('public','emlak_vergi_belediye'),('public','emlak_vergi_belediye_ayar'),
-             ('public','emlak_vergi_belediye_ayarla'),('public','emlak_vergi_bilgi'),('public','emlak_vergi_durum'),
-             ('public','emlak_vergi_kanun_teklif'),('public','emlak_vergi_oranlari'),('public','emlak_vergi_yasa_teklif'),
-             ('public','emlak_vergisi_kanun_teklif'),('public','mulk_katalog'),('public','mulk_satin_al_il'),('public','mulk_sehir_satin_al')) loop
+           where n.nspname in ('oyun','public')
+             and ((p.proname ~ '^(emlak_|belediye_emlak_vergi)' and p.proname !~ '^emlak_pazarlik')
+                  or p.proname in ('kanun_karar_yeter','mulk_il_fiyat','mulk_katalog','mulk_satin_al_il','mulk_sehir_satin_al')) loop
     execute format('drop function if exists %s cascade', r.f);
   end loop;
 
@@ -58,9 +45,10 @@ where tur = 'serbest' and durum in ('gorusmede','oylamada','cb_onayinda','israr'
   and (veri ->> 'ozel_tur' = 'emlak_vergisi' or baslik ilike '%emlak vergi%');
 
 -- 5) Deneme kurallarının kalıntıları (geçerli kodlar: mulk_vergi_ulusal, mulk_vergi_yerel)
-delete from oyun.il_duzenleme where kod in ('emlak_haftalik_oran','emlak_mulk','emlak_mulk_carpan','emlak_ulusal_oran','emlak_vergi_carpan','emlak_vergi_ulke','yatirim_emlak_vergisi');
-delete from oyun.duzenlemeler where kod in ('emlak_haftalik_oran','emlak_mulk','emlak_mulk_carpan','emlak_ulusal_oran','emlak_vergi_carpan','emlak_vergi_ulke','yatirim_emlak_vergisi');
-delete from oyun.duzenleme_tanim where kod in ('emlak_haftalik_oran','emlak_mulk','emlak_mulk_carpan','emlak_ulusal_oran','emlak_vergi_carpan','emlak_vergi_ulke','yatirim_emlak_vergisi');
+--    ('emlak' = ildeki herkesin günlük emlak vergisi, asıl kuraldır; ona dokunulmaz)
+delete from oyun.il_duzenleme where kod ~ '^(emlak_|yatirim_emlak)';
+delete from oyun.duzenlemeler where kod ~ '^(emlak_|yatirim_emlak)';
+delete from oyun.duzenleme_tanim where kod ~ '^(emlak_|yatirim_emlak)';
 delete from oyun.yasa_ekonomi_ayar where kod = 'emlak_haftalik_baz';
 
 -- 6) Bir deneme sürümü Meclis ölçeğini sabit 600'e bağlamıştı; asıl tanım (39) geri yüklenir.
