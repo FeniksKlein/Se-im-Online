@@ -350,7 +350,7 @@ begin
   end if;
 
   return public.durum();
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.parti_detay(p_parti bigint)
@@ -397,7 +397,7 @@ begin
     'tuzuk_at',pa.tuzuk_at,
     'son_ad_degis',pa.son_ad_degis
   );
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.partiler()
@@ -421,7 +421,7 @@ AS $function$
       where u.parti_id=pa.id)
   ) order by (select count(*) from oyun.profiller where parti_id=pa.id) desc,pa.id),'[]'::jsonb)
   from oyun.partiler pa where not pa.kapali
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.durum()
@@ -562,6 +562,6 @@ begin
       )
     end
   );
-end $function$
+end $function$;
 
 commit;
