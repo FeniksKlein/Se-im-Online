@@ -94,3 +94,14 @@ async function mvOrtakListeIptal(pid,id){
   try{await API.rpc("mv_ortak_liste_iptal",{p_id:id});toast("Ortak liste teklifin geri çekildi.");partiDetay(pid);}
   catch(err){toast(hataCevir(err.message),true);}
 }
+
+async function mvOrtakListePusulaBilgi(s){
+  if(!s||s.tur!=="mv"||!s.benim_il)return;
+  try {
+    const listeler=await API.rpc("mv_ortak_liste_gorunum",{p_secim:s.id,p_il:s.benim_il});
+    (s.secenekler||[]).forEach(x=>{
+      const m=(listeler||[]).find(z=>x.parti_id===z.parti1||x.parti_id===z.parti2);
+      if(m)x.ortak_liste=m.ortaklar;
+    });
+  } catch(err){ /* Oylama yeni RPC devreye girmese de çalışır. */ }
+}
