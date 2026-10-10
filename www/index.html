@@ -6876,7 +6876,7 @@ function adlSozcuGorevleri(){
 }
 function adlBilgiHtml(){
  const suclar=Object.entries(ADL_SUCLAR).map(([kod,metin])=>'<div class="liste-satir"><div class="orta"><b>'+e(ADL_TURLER[kod])+'</b><div class="kucuk">'+e(metin)+'</div></div></div>').join('');
- return '<div class="kart"><h3>Adliye ne işe yarar?</h3>'
+ return '<div class="kart"><details><summary style="cursor:pointer;font-weight:700">Adliye ne işe yarar? (Aç)</summary>'
   +'<p class="alt">Adliye, Seçim Simülasyonu Online oyuncuları arasındaki <b>oyun içi</b> anlaşmazlıkların delilli dava ve açık duruşmayla incelendiği bir sistemdir. Gerçek hayattaki mahkeme veya ceza hukuku yerine geçmez.</p>'
   +'<div class="kv"><span class="k">Dava açma</span><span class="v">Oyuncu veya yetkili parti temsilcisi iddiayı ve delilleri bildirir.</span></div>'
   +'<div class="kv"><span class="k">Savunma</span><span class="v">Davalı yanıt verebilir; parti sözcüsü yalnız yetkisi varsa temsil edebilir.</span></div>'
@@ -6890,7 +6890,7 @@ function adlBilgiHtml(){
   +'<p class="alt">Aşağıdaki tanımlar yalnız oyun içindeki davranışlara uygulanır. Mesaj, işlem kaydı, belge ve savunmalar değerlendirilmelidir.</p>'+suclar+'</details>'
   +'<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Olası cezalar ve yapay zekâ önerisi (Aç)</summary>'
   +'<p class="alt">Olası kararlar: beraat, uyarı, 1 saat / 1 gün / 1 hafta sohbetten susturma, 10.000 ya da 50.000 ₺ para cezası, 30 gün adaylık yasağı veya aktif milletvekilliğinin düşürülmesi. Bir siyasi partiye beraat, uyarı veya 25.000 ₺ hazine yardımı kesintisi verilebilir. Suçla ceza arasında otomatik ve değişmez bir eşleşme yoktur.</p>'
-  +'<p class="alt">Yüksek Yargıç, delil ve savunmalardan hareketle gerekçeli <b>AI ceza önerisi</b> isteyebilir. AI hizmeti yapılandırılmadıysa sistem açıkça kurallı ön değerlendirme gösterir. Hiçbiri kesin hüküm vermez; cezayı yalnız yargıç uygular.</p></details></div>';
+  +'<p class="alt">Yüksek Yargıç, delil ve savunmalardan hareketle gerekçeli <b>AI ceza önerisi</b> isteyebilir. AI hizmeti yapılandırılmadıysa sistem açıkça kurallı ön değerlendirme gösterir. Hiçbiri kesin hüküm vermez; cezayı yalnız yargıç uygular.</p></details></details></div>';
 }
 
 let ADL={};
