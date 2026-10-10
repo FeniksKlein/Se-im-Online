@@ -2073,7 +2073,7 @@ function meclisSecimKart(s){
 }
 async function meclisDivanHtml(){
   const b = await API.rpc("meclis_baskanlik"); D._divan = b;
-  return `<div class="kart"><h2>TBMM Başkanlık Divanı</h2>
+  return `<div class="kart"><h2>TBMM Başkanlık Divanı</h2>${b.secimler.some(x => x.durum !== "bitti") ? `<span class="rozet altin" style="margin-bottom:8px">Başkanlık / Grup seçimi açık</span><p class="alt">Adaylık veya gizli oyunu aşağıdaki seçim kartından yapabilirsin.</p>` : ""}
       ${b.baskan ? `<div class="kv"><span class="k">TBMM Başkanı</span><span class="v"><a class="bag" href="#" onclick="oyuncuKart('${e(b.baskan.kad)}');return false">${e(b.baskan.kad)}</a> ${b.baskan.parti ? `<span class="kucuk" style="color:${e(b.baskan.parti.renk)}">${e(b.baskan.parti.kisa)}</span>` : ""}</span></div>`
         : `<div class="kv"><span class="k">TBMM Başkanı</span><span class="v kucuk">Seçilmedi${b.gecici ? ` · Geçici Başkan: ${e(b.gecici)} (en kıdemli vekil)` : ""}</span></div>`}
       ${b.baskanvekilleri.map(x => `<div class="kv"><span class="k">Başkanvekili</span><span class="v">${e(x.kad)} <span class="kucuk" style="color:${e(x.parti.renk)}">${e(x.parti.kisa)}</span></span></div>`).join("")}
@@ -2525,6 +2525,7 @@ async function partiDetay(id){
       ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn ikinci" onclick="gbyGorevModal(${p.id})">Yardımcılara görev ver</button><button class="btn ikinci" onclick="partiAdModal(${p.id})">Parti adını değiştir</button><button class="btn altin" onclick="ucretModal(${p.id})">Adaylık ücretlerini değiştir</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
       ${p.uyesiyim && ben.gby ? `<button class="btn tehlike" onclick="gbyIstifa()">Yardımcılıktan istifa et</button>` : ""}<button class="btn ikinci" onclick="ekranAc(()=>partiTuzukEkrani(${p.id}))">Parti tüzüğü ve üye oylamaları</button></div>
     ${p.uyesiyim ? `<button class="btn tehlike" style="margin:0 0 12px" onclick="partidenAyril()">Partiden ayrıl</button>` : `<button class="btn" style="margin:0 0 12px" onclick="partiyeKatil(${p.id})">Partiye katıl</button>`}
+    ${p.vekil > 0 ? `<div class="kart"><h2>Meclis grubu ve başkanlık seçimleri</h2><p class="alt">Bu partinin ${p.vekil} milletvekili bulunuyor. Partinin grup başkanvekili adaylarını, TBMM Başkanlığı seçimlerini ve oy pusulalarını Meclis ekranından takip et.</p><button class="btn altin" onclick="D.devletSekme='meclis';ekranAc(devletEkrani)">Meclis seçimlerine git</button></div>` : ""}
     <div class="kart"><h2>Parti içi yaşam</h2><button class="btn ikinci" onclick="ekranAc(()=>grupToplantiEkrani(${p.id}))">Grup toplantıları / Konuşmalar</button><button class="btn ikinci" onclick="ekranAc(()=>partiDisiplinEkrani(${p.id}))">Disiplin ve ihraç oylamaları</button></div>${p.uyesiyim ? `<div id="partiMitingKart"></div>` : ""}<div id="teskilatKart"></div>
     <div id="kasaKart"></div>
     <div id="ittifakKart"></div>
