@@ -940,11 +940,6 @@ async function gundemEkrani(){
   const govde = `
     ${seritHtml(haber)}
     ${sahneHtml(d.takvim)}
-    <div class="kart" style="border:1px solid var(--line2)">
-      <div class="baslik"><b>Adliye ve Yüksek Yargıç</b></div>
-      <p class="alt" style="margin:8px 0">Herkese açık dava aç, savunma yap, duruşmaları izle. Parti sözcüleri davalarda temsil edebilir.</p>
-      <button class="btn altin" onclick="sekmeAc('adliye')">Adliyeye gir</button>
-    </div>
     <div class="kart vit-gazete"><h2>📰 Gazeteler</h2>
       <div class="vit-dugme"><button class="btn altin" onclick="ekranAc(basinEkrani)">Oyuncu gazeteleri</button><button class="btn ikinci" onclick="otomatikGazeteEkrani()">Türkiye Gündem</button></div>
       <p class="kucuk">Haberler, köşe yazıları ve canlı siyasi gelişmeler</p></div>
@@ -2144,7 +2139,7 @@ async function partiDetay(id){
         <div><b style="font-size:20px">${p.uye}</b><div class="kucuk">üye</div></div><div><b style="font-size:20px">${p.vekil}</b><div class="kucuk">vekil</div></div><div><b style="font-size:20px">${p.belediye}</b><div class="kucuk">belediye</div></div></div></div>
     <div class="kart"><h3>Parti Sözcüsü</h3><div class="kv"><span class="k">Görevdeki sözcü</span><span class="v">${e((sozcuBilgi && sozcuBilgi.sozcu) || "Henüz atanmadı")}</span></div>
       <p class="alt"><b>Parti sözcüsünün görevi:</b> Parti adına açılan veya partiye karşı açılan davalarda iddia ve savunma sunar. Parti üyelerini kişisel davalarında yalnız üyeden alınmış dosyaya özel izinle temsil eder. Yargıç değildir, ceza veremez. Sözcüyü sadece parti genel başkanı atayabilir ve görevden alabilir.</p>
-      ${sozcuBilgi && sozcuBilgi.gb_miyim ? `<button class="btn ikinci" onclick="partiSozcuModal(${p.id})">Parti Sözcüsü ata / görevden al</button>` : ""}</div>
+      ${sozcuBilgi && sozcuBilgi.gb_miyim ? `<button class="btn ikinci" onclick="partiSozcuModal(${p.id})">Parti Sözcüsü ata / görevden al</button><button class="btn ikinci" onclick="adlYargicOnerModal(${p.id})">Partimizin Yüksek Yargıç adayını öner</button>` : ""}</div>
     ${p.kurulus_bit ? `<div class="olay basvuru"><div class="baslik"><b>Kuruluş aşamasında</b><span class="rozet altin">${p.kurucu_gecerli} / ${p.kurucu_gerekli} kurucu</span></div>
       <p class="alt" style="margin-top:6px">Parti, ${tarihSaat(p.kurulus_bit)} tarihine kadar şartları taşıyan ${p.kurucu_gerekli} kurucu üyeye ulaşırsa kurulur ve seçimlere katılabilir; ulaşamazsa kuruluş düşer. Seçmen kartı hazır her üye kurucu sayılır.</p>
       ${p.uyesiyim && p.kurucu_engelim ? `<div class="kucuk" style="color:var(--gold2)">Sen henüz kurucu sayılmıyorsun: ${e(p.kurucu_engelim)}</div>` : ""}
