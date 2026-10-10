@@ -6085,7 +6085,7 @@ function halkaArzKart(s){
 async function halkaArzEkrani(id){
  yukleniyor("Halka arz");
  try{
-  const d=await API.rpc("halka_arz_durum",{p_sirket:id});_ha=d;
+  const d=await API.rpc("halka_arz_durum",{p_sirket:id});_ha=d;_haListe=[];
   const benim=Number(d.payim)>=50,a=d.acik;
   const varsayilan=Math.max(10000,Math.min(Number(d.en_fazla_tutar),Math.round(Number(d.sermaye)<3000000?3000000-Number(d.sermaye):Number(d.sermaye))));
   iskelet("Halka arz",`
@@ -6204,7 +6204,7 @@ async function halkaArzTalep(arz,sirket){
  const onay=once>0?`${haTL(t)} ek talep eklensin mi?\nMevcut emir: ${haTL(once)}\nYeni toplam emir: ${haTL(once+t)}`:`${haTL(t)} tutarında ilk talebin verilsin mi?`;
  if(!confirm(onay+"\nYalnız ek tutar cüzdanından düşer; para arz sonuçlanana kadar emanette kalır, arz gerçekleşmezse iade edilir."))return;
  if(btn)btn.disabled=true;
- try{const r=await API.rpc("halka_arz_talep",{p_arz:arz,p_tutar:t});toast(r.durum==="tamam"?"Hedef doldu, halka arz tamamlandı; artık şirketin ortağısın.":`Talebin güncellendi. Toplam emrin: ${haTL(r.talebim)}.`);sirket?halkaArzEkrani(sirket):halkaArzPazarEkrani()}
+ try{const r=await API.rpc("halka_arz_talep",{p_arz:arz,p_tutar:t});toast(r.durum==="tamam"?"Hedef doldu, halka arz tamamlandı; artık şirketin ortağısın.":`Talebin güncellendi. Toplam emrin: ${haTL(r.talebim)}.`);await (sirket?halkaArzEkrani(sirket):halkaArzPazarEkrani())}
  catch(err){toast(hataCevir(err.message),true)}
  finally{if(btn&&document.getElementById("ha_talep_"+arz)===inp)btn.disabled=false;}
 }
@@ -6217,7 +6217,7 @@ async function halkaArzTalepGeri(arz,sirket){
 async function halkaArzPazarEkrani(){
  yukleniyor("Halka arzlar");
  try{
-  const d=await API.rpc("halka_arz_liste");_haListe=d.acik||[];
+  const d=await API.rpc("halka_arz_liste");_ha=null;_haListe=d.acik||[];
   iskelet("Halka arzlar",`
   <div class="kart"><h2>Halka arzlar</h2><p class="alt">Oyuncu şirketlerinin halka arzlarına talep ver, şirkete ortak ol ve haftalık kârdan payını al. Cüzdanın: ${haTL(d.cuzdan)}. Talep toplama bitmeden mevcut emrine istediğin kadar ek talep verebilirsin (her seferinde en az 1.000 ₺).</p>
    <button class="btn ikinci" onclick="sirketYonetimEkrani()">Şirketlerim</button></div>
