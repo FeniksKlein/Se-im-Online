@@ -179,7 +179,22 @@ begin
  insert into oyun.parti_sozcu(parti_id,user_id,atayan,zaman) values(p_parti,u.id,p.id,t)
  on conflict (parti_id) do update set user_id=excluded.user_id,atayan=excluded.atayan,zaman=excluded.zaman;
  insert into oyun.parti_sozcu_kayit(parti_id,yapan,eski,yeni,zaman) values(p_parti,p.id,eski,u.id,t);
- if u.id is not null then insert into oyun.bildirimler(user_id,zaman,metin) values(u.id,t,'Parti genel başkanınız sizi Parti Sözcüsü olarak atadı. Adliye davalarında partinizi savunabilirsiniz.'); end if;
+ if eski is not null and eski is distinct from u.id then
+  insert into oyun.bildirimler(user_id,zaman,metin) values(eski,t,'Parti sözcülüğü göreviniz sona erdi. Yeni davalarda parti adına temsil yetkiniz bulunmuyor.');
+ end if;
+ if u.id is not null then
+  insert into oyun.bildirimler(user_id,zaman,metin) values(u.id,t,'Parti genel başkanınız sizi Parti Sözcüsü olarak atadı. Adliye davalarında partinizi savunabilirsiniz.');
+  insert into oyun.bildirimler(user_id,zaman,metin)
+  select u.id,t,'Adliye dava #'||d.id||': Partiniz hakkındaki açık davada sözcü olarak savunma yapabilirsiniz.'
+  from oyun.adliye_davalar d where d.davali_parti=p_parti and d.durum='acik'
+  order by d.id desc limit 20;
+  insert into oyun.bildirimler(user_id,zaman,metin)
+  select u.id,t,'Adliye dava #'||d.id||': Parti üyenizin size verdiği temsil yetkisiyle kişisel davasında savunma yapabilirsiniz.'
+  from oyun.adliye_davalar d
+  join oyun.adliye_temsil y on y.dava_id=d.id and y.aktif and y.yetki_veren=d.davali
+  join oyun.profiller dav on dav.id=d.davali and dav.parti_id=p_parti
+  where d.durum='acik' order by d.id desc limit 20;
+ end if;
  return jsonb_build_object('tamam',true);
 end $$;
 
@@ -218,14 +233,21 @@ begin
 end $$;
 
 create or replace function public.adliye_temsil_yetkisi(p_dava bigint,p_izin boolean) returns jsonb language plpgsql security definer set search_path='' as $$
-declare p oyun.profiller:=oyun.profilim(); d oyun.adliye_davalar;
+declare p oyun.profiller:=oyun.profilim(); d oyun.adliye_davalar; sozcu uuid; t timestamptz:=oyun.simdi();
 begin
  select * into d from oyun.adliye_davalar where id=p_dava for update;
  if d.id is null or d.davali<>p.id or d.durum<>'acik' then raise exception 'Bu davada temsil yetkisi veremezsiniz.'; end if;
- if p.parti_id is null or not exists(select 1 from oyun.parti_sozcu s join oyun.profiller pr on pr.id=s.user_id and pr.parti_id=s.parti_id
- where s.parti_id=p.parti_id) then raise exception 'Partinizde görevli bir sözcü bulunmuyor.'; end if;
+ if p_izin is null then raise exception 'Temsil izni seçimi geçersiz.'; end if;
+ select s.user_id into sozcu from oyun.parti_sozcu s
+ join oyun.profiller pr on pr.id=s.user_id and pr.parti_id=s.parti_id and not pr.yasakli
+ where s.parti_id=p.parti_id;
+ if p_izin and sozcu is null then raise exception 'Partinizde görevli bir sözcü bulunmuyor.'; end if;
  insert into oyun.adliye_temsil(dava_id,yetki_veren,aktif) values(d.id,p.id,p_izin)
- on conflict(dava_id,yetki_veren) do update set aktif=excluded.aktif,yetki_verildi=now();
+ on conflict(dava_id,yetki_veren) do update set aktif=excluded.aktif,yetki_verildi=t;
+ if sozcu is not null then
+  insert into oyun.bildirimler(user_id,zaman,metin)
+  values(sozcu,t,'Adliye dava #'||d.id||': '||p.kad||case when p_izin then ' kişisel davasında size savunma ve beyan yetkisi verdi. Adliye bölümündeki dosyaya girin.' else ' kişisel davasında temsil yetkinizi geri aldı.' end);
+ end if;
  return jsonb_build_object('tamam',true);
 end $$;
 
