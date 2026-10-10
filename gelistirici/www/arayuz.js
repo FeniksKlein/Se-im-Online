@@ -625,3 +625,83 @@ async function gbyGorevModal(pid) {
     } catch (err) { b.disabled = false; $("#ggHata", m).textContent = hataCevir(err.message); }
   };
 }
+
+/* =====================================================================
+   İTTİFAK TEKLİFİ VE ORTAK ADAY (sunucu: 54_ittifak_teklif_ortak_aday.sql)
+   ===================================================================== */
+// Başka partinin sayfasında, genel başkana "İttifak teklif et"
+function ittifakTeklifHtml(pid, b) {
+  const ben = D.durum && D.durum.profil, benimParti = ben && ben.parti;
+  if (!ben || !ben.gb || !benimParti || benimParti.id === pid) return "";
+  if (b.ittifak && b.ittifak.uyeler.some(x => x.id === benimParti.id)) return "";
+  if (b.kilit) return `<p class="kucuk" style="margin-top:8px">${e(b.kilit)}</p>`;
+  if (b.ittifak) return `<p class="kucuk" style="margin-top:8px">Bu parti ${e(b.ittifak.ad)} ittifakında; teklif için önce oradan ayrılması gerekir.</p>`;
+  return `<button class="btn altin" onclick="ittifakTeklifModal(${pid})">Bu partiye ittifak teklif et</button>`;
+}
+async function ittifakTeklifModal(pid) {
+  const benim = D.durum.profil.parti;
+  let bb; try { bb = await API.rpc("ittifak_bilgi", { p_parti: benim.id }); } catch (err) { return toast(hataCevir(err.message), true); }
+  const hedef = (await API.rpc("partiler")).find(x => x.id === pid) || { kisa: "" };
+  const m = modal(`<h3>İttifak teklifi</h3>
+    <p class="alt">${bb.ittifak ? `${e(hedef.kisa)}, ${e(bb.ittifak.ad)} ittifakına davet edilecek.` : `Partin henüz bir ittifakta değil. Teklifle birlikte ittifak kurulur; ${e(hedef.kisa)} kabul ederse ortak olursunuz.`}
+      Teklif, partinin genel başkanına bildirim olarak gider. İttifak ortakları genel seçimde barajı birlikte aşar, cumhurbaşkanlığı ve belediye seçimlerinde ortak aday çıkarabilir.</p>
+    ${bb.ittifak ? "" : `<div class="alan"><label for="itAd">İttifakın adı</label><input id="itAd" maxlength="40" placeholder="Örnek: Anadolu Cephesi"></div>`}
+    <div class="hata-metin" id="itHata"></div><button class="btn altin" id="itGonder">Teklifi gönder</button>`);
+  $("#itGonder", m).onclick = async () => {
+    const btn = $("#itGonder", m); btn.disabled = true;
+    try {
+      await API.rpc("ittifak_teklif", { p_parti: pid, p_ad: bb.ittifak ? null : $("#itAd", m).value });
+      modalKapat(); toast("İttifak teklifi gönderildi."); ittifakKartCiz(pid);
+    } catch (err) { btn.disabled = false; $("#itHata", m).textContent = hataCevir(err.message); }
+  };
+}
+// İttifak üyeleri için ortak aday bölümü
+async function ortakAdayCiz(pid) {
+  const el = $("#ortakAdayAlan"); if (!el) return;
+  let d; try { d = await API.rpc("ittifak_masasi", { p_parti: pid }); } catch (_) { return; }
+  D._masa = d;
+  if (!d.ittifak || !d.uyem) { el.innerHTML = ""; return; }
+  const turAd = (o) => o.tur === "cb" ? "Cumhurbaşkanı" : `${e(o.il)} Belediye Başkanı`;
+  const satir = (o) => `<div class="kart" style="margin:10px 0 0;background:var(--panel2)">
+    <div style="display:flex;justify-content:space-between;gap:8px"><b>${turAd(o)} ortak adayı</b>
+      <span class="rozet ${o.durum === "kabul" ? "yesil" : "altin"}">${o.durum === "kabul" ? "Kesinleşti" : "Yanıt bekliyor"}</span></div>
+    <div style="margin-top:4px">${e(o.aday || "—")} · <span style="color:${e(o.aday_parti.renk)}">${e(o.aday_parti.kisa)}</span></div>
+    <div class="kucuk">Öneren: ${e(o.teklif_eden.kisa)}${o.yanitlar.length ? " · " + o.yanitlar.map(y => `${e(y.parti)} ${y.kabul ? "kabul etti" : "reddetti"}`).join(", ") : ""}${o.bekleyenler.length && o.durum === "bekliyor" ? " · Bekleyen: " + o.bekleyenler.map(e).join(", ") : ""}</div>
+    ${o.yanit_bekliyor_benden ? `<p class="kucuk" style="margin-top:6px">Kabul edersen partinin bu seçimdeki kendi adayı çekilir ve ortak adayı desteklersin.</p>
+      <div class="satir"><button class="btn yarim" onclick="ortakAdayYanit(${o.id},true,${pid})">Kabul et</button><button class="btn yarim ikinci" onclick="ortakAdayYanit(${o.id},false,${pid})">Reddet</button></div>` : ""}
+    ${o.durum === "bekliyor" && d.gb && D.durum.profil.parti && o.teklif_eden.id === D.durum.profil.parti.id ? `<button class="btn ikinci" onclick="ortakAdayIptal(${o.id},${pid})">Öneriyi geri çek</button>` : ""}
+  </div>`;
+  // Ortak adayı zaten önerilmiş seçimler listeden çıkar
+  const cbVar = d.oneriler.some(o => o.tur === "cb"), belIller = new Set(d.oneriler.filter(o => o.tur === "bel").map(o => o.il_id));
+  d.cb_adaylar = cbVar ? [] : d.cb_adaylar; d.bel_adaylar = d.bel_adaylar.filter(a => !belIller.has(a.il_id));
+  const onerilebilir = (d.cb_acik && d.cb_adaylar.length) || (d.bel_acik && d.bel_adaylar.length);
+  el.innerHTML = `<h3 style="font-size:15px;margin-top:14px">Ortak adaylar</h3>
+    ${d.oneriler.length ? d.oneriler.map(satir).join("") : `<p class="kucuk">Henüz ortak aday önerisi yok.</p>`}
+    ${d.gb ? (onerilebilir ? `<button class="btn ikinci" onclick="ortakAdayModal(${pid})">Ortak aday öner</button>`
+      : `<p class="kucuk" style="margin-top:6px">Ortak aday, ortakların adayları belli olunca önerilebilir: cumhurbaşkanlığı için ayın 19-25'i, belediye için ön seçim sonucundan oy verme başlayana kadar.</p>`) : ""}`;
+}
+function ortakAdayModal(pid) {
+  const d = D._masa; if (!d) return;
+  const secenek = [
+    ...(d.cb_acik ? d.cb_adaylar.map(a => ({ v: `cb||${a.parti_id}`, t: `Cumhurbaşkanı · ${a.kad} (${a.parti})` })) : []),
+    ...(d.bel_acik ? d.bel_adaylar.map(a => ({ v: `bel|${a.il_id}|${a.parti_id}`, t: `${a.il} Belediye Başkanı · ${a.kad} (${a.parti})` })) : [])];
+  const m = modal(`<h3>Ortak aday öner</h3><p class="alt">Önerdiğin aday ittifakın ortak adayı olur. Kendi partinin adayı değilse partinin o seçimdeki adayı hemen çekilir. Ortaklar kabul edince onların adayları da çekilir; reddeden ortak kendi adayıyla yarışır.</p>
+    <div class="alan"><label for="oaSec">Aday</label><select id="oaSec">${secenek.map(x => `<option value="${e(x.v)}">${e(x.t)}</option>`).join("")}</select></div>
+    <div class="hata-metin" id="oaHata"></div><button class="btn altin" id="oaGonder">Öneriyi gönder</button>`);
+  $("#oaGonder", m).onclick = async () => {
+    const btn = $("#oaGonder", m); btn.disabled = true;
+    const [tur, il, parti] = $("#oaSec", m).value.split("|");
+    if (!await onayla("Ortak aday önerisi", "Aday kendi partinden değilse partinin bu seçimdeki adayı çekilecek. Devam edilsin mi?", "Öner")) { btn.disabled = false; return; }
+    try { await API.rpc("ittifak_ortak_aday_teklif", { p_tur: tur, p_il: il ? +il : null, p_aday_parti: +parti }); modalKapat(); toast("Öneri ortaklara gönderildi."); ortakAdayCiz(pid); }
+    catch (err) { btn.disabled = false; $("#oaHata", m).textContent = hataCevir(err.message); }
+  };
+}
+async function ortakAdayYanit(id, kabul, pid) {
+  if (kabul && !await onayla("Ortak adayı kabul et", "Partinin bu seçimdeki kendi adayı çekilecek ve ortak aday desteklenecek.", "Kabul et")) return;
+  try { await API.rpc("ittifak_ortak_aday_yanit", { p_teklif: id, p_kabul: kabul }); toast(kabul ? "Ortak adayı kabul ettiniz." : "Öneriyi reddettiniz."); ortakAdayCiz(pid); }
+  catch (err) { toast(hataCevir(err.message), true); }
+}
+async function ortakAdayIptal(id, pid) {
+  try { await API.rpc("ittifak_ortak_aday_iptal", { p_teklif: id }); toast("Öneri geri çekildi."); ortakAdayCiz(pid); }
+  catch (err) { toast(hataCevir(err.message), true); }
+}

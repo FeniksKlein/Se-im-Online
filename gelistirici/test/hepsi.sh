@@ -4,7 +4,7 @@
 #           bash test/hepsi.sh eski     (ek olarak eski testler: ekonomi dengesi değiştiği için bazı beklentileri güncel değil)
 cd "$(dirname "$0")"
 basarisiz=0
-testler="simulasyon guvenlik miting_canli parti_miting gazete_uzun gby_gorev_tepki gby_gorev_yetki"
+testler="simulasyon guvenlik miting_canli parti_miting gazete_uzun gby_gorev_tepki gby_gorev_yetki ittifak_ortak"
 [ "$1" = "eski" ] && testler="$testler sosyal devlet asama3 tek_gorev vatandas ekonomi2 bos_makam mevzuat meclis ekonomi3"
 for t in $testler; do
   bash ../kur_yerel.sh >/dev/null 2>&1 || { echo "KURULUM HATASI ($t)"; exit 1; }

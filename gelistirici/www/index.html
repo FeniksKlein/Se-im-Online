@@ -2155,7 +2155,9 @@ async function ittifakKartCiz(pid){
     ${b.kilit && gb ? `<p class="kucuk" style="margin-top:8px">${e(b.kilit)}</p>` : ""}
     ${gb && !b.kilit ? (it ? `<button class="btn ikinci" onclick="ittifakDavetModal(${pid})">Partiyi ittifaka davet et</button><button class="btn tehlike" onclick="ittifakAyril(${pid})">İttifaktan ayrıl</button>`
       : `<button class="btn ikinci" onclick="ittifakKurModal(${pid})">İttifak kur</button>`) : ""}
-    ${it && D.durum.profil.parti && it.uyeler.some(x => x.id === D.durum.profil.parti.id) ? `<button class="btn ikinci" onclick="ekranAc(()=>sohbetEkrani('ittifak'))">İttifak sohbeti</button>` : ""}</div>`;
+    ${it && D.durum.profil.parti && it.uyeler.some(x => x.id === D.durum.profil.parti.id) ? `<button class="btn ikinci" onclick="ekranAc(()=>sohbetEkrani('ittifak'))">İttifak sohbeti</button>` : ""}
+    ${typeof ittifakTeklifHtml === "function" ? ittifakTeklifHtml(pid, b) : ""}<div id="ortakAdayAlan"></div></div>`;
+  if (it && typeof ortakAdayCiz === "function") ortakAdayCiz(pid);
 }
 function ittifakKurModal(pid){
   const m = modal(`<h3 style="font-size:19px;font-weight:800">İttifak kur</h3><p class="alt">İttifakı kurduktan sonra diğer partilerin genel başkanlarını davet edebilirsin. Gerçek ittifakları çağrıştıran adlar kullanılamaz.</p>
