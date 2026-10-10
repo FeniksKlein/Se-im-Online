@@ -3496,6 +3496,7 @@ function hayatCiz(h){
     <div class="vit-ana-izgara">
       <button class="vit-ana-kart" onclick="bankaRehberiEkrani()"><span class="vit-ikon">🏦</span><b>Oyuncu bankaları</b><span>Mevduat ve kredi fırsatları</span></button>
       <button class="vit-ana-kart" onclick="sirketVitrinEkrani()"><span class="vit-ikon">🏢</span><b>Şirketler</b><span>Oyundaki şirketleri keşfet</span></button>
+      <button class="vit-ana-kart" onclick="halkaArzPazarEkrani()"><span class="vit-ikon">📈</span><b>Halka arzlar</b><span>Şirketlere yatırım yap, ortak ol</span></button>
       <button class="vit-ana-kart" onclick="emlakYeniEkrani()"><span class="vit-ikon">🏡</span><b>Satılık mülkler</b><span>İlanları gör, pazarlık yap</span></button>
     </div>
     <div class="olay ${dolu ? "oy" : "basvuru"}" style="margin-top:4px">
@@ -6060,12 +6061,18 @@ async function halkaArzEkrani(id){
  try{
   const d=await API.rpc("halka_arz_durum",{p_sirket:id});_ha=d;
   const benim=Number(d.payim)>=50,a=d.acik;
-  const varsayilan=Math.max(10000,Math.min(Number(d.en_fazla_tutar),Math.round(Number(d.sermaye))));
+  const varsayilan=Math.max(10000,Math.min(Number(d.en_fazla_tutar),Math.round(Number(d.sermaye)<3000000?3000000-Number(d.sermaye):Number(d.sermaye))));
   iskelet("Halka arz",`
   <div class="kart"><h2>${e(d.ad)}</h2><p class="alt">${e(HA_SEKTOR[d.sektor]||d.sektor)}${d.halka_acik?" · halka açık şirket":""} · payın ${haYuzde(d.payim)}</p>
    <div class="kv"><span>Sermaye</span><b>${haTL(d.sermaye)}</b></div>
    <div class="kv"><span>Haftalık ortalama net kâr</span><b>${haTL(d.ort_net)}</b></div>
    <div class="kv"><span>Asgari ücret</span><b>${haTL(d.asgari_ucret)}</b></div></div>
+  ${Number(d.payim)>0?`<div class="kart"><h2>Haftalık kâr payımı yönet</h2>
+   <p class="alt">Şirketin ortağı olarak haftalık kâr payını cüzdanına alabilir ya da şirket kasasında bırakabilirsin. Kasada kalan tutar şirkete aittir, ayrı bir kişisel alacak ya da yeni hisse oluşturmaz.</p>
+   <div class="kv"><span>Mevcut tercihin</span><b>${d.kar_kasada?"Kâr payım şirkette kalsın":"Kâr payım cüzdanıma gelsin"}</b></div>
+   <button class="btn ikinci" onclick="haKarTercihDegistir(${d.id},${d.kar_kasada?"false":"true"})">${d.kar_kasada?"Kâr payımı artık cüzdanıma aktar":"Kâr payımı şirket kasasında biriktir"}</button>
+   <p class="kucuk">Değişiklik bundan sonraki haftalık kâr hesaplarından itibaren geçerlidir. Zarar olan haftalarda dağıtım yapılmaz.</p>
+  </div>`:""}
   ${a?haAcikKart(a,true):""}
   <div class="kart"><h2>Yatırım hesaplayıcı</h2>
    <p class="alt">Şirkete yeni sermaye girerse haftalık ortalama kâr ve ortakların payı nasıl değişir? Haftalık kâr sermayeyle büyür; gider tarafındaki asgari ücret sabit kaldığı için büyüme oransal olandan da hızlıdır.</p>
@@ -6087,6 +6094,13 @@ async function halkaArzEkrani(id){
   haHesapCiz();
  }catch(err){iskelet("Halka arz",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true})}
 }
+async function haKarTercihDegistir(id,kasada){
+ try{
+  await API.rpc("sirket_kar_birikim_ayarla",{p_sirket:id,p_kasada:kasada});
+  toast(kasada?"Gelecek haftalık kâr payın şirket kasasında kalacak.":"Gelecek haftalık kâr payın cüzdanına aktarılacak.");
+  halkaArzEkrani(id);
+ }catch(err){toast(hataCevir(err.message),true)}
+}
 function haDurumAd(d){return{acik:"Talep topluyor",tamam:"Tamamlandı",basarisiz:"Gerçekleşmedi",iptal:"İptal edildi"}[d]||d}
 
 function haHesapCiz(){
@@ -6106,14 +6120,16 @@ function haHesapCiz(){
   <div class="kv"><span>Sermaye</span><b>${haTL(sermaye)} → ${haTL(sermaye+tutar)}</b></div>
   <div class="kv"><span>Haftalık ortalama net kâr</span><b><span style="color:${renk(once)}">${haTL(once)}</span> → <span style="color:${renk(sonra)}">${haTL(sonra)}</span></b></div>
   <div class="kv"><span>Haftalık kâr artışı</span><b style="color:${renk(sonra-once)}">${sonra-once>=0?"+":""}${haTL(sonra-once)}</b></div>
+  <div class="kv"><span>Halka arz sonrasında tahmini şirket kasası</span><b>${haTL(Number(d.kasa)+tutar)}</b></div>
   ${benimOnce>0?`<div class="kv"><span>Senin payın</span><b>${haYuzde(benimOnce)} → ${haYuzde(benimSonra)}</b></div>
-  <div class="kv"><span>Sana düşen haftalık ortalama</span><b>${haTL(Math.max(0,once)*benimOnce/100)} → ${haTL(Math.max(0,sonra)*benimSonra/100)}</b></div>`:""}
+  <div class="kv"><span>Sana düşen haftalık ortalama</span><b>${haTL(Math.max(0,once)*benimOnce/100)} → ${haTL(Math.max(0,sonra)*benimSonra/100)}</b></div>
+  <div class="kv"><span>Senin haftalık kâr tercihin</span><b>${d.kar_kasada?"Şirket kasasında kalsın":"Cüzdanıma aktarılsın"}</b></div>`:""}
   <div class="kv"><span>Yatırımcıların toplam payı</span><b>${haYuzde(yatPay)}</b></div>
   <div class="kv"><span>Yatırımcılara düşen haftalık ortalama</span><b>${haTL(yatHafta)}</b></div>
   ${geri?`<div class="kv"><span>Yatırımcının parasını geri kazanma süresi</span><b>~${geri} hafta</b></div>`:""}
   ${degerUyari?`<p class="kucuk" style="color:var(--acc2)">Şirket değeri ${haTL(d.deger_en_az)} – ${haTL(d.deger_en_cok)} aralığına çekilerek hesaplandı.</p>`:""}
   ${sinir?`<p class="kucuk" style="color:var(--acc2)">${sinir}</p>`:""}
-  <p class="kucuk">Ortalama senaryodur; gerçek haftalık sonuç gelir ve gider dalgalanmasıyla değişir. Asgari ücret değişirse tahmin de değişir.</p></div>`;
+  <p class="kucuk">Ortalama senaryodur; gerçek haftalık kâr değişebilir. Yatırımcıya sabit getiri garantisi verilmez; herkes şirket hissesi kadar kâr payı alır. Şirket kasasında bırakılan kâr sermaye sayılmaz. Asgari ücret değişirse tahmin de değişir.</p></div>`;
  const b=document.getElementById("ha_baslat");if(b)b.disabled=!!sinir||tutar<10000;
 }
 
