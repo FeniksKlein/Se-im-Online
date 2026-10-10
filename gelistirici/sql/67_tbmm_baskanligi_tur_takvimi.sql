@@ -6,6 +6,8 @@ alter table oyun.meclis_secim add column if not exists tur_bas timestamptz;
 create or replace function oyun.meclis_tick(t timestamptz) returns void language plpgsql as $$
 declare s oyun.meclis_secim; ms oyun.secimler; r record; dolu int; gerek int; ust record; ikinci uuid; n int; dongu int; m record; pk text;
 begin
+  -- Zamanlayıcı ile eşzamanlı oturumlar aynı turu iki kez sonuçlandıramaz.
+  perform pg_advisory_xact_lock(hashtext('oyun.meclis_tick'));
   -- yeni yasama dönemi
   for ms in select * from oyun.secimler x where x.tur = 'mv' and x.durum = 'tamam' and x.goreve_bas <= t and x.goreve_bas > t - interval '20 days'
               and not exists (select 1 from oyun.meclis_secim y where y.mv_secim_id = x.id) order by x.goreve_bas loop
@@ -69,6 +71,12 @@ begin
         end if;
         update oyun.meclis_secim set tur_no = tur_no + 1, tur_bas = tur_bit + interval '15 minutes', tur_bit = tur_bit + interval '105 minutes' where id = s.id;
         perform oyun.olay('meclis', format('TBMM Başkanlığı seçiminin %s. turunda başkan seçilemedi; %s. tur oylaması 15 dakika sonra başlayacak.', s.tur_no, s.tur_no + 1), null, null, s.tur_bit);
+        insert into oyun.bildirimler(user_id, zaman, metin)
+        select distinct x.user_id, s.tur_bit,
+          format('TBMM Başkanlığı %s. tur oylaması %s saatinde açılacak ve 90 dakika açık kalacak.',
+            s.tur_no + 1,
+            to_char((s.tur_bit + interval '15 minutes') at time zone 'Europe/Istanbul', 'HH24:MI'))
+        from oyun.makamlar x where x.tur = 'mv' and x.bit is null;
       end if;
       select * into s from oyun.meclis_secim where id = s.id;
     end loop;
