@@ -45,6 +45,29 @@ async function adlIslem(fn,success,geri,modalKapatilsin=true){
  catch(err){toast(hataCevir(err.message),true);}
 }
 
+function adlSozcuListesiHtml(){
+ const partiler=ADL.partiler||[];
+ const gorevdekiler=partiler.filter(p=>!!p.sozcu).sort((a,b)=>a.ad.localeCompare(b.ad,"tr"));
+ const boslar=partiler.filter(p=>!p.sozcu);
+ const satir=pa=>{
+  const dosyalar=(ADL.davalar||[]).filter(d=>d.durum==="acik"&&(d.davali_parti===pa.ad||d.davaci_parti===pa.ad));
+  return '<div class="liste-satir"><div class="orta"><b>'+e(pa.ad)+'</b>'
+   +'<div class="kucuk"><b>Görevdeki parti sözcüsü: '+e(pa.sozcu)+'</b></div>'
+   +'<div class="kucuk">Genel başkan: '+e(pa.gb||"—")+'</div>'
+   +(dosyalar.length?'<div class="kucuk">Aktif parti davası: '+dosyalar.length+'</div>':'')
+   +'</div><div style="display:flex;flex-direction:column;gap:6px">'
+   +(dosyalar.length&&(pa.sozcu_muyum||pa.gb_miyim)?'<button class="btn altin" style="width:auto" onclick="ekranAc(()=>adliyeDosya('+dosyalar[0].id+'))">Davaya git</button>':'')
+   +'<button class="btn ikinci" style="width:auto" onclick="ekranAc(()=>partiDetay('+pa.id+'))">Parti sayfası</button></div></div>';
+ };
+ return '<div class="kart"><h3>Parti Sözcüleri ('+gorevdekiler.length+')</h3>'+adlSozcuGorevleri()
+  +'<p class="alt">Aşağıda yalnızca görevdeki sözcüler öncelikli gösterilir. Parti davasında sözcüler savunma ve beyan verebilir; üyelerin kişisel davası için üyeden dosyaya özel temsil izni gerekir.</p>'
+  +(gorevdekiler.length?gorevdekiler.map(satir).join(""):'<p class="alt">Henüz parti sözcüsü atanmamış.</p>')
+  +(boslar.length?'<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Sözcüsü bulunmayan partiler ('+boslar.length+')</summary>'
+    +boslar.map(pa=>'<div class="liste-satir"><div class="orta"><b>'+e(pa.kisa||pa.ad)+'</b><div class="kucuk">Sözcü atanmadı · Genel başkan: '+e(pa.gb||"—")+'</div></div>'
+      +'<button class="btn ikinci" style="width:auto" onclick="ekranAc(()=>partiDetay('+pa.id+'))">Parti sayfası</button></div>').join("")
+    +'</details>':'')+'</div>';
+}
+
 function adlSiyasiHtml(){
  const a=ADL.siyasi||{oneriler:[],secimler:[],itirazlar:[]};
  const secimler=a.secimler||[],oneriler=a.oneriler||[],itirazlar=a.itirazlar||[];
@@ -141,11 +164,8 @@ async function adliyeHtml(){
   +(d.hakim_miyim?'<div class="rozet altin" style="margin-top:10px">Yüksek Yargıç yetkiniz aktif</div><button class="btn tehlike" onclick="adlYargicIstifa()">Yüksek Yargıç görevinden istifa et</button>':'')
   +(d.cb_miyim?'<button class="btn altin" onclick="adlHakimModal()">Yargıç ata veya görevden al</button><button class="btn ikinci" onclick="adlAfModal(null)">Genel af ilan et</button>':'')
   +'<button class="btn" onclick="adlDavaModal()">Dava aç</button></div>'
+  +adlSozcuListesiHtml()
   +adlSiyasiHtml()
-  +'<div class="kart"><h3>Parti Sözcüleri</h3>'+adlSozcuGorevleri()
-  +d.partiler.map(pa=>'<div class="liste-satir"><div class="orta"><b>'+e(pa.kisa||pa.ad)+'</b><div class="kucuk">Sözcü: '+e(pa.sozcu||"Atanmadı")+' · Genel başkan: '+e(pa.gb||"—")+'</div></div>'
-      +'<button class="btn ikinci" style="width:auto" onclick="ekranAc(()=>partiDetay('+pa.id+'))">Parti sayfası</button>'+'</div>').join("")
-  +(!d.partiler.length?'<p class="alt">Kayıtlı parti bulunmuyor.</p>':'')+'</div>'
   +'<div class="bolum-bas"><h2>Açık davalar ('+acik.length+')</h2></div>'
   +(acik.length?acik.map(adlDavaKart).join(""):'<div class="kart"><p class="alt">Şu anda açık dava yok.</p></div>')
   +'<div class="bolum-bas"><h2>Karara bağlanan davalar</h2></div>'
@@ -222,11 +242,16 @@ async function adliyeDosya(id){
   if(!d){iskelet("Adliye",'<div class="bos">Dava bulunamadı veya listede yer almıyor.</div>',{geri:true});return;}
   const r=await API.rpc("adliye_detay",{p_dava:id});
   const yetki=d.davalimiyim&&ADL.partiler.some(x=>x.id===ADL.parti_id&&x.sozcu);
-  const sozHak=d.davalimiyim||d.sozcu_savunabilir||d.davacimiyim||ADL.partiler.some(x=>x.sozcu_muyum&&x.ad===d.davaci_parti);
+  const partiYetkim=ADL.partiler.some(x=>(x.gb_miyim||x.sozcu_muyum)&&(x.ad===d.davaci_parti||x.ad===d.davali_parti));
+  const sozHak=d.davalimiyim||d.sozcu_savunabilir||d.davacimiyim||partiYetkim;
+  const davaliParti=ADL.partiler.find(x=>x.ad===d.davali_parti);
+  const davaciParti=ADL.partiler.find(x=>x.ad===d.davaci_parti);
   const tar=d.davali||d.davali_parti||"—";
   const head='<div class="kart"><div class="baslik"><b>#'+d.id+' · '+e(ADL_TURLER[d.tur]||d.tur)+'</b><span class="rozet">'+e(adlEtiket(d))+'</span></div>'
    +'<div class="kv"><span class="k">Davacı</span><span class="v">'+e(d.davaci_parti||d.davaci)+'</span></div>'
    +'<div class="kv"><span class="k">Davalı</span><span class="v">'+e(tar)+'</span></div>'
+   +(davaciParti&&davaciParti.sozcu?'<div class="kv"><span class="k">Davacı parti sözcüsü</span><span class="v">'+e(davaciParti.sozcu)+'</span></div>':'')
+   +(davaliParti&&davaliParti.sozcu?'<div class="kv"><span class="k">Davalı parti sözcüsü</span><span class="v">'+e(davaliParti.sozcu)+'</span></div>':'')
    +'<p class="alt">Açılış: '+adlTarih(d.acilis)+' · Savunma için son: '+adlTarih(d.savunma_son)+'</p>'
    +'<h3>İddia</h3><p style="white-space:pre-wrap">'+e(d.iddia)+'</p>'
    +(d.delil?'<h3>Sunulan deliller</h3><p style="white-space:pre-wrap">'+e(d.delil)+'</p>':'')
