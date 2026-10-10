@@ -6,6 +6,35 @@ async function adliyeEkrani(){
 }
 const ADL_TURLER={hakaret:"Hakaret",iftira:"İftira",rusvet:"Rüşvet",yolsuzluk:"Yolsuzluk",usulsuzluk:"Usulsüz işlem",dolandiricilik:"Dolandırıcılık",diger:"Diğer"};
 const ADL_CEZALAR={beraat:"Beraat",uyari:"Uyarı",sustur_1s:"1 saat sohbetten susturma",sustur_1g:"1 gün sohbetten susturma",sustur_1h:"1 hafta sohbetten susturma",vekillik_dusur:"Milletvekilliğinin düşürülmesi"};
+
+const ADL_SUCLAR={
+ hakaret:"Doğrudan kişiyi aşağılayan veya küçük düşüren sözler. Siyasi eleştiri ve görüş ayrılığı tek başına suç değildir.",
+ iftira:"Bir oyuncuya veya partiye bilerek gerçek dışı ağır bir eylem isnat etmek. İddiayı doğrulayan kanıt aranır.",
+ rusvet:"Makam, oy, ihale veya kamu yetkisi karşılığında oyun içi maddi menfaat teklif etmek, almak veya vermek.",
+ yolsuzluk:"Kamu ya da kurum kaynaklarını yetkisiz kişisel çıkar için kullanmak, zimmete geçirmek veya kayırmacılık yapmak.",
+ usulsuzluk:"Makamın görev sınırlarını, seçim ve ihale kurallarını veya oyun içi resmî işlem kurallarını ihlal etmek.",
+ dolandiricilik:"Yanlış beyanla başka oyuncunun oyun parasını, mülkünü, hissesini veya hakkını hileyle elde etmek.",
+ diger:"Oyun kurallarıyla çelişen başka somut eylemler. Hangi kuralın ihlal edildiği dilekçede açıklanmalıdır."
+};
+function adlSozcuGorevleri(){
+ return '<p class="alt"><b>Parti sözcüsü ne yapar?</b> Yalnız genel başkan tarafından kendi parti üyeleri arasından atanır veya görevden alınır. Parti adına açılan veya partiye karşı açılan davalarda partiyi temsil edip savunma ve beyan sunar. Bir parti üyesinin kişisel davasında ise ancak o üyenin dosyaya özel izniyle savunma yapabilir. Sözcü yargıç değildir, ceza veremez ve hiçbir üyeyi izinsiz temsil edemez.</p>';
+}
+function adlBilgiHtml(){
+ const suclar=Object.entries(ADL_SUCLAR).map(([kod,metin])=>'<div class="liste-satir"><div class="orta"><b>'+e(ADL_TURLER[kod])+'</b><div class="kucuk">'+e(metin)+'</div></div></div>').join('');
+ return '<div class="kart"><h3>Adliye ne işe yarar?</h3>'
+  +'<p class="alt">Adliye, Seçim Simülasyonu Online oyuncuları arasındaki <b>oyun içi</b> anlaşmazlıkların delilli dava ve açık duruşmayla incelendiği bir sistemdir. Gerçek hayattaki mahkeme veya ceza hukuku yerine geçmez.</p>'
+  +'<div class="kv"><span class="k">Dava açma</span><span class="v">Oyuncu veya yetkili parti temsilcisi iddiayı ve delilleri bildirir.</span></div>'
+  +'<div class="kv"><span class="k">Savunma</span><span class="v">Davalı yanıt verebilir; parti sözcüsü yalnız yetkisi varsa temsil edebilir.</span></div>'
+  +'<div class="kv"><span class="k">Yargılama</span><span class="v">Yüksek Yargıç delilleri inceler, gerekçeli kararını açıklar. Davalar herkesçe izlenebilir.</span></div>'
+  +'<div class="kv"><span class="k">Af</span><span class="v">Cumhurbaşkanı bireysel veya genel af ilan edebilir. Gerekçeler kamuya açıktır.</span></div>'
+  +'<p class="alt"><b>Unutmayın:</b> Fikir ayrılığı, muhalefet etmek ve kanıtlanmamış suçlamalar otomatik olarak suç değildir.</p>'
+  +'<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Hangi davranışlar suç sayılır? (Aç)</summary>'
+  +'<p class="alt">Aşağıdaki tanımlar yalnız oyun içindeki davranışlara uygulanır. Mesaj, işlem kaydı, belge ve savunmalar değerlendirilmelidir.</p>'+suclar+'</details>'
+  +'<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Olası cezalar ve yapay zekâ önerisi (Aç)</summary>'
+  +'<p class="alt">Olası kararlar: beraat, uyarı, 1 saat / 1 gün / 1 hafta sohbetten susturma veya aktif milletvekilliğinin düşürülmesi. Bir siyasi partiye yalnız beraat veya uyarı verilebilir. Suçla ceza arasında otomatik ve değişmez bir eşleşme yoktur.</p>'
+  +'<p class="alt">Yüksek Yargıç, delil ve savunmalardan hareketle gerekçeli <b>AI ceza önerisi</b> isteyebilir. AI hizmeti yapılandırılmadıysa sistem açıkça kurallı ön değerlendirme gösterir. Hiçbiri kesin hüküm vermez; cezayı yalnız yargıç uygular.</p></details></div>';
+}
+
 let ADL={};
 function adlTarih(t){return t?tarihSaat(t):"—";}
 function adlEtiket(d){return d.durum==="karar"?(d.af_at?"Af çıkarıldı":"Karar verildi"):"Savunma aşaması";}
@@ -20,13 +49,13 @@ async function adliyeHtml(){
  const yer=d.partiler.find(p=>p.id===d.parti_id);
  const acik=d.davalar.filter(x=>x.durum==="acik");
  const bitmis=d.davalar.filter(x=>x.durum!=="acik");
- return '<div class="kart"><h3>Yüksek Yargı</h3>'
+ return adlBilgiHtml()+'<div class="kart"><h3>Yüksek Yargı</h3>'
   +'<p class="alt">Herkese açık davalar · Tek Yüksek Yargıç · Sözlü savunma · Gerekçeli karar · Cumhurbaşkanlığı affı</p>'
   +'<div class="kv"><span class="k">Yüksek Yargıç</span><span class="v">'+e(d.hakim||"Henüz atanmadı")+'</span></div>'
   +(d.hakim_miyim?'<div class="rozet altin" style="margin-top:10px">Yüksek Yargıç yetkiniz aktif</div>':'')
   +(d.cb_miyim?'<button class="btn altin" onclick="adlHakimModal()">Yargıç ata veya görevden al</button><button class="btn ikinci" onclick="adlAfModal(null)">Genel af ilan et</button>':'')
   +'<button class="btn" onclick="adlDavaModal()">Dava aç</button></div>'
-  +'<div class="kart"><h3>Parti Sözcüleri</h3><p class="alt">Sözcü, partisini doğrudan; parti üyelerini ise davalının izniyle savunur.</p>'
+  +'<div class="kart"><h3>Parti Sözcüleri</h3>'+adlSozcuGorevleri()
   +d.partiler.map(pa=>'<div class="liste-satir"><div class="orta"><b>'+e(pa.kisa||pa.ad)+'</b><div class="kucuk">Sözcü: '+e(pa.sozcu||"Atanmadı")+' · Genel başkan: '+e(pa.gb||"—")+'</div></div>'
       +(pa.gb_miyim?'<button class="btn ikinci" style="width:auto" onclick="adlSozcuModal('+pa.id+')">Ata / Al</button>':'')+'</div>').join("")
   +(!d.partiler.length?'<p class="alt">Kayıtlı parti bulunmuyor.</p>':'')+'</div>'
@@ -60,7 +89,7 @@ function adlHakimModal(){
 }
 function adlSozcuModal(parti){
  const pa=ADL.partiler.find(x=>x.id===parti);if(!pa||!pa.gb_miyim)return;
- const m=modal('<p class="alt">Sadece partinizin üyesini seçebilirsiniz. Boş bırakarak sözcüyü görevden alabilirsiniz.</p>'
+ const m=modal(adlSozcuGorevleri()+'<p class="alt">Sadece partinizin üyesini seçebilirsiniz. Boş bırakarak sözcüyü görevden alabilirsiniz.</p>'
   +adlAlan("Parti sözcüsü kullanıcı adı","adlSozcu","text","Görevden almak için boş bırakın")
   +'<button class="btn altin" id="adlSozcuOnay">Kararı uygula</button>');
  adlFormBaslik(m,pa.ad+" · Parti Sözcüsü");
@@ -76,11 +105,13 @@ function adlDavaModal(){
   +'<div class="alan" id="adlOyuncuKutu"><label>Davalı kullanıcı adı</label><input id="adlHedef" placeholder="Oyuncunun kullanıcı adı"></div>'
   +'<div class="alan" id="adlPartiKutu" style="display:none"><label>Davalı parti</label><select id="adlHedefParti">'+partiler.map(p=>'<option value="'+p.id+'">'+e(p.ad)+'</option>').join("")+'</select></div>'
   +'<div class="alan"><label>Dava türü</label><select id="adlTur">'+secenek+'</select></div>'
+  +'<p class="alt" id="adlSucAciklamasi">'+e(ADL_SUCLAR.hakaret)+'</p>'
   +'<div class="alan"><label>Davacı olarak</label><select id="adlDavaciParti"><option value="">Kendi adıma</option>'+ben.map(p=>'<option value="'+p.id+'">'+e(p.ad)+' adına</option>').join("")+'</select></div>'
   +adlAlan("İddia (20–1600 karakter)","adlIddia","textarea")
   +adlAlan("Deliller ve olayın detayları","adlDelil","textarea","Örn. sohbet mesajının tarihi ve kanalı")
   +'<button class="btn altin" id="adlDavaAc">Davayı aç</button>');
  adlFormBaslik(m,"Adliyede yeni dava");
+ m.querySelector("#adlTur").onchange=()=>{m.querySelector("#adlSucAciklamasi").textContent=ADL_SUCLAR[m.querySelector("#adlTur").value]||"";};
  m.querySelector("#adlHedefTur").onchange=()=>{
   const parti=m.querySelector("#adlHedefTur").value==="parti";
   m.querySelector("#adlOyuncuKutu").style.display=parti?"none":"block";
@@ -145,13 +176,40 @@ function adlYorumModal(id){
  adlFormBaslik(m,"Duruşma tartışması");
  m.querySelector("#adlOnay").onclick=()=>adlIslem(()=>API.rpc("adliye_yorum_yaz",{p_dava:id,p_metin:m.querySelector("#adlYorum").value}),"Yorumunuz yayımlandı.",id);
 }
+
+async function adlAiOnerModal(id,m){
+ const alan=m.querySelector("#adlAiSonuc"),buton=m.querySelector("#adlAiOner");
+ if(!alan||!buton)return;
+ buton.disabled=true;alan.textContent="Dosya ve savunmalar inceleniyor…";
+ try{
+  if(typeof API.aiCezaOner!=="function")throw Error("Bu sürümde AI öneri bağlantısı bulunmuyor.");
+  const d=await API.aiCezaOner(id);
+  if(!d||!Object.prototype.hasOwnProperty.call(ADL_CEZALAR,d.ceza))throw Error("Geçerli ceza önerisi alınamadı.");
+  alan.innerHTML='<div class="kart" style="padding:12px"><p class="kucuk"><b>'+e(d.kaynak==="yapay_zeka"?"YAPAY ZEKÂ ÖNERİSİ":"KURALLI ÖN DEĞERLENDİRME")+'</b></p>'
+   +'<p style="margin-top:8px"><b>Önerilen: '+e(ADL_CEZALAR[d.ceza])+'</b></p>'
+   +'<p class="alt" style="white-space:pre-wrap;margin-top:8px">'+e(d.gerekce||"")+'</p>'
+   +(d.alternatif?'<p class="kucuk"><b>Alternatif değerlendirme:</b> '+e(d.alternatif)+'</p>':"")
+   +'<p class="kucuk">'+e(d.uyari||"Bu öneri bağlayıcı değildir.")+'</p>'
+   +'<button type="button" class="btn ikinci" id="adlOneriyiSec">Öneriyi forma aktar (karar verilmez)</button></div>';
+  alan.querySelector("#adlOneriyiSec").onclick=()=>{
+   m.querySelector("#adlCeza").value=d.ceza;
+   m.querySelector("#adlGerekce").value=String(d.gerekce||"").slice(0,1900);
+   toast("Öneri forma aktarıldı. Nihai kararı yalnız siz verebilirsiniz.");
+  };
+ }catch(err){alan.textContent="Öneri alınamadı: "+hataCevir(err.message);}
+ finally{buton.disabled=false;}
+}
+
 function adlKararModal(id){
  const opts=Object.entries(ADL_CEZALAR).map(([k,v])=>'<option value="'+k+'">'+e(v)+'</option>').join("");
  const m=modal('<div class="alan"><label>Mahkeme kararı</label><select id="adlCeza">'+opts+'</select></div>'
+  +'<button type="button" class="btn ikinci" id="adlAiOner">Yapay zekâdan ceza önerisi al</button>'
+  +'<div id="adlAiSonuc" role="status" class="alt" style="padding:8px 0">Bu öneri mahkeme kararı değildir.</div>'
   +adlAlan("Gerekçeli karar","adlGerekce","textarea")
   +'<p class="alt">Kararlar ve gerekçeler herkese açık olacaktır. Görevden alınsanız da eski kararlarınız kayıtta kalır.</p>'
   +'<button class="btn altin" id="adlKarar">Kararı açıkla ve uygula</button>');
  adlFormBaslik(m,"Yüksek Yargıç · Dava #"+id);
+ m.querySelector("#adlAiOner").onclick=()=>adlAiOnerModal(id,m);
  m.querySelector("#adlKarar").onclick=async()=>{
   if(!await onayla("Kararı kesinleştir","Seçtiğiniz ceza oyuncunun makamını veya sohbet yetkisini hemen etkileyebilir.","Kararı ver",true))return;
   adlIslem(()=>API.rpc("adliye_karar_ver",{p_dava:id,p_karar:m.querySelector("#adlCeza").value,p_gerekce:m.querySelector("#adlGerekce").value}),"Mahkeme kararı yayımlandı.",id);
@@ -172,7 +230,7 @@ function adlAfModal(id){
 
 /* Parti detayındaki görünür makam yönetimi */
 function partiSozcuModal(parti){
- const m=modal('<p class="alt">Partinizden bir oyuncuyu Parti Sözcüsü atayın. Boş bırakmanız mevcut sözcüyü görevden alır.</p>'
+ const m=modal(adlSozcuGorevleri()+'<p class="alt">Partinizden bir oyuncuyu Parti Sözcüsü atayın. Boş bırakmanız mevcut sözcüyü görevden alır.</p>'
   +adlAlan("Parti Sözcüsü kullanıcı adı","yeniPartiSozcu","text","Görevden almak için boş bırakın")
   +'<button class="btn altin" id="partiSozcuOnay">Atamayı uygula</button>');
  adlFormBaslik(m,"Parti Sözcülüğü");
