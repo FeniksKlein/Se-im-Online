@@ -170,3 +170,8 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 ## 2026-10-11 · 2026.10.11-2 Erken seçim takvim koruması
 - Hata: 11.10 00:45'te TBMM erken seçim kararı (teklif 1, 24/39 kabul), 12.10'daki olağan genel seçimi + 11.10 ön seçimlerini iptal edip 13.10'a yeni seçim kurdu; 30 MV aday adaylığı, 5 CB adaylığı boşa düştü, Gündem'de olmamış seçimler "Sonuçlandı" göründü.
 - `80_erken_secim_takvim_koruma.sql`: olağan seçim erken seçim gününden en geç 7 gün sonraysa takvim değişmez. `migrations/20261011_erken_secim_takvim_onarim.sql` aynı işlev + canlı onarım (2026-11 seçimleri geri açılır, boş erken takvim silinir, olay metni düzeltilir). Test: `test/erken_secim_takvim.py`.
+
+## 2026-10-11 · 2026.10.11-3 CİMER + Akış sosyal platform
+- **CİMER** (`81_cimer.sql`, arayüz `gelistirici/www/cimer_ek.js`): dilekçenin yerine. Kurum seç (Cumhurbaşkanlığı / bakanlık / il belediyesi) + tür (şikâyet/talep/öneri/bilgi edinme). Başvuru makama gider (`oyun.cimer_muhatap`): o an makamdaki kişi görür; boş bakanlıkta CB; boş belediyede başkan seçilince ulaşır. Gizli; herkese açık `cimer_karne()` (kimliksiz). 72 saat yanıt süresi, günde 3 başvuru, aynı kuruma 6 saatte 1. `sos_dilekce_gonder` kapatıldı; imza kampanyası dilekçesi tetikleyiciyle CİMER toplu başvurusuna düşer; hayat görevleri `gorev_istatistik` sarmalayıcısıyla CİMER'i sayar.
+- **Akış** (`82_akis_sosyal.sql`, `canli_ek.js`): beğen/beğenme (tek tepki, yalnız sayılar; kimin verdiği hiçbir RPC'de yok), yanıtlar (`akis_yanit_yaz`, `akis_konu`), Gündem'de satır içi paylaşım kutusu + son 5 paylaşım.
+- Migration: `migrations/20261011_cimer_akis_sosyal.sql`. Test: `test/cimer_akis.py`, `test/canli_ek_arayuz.js` (HTML_PATH=../docs/index.html ile canlı derleme de sınanır).

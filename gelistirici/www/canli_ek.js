@@ -114,10 +114,11 @@ function geceKancasi(s){
 
 /* ---------- Gündem: ek kartlar ---------- */
 async function gundemEkVeri(iste){
-  const [canli, firsat, etiket, ozet] = await Promise.all([
+  const [canli, firsat, etiket, ozet, akis, cimer] = await Promise.all([
     iste("secim_gecesi_aktif", undefined, []), iste("bos_makam_firsatlari", undefined, []),
-    iste("akis_gundem", undefined, null), iste("gun_ozeti", undefined, null)]);
-  return { canli: canli || [], firsat: firsat || [], etiket, ozet };
+    iste("akis_gundem", undefined, null), iste("gun_ozeti", undefined, null), iste("akis_liste", { p_kapsam: "herkes", p_limit: 5 }, []),
+    typeof cimerGundemHtml === "function" ? iste("cimer", undefined, null) : null]);
+  return { canli: canli || [], firsat: firsat || [], etiket, ozet, akis: akis || [], cimer };
 }
 function gundemEkUst(ek){
   if (!ek || !ek.canli.length) return "";
@@ -141,25 +142,118 @@ function gundemEkAlt(ek){
   if (ek.ozet && ek.ozet.gelismeler && ek.ozet.gelismeler.length) {
     h += `<div class="bolum-bas"><h2>Bugün Türkiye'de</h2></div><div class="kart ozet-kart"><ul style="margin:0;padding:0">${ek.ozet.gelismeler.slice(0, 4).map(x => `<li>${e(x.metin)}</li>`).join("")}</ul></div>`;
   }
-  const et = (ek.etiket || []);
+  if (ek.cimer && typeof cimerGundemHtml === "function") h += cimerGundemHtml(ek.cimer);
   if (ek.etiket === null) return h;   // arka uç modülü henüz kurulmamış
-  h += `<div class="bolum-bas"><h2>Akış</h2></div><div class="kart"><div class="alt">Kısa paylaşımlar ve gündemdeki etiketler</div>
-    ${et.length ? `<div class="etiket-cipler">${et.map(x => `<span class="etiket-cip" onclick="ekranAc(()=>akisEkrani('${e(x.etiket)}'))">#${e(x.etiket)} <span class="kucuk">${x.kisi}</span></span>`).join("")}</div>` : ""}
-    <div class="vit-dugme"><button class="btn altin" onclick="ekranAc(()=>akisEkrani())">Akışı aç</button><button class="btn ikinci" onclick="ekranAc(raporEkrani)">Raporum ve başarımlarım</button></div></div>`;
+  const et = ek.etiket || [];
+  AKIS.gundemListe = ek.akis || [];
+  h += `<div class="bolum-bas"><h2>Akış</h2><button class="kucuk" style="color:var(--ink2);font-weight:700" onclick="ekranAc(()=>akisEkrani())">Tümünü gör ›</button></div>
+    <div class="kart akis-kart">
+      ${akisYazHtml("gAkis", "Ne düşünüyorsun? Görüşünü yaz…")}
+      ${et.length ? `<div class="etiket-cipler" style="margin-top:10px">${et.map(x => `<span class="etiket-cip" onclick="ekranAc(()=>akisEkrani('${e(x.etiket)}'))">#${e(x.etiket)} <span class="kucuk">${x.kisi}</span></span>`).join("")}</div>` : ""}
+      <div id="gAkisListe">${AKIS.gundemListe.map(akisSatirHtml).join("") || `<div class="bos" style="padding:12px 0">Henüz paylaşım yok. İlk sözü sen söyle.</div>`}</div>
+      ${AKIS.gundemListe.length ? `<button class="btn ikinci" onclick="ekranAc(()=>akisEkrani())">Akışın tamamı</button>` : ""}
+    </div>
+    <div class="kart"><button class="giris-satir" style="border:0;padding:4px 0" onclick="ekranAc(raporEkrani)"><span class="yik">${IKON.anket}</span><span class="orta"><b>Raporum ve başarımlarım</b><span class="kucuk">Bu ayın özeti, paylaşılabilir kart</span></span><span class="ok">›</span></button></div>`;
+  setTimeout(() => {
+    const k = $("#gAkisListe"); if (!k) return;
+    akisBagla(k, () => AKIS.gundemListe, async () => { try { AKIS.gundemListe = await API.rpc("akis_liste", { p_kapsam: "herkes", p_limit: 5 }); k.innerHTML = AKIS.gundemListe.map(akisSatirHtml).join(""); akisBagla(k, () => AKIS.gundemListe, null); } catch (_) {} });
+    akisYazBagla("gAkis", async () => { AKIS.gundemListe = await API.rpc("akis_liste", { p_kapsam: "herkes", p_limit: 5 }); k.innerHTML = AKIS.gundemListe.map(akisSatirHtml).join(""); akisBagla(k, () => AKIS.gundemListe, null); });
+  }, 0);
   return h;
 }
 
-/* ---------- 4) AKIŞ ---------- */
-const AKIS = { kapsam: "herkes", etiket: null, liste: [], bitti: false };
+/* ---------- 4) AKIŞ — sosyal platform ---------- */
+const AKIS = { kapsam: "herkes", etiket: null, liste: [], bitti: false, gundemListe: [] };
+const AKIS_IKON = {
+  begen: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11H4V10zM7 10l4-7a2 2 0 0 1 3 2l-1 5h6a2 2 0 0 1 2 2.3l-1.3 7A2 2 0 0 1 17.7 21H7"/></svg>',
+  begenme: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V3h3v11zM17 14l-4 7a2 2 0 0 1-3-2l1-5H5a2 2 0 0 1-2-2.3l1.3-7A2 2 0 0 1 6.3 3H17"/></svg>',
+  yanit: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>'
+};
+(function(){ const st = document.createElement("style"); st.textContent = `
+.akis-satir{position:relative}
+.akis-ust{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;min-width:0}
+.akis-ust .zaman{color:var(--txt2);font-size:13px}
+.akis-unvan{color:var(--txt2);font-size:12.5px;margin-top:1px}
+.akis-alt{display:flex;align-items:center;gap:4px;margin-top:8px;font-size:13.5px;color:var(--txt2)}
+.akis-alt button{display:inline-flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border-radius:16px;color:inherit;font-size:13.5px;font-weight:600}
+.akis-alt button:active{background:var(--panel2)}
+.akis-alt .acik-begen{color:var(--ok,#3ccf8e)}
+.akis-alt .acik-begenme{color:var(--al2)}
+.akis-alt .bosluk{flex:1}
+.akis-kart .akis-yaz textarea,.akis-yaz textarea{min-height:64px}
+.konu-ana{font-size:17px}
+.konu-ana .metin{font-size:17px}
+`; document.head.appendChild(st); })();
+function gecenZaman(ts){
+  const s = Math.max(0, (simdi() - new Date(ts).getTime()) / 1000);
+  if (s < 60) return "şimdi"; if (s < 3600) return Math.floor(s / 60) + " dk"; if (s < 86400) return Math.floor(s / 3600) + " sa";
+  if (s < 7 * 86400) return Math.floor(s / 86400) + " g"; return tarih(ts);
+}
 function akisMetinHtml(m){
   return e(m).replace(/#([\p{L}\p{N}_]{2,30})/gu, (_, t) => `<span class="etk" data-etk="${e(t.toLowerCase())}">#${e(t)}</span>`);
 }
-function akisSatirHtml(a){
-  return `<div class="akis-satir" data-id="${a.id}">${portre(a.kad, a.parti && a.parti.renk, 38)}<div style="flex:1;min-width:0">
-    <div><b onclick="oyuncuKart('${e(a.kad)}')" style="cursor:pointer">${e(a.kad)}</b> ${partiRozet(a.parti, true)} <span class="kucuk">${a.unvan ? e(a.unvan) + " · " : ""}${a.il ? e(a.il) + " · " : ""}${tarihSaat(a.zaman)}</span></div>
-    <div class="metin">${akisMetinHtml(a.metin)}</div>
-    <div class="akis-alt"><button class="${a.begendim ? "acik" : ""}" data-begen="${a.id}">${a.begendim ? "Beğendin" : "Beğen"} · ${a.begeni}</button>
-      ${a.benim ? `<button data-sil="${a.id}">Sil</button>` : `<button data-sikayet="${a.id}">Şikâyet / engelle</button>`}</div></div></div>`;
+function akisSatirHtml(a, opt){
+  opt = opt || {};
+  const dislikeVar = a.begenmeme !== undefined;
+  return `<div class="akis-satir${opt.ana ? " konu-ana" : ""}" data-id="${a.id}">${portre(a.kad, a.parti && a.parti.renk, 40)}<div style="flex:1;min-width:0">
+    <div class="akis-ust"><b onclick="oyuncuKart('${e(a.kad)}')" style="cursor:pointer">${e(a.kad)}</b>${a.parti ? " " + partiRozet(a.parti, true) : ""}<span class="zaman">· ${gecenZaman(a.zaman)}</span></div>
+    ${a.unvan || a.il ? `<div class="akis-unvan">${a.unvan ? e(a.unvan) : ""}${a.unvan && a.il ? " · " : ""}${a.il ? e(a.il) : ""}</div>` : ""}
+    <div class="metin" ${opt.ana ? "" : `data-konu="${a.id}" style="cursor:pointer"`}>${akisMetinHtml(a.metin)}</div>
+    <div class="akis-alt">
+      ${a.yanit !== undefined ? `<button data-yanitla="${a.id}" aria-label="Yanıtla">${AKIS_IKON.yanit}<span>${a.yanit || ""}</span></button>` : ""}
+      <button class="${a.begendim ? "acik-begen" : ""}" data-tepki="begen" data-id="${a.id}" aria-label="Beğen">${AKIS_IKON.begen}<span>${a.begeni || ""}</span></button>
+      ${dislikeVar ? `<button class="${a.begenmedim ? "acik-begenme" : ""}" data-tepki="begenme" data-id="${a.id}" aria-label="Beğenme">${AKIS_IKON.begenme}<span>${a.begenmeme || ""}</span></button>` : ""}
+      <span class="bosluk"></span>
+      <button data-menu="${a.id}" aria-label="Seçenekler">${AKIS_IKON.menu}</button></div></div></div>`;
+}
+function akisYazHtml(id, yer){
+  return `<div class="akis-yaz"><textarea id="${id}Metin" maxlength="280" placeholder="${e(yer)}"></textarea>
+    <div class="akis-gonder"><span class="kucuk" id="${id}Sayac">0/280</span><button class="btn" id="${id}Gonder">Paylaş</button></div></div>`;
+}
+function akisYazBagla(id, sonra, yanitId){
+  const t = $("#" + id + "Metin"), b = $("#" + id + "Gonder"); if (!t || !b) return;
+  t.oninput = () => { $("#" + id + "Sayac").textContent = `${t.value.length}/280`; };
+  b.onclick = async () => {
+    b.disabled = true;
+    try {
+      if (yanitId) await API.rpc("akis_yanit_yaz", { p_id: yanitId, p_metin: t.value }); else await API.rpc("akis_yaz", { p_metin: t.value });
+      t.value = ""; $("#" + id + "Sayac").textContent = "0/280"; HAPTIK.hafif(); toast(yanitId ? "Yanıtın gönderildi." : "Paylaşıldı.");
+      if (sonra) await sonra();
+    } catch (err) { toast(hataCevir(err.message), true); }
+    b.disabled = false;
+  };
+}
+// Bir liste kabının içindeki düğmeleri bağlar. liste(): o kaptaki paylaşım dizisi; yenile(): silme/engel sonrası
+function akisBagla(k, liste, yenile){
+  const bul = id => (liste() || []).find(x => x.id === id);
+  k.querySelectorAll("[data-etk]").forEach(el => el.onclick = ev => { ev.stopPropagation(); ekranAc(() => akisEkrani(el.dataset.etk)); });
+  k.querySelectorAll("[data-konu]").forEach(el => el.onclick = () => ekranAc(() => akisKonuEkrani(+el.dataset.konu)));
+  k.querySelectorAll("[data-yanitla]").forEach(el => el.onclick = () => ekranAc(() => akisKonuEkrani(+el.dataset.yanitla, true)));
+  k.querySelectorAll("[data-tepki]").forEach(el => el.onclick = async () => {
+    const id = +el.dataset.id, a = bul(id); if (!a) return;
+    const tur = el.dataset.tepki;
+    try {
+      const r = a.begenmeme === undefined ? await API.rpc("akis_begen", { p_id: id }) : await API.rpc("akis_tepki", { p_id: id, p_tepki: tur });
+      Object.assign(a, r); HAPTIK.hafif();
+      const satir = el.closest(".akis-satir"); const yeni = document.createElement("div"); yeni.innerHTML = akisSatirHtml(a, { ana: satir.classList.contains("konu-ana") });
+      satir.replaceWith(yeni.firstElementChild); akisBagla(k, liste, yenile);
+    } catch (err) { toast(hataCevir(err.message), true); }
+  });
+  k.querySelectorAll("[data-menu]").forEach(el => el.onclick = () => akisMenu(bul(+el.dataset.menu), yenile));
+}
+function akisMenu(a, yenile){
+  if (!a) return;
+  if (a.benim) {
+    const m = modal(`<h3 style="font-size:19px;font-weight:800">Paylaşımın</h3><button class="btn tehlike" id="amSil">Paylaşımı sil</button>`);
+    $("#amSil", m).onclick = async () => { try { await islem(() => API.rpc("akis_sil", { p_id: a.id }), "Paylaşım silindi."); modalKapat(); if (yenile) yenile(); } catch (_) {} };
+    return;
+  }
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">${e(a.kad)}</h3><p class="alt">Uygunsuz bir paylaşımı şikâyet edebilir ya da bu kullanıcıyı engelleyebilirsin. 3 ayrı şikâyette paylaşım otomatik gizlenir.</p>
+    <div class="alan"><select id="skNeden"><option value="hakaret">Hakaret</option><option value="nefret">Nefret söylemi</option><option value="spam">Spam</option><option value="taciz">Taciz</option><option value="uygunsuz">Uygunsuz içerik</option><option value="diger">Diğer</option></select></div>
+    <button class="btn tehlike" id="skGonder">Şikâyet et</button><button class="btn ikinci" id="skEngel">Bu kullanıcıyı engelle</button>`);
+  $("#skGonder", m).onclick = async () => { try { await islem(() => API.rpc("akis_sikayet_et", { p_id: a.id, p_neden: $("#skNeden", m).value }), "Şikâyetin alındı."); modalKapat(); } catch (_) {} };
+  $("#skEngel", m).onclick = async () => { try { await islem(() => API.rpc("engelle", { p_kad: a.kad }), `${a.kad} engellendi.`); modalKapat(); if (yenile) yenile(); } catch (_) {} };
 }
 async function akisYukle(daha){
   const son = daha && AKIS.liste.length ? AKIS.liste[AKIS.liste.length - 1].id : null;
@@ -168,25 +262,9 @@ async function akisYukle(daha){
 }
 function akisListeCiz(){
   const k = $("#akisListe"); if (!k) return;
-  k.innerHTML = (AKIS.liste.map(akisSatirHtml).join("") || `<div class="bos">${AKIS.etiket ? "Bu etikette paylaşım yok." : "Henüz paylaşım yok. İlk sözü sen söyle."}</div>`) + (AKIS.bitti ? "" : `<button class="btn ikinci" id="akisDaha">Daha fazla</button>`);
+  k.innerHTML = (AKIS.liste.map(a => akisSatirHtml(a)).join("") || `<div class="bos">${AKIS.etiket ? "Bu etikette paylaşım yok." : "Henüz paylaşım yok. İlk sözü sen söyle."}</div>`) + (AKIS.bitti ? "" : `<button class="btn ikinci" id="akisDaha">Daha fazla</button>`);
   const d = $("#akisDaha"); if (d) d.onclick = async () => { try { await akisYukle(true); akisListeCiz(); } catch (err) { toast(hataCevir(err.message), true); } };
-  k.querySelectorAll("[data-etk]").forEach(el => el.onclick = () => { AKIS.etiket = el.dataset.etk; akisEkrani(AKIS.etiket, true); });
-  k.querySelectorAll("[data-begen]").forEach(el => el.onclick = async () => {
-    try { const r = await API.rpc("akis_begen", { p_id: +el.dataset.begen }); const a = AKIS.liste.find(x => x.id === +el.dataset.begen); a.begeni = r.begeni; a.begendim = r.begendim; HAPTIK.hafif(); akisListeCiz(); } catch (err) { toast(hataCevir(err.message), true); }
-  });
-  k.querySelectorAll("[data-sil]").forEach(el => el.onclick = async () => {
-    if (!await onayla("Paylaşımı sil", "Bu paylaşım kalıcı olarak silinecek.", "Sil", true)) return;
-    try { await API.rpc("akis_sil", { p_id: +el.dataset.sil }); AKIS.liste = AKIS.liste.filter(x => x.id !== +el.dataset.sil); akisListeCiz(); } catch (err) { toast(hataCevir(err.message), true); }
-  });
-  k.querySelectorAll("[data-sikayet]").forEach(el => el.onclick = () => akisSikayetModal(+el.dataset.sikayet));
-}
-function akisSikayetModal(id){
-  const a = AKIS.liste.find(x => x.id === id); if (!a) return;
-  const m = modal(`<h3 style="font-size:19px;font-weight:800">Şikâyet et</h3><p class="alt">${e(a.kad)} kullanıcısının paylaşımı için nedeni seç. 3 ayrı şikâyette paylaşım otomatik gizlenir; moderatörler de inceler.</p>
-    <div class="alan"><select id="skNeden"><option value="hakaret">Hakaret</option><option value="nefret">Nefret söylemi</option><option value="spam">Spam</option><option value="taciz">Taciz</option><option value="uygunsuz">Uygunsuz içerik</option><option value="diger">Diğer</option></select></div>
-    <button class="btn tehlike" id="skGonder">Şikâyet et</button><button class="btn ikinci" id="skEngel">Bu kullanıcıyı engelle</button>`);
-  $("#skGonder", m).onclick = async () => { try { await islem(() => API.rpc("akis_sikayet_et", { p_id: id, p_neden: $("#skNeden", m).value }), "Şikâyetin alındı."); modalKapat(); } catch (_) {} };
-  $("#skEngel", m).onclick = async () => { try { await islem(() => API.rpc("engelle", { p_kad: a.kad }), `${a.kad} engellendi.`); modalKapat(); await akisYukle(false); akisListeCiz(); } catch (_) {} };
+  akisBagla(k, () => AKIS.liste, async () => { await akisYukle(false); akisListeCiz(); });
 }
 async function akisEkrani(etiket, sessiz){
   if (!sessiz) { AKIS.kapsam = "herkes"; AKIS.etiket = etiket ? String(etiket).replace(/^#/, "").toLowerCase() : null; }
@@ -196,25 +274,35 @@ async function akisEkrani(etiket, sessiz){
   catch (err) { iskelet("Akış", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
   const kapsamlar = [["herkes", "Herkes"], ["il", "İlim"], ["parti", "Partim"]];
   iskelet("Akış", `
-    <div class="kart akis-yaz"><textarea id="akisMetin" maxlength="280" placeholder="Aklından ne geçiyor? #etiket kullanabilirsin"></textarea>
-      <div class="akis-gonder"><span class="kucuk" id="akisSayac">0/280</span><button class="btn" id="akisGonder">Paylaş</button></div></div>
-    ${gundem.length ? `<div class="etiket-cipler" style="margin:0 0 6px">${gundem.map(x => `<span class="etiket-cip${AKIS.etiket === x.etiket ? " aktif" : ""}" data-gundem="${e(x.etiket)}">#${e(x.etiket)} <span class="kucuk">${x.kisi}</span></span>`).join("")}</div>` : ""}
+    <div class="kart">${akisYazHtml("akis", "Ne düşünüyorsun? #etiket kullanabilirsin")}</div>
+    ${gundem.length ? `<div class="bolum-bas" style="margin-top:4px"><h2 style="font-size:17px">Gündemdekiler</h2></div><div class="etiket-cipler" style="margin:0 0 6px">${gundem.map(x => `<span class="etiket-cip${AKIS.etiket === x.etiket ? " aktif" : ""}" data-gundem="${e(x.etiket)}">#${e(x.etiket)} <span class="kucuk">${x.kisi} kişi</span></span>`).join("")}</div>` : ""}
     ${AKIS.etiket ? `<div class="kart" style="display:flex;justify-content:space-between;align-items:center"><b>#${e(AKIS.etiket)}</b><button class="kucuk" id="etiketKaldir" style="text-decoration:underline">Süzgeci kaldır</button></div>` : ""}
     <div class="sekme-cip">${kapsamlar.map(([k, ad]) => `<button data-kapsam="${k}" class="${AKIS.kapsam === k ? "aktif" : ""}">${ad}</button>`).join("")}</div>
     <div class="kart" id="akisListe"></div>
-    <p class="kucuk" style="text-align:center">Paylaşımlarda hakaret, küfür ve bağlantı yasaktır. Şikâyet etmek için paylaşımın altındaki düğmeyi kullan.</p>`, { geri: true });
+    <p class="kucuk" style="text-align:center">Beğeni ve beğenmeme sayıları herkese açıktır; kimin verdiği görünmez. Hakaret, küfür ve bağlantı yasaktır.</p>`, { geri: true });
   akisListeCiz();
-  const t = $("#akisMetin");
-  t.oninput = () => { $("#akisSayac").textContent = `${t.value.length}/280`; };
-  $("#akisGonder").onclick = async () => {
-    const b = $("#akisGonder"); b.disabled = true;
-    try { await API.rpc("akis_yaz", { p_metin: t.value }); t.value = ""; HAPTIK.hafif(); toast("Paylaşıldı."); await akisYukle(false); akisListeCiz(); $("#akisSayac").textContent = "0/280"; }
-    catch (err) { toast(hataCevir(err.message), true); }
-    b.disabled = false;
-  };
+  akisYazBagla("akis", async () => { await akisYukle(false); akisListeCiz(); });
   document.querySelectorAll("[data-kapsam]").forEach(el => el.onclick = async () => { AKIS.kapsam = el.dataset.kapsam; akisEkrani(AKIS.etiket, true); });
   document.querySelectorAll("[data-gundem]").forEach(el => el.onclick = () => { AKIS.etiket = AKIS.etiket === el.dataset.gundem ? null : el.dataset.gundem; akisEkrani(AKIS.etiket, true); });
   const ek = $("#etiketKaldir"); if (ek) ek.onclick = () => { AKIS.etiket = null; akisEkrani(null, true); };
+}
+// Bir paylaşım ve altındaki yanıtlar
+async function akisKonuEkrani(id, yaz){
+  yukleniyor("Paylaşım");
+  let k;
+  try { k = await API.rpc("akis_konu", { p_id: id }); }
+  catch (err) { iskelet("Paylaşım", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
+  const hepsi = () => [k.ana].concat(k.yanitlar);
+  iskelet("Paylaşım", `<div class="kart" id="konuKap">${akisSatirHtml(k.ana, { ana: true })}
+      <div class="bolum-bas" style="margin:12px 0 0"><h2 style="font-size:16px">Yanıtlar</h2><span class="kucuk">${k.yanitlar.length}</span></div>
+      ${k.yanitlar.map(y => akisSatirHtml(y)).join("") || `<div class="bos" style="padding:10px 0">Henüz yanıt yok.</div>`}</div>
+    <div class="kart">${akisYazHtml("yanit", `${k.ana.kad} kişisine yanıt yaz…`)}</div>`, { geri: true });
+  const kap = $("#konuKap");
+  akisBagla(kap, hepsi, () => akisKonuEkrani(k.ana.id));
+  kap.querySelectorAll("[data-konu]").forEach(el => el.onclick = null);
+  kap.querySelectorAll("[data-yanitla]").forEach(el => el.onclick = () => { const t = $("#yanitMetin"); if (t) t.focus(); });
+  akisYazBagla("yanit", () => akisKonuEkrani(k.ana.id), k.ana.id);
+  if (yaz) setTimeout(() => { const t = $("#yanitMetin"); if (t) { t.scrollIntoView({ block: "center" }); t.focus(); } }, 50);
 }
 
 /* ---------- 5) AY RAPORU VE BAŞARIMLAR ---------- */

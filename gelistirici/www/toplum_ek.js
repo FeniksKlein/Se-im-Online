@@ -1,5 +1,5 @@
 /* Seçim Online — vatandaş etkileşimi: röportaj, düello, imza, dilekçe, dernek demokrasisi */
-const SOS_BASLIK={roportaj:"Röportajlar",haber:"Basın cevap hakkı",duello:"Siyasi düellolar",imza:"İmza kampanyaları",dilekce:"Resmî dilekçeler"};
+const SOS_BASLIK={roportaj:"Röportajlar",haber:"Basın cevap hakkı",duello:"Siyasi düellolar",imza:"İmza kampanyaları",cimer:"CİMER"};
 const SOS_DURUM={bekliyor:"Yanıt bekliyor",yanitlandi:"Yanıtlandı",reddedildi:"Reddedildi",yayinlandi:"Yayımlandı",davet:"Davet gönderildi",canli:"Canlı tartışma",oylama:"Halk oylaması",bitti:"Tamamlandı",acik:"İmzaya açık",basarili:"Hedefe ulaştı",sure_doldu:"Süresi doldu",kabul:"Kabul edildi",ret:"Reddedildi",islemde:"İşlemde"};
 function sosDurum(s){return SOS_DURUM[s]||s||""}
 function sosMetin(x){return '<p style="white-space:pre-wrap;margin:8px 0">'+e(x||"")+'</p>'}
@@ -12,7 +12,7 @@ function sosMenu(aktif){
  return '<div class="kart"><h2>Vatandaş ve siyaset</h2><p class="alt">Gerçek oyuncuların röportajları, tartışmaları, imzaları ve resmî başvuruları.</p><div class="vit-dugme">'+
  Object.entries(SOS_BASLIK).map(([k,v])=>'<button class="btn '+(aktif===k?'altin':'ikinci')+'" onclick="sosEkran(\''+k+'\')">'+e(v)+'</button>').join("")+'</div></div>';
 }
-async function sosEkran(k){
+async function sosEkran(k){if((k==="dilekce"||k==="cimer")&&typeof cimerEkrani==="function")return cimerEkrani();
  k=SOS_BASLIK[k]?k:"imza";
  yukleniyor(SOS_BASLIK[k]);
  try{
@@ -52,13 +52,13 @@ async function sosEkran(k){
    if(!data.length)h+='<div class="kart">Henüz siyasi tartışma yok.</div>';
   }
   if(k==="imza"){
-   h+='<div class="kart"><h2>Vatandaş imza kampanyaları</h2><p class="alt">Hedef imza sayısı tamamlanınca konu otomatik olarak ilgili makamın resmî dilekçesine dönüşür. Süre 72 saat.</p><button class="btn altin" onclick="sosBasvuruModal(\'imza\')">İmza kampanyası başlat</button></div>';
+   h+='<div class="kart"><h2>Vatandaş imza kampanyaları</h2><p class="alt">Hedef imza sayısı tamamlanınca konu otomatik olarak ilgili makama CİMER toplu başvurusu olarak iletilir. Süre 72 saat.</p><button class="btn altin" onclick="sosBasvuruModal(\'imza\')">İmza kampanyası başlat</button></div>';
    for(const a of data){
     h+=sosCardBas(a.baslik)+'<div class="kucuk">'+e(a.acan)+' · Muhatap: '+e(a.muhatap)+' · '+e(sosDurum(a.durum))+'</div>'+sosMetin(a.metin)+
       '<p class="kucuk">'+a.imza+' / '+a.esik+' imza · '+tarihSaat(a.bit)+' bitiş</p>'+
       (a.durum==="acik"&&!a.imzaladim?'<button class="btn altin" onclick="sosRpc(\'sos_imza_at\',{p_id:'+a.id+'},()=>sosEkran(\'imza\'),\'İmzan kaydedildi.\')">İmzala</button>':"")+
       (a.imzaladim?'<span class="rozet yesil">İmzaladın</span>':"")+
-      (a.dilekce_id?'<button class="btn ikinci" onclick="sosEkran(\'dilekce\')">Resmî dilekçeyi gör</button>':"")+'</div>';
+      (a.dilekce_id?'<button class="btn ikinci" onclick="sosEkran(\'dilekce\')">CİMER başvurusunu gör</button>':"")+'</div>';
    }
    if(!data.length)h+='<div class="kart">Henüz imza kampanyası yok.</div>';
   }
@@ -162,11 +162,11 @@ async function sosPartiPanel(id){
 async function sosPartiImzala(id){try{await API.rpc('sos_parti_imzala',{p_parti:id});toast("İmzan kaydedildi.");sosPartiPanel(id);}catch(err){toast(hataCevir(err.message),true);}}
 (function sosMenuBagla(){
  const ilave=(html)=>{const n=document.getElementById('icerik');if(n&&!n.querySelector('.sos-menu-karti'))n.insertAdjacentHTML('beforeend','<div class="sos-menu-karti">'+html+'</div>');};
- if(typeof gundemEkrani==="function"){const old=gundemEkrani;window.gundemEkrani=async function(...a){const r=await old.apply(this,a);ilave('<div class="kart"><h2>Toplum ve siyaset</h2><p class="alt">Canlı siyasi düellolara katıl, imza kampanyası aç, dilekçe gönder, gazetecilerle röportaj yap.</p><button class="btn altin" onclick="ekranAc(()=>sosEkran(\'imza\'))">Vatandaş etkileşimleri</button></div>');return r;};}
+ if(typeof gundemEkrani==="function"){const old=gundemEkrani;window.gundemEkrani=async function(...a){const r=await old.apply(this,a);ilave('<div class="kart"><h2>Toplum ve siyaset</h2><p class="alt">Canlı siyasi düellolara katıl, imza kampanyası aç, CİMER\'e başvur, gazetecilerle röportaj yap.</p><button class="btn altin" onclick="ekranAc(()=>sosEkran(\'imza\'))">Vatandaş etkileşimleri</button></div>');return r;};}
  if(typeof basinEkrani==="function"){const old=basinEkrani;window.basinEkrani=async function(...a){const r=await old.apply(this,a);ilave('<div class="kart"><h2>Röportaj ve cevap hakkı</h2><div class="vit-dugme"><button class="btn altin" onclick="ekranAc(()=>sosEkran(\'roportaj\'))">Röportajlar</button><button class="btn ikinci" onclick="ekranAc(()=>sosEkran(\'haber\'))">Cevap hakkı</button></div></div>');return r;};}
  if(typeof partilerEkrani==="function"){const old=partilerEkrani;window.partilerEkrani=async function(...a){const r=await old.apply(this,a);ilave('<div class="kart"><h2>Siyasi mücadele</h2><div class="vit-dugme"><button class="btn altin" onclick="ekranAc(()=>sosEkran(\'duello\'))">Canlı tartışmalar</button><button class="btn ikinci" onclick="ekranAc(()=>sosEkran(\'imza\'))">İmza kampanyaları</button></div></div>');return r;};}
  if(typeof partiDetay==="function"){const old=partiDetay;window.partiDetay=async function(id,...a){const r=await old.call(this,id,...a);ilave('<div class="kart"><h2>Olağanüstü kurultay</h2><p class="alt">Üyeler imza toplayarak genel başkan seçimi talep edebilir.</p><button class="btn ikinci" onclick="ekranAc(()=>sosPartiPanel('+Number(id)+'))">Kurultay imza süreci</button></div>');return r;};}
  if(typeof stkDetay==="function"){const old=stkDetay;window.stkDetay=async function(id,...a){const r=await old.call(this,id,...a);ilave('<div class="kart"><h2>Dernek genel kurulu</h2><p class="alt">Üyeler başkanlık veya yönetim için aday olabilir, oy verebilir ve olağanüstü genel kurul isteyebilir.</p><button class="btn altin" onclick="ekranAc(()=>sosDernekPanel('+Number(id)+'))">Genel kurul ve seçimler</button></div>');return r;};}
- if(typeof devletEkrani==="function"){const old=devletEkrani;window.devletEkrani=async function(...a){const r=await old.apply(this,a);ilave('<div class="kart"><h2>Vatandaş başvuruları</h2><button class="btn ikinci" onclick="ekranAc(()=>sosEkran(\'dilekce\'))">Resmî dilekçeler</button></div>');return r;};}
+ if(typeof devletEkrani==="function"){const old=devletEkrani;window.devletEkrani=async function(...a){const r=await old.apply(this,a);ilave('<div class="kart"><h2>Vatandaş başvuruları</h2><p class="alt">Şikâyet ve taleplerini bakanlıklara, belediyelere ve Cumhurbaşkanlığına ilet.</p><button class="btn altin" onclick="ekranAc(cimerEkrani)">CİMER</button></div>');return r;};}
   if(typeof EKRAN!=='undefined'){EKRAN.gundem=window.gundemEkrani;EKRAN.parti=window.partilerEkrani;EKRAN.devlet=window.devletEkrani;}
 })();

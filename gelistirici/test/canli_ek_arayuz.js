@@ -2,7 +2,7 @@
 // Çalıştır: NODE_PATH=/opt/npm-tools/node_modules node test/canli_ek_arayuz.js [ekran_goruntusu_klasoru]
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path'), vm = require('vm'), assert = require('assert/strict');
-const html = fs.readFileSync(path.join(__dirname, '../dist/index.html'), 'utf8');
+const html = fs.readFileSync(process.env.HTML_PATH || path.join(__dirname, '../dist/index.html'), 'utf8');
 for (const m of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)) new vm.Script(m[1]);
 const shot = process.argv[2];
 (async () => {
@@ -19,8 +19,8 @@ const shot = process.argv[2];
         gece: { aktif: true, var: true, tur: 'mv', acilan_il: 2 + zaman, toplam_il: 4, yuzde: 23.1 + zaman * 30, onde: 'ABC %41,2', saniye_kaldi: 400, bitis, sure_sn: 720, gecen_sn: 320,
           son_acilan: [{ il_id: 35, ad: 'İzmir', onde: 'ABC' }, { il_id: 16, ad: '<b>Bursa</b>', onde: 'XYZ' }] },
         sonuc: { toplam: 30, dolu: 2, bos: 0, baraj: 7, ulusal: [], iller: zaman ? { 34: { mv: 1, gecerli: 10, partiler: {}, secilen: [], bagimsizlar: [] } } : {}, bagimsiz_sandalye: 0 } });
-      window.AKIS_VERI = [{ id: 9, kad: 'Ada', unvan: 'ABC Genel Başkanı', parti: { id: 1, ad: 'A', kisa: 'ABC', renk: '#123456', amblem: 'a_yildiz' }, il: 'İzmir', metin: '<img src=x onerror="window.xss=1"> Bugün #SeçimGecesi çok heyecanlı', zaman: new Date().toISOString(), begeni: 2, begendim: false, benim: false },
-        { id: 8, kad: 'Deniz', unvan: null, parti: null, il: 'Ankara', metin: 'Benim paylaşımım', zaman: new Date().toISOString(), begeni: 0, begendim: false, benim: true }];
+      window.AKIS_VERI = [{ id: 9, kad: 'Ada', unvan: 'ABC Genel Başkanı', parti: { id: 1, ad: 'A', kisa: 'ABC', renk: '#123456', amblem: 'a_yildiz' }, il: 'İzmir', metin: '<img src=x onerror="window.xss=1"> Bugün #SeçimGecesi çok heyecanlı', zaman: new Date().toISOString(), begeni: 2, begenmeme: 0, yanit: 1, begendim: false, begenmedim: false, benim: false },
+        { id: 8, kad: 'Deniz', unvan: null, parti: null, il: 'Ankara', metin: 'Benim paylaşımım', zaman: new Date().toISOString(), begeni: 0, begenmeme: 0, yanit: 0, begendim: false, begenmedim: false, benim: true }];
       API = { rpc: async (ad, args) => {
         calls.push({ ad, args });
         if (ad === 'secim_detay') return detay();
@@ -28,6 +28,13 @@ const shot = process.argv[2];
         if (ad === 'akis_gundem') return [{ etiket: 'seçimgecesi', kisi: 4, paylasim: 5 }];
         if (ad === 'akis_yaz') return { tamam: true, id: 10 };
         if (ad === 'akis_begen') return { begeni: 3, begendim: true };
+        if (ad === 'akis_tepki') return args.p_tepki === 'begenme' ? { begeni: 2, begenmeme: 1, begendim: false, begenmedim: true } : { begeni: 3, begenmeme: 0, begendim: true, begenmedim: false };
+        if (ad === 'akis_konu') return { ana: AKIS_VERI[0], yanitlar: [Object.assign({}, AKIS_VERI[1], { id: 11, yanit_id: 9, metin: 'Katılmıyorum' })] };
+        if (ad === 'akis_yanit_yaz') return { tamam: true, id: 12 };
+        if (ad === 'cimer') return window.CIMER_VERI;
+        if (ad === 'cimer_karne') return [{ kurum: 'Sağlık Bakanlığı', hedef: 'bakanlik', basvuru: 3, yanit: 2, geciken: 1, ort_saat: 5.5, memnuniyet: 50 }];
+        if (ad === 'cimer_basvur') return { tamam: true, id: 1, muhatap_var: true };
+        if (ad === 'cimer_yanitla' || ad === 'cimer_degerlendir') return { tamam: true };
         if (ad === 'akis_sikayet_et' || ad === 'engelle' || ad === 'akis_sil') return { tamam: true };
         if (ad === 'ay_raporu') return { ay: '2030-02', ay_ad: 'Şubat 2030', kad: 'Deniz<b>', unvan: 'İzmir Milletvekili', il: 'İzmir', parti: { id: 1, ad: 'Örnek Parti' }, parti_vekil: 12, parti_sira: 2, paylasim: 14, begeni: 31, makam_gun: 12.5, yeni_makamlar: [], yeni_basarimlar: [{ kod: 'vekil', ad: 'Meclis Kürsüsü', sinif: 'gumus' }], basarim_toplam: 5, paylasim_metni: 'metin' };
         if (ad === 'basarimlar') return [{ kod: 'ilk_soz', ad: 'İlk Söz', aciklama: 'İlk paylaşım', sinif: 'bronz', kazandi: true, zaman: new Date().toISOString() }, { kod: 'cb', ad: 'Çankaya', aciklama: 'Cumhurbaşkanı', sinif: 'altin', kazandi: false, zaman: null }];
@@ -56,7 +63,7 @@ const shot = process.argv[2];
 
     await page.evaluate(() => { API.rpc = window.__rpc; });
     // --- gündem kartları
-    const gh = await page.evaluate(() => gundemEkUst({ canli: [{ secim_id: 5, tur: 'mv', yuzde: 40 }], firsat: [], etiket: [], ozet: null }) + gundemEkAlt({ canli: [], firsat: [{ tur: 'belediye', anahtar: 'bel:34', metin: 'İstanbul belediye başkanlığı boş.', ekran: 'gundem' }], etiket: [{ etiket: 'gündem', kisi: 3, paylasim: 4 }], ozet: { gelismeler: [{ tur: 'secim', metin: '<b>Seçim</b> sonuçlandı', zaman: '' }] } }));
+    const gh = await page.evaluate(() => gundemEkUst({ canli: [{ secim_id: 5, tur: 'mv', yuzde: 40 }], firsat: [], etiket: [], ozet: null }) + gundemEkAlt({ canli: [], firsat: [{ tur: 'belediye', anahtar: 'bel:34', metin: 'İstanbul belediye başkanlığı boş.', ekran: 'gundem' }], etiket: [{ etiket: 'gündem', kisi: 3, paylasim: 4 }], ozet: { gelismeler: [{ tur: 'secim', metin: '<b>Seçim</b> sonuçlandı', zaman: '' }] }, akis: [], cimer: null }));
     assert.match(gh, /sayımı sürüyor/); assert.match(gh, /İstanbul belediye başkanlığı boş/); assert.match(gh, /#gündem/); assert.doesNotMatch(gh, /<b>Seçim<\/b>/);
 
     // --- akış
@@ -69,12 +76,45 @@ const shot = process.argv[2];
     await page.fill('#akisMetin', 'Merhaba #deneme'); await page.click('#akisGonder');
     await page.waitForFunction(() => calls.some(c => c.ad === 'akis_yaz'));
     assert.equal(await page.evaluate(() => calls.find(c => c.ad === 'akis_yaz').args.p_metin), 'Merhaba #deneme');
-    await page.click('[data-begen="9"]'); await page.waitForFunction(() => calls.some(c => c.ad === 'akis_begen'));
-    await page.click('[data-sikayet="9"]'); await page.selectOption('#skNeden', 'spam'); await page.click('#skGonder');
+    await page.click('.akis-satir[data-id="9"] [data-tepki="begenme"]'); await page.waitForFunction(() => calls.some(c => c.ad === 'akis_tepki'));
+    assert.deepEqual(await page.evaluate(() => calls.find(c => c.ad === 'akis_tepki').args), { p_id: 9, p_tepki: 'begenme' });
+    await page.waitForSelector('.akis-satir[data-id="9"] .acik-begenme');
+    assert.match(await page.locator('.akis-satir[data-id="9"] [data-tepki="begenme"]').textContent(), /1/);
+    await page.click('.akis-satir[data-id="9"] [data-menu="9"]'); await page.selectOption('#skNeden', 'spam'); await page.click('#skGonder');
     await page.waitForFunction(() => calls.some(c => c.ad === 'akis_sikayet_et'));
     assert.deepEqual(await page.evaluate(() => calls.find(c => c.ad === 'akis_sikayet_et').args), { p_id: 9, p_neden: 'spam' });
     await page.click('.akis-satir .etk'); await page.waitForFunction(() => calls.filter(c => c.ad === 'akis_liste').some(c => c.args.p_etiket === 'seçimgecesi'));
-    await page.waitForSelector('.akis-satir[data-id="8"] [data-sil]');
+    await page.waitForSelector('.akis-satir[data-id="8"] [data-menu="8"]');
+    if (shot) await page.screenshot({ path: path.join(shot, 'akis.png') });
+    // konu (yanıtlar) ekranı
+    await page.click('.akis-satir[data-id="9"] [data-yanitla="9"]'); await page.waitForSelector('#konuKap .konu-ana');
+    assert.equal(await page.locator('#konuKap .akis-satir').count(), 2);
+    await page.fill('#yanitMetin', 'Ben de katılıyorum'); await page.click('#yanitGonder');
+    await page.waitForFunction(() => calls.some(c => c.ad === 'akis_yanit_yaz'));
+    assert.deepEqual(await page.evaluate(() => calls.find(c => c.ad === 'akis_yanit_yaz').args), { p_id: 9, p_metin: 'Ben de katılıyorum' });
+    if (shot) await page.screenshot({ path: path.join(shot, 'konu.png') });
+    // CİMER
+    await page.evaluate(() => { window.CIMER_VERI = { bugun_kalan: 2, kurumlar: { cb: 'Reis', il_id: 34, belediye_baskani: null, bakanliklar: [{ kod: 'saglik', ad: 'Sağlık Bakanlığı', bakan: 'Doktor' }, { kod: 'egitim', ad: 'Millî Eğitim Bakanlığı', bakan: null }] },
+      basvurularim: [{ id: 1, kurum: 'Sağlık Bakanlığı', kategori: 'sikayet', konu: 'Randevu <b>yok</b>', metin: 'Metin', zaman: new Date().toISOString(), durum: 'sonuclandi', sonuc: 'olumlu', cevap: 'Hekim atandı', cevaplayan: 'Doktor', cevaplayan_unvan: 'Sağlık Bakanı', memnun: null, benim: true }],
+      gelen: [{ id: 2, kurum: 'Sağlık Bakanlığı', kategori: 'talep', konu: 'Ambulans', metin: 'Köyümüze ambulans', zaman: new Date().toISOString(), durum: 'bekliyor', gonderen: 'Ali', gonderen_il: 'Bursa', yanitlayabilirim: true, suresi_gecti: true }] }; CIMER.sekme = 'yeni'; return cimerEkrani(); });
+    await page.waitForSelector('#cmHedef');
+    assert.match(await page.locator('#cmBak').textContent(), /bakan yok, Cumhurbaşkanı bakar/);
+    await page.selectOption('#cmHedef', 'belediye'); assert.equal(await page.locator('#cmIlKut').isHidden(), false);
+    assert.match(await page.locator('#cmIlNot').textContent(), /başkanı yok/);
+    if (shot) await page.screenshot({ path: path.join(shot, 'cimer.png') });
+    await page.selectOption('#cmHedef', 'bakanlik'); await page.selectOption('#cmBak', 'egitim');
+    await page.click('#cmKat [data-kat="oneri"]'); await page.fill('#cmKonu', 'Okul'); await page.fill('#cmMetin', 'Okul bahçesi düzenlensin lütfen.');
+    await page.click('#cmGonder'); await page.waitForFunction(() => calls.some(c => c.ad === 'cimer_basvur'));
+    assert.deepEqual(await page.evaluate(() => calls.find(c => c.ad === 'cimer_basvur').args), { p_hedef: 'bakanlik', p_bakanlik: 'egitim', p_il: null, p_kategori: 'oneri', p_konu: 'Okul', p_metin: 'Okul bahçesi düzenlensin lütfen.' });
+    await page.waitForSelector('.cimer-satir');
+    assert.equal(await page.locator('.cimer-satir b >> text=Randevu <b>yok</b>').count(), 1);
+    await page.getByRole('button', { name: 'Memnun kaldım' }).click(); await page.waitForFunction(() => calls.some(c => c.ad === 'cimer_degerlendir'));
+    await page.click('[data-cs="gelen"]'); await page.waitForSelector('text=Süresi geçti');
+    await page.getByRole('button', { name: 'Resmî yanıt ver' }).click(); await page.fill('#cmCevap', 'Ambulans görevlendirildi.'); await page.click('#cmYanitGonder');
+    await page.waitForFunction(() => calls.some(c => c.ad === 'cimer_yanitla'));
+    assert.deepEqual(await page.evaluate(() => calls.find(c => c.ad === 'cimer_yanitla').args), { p_id: 2, p_durum: 'sonuclandi', p_sonuc: 'olumlu', p_cevap: 'Ambulans görevlendirildi.' });
+    await page.click('[data-cs="karne"]'); await page.waitForSelector('.cimer-karne'); assert.match(await page.locator('.cimer-karne').textContent(), /5,5 sa/);
+    const cg = await page.evaluate(() => cimerGundemHtml(CIMER_VERI)); assert.match(cg, /1 CİMER başvurusu geldi/);
     if (shot) await page.screenshot({ path: path.join(shot, 'akis.png') });
 
     // --- rapor
