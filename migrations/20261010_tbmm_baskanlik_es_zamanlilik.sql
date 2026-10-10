@@ -1,9 +1,9 @@
--- TBMM turlarında eşzamanlı otomatik sayaç/sayım güvenliği
+-- TBMM turlarında eşzamanlı sayım güvenliği
 begin;
-create or replace function oyun.meclis_tick(t timestamptz) returns void language plpgsql as $
+create or replace function oyun.meclis_tick(t timestamptz) returns void language plpgsql as $$
 declare s oyun.meclis_secim; ms oyun.secimler; r record; dolu int; gerek int; ust record; ikinci uuid; n int; dongu int; m record; pk text;
 begin
-  -- Zamanlayıcı ve eşzamanlı milletvekili oturumları aynı turu iki kez sonuçlandıramaz.
+  -- Zamanlayıcı ile eşzamanlı oturumlar aynı turu iki kez sonuçlandıramaz.
   perform pg_advisory_xact_lock(hashtext('oyun.meclis_tick'));
   -- yeni yasama dönemi
   for ms in select * from oyun.secimler x where x.tur = 'mv' and x.durum = 'tamam' and x.goreve_bas <= t and x.goreve_bas > t - interval '20 days'
