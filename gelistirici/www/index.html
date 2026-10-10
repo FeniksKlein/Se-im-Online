@@ -3099,6 +3099,7 @@ function hayatCiz(h){
       <div class="para" style="font-size:48px;margin-top:2px">${tlYaz(h.para)}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><span class="rozet altin">${e(st.ad)}</span>${kb.seri > 1 ? `<span class="rozet">${h.bugun_toplandi ? kb.seri : kb.seri - 1} günlük seri</span>` : ""}${bk.vadesiz ? `<span class="rozet">Bankada ${tlYaz(bk.vadesiz + (bk.vadeli || 0))}</span>` : ""}</div>
     </section>
+    <section class="kart" style="margin-bottom:12px"><h2>🎯 Görevler</h2><p class="alt">270 günlük, haftalık ve kalıcı görev. Gerçek oyun faaliyetlerinden oyun parası kazan.</p><button class="btn altin" onclick="ekranAc(gorevEkrani)">Görevleri gör ve ödül kazan</button></section>
     <div class="bolum-bas"><h2>Ekonomi ve ticaret</h2><span class="kucuk">Hızlı erişim</span></div>
     <div class="vit-ana-izgara">
       <button class="vit-ana-kart" onclick="bankaRehberiEkrani()"><span class="vit-ikon">🏦</span><b>Oyuncu bankaları</b><span>Mevduat ve kredi fırsatları</span></button>
@@ -3872,5 +3873,6 @@ window.addEventListener("load", () => {
 <script src="emlak_vitrin.js"></script>
 <script src="toplum_ek.js"></script>
 <script src="halka_arz.js"></script>
+<script src="gorevler.js"></script>
 </body>
 </html>
