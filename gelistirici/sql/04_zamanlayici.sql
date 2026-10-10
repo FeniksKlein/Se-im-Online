@@ -17,6 +17,8 @@ select cron.unschedule(jobid) from cron.job where jobname = 'secim-motoru';
 select cron.schedule('secim-motoru', '* * * * *', 'select oyun.tick()');
 -- Türkiye Gündem otomatik gazetesi (5 dakikada bir)
 select cron.schedule('turkiye-gundem-otomatik-gazete', '*/5 * * * *', 'select oyun.ajans_derle()');
+-- Şirket halka arzları: süresi dolanları her dakika sonuçlandır
+select cron.schedule('halka-arz', '* * * * *', 'select oyun.halka_arz_tick()');
 
 -- İlk takvimi hemen üret
 select oyun.tick();

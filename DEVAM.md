@@ -138,3 +138,10 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Ayrıca düzeltildi: `07_devlet.sql` `ittifak_kilit` başka oturumda `$$` yerine `$` ile kaydedilmişti (tam kurulum dosyası bozuktu). Canlıdaki fonksiyon doğruydu.
 - Test: `python3 test/dernek.py` (hepsi.sh'te).
 
+
+## 2026-10-10 · 2026.10.10-8 Şirket halka arzı + haftalık şirket kârı hatası
+- **Hata (önemli):** `oyun.sirket_hesapla` ilk haftalık hesapta `round(double precision, integer) does not exist` hatası veriyordu (`random()` double). Canlıda hiç şirket hareketi yoktu; 16-17 Ekim'de ilk haftalar dolunca kâr yazılmayacak ve `sirket_liste` hatası yüzünden "Şirketlerim" ekranı açılmayacaktı. `62_halka_arz.sql` içinde canlı tanım temel alınarak `random()::numeric` ile düzeltildi.
+- **Halka arz** (`62_halka_arz.sql`, `migrations/20261010_halka_arz.sql`): `oyun.halka_arz`, `oyun.halka_arz_talep`, `sirketler.halka_acik`; RPC'ler `halka_arz_hesapla`, `halka_arz_durum`, `halka_arz_baslat`, `halka_arz_talep`, `halka_arz_talep_geri`, `halka_arz_iptal`, `halka_arz_liste`; `oyun.halka_arz_tick()` ayrı pg_cron işi (`halka-arz`, dakikalık) + listeleme fonksiyonlarında tembel kapanış. Mevcut `oyun.tick`/`miting_tick`e dokunulmadı. Kurallar: TASARIM.md §11.
+- Arayüz: `gelistirici/www/halka_arz.js` (derle.js'e eklendi); Şirketlerim'de her şirket kartında "Halka arz ve yatırım hesabı", üst kartta ve şirket rehberinde "Halka arzlar" düğmesi.
+- Test: `python3 test/halka_arz.py` (hepsi.sh'te). Migration eski sürümlü veritabanına iki kez uygulandı.
+- Ayrıca `60_imza_dilekce_katilim.sql` satır 42-46 `$` yerine `$$` olarak düzeltildi (tam kurulum dosyası bu yüzden kurulmuyordu; canlıdaki migration doğruydu, canlıya etkisi yok).

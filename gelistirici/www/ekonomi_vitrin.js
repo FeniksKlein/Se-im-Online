@@ -77,7 +77,7 @@ async function sirketVitrinEkrani(){
  try{
  const d=await API.rpc("sirket_vitrini");vitSirketler=d.sirketler||[];
  iskelet("Şirketler",`<div class="kart vit-manset"><h2>🏢 Türkiye şirket rehberi</h2><p class="alt">Gerçek oyuncuların şirketleri, sahipleri ve paydaşları. Kâr ve vergi sıralamaları gerçek faaliyet kayıtlarından hesaplanır.</p>
- <div class="vit-dugme"><button class="btn altin" onclick="sirketYonetimEkrani()">Şirketlerim / Şirket kur</button><button class="btn ikinci" onclick="sirketPazarEkrani()">Satılık şirketler</button></div></div>
+ <div class="vit-dugme"><button class="btn altin" onclick="sirketYonetimEkrani()">Şirketlerim / Şirket kur</button><button class="btn ikinci" onclick="sirketPazarEkrani()">Satılık şirketler</button><button class="btn ikinci" onclick="halkaArzPazarEkrani()">Halka arzlar</button></div></div>
  <div class="vit-ozet"><span><b>${vitSirketler.length}</b> şirket</span><span><b>${vitSirketler.reduce((a,b)=>a+(b.ortaklar||[]).length,0)}</b> ortaklık kaydı</span></div>
  <div class="kart"><h3>Sıralama</h3>
  <select id="vitSirketSort" onchange="sirketVitrinListeCiz()"><option value="kazanc">En çok net kazanan</option><option value="vergi">En çok vergi ödeyen (kayıtlı)</option><option value="sermaye">En yüksek sermaye</option><option value="yeni">En yeni şirket</option></select>

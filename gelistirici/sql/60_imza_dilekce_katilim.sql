@@ -39,11 +39,11 @@ alter table oyun.sos_dilekce enable row level security;
 alter table oyun.sos_imza_kamp enable row level security;
 alter table oyun.sos_imza enable row level security;
 revoke all on oyun.sos_dilekce,oyun.sos_imza_kamp,oyun.sos_imza from public,anon,authenticated;
-do $ begin
+do $$ begin
  if not exists(select 1 from pg_constraint where conname='sos_dilekce_kamp_ref' and conrelid='oyun.sos_dilekce'::regclass) then
  alter table oyun.sos_dilekce add constraint sos_dilekce_kamp_ref foreign key (imza_kamp_id) references oyun.sos_imza_kamp(id);
  end if;
-end $;
+end $$;
 
 create or replace function oyun.sos_muhatap(p_makam text,p_kad text,p_il int) returns oyun.makamlar
 language plpgsql stable set search_path='' as $$

@@ -635,3 +635,11 @@ Karne oyuncu kartında, parti sayfasında, il sayfasında ve belediye ekranında
 - Genel seçim sayımı "aday_id is ambiguous" hatasıyla duruyordu; ilk genel seçimde motor kilitlenirdi.
 - Yedekten dönüş, kimlik sütunu "generated always" olan tablolarda hata veriyordu.
 - Tam kurulum dosyası temiz bir veritabanında çalışmıyordu.
+
+## 11. Şirket halka arzı ve yatırım hesaplayıcısı (2026-10-10)
+- **Haftalık ortalama net kâr** = sermaye × sektör oranı − sermaye × %5,25 − asgari ücret (sektör oranları: tarım %12, sanayi %15, teknoloji %20, ticaret %14, inşaat %18, medya %16, banka %8). Örnek: 950.000 ₺ teknoloji şirketi, asgari 28.075 ₺ → 112.050 ₺/hafta; 1.950.000 ₺ yatırımla sermaye 2.900.000 ₺ → 399.675 ₺/hafta.
+- **Hesaplayıcı** (Şirketlerim › şirket kartı › Hesapla): yatırım tutarı ve şirket değerine göre yeni sermaye, haftalık kâr, ortakların yeni payı, kişiye düşen haftalık tutar, yatırımcının geri kazanma süresi.
+- **Halka arzı başlatma:** şirketin en az %50'sine sahip ortak. Şirket değeri (arz öncesi) en az sermaye, en çok max(2 × sermaye, 52 × haftalık ortalama net); önerilen 26 haftalık kâr. En fazla %49 pay satılır, sermaye 100 milyon ₺'yi aşamaz. Asgari başarı tutarı hedefin %25/50/75/100'ü; talep süresi 24/48/72 saat. Bir şirketin aynı anda tek açık arzı olur.
+- **Talep:** başka oyuncular en az 1.000 ₺ talep verir; para arz bitene kadar emanette tutulur, arz sürerken geri alınabilir. Başlatan kendi arzına talep veremez.
+- **Sonuç:** hedef dolunca hemen, değilse süre bitince. Asgariye ulaşıldıysa toplanan para sermayeye ve kasaya girer, eski ortakların payı değer/(değer + toplanan) oranında seyrelir, yatırımcılar tutar/(değer + toplanan) oranında ortak olur; şirket "halka açık" olur. Ulaşılamazsa ya da iptal edilirse herkese iade. Toplanan para sermaye olduğu için kâr payı olarak dağıtılamaz; ortaklar haftalık kârdan paylarına göre alır.
+- Herkes açık arzları Şirketler › Halka arzlar ekranında görür; Gündem'e haber düşer, yatırımcılara ve ortaklara bildirim gider.
