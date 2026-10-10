@@ -674,7 +674,7 @@ const TUR = {
   bel:      { ad: "İl Belediye Başkanlığı Seçimi", kisa: "Belediye seçimi" },
   kurultay: { ad: "Kurultay — Genel Başkan Seçimi", kisa: "Kurultay", aday: "Genel başkanlığa aday ol" }
 };
-const MAKAM_AD = { mv: "Milletvekili", bel: "İl Belediye Başkanı", cb: "Cumhurbaşkanı", bakan: "Bakan", tbmm: "TBMM Başkanı", bskv: "TBMM Başkanvekili", grup_bskv: "Grup Başkanvekili" };
+const MAKAM_AD = { mv: "Milletvekili", bel: "İl Belediye Başkanı", cb: "Cumhurbaşkanı", cb_yardimcisi: "Cumhurbaşkanı Yardımcısı", bakan: "Bakan", tbmm: "TBMM Başkanı", bskv: "TBMM Başkanvekili", grup_bskv: "Grup Başkanvekili" };
 const makamYaz = (m) => m.tur === "bakan" ? (m.bakanlik_ad || "Bakanlık").replace("Bakanlığı", "Bakanı") : (MAKAM_AD[m.tur] || m.tur) + (m.il_ad ? " · " + m.il_ad : "");
 
 /* =====================================================================
@@ -2274,7 +2274,7 @@ async function partiDetay(id){
   yukleniyor("Parti");
   let p; try { p = await API.rpc("parti_detay", { p_parti: id }); await durumYenile(); try { D.yetki = await API.rpc("parti_yetkilerim"); } catch (_) { D.yetki = null; } } catch (err) { iskelet("Parti", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
   const ben = D.durum.profil, gbyim = p.uyesiyim && ben.gb, araKurultay = p.uyesiyim && D.durum.takvim.some(x => x.ara && x.tur === "kurultay" && x.hedef_parti_id === p.id && ["yakinda","basvuru","oy","sayim"].includes(x.asama));
-  const makamAd = (m) => (m || "").split(",").filter(Boolean).map(x => `<span class="rozet altin">${MAKAM_AD[x]}</span>`).join(" ");
+  const makamAd = (m) => (m || "").split(",").map(x => x.trim()).filter(Boolean).map(x => `<span class="rozet altin">${e(MAKAM_AD[x] || x)}</span>`).join(" ");
   const sozcuBilgi = await API.rpc("parti_sozcu_bilgi", { p_parti: id }).catch(() => null);
   iskelet(e(p.kisa), `
     <div class="kart" style="text-align:center"><div class="amb" style="margin:0 auto 10px;width:72px;height:72px;border-radius:20px;background:${e(p.renk)}22">${amblemSvg(p.amblem, p.renk).replace("<svg", '<svg style="width:42px;height:42px;color:' + e(p.renk) + '"')}</div>
