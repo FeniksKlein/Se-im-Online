@@ -1,0 +1,2 @@
+-- Kredi degerlendirmesi icin ilk migration dosyasi.
+-- Oyuncu kredi notu, gelir, mevcut bakiye ve borclar dikkate alinacaktir.
