@@ -677,6 +677,9 @@ details.vekil-bakanlik summary::-webkit-details-marker{display:none}
 .yayin p{margin-top:6px;font-size:15px;white-space:pre-wrap;user-select:text;-webkit-user-select:text}
 .kisisel{display:flex;gap:10px;padding:11px 12px;background:var(--panel);border-radius:10px;margin-bottom:8px;font-size:14px}
 .kisisel.yeni{box-shadow:inset 3px 0 0 var(--al)}
+.kisisel .bildirim-alt{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:5px}
+.kisisel .bildirim-goster{background:var(--inkbg);color:var(--ink2);border:1px solid var(--ink);border-radius:8px;min-height:30px;padding:4px 12px;font-size:12px;font-weight:750;white-space:nowrap}
+.kisisel .bildirim-goster:active{background:var(--ink);color:#fff}
 textarea.alanmetin{width:100%;min-height:120px;padding:12px 14px;border-radius:10px;background:var(--bg);border:1px solid var(--line2);outline:none;font:inherit;font-size:16px;color:var(--txt);resize:vertical}
 .secenek{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;background:var(--panel2);margin-top:8px;border:2px solid transparent;cursor:pointer}
 .secenek.secili{border-color:var(--ink2)}
@@ -3054,7 +3057,7 @@ async function oyuncuKart(kad){
 }
 async function bildirimEkrani(){
   yukleniyor("Bildirimler");
-  let liste, haklar, bakanTeklifleri = [], cbYardimciTeklifleri = [];
+  let liste, haklar, bakanTeklifleri = [], cbYardimciTeklifleri = [], hedefler = {};
   let hy = null;
   try { [liste, haklar, bakanTeklifleri, cbYardimciTeklifleri] = await Promise.all([
     API.rpc("bildirim_kutusu", { p_limit: 60 }),
@@ -3063,6 +3066,12 @@ async function bildirimEkrani(){
     API.rpc("cb_yardimcisi_tekliflerim").catch(() => [])
   ]); if (haklar.length) { hy = await API.rpc("hayat"); D._hayat = hy; } }
   catch (err) { iskelet("Bildirimler", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
+  // Yalnız oyuncunun kişisel bildirimlerindeki gerçek yayınları bul.
+  const hedefIdler = liste.filter(x => x.tur === "kisisel").map(x => Number(x.id)).filter(Number.isSafeInteger);
+  if (hedefIdler.length) {
+    try { hedefler = await API.rpc("bildirim_hedefleri", { p_idler: hedefIdler.slice(0, 100) }) || {}; }
+    catch (_) { hedefler = {}; }
+  }
   D.okunmamis.bildirim = 0;
   D._haklar = haklar;
   const yayinTurAd = { cb: "Ulusa sesleniş", bakan: "Bakanlık açıklaması", parti: "Parti genelgesi", vekil: "Milletvekili mesajı", belediye: "Belediye duyurusu", aday: "Seçim propagandası" };
@@ -3091,7 +3100,7 @@ async function bildirimEkrani(){
       ? `<div class="yayin ${x.yeni ? "yeni" : ""}" style="border-left-color:${e(x.parti ? x.parti.renk : "#D9A441")}" data-id="${x.id}" data-kad="${e(x.kad)}" data-benim="${x.benim ? 1 : 0}">
           <div class="ust2"><div><b>${e(x.kad)}</b> <span class="unv">${e(x.unvan)}</span></div><span class="kucuk">${zamanKisa(x.zaman)}</span></div>
           <div class="kucuk" style="margin-top:2px">${yayinTurAd[x.yayin_tur] || "Yayın"}${x.benim ? " · senin yayının" : ""}</div><p>${e(x.metin)}</p></div>`
-      : `<div class="kisisel ${x.yeni ? "yeni" : ""}"><span style="color:var(--acc);flex:none">${IKON.zil.replace("<svg", '<svg width="18" height="18"')}</span><div style="flex:1">${e(x.metin)}<div class="kucuk">${zamanKisa(x.zaman)}</div></div></div>`).join("")
+      : `<div class="kisisel ${x.yeni ? "yeni" : ""}"><span style="color:var(--acc);flex:none">${IKON.zil.replace("<svg", '<svg width="18" height="18"')}</span><div style="flex:1">${e(x.metin)}<div class="kucuk bildirim-alt"><span>${zamanKisa(x.zaman)}</span>${hedefler[String(x.id)] && hedefler[String(x.id)].tur === "dernek_eylem" && Number.isSafeInteger(Number(hedefler[String(x.id)].id)) ? `<button type="button" class="bildirim-goster" onclick="bildirimGoster(\'dernek_eylem\',${Number(hedefler[String(x.id)].id)})" aria-label="Bildirimin kaynağını göster">Göster ›</button>` : ""}</div></div></div>`).join("")
       || `<div class="bos">Henüz bildirim yok. Seçimlere yaklaştıkça adaylar ve parti yönetimi sana mesaj gönderecek.</div>`}`, { geri: true });
   document.querySelectorAll(".yayin").forEach(el => el.onclick = () => { if (el.dataset.benim !== "1") mesajMenu("yayin", +el.dataset.id, el.dataset.kad, el); });
   const rk = $("#reklam");
@@ -3099,6 +3108,11 @@ async function bildirimEkrani(){
     if (!await onayla("Ek yayın hakkı", `Cüzdanından ${tlYaz(hy.fiyat.reklam)} düşer. Bugünkü günlük hakkın bitince bu ek hakla bir yayın daha gönderebilirsin (günde en fazla 3 ek hak).`, "Satın al")) return;
     try { await islem(() => API.rpc("reklam_al"), "Ek yayın hakkı alındı."); bildirimEkrani(); } catch (_) {}
   };
+}
+function bildirimGoster(tur, id) {
+  if (tur === "dernek_eylem" && Number.isSafeInteger(+id) && +id > 0) {
+    ekranAc(() => stkYayinGoster(+id));
+  }
 }
 async function bakanTeklifYanit(id, kabul){
   if(!await onayla("Bakanlık teklifi", kabul ? "Bakanlık görevini kabul edersen mevcut makamların korunur ve bakanlık yetkilerin eklenir." : "Bakanlık teklifini reddetmek istiyor musun?", kabul ? "Kabul et" : "Reddet")) return;
@@ -5461,6 +5475,27 @@ function stkEylemHtml(x, opt) {
     <b style="display:block;margin-top:6px">${e(x.baslik)}</b>
     ${opt.dernekAdi !== false ? `<div class="kucuk"><a class="bag" href="#" onclick="ekranAc(()=>stkDetay(${x.dernek.id}));return false">${e(x.dernek.ad)}</a>${x.hedef_ad ? " · " + e(x.hedef_ad) : ""}</div>` : x.hedef_ad ? `<div class="kucuk">Konu: ${e(x.hedef_ad)}</div>` : ""}
     <p style="white-space:pre-wrap;margin-top:6px;font-size:14.5px">${e(x.metin)}</p>${katil}</div>`;
+}
+
+// Bildirimden doğrudan açıklamanın kendisine açılan detay sayfası.
+async function stkYayinGoster(id) {
+  yukleniyor("Yayın");
+  let x;
+  try { x = await API.rpc("dernek_eylem_oku", { p_eylem: id }); }
+  catch (err) {
+    iskelet("Yayın", '<div class="bos">' + e(hataCevir(err.message)) + '</div>', { geri: true });
+    return;
+  }
+  if (!x || !x.id) {
+    iskelet("Yayın", '<div class="bos">Bu yayın kaldırılmış veya artık erişilemiyor.</div>', { geri: true });
+    return;
+  }
+  const dId = Number(x.dernek && x.dernek.id);
+  const kId = x.hedef_tur === "kanun" && /^[0-9]+$/.test(String(x.hedef_id)) ? Number(x.hedef_id) : null;
+  iskelet(STK_TUR[x.tur] || "Yayın", stkEylemHtml(x) +
+    (Number.isSafeInteger(dId) && dId > 0 ? '<button class="btn ikinci" onclick="ekranAc(()=>stkDetay(' + dId + '))">Derneğin sayfasına git</button>' : '') +
+    (Number.isSafeInteger(kId) && kId > 0 ? '<button class="btn ikinci" onclick="ekranAc(()=>kanunEkrani(' + kId + '))">İlgili kanun teklifine git</button>' : ''),
+    { geri: true });
 }
 
 async function stkEkrani() {
