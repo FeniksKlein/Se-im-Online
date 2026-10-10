@@ -1800,8 +1800,8 @@ async function cbYardimciAtaModal(sira, dolu){
     <button class="btn altin" id="cbYata">Yardımcılık teklifi gönder</button>
     ${dolu ? `<button class="btn tehlike" id="cbYal">Görevden al</button>` : ""}`);
   const kutu = $("#badaylar",m); let zam=null;
-  $("#bkad",m).oninput=()=>{clearTimeout(zam);zam=setTimeout(()=>bakanAdayAra(m,kutu),250);};
-  bakanAdayAra(m,kutu);
+  $("#bkad",m).oninput=()=>{clearTimeout(zam);zam=setTimeout(()=>bakanAdayAra(m,kutu,"cb_yardimcisi_adaylari"),250);};
+  bakanAdayAra(m,kutu,"cb_yardimcisi_adaylari");
   $("#cbYata",m).onclick=async()=>{
     const kad=$("#bkad",m).value.trim();if(!kad)return toast("Bir oyuncu seç.",true);
     try{await islem(()=>API.rpc("cb_yardimcisi_ata",{p_sira:sira,p_kad:kad}),"Cumhurbaşkanı yardımcılığı teklifi gönderildi.");modalKapat();yenidenCiz();}catch(_){}
@@ -2076,10 +2076,10 @@ async function referandumEkrani(id){
     };
   }
 }
-async function bakanAdayAra(m, kutu){
+async function bakanAdayAra(m, kutu, aramaFonksiyonu = "bakan_adaylari"){
   const ara = $("#bkad", m).value.trim();
   try {
-    const l = await API.rpc("bakan_adaylari", { p_ara: ara });
+    const l = await API.rpc(aramaFonksiyonu, { p_ara: ara });
     kutu.innerHTML = l.map(x => `<div class="liste-satir" data-kad="${e(x.kad)}" style="cursor:pointer;${x.uygun ? "" : "opacity:.6"}"><div class="orta"><b>${e(x.kad)}</b> ${x.parti ? `<span class="kucuk" style="color:${e(x.parti.renk)}">${e(x.parti.kisa)}</span>` : `<span class="kucuk">Bağımsız</span>`}
       <div class="kucuk">${e(x.il)} · ${e(x.statu)}${x.bakanlik ? " · şu an " + e(x.bakanlik.replace("Bakanlığı", "Bakanı")) : ""}${x.engel ? ` · <span style="color:var(--gold2)">${e(x.engel)}</span>` : ""}</div></div>${x.uygun ? `<span class="rozet altin">Seç</span>` : ""}</div>`).join("")
       || `<div class="bos">Eşleşen oyuncu yok.</div>`;
