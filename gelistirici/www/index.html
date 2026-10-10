@@ -816,7 +816,7 @@ async function profilOlusturEkrani(){
     const kad = $("#kad").value.trim(), il = +$("#il").value, h = $("#hata"); h.textContent = "";
     if (!il) return h.textContent = "Bir il seç.";
     $("#tamam").disabled = true;
-    try { await oturumKaydet(); await API.rpc("profil_olustur", { p_kad: kad, p_il: il }); await basla(); }
+    try { await oturumKaydet(); await API.rpc(D.durum && D.durum.kayit_durumu === "beklemede" ? "kayit_basvur" : "profil_olustur", { p_kad: kad, p_il: il }); await basla(); }
     catch (err) { h.textContent = hataCevir(err.message); const b = $("#tamam"); if (b) b.disabled = false; }
   };
 }
@@ -2977,6 +2977,30 @@ function yetkim(){
   const p = D.durum && D.durum.profil, y = (p && p.yetkiler) || { yonetici: !!(p && p.yonetici), moderator: false, liste: [] };
   return { y, var_: (k) => y.yonetici || (y.liste || []).includes(k) };
 }
+async function yoneticiBasvuruCiz(){
+  const el=$("#ykayitbasvurulari"); if(!el)return;
+  try {
+    const l=await API.rpc("admin_kayit_basvurulari");
+    const bekleyen=l.filter(x=>x.durum==="beklemede");
+    const diger=l.filter(x=>x.durum!=="beklemede");
+    const satir=(x,aktif)=>`<div class="liste-satir" style="display:block;border-bottom:1px solid var(--line);padding:12px 2px">
+      <b>${e(x.kad||"Kullanıcı adı yok")}</b><div class="kucuk">${e(x.il||"İl seçilmedi")} · ${tarihSaat(x.basvuru_at||x.olusturma)} · ${e(x.durum)}</div>
+      ${aktif ? `<div class="satir" style="margin-top:9px">
+        <button class="rozet yesil" data-kayit-id="${e(x.user_id)}" data-kayit-karar="onay">İzin ver</button>
+        <button class="rozet kirmizi" data-kayit-id="${e(x.user_id)}" data-kayit-karar="ret">Reddet</button></div>` : ""}</div>`;
+    el.innerHTML=`<div class="kucuk">${bekleyen.length} onay bekliyor. Onaylanana kadar oyuna giremezler.</div>`
+      +(bekleyen.map(x=>satir(x,true)).join("")||'<div class="bos">Bekleyen başvuru yok.</div>')
+      +(diger.length ? `<details style="margin-top:12px"><summary>Geçmiş kararlar (${diger.length})</summary>${diger.map(x=>satir(x,false)).join("")}</details>` : "");
+    el.querySelectorAll("[data-kayit-id]").forEach(b=>b.onclick=async()=>{
+      const onay=b.dataset.kayitKarar==="onay", id=b.dataset.kayitId;
+      if(!onay && !await onayla("Katılımı reddet","Bu oyuncu oyuna alınmayacak. Başvurusu reddedilecek.","Reddet",true))return;
+      b.disabled=true;
+      try { await API.rpc("admin_kayit_karar",{p_user:id,p_onay:onay});
+        toast(onay?"Oyuncu onaylandı, oyuna katılabilir.":"Başvuru reddedildi."); await yoneticiBasvuruCiz();
+      } catch(err){toast(hataCevir(err.message),true);b.disabled=false;}
+    });
+  }catch(err){el.innerHTML=`<div class="hata-metin">${e(hataCevir(err.message))}</div>`;}
+}
 async function yoneticiEkrani(){
   try { await durumYenile(); } catch (_) {}
   const { y, var_ } = yetkim(), baslik = y.yonetici ? "Yönetici paneli" : "Moderatör paneli";
@@ -2987,6 +3011,7 @@ async function yoneticiEkrani(){
   const NEDEN = { hakaret: "hakaret", nefret: "nefret", taciz: "taciz", spam: "spam", uygunsuz: "uygunsuz", diger: "diğer" };
   const KARAR = [["yok_say","Sorun yok"],["gizle","Gizle"]].concat(var_("sustur") ? [["gizle_sustur1","Gizle + 1 gün sustur"],["gizle_sustur7","Gizle + 7 gün sustur"]] : [], var_("hesap_kapat") ? [["kapat","Hesabı kapat"]] : []);
   iskelet(baslik, `
+    ${y.yonetici ? '<div class="kart"><h2>Yeni oyuncu başvuruları</h2><div id="ykayitbasvurulari">Yükleniyor…</div></div>' : ""}
     ${!y.yonetici ? `<div class="kart"><b>Moderatörsün</b><div class="alt">Yetkilerin: ${(y.liste || []).map(k => MOD_YETKI[k] || k).join(", ")}. Yaptığın her işlem kayda geçer ve oyunun yöneticisi tarafından görülür. Yöneticiye ve diğer moderatörlere işlem yapamazsın.</div></div>` : ""}
     ${o ? `<div class="kart"><h2>Özet</h2><div class="gosterge">
       <div><div class="ad">Oyuncu</div><div class="deger">${fmt(o.oyuncu)}</div><div class="fark">+${o.yeni24} bugün</div></div>
@@ -3020,7 +3045,7 @@ async function yoneticiEkrani(){
   if ($("#yara")) $("#yara").onclick = () => yoneticiOyuncu($("#ykad").value.trim());
   if ($("#ygonder")) $("#ygonder").onclick = async () => { try { const r = await API.rpc("admin_duyuru", { p_metin: $("#yduyuru").value }); toast(`Duyuru ${r.kitle} oyuncuya gönderildi.`); $("#yduyuru").value = ""; } catch (err) { toast(hataCevir(err.message), true); } };
   if (var_("coklu_hesap")) yoneticiSupheCiz();
-  if (y.yonetici) { yoneticiTransferCiz(); yoneticiModCiz(); yoneticiKayitCiz();
+  if (y.yonetici) { yoneticiBasvuruCiz(); yoneticiTransferCiz(); yoneticiModCiz(); yoneticiKayitCiz();
     try { const sv = await API.rpc("surum"); $("#ysunucu").textContent = sv.sunucu || "—"; $("#yminsurum").value = sv.min_uygulama || "0";
       $("#yminkaydet").onclick = async () => { try { await API.rpc("admin_min_uygulama", { p_surum: $("#yminsurum").value.trim() }); toast("Kaydedildi."); } catch (err) { toast(hataCevir(err.message), true); } }; } catch (_) {} }
   if (var_("kurallar")) try {
@@ -3909,6 +3934,13 @@ async function surumKontrol(){
   } catch (_) {}
   return true;
 }
+function kayitDurumuEkrani(durum){
+  const reddedildi = durum === "reddedildi";
+  $("#app").innerHTML = `<div class="karsila">${LOGO}<h1>${reddedildi ? "Başvurun reddedildi" : "Yönetici onayı bekleniyor"}</h1>
+    <p class="giris">${reddedildi ? "Oyuna katılım başvurun yönetici tarafından reddedildi. Oyuna giriş yapamazsın." : "Kayıt başvurun alındı. Oyun yöneticisi hesabını inceleyip onayladığında oyuna katılabileceksin."}</p>
+    ${reddedildi ? "" : '<button class="btn" onclick="basla()">Onay durumunu kontrol et</button>'}
+    <button class="btn ikinci" onclick="cikisYap()">Çıkış yap</button></div>`;
+}
 async function basla(){
   if (!await surumKontrol()) return;
   const o = await API.oturum();
@@ -3918,7 +3950,10 @@ async function basla(){
     $("#app").innerHTML = `<div class="karsila"><h1>Bağlantı sorunu</h1><p class="giris">${e(hataCevir(err.message))}</p><button class="btn" onclick="basla()">Tekrar dene</button><button class="btn ikinci" onclick="cikisYap()">Çıkış</button></div>`;
     return;
   }
-  if (!D.durum.profil) return profilOlusturEkrani();
+  if (!D.durum.profil) {
+    if (D.durum.kayit_durumu === "reddedildi" || (D.durum.kayit_durumu === "beklemede" && D.durum.kayit_basvuru_at)) return kayitDurumuEkrani(D.durum.kayit_durumu);
+    return profilOlusturEkrani();
+  }
   try { PARTI_ON = await API.rpc("partiler"); } catch (_) {}
   if (typeof kimlikYukle === "function") await kimlikYukle([D.durum.profil.kad]);
   sekmeAc("gundem");
