@@ -95,8 +95,8 @@ begin
   end if;
 end $$;
 
--- Cumhurbaşkanı bir bakanlığa atama yapar. Atanan kişinin varsa vekilliği/belediye başkanlığı düşer
--- (vekilliğine listeden yedek gelir); bakanlıkta biri varsa görevden alınır.
+-- Cumhurbaşkanı bir bakanlığa atama yapar. Milletvekilliği bakanlıkla birlikte sürdürülebilir;
+-- belediye başkanlığı gibi uyumsuz görevler önce bırakılır. Eski bakan görevden alınır.
 create or replace function public.bakan_ata(p_bakanlik text, p_kad text) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
 declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); h oyun.profiller; b oyun.bakanliklar; m record;
@@ -110,7 +110,7 @@ begin
   if exists (select 1 from oyun.makamlar where tur = 'bakan' and bakanlik = b.kod and bit is null and user_id = h.id) then
     raise exception '% zaten bu bakanlıkta.', h.kad;
   end if;
-  -- tek görev kuralı: başka görevi olan kişi bakan atanamaz; önce istifa etmelidir
+  -- Rol uyumluluğunu kontrol et: milletvekilliği bakanlıkla uyumludur.
   if oyun.rol_cakisma(h.id, 'bakan') is not null then
     raise exception '% şu anda % görevinde. Bakan atanabilmesi için önce o görevden ayrılması gerekir.', h.kad, oyun.rol_cakisma(h.id, 'bakan');
   end if;
