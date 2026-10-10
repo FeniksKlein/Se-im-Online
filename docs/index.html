@@ -1745,7 +1745,7 @@ async function hukumetHtml(){
       <div class="kv"><span class="k">Fiyat düzeyi</span><span class="v">×${fmt(u.endeks,3)}</span></div></div>
     <div class="kart"><h2>Bütçe ve bakanlık kasaları</h2>${u.butce.map(b => `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:13.5px"><span>${e(b.ad.replace(" Bakanlığı",""))}</span><span class="kucuk">%${fmt(b.pay,1)} · kasa ${fmt(b.kasa,1)}</span></div><div class="bar"><i style="width:${Math.min(100,b.pay*4)}%;background:var(--gold)"></i></div></div>`).join("")}</div>
     <div class="kart"><h2>Kabine (${dolu}/12)</h2>
-      ${yurutmeyim ? `<p class="alt" style="margin-bottom:6px">Bakanları sen atarsın. Milletvekilleri vekillikten ayrılmadan bakan atanabilir; diğer uyumsuz görevlerde istifa şartı devam eder.</p>` : ""}
+      ${yurutmeyim ? `<p class="alt" style="margin-bottom:6px">Bakanları sen atarsın. Bakanlık teklifi her oyuncuya gönderilebilir. Oyuncu kabul ederse mevcut tüm makamlarını koruyarak ayrıca bakan olur.</p>` : ""}
       ${kab.bakanlar.map(b => `<div class="liste-satir"><div class="orta"><b>${e(b.ad.replace("Bakanlığı","Bakanı"))}</b><div class="kucuk">${b.kad ? `<a class="bag" href="#" onclick="oyuncuKart('${e(b.kad)}');return false">${e(b.kad)}</a> ${b.parti ? `· <span style="color:${e(b.parti.renk)}">${e(b.parti.kisa)}</span>` : "· Bağımsız"}` : "Atanmadı"}</div></div>
         ${yurutmeyim ? `<button class="rozet ${b.kad ? "" : "altin"}" onclick="bakanAtaModal('${b.kod}','${e(b.ad)}',${b.kad ? "true" : "false"})">${b.kad ? "Değiştir" : "Ata"}</button>` : ""}</div>`).join("")}</div>
     <div class="kart"><h2>En gelişmiş iller</h2>${u.iller.slice(0,5).map(x => `<div class="kv"><span class="k">${e(x.ad)}</span><span class="v">${fmt(x.gelisim,1)}</span></div>`).join("")}
@@ -2375,17 +2375,17 @@ async function kanunTeklifEkrani(tur0, kod0){
 }
 async function bakanAtaModal(kod, ad, dolu){
   const m = modal(`<h3 style="font-size:19px;font-weight:800">${e(ad.replace("Bakanlığı", "Bakanı"))}</h3>
-    <p class="alt">İstediğin oyuncuyu ara ve seç: herhangi bir partiden ya da bağımsız olabilir. Görev süren boyunca istediğin an görevden alıp yerine başkasını atayabilirsin. Milletvekilleri görevlerini koruyarak bakan atanabilir; belediye başkanları önce görevlerinden ayrılmalıdır.</p>
+    <p class="alt">İstediğin oyuncuya bakanlık teklifi gönder. Oyuncu bildirimden kabul veya ret verebilir. Kabul ederse mevcut makamları korunur, bakanlık ek görev olarak başlar. Görevde bakan varsa yeni teklif kabul edilene kadar görevini sürdürür.</p>
     <div class="alan"><label>Oyuncu ara</label><input id="bkad" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Kullanıcı adı"></div>
     <div id="badaylar" style="max-height:40vh;overflow:auto;margin-bottom:8px"><div class="kucuk">Yükleniyor…</div></div>
-    <button class="btn altin" id="ata">Ata</button>
+    <button class="btn altin" id="ata">Bakanlık teklifi gönder</button>
     ${dolu ? `<button class="btn tehlike" id="al">Görevden al</button>` : ""}`);
   const kutu = $("#badaylar", m); let zam = null;
   $("#bkad", m).oninput = () => { clearTimeout(zam); zam = setTimeout(() => bakanAdayAra(m, kutu), 250); };
   bakanAdayAra(m, kutu);
   $("#ata", m).onclick = async () => {
     const kad = $("#bkad", m).value.trim(); if (!kad) return toast("Bir oyuncu seç.", true);
-    try { await islem(() => API.rpc("bakan_ata", { p_bakanlik: kod, p_kad: kad }), `${kad} atandı.`); modalKapat(); yenidenCiz(); } catch (_) {}
+    try { await islem(() => API.rpc("bakan_ata", { p_bakanlik: kod, p_kad: kad }), `${kad} adlı oyuncuya bakanlık teklifi gönderildi.`); modalKapat(); yenidenCiz(); } catch (_) {}
   };
   const al = $("#al", m);
   if (al) al.onclick = async () => { try { await islem(() => API.rpc("bakan_gorevden_al", { p_bakanlik: kod }), "Görevden alındı."); modalKapat(); yenidenCiz(); } catch (_) {} };
@@ -2979,14 +2979,26 @@ async function oyuncuKart(kad){
 }
 async function bildirimEkrani(){
   yukleniyor("Bildirimler");
-  let liste, haklar;
+  let liste, haklar, bakanTeklifleri = [];
   let hy = null;
-  try { [liste, haklar] = await Promise.all([API.rpc("bildirim_kutusu", { p_limit: 60 }), API.rpc("yayin_haklari")]); if (haklar.length) { hy = await API.rpc("hayat"); D._hayat = hy; } }
+  try { [liste, haklar, bakanTeklifleri] = await Promise.all([
+    API.rpc("bildirim_kutusu", { p_limit: 60 }),
+    API.rpc("yayin_haklari"),
+    API.rpc("bakan_tekliflerim").catch(() => [])
+  ]); if (haklar.length) { hy = await API.rpc("hayat"); D._hayat = hy; } }
   catch (err) { iskelet("Bildirimler", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
   D.okunmamis.bildirim = 0;
   D._haklar = haklar;
   const yayinTurAd = { cb: "Ulusa sesleniş", bakan: "Bakanlık açıklaması", parti: "Parti genelgesi", vekil: "Milletvekili mesajı", belediye: "Belediye duyurusu", aday: "Seçim propagandası" };
   iskelet("Bildirimler", `
+    ${bakanTeklifleri.length ? `<div class="kart"><h2>Bakanlık tekliflerin (${bakanTeklifleri.length})</h2>
+      <p class="alt">Teklifi kabul edersen mevcut görevlerin ve makamların korunur. Bakanlık ek görev olarak başlar.</p>
+      ${bakanTeklifleri.map(t => `<div class="liste-satir" style="display:block">
+        <b>${e(t.bakanlik_ad)}</b><div class="kucuk">${e(t.teklif_eden)} · ${zamanKisa(t.zaman)}</div>
+        <div class="satir" style="gap:8px;margin-top:9px">
+          <button class="btn altin" style="flex:1" onclick="bakanTeklifYanit(${Number(t.id)},true)">Kabul et</button>
+          <button class="btn ikinci" style="flex:1" onclick="bakanTeklifYanit(${Number(t.id)},false)">Reddet</button>
+        </div></div>`).join("")}</div>` : ""}
     ${haklar.length ? `<div class="olay basvuru"><div class="baslik"><b>Propaganda yayınla</b><span class="rozet altin">${haklar.reduce((t, h) => t + h.kalan, 0) + (hy ? hy.ek_yayin.elde : 0)} hak</span></div>
       <p class="alt" style="margin-top:6px">Görevin ve adaylıkların sayesinde seçmenlere doğrudan mesaj gönderebilirsin. Haklar her gece yenilenir.${hy && hy.ek_yayin.elde ? ` Satın aldığın ${hy.ek_yayin.elde} ek hak, günlük hakkın bitince kullanılır.` : ""}</p>
       <button class="btn altin" onclick="yayinModal()">${IKON.megafon} Yeni yayın</button>
@@ -3003,6 +3015,14 @@ async function bildirimEkrani(){
     if (!await onayla("Ek yayın hakkı", `Cüzdanından ${tlYaz(hy.fiyat.reklam)} düşer. Bugünkü günlük hakkın bitince bu ek hakla bir yayın daha gönderebilirsin (günde en fazla 3 ek hak).`, "Satın al")) return;
     try { await islem(() => API.rpc("reklam_al"), "Ek yayın hakkı alındı."); bildirimEkrani(); } catch (_) {}
   };
+}
+async function bakanTeklifYanit(id, kabul){
+  if(!await onayla("Bakanlık teklifi", kabul ? "Bakanlık görevini kabul edersen mevcut makamların korunur ve bakanlık yetkilerin eklenir." : "Bakanlık teklifini reddetmek istiyor musun?", kabul ? "Kabul et" : "Reddet")) return;
+  try {
+    await islem(() => API.rpc("bakan_teklif_yanit", { p_teklif: id, p_kabul: kabul }), kabul ? "Bakanlık görevini kabul ettin." : "Teklifi reddettin.");
+    await durumYenile();
+    bildirimEkrani();
+  }catch(_){}
 }
 function yayinModal(){
   const haklar = D._haklar || [];
