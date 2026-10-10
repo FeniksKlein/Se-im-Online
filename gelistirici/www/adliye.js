@@ -57,7 +57,7 @@ async function adliyeHtml(){
   +'<button class="btn" onclick="adlDavaModal()">Dava aç</button></div>'
   +'<div class="kart"><h3>Parti Sözcüleri</h3>'+adlSozcuGorevleri()
   +d.partiler.map(pa=>'<div class="liste-satir"><div class="orta"><b>'+e(pa.kisa||pa.ad)+'</b><div class="kucuk">Sözcü: '+e(pa.sozcu||"Atanmadı")+' · Genel başkan: '+e(pa.gb||"—")+'</div></div>'
-      +(pa.gb_miyim?'<button class="btn ikinci" style="width:auto" onclick="adlSozcuModal('+pa.id+')">Ata / Al</button>':'')+'</div>').join("")
+      +'<button class="btn ikinci" style="width:auto" onclick="ekranAc(()=>partiDetay('+pa.id+'))">Parti sayfası</button>'+'</div>').join("")
   +(!d.partiler.length?'<p class="alt">Kayıtlı parti bulunmuyor.</p>':'')+'</div>'
   +'<div class="bolum-bas"><h2>Açık davalar ('+acik.length+')</h2></div>'
   +(acik.length?acik.map(adlDavaKart).join(""):'<div class="kart"><p class="alt">Şu anda açık dava yok.</p></div>')
