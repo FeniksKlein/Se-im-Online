@@ -2956,7 +2956,7 @@ async function partiDetay(id){
     <div id="partiKimlikKart"></div>
     <div id="partiAdayKart"></div>
     <div class="kart"><h2>Yönetim</h2>
-      <div class="kv"><span class="k">Genel Başkan</span><span class="v">${p.gb ? `<a class="bag" href="#" onclick="oyuncuKart('${e(p.gb)}');return false">${e(p.gb)}</a>` : "— (genel başkansız)"}</span></div>
+      <div class="kv"><span class="k">${p.gb_vekaleten ? "Vekâleten Genel Başkan" : "Genel Başkan"}</span><span class="v">${p.gb ? `<a class="bag" href="#" onclick="oyuncuKart('${e(p.gb)}');return false">${e(p.gb)}</a>${p.gb_vekaleten ? `<span class="rozet altin" style="margin-left:6px">Kurultaya kadar</span>` : ""}` : "— (genel başkansız)"}</span></div>
       ${!p.gb && p.uyesiyim && !araKurultay ? `<button class="btn" onclick="gbUslen(${p.id})">Genel başkanlığı üstlen</button>` : ""}${araKurultay ? `<div class="kucuk" style="margin-top:8px;color:var(--gold2)">Olağanüstü kurultay süreci başladı; yeni genel başkan seçimle belirlenecek.</div>` : ""}
       ${[1,2,3,4,5,6].map(i => { const g = p.gby.find(x => x.sira === i); return `<div class="kv"><span class="k" data-gby-sira="${i}">GB Yardımcısı ${i}</span><span class="v">${g ? `<a class="bag" href="#" onclick="oyuncuKart('${e(g.kad)}');return false">${e(g.kad)}</a>` : "—"}</span></div>`; }).join("")}
       ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn ikinci" onclick="gbyGorevModal(${p.id})">Yardımcılara görev ver</button><button class="btn ikinci" onclick="partiAdModal(${p.id})">Parti adını değiştir</button><button class="btn altin" onclick="ucretModal(${p.id})">Adaylık ücretlerini değiştir</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
@@ -3115,7 +3115,39 @@ async function gorevIstifa(gorev){
     yenidenCiz();
   } catch (_) {}
 }
+async function gbIstifaVekilModal(){
+  let bilgi;
+  try { bilgi = await API.rpc("gb_istifa_adaylar", {}); }
+  catch (err) { toast(hataCevir(err.message), true); return; }
+  const adaylar = Array.isArray(bilgi.adaylar) ? bilgi.adaylar : [];
+  const yardimciVar = adaylar.some(a => a.kaynak === "gby");
+  const secenekler = adaylar.map(a => `<option value="${e(a.id)}">${e(a.kad)}${a.kaynak==="gby" ? " · Genel Başkan Yardımcısı "+a.sira : ""}</option>`).join("");
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">Yerine kim vekâleten genel başkan olsun?</h3>
+    <p class="alt" style="margin-top:8px">${e(bilgi.parti)} genel başkanlığından ayrılıyorsun. Seçtiğin kişi kurultayda yeni genel başkan seçilene kadar partiyi yönetecek ve genel başkan yetkilerini kullanacak.</p>
+    ${adaylar.length ? `<div class="alan"><label for="gbIstifaVekil">${yardimciVar ? "Genel başkan yardımcılarından birini seç" : "Genel başkan yardımcısı yok: parti üyelerinden birini seç"}</label>
+      <select id="gbIstifaVekil">${secenekler}</select></div>` :
+      '<div class="bos">Partide vekâlet edebilecek başka uygun oyuncu bulunamadı. İstifa edersen genel başkanlık kurultaya kadar boş kalacak.</div>'}
+    <p class="kucuk" style="margin-top:10px">İstifa işlemi geri alınamaz. Kurultay üyelerin oylarıyla yapılır.</p>
+    <div class="hata-metin" id="gbIstifaHata"></div>
+    <button class="btn tehlike" id="gbIstifaOnay">İstifa et ve vekâleti devret</button>
+    <button class="btn ikinci" id="gbIstifaIptal">Vazgeç</button>`);
+  $("#gbIstifaIptal",m).onclick=()=>modalKapat();
+  $("#gbIstifaOnay",m).onclick=async()=>{
+    const aday=adaylar.length ? $("#gbIstifaVekil",m).value : null;
+    const secilen=adaylar.find(a=>a.id===aday);
+    const mesaj=secilen
+      ? `Genel başkanlıktan ayrılacaksın. ${secilen.kad} kurultaya kadar vekâleten genel başkan olacak. Onaylıyor musun?`
+      : "Genel başkanlıktan ayrılacaksın. Uygun vekil bulunmadığı için kurultaya kadar makam boş kalacak. Onaylıyor musun?";
+    if(!await onayla("Genel başkanlık devri",e(mesaj),"İstifa et",true))return;
+    try{
+      await islem(()=>API.rpc("gb_istifa_vekil_sec",{p_vekil:aday}),"İstifan kaydedildi. Vekâlet devredildi ve kurultay süreci açıldı.");
+      await durumYenile();
+      yenidenCiz();
+    }catch(_){}
+  };
+}
 async function makamIstifa(gorev){
+  if (gorev === 'gb') return gbIstifaVekilModal();
   const bilgi = {
     gb: ["Genel başkanlık", "Parti genel başkanlığı hemen boşalır; en yakın zamanda olağanüstü kurultay yapılır."],
     cb: ["Cumhurbaşkanlığı", "Makam hemen boşalır; en yakın zamanda olağanüstü cumhurbaşkanlığı seçimi yapılır."],
