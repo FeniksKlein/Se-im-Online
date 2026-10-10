@@ -151,3 +151,9 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Sunucu: `74_meclis_rehber.sql` → `public.meclis_rehber()` (yalnız okuma, tablo değişikliği yok). Vekilin partisi bugünkü partisi (`oyun.gruplar()` kuralıyla aynı). `migrations/20261010_meclis_rehber.sql`. **Canlıya uygulandı** (Supabase migration `meclis_rehber_20261010`).
 - Gündem'deki Meclis şeridine dokununca rehber açılır.
 - **Dikkat:** `docs/index.html`, `www/index.html` ve kök `supabase-kurulum.sql` kaynaktan derlenen hâlden farklı (başka oturumların doğrudan yaptığı değişiklikler: parti birleşme/ortak MV listesi vb.; 64, 66, 67, 72, 73 SQL modülleri birleştirme listesinde yok). Bu güncelleme bu dosyalara yama olarak eklendi, tam yeniden derleme yapılmadı. Kaynak eşitlemesi ayrıca yapılmalı.
+
+## 2026-10-10 · 2026.10.10-24 Meclis ayrı alt menü
+- Alt menüye "Meclis" sekmesi eklendi (Devlet'ten sonra; `EKRAN.meclis` → `meclisEkrani`, yeni yarım daire simgesi). Meclis rehberinin beş alt sekmesi burada.
+- Devlet ekranındaki "Meclis" ve "Adliye" sekmeleri kaldırıldı (Adliye'nin zaten alt menüsü var). Eski bağlantılar (`D.devletSekme='meclis'/'adliye'`) devletEkrani başında ilgili alt menüye yönlenir; Gündem'deki Meclis seçimine git bağlantısı Başkanlık alt sekmesini açar.
+- Alt menü düğmeleri ekrana sığacak şekilde esnek (`flex:1 0 42px`, dar ekranda 9,5–10 px yazı); Bakanlığım sekmesi de çıkınca menü yine yatay kayar.
+- Değişiklik `gelistirici/www/index.html`, `docs/index.html`, `www/index.html` üçüne de aynı yama olarak işlendi. Sunucu değişikliği yok.

@@ -78,10 +78,11 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .icerik{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 16px calc(var(--safeB) + 84px)}
 .icerik.tam{padding-bottom:calc(var(--safeB) + 24px)}
 .sekmeler{position:absolute;left:0;right:0;bottom:0;display:flex;padding:0 4px var(--safeB);background:var(--bg2);border-top:1px solid var(--line);z-index:6;touch-action:pan-x pan-y;overflow-x:auto;scrollbar-width:none}
-.sekmeler button{position:relative;flex:0 0 55px;min-width:55px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 5px;font-size:11px;font-weight:600;color:var(--faint)}
+.sekmeler button{position:relative;flex:1 0 42px;min-width:42px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 5px;font-size:11px;font-weight:600;color:var(--faint)}
 .sekmeler button span:not(.sayi):not(.nokta){max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:360px){.sekmeler{padding-left:0;padding-right:0}.sekmeler button{font-size:9.5px;letter-spacing:-.35px}.sekmeler button svg{width:20px;height:20px}}
 .sekmeler button svg{width:22px;height:22px}
+@media (max-width:440px){.sekmeler button{font-size:10px;letter-spacing:-.3px}}@media (max-width:400px){.sekmeler button{font-size:9.5px;letter-spacing:-.45px}}
 .sekmeler button.aktif{color:var(--txt)}
 .sekmeler button.aktif::before{content:"";position:absolute;top:0;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--ink)}
 .sekmeler button.aktif svg{color:var(--ink2)}
@@ -362,7 +363,7 @@ details.acilir ul{margin:6px 0 0 18px;font-size:13px;color:var(--mut)}
 .ay-lejant span{display:inline-flex;align-items:center;gap:5px}.ay-lejant i{width:10px;height:10px;border-radius:2px;display:inline-block}
 .meclis-serit{display:flex;height:10px;border-radius:2px;overflow:hidden;margin:12px 0 4px;gap:1px}
 .meclis-serit i{display:block;height:100%}
-.mc-seg{margin:-4px 0 12px}.mc-seg button{font-size:12.5px;white-space:nowrap;padding:8px 9px}
+.mc-seg{margin:0 0 12px}.mc-seg button{font-size:12.5px;white-space:nowrap;padding:8px 9px}
 .mc-sayilar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px;text-align:center}
 .mc-sayilar b{display:block;font-family:var(--disp);font-size:22px;color:var(--txt)}.mc-sayilar span{font-size:11px;color:var(--mut)}
 .mc-parti{padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}.mc-parti:last-of-type{border-bottom:0}
@@ -651,7 +652,7 @@ const IKON = {
   adliye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v17M5 20h14M3 7h18M6 7l-3 5h6L6 7zM18 7l-3 5h6l-3-5z"/></svg>',
   gundem: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>',
   harita: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>',
-  meclis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V10M9.5 21V10M14.5 21V10M19 21V10M2.5 10 12 3l9.5 7z"/></svg>',
+  meclis: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 19a9.5 9.5 0 0 1 19 0"/><path d="M6.5 19a5.5 5.5 0 0 1 11 0"/><path d="M10.5 19a1.5 1.5 0 0 1 3 0"/><path d="M2 21.5h20"/></svg>',
   parti: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
   dernek: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9l8-5 8 5v12"/><path d="M9 21v-6h6v6"/><path d="M8 10h8"/></svg>',
   ben: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
@@ -701,7 +702,7 @@ function iskelet(baslik, govde, opt){
   const ikonlar = opt.geri || opt.ikonsuz ? "" :
     `${cz ? `<button class="ikon para-cip" onclick="sekmeAc('hayat')" aria-label="Cüzdan">${paraKisa(cz.para)}</button>` : ""}<button class="ikon" onclick="ekranAc(bildirimEkrani)" aria-label="Bildirimler">${IKON.zil}<span id="zilSayi">${sayiRozet(ok.bildirim)}</span></button>
      <button class="ikon portre-ikon" onclick="sekmeAc('ben')" aria-label="Profilim">${typeof portre === "function" && D.durum && D.durum.profil ? portre(D.durum.profil.kad, D.durum.profil.parti && D.durum.profil.parti.renk) : IKON.ben}</button>`;
-  const sekmeler = opt.sekmesiz ? "" : `<nav class="sekmeler">${[["gundem","Gündem"],["adliye","Adliye"],["hayat","Hayat"],["sohbet","Sohbet"],["devlet","Devlet"],["harita","Harita"],["parti","Partiler"],["dernek","Dernekler"]]
+  const sekmeler = opt.sekmesiz ? "" : `<nav class="sekmeler">${[["gundem","Gündem"],["adliye","Adliye"],["hayat","Hayat"],["sohbet","Sohbet"],["devlet","Devlet"],["meclis","Meclis"],["harita","Harita"],["parti","Partiler"],["dernek","Dernekler"]]
     .map(([k, ad]) => `<button class="${D.sekme === k ? "aktif" : ""}${k === "sohbet" && +ok.ozel > 0 ? " mesaj-var" : ""}" ${k === "sohbet" ? `id="sohbetSekme" aria-label="Sohbet, ${+ok.ozel || 0} okunmamış özel mesaj"` : ""} onclick="sekmeAc('${k}')">${IKON[k]}<span>${ad}</span>${k === "sohbet" ? `<span id="dmSayi">${sayiRozet(ok.ozel)}</span>` : ""}${k === "hayat" && cz && (cz.dolu || cz.gunun_ilki) ? `<span class="nokta"></span>` : ""}</button>`).join("")}</nav>`;
   // Aynı ekran yenilenince (dakikalık tazeleme, işlem sonrası) kaydırma konumu korunur
   const anahtar = D.sekme + "|" + (D._ekranNo || 0) + "|" + baslik, eskiIc = $("#icerik");
@@ -1294,9 +1295,12 @@ function gostergeHtml(u){
     ${kutu("Vergi oranı", u.vergi, o.vergi, "%", 0, 1)}</div>`;
 }
 async function devletEkrani(){
+  // Meclis ve Adliye artık ayrı alt menüdür; eski bağlantılar oraya yönlenir.
+  if (D.devletSekme === "meclis") { D.devletSekme = "hukumet"; if (D._meclisSecimOdak) D.meclisSekme = "baskanlik"; return sekmeAc("meclis"); }
+  if (D.devletSekme === "adliye") { D.devletSekme = "hukumet"; return sekmeAc("adliye"); }
   D.devletSekme = D.devletSekme || "hukumet";
   yukleniyor("Devlet");
-  const seg = `<div class="segment" style="margin-bottom:12px">${[["hukumet","Hükümet"],["meclis","Meclis"],["adliye","Adliye"],["mevzuat","Mevzuat"],["gazete","Gazete"],["tarih","Tarih"]].map(([k, a]) =>
+  const seg = `<div class="segment" style="margin-bottom:12px">${[["hukumet","Hükümet"],["mevzuat","Mevzuat"],["gazete","Gazete"],["tarih","Tarih"]].map(([k, a]) =>
     `<button class="${D.devletSekme === k ? "aktif" : ""}" onclick="D.devletSekme='${k}';devletEkrani()">${a}</button>`).join("")}</div>`;
   try {
     await durumYenile();
@@ -1733,11 +1737,11 @@ async function meclisDivanHtml(){
       ${b.yetkim.ihtar ? `<button class="btn ikinci" onclick="ihtarModal()">Genel Kurul'da ihtar ver</button>` : ""}</div>
     ${b.secimler.map(meclisSecimKart).join("")}`;
 }
-async function meclisAday(id, g, ol){ D._mr = null; try { await islem(() => API.rpc("meclis_aday_ol", { p_secim: id, p_gorev: g, p_aday: ol }), ol ? "Adaylığın alındı." : "Adaylıktan çekildin."); devletEkrani(); } catch (_) {} }
+async function meclisAday(id, g, ol){ D._mr = null; try { await islem(() => API.rpc("meclis_aday_ol", { p_secim: id, p_gorev: g, p_aday: ol }), ol ? "Adaylığın alındı." : "Adaylıktan çekildin."); meclisYenile(); } catch (_) {} }
 async function meclisOy(id, g, kad){
   if (!await onayla("Gizli oy", `${MECLIS_GOREV[g]} için oyunu <b>${e(kad)}</b> adına kullanacaksın. Oy gizlidir ve geri alınamaz.`, "Oyu kullan")) return;
   D._mr = null;
-  try { await islem(() => API.rpc("meclis_oy", { p_secim: id, p_gorev: g, p_aday: kad }), "Oyun sandıkta."); devletEkrani(); } catch (_) {}
+  try { await islem(() => API.rpc("meclis_oy", { p_secim: id, p_gorev: g, p_aday: kad }), "Oyun sandıkta."); meclisYenile(); } catch (_) {}
 }
 function ihtarModal(){
   const m = modal(`<h3 style="font-size:19px;font-weight:800">Genel Kurul'da ihtar</h3><p class="alt">Düzeni bozan milletvekiline ihtar verirsen bir saat Genel Kurul'da söz alamaz. İhtar Genel Kurul tutanağına geçer.</p>
@@ -1814,10 +1818,24 @@ async function erkenSecimOy(id,oy){try{await API.rpc("erken_secim_oy",{p_id:id,p
 /* ---------- Meclis rehberi: sandalyeler, başkanlık, gruplar, il il vekiller, yasama ---------- */
 const MECLIS_SEKME = [["genel","Sandalyeler"],["baskanlik","Başkanlık"],["gruplar","Gruplar"],["vekiller","İl il vekiller"],["yasama","Yasama"]];
 function meclisSekmeAc(k, parti){
-  D.meclisSekme = k; D.devletSekme = "meclis";
+  D.meclisSekme = k;
   if (parti !== undefined) { D.mvParti = parti; D.mvAra = ""; }
-  if (D.sekme !== "devlet") sekmeAc("devlet"); else devletEkrani();
+  if (D.sekme !== "meclis") sekmeAc("meclis"); else meclisEkrani();
 }
+async function meclisEkrani(){
+  yukleniyor("Meclis");
+  try {
+    await durumYenile();
+    if (D._meclisSecimOdak) D.meclisSekme = "baskanlik";
+    iskelet("Meclis", await meclisHtml());
+    if (D._meclisSecimOdak) {
+      const hedef = document.getElementById("meclisSecim" + D._meclisSecimOdak);
+      D._meclisSecimOdak = null;
+      if (hedef) hedef.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  } catch (err) { iskelet("Meclis", `<div class="bos">${e(hataCevir(err.message))}</div>`); }
+}
+function meclisYenile(){ return D.sekme === "gundem" ? gundemEkrani() : meclisEkrani(); }
 async function meclisRehberAl(){
   if (D._mr && simdi() - D._mr.t < 20e3) return D._mr.v;
   const v = await API.rpc("meclis_rehber"); D._mr = { t: simdi(), v }; return v;
@@ -4059,7 +4077,7 @@ function teskilatGorevModal(pid){
 /* =====================================================================
    12) BAŞLAT
    ===================================================================== */
-const EKRAN = { gundem: gundemEkrani, hayat: hayatEkrani, sohbet: sohbetListe, devlet: devletEkrani, adliye: () => adliyeEkrani(), harita: haritaEkrani, parti: partilerEkrani, dernek: () => stkEkrani(), ben: benEkrani };
+const EKRAN = { gundem: gundemEkrani, hayat: hayatEkrani, sohbet: sohbetListe, devlet: devletEkrani, meclis: () => meclisEkrani(), adliye: () => adliyeEkrani(), harita: haritaEkrani, parti: partilerEkrani, dernek: () => stkEkrani(), ben: benEkrani };
 // Sunucu bu uygulama sürümünü artık desteklemiyorsa güncelleme ister (oyuncunun verisi sunucuda, kaybolmaz)
 function surumKucuk(a, b){ return /^\d/.test(a) && /^\d/.test(b) && a.localeCompare(b, "en", { numeric: true }) < 0; }
 async function surumKontrol(){
