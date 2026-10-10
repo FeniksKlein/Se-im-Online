@@ -145,3 +145,9 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Arayüz: `gelistirici/www/halka_arz.js` (derle.js'e eklendi); Şirketlerim'de her şirket kartında "Halka arz ve yatırım hesabı", üst kartta ve şirket rehberinde "Halka arzlar" düğmesi.
 - Test: `python3 test/halka_arz.py` (hepsi.sh'te). Migration eski sürümlü veritabanına iki kez uygulandı.
 - Ayrıca `60_imza_dilekce_katilim.sql` satır 42-46 `$` yerine `$$` olarak düzeltildi (tam kurulum dosyası bu yüzden kurulmuyordu; canlıdaki migration doğruydu, canlıya etkisi yok).
+
+## 2026-10-10 · 2026.10.10-23 Meclis rehberi
+- Devlet › Meclis artık beş alt sekmeli: **Sandalyeler** (yarım daire, dolu/boş, kanun için gereken evet, grup eşiği, parti parti sandalye ve oran), **Başkanlık** (TBMM Başkanı / Geçici Başkan, başkanvekilleri, Divan seçimleri, ihtar), **Gruplar** (her grubun grup başkanı, grup başkanvekilleri x/kota, vekilleri; grubu olmayan partiler; bağımsızlar), **İl il vekiller** (81 il, kontenjan/dolu, isim ve parti, görev rozetleri, "X listesinden seçildi"; arama, parti süzgeci, boş illeri göster), **Yasama** (eski kanun/işlem içeriği).
+- Sunucu: `74_meclis_rehber.sql` → `public.meclis_rehber()` (yalnız okuma, tablo değişikliği yok). Vekilin partisi bugünkü partisi (`oyun.gruplar()` kuralıyla aynı). `migrations/20261010_meclis_rehber.sql`. **Canlıya uygulandı** (Supabase migration `meclis_rehber_20261010`).
+- Gündem'deki Meclis şeridine dokununca rehber açılır.
+- **Dikkat:** `docs/index.html`, `www/index.html` ve kök `supabase-kurulum.sql` kaynaktan derlenen hâlden farklı (başka oturumların doğrudan yaptığı değişiklikler: parti birleşme/ortak MV listesi vb.; 64, 66, 67, 72, 73 SQL modülleri birleştirme listesinde yok). Bu güncelleme bu dosyalara yama olarak eklendi, tam yeniden derleme yapılmadı. Kaynak eşitlemesi ayrıca yapılmalı.

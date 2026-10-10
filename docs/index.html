@@ -25,7 +25,7 @@ window.AYAR = {
   APP_STORE:   "https://apps.apple.com/",
   GOOGLE_PLAY: "https://play.google.com/store/apps"
 };
-window.UYGULAMA_SURUM = "2026.10.10-22";   // derleme sırasında SURUM dosyasından yazılır
+window.UYGULAMA_SURUM = "2026.10.10-23";   // derleme sırasında SURUM dosyasından yazılır
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -877,6 +877,27 @@ details.acilir ul{margin:6px 0 0 18px;font-size:13px;color:var(--mut)}
 .ay-lejant span{display:inline-flex;align-items:center;gap:5px}.ay-lejant i{width:10px;height:10px;border-radius:2px;display:inline-block}
 .meclis-serit{display:flex;height:10px;border-radius:2px;overflow:hidden;margin:12px 0 4px;gap:1px}
 .meclis-serit i{display:block;height:100%}
+.mc-seg{margin:-4px 0 12px}.mc-seg button{font-size:12.5px;white-space:nowrap;padding:8px 9px}
+.mc-sayilar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px;text-align:center}
+.mc-sayilar b{display:block;font-family:var(--disp);font-size:22px;color:var(--txt)}.mc-sayilar span{font-size:11px;color:var(--mut)}
+.mc-parti{padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}.mc-parti:last-of-type{border-bottom:0}
+.mc-parti .ust-s{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mc-parti .cubuk{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin:6px 0 4px}.mc-parti .cubuk i{display:block;height:100%}
+.mc-kisi{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}.mc-kisi:last-child{border-bottom:0}
+.mc-kisi .orta{flex:1;min-width:0}.mc-kisi b{font-size:16px}
+.mc-cipler{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.mc-cipler a{font-size:13px;font-weight:700;color:var(--txt);text-decoration:none;background:var(--panel2);padding:5px 8px;border-radius:6px}.mc-cipler a span{color:var(--mut);font-weight:500}
+.mc-ara{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--txt);font-size:15px}
+.mc-filtreler{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:10px 0 6px;padding-bottom:2px}
+.mc-filtre{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;padding:6px 10px;border-radius:16px;font-size:12.5px;font-weight:700;background:var(--panel2);color:var(--txt2);border:1px solid transparent}
+.mc-filtre.aktif{border-color:var(--ink);color:var(--txt)}.mc-filtre i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.mc-bos{display:flex;align-items:center;gap:6px;margin:4px 0}
+.mc-il{border-bottom:1px solid var(--line)}.mc-il:last-of-type{border-bottom:0}
+.mc-il summary{display:flex;align-items:center;gap:8px;padding:12px 0;cursor:pointer;list-style:none}.mc-il summary::-webkit-details-marker{display:none}
+.mc-il summary .ad{font-weight:800;min-width:92px}.mc-il summary .noklar{flex:1;display:flex;flex-wrap:wrap;gap:3px}
+.mc-il summary .noklar i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.mc-mv{display:flex;align-items:center;gap:10px;padding:8px 0 8px 6px;cursor:pointer;border-top:1px dashed var(--line)}
+.mc-mv .orta{flex:1;min-width:0}.mc-mv b{display:block}
 .yapilacak{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer;width:100%;text-align:left}
 .yapilacak:last-child{border-bottom:0}
 .yapilacak .yik{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--panel2);color:var(--txt2)}
@@ -1556,8 +1577,8 @@ async function gundemEkrani(){
     <div class="kart">
       ${cb ? `<div class="cb-kart" onclick="oyuncuKart('${e(cb.kad)}')" style="cursor:pointer">${portre(cb.kad, cb.parti && cb.parti.renk, 48)}<div><div class="kucuk">Cumhurbaşkanı</div><b style="font-family:var(--disp);font-size:22px;font-weight:700">${e(cb.kad)}</b><div class="alt">${partiRozet(cb.parti)}</div></div></div>`
         : `<div class="alt">Cumhurbaşkanlığı makamı boş.</div>`}
-      ${ms.length ? `<div class="meclis-serit" aria-label="Meclis dağılımı">${ms.map(x => `<i style="flex:${x.n};background:${e(x.renk || "#8E97B5")}"></i>`).join("")}</div>
-        <div class="kucuk">TBMM ${meclis.dolu} vekil · ${ms.map(x => `<span style="color:${e(x.renk || "#8E97B5")}">${e(x.kisa || "Bağımsız")}</span> ${x.n}`).join(" · ")}</div>` : ""}
+      ${ms.length ? `<div onclick="meclisSekmeAc('genel')" style="cursor:pointer"><div class="meclis-serit" aria-label="Meclis dağılımı">${ms.map(x => `<i style="flex:${x.n};background:${e(x.renk || "#8E97B5")}"></i>`).join("")}</div>
+        <div class="kucuk">TBMM ${meclis.dolu} vekil · ${ms.map(x => `<span style="color:${e(x.renk || "#8E97B5")}">${e(x.kisa || "Bağımsız")}</span> ${x.n}`).join(" · ")} ›</div></div>` : ""}
       <div style="margin-top:6px">
         <button class="giris-satir" onclick="ekranAc(anketEkrani)"><span class="yik">${IKON.anket}</span><span class="orta"><b>Haftalık siyasi anket</b><span class="kucuk">Oyuncular hangi partiyi destekliyor?</span></span><span class="ok">›</span></button>
         <button class="giris-satir" onclick="D.devletSekme='tarih';sekmeAc('devlet')"><span class="yik">${IKON.tarih}</span><span class="orta"><b>Cumhuriyet tarihi</b><span class="kucuk">Cumhurbaşkanları, Meclis dönemleri, rekorlar</span></span><span class="ok">›</span></button>
@@ -2378,9 +2399,10 @@ async function meclisDivanHtml(){
       ${b.yetkim.ihtar ? `<button class="btn ikinci" onclick="ihtarModal()">Genel Kurul'da ihtar ver</button>` : ""}</div>
     ${b.secimler.map(meclisSecimKart).join("")}`;
 }
-async function meclisAday(id, g, ol){ try { await islem(() => API.rpc("meclis_aday_ol", { p_secim: id, p_gorev: g, p_aday: ol }), ol ? "Adaylığın alındı." : "Adaylıktan çekildin."); devletEkrani(); } catch (_) {} }
+async function meclisAday(id, g, ol){ D._mr = null; try { await islem(() => API.rpc("meclis_aday_ol", { p_secim: id, p_gorev: g, p_aday: ol }), ol ? "Adaylığın alındı." : "Adaylıktan çekildin."); devletEkrani(); } catch (_) {} }
 async function meclisOy(id, g, kad){
   if (!await onayla("Gizli oy", `${MECLIS_GOREV[g]} için oyunu <b>${e(kad)}</b> adına kullanacaksın. Oy gizlidir ve geri alınamaz.`, "Oyu kullan")) return;
+  D._mr = null;
   try { await islem(() => API.rpc("meclis_oy", { p_secim: id, p_gorev: g, p_aday: kad }), "Oyun sandıkta."); devletEkrani(); } catch (_) {}
 }
 function ihtarModal(){
@@ -2455,25 +2477,123 @@ function erkenSecimModal(){const m=modal(`<h3 style="font-size:19px;font-weight:
   $("#esgonder",m).onclick=async()=>{try{await API.rpc("erken_secim_teklif",{p_gerekce:$("#esgerekce",m).value});modalKapat();toast("Erken seçim önerisi TBMM gündeminde.");devletEkrani();}catch(err){toast(hataCevir(err.message),true);}};}
 async function erkenSecimOy(id,oy){try{await API.rpc("erken_secim_oy",{p_id:id,p_oy:oy});toast("Oyun kaydedildi.");devletEkrani();}catch(err){toast(hataCevir(err.message),true);}}
 
+/* ---------- Meclis rehberi: sandalyeler, başkanlık, gruplar, il il vekiller, yasama ---------- */
+const MECLIS_SEKME = [["genel","Sandalyeler"],["baskanlik","Başkanlık"],["gruplar","Gruplar"],["vekiller","İl il vekiller"],["yasama","Yasama"]];
+function meclisSekmeAc(k, parti){
+  D.meclisSekme = k; D.devletSekme = "meclis";
+  if (parti !== undefined) { D.mvParti = parti; D.mvAra = ""; }
+  if (D.sekme !== "devlet") sekmeAc("devlet"); else devletEkrani();
+}
+async function meclisRehberAl(){
+  if (D._mr && simdi() - D._mr.t < 20e3) return D._mr.v;
+  const v = await API.rpc("meclis_rehber"); D._mr = { t: simdi(), v }; return v;
+}
+function mvTumu(r){ const l = []; r.iller.forEach(i => i.vekiller.forEach(v => l.push(Object.assign({ il: i.ad, il_id: i.id }, v)))); return l; }
+function mvParti(r, id){ return id == null ? null : (r.sozluk[String(id)] || null); }
+function mvAdLink(kad){ return `<a class="bag" href="#" onclick="oyuncuKart('${e(kad)}');return false">${e(kad)}</a>`; }
 async function meclisHtml(){
-  const [m,kl,s]=await Promise.all([API.rpc("meclis"),API.rpc("kanunlar",{p_limit:60}),API.rpc("siyasi_sistem")]);
+  const sek = D.meclisSekme = MECLIS_SEKME.some(x => x[0] === D.meclisSekme) ? D.meclisSekme : "genel";
+  const alt = `<div class="segment mc-seg">${MECLIS_SEKME.map(([k, a]) => `<button class="${sek === k ? "aktif" : ""}" onclick="meclisSekmeAc('${k}')">${a}</button>`).join("")}</div>`;
+  let govde;
+  if (sek === "yasama") govde = await meclisYasamaHtml();
+  else {
+    let r; try { r = await meclisRehberAl(); } catch (err) { return alt + `<div class="bos">${e(hataCevir(err.message))}</div>`; }
+    govde = sek === "genel" ? meclisGenelHtml(r) : sek === "baskanlik" ? await meclisBaskanlikHtml(r) : sek === "gruplar" ? meclisGruplarHtml(r) : meclisVekillerHtml(r);
+  }
+  setTimeout(() => { const ic = $("#icerik"); if (!ic) return; if (sek === "vekiller") mvFiltre(); if (typeof portreleriTazele === "function") portreleriTazele(ic); }, 0);
+  return alt + govde;
+}
+function meclisGenelHtml(r){
+  const ps = r.partiler.slice(); if (r.bagimsiz) ps.push({ id: null, kisa: "Bağımsız", ad: "Bağımsız", renk: "#8E97B5", n: r.bagimsiz });
+  const bos = Math.max(0, r.toplam - r.dolu);
+  return `<div class="kart"><h2>Türkiye Büyük Millet Meclisi</h2>${meclisSvg(ps.map(p => ({ n: p.n, renk: p.renk })), r.toplam)}
+    <div class="mc-sayilar">
+      <div><b>${r.dolu}</b><span>dolu sandalye</span></div><div><b>${bos}</b><span>boş</span></div>
+      <div><b>${r.dolu ? r.cogunluk : "—"}</b><span>kanun için evet</span></div><div><b>${r.grup_esigi}</b><span>grup eşiği</span></div></div>
+    <div class="kucuk" style="text-align:center;margin-top:6px">${r.toplam} sandalyelik Meclis · kanun kabulü dolu sandalyelerin salt çoğunluğuyla</div>
+    <button class="giris-satir" style="margin-top:10px" onclick="meclisSekmeAc('baskanlik')"><span class="yik">${IKON.meclis}</span><span class="orta"><b>${r.baskan ? e(r.baskan.kad) : "TBMM Başkanı seçilmedi"}</b><span class="kucuk">${r.baskan ? "TBMM Başkanı" + (r.baskan.parti ? " · " + e(r.baskan.parti.kisa) : "") : r.gecici ? "Geçici Başkan: " + e(r.gecici) : "Meclis henüz toplanmadı"}</span></span><span class="ok">›</span></button></div>
+  <div class="kart"><h2>Partilerin sandalyeleri</h2>
+    ${ps.length ? ps.map(p => `<div class="mc-parti" onclick="meclisSekmeAc('vekiller',${p.id == null ? "'bagimsiz'" : p.id})">
+        <div class="ust-s">${p.id == null ? partiRozet(null) : partiRozet(p)}<span class="sag"><b>${p.n}</b> <span class="kucuk">%${(p.n * 100 / Math.max(1, r.dolu)).toFixed(1)}</span></span></div>
+        <div class="cubuk"><i style="width:${(p.n * 100 / Math.max(1, r.dolu)).toFixed(1)}%;background:${e(p.renk)}"></i></div>
+        <div class="kucuk">${p.id == null ? "Herhangi bir partiye üye olmayan vekiller" : p.grup ? `Siyasi parti grubu · ${p.sira}. büyük grup` : `Grup kuramadı (en az ${r.grup_esigi} vekil gerekir)`}</div></div>`).join("")
+      : `<div class="bos">Meclis henüz boş. İlk genel seçim ayın 1'inde.</div>`}
+    <div class="satir" style="margin-top:12px"><button class="btn yarim altin" onclick="meclisSekmeAc('vekiller','')">İl il vekiller</button><button class="btn yarim ikinci" onclick="ekranAc(()=>sohbetEkrani('meclis'))">TBMM Genel Kurulu</button></div></div>`;
+}
+async function meclisBaskanlikHtml(r){
+  let b = null; try { b = await API.rpc("meclis_baskanlik"); D._divan = b; } catch (_) {}
+  const kisi = (k, unvan, parti, boy) => `<div class="mc-kisi" onclick="oyuncuKart('${e(k)}')">${portre(k, parti && parti.renk, boy || 44)}<div class="orta"><div class="kucuk">${unvan}</div><b>${e(k)}</b><div>${partiRozet(parti)}</div></div><span class="ok">›</span></div>`;
+  return `<div class="kart"><h2>TBMM Başkanı</h2>
+      ${r.baskan ? kisi(r.baskan.kad, "Türkiye Büyük Millet Meclisi Başkanı", r.baskan.parti, 56)
+        : `<div class="bos" style="padding:14px 0">TBMM Başkanı henüz seçilmedi.${r.gecici ? `<br>Oturumları Geçici Başkan ${mvAdLink(r.gecici)} (en kıdemli vekil) yönetiyor.` : ""}</div>`}</div>
+    <div class="kart"><h2>Başkanvekilleri</h2>
+      ${r.baskanvekilleri.length ? r.baskanvekilleri.map(x => kisi(x.kad, "TBMM Başkanvekili", x.parti)).join("") : `<div class="kucuk">Başkanvekili seçilmedi. En büyük üç grup birer başkanvekili adayı gösterir.</div>`}</div>
+    ${b ? b.secimler.map(meclisSecimKart).join("") : ""}
+    <div class="kart"><h2>Usul</h2><p class="kucuk">Meclis Başkanı gizli oyla seçilir: 1. ve 2. turda üçte iki, 3. turda salt çoğunluk, 4. turda ilk iki aday arasında en çok oy alan. Meclis Başkanı Genel Kurul'da oy kullanamaz, kanun teklifi veremez, parti faaliyetine katılamaz. Grup başkanvekillerini her parti grubu kendi vekilleri arasından seçer (sandalyelerin altıda birinden büyük gruplarda 3, diğerlerinde 2).</p>
+      ${b && b.yetkim.ihtar ? `<button class="btn ikinci" onclick="ihtarModal()">Genel Kurul'da ihtar ver</button>` : ""}</div>`;
+}
+function meclisGruplarHtml(r){
+  const tum = mvTumu(r), pv = id => tum.filter(v => (v.parti_id ?? null) === id);
+  const vekilCipleri = l => l.length ? `<div class="mc-cipler">${l.map(v => `<a href="#" onclick="oyuncuKart('${e(v.kad)}');return false">${e(v.kad)} <span>${e(v.il)}</span></a>`).join("")}</div>` : "";
+  const gruplu = r.partiler.filter(p => p.grup), grupsuz = r.partiler.filter(p => !p.grup), bag = pv(null);
+  return (gruplu.length ? gruplu.map(p => `<div class="kart mc-grup" style="border-left:4px solid ${e(p.renk)}">
+      <div style="display:flex;gap:10px;align-items:center">${amblemKutu(p, 40)}<div style="flex:1;min-width:0"><b style="font-size:17px">${e(p.ad)}</b><div class="kucuk">${e(p.kisa)} Grubu · ${p.n} milletvekili · ${p.sira}. büyük grup</div></div></div>
+      <div class="kv" style="margin-top:10px"><span class="k">Grup Başkanı</span><span class="v">${p.gb_vekil && p.gb ? mvAdLink(p.gb) : `<span class="kucuk">Genel başkan${p.gb ? " (" + e(p.gb) + ")" : ""} milletvekili değil</span>`}</span></div>
+      <div class="kv"><span class="k">Grup başkanvekilleri <span class="kucuk">${p.bskv.length}/${p.bskv_kota}</span></span><span class="v">${p.bskv.length ? p.bskv.map(mvAdLink).join(", ") : `<span class="kucuk">Henüz seçilmedi</span>`}</span></div>
+      <details class="acilir"><summary>Grubun milletvekilleri (${p.n})</summary>${vekilCipleri(pv(p.id))}</details></div>`).join("")
+    : `<div class="kart"><div class="bos">Meclis'te henüz grup kuracak sayıda (en az ${r.grup_esigi}) vekili olan parti yok.</div></div>`)
+  + (grupsuz.length ? `<div class="kart"><h2>Grubu olmayan partiler</h2><p class="kucuk">Grup kurmak için en az ${r.grup_esigi} milletvekili gerekir.</p>
+      ${grupsuz.map(p => `<div class="kv"><span class="k">${partiRozet(p)}</span><span class="v">${p.n} vekil</span></div>${vekilCipleri(pv(p.id))}`).join("")}</div>` : "")
+  + (bag.length ? `<div class="kart"><h2>Bağımsızlar (${bag.length})</h2>${vekilCipleri(bag)}</div>` : "");
+}
+function meclisVekillerHtml(r){
+  const ps = r.partiler, secili = D.mvParti == null ? "" : String(D.mvParti);
+  const iller = r.iller.slice().sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
+  const cip = (k, ad, renk) => `<button class="mc-filtre${secili === k ? " aktif" : ""}" data-p="${e(k)}" onclick="D.mvParti=this.dataset.p;document.querySelectorAll('.mc-filtre').forEach(b=>b.classList.toggle('aktif',b===this));mvFiltre()">${renk ? `<i style="background:${e(renk)}"></i>` : ""}${e(ad)}</button>`;
+  const satir = v => { const p = mvParti(r, v.parti_id), sp = mvParti(r, v.secildigi_id);
+    const not = v.secildigi_id && sp ? `${e(sp.kisa)} listesinden seçildi` : v.bagimsiz_secildi && v.parti_id ? "Bağımsız seçildi" : "";
+    return `<div class="mc-mv" data-p="${v.parti_id == null ? "bagimsiz" : v.parti_id}" data-ad="${e(v.kad.toLocaleLowerCase("tr"))}" onclick="oyuncuKart('${e(v.kad)}')">
+      ${portre(v.kad, p && p.renk, 38)}<div class="orta"><b>${e(v.kad)}</b><div>${partiRozet(p)}${not ? ` <span class="kucuk">· ${not}</span>` : ""}</div>
+      ${v.gorevler.length ? `<div>${v.gorevler.map(g => `<span class="rozet${/TBMM|Grup/.test(g) ? " altin" : ""}" style="margin:4px 4px 0 0">${e(g)}</span>`).join("")}</div>` : ""}</div><span class="ok">›</span></div>`; };
+  return `<div class="kart mc-vekil-ust">
+      <input id="mvAra" class="mc-ara" type="search" placeholder="İl ya da milletvekili ara" value="${e(D.mvAra || "")}" oninput="D.mvAra=this.value;mvFiltre()" autocapitalize="off">
+      <div class="mc-filtreler">${cip("", "Tümü")}${ps.map(p => cip(String(p.id), p.kisa, p.renk)).join("")}${r.bagimsiz ? cip("bagimsiz", "Bağımsız", "#8E97B5") : ""}</div>
+      <label class="kucuk mc-bos"><input type="checkbox" id="mvBos" ${D.mvBos ? "checked" : ""} onchange="D.mvBos=this.checked;mvFiltre()"> Vekili olmayan illeri de göster</label>
+      <div class="kucuk" id="mvSay"></div></div>
+    <div class="kart mc-iller">${iller.map(i => `<details class="mc-il" data-il="${e(i.ad.toLocaleLowerCase("tr"))}" data-dolu="${i.vekiller.length}">
+        <summary><span class="ad">${e(i.ad)}</span><span class="noklar">${i.vekiller.map(v => `<i style="background:${e((mvParti(r, v.parti_id) || { renk: "#8E97B5" }).renk)}"></i>`).join("")}</span><span class="kucuk">${i.vekiller.length}/${i.kontenjan}</span></summary>
+        ${i.vekiller.map(satir).join("") || `<div class="kucuk" style="padding:6px 0 10px">Bu ilin ${i.kontenjan} sandalyesi boş.</div>`}</details>`).join("")}
+      <div class="bos" id="mvYok" style="display:none">Aramaya uyan il ya da milletvekili yok.</div></div>`;
+}
+function mvFiltre(){
+  const ara = ((D.mvAra || "").trim()).toLocaleLowerCase("tr"), p = D.mvParti == null ? "" : String(D.mvParti), bos = !!D.mvBos;
+  let il = 0, mv = 0;
+  document.querySelectorAll(".mc-il").forEach(d => {
+    const ilEs = !ara || d.dataset.il.includes(ara); let gorunen = 0, adEs = false;
+    d.querySelectorAll(".mc-mv").forEach(x => {
+      const ok = (!p || x.dataset.p === p) && (ilEs || x.dataset.ad.includes(ara));
+      if (ok && ara && !ilEs) adEs = true;
+      x.style.display = ok ? "" : "none"; if (ok) gorunen++;
+    });
+    const goster = p ? gorunen > 0 : (ara ? (ilEs || gorunen > 0) && (gorunen > 0 || bos || ilEs) : (gorunen > 0 || bos));
+    d.style.display = goster ? "" : "none";
+    if (adEs) d.open = true;
+    if (goster) { il++; mv += gorunen; }
+  });
+  const say = $("#mvSay"); if (say) say.textContent = `${il} il · ${mv} milletvekili`;
+  const yok = $("#mvYok"); if (yok) yok.style.display = il ? "none" : "";
+}
+async function meclisYasamaHtml(){
+  const [kl,s]=await Promise.all([API.rpc("kanunlar",{p_limit:60}),API.rpc("siyasi_sistem")]);
   D._siyasi=s;
-  const vekilim=D.durum.profil.makamlar.some(x=>x.tur==="mv"), cogunluk=Math.floor(m.dolu/2)+1, toplam=(s.meclis&&s.meclis.toplam)||600;
-  const ilg={};m.vekiller.forEach(v=>(ilg[v.il]=ilg[v.il]||[]).push(v));
-  const pm=Object.fromEntries(m.partiler.map(p=>[p.id,p]));
+  const vekilim=D.durum.profil.makamlar.some(x=>x.tur==="mv");
   const aktif=kl.filter(k=>["gorusmede","oylamada","cb_onayinda","israr"].includes(k.durum)),biten=kl.filter(k=>!aktif.includes(k));
-  let divan="";try{divan=await meclisDivanHtml();}catch(_){}
-  return `<div class="kart"><h2>Türkiye Büyük Millet Meclisi</h2>${meclisSvg(m.partiler, m.toplam)}
-    <div class="alt" style="text-align:center;margin-top:-4px"><b style="color:var(--txt);font-size:20px">${m.dolu}</b> / ${toplam} sandalye dolu · ${Math.max(0,toplam-m.dolu)} boş</div>
-    <div class="kucuk" style="text-align:center">Kanun kabulü için dolu ${m.dolu?fmt(m.dolu):"—"} sandalyenin salt çoğunluğu: en az ${m.dolu?cogunluk:"—"} evet (600 sandalyenin hepsi dolmasa da yalnız seçilmiş vekiller sayılır) · Veto sonrası ısrar için de ${m.dolu?cogunluk:"—"}</div>
-    ${m.partiler.map(p=>`<div class="kv"><span class="k">${partiRozet(p)}</span><span class="v">${p.n} <span class="kucuk">(%${(p.n*100/Math.max(1,m.dolu)).toFixed(1)})</span></span></div>`).join("")}
-    <button class="btn ikinci" onclick="ekranAc(()=>sohbetEkrani('meclis'))">TBMM Genel Kurulu</button></div>
-    ${siyasiSistemHtml(s)}${divan}<div class="kart"><h2>Meclis İşlemleri</h2><div class="satir"><button class="btn yarim altin" onclick="ekranAc(maasEkrani)">Maaş oylamaları</button><button class="btn yarim ikinci" onclick="ekranAc(bakanSoruEkrani)">Bakanlara sorular</button></div></div>
+  return `${siyasiSistemHtml(s)}<div class="kart"><h2>Meclis İşlemleri</h2><div class="satir"><button class="btn yarim altin" onclick="ekranAc(maasEkrani)">Maaş oylamaları</button><button class="btn yarim ikinci" onclick="ekranAc(bakanSoruEkrani)">Bakanlara sorular</button></div>
+      <button class="btn ikinci" style="margin-top:8px" onclick="ekranAc(()=>sohbetEkrani('meclis'))">TBMM Genel Kurulu</button></div>
     ${vekilim?`<button class="btn altin" style="margin:0 0 12px" onclick="ekranAc(kanunTeklifEkrani)">+ Kanun teklifi ver</button>`:""}
     <div class="kart cizgili"><h2>Ekonomi yasası teklifleri</h2><p class="alt">Gelir vergisi, ilk konut, gayrimenkul, mevduat, piyango, tahvil, vergi affı, parti ve belediye yardımları: 10 farklı kanun teklifi. Yasalar görüşme, oylama ve Cumhurbaşkanı onayıyla yürürlüğe girer.</p><button class="btn altin" onclick="ekranAc(ekonomiYasaEkrani)">10 yasa teklifini incele / Meclise sun</button></div>
     <div class="kart"><h2>Gündemdeki teklifler</h2>${aktif.map(kanunSatir).join("")||`<div class="bos">Şu anda Meclis gündeminde teklif yok.${vekilim?"":" Kanun teklifini milletvekilleri verir."}</div>`}</div>
-    ${biten.length?`<div class="kart"><h2>Sonuçlanan teklifler</h2>${biten.map(kanunSatir).join("")}</div>`:""}
-    <div class="kart"><h2>Vekiller</h2>${Object.keys(ilg).length?Object.entries(ilg).map(([il,l])=>`<div class="liste-satir"><div class="orta"><b>${e(il)}</b><div class="kucuk">${l.map(v=>`<a href="#" onclick="oyuncuKart('${e(v.kad)}');return false" style="text-decoration:none;color:${e((pm[v.parti_id]||{}).renk||"#999")}">${e(v.kad)}</a>`).join(", ")}</div></div></div>`).join(""):`<div class="bos">Meclis henüz boş. İlk genel seçim ayın 1'inde.</div>`}</div>`;
+    ${biten.length?`<div class="kart"><h2>Sonuçlanan teklifler</h2>${biten.map(kanunSatir).join("")}</div>`:""}`;
 }
 async function gazeteHtml(){
   const g = await API.rpc("gazete", { p_limit: 60 });
