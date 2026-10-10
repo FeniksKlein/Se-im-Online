@@ -6632,6 +6632,11 @@ function gorevGit(k){
 </script>
 <script>
 /* ADLİYE: Yüksek Yargıç, parti sözcüsü, açık yargılama ve Cumhurbaşkanlığı affı */
+async function adliyeEkrani(){
+  yukleniyor("Adliye");
+  try{iskelet("Adliye",await adliyeHtml());}
+  catch(err){iskelet("Adliye",'<div class="bos">'+e(hataCevir(err.message))+'</div>');}
+}
 const ADL_TURLER={hakaret:"Hakaret",iftira:"İftira",rusvet:"Rüşvet",yolsuzluk:"Yolsuzluk",usulsuzluk:"Usulsüz işlem",dolandiricilik:"Dolandırıcılık",diger:"Diğer"};
 const ADL_CEZALAR={beraat:"Beraat",uyari:"Uyarı",sustur_1s:"1 saat sohbetten susturma",sustur_1g:"1 gün sohbetten susturma",sustur_1h:"1 hafta sohbetten susturma",vekillik_dusur:"Milletvekilliğinin düşürülmesi"};
 let ADL={};
@@ -6640,7 +6645,7 @@ function adlEtiket(d){return d.durum==="karar"?(d.af_at?"Af çıkarıldı":"Kara
 function adlFormBaslik(m,baslik){m.querySelector(".modal").insertAdjacentHTML("afterbegin",'<h3 style="font-size:20px;margin:0 0 12px">'+e(baslik)+'</h3>');}
 function adlAlan(ad,id,tur="text",placeholder=""){return '<div class="alan"><label>'+e(ad)+'</label>'+ (tur==="textarea"?'<textarea id="'+id+'" rows="4" placeholder="'+e(placeholder)+'"></textarea>':'<input id="'+id+'" type="'+tur+'" placeholder="'+e(placeholder)+'">')+'</div>';}
 async function adlIslem(fn,success,geri,modalKapatilsin=true){
- try{await fn();if(modalKapatilsin)modalKapat();toast(success);if(geri)await adliyeDosya(geri);else{D.devletSekme="adliye";await devletEkrani();}}
+ try{await fn();if(modalKapatilsin)modalKapat();toast(success);if(geri)await adliyeDosya(geri);else{if(D.sekme==="adliye")await adliyeEkrani();else{D.devletSekme="adliye";await devletEkrani();}}}
  catch(err){toast(hataCevir(err.message),true);}
 }
 async function adliyeHtml(){
@@ -6720,7 +6725,7 @@ function adlDavaModal(){
    const v=await API.rpc("adliye_dava_ac",{p_hedef_tur:tur,p_hedef:tur==="parti"?m.querySelector("#adlHedefParti").value:m.querySelector("#adlHedef").value,
     p_tur:m.querySelector("#adlTur").value,p_iddia:m.querySelector("#adlIddia").value,
     p_delil:m.querySelector("#adlDelil").value,p_davaci_parti:m.querySelector("#adlDavaciParti").value||null});
-   modalKapat();toast("Dava #"+v.id+" açıldı.");D.devletSekme="adliye";await devletEkrani();
+   modalKapat();toast("Dava #"+v.id+" açıldı.");if(D.sekme==="adliye")await adliyeEkrani();else{D.devletSekme="adliye";await devletEkrani();}
   }catch(err){toast(hataCevir(err.message),true);}
  };
 }
