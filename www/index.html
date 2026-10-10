@@ -1384,7 +1384,7 @@ async function gundemEkrani(){
 
   // ---- Bugün yapılacaklar: en acil olan en üstte
   const is = [];
-  aktif.filter(s => s.asama === "oy" && !s.oy_verdim && !s.oy_engeli).forEach(s => is.push({ cls: "acil", ikon: IKON.sandik, bas: `Oy ver: ${secimTakvimAdi(s)}`, alt: `Sandık ${saatYaz(s.oy_bit)}'de kapanıyor`, git: `ekranAc(()=>secimEkrani(${s.id}))` }));
+  // Oy verme aşaması üstteki Aktif Seçimler alanına taşındı; Bugün'de tekrarlanmaz.
   if (p.kredi_uyari) is.push({ cls: "acil", ikon: IKON.uyari, bas: "Kredi borcun gecikmede", alt: e(p.kredi_uyari), git: "ekranAc(bankaEkrani)" });
   if (canliMiting) is.push({ cls: "acil", ikon: IKON.insanlar, bas: `Mitinge katıl: ${e(canliMiting.kad)}`, alt: `${e(canliMiting.il)} meydanı · ${canliMiting.katilim} kişi`, git: `mitingAc(${canliMiting.id})` });
   const benimCanli = (mitingler || []).find(m => m.benim && new Date(m.bas).getTime() <= t && new Date(m.bit).getTime() > t);
@@ -1412,7 +1412,7 @@ async function gundemEkrani(){
     <div class="bolum-bas"><h2>Bugün</h2><span class="kucuk">${is.length ? is.length + " iş" : ""}</span></div>
     <div class="kart">${is.length ? is.map(yapilacakSatir).join("") : `<div class="bos" style="padding:8px 0">Bugün acil bir işin yok. Sohbete uğra ya da gazeteleri oku.</div>`}</div>
     ${ilkAdimlarHtml(ia)}
-    ${aktif.length || ihaleler.length || meclisBekleyen.length || refler.length || cbKararKarti() ? `<div class="bolum-bas"><h2>Seçimler ve oylamalar</h2></div>` : ""}
+    ${aktif.some(s => s.asama !== "oy" || !!s.oy_engeli) || ihaleler.length || meclisBekleyen.some(s => s.durum !== "oylama") || refler.some(r => r.asama !== "oy" || !!r.engel) || cbKararKarti() ? `<div class="bolum-bas"><h2>Seçimler ve oylamalar</h2></div>` : ""}
     ${cbKararKarti()}
     ${aktif.filter(s => s.asama !== "oy" || !!s.oy_engeli).map(s => `<div id="sec${s.id}">${olayKarti(s)}</div>`).join("")}
     ${meclisBekleyen.filter(s => s.durum !== "oylama").map(meclisSecimKart).join("")}
