@@ -1261,12 +1261,13 @@ function gostergeHtml(u){
 async function devletEkrani(){
   D.devletSekme = D.devletSekme || "hukumet";
   yukleniyor("Devlet");
-  const seg = `<div class="segment" style="margin-bottom:12px">${[["hukumet","Hükümet"],["meclis","Meclis"],["mevzuat","Mevzuat"],["gazete","Gazete"],["tarih","Tarih"]].map(([k, a]) =>
+  const seg = `<div class="segment" style="margin-bottom:12px">${[["hukumet","Hükümet"],["meclis","Meclis"],["adliye","Adliye"],["mevzuat","Mevzuat"],["gazete","Gazete"],["tarih","Tarih"]].map(([k, a]) =>
     `<button class="${D.devletSekme === k ? "aktif" : ""}" onclick="D.devletSekme='${k}';devletEkrani()">${a}</button>`).join("")}</div>`;
   try {
     await durumYenile();
     if (D.devletSekme === "hukumet") { iskelet("Devlet", seg + `<div class="kart"><button class="btn ikinci" onclick="aliciBagisModal('devlet',1,'Türkiye Cumhuriyeti Hazinesi')">Devlet hazinesine bağış yap</button></div>` + await hukumetHtml()); politikaBagla(); return; }
     if (D.devletSekme === "meclis") return iskelet("Devlet", seg + await meclisHtml());
+    if (D.devletSekme === "adliye") return iskelet("Devlet", seg + await adliyeHtml());
     if (D.devletSekme === "mevzuat") { iskelet("Devlet", seg + await mevzuatHtml()); kuralBagla(); return; }
     if (D.devletSekme === "tarih") return iskelet("Devlet", seg + await tarihHtml());
     return iskelet("Devlet", seg + await gazeteHtml());
@@ -4002,5 +4003,6 @@ window.addEventListener("load", () => {
 <script src="toplum_ek.js"></script>
 <script src="halka_arz.js"></script>
 <script src="gorevler.js"></script>
+<script src="adliye.js"></script>
 </body>
 </html>
