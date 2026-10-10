@@ -5558,7 +5558,8 @@ async function ortakAdayCiz(pid) {
   const turAd = (o) => o.tur === "cb" ? "Cumhurbaşkanı" : `${e(o.il)} Belediye Başkanı`;
   const satir = (o) => `<div class="kart" style="margin:10px 0 0;background:var(--panel2)">
     <div style="display:flex;justify-content:space-between;gap:8px"><b>${turAd(o)} ortak adayı</b>
-      <span class="rozet ${o.durum === "kabul" ? "yesil" : "altin"}">${o.durum === "kabul" ? "Kesinleşti" : "Yanıt bekliyor"}</span></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px"><span class="rozet ${o.durum === "kabul" ? "yesil" : "altin"}">${o.durum === "kabul" ? "Kesinleşti" : "Yanıt bekliyor"}</span>
+      ${o.durum === "bekliyor" ? `<button class="btn ikinci" type="button" style="width:auto;min-width:82px;padding:6px 12px;font-size:12px" onclick="ortakAdayGoster(${o.id},${pid})">Göster</button>` : ""}</div></div>
     <div style="margin-top:4px">${e(o.aday || "—")} · <span style="color:${e(o.aday_parti.renk)}">${e(o.aday_parti.kisa)}</span></div>
     <div class="kucuk">Öneren: ${e(o.teklif_eden.kisa)}${o.yanitlar.length ? " · " + o.yanitlar.map(y => `${e(y.parti)} ${y.kabul ? "kabul etti" : "reddetti"}`).join(", ") : ""}${o.bekleyenler.length && o.durum === "bekliyor" ? " · Bekleyen: " + o.bekleyenler.map(e).join(", ") : ""}</div>
     ${o.yanit_bekliyor_benden ? `<p class="kucuk" style="margin-top:6px">Kabul edersen partinin bu seçimdeki kendi adayı çekilir ve ortak adayı desteklersin.</p>
@@ -5574,6 +5575,36 @@ async function ortakAdayCiz(pid) {
     ${d.gb ? (onerilebilir ? `<button class="btn ikinci" onclick="ortakAdayModal(${pid})">Ortak aday öner</button>`
       : `<p class="kucuk" style="margin-top:6px">Ortak aday, ortakların adayları belli olunca önerilebilir: cumhurbaşkanlığı için ayın 19-25'i, belediye için ön seçim sonucundan oy verme başlayana kadar.</p>`) : ""}`;
 }
+// "Yanıt bekliyor" rozetinden teklifin ayrıntılarına ve yetkiliyse karar ekranına git.
+async function ortakAdayGoster(id, pid) {
+  let d;
+  try { d = await API.rpc("ittifak_masasi", { p_parti: pid }); }
+  catch (err) { return toast(hataCevir(err.message), true); }
+  const o = (d.oneriler || []).find(x => Number(x.id) === Number(id));
+  if (!o) { toast("Ortak aday teklifi artık bulunamıyor.", true); ortakAdayCiz(pid); return; }
+  const tur = o.tur === "cb" ? "Cumhurbaşkanı" : e(o.il) + " Belediye Başkanı";
+  const bekleyen = (o.bekleyenler || []).map(e).join(", ");
+  const yanitlayabilirim = o.durum === "bekliyor" && !!d.gb && !!o.yanit_bekliyor_benden;
+  const m = modal(`<h3>${tur} ortak aday teklifi</h3>
+    <div class="kart" style="background:var(--panel2);margin:8px 0">
+      <b>${e(o.aday || "—")}</b> · ${e(o.aday_parti.kisa)}
+      <div class="kucuk" style="margin-top:6px">Öneren: ${e(o.teklif_eden.kisa)}</div>
+      ${(o.yanitlar || []).length ? `<div class="kucuk" style="margin-top:5px">${o.yanitlar.map(y => e(y.parti) + (y.kabul ? " kabul etti" : " reddetti")).join(" · ")}</div>` : ""}
+      ${bekleyen && o.durum === "bekliyor" ? `<div class="kucuk" style="margin-top:5px">Yanıt beklenen partiler: ${bekleyen}</div>` : ""}
+    </div>
+    ${yanitlayabilirim
+      ? `<p class="alt">Partinin genel başkanı olarak bu öneriyi kabul edebilir veya reddedebilirsin. Kabul edersen bu seçimde partinin kendi adayı çekilir ve ortak aday desteklenir.</p>
+         <div class="satir"><button class="btn yarim" id="oaDetayKabul">Kabul et</button><button class="btn yarim ikinci" id="oaDetayRet">Reddet</button></div>`
+      : o.durum === "bekliyor"
+        ? `<p class="alt">Bu teklifi yalnızca yanıtı beklenen ittifak üyesi partinin genel başkanı kabul edebilir veya reddedebilir.${bekleyen ? " " + bekleyen + " partisinden yanıt bekleniyor." : ""}</p>`
+        : `<p class="alt">Bu teklif artık yanıt beklemiyor.</p>`}
+  `);
+  if (yanitlayabilirim) {
+    $("#oaDetayKabul", m).onclick = () => { modalKapat(); ortakAdayYanit(id, true, pid); };
+    $("#oaDetayRet", m).onclick = () => { modalKapat(); ortakAdayYanit(id, false, pid); };
+  }
+}
+
 function ortakAdayModal(pid) {
   const d = D._masa; if (!d) return;
   const secenek = [
