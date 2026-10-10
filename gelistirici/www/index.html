@@ -2053,7 +2053,7 @@ async function tuzukOy(pid,teklif,oy){
 }
 async function partiDetay(id){
   yukleniyor("Parti");
-  let p; try { p = await API.rpc("parti_detay", { p_parti: id }); await durumYenile(); } catch (err) { iskelet("Parti", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
+  let p; try { p = await API.rpc("parti_detay", { p_parti: id }); await durumYenile(); try { D.yetki = await API.rpc("parti_yetkilerim"); } catch (_) { D.yetki = null; } } catch (err) { iskelet("Parti", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
   const ben = D.durum.profil, gbyim = p.uyesiyim && ben.gb, araKurultay = p.uyesiyim && D.durum.takvim.some(x => x.ara && x.tur === "kurultay" && x.hedef_parti_id === p.id && ["yakinda","basvuru","oy","sayim"].includes(x.asama));
   const makamAd = (m) => (m || "").split(",").filter(Boolean).map(x => `<span class="rozet altin">${MAKAM_AD[x]}</span>`).join(" ");
   iskelet(e(p.kisa), `
@@ -2109,7 +2109,7 @@ async function partiKasaCiz(pid){
     ${k.hareketler.slice(0, 5).map(x => `<div class="hareket"><div style="min-width:0"><div>${e(x.aciklama)}</div><div class="kucuk">${tarihSaat(x.zaman)}</div></div><span class="t ${x.tutar >= 0 ? "iyi" : "kotu"}">${x.tutar >= 0 ? "+" : ""}${tlYaz(x.tutar)}</span></div>`).join("")}
     <p class="kucuk" style="margin-top:6px">Kasa; aday ücretleri, üye bağışları ve son genel seçimde %3'ü geçen partilere ödenen hazine yardımıyla dolar. Genel başkan kasadan üyelere kampanya desteği verir.</p>
 
-    ${k.gb_mi ? `<button class="btn altin" onclick="destekModal(${pid}, ${k.kasa})">Üyeye kampanya desteği ver</button><button class="btn ikinci" onclick="ucretModal(${pid})">Aday ücretlerini ayarla</button>` : ""}</div>`;
+    ${k.gb_mi || (typeof yetkiAlan === "function" && yetkiAlan("mali", pid)) ? `<button class="btn altin" onclick="destekModal(${pid}, ${k.kasa})">Üyeye kampanya desteği ver</button><button class="btn ikinci" onclick="ucretModal(${pid})">Aday ücretlerini ayarla</button>` : ""}</div>`;
 }
 function bagisModal(pid){
   const h = D._hayat;

@@ -38,7 +38,7 @@ window.ucretModal=async function(pid){
   let t;
   try{t=await API.rpc("parti_ucret_tarife",{p_parti:pid});}
   catch(err){toast(hataCevir(err.message),true);return;}
-  if(!t.genel_baskan_miyim){toast("Adaylık ücretlerini yalnızca parti genel başkanı belirleyebilir.",true);return;}
+  if(!t.genel_baskan_miyim&&!(typeof yetkiAlan==="function"&&yetkiAlan("mali",pid))){toast("Adaylık ücretlerini genel başkan ve Mali İşlerden Sorumlu Genel Başkan Yardımcısı belirler.",true);return;}
   const UC=[["mv_on","Milletvekili aday adaylığı"],["bel_on","Belediye başkanı aday adaylığı"],["kurultay","Genel başkanlık adaylığı"],["cb_on","Cumhurbaşkanı aday adaylığı"]];
   const m=modal(`<h3>Parti adaylık ücretlerini belirle</h3>
     <p class="alt">Her adaylık türü için taban ücretin 0–3 katı belirlenir (0 = ücretsiz). Ücretler parti kasasına girer. Mevcut ödemeler değişmez. Tabanlar ülke ekonomisine bağlıdır.</p>

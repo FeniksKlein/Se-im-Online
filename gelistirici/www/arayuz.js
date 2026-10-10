@@ -585,11 +585,16 @@ function partiMitingModal(pid) {
 const GBY_GOREVLER = ["Teşkilattan Sorumlu", "Seçim İşlerinden Sorumlu", "Siyasi ve Hukuki İşlerden Sorumlu", "Ekonomi Politikalarından Sorumlu",
   "Mali İşlerden Sorumlu", "Tanıtım ve Medyadan Sorumlu", "Dış İlişkilerden Sorumlu", "Yerel Yönetimlerden Sorumlu",
   "Sosyal Politikalardan Sorumlu", "Halkla İlişkilerden Sorumlu"];
+// Görev alanının verdiği yetkiler (sunucu: 53_gby_gorev_yetki.sql)
+const GBY_YETKI = { "Teşkilattan Sorumlu": "il teşkilatı açar, Parti İl Başkanı atar", "Seçim İşlerinden Sorumlu": "81 ilde parti mitingi yapar, aday tanıtır",
+  "Tanıtım ve Medyadan Sorumlu": "grup konuşması yayımlar, aday tanıtır", "Mali İşlerden Sorumlu": "parti kasasından destek verir, adaylık ücretlerini ayarlar",
+  "Siyasi ve Hukuki İşlerden Sorumlu": "üyeyi disipline sevk eder" };
+function yetkiAlan(alan, pid) { const y = D.yetki; return !!(y && y.parti_id === pid && (y.gb || (y.alanlar || []).includes(alan))); }
 async function gbyGorevCiz(pid) {
   let l; try { l = await API.rpc("gby_gorevleri", { p_parti: pid }); } catch (_) { return; }
   (l || []).forEach(g => {
     const el = document.querySelector(`[data-gby-sira="${g.sira}"]`);
-    if (el) el.innerHTML = g.gorev ? `${e(g.gorev)} GB Yardımcısı` : `GB Yardımcısı ${g.sira}`;
+    if (el) el.innerHTML = g.gorev ? `${e(g.gorev)} GB Yardımcısı${GBY_YETKI[g.gorev] ? `<div class="kucuk">${e(GBY_YETKI[g.gorev])}</div>` : ""}` : `GB Yardımcısı ${g.sira}`;
   });
 }
 async function gbyGorevModal(pid) {
@@ -598,10 +603,12 @@ async function gbyGorevModal(pid) {
   const sec = (g) => {
     const hazir = GBY_GOREVLER.includes(g.gorev), deger = !g.gorev ? "" : hazir ? g.gorev : "__diger";
     return `<div class="alan"><label>${g.sira}. ${e(g.kad)}</label>
-      <select data-gorev-kad="${e(g.kad)}"><option value="">— Görev yok —</option>${GBY_GOREVLER.map(x => `<option ${x === deger ? "selected" : ""}>${e(x)}</option>`).join("")}<option value="__diger" ${deger === "__diger" ? "selected" : ""}>Başka bir görev yaz…</option></select>
+      <select data-gorev-kad="${e(g.kad)}"><option value="">— Görev yok —</option>${GBY_GOREVLER.map(x => `<option value="${e(x)}" ${x === deger ? "selected" : ""}>${e(x)}${GBY_YETKI[x] ? " ★" : ""}</option>`).join("")}<option value="__diger" ${deger === "__diger" ? "selected" : ""}>Başka bir görev yaz…</option></select>
       <input data-gorev-ozel="${e(g.kad)}" maxlength="60" placeholder="Örnek: Çevre ve Şehircilikten Sorumlu" value="${hazir ? "" : e(g.gorev || "")}" ${deger === "__diger" ? "" : "hidden"} style="margin-top:6px"></div>`;
   };
   const m = modal(`<h3>Yardımcılara görev ver</h3><p class="alt">Her yardımcının görev alanı unvanında görünür: örneğin “Teşkilattan Sorumlu Genel Başkan Yardımcısı”. Yardımcı değişirse görevi de sıfırlanır.</p>
+    <div class="kart" style="background:var(--panel2);margin:0 0 12px"><b>★ Yetki veren görevler</b>${Object.entries(GBY_YETKI).map(([k, v]) => `<div class="kucuk" style="margin-top:4px"><b>${e(k)}:</b> ${e(v)}</div>`).join("")}
+      <div class="kucuk" style="margin-top:6px">Teşkilattan Sorumlu biri atanınca il teşkilatını yalnız sen ve o açar; atanmazsa tüm yardımcılar açabilir.</div></div>
     ${l.map(sec).join("")}<div class="hata-metin" id="ggHata"></div><button class="btn" id="ggKaydet">Kaydet</button>`);
   m.querySelectorAll("select[data-gorev-kad]").forEach(s => s.onchange = () => {
     const i = m.querySelector(`input[data-gorev-ozel="${CSS.escape(s.dataset.gorevKad)}"]`); if (i) i.hidden = s.value !== "__diger";

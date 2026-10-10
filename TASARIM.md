@@ -586,7 +586,14 @@ Karne oyuncu kartında, parti sayfasında, il sayfasında ve belediye ekranında
 
 ### Genel başkan yardımcılarının görevleri (2026-10-10, modül 52)
 - Genel başkan her yardımcısına bir görev alanı verir: Teşkilattan, Seçim İşlerinden, Siyasi ve Hukuki İşlerden, Ekonomi Politikalarından, Mali İşlerden, Tanıtım ve Medyadan, Dış İlişkilerden, Yerel Yönetimlerden, Sosyal Politikalardan, Halkla İlişkilerden Sorumlu ya da kendi yazdığı bir alan.
-- Unvan her yerde görünür ("CYP Teşkilattan Sorumlu Genel Başkan Yardımcısı"). Yardımcı değişince görev sıfırlanır. Görev şimdilik unvandır, ek yetki vermez.
+- Unvan her yerde görünür ("CYP Teşkilattan Sorumlu Genel Başkan Yardımcısı"). Yardımcı değişince görev sıfırlanır.
+- Beş görev yetki verir (modül 53); genel başkan her işi yapmaya devam eder:
+  - Teşkilattan Sorumlu: il teşkilatı açar, Parti İl Başkanı atar ve görevden alır. Bu görevde biri varsa il teşkilatını yalnız genel başkan ve o açar; yoksa tüm yardımcılar açabilir.
+  - Seçim İşlerinden Sorumlu: ayrıca miting yetkisi beklemeden 81 ilde parti mitingi düzenler, aday tanıtır.
+  - Tanıtım ve Medyadan Sorumlu: grup konuşması yayımlar, aday tanıtır.
+  - Mali İşlerden Sorumlu: parti kasasından üyeye kampanya desteği verir, adaylık ücretlerini ayarlar.
+  - Siyasi ve Hukuki İşlerden Sorumlu: üyeyi disipline sevk eder; genel başkanı sevk edemez.
+- Diğer görevler ve serbest yazılanlar yalnız unvandır.
 - Mitingde o ilde yaşayan oyuncu bir söze tepki verdiğinde mitinge kendiliğinden katılmış sayılır.
 
 ### Bağımsız adayın partiye katılması (2026-10-09, modül 50)

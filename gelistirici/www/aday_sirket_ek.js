@@ -28,6 +28,7 @@ async function partiAdayKartiCiz(pid){
     ${d.genel_baskan_mi?`<button class="btn ikinci" onclick="cbKararModal()">Cumhurbaşkanı adayını belirle / destekle</button>
      <button class="btn ikinci" onclick="belDestekModal(${pid})">Belediye ortak adayını açıkla / destekle</button>
      <button class="btn altin" onclick="partiAdayTanitModal(${pid})">Bir adayı tanıt</button>`:""}
+    ${!d.genel_baskan_mi&&typeof yetkiAlan==="function"&&(yetkiAlan("secim",pid)||yetkiAlan("tanitim",pid))?`<button class="btn altin" onclick="partiAdayTanitModal(${pid})">Bir adayı tanıt</button>`:""}
     ${(d.tanitimlar||[]).length?`<h3>Aday tanıtımları</h3>
       ${d.tanitimlar.map(t=>`<div class="kart" style="background:var(--panel2);margin-top:8px"><b>${e(t.kad)}</b>
       <span class="rozet">${t.kitle==="herkes"?"Herkese açık":"Yalnız üyelere"}</span>

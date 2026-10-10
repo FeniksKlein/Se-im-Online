@@ -113,3 +113,14 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - **Canlıya uygulandı** (Supabase migration `gby_gorev_miting_tepki_20261010`); canlı `unvan` ve `miting_tepki` önce depodakiyle karşılaştırıldı (aynıydı).
 - Test: `python3 test/gby_gorev_tepki.py` (hepsi.sh'te); `miting_canli.py` yeni kurala göre güncellendi.
 
+## 2026-10-10 · 2026.10.10-4 GBY görevlerine yetki
+- `53_gby_gorev_yetki.sql` (+ `migrations/20261010_gby_gorev_yetki.sql`, **canlıya uygulandı**: `gby_gorev_yetki_20261010`). Genel başkan her şeyi yapar; ek olarak:
+  - Teşkilattan Sorumlu: il teşkilatı açar, Parti İl Başkanı atar/alır. Partide bu görevde biri varsa teşkilatı yalnız GB + o açar; yoksa eskisi gibi tüm yardımcılar.
+  - Seçim İşlerinden Sorumlu: miting yetkisi beklemeden parti mitingi, aday tanıtımı.
+  - Tanıtım ve Medyadan Sorumlu: grup konuşması, aday tanıtımı.
+  - Mali İşlerden Sorumlu: kasadan kampanya desteği, adaylık ücretleri.
+  - Siyasi ve Hukuki İşlerden Sorumlu: disipline sevk (GB'yi sevk edemez).
+- Yardımcılar: `oyun.gby_alan`, `oyun.parti_gorevli(u, alanlar)`, `oyun.teskilat_yonetici`, `public.parti_yetkilerim()` (arayüz `D.yetki`, `yetkiAlan()`).
+- **Not:** canlıdaki `teskilat_gorev_ver/al` depodakinden farklıydı (kaynakta olmayan canlı değişiklik). 53 canlı hâli temel aldı; kaynak artık eşit.
+- Test: `python3 test/gby_gorev_yetki.py` (hepsi.sh'te).
+
