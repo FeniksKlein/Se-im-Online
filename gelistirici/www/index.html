@@ -2119,11 +2119,15 @@ async function partiDetay(id){
   let p; try { p = await API.rpc("parti_detay", { p_parti: id }); await durumYenile(); try { D.yetki = await API.rpc("parti_yetkilerim"); } catch (_) { D.yetki = null; } } catch (err) { iskelet("Parti", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
   const ben = D.durum.profil, gbyim = p.uyesiyim && ben.gb, araKurultay = p.uyesiyim && D.durum.takvim.some(x => x.ara && x.tur === "kurultay" && x.hedef_parti_id === p.id && ["yakinda","basvuru","oy","sayim"].includes(x.asama));
   const makamAd = (m) => (m || "").split(",").filter(Boolean).map(x => `<span class="rozet altin">${MAKAM_AD[x]}</span>`).join(" ");
+  const sozcuBilgi = await API.rpc("parti_sozcu_bilgi", { p_parti: id }).catch(() => null);
   iskelet(e(p.kisa), `
     <div class="kart" style="text-align:center"><div class="amb" style="margin:0 auto 10px;width:72px;height:72px;border-radius:20px;background:${e(p.renk)}22">${amblemSvg(p.amblem, p.renk).replace("<svg", '<svg style="width:42px;height:42px;color:' + e(p.renk) + '"')}</div>
       <h3 style="font-size:21px">${e(p.ad)}</h3><button class="btn altin" onclick="aliciBagisModal('parti',${p.id},decodeURIComponent('${encodeURIComponent(p.ad).replace(/\x27/g,"%27")}'))">Bu partiye bağış yap</button><div class="alt">${p.sistem ? "Kurucu parti" : `${tarih(p.kurulus)} tarihinde ${e(p.kurucu || "")} kurdu`}</div>
       <div style="display:flex;justify-content:center;gap:16px;margin-top:12px">
         <div><b style="font-size:20px">${p.uye}</b><div class="kucuk">üye</div></div><div><b style="font-size:20px">${p.vekil}</b><div class="kucuk">vekil</div></div><div><b style="font-size:20px">${p.belediye}</b><div class="kucuk">belediye</div></div></div></div>
+    <div class="kart"><h3>Parti Sözcüsü</h3><div class="kv"><span class="k">Görevdeki sözcü</span><span class="v">${e((sozcuBilgi && sozcuBilgi.sozcu) || "Henüz atanmadı")}</span></div>
+      <p class="alt">Parti adına açılan davalarda savunma yapabilir. Partili oyuncuların kişisel davalarında, oyuncunun izniyle onları temsil edebilir.</p>
+      ${sozcuBilgi && sozcuBilgi.gb_miyim ? `<button class="btn ikinci" onclick="partiSozcuModal(${p.id})">Parti Sözcüsü ata / görevden al</button>` : ""}</div>
     ${p.kurulus_bit ? `<div class="olay basvuru"><div class="baslik"><b>Kuruluş aşamasında</b><span class="rozet altin">${p.kurucu_gecerli} / ${p.kurucu_gerekli} kurucu</span></div>
       <p class="alt" style="margin-top:6px">Parti, ${tarihSaat(p.kurulus_bit)} tarihine kadar şartları taşıyan ${p.kurucu_gerekli} kurucu üyeye ulaşırsa kurulur ve seçimlere katılabilir; ulaşamazsa kuruluş düşer. Seçmen kartı hazır her üye kurucu sayılır.</p>
       ${p.uyesiyim && p.kurucu_engelim ? `<div class="kucuk" style="color:var(--gold2)">Sen henüz kurucu sayılmıyorsun: ${e(p.kurucu_engelim)}</div>` : ""}
