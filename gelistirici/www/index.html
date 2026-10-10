@@ -3481,6 +3481,9 @@ async function oyuncuBankaEkrani(){
      ${b.bankam?"<p class='alt'>Kendi bankana faizli mevduat yatıramazsın.</p>":""}
      <div class="kart" style="margin-top:14px;background:var(--panel2)">
       <h3>Bu bankadan kredi iste</h3>
+      <p class="alt">Limitin kredi notuna, haftalık gelirine, nakit bütçene ve mevcut borçlarına göre hesaplanır.</p>
+      <div id="oyb_kredi_risk_${b.id}" class="alt">Bu vade için kredi notunu ve limitini kontrol edebilirsin.</div>
+      <button class="btn ikinci" onclick="oybKrediRiskGoster(${b.id})">Kredi notumu ve limitimi göster</button>
       <p class="alt">Krediyi banka sahibi onaylar. Borç hesabına para ancak onaylanınca geçer. Oranlar 24 saatlik %${fmt(b.kredi_faiz,2)} kredi faizinden hesaplanır.</p>
       <div class="alan"><label>Kredi tutarı (₺)</label><input id="oyb_ktutar_${b.id}" type="number" min="1000" max="500000" step="1000" value="10000"></div>
       <div class="alan"><label>Geri ödeme vadesi</label><select id="oyb_ksaat_${b.id}">
@@ -3517,6 +3520,23 @@ async function oyuncuBankaEkrani(){
    </div>
   `,{geri:true});
  }catch(err){iskelet("Oyuncu bankaları",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true})}
+}
+async function oybKrediRiskGoster(id){
+ const el=document.getElementById("oyb_kredi_risk_"+id);if(!el)return;
+ const sec=document.getElementById("oyb_ksaat_"+id);
+ const saat=Number(sec?sec.value:24);
+ el.textContent="Kredi uygunluğun hesaplanıyor...";
+ try{
+  const r=await API.rpc("kredi_uygunluk",{p_banka:id,p_saat:saat});
+  el.innerHTML='<div class="kv"><span>Kredi notun</span><b>'+fmt(r.kredi_notu)+' / 1900</b></div>'+
+   '<div class="kv"><span>Haftalık düzenli gelirin</span><b>'+fmt(r.haftalik_gelir)+' ₺</b></div>'+
+   '<div class="kv"><span>Nakit bütçen</span><b>'+fmt(r.nakit)+' ₺</b></div>'+
+   '<div class="kv"><span>Bu vadede kredi limitin</span><b>'+fmt(r.azami_kredi)+' ₺</b></div>'+
+   '<div class="kv"><span>Bu kredi için faiz</span><b>%'+fmt(r.oran,2)+'</b></div>'+
+   '<p class="kucuk">'+e(r.neden)+'</p>';
+  const input=document.getElementById("oyb_ktutar_"+id);
+  if(input&&Number(r.azami_kredi)>=1000){input.max=Number(r.azami_kredi);}
+ }catch(err){el.textContent=hataCevir(err.message);}
 }
 function oybVadeOnizle(id){const el=document.getElementById("oyb_onizleme_"+id);if(el)el.textContent="Faiz ve bakiye kontrolü için 'Beklenen getiri ve riski kontrol et' seç."}
 async function oyuncuBankaTeklif(id){
@@ -3597,6 +3617,11 @@ async function oybYonetim(id){
     <b>${e(k.borclu)} · #${k.id}</b>
     <div class="kv"><span>Anapara / geri ödeme</span><b>${fmt(k.anapara)} / ${fmt(k.toplam)} ₺</b></div>
     <div class="kv"><span>Vade / faiz</span><b>${k.saat} saat · %${fmt(k.oran,2)}</b></div>
+    <div class="kv"><span>Oyuncunun kredi notu</span><b>${k.kredi_notu??"—"} / 1900</b></div>
+    <div class="kv"><span>Haftalık geliri</span><b>${fmt(k.haftalik_gelir??0)} ₺</b></div>
+    <div class="kv"><span>Kullanılabilir nakit</span><b>${fmt(k.nakit??0)} ₺</b></div>
+    <div class="kv"><span>Güncel kredi limiti</span><b>${fmt(k.azami_kredi??0)} ₺</b></div>
+    <p class="kucuk">${e(k.degerlendirme||"")}</p>
     <div class="kv"><span>Durum</span><b>${e(k.durum==="iptal"?"Oyuncu iptal etti":k.durum)} · Kalan ${fmt(k.kalan)} ₺</b></div>
     ${k.vade?`<div class="kv"><span>Ödeme tarihi</span><b>${oybTarih(k.vade)}</b></div>`:""}
     ${b.yonetebilir&&k.durum==="basvuru"?`<div class="satir"><button class="btn yarim altin" onclick="oybKrediKarar(${id},${k.id},true)">Krediyi onayla</button><button class="btn yarim ikinci" onclick="oybKrediKarar(${id},${k.id},false)">Reddet</button></div>`:""}
@@ -3694,7 +3719,10 @@ function bankaCiz(b){
           <div class="satir"><button class="btn yarim altin" id="kKapat">Tamamını öde</button><button class="btn yarim ikinci" id="kAra">Ara ödeme</button></div></div>`
         : `<div class="kv"><span class="k">Kredi limitin</span><span class="v">${tlYaz(b.kredi_limit)}</span></div>
           <div class="kv"><span class="k">Sana uygulanacak faiz</span><span class="v">aylık ${yuzde(b.kredi_oran)}</span></div>
-          <p class="kucuk" style="margin-top:6px">Limitin statüne, görevine ve kredi notuna göre belirlenir. Vade 7, 15 ya da 30 gün; borç her gün eşit taksitle ödenir.</p>
+          ${b.kredi_butce?`<div class="kv"><span class="k">7 gün vadeli limit</span><span class="v">${tlYaz(Math.min(b.kredi_limit,b.kredi_butce.vade7.azami_kredi))}</span></div>
+          <div class="kv"><span class="k">15 gün vadeli limit</span><span class="v">${tlYaz(Math.min(b.kredi_limit,b.kredi_butce.vade15.azami_kredi))}</span></div>
+          <div class="kv"><span class="k">30 gün vadeli limit</span><span class="v">${tlYaz(Math.min(b.kredi_limit,b.kredi_butce.vade30.azami_kredi))}</span></div>`:""}
+          <p class="kucuk" style="margin-top:6px">Kredi limitin maaşına, haftalık kira ve şirket gelirine, nakit bütçene, mevcut borçlarına ve kredi notuna göre hesaplanır. Vade 7, 15 veya 30 gün; her vadenin limiti farklı olabilir.</p>
           ${b.kara_liste ? `<p class="kucuk" style="color:var(--acc);font-weight:700">Takibe düşen kredin nedeniyle ${tarih(b.kara_liste)} tarihine kadar yeni kredi alamazsın.</p>`
             : b.kredi_engel ? `<p class="kucuk" style="color:var(--gold2)">Kredi için seçmen kartın hazır olmalı: ${e(b.kredi_engel)}</p>` : ""}
           <button class="btn altin" id="kCek" ${!b.acik || b.kara_liste || b.kredi_engel || b.kredi_limit < 1000 ? "disabled" : ""}>Kredi çek</button>`}
