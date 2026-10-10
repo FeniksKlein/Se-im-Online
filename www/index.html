@@ -1237,74 +1237,68 @@ function gundemMeclisSecimineGit(id){
   D.devletSekme = "meclis";
   sekmeAc("devlet");
 }
-function gundemAktifSecimlerHtml(takvim, divan, referandumlar, dernekSecimleri){
+function gundemAktifSecimlerHtml(takvim, divan, referandumlar, dernekSecimleri, profil){
   const suAn = simdi(), liste = [];
   const zamanMs = (x) => x ? new Date(x).getTime() : NaN;
-  function ekle(oncelik, baslik, asama, aciklama, son, git, dugme, canli){
-    liste.push({oncelik,baslik,asama,aciklama,son,zaman:zamanMs(son),git,dugme,canli:!!canli});
+  const sandikAcik = (bas, bit) => Number.isFinite(zamanMs(bas)) &&
+    Number.isFinite(zamanMs(bit)) && suAn >= zamanMs(bas) && suAn < zamanMs(bit);
+  function ekle(oncelik, baslik, asama, bit, git, dugme) {
+    liste.push({oncelik, baslik, asama, bit, zaman:zamanMs(bit), git, dugme});
   }
-  for(const s of ((divan && divan.secimler) || [])){
-    if(!["aday","oylama"].includes(s.durum)) continue;
+  // Meclis seçimini sadece oy hakkı olan vekil görür.
+  // Grup seçimi diğer partilere, aynı ittifakta olsalar bile gösterilmez.
+  for (const s of ((divan && divan.secimler) || [])) {
+    if(s.durum !== "oylama" || !s.katilabilir) continue;
     const baskan = s.tur === "baskan";
-    const baslik = baskan ? "TBMM Başkanlığı seçimi"
-      : ((s.parti && (s.parti.kisa || s.parti.ad)) || "Parti") + " Meclis grubu seçimi";
-    const turBas = zamanMs(s.tur_bas || s.aday_bit);
-    const turBit = s.tur === "baskan" ? s.tur_bit : s.oy_bit;
-    const acik = s.durum === "oylama" && (!baskan || (suAn >= turBas && suAn < zamanMs(turBit)));
-    const adayAcik = s.durum === "aday" && suAn < zamanMs(s.aday_bit);
-    const asama = adayAcik ? "Adaylık açık" :
-      s.durum === "aday" ? "Oy verme bekleniyor" :
-      acik ? (baskan ? s.tur_no + ". tur · Oy verme açık" : "Oy verme açık") :
-      (baskan ? s.tur_no + ". tur bekleniyor" : "Oylama bekleniyor");
-    const son = adayAcik ? s.aday_bit : acik ? turBit : s.durum === "aday" ? (s.tur_bas || s.oy_bit) : (s.tur_bas || turBit);
-    const detay = adayAcik ? "Adaylık sonu" : acik ? "Sandık kapanışı" : "Sıradaki oylama";
-    ekle(baskan ? 0 : acik ? 1 : 3, baslik, asama,
-      detay, son, "gundemMeclisSecimineGit(" + Number(s.id) + ")",
-      acik && s.katilabilir ? "Oy ver" : adayAcik && s.katilabilir ? "Aday ol" : "Seçime git", acik);
+    if(!baskan && (!profil || !profil.parti || !s.parti || Number(profil.parti.id) !== Number(s.parti.id))) continue;
+    const bas = baskan ? (s.tur_bas || s.aday_bit) : s.aday_bit;
+    const bit = baskan ? s.tur_bit : s.oy_bit;
+    if(!sandikAcik(bas,bit)) continue;
+    const oyGorevleri = baskan ? ["baskan"] : [
+      ...(s.bskv_hakki ? ["bskv"] : []), "grup_bskv"
+    ];
+    const tamam = oyGorevleri.every(g => (s.oylarim || []).includes(g));
+    ekle(baskan ? 0 : 1,
+      baskan ? "TBMM Başkanlığı seçimi" : ((s.parti.kisa || s.parti.ad) + " Meclis grubu seçimi"),
+      baskan ? s.tur_no + ". tur · Sandık açık" : "Sandık açık",
+      bit, "gundemMeclisSecimineGit(" + Number(s.id) + ")",
+      tamam ? "Oyunu gör" : "Oy ver");
   }
-  for(const s of (takvim || [])){
-    if(!["basvuru","oy","sayim"].includes(s.asama)) continue;
+  // Genel, yerel, Cumhurbaşkanlığı ve parti içi seçimler: yalnız oy verme dönemi,
+  // yalnız ilgili seçmen (oy engeli bulunan kullanıcılara gösterilmez).
+  for (const s of (takvim || [])) {
+    if(s.asama !== "oy" || s.oy_engeli || !sandikAcik(s.oy_bas, s.oy_bit)) continue;
     const ad = (TUR[s.tur] || {}).ad || s.tur;
-    const hedef = s.hedef_il_ad ? " · " + s.hedef_il_ad :
-      s.hedef_parti ? " · " + (s.hedef_parti.kisa || s.hedef_parti.ad || "") : "";
-    const oy = s.asama === "oy";
-    const basvuru = s.asama === "basvuru";
-    ekle(oy ? 1 : basvuru ? 3 : 4, ad + hedef,
-      oy ? "Sandık açık" : basvuru ? "Adaylık / Başvuru" : "Oy sayımı",
-      oy ? "Sandık kapanışı" : basvuru ? "Başvuru bitişi" : "Sonuç açıklanma",
-      oy ? s.oy_bit : basvuru ? s.basvuru_bit : s.sonuc_at,
+    const hedef = s.hedef_il_ad ? " · " + s.hedef_il_ad
+      : s.hedef_parti ? " · " + (s.hedef_parti.kisa || s.hedef_parti.ad || "") : "";
+    ekle(2, ad + hedef, "Sandık açık", s.oy_bit,
       "ekranAc(()=>secimEkrani(" + Number(s.id) + "))",
-      oy && !s.oy_verdim && !s.oy_engeli ? "Oy ver" : "Seçime git", oy);
+      s.oy_verdim ? "Oyunu gör" : "Oy ver");
   }
-  for(const r of (referandumlar || [])){
-    if(!["oy","kampanya","sayim"].includes(r.asama)) continue;
-    const oy = r.asama === "oy";
-    ekle(oy ? 1 : 3, "Halk oylaması · " + (r.baslik || "Referandum"),
-      oy ? "Sandık açık" : r.asama === "sayim" ? "Oy sayımı" : "Kampanya dönemi",
-      oy ? "Sandık kapanışı" : "Oylama başlangıcı", oy ? r.oy_bit : r.asama === "kampanya" ? r.oy_bas : r.oy_bit,
-      "ekranAc(()=>referandumEkrani(" + Number(r.id) + "))",
-      oy && !r.oy_kullandim && !r.engel ? "Oy ver" : "İncele", oy);
+  // Halk oylamasında yalnız seçmen kütüğündekiler görür.
+  for (const r of (referandumlar || [])) {
+    if(r.asama !== "oy" || r.engel || !sandikAcik(r.oy_bas, r.oy_bit)) continue;
+    ekle(2, "Halk oylaması · " + (r.baslik || "Referandum"), "Sandık açık",
+      r.oy_bit, "ekranAc(()=>referandumEkrani(" + Number(r.id) + "))",
+      r.oy_kullandim ? "Oyunu gör" : "Oy ver");
   }
-  for(const s of (dernekSecimleri || [])){
-    if(s.durum !== "acik" || zamanMs(s.oy_bit) <= suAn) continue;
-    const basvuru = suAn < zamanMs(s.aday_bit);
-    ekle(basvuru ? 3 : 1, (s.ad || "Dernek") + " · Genel kurul seçimi",
-      basvuru ? "Adaylık açık" : "Oylama açık", basvuru ? "Adaylık bitişi" : "Sandık kapanışı",
-      basvuru ? s.aday_bit : s.oy_bit,
-      "ekranAc(()=>sosDernekPanel(" + Number(s.dernek_id) + "))",
-      basvuru ? "Adayları gör" : "Oy ver / İzle", !basvuru);
+  // Dernek seçimleri sunucudan yalnız oy hakkı olan üyeler için döner.
+  for (const s of (dernekSecimleri || [])) {
+    if(s.durum !== "acik" || !sandikAcik(s.aday_bit, s.oy_bit)) continue;
+    ekle(2, (s.ad || "Dernek") + " · Genel kurul seçimi", "Sandık açık",
+      s.oy_bit, "ekranAc(()=>sosDernekPanel(" + Number(s.dernek_id) + "))", "Oy ver");
   }
   if(!liste.length) return "";
-  liste.sort((a,b) => a.oncelik-b.oncelik || (Number.isFinite(a.zaman) ? a.zaman : Infinity) - (Number.isFinite(b.zaman) ? b.zaman : Infinity));
-  return '<section class="secim-ust" aria-label="Aktif seçimler">' +
-    '<div class="secim-ust-bas"><h2>🗳️ Aktif Seçimler</h2><span class="rozet kirmizi">' + liste.length + ' seçim</span></div>' +
+  liste.sort((a,b) => a.oncelik-b.oncelik || a.zaman-b.zaman);
+  return '<section class="secim-ust" aria-label="Şu anda oy kullanabileceğin seçimler">' +
+    '<div class="secim-ust-bas"><h2>🗳️ Aktif Seçimler</h2><span class="rozet kirmizi">' +
+    liste.length + ' seçim</span></div>' +
     liste.map((s,i) => '<button type="button" class="secim-ust-satir' + (i===0?' ilk':'') +
       '" onclick="' + s.git + '">' +
-      '<span class="icer"><span class="rozet ' + (s.canli ? 'kirmizi' : 'altin') + '">' + e(s.asama) + '</span>' +
-      '<b>' + e(s.baslik) + '</b><span class="kucuk">' + e(s.aciklama) +
-      (Number.isFinite(s.zaman) ? ': ' + e(tarihSaat(s.son)) +
-      ' · <span data-an="' + s.zaman + '">' + e(kalan(s.zaman-suAn)) + '</span>' : '') +
-      '</span></span><span class="git">' + e(s.dugme) + ' ›</span></button>').join("") +
+      '<span class="icer"><span class="rozet kirmizi">' + e(s.asama) + '</span>' +
+      '<b>' + e(s.baslik) + '</b><span class="kucuk">Sandık kapanışı: ' + e(tarihSaat(s.bit)) +
+      ' · <span data-an="' + s.zaman + '">' + e(kalan(s.zaman-suAn)) +
+      '</span></span></span><span class="git">' + e(s.dugme) + ' ›</span></button>').join("") +
     '</section>';
 }
 function siradakiAn(s){
@@ -1369,7 +1363,7 @@ async function gundemEkrani(){
   const iste = (fn, args, varsay) => API.rpc(fn, args).catch(() => varsay);
   const [ihaleR, haber, reflerR, kanunlar, dv, itt, ia, mitingler, haklar, meclis, stk, dernekSecimleri] = await Promise.all([
     iste("ihaleler", undefined, { acik: [] }), iste("haberler", { p_limit: 15 }, []), iste("referandumlar", { p_limit: 5 }, []),
-    mvMi || cbMi ? iste("kanunlar", { p_limit: 40 }, []) : [], iste("meclis_baskanlik", undefined, null),
+    mvMi || cbMi ? iste("kanunlar", { p_limit: 40 }, []) : [], mvMi ? iste("meclis_baskanlik", undefined, null) : null,
     pp.gb && pp.parti ? iste("ittifak_bilgi", { p_parti: pp.parti.id }, null) : null,
     iste("ilk_adimlar", undefined, null), iste("mitingler", undefined, []), iste("miting_haklarim", undefined, []),
     D._meclisOn && simdi() - D._meclisOn.t < 300e3 ? D._meclisOn.v : iste("meclis", undefined, null), iste("dernek_akis", { p_limit: 5 }, null), iste("gundem_dernek_secimler", undefined, [])]);
@@ -1410,7 +1404,7 @@ async function gundemEkrani(){
   const cb = d.cb, ms = meclis && meclis.partiler ? meclis.partiler.filter(x => x.n > 0) : [];
   const govde = `
     ${seritHtml(haber)}
-    ${gundemAktifSecimlerHtml(d.takvim, dv, refler, dernekSecimleri)}
+    ${gundemAktifSecimlerHtml(d.takvim, dv, refler, dernekSecimleri, pp)}
     ${sahneHtml(d.takvim)}
     <div class="kart vit-gazete"><h2>📰 Gazeteler</h2>
       <div class="vit-dugme"><button class="btn altin" onclick="ekranAc(basinEkrani)">Oyuncu gazeteleri</button><button class="btn ikinci" onclick="otomatikGazeteEkrani()">Türkiye Gündem</button></div>
@@ -1420,10 +1414,10 @@ async function gundemEkrani(){
     ${ilkAdimlarHtml(ia)}
     ${aktif.length || ihaleler.length || meclisBekleyen.length || refler.length || cbKararKarti() ? `<div class="bolum-bas"><h2>Seçimler ve oylamalar</h2></div>` : ""}
     ${cbKararKarti()}
-    ${aktif.map(s => `<div id="sec${s.id}">${olayKarti(s)}</div>`).join("")}
-    ${meclisBekleyen.map(meclisSecimKart).join("")}
+    ${aktif.filter(s => s.asama !== "oy" || !!s.oy_engeli).map(s => `<div id="sec${s.id}">${olayKarti(s)}</div>`).join("")}
+    ${meclisBekleyen.filter(s => s.durum !== "oylama").map(meclisSecimKart).join("")}
     ${ihaleler.map(ihaleKart).join("")}
-    ${refler.map(r => r.durum === "sonuclandi" ? `<div class="olay basvuru" onclick="ekranAc(()=>referandumEkrani(${r.id}))" style="cursor:pointer"><div class="baslik"><b>Halk oylaması sonuçlandı</b><span class="rozet ${r.sonuc === "kabul" ? "yesil" : ""}">${r.sonuc === "kabul" ? "Kabul" : "Ret"}</span></div><div style="margin-top:6px;font-weight:700">${e(r.baslik)}</div><div class="kucuk">%${fmt(r.evet * 100 / Math.max(1, r.evet + r.hayir), 1)} Evet · %${fmt(r.hayir * 100 / Math.max(1, r.evet + r.hayir), 1)} Hayır</div></div>` : refKart(r)).join("")}
+    ${refler.filter(r => r.asama !== "oy" || !!r.engel).map(r => r.durum === "sonuclandi" ? `<div class="olay basvuru" onclick="ekranAc(()=>referandumEkrani(${r.id}))" style="cursor:pointer"><div class="baslik"><b>Halk oylaması sonuçlandı</b><span class="rozet ${r.sonuc === "kabul" ? "yesil" : ""}">${r.sonuc === "kabul" ? "Kabul" : "Ret"}</span></div><div style="margin-top:6px;font-weight:700">${e(r.baslik)}</div><div class="kucuk">%${fmt(r.evet * 100 / Math.max(1, r.evet + r.hayir), 1)} Evet · %${fmt(r.hayir * 100 / Math.max(1, r.evet + r.hayir), 1)} Hayır</div></div>` : refKart(r)).join("")}
     ${oylanacak.length ? `<div class="olay oy"><div class="baslik"><b>Meclis'te oyunu bekleyen ${oylanacak.length} teklif var</b><span class="rozet kirmizi">Vekil</span></div>
       ${oylanacak.map(k => `<div class="liste-satir" onclick="ekranAc(()=>kanunEkrani(${k.id}))" style="cursor:pointer"><div class="orta"><b>${e(k.baslik)}</b><div class="kucuk">${k.durum === "israr" ? "Israr oylaması" : "Oylama"} bitişi ${tarihSaat(k.durum === "israr" ? k.israr_bit : k.oy_bit)}</div></div><span>›</span></div>`).join("")}</div>` : ""}
     ${onaylanacak.length ? `<div class="olay basvuru"><div class="baslik"><b>Onayını bekleyen ${onaylanacak.length} kanun</b><span class="rozet altin">Cumhurbaşkanı</span></div>
