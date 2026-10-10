@@ -730,6 +730,19 @@ details.acilir ul{margin:6px 0 0 18px;font-size:13px;color:var(--mut)}
 .hareket:last-child{border-bottom:0}.hareket .t{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* ---- Gündem: kayan haber şeridi, takvim şeridi, bugün listesi ---- */
+.secim-ust{margin:0 0 17px;padding:13px 15px 4px;border:1px solid var(--line);border-top:3px solid var(--al);border-radius:12px;background:var(--panel)}
+.secim-ust-bas{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:6px}
+.secim-ust-bas h2{font-family:var(--disp);font-size:19px;margin:0}
+.secim-ust-satir{display:flex;align-items:center;gap:10px;width:100%;padding:11px 0;background:none;color:var(--txt);border:0;border-top:1px solid var(--line);text-align:left;cursor:pointer;font:inherit}
+.secim-ust-satir:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.secim-ust-satir .icer{flex:1;min-width:0}
+.secim-ust-satir .icer b{display:block;font-size:15px;line-height:1.32}
+.secim-ust-satir .icer .kucuk{display:block;margin-top:3px;line-height:1.4}
+.secim-ust-satir .git{flex:none;font-size:12px;font-weight:800;color:var(--ink2);white-space:nowrap}
+.secim-ust-satir.ilk .icer b{font-family:var(--disp);font-size:20px}
+.secim-ust-satir.ilk{padding:13px 0}
+.secim-ust-satir .rozet{margin-bottom:4px}
+@media(max-width:370px){.secim-ust-satir .git{font-size:11px}.secim-ust{padding:12px 11px 4px}}
 .serit{display:flex;align-items:center;gap:10px;margin:-14px -16px 14px;padding:8px 16px;background:var(--bg2);border-bottom:1px solid var(--line);overflow:hidden;white-space:nowrap}
 .serit .etiket{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:var(--al2)}
 .serit .etiket::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--al);animation:nabiz 1.6s ease-in-out infinite}
@@ -1218,6 +1231,82 @@ async function cikisYap(){ await PUSH.cikis(); await API.cikis(); D.durum = null
 /* =====================================================================
    5) GÜNDEM (ana ekran)
    ===================================================================== */
+// Tüm aktif seçimleri kayan haber bandının hemen altında gösterir.
+function gundemMeclisSecimineGit(id){
+  D._meclisSecimOdak = Number(id);
+  D.devletSekme = "meclis";
+  sekmeAc("devlet");
+}
+function gundemAktifSecimlerHtml(takvim, divan, referandumlar, dernekSecimleri){
+  const suAn = simdi(), liste = [];
+  const zamanMs = (x) => x ? new Date(x).getTime() : NaN;
+  function ekle(oncelik, baslik, asama, aciklama, son, git, dugme, canli){
+    liste.push({oncelik,baslik,asama,aciklama,son,zaman:zamanMs(son),git,dugme,canli:!!canli});
+  }
+  for(const s of ((divan && divan.secimler) || [])){
+    if(!["aday","oylama"].includes(s.durum)) continue;
+    const baskan = s.tur === "baskan";
+    const baslik = baskan ? "TBMM Başkanlığı seçimi"
+      : ((s.parti && (s.parti.kisa || s.parti.ad)) || "Parti") + " Meclis grubu seçimi";
+    const turBas = zamanMs(s.tur_bas || s.aday_bit);
+    const turBit = s.tur === "baskan" ? s.tur_bit : s.oy_bit;
+    const acik = s.durum === "oylama" && (!baskan || (suAn >= turBas && suAn < zamanMs(turBit)));
+    const adayAcik = s.durum === "aday" && suAn < zamanMs(s.aday_bit);
+    const asama = adayAcik ? "Adaylık açık" :
+      s.durum === "aday" ? "Oy verme bekleniyor" :
+      acik ? (baskan ? s.tur_no + ". tur · Oy verme açık" : "Oy verme açık") :
+      (baskan ? s.tur_no + ". tur bekleniyor" : "Oylama bekleniyor");
+    const son = adayAcik ? s.aday_bit : acik ? turBit : s.durum === "aday" ? (s.tur_bas || s.oy_bit) : (s.tur_bas || turBit);
+    const detay = adayAcik ? "Adaylık sonu" : acik ? "Sandık kapanışı" : "Sıradaki oylama";
+    ekle(baskan ? 0 : acik ? 1 : 3, baslik, asama,
+      detay, son, "gundemMeclisSecimineGit(" + Number(s.id) + ")",
+      acik && s.katilabilir ? "Oy ver" : adayAcik && s.katilabilir ? "Aday ol" : "Seçime git", acik);
+  }
+  for(const s of (takvim || [])){
+    if(!["basvuru","oy","sayim"].includes(s.asama)) continue;
+    const ad = (TUR[s.tur] || {}).ad || s.tur;
+    const hedef = s.hedef_il_ad ? " · " + s.hedef_il_ad :
+      s.hedef_parti ? " · " + (s.hedef_parti.kisa || s.hedef_parti.ad || "") : "";
+    const oy = s.asama === "oy";
+    const basvuru = s.asama === "basvuru";
+    ekle(oy ? 1 : basvuru ? 3 : 4, ad + hedef,
+      oy ? "Sandık açık" : basvuru ? "Adaylık / Başvuru" : "Oy sayımı",
+      oy ? "Sandık kapanışı" : basvuru ? "Başvuru bitişi" : "Sonuç açıklanma",
+      oy ? s.oy_bit : basvuru ? s.basvuru_bit : s.sonuc_at,
+      "ekranAc(()=>secimEkrani(" + Number(s.id) + "))",
+      oy && !s.oy_verdim && !s.oy_engeli ? "Oy ver" : "Seçime git", oy);
+  }
+  for(const r of (referandumlar || [])){
+    if(!["oy","kampanya","sayim"].includes(r.asama)) continue;
+    const oy = r.asama === "oy";
+    ekle(oy ? 1 : 3, "Halk oylaması · " + (r.baslik || "Referandum"),
+      oy ? "Sandık açık" : r.asama === "sayim" ? "Oy sayımı" : "Kampanya dönemi",
+      oy ? "Sandık kapanışı" : "Oylama başlangıcı", oy ? r.oy_bit : r.asama === "kampanya" ? r.oy_bas : r.oy_bit,
+      "ekranAc(()=>referandumEkrani(" + Number(r.id) + "))",
+      oy && !r.oy_kullandim && !r.engel ? "Oy ver" : "İncele", oy);
+  }
+  for(const s of (dernekSecimleri || [])){
+    if(s.durum !== "acik" || zamanMs(s.oy_bit) <= suAn) continue;
+    const basvuru = suAn < zamanMs(s.aday_bit);
+    ekle(basvuru ? 3 : 1, (s.ad || "Dernek") + " · Genel kurul seçimi",
+      basvuru ? "Adaylık açık" : "Oylama açık", basvuru ? "Adaylık bitişi" : "Sandık kapanışı",
+      basvuru ? s.aday_bit : s.oy_bit,
+      "ekranAc(()=>sosDernekPanel(" + Number(s.dernek_id) + "))",
+      basvuru ? "Adayları gör" : "Oy ver / İzle", !basvuru);
+  }
+  if(!liste.length) return "";
+  liste.sort((a,b) => a.oncelik-b.oncelik || (Number.isFinite(a.zaman) ? a.zaman : Infinity) - (Number.isFinite(b.zaman) ? b.zaman : Infinity));
+  return '<section class="secim-ust" aria-label="Aktif seçimler">' +
+    '<div class="secim-ust-bas"><h2>🗳️ Aktif Seçimler</h2><span class="rozet kirmizi">' + liste.length + ' seçim</span></div>' +
+    liste.map((s,i) => '<button type="button" class="secim-ust-satir' + (i===0?' ilk':'') +
+      '" onclick="' + s.git + '">' +
+      '<span class="icer"><span class="rozet ' + (s.canli ? 'kirmizi' : 'altin') + '">' + e(s.asama) + '</span>' +
+      '<b>' + e(s.baslik) + '</b><span class="kucuk">' + e(s.aciklama) +
+      (Number.isFinite(s.zaman) ? ': ' + e(tarihSaat(s.son)) +
+      ' · <span data-an="' + s.zaman + '">' + e(kalan(s.zaman-suAn)) + '</span>' : '') +
+      '</span></span><span class="git">' + e(s.dugme) + ' ›</span></button>').join("") +
+    '</section>';
+}
 function siradakiAn(s){
   const t = simdi();
   const anlar = [["basvuru_bas","Başvuru açılıyor"],["basvuru_bit","Başvuru kapanıyor"],["oy_bas","Sandık açılıyor"],["oy_bit","Sandık kapanıyor"],["sonuc_at","Sonuçlar açıklanıyor"],["goreve_bas","Göreve başlama"]];
@@ -1278,12 +1367,12 @@ async function gundemEkrani(){
   const pp = DUR.profil, mvMi = pp.makamlar.some(x => x.tur === "mv"), cbMi = pp.makamlar.some(x => x.tur === "cb");
   // Bütün veriler paralel yüklenir; biri hata verirse ekranın geri kalanı yine çizilir
   const iste = (fn, args, varsay) => API.rpc(fn, args).catch(() => varsay);
-  const [ihaleR, haber, reflerR, kanunlar, dv, itt, ia, mitingler, haklar, meclis, stk] = await Promise.all([
+  const [ihaleR, haber, reflerR, kanunlar, dv, itt, ia, mitingler, haklar, meclis, stk, dernekSecimleri] = await Promise.all([
     iste("ihaleler", undefined, { acik: [] }), iste("haberler", { p_limit: 15 }, []), iste("referandumlar", { p_limit: 5 }, []),
-    mvMi || cbMi ? iste("kanunlar", { p_limit: 40 }, []) : [], mvMi ? iste("meclis_baskanlik", undefined, null) : null,
+    mvMi || cbMi ? iste("kanunlar", { p_limit: 40 }, []) : [], iste("meclis_baskanlik", undefined, null),
     pp.gb && pp.parti ? iste("ittifak_bilgi", { p_parti: pp.parti.id }, null) : null,
     iste("ilk_adimlar", undefined, null), iste("mitingler", undefined, []), iste("miting_haklarim", undefined, []),
-    D._meclisOn && simdi() - D._meclisOn.t < 300e3 ? D._meclisOn.v : iste("meclis", undefined, null), iste("dernek_akis", { p_limit: 5 }, null)]);
+    D._meclisOn && simdi() - D._meclisOn.t < 300e3 ? D._meclisOn.v : iste("meclis", undefined, null), iste("dernek_akis", { p_limit: 5 }, null), iste("gundem_dernek_secimler", undefined, [])]);
   if (meclis && !(D._meclisOn && D._meclisOn.v === meclis)) D._meclisOn = { t: simdi(), v: meclis };
   if (D.durum !== DUR && !D.durum) return;      // bu arada çıkış yapıldıysa çizme
   const ihaleler = (ihaleR || {}).acik || [];
@@ -1321,6 +1410,7 @@ async function gundemEkrani(){
   const cb = d.cb, ms = meclis && meclis.partiler ? meclis.partiler.filter(x => x.n > 0) : [];
   const govde = `
     ${seritHtml(haber)}
+    ${gundemAktifSecimlerHtml(d.takvim, dv, refler, dernekSecimleri)}
     ${sahneHtml(d.takvim)}
     <div class="kart vit-gazete"><h2>📰 Gazeteler</h2>
       <div class="vit-dugme"><button class="btn altin" onclick="ekranAc(basinEkrani)">Oyuncu gazeteleri</button><button class="btn ikinci" onclick="otomatikGazeteEkrani()">Türkiye Gündem</button></div>
@@ -1660,7 +1750,15 @@ async function devletEkrani(){
   try {
     await durumYenile();
     if (D.devletSekme === "hukumet") { iskelet("Devlet", seg + `<div class="kart"><button class="btn ikinci" onclick="aliciBagisModal('devlet',1,'Türkiye Cumhuriyeti Hazinesi')">Devlet hazinesine bağış yap</button></div>` + await hukumetHtml()); politikaBagla(); return; }
-    if (D.devletSekme === "meclis") return iskelet("Devlet", seg + await meclisHtml());
+    if (D.devletSekme === "meclis") {
+      iskelet("Devlet", seg + await meclisHtml());
+      if (D._meclisSecimOdak) {
+        const hedef = document.getElementById("meclisSecim" + D._meclisSecimOdak);
+        D._meclisSecimOdak = null;
+        if (hedef) hedef.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      return;
+    }
     if (D.devletSekme === "mevzuat") { iskelet("Devlet", seg + await mevzuatHtml()); kuralBagla(); return; }
     if (D.devletSekme === "tarih") return iskelet("Devlet", seg + await tarihHtml());
     return iskelet("Devlet", seg + await gazeteHtml());
@@ -2141,7 +2239,7 @@ function meclisSecimKart(s){
       ${s.durum === "oylama" && oyladim ? `<div class="kucuk iyi">Oyunu kullandın (gizli).</div>` : ""}
       ${adaylik && s.katilabilir ? (ad.some(a => a.kad === ben) ? `<button class="btn ikinci" onclick="meclisAday(${s.id},'${g}',false)">Adaylıktan çekil</button>` : `<button class="btn altin" onclick="meclisAday(${s.id},'${g}',true)">${MECLIS_GOREV[g]}na aday ol</button>`) : ""}</div>`; };
   const turlar = (s.turlar || []).map(t => `<div class="kucuk">${t.tur}. tur (gereken ${t.gerek || "en çok oy"}, katılım ${t.katilim}): ${(t.sonuc || []).map(x => `${e(x.kad)} ${x.oy}`).join(" · ")}</div>`).join("");
-  return `<div class="olay ${s.durum === "oylama" ? "oy" : "basvuru"}"><div class="baslik"><b>${baslik}</b><span class="rozet ${s.durum === "bitti" ? "" : "altin"}">${s.durum === "aday" ? "Adaylık" : s.durum === "oylama" ? (s.tur === "baskan" ? (turBekliyor ? s.tur_no + ". tur bekleniyor" : s.tur_no + ". tur") : "Oylama") : "Sonuçlandı"}</span></div>
+  return `<div id="meclisSecim${s.id}" class="olay ${s.durum === "oylama" ? "oy" : "basvuru"}"><div class="baslik"><b>${baslik}</b><span class="rozet ${s.durum === "bitti" ? "" : "altin"}">${s.durum === "aday" ? "Adaylık" : s.durum === "oylama" ? (s.tur === "baskan" ? (turBekliyor ? s.tur_no + ". tur bekleniyor" : s.tur_no + ". tur") : "Oylama") : "Sonuçlandı"}</span></div>
     ${s.durum === "aday" ? `<div class="kucuk" style="margin-top:4px">Adaylık bitişi ${tarihSaat(s.aday_bit)}${s.tur === "baskan" && s.tur_bas ? " · İlk tur oylama " + tarihSaat(s.tur_bas) : ""}</div>` : ""}
     ${s.durum === "oylama" ? `<div class="kucuk" style="margin-top:4px">${s.tur === "baskan" ? `${turBekliyor ? "Oy verme " + tarihSaat(s.tur_bas) + " tarihinde açılacak · " : "Sandık açık · "}Bu turda seçilmek için ${s.gerek ? s.gerek + " oy" : "en çok oy"} gerekir · tur bitişi ${tarihSaat(s.tur_bit)}` : `Oylama bitişi ${tarihSaat(s.oy_bit)}`} · oylama gizli</div>` : ""}
     ${s.sonuc ? `<div class="kucuk" style="margin-top:4px">${e(s.sonuc)}</div>` : ""}
