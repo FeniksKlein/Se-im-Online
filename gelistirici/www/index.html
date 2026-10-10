@@ -2083,6 +2083,30 @@ async function tuzukOy(pid,teklif,oy){
   try { await API.rpc("parti_tuzuk_oyla",{p_teklif:teklif,p_oy:oy}); toast("Oyun kaydedildi."); partiTuzukEkrani(pid); }
   catch(err){ toast(hataCevir(err.message),true); }
 }
+async function partiIlUyeleriCiz(pid){
+  const el = $("#partiIlUyeleriKart");
+  if (!el) return;
+  el.innerHTML = '<div class="kart"><h2>İllere göre üye dağılımı</h2><p class="alt">Üye sayıları yükleniyor…</p></div>';
+  try {
+    const d = await API.rpc("parti_il_uyeleri", {p_parti:pid});
+    if (!el.isConnected) return;
+    const iller = Array.isArray(d.iller) ? d.iller : [];
+    const sirali = iller.slice().sort((a,b) => (+b.uye||0)-(+a.uye||0) || String(a.ad).localeCompare(String(b.ad),"tr"));
+    const aktif = sirali.filter(i => +i.uye > 0);
+    const toplam = +d.toplam || 0;
+    const liste = arr => arr.map(i => `<div class="kv"><span class="k">${e(i.ad)}</span><span class="v">${fmt(+i.uye||0,0)} üye${toplam && +i.uye ? ` <span class="kucuk">(%${(+i.uye*100/toplam).toFixed(1)})</span>` : ''}</span></div>`).join('');
+    el.innerHTML = `<div class="kart"><h2>İllere göre üye dağılımı</h2>
+      <p class="alt">Oyuncuların mevcut kayıtlı illerine göre hesaplanır; üyelik ve il değişiklikleri yeni görüntülemeye yansır.</p>
+      <div class="kv"><span class="k">Türkiye geneli</span><b class="v">${fmt(toplam,0)} üye</b></div>
+      <div class="kv"><span class="k">Üyesi bulunan il</span><b class="v">${aktif.length} / ${iller.length}</b></div>
+      <h3 style="margin-top:16px">En çok üye bulunan iller</h3>
+      ${aktif.length ? liste(aktif.slice(0,5)) : '<p class="alt">Bu partinin henüz üyesi yok.</p>'}
+      <details style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">81 ilin tamamını gör</summary>
+      <div style="margin-top:10px;max-height:50vh;overflow-y:auto">${liste(sirali)}</div></details></div>`;
+  } catch(err) {
+    if (el.isConnected) el.innerHTML = `<div class="kart"><h2>İllere göre üye dağılımı</h2><p class="alt">${e(hataCevir(err.message))}</p></div>`;
+  }
+}
 async function partiDetay(id){
   yukleniyor("Parti");
   let p; try { p = await API.rpc("parti_detay", { p_parti: id }); await durumYenile(); try { D.yetki = await API.rpc("parti_yetkilerim"); } catch (_) { D.yetki = null; } } catch (err) { iskelet("Parti", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
@@ -2112,11 +2136,13 @@ async function partiDetay(id){
     <div class="kart"><h2>Parti içi yaşam</h2><button class="btn ikinci" onclick="ekranAc(()=>grupToplantiEkrani(${p.id}))">Grup toplantıları / Konuşmalar</button><button class="btn ikinci" onclick="ekranAc(()=>partiDisiplinEkrani(${p.id}))">Disiplin ve ihraç oylamaları</button></div>${p.uyesiyim ? `<div id="partiMitingKart"></div>` : ""}<div id="teskilatKart"></div>
     <div id="kasaKart"></div>
     <div id="ittifakKart"></div>
+    <div id="partiIlUyeleriKart"></div>
     <div class="kart"><h2>Üyeler</h2>${p.uyeler.map(u => `<div class="liste-satir" onclick="oyuncuKart('${e(u.kad)}')" style="cursor:pointer"><div class="orta"><b>${e(u.kad)}${u.kad === p.gb ? ` <span class="rozet altin">GB</span>` : p.gby.some(g => g.kad === u.kad) ? ` <span class="rozet">GBY</span>` : ""}</b><div class="kucuk">${e(u.il)}</div></div>${makamAd(u.makam)}</div>`).join("") || `<div class="bos">Henüz üye yok. İlk üye sen ol!</div>`}</div>`, { geri: true });
   if (typeof partiKimlikKartCiz === "function") partiKimlikKartCiz(p.id);
   partiAdayKartiCiz(p.id);
   ittifakKartCiz(p.id);
   partiKasaCiz(p.id);
+  partiIlUyeleriCiz(p.id);
   teskilatKartCiz(p.id);
   if (p.uyesiyim && typeof partiMitingKartCiz === "function") partiMitingKartCiz(p.id);
   if (typeof gbyGorevCiz === "function") gbyGorevCiz(p.id);
