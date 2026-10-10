@@ -1056,8 +1056,9 @@ function iskelet(baslik, govde, opt){
   const ikonlar = opt.geri || opt.ikonsuz ? "" :
     `${cz ? `<button class="ikon para-cip" onclick="sekmeAc('hayat')" aria-label="Cüzdan">${paraKisa(cz.para)}</button>` : ""}<button class="ikon" onclick="ekranAc(bildirimEkrani)" aria-label="Bildirimler">${IKON.zil}<span id="zilSayi">${sayiRozet(ok.bildirim)}</span></button>
      <button class="ikon portre-ikon" onclick="sekmeAc('ben')" aria-label="Profilim">${typeof portre === "function" && D.durum && D.durum.profil ? portre(D.durum.profil.kad, D.durum.profil.parti && D.durum.profil.parti.renk) : IKON.ben}</button>`;
-  const sekmeler = opt.sekmesiz ? "" : `<nav class="sekmeler">${[["gundem","Gündem"],["hayat","Hayat"],["sohbet","Sohbet"],["devlet","Devlet"],["harita","Harita"],["parti","Partiler"],["dernek","Dernekler"]]
-    .map(([k, ad]) => `<button class="${D.sekme === k ? "aktif" : ""}${k === "sohbet" && +ok.ozel > 0 ? " mesaj-var" : ""}" ${k === "sohbet" ? `id="sohbetSekme" aria-label="Sohbet, ${+ok.ozel || 0} okunmamış özel mesaj"` : ""} onclick="sekmeAc('${k}')">${IKON[k]}<span>${ad}</span>${k === "sohbet" ? `<span id="dmSayi">${sayiRozet(ok.ozel)}</span>` : ""}${k === "hayat" && cz && (cz.dolu || cz.gunun_ilki) ? `<span class="nokta"></span>` : ""}</button>`).join("")}</nav>`;
+  const bakanMenu = !!(D.durum && D.durum.profil && (D.durum.profil.makamlar || []).some(x => x.tur === "bakan"));
+  const sekmeler = opt.sekmesiz ? "" : `<nav class="sekmeler">${[["gundem","Gündem"],["hayat","Hayat"],["sohbet","Sohbet"],["devlet","Devlet"],...(bakanMenu ? [["bakanlik","Bakanlığım"]] : []),["harita","Harita"],["parti","Partiler"],["dernek","Dernekler"]]
+    .map(([k, ad]) => `<button class="${D.sekme === k ? "aktif" : ""}${k === "sohbet" && +ok.ozel > 0 ? " mesaj-var" : ""}" ${k === "sohbet" ? `id="sohbetSekme" aria-label="Sohbet, ${+ok.ozel || 0} okunmamış özel mesaj"` : ""} onclick="sekmeAc('${k}')">${IKON[k] || IKON.devlet}<span>${ad}</span>${k === "sohbet" ? `<span id="dmSayi">${sayiRozet(ok.ozel)}</span>` : ""}${k === "hayat" && cz && (cz.dolu || cz.gunun_ilki) ? `<span class="nokta"></span>` : ""}</button>`).join("")}</nav>`;
   // Aynı ekran yenilenince (dakikalık tazeleme, işlem sonrası) kaydırma konumu korunur
   const anahtar = D.sekme + "|" + (D._ekranNo || 0) + "|" + baslik, eskiIc = $("#icerik");
   const eskiKaydirma = eskiIc && D._sonAnahtar === anahtar ? eskiIc.scrollTop : 0;
@@ -1310,6 +1311,7 @@ async function gundemEkrani(){
   if (mitingHakki) is.push({ cls: "eylem-mor", ikon: IKON.insanlar, bas: "Miting düzenle", alt: `${e(mitingHakki.il)} meydanı · ${tlYaz(mitingHakki.bedel)}`, git: `mitingDuzenleModal(${e(JSON.stringify(mitingHakki))})` });
   if (davetler.length) is.push({ ikon: IKON.parti, bas: "İttifak daveti", alt: davetler.map(x => e(x.ad)).join(", "), git: `ekranAc(()=>partiDetay(${pp.parti ? pp.parti.id : 0}))` });
   aktif.filter(s => s.asama === "basvuru" && TUR[s.tur].aday && !s.adayim && !s.bagimsiz_adayim).forEach(s => is.push({ ikon: IKON.kalem, bas: `Başvuru açık: ${secimTakvimAdi(s)}`, alt: `Kapanış ${tarihSaat(s.basvuru_bit)}`, git: `document.getElementById('sec${s.id}').scrollIntoView({behavior:'smooth'})` }));
+  if (p.makamlar.some(x => x.tur === "bakan")) is.push({ cls: "eylem-mor", ikon: IKON.devlet, bas: "Bakanlık görevlerini yönet", alt: "Bakanlık bütçesi, icraatlar ve kararlar", git: "sekmeAc('bakanlik')" });
   if (p.hesap_engeli) is.push({ ikon: IKON.uyari, bas: "Seçmen kartın henüz hazır değil", alt: e(p.hesap_engeli), git: "vatandaslikModal()" });
   if (!p.parti) is.push({ ikon: IKON.parti, bas: "Partilerin ideolojilerini incele", alt: "Partilerin ideolojilerini gör, bir partiye katıl", git: "sekmeAc(\'parti\')" });
 
@@ -1661,6 +1663,29 @@ async function devletEkrani(){
     return iskelet("Devlet", seg + await gazeteHtml());
   } catch (err) { iskelet("Devlet", seg + `<div class="bos">${e(hataCevir(err.message))}</div>`); }
 }
+// Yalnız oturumdaki aktif bakanların kendi bakanlık menüleri açılır.
+async function bakanligimEkrani(){
+  yukleniyor("Bakanlığım");
+  try {
+    await durumYenile();
+    const makamlar = D.durum?.profil?.makamlar || [];
+    if (!makamlar.some(x => x.tur === "bakan")) {
+      D.sekme = "devlet";
+      return devletEkrani();
+    }
+    const paneller = await API.rpc("bakanlik_panellerim");
+    D._bakanPanelleri = Array.isArray(paneller) ? paneller : [];
+    if (!D._bakanPanelleri.length) {
+      return iskelet("Bakanlığım", '<div class="kart">Bakanlık yetkin henüz aktif değil. Teklifi Bildirimler bölümünden kabul etmelisin.</div>');
+    }
+    iskelet("Bakanlığım",
+      '<div class="kart"><h2>Bakanlık yönetim masası</h2><p class="alt">Bu ekrandaki kararlar yalnızca görevli olduğun bakanlıklara aittir. İcraat bedeli bakanlık kasasından karşılanır; bekleme süresi tamamlanınca aynı icraatı yeniden yapabilirsin.</p></div>' +
+      D._bakanPanelleri.map(panel => bakanPanelHtml(panel, false)).join(""));
+    politikaBagla();
+  } catch(err) {
+    iskelet("Bakanlığım", '<div class="bos">'+e(hataCevir(err.message))+'</div>');
+  }
+}
 function bakanPanelHtml(panel, vekalet){
   return `<div class="olay basvuru"><div class="baslik"><b>${e(panel.ad)}</b><span class="rozet ${vekalet ? "yesil" : "altin"}">${vekalet ? "Vekâleten" : "Bakanlığın"}</span></div>
       <div class="kv" style="margin-top:6px"><span class="k">Bakanlık kasası</span><span class="v">${fmt(panel.kasa, 1)} milyar ₺</span></div>
@@ -1696,13 +1721,14 @@ function bosMakamHtml(b){
 async function hukumetHtml(){
   const ben = D.durum.profil, cbmiyim = ben.cb_mi, bakanim = ben.makamlar.find(x => x.tur === "bakan");
   const kab = await API.rpc("kabine"), yurutmeyim = !!kab.yurutme_benim, parlamenter = kab.sistem === "parlamenter";
-  const [u, panel, kl, bos, vp, siyasi] = await Promise.all([
+  const [u, panel, kl, bos, vp, siyasi, teklifler] = await Promise.all([
     API.rpc("ulke_karnesi"),
     bakanim ? API.rpc("bakanlik_paneli") : null,
     cbmiyim ? API.rpc("kanunlar", { p_limit: 40 }) : [],
     API.rpc("bos_makamlar"),
     yurutmeyim ? API.rpc("vekalet_paneli") : [],
-    API.rpc("siyasi_sistem")
+    API.rpc("siyasi_sistem"),
+    API.rpc("bakanlik_teklif_durumlari").catch(() => [])
   ]);
   D._karne = u; D._panel = panel; D._vekil = vp || []; D._siyasi = siyasi;
   const bekleyen = (kl || []).filter(k => k.durum === "cb_onayinda");
@@ -1746,7 +1772,7 @@ async function hukumetHtml(){
     <div class="kart"><h2>Bütçe ve bakanlık kasaları</h2>${u.butce.map(b => `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:13.5px"><span>${e(b.ad.replace(" Bakanlığı",""))}</span><span class="kucuk">%${fmt(b.pay,1)} · kasa ${fmt(b.kasa,1)}</span></div><div class="bar"><i style="width:${Math.min(100,b.pay*4)}%;background:var(--gold)"></i></div></div>`).join("")}</div>
     <div class="kart"><h2>Kabine (${dolu}/12)</h2>
       ${yurutmeyim ? `<p class="alt" style="margin-bottom:6px">Bakanları sen atarsın. Bakanlık teklifi her oyuncuya gönderilebilir. Oyuncu kabul ederse mevcut tüm makamlarını koruyarak ayrıca bakan olur.</p>` : ""}
-      ${kab.bakanlar.map(b => `<div class="liste-satir"><div class="orta"><b>${e(b.ad.replace("Bakanlığı","Bakanı"))}</b><div class="kucuk">${b.kad ? `<a class="bag" href="#" onclick="oyuncuKart('${e(b.kad)}');return false">${e(b.kad)}</a> ${b.parti ? `· <span style="color:${e(b.parti.renk)}">${e(b.parti.kisa)}</span>` : "· Bağımsız"}` : "Atanmadı"}</div></div>
+      ${kab.bakanlar.map(b => `<div class="liste-satir"><div class="orta"><b>${e(b.ad.replace("Bakanlığı","Bakanı"))}</b><div class="kucuk">${b.kad ? `<a class="bag" href="#" onclick="oyuncuKart('${e(b.kad)}');return false">${e(b.kad)}</a> ${b.parti ? `· <span style="color:${e(b.parti.renk)}">${e(b.parti.kisa)}</span>` : "· Bağımsız"}` : (teklifler || []).some(t => t.bakanlik === b.kod) ? `<span style="color:var(--gold2)">Teklif kabulü bekleniyor: ${(teklifler || []).filter(t => t.bakanlik === b.kod).map(t => e(t.aday)).join(", ")}</span>` : "Atanmadı"}</div></div>
         ${yurutmeyim ? `<button class="rozet ${b.kad ? "" : "altin"}" onclick="bakanAtaModal('${b.kod}','${e(b.ad)}',${b.kad ? "true" : "false"})">${b.kad ? "Değiştir" : "Ata"}</button>` : ""}</div>`).join("")}</div>
     <div class="kart"><h2>En gelişmiş iller</h2>${u.iller.slice(0,5).map(x => `<div class="kv"><span class="k">${e(x.ad)}</span><span class="v">${fmt(x.gelisim,1)}</span></div>`).join("")}
       <button class="btn ikinci" onclick="D.haritaMod='gelisim';sekmeAc('harita')">Gelişmişlik haritası</button></div>`;
@@ -1771,7 +1797,7 @@ function politikaBagla(){
         et.innerHTML = `Bütçeye etkisi: <b class="${r.gunluk > 0 ? "kotu" : "iyi"}">${r.gunluk > 0 ? "−" : "+"}${fmt(Math.abs(r.gunluk), 2)} milyar ₺/gün</b>${r.enflasyon ? ` · enflasyon <b class="${r.enflasyon > 0 ? "kotu" : "iyi"}">${r.enflasyon > 0 ? "+" : ""}${fmt(r.enflasyon, 1)} puan</b>` : ""}`;
       } catch (_) {} }, 300); };
     bt.onclick = async () => {
-      try { await API.rpc("politika_ayarla", { p_kod: kod, p_deger: +inp.value }); toast("Karar Resmî Gazete'de yayımlandı."); devletEkrani(); }
+      try { await API.rpc("politika_ayarla", { p_kod: kod, p_deger: +inp.value }); toast("Karar Resmî Gazete'de yayımlandı."); D.sekme === "bakanlik" ? bakanligimEkrani() : devletEkrani(); }
       catch (err) { toast(hataCevir(err.message), true); }
     };
   });
@@ -1781,9 +1807,10 @@ function etkiYaz(e2){
   return Object.entries(e2 || {}).map(([k, v]) => `${ad[k]} ${v > 0 ? "+" : ""}${fmt(v, Math.abs(v) < 1 ? 1 : (Number.isInteger(v) ? 0 : 1))}`).join(", ");
 }
 async function icraatYap(kod, ilGerekli){
-  const ic = [D._panel, ...(D._vekil || [])].filter(Boolean).flatMap(pn => pn.icraatlar).find(x => x.kod === kod);
+  const ic = [D._panel, ...(D._vekil || []), ...(D._bakanPanelleri || [])].filter(Boolean).flatMap(pn => pn.icraatlar || []).find(x => x.kod === kod);
+  if (!ic) return toast("İcraat listesi güncelleniyor, yeniden dene.", true);
   const calistir = async (il) => {
-    try { await API.rpc("icraat_yap", { p_kod: kod, p_il: il || null }); modalKapat(); toast(`${ic.ad} başlatıldı.`); devletEkrani(); }
+    try { await API.rpc("icraat_yap", { p_kod: kod, p_il: il || null }); modalKapat(); toast(`${ic.ad} başlatıldı.`); D.sekme === "bakanlik" ? bakanligimEkrani() : devletEkrani(); }
     catch (err) { toast(hataCevir(err.message), true); }
   };
   if (!ilGerekli) { if (await onayla(e(ic.ad), `${e(ic.aciklama)}<br><br>Maliyet: ${fmt(ic.maliyet)} milyar ₺ (bakanlık kasasından)`, "Uygula")) calistir(); return; }
@@ -3022,7 +3049,7 @@ async function bakanTeklifYanit(id, kabul){
   try {
     await islem(() => API.rpc("bakan_teklif_yanit", { p_teklif: id, p_kabul: kabul }), kabul ? "Bakanlık görevini kabul ettin." : "Teklifi reddettin.");
     await durumYenile();
-    bildirimEkrani();
+    if (kabul) sekmeAc("bakanlik"); else bildirimEkrani();
   }catch(_){}
 }
 function yayinModal(){
@@ -4269,7 +4296,7 @@ function teskilatGorevModal(pid){
 /* =====================================================================
    12) BAŞLAT
    ===================================================================== */
-const EKRAN = { gundem: gundemEkrani, hayat: hayatEkrani, sohbet: sohbetListe, devlet: devletEkrani, harita: haritaEkrani, parti: partilerEkrani, dernek: () => stkEkrani(), ben: benEkrani };
+const EKRAN = { gundem: gundemEkrani, hayat: hayatEkrani, sohbet: sohbetListe, devlet: devletEkrani, bakanlik: bakanligimEkrani, harita: haritaEkrani, parti: partilerEkrani, dernek: () => stkEkrani(), ben: benEkrani };
 // Sunucu bu uygulama sürümünü artık desteklemiyorsa güncelleme ister (oyuncunun verisi sunucuda, kaybolmaz)
 function surumKucuk(a, b){ return /^\d/.test(a) && /^\d/.test(b) && a.localeCompare(b, "en", { numeric: true }) < 0; }
 async function surumKontrol(){
