@@ -894,13 +894,14 @@ end $$;
 -- ---------------------------------------------------------------------
 -- İTTİFAKLAR
 --   Genel başkanlar kurar, davet eder, kabul eder, ayrılır.
---   Genel seçim döneminde (26'sından genel seçim sonucuna kadar) değişiklik yapılamaz.
+--   Genel seçim için oy verme başlayana dek kurma, teklif, kabul ve ayrılma serbesttir.
+--   Sandık açıldığında sonuç açıklanana kadar ittifak işlemleri kilitlenir.
 -- ---------------------------------------------------------------------
-create or replace function oyun.ittifak_kilit(t timestamptz) returns text language sql stable as $$
-  select 'Genel seçim döneminde (aday adaylığı başvurusundan seçim sonucuna kadar) ittifaklarda değişiklik yapılamaz.'
-  where exists (select 1 from oyun.secimler o join oyun.secimler g on g.donem = o.donem and g.tur = 'mv'
-                where o.tur = 'mv_on' and t >= o.basvuru_bas and g.durum = 'bekliyor')
-$$;
+create or replace function oyun.ittifak_kilit(t timestamptz) returns text language sql stable as $
+  select 'Genel seçimde oy verme başladı; sonuçlar açıklanana kadar ittifaklarda değişiklik yapılamaz.'
+  where exists (select 1 from oyun.secimler g
+                where g.tur = 'mv' and g.durum = 'bekliyor' and g.oy_bas is not null and t >= g.oy_bas)
+$;
 
 create or replace function oyun.gb_partim(p oyun.profiller) returns oyun.partiler language plpgsql stable as $$
 declare pa oyun.partiler;
