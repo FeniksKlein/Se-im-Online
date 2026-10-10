@@ -30,6 +30,18 @@ window.UYGULAMA_SURUM = "2026.10.10-21";   // derleme sırasında SURUM dosyası
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 /* Parti birlesmesi ve il bazli ortak milletvekili listesi; mevcut ittifak kartina eklenir. */
+
+async function mvOrtakListePusulaBilgi(s){
+  if(!s||s.tur!=="mv"||!s.benim_il)return;
+  try {
+    const listeler=await API.rpc("mv_ortak_liste_gorunum",{p_secim:s.id,p_il:s.benim_il});
+    (s.secenekler||[]).forEach(x=>{
+      const m=(listeler||[]).find(z=>x.parti_id===z.parti1||x.parti_id===z.parti2);
+      if(m)x.ortak_liste=m.ortaklar;
+    });
+  } catch(err){ /* Oylama yeni RPC devreye girmese de çalışır. */ }
+}
+
 async function partiIsbirligiCiz(pid) {
   const root=document.getElementById("ittifakKart");
   if(!root) return;
@@ -1619,6 +1631,7 @@ async function secimEkrani(sid){
   yukleniyor("Seçim");
   let s;
   try { s = await API.rpc("secim_detay", { p_secim: sid }); } catch (err) { iskelet("Seçim", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
+  if (s.tur === "mv" && s.asama !== "bitti" && typeof mvOrtakListePusulaBilgi === "function") await mvOrtakListePusulaBilgi(s);
   const tur = TUR[s.tur];
   let govde = `<div class="kart"><h3>${tur.ad}</h3><div class="alt">Oylama: ${tarih(s.oy_bas)}, ${saatYaz(s.oy_bas)}–${saatYaz(s.oy_bit)} · Sonuç: ${saatYaz(s.sonuc_at)}${s.goreve_bas ? ` · Göreve başlama: ${tarihSaat(s.goreve_bas)}` : ""}</div>
     ${s.katilim != null ? `<div class="kucuk" style="margin-top:4px">${s.katilim} oy kullanıldı</div>` : ""}</div>`;
@@ -1631,7 +1644,7 @@ async function secimEkrani(sid){
 function secenekSatir(x, mv, destekler){
   const dst = destekler && destekler[String(x.parti_id)];
   if (mv) return `<div class="pusula-secenek" data-h="${x.hedef}">${x.bagimsiz ? amblemKutu(null) : amblemKutu(x)}<div style="flex:1;min-width:0"><b>${e(x.ad)}${x.bagimsiz ? ' (Bağımsız)' : ''}</b>
-      <div class="kucuk">Liste: ${x.liste.slice(0, 4).map(l => `${l.sira}. ${e(l.kad)}`).join(", ")}${x.liste.length > 4 ? ` +${x.liste.length - 4}` : ""}</div>${x.liste[0] && x.liste[0].vaat ? `<div class="vaat">“${e(x.liste[0].vaat)}” — ${e(x.liste[0].kad)}</div>` : ""}${x.beyanname && x.beyanname.vaatler.length ? `<div class="kucuk" style="margin-top:4px;color:var(--gold2);font-weight:700">Seçim beyannamesi</div>${vaatHtml(x.beyanname.vaatler)}` : ""}</div><div class="daire"></div></div>`;
+      ${x.ortak_liste ? `<div class="kucuk" style="color:var(--gold2);font-weight:700">Ortak MV listesi: ${e(x.ortak_liste)} · Oylar birlikte hesaplanır</div>` : ""}<div class="kucuk">Liste: ${x.liste.slice(0, 4).map(l => `${l.sira}. ${e(l.kad)}`).join(", ")}${x.liste.length > 4 ? ` +${x.liste.length - 4}` : ""}</div>${x.liste[0] && x.liste[0].vaat ? `<div class="vaat">“${e(x.liste[0].vaat)}” — ${e(x.liste[0].kad)}</div>` : ""}${x.beyanname && x.beyanname.vaatler.length ? `<div class="kucuk" style="margin-top:4px;color:var(--gold2);font-weight:700">Seçim beyannamesi</div>${vaatHtml(x.beyanname.vaatler)}` : ""}</div><div class="daire"></div></div>`;
   return `<div class="pusula-secenek" data-h="${x.hedef}">${amblemKutu({ renk: x.renk, amblem: (partiBul(x.parti_id) || {}).amblem })}
     <div style="flex:1;min-width:0"><b>${e(x.kad)}</b> ${itibarCip(x.itibar)}<div class="kucuk">${x.kisa ? `<span style="color:${e(x.renk)}">${e(x.kisa)}</span>` : "Bağımsız"}${x.il_id ? " · " + e(ilAd(x.il_id)) : ""}${dst ? ` · Destekleyen: ${dst.map(d => `<span style="color:${e(d.renk)}">${e(d.kisa)}</span>`).join(", ")}` : ""}</div>${x.vaat ? `<div class="vaat">“${e(x.vaat)}”</div>` : ""}${vaatHtml(x.vaatler)}${x.beyanname && x.beyanname.vaatler.length ? `<div class="kucuk" style="margin-top:4px;color:var(--gold2);font-weight:700">Partisinin beyannamesi</div>${vaatHtml(x.beyanname.vaatler)}` : ""}</div><div class="daire"></div></div>`;
 }
