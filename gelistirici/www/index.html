@@ -87,6 +87,13 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .sayi{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--al);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;border:2px solid var(--bg)}
 .sekmeler .sayi{top:3px;right:calc(50% - 22px);border-color:var(--bg2)}
 .sekmeler .nokta{position:absolute;top:7px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;background:var(--al);border:2px solid var(--bg2)}
+/* Okunmamış özel mesajlar gezinti sekmesinde ve kişi listesinde öne çıkar. */
+.sekmeler button.mesaj-var{color:var(--al2);font-weight:800}
+.sekmeler button.mesaj-var svg{color:var(--al2)}
+.sekmeler button.mesaj-var .sayi{min-width:21px;height:21px;box-shadow:0 0 0 2px var(--albg)}
+.kanal.mesaj-yeni{padding:12px 9px;background:var(--albg);border-left:3px solid var(--al);border-radius:9px;margin:4px 0}
+.kanal.mesaj-yeni b{color:var(--txt)}
+
 
 /* ---- Bölümler (kart) ---- */
 .kart{background:var(--panel);border-radius:var(--r);padding:15px 15px 14px;margin-bottom:12px}
@@ -658,7 +665,7 @@ function iskelet(baslik, govde, opt){
     `${cz ? `<button class="ikon para-cip" onclick="sekmeAc('hayat')" aria-label="Cüzdan">${paraKisa(cz.para)}</button>` : ""}<button class="ikon" onclick="ekranAc(bildirimEkrani)" aria-label="Bildirimler">${IKON.zil}<span id="zilSayi">${sayiRozet(ok.bildirim)}</span></button>
      <button class="ikon portre-ikon" onclick="sekmeAc('ben')" aria-label="Profilim">${typeof portre === "function" && D.durum && D.durum.profil ? portre(D.durum.profil.kad, D.durum.profil.parti && D.durum.profil.parti.renk) : IKON.ben}</button>`;
   const sekmeler = opt.sekmesiz ? "" : `<nav class="sekmeler">${[["gundem","Gündem"],["hayat","Hayat"],["sohbet","Sohbet"],["devlet","Devlet"],["harita","Harita"],["parti","Partiler"],["dernek","Dernekler"]]
-    .map(([k, ad]) => `<button class="${D.sekme === k ? "aktif" : ""}" onclick="sekmeAc('${k}')">${IKON[k]}<span>${ad}</span>${k === "sohbet" ? `<span id="dmSayi">${sayiRozet(ok.ozel)}</span>` : ""}${k === "hayat" && cz && (cz.dolu || cz.gunun_ilki) ? `<span class="nokta"></span>` : ""}</button>`).join("")}</nav>`;
+    .map(([k, ad]) => `<button class="${D.sekme === k ? "aktif" : ""}${k === "sohbet" && +ok.ozel > 0 ? " mesaj-var" : ""}" ${k === "sohbet" ? `id="sohbetSekme" aria-label="Sohbet, ${+ok.ozel || 0} okunmamış özel mesaj"` : ""} onclick="sekmeAc('${k}')">${IKON[k]}<span>${ad}</span>${k === "sohbet" ? `<span id="dmSayi">${sayiRozet(ok.ozel)}</span>` : ""}${k === "hayat" && cz && (cz.dolu || cz.gunun_ilki) ? `<span class="nokta"></span>` : ""}</button>`).join("")}</nav>`;
   // Aynı ekran yenilenince (dakikalık tazeleme, işlem sonrası) kaydırma konumu korunur
   const anahtar = D.sekme + "|" + (D._ekranNo || 0) + "|" + baslik, eskiIc = $("#icerik");
   const eskiKaydirma = eskiIc && D._sonAnahtar === anahtar ? eskiIc.scrollTop : 0;
@@ -672,6 +679,12 @@ function rozetGuncelle(ok){
   const z = $("#zilSayi"), d = $("#dmSayi");
   if (z) z.innerHTML = sayiRozet(D.okunmamis.bildirim);
   if (d) d.innerHTML = sayiRozet(D.okunmamis.ozel);
+  const sohbet = $("#sohbetSekme");
+  if (sohbet) {
+    const sayi = Math.max(0, Number(D.okunmamis.ozel) || 0);
+    sohbet.classList.toggle("mesaj-var", sayi > 0);
+    sohbet.setAttribute("aria-label", `Sohbet, ${sayi} okunmamış özel mesaj`);
+  }
 }
 function yukleniyor(baslik){ iskelet(baslik, `<div class="yukleniyor">Yükleniyor…</div>`, { geri: D.yigin.length > 0 }); }
 function sekmeAc(k){ D._ekranNo = (D._ekranNo || 0) + 1; D.sekme = k; D.yigin = []; modalKapat(); EKRAN[k](); }
@@ -2332,6 +2345,31 @@ function zamanKisa(ts){
   const p = trParca(ts), b = trParca(simdi());
   return (p.g === b.g && p.a === b.a && p.y === b.y) ? `${p.s}:${p.d}` : `${p.g} ${AYLAR[p.a - 1].slice(0, 3)} ${p.s}:${p.d}`;
 }
+// Okunmamış konuşmalar en üstte, her birinde açık "Yeni mesaj" etiketi görünür.
+function ozelSatirlarHtml(liste){
+  if (!liste.length) return `<div class="bos">Henüz özel mesajın yok. Bir oyuncunun kartına ya da sohbetteki bir mesajına dokunup yazabilirsin.</div>`;
+  const sirali = [...liste].sort((a,b) => (Number(b.okunmamis > 0) - Number(a.okunmamis > 0)) ||
+    new Date(b.zaman).getTime() - new Date(a.zaman).getTime());
+  return sirali.map(x => `<div class="kanal${+x.okunmamis > 0 ? " mesaj-yeni" : ""}" onclick="ekranAc(()=>ozelEkrani('${e(x.kad)}'))">${amblemKutu(x.parti)}
+    <div style="flex:1;min-width:0"><b>${e(x.kad)}</b>${x.unvan ? ` <span class="kucuk" style="color:var(--gold2)">${e(x.unvan)}</span>` : ""}
+      <div class="kucuk" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.benden ? "Sen: " : ""}${e(x.son)}</div></div>
+    <div style="text-align:right;flex:none"><div class="kucuk">${zamanKisa(x.zaman)}</div>${+x.okunmamis > 0 ? `<span class="rozet kirmizi" style="margin-top:4px">Yeni mesaj · ${x.okunmamis > 99 ? "99+" : x.okunmamis}</span>` : ""}</div></div>`).join("");
+}
+let ozelListeTazeleniyor = false;
+async function ozelListeTazele(){
+  if (ozelListeTazeleniyor || D.sekme !== "sohbet" || D.yigin.length || !$("#ozelMesajListesi") || document.hidden) return;
+  ozelListeTazeleniyor = true;
+  try {
+    const dm = await API.rpc("ozel_liste");
+    if (D.sekme !== "sohbet" || D.yigin.length || !$("#ozelMesajListesi")) return;
+    const kutu = $("#ozelMesajListesi"), html = ozelSatirlarHtml(dm);
+    if (kutu.innerHTML !== html) kutu.innerHTML = html;
+    const n = dm.reduce((toplam,x)=>toplam+(Number(x.okunmamis)||0),0);
+    const baslik = $("#ozelMesajBaslik");
+    if (baslik) baslik.innerHTML = `Özel mesajlar${n ? ` <span class="rozet kirmizi">${n > 99 ? "99+" : n} yeni</span>` : ""}`;
+  } catch (_) { /* Sonraki kontrolde yeniden dene. */ }
+  finally { ozelListeTazeleniyor = false; }
+}
 async function sohbetListe(){
   yukleniyor("Sohbet");
   let dm, oz; try { [dm, oz] = await Promise.all([API.rpc("ozel_liste"), API.rpc("sohbet_ozet")]); await durumYenile(); } catch (err) { iskelet("Sohbet", `<div class="bos">${e(hataCevir(err.message))}</div>`); return; }
@@ -2362,12 +2400,8 @@ async function sohbetListe(){
   iskelet("Sohbet", `
     <div class="kart" style="display:flex;justify-content:space-between;align-items:center"><b>Sohbet</b><span class="kucuk" style="color:var(--good)">● ${oz.cevrimici} oyuncu çevrimiçi</span></div>
     ${GRUP.map(([ad, liste]) => `<div class="kart"><h2>${ad}</h2>${liste.map(kn => satir(oz.kanallar.find(k => k.kanal === kn))).join("")}</div>`).join("")}
-    <div class="kart"><h2>Özel mesajlar</h2>
-      ${dm.map(x => `<div class="kanal" onclick="ekranAc(()=>ozelEkrani('${e(x.kad)}'))">${amblemKutu(x.parti)}
-        <div style="flex:1;min-width:0"><b>${e(x.kad)}</b>${x.unvan ? ` <span class="kucuk" style="color:var(--gold2)">${e(x.unvan)}</span>` : ""}
-          <div class="kucuk" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.benden ? "Sen: " : ""}${e(x.son)}</div></div>
-        <div style="text-align:right"><div class="kucuk">${zamanKisa(x.zaman)}</div>${x.okunmamis ? `<span class="rozet kirmizi" style="margin-top:4px">${x.okunmamis}</span>` : ""}</div></div>`).join("")
-        || `<div class="bos">Henüz özel mesajın yok. Bir oyuncunun kartına ya da sohbetteki bir mesajına dokunup yazabilirsin.</div>`}
+    <div class="kart"><h2 id="ozelMesajBaslik">Özel mesajlar${dm.some(x=>+x.okunmamis>0) ? ` <span class="rozet kirmizi">${dm.reduce((n,x)=>n+(Number(x.okunmamis)||0),0)} yeni</span>` : ""}</h2>
+      <div id="ozelMesajListesi">${ozelSatirlarHtml(dm)}</div>
       <button class="btn ikinci" onclick="yeniOzelModal()">Yeni mesaj</button></div>
     <div class="kart"><div class="kucuk">Hakaret, küfür, nefret söylemi ve spam yasaktır. Uygunsuz bir mesaja dokunup şikâyet edebilir, oyuncuyu engelleyebilirsin. 3 kişinin şikâyet ettiği mesaj otomatik gizlenir. Kilitli kanallar ilgili göreve gelince açılır.</div></div>`);
 }
@@ -2668,7 +2702,7 @@ const PUSH = {
       if (!this._dinle) {
         this._dinle = true;
         FM.addListener("notificationActionPerformed", ev => this.yonlendir(((ev || {}).notification || {}).data || {}));
-        FM.addListener("notificationReceived", ev => { const n = (ev || {}).notification || {}; toast((n.title ? n.title + ": " : "") + (n.body || "")); API.rpc("rozetler").then(rozetGuncelle).catch(() => {}); });
+        FM.addListener("notificationReceived", ev => { const n = (ev || {}).notification || {}; toast((n.title ? n.title + ": " : "") + (n.body || "")); mesajBildirimKontrol(); });
         FM.addListener("tokenReceived", ev => { if (ev && ev.token) { this.depo("push_token", ev.token); API.rpc("cihaz_kaydet", { p_token: ev.token, p_platform: window.Capacitor.getPlatform() }).catch(() => {}); } });
       }
       await this.konulariGuncelle();
@@ -3806,7 +3840,18 @@ setInterval(() => {
   });
 }, 1000);
 setInterval(() => { if (D.durum && D.sekme === "gundem" && !D.yigin.length && !$("#modal") && !document.hidden) gundemEkrani(); }, 60000);
-setInterval(async () => { if (API && D.durum && D.durum.profil && !document.hidden) { try { rozetGuncelle(await API.rpc("rozetler")); } catch (_) {} } }, 20000);
+// Oyun açıkken özel mesaj rozeti ve Sohbet'teki konuşma listesi yaklaşık 8 saniyede güncellenir.
+let mesajKontroluSuruyor = false;
+async function mesajBildirimKontrol(){
+  if (mesajKontroluSuruyor || !API || !D.durum || !D.durum.profil || document.hidden) return;
+  mesajKontroluSuruyor = true;
+  try {
+    rozetGuncelle(await API.rpc("rozetler"));
+    if (D.sekme === "sohbet" && !D.yigin.length) await ozelListeTazele();
+  } catch (_) { /* Bağlantı geri gelince devam eder. */ }
+  finally { mesajKontroluSuruyor = false; }
+}
+setInterval(mesajBildirimKontrol, 8000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden && D.durum && !D.yigin.length && !$("#modal")) EKRAN[D.sekme](); });
 window.addEventListener("load", () => {
   API = window.API_TEST || gercekApi();
