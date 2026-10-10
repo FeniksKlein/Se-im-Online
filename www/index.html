@@ -1285,7 +1285,7 @@ async function gundemEkrani(){
   if (D.durum !== DUR && !D.durum) return;      // bu arada çıkış yapıldıysa çizme
   const ihaleler = (ihaleR || {}).acik || [];
   const refler = (reflerR || []).filter(r => r.durum !== "sonuclandi" || simdi() - new Date(r.oy_bit).getTime() < 36 * 3600e3);
-  const meclisBekleyen = dv ? dv.secimler.filter(s => s.katilabilir && ((s.durum === "aday" && !s.adaylar.some(a => a.benim)) || (s.durum === "oylama" && s.oylarim.length === 0))) : [];
+  const meclisBekleyen = dv ? dv.secimler.filter(s => s.katilabilir && ((s.durum === "aday" && !s.adaylar.some(a => a.benim)) || (s.durum === "oylama" && s.oylarim.length === 0 && (s.tur !== "baskan" || (simdi() >= new Date(s.tur_bas || s.aday_bit).getTime() && simdi() < new Date(s.tur_bit).getTime()))))) : [];
   const davetler = (itt && itt.gelen_davetler) || [];
   const oylanacak = kanunlar.filter(k => (k.durum === "oylamada" && new Date(k.oy_bas).getTime() <= simdi() || k.durum === "israr") && !k.oy_verdim && mvMi);
   const onaylanacak = kanunlar.filter(k => k.durum === "cb_onayinda" && pp.cb_mi);
@@ -2126,18 +2126,21 @@ const MECLIS_GOREV = { baskan: "TBMM Başkanlığı", bskv: "TBMM Başkanvekilli
 function meclisSecimKart(s){
   const ben = ((D.durum && D.durum.profil) || {}).kad;
   const adaylik = s.durum === "aday" && simdi() < new Date(s.aday_bit).getTime();
+  const turBas = s.tur === "baskan" && s.durum === "oylama" ? new Date(s.tur_bas || s.aday_bit).getTime() : null;
+  const turBekliyor = turBas !== null && simdi() < turBas;
+  const oyAcik = s.durum === "oylama" && (s.tur !== "baskan" || (simdi() >= turBas && simdi() < new Date(s.tur_bit).getTime()));
   const gorevler = s.tur === "baskan" ? ["baskan"] : [...(s.bskv_hakki ? ["bskv"] : []), "grup_bskv"];
   const baslik = s.tur === "baskan" ? "TBMM Başkanlığı seçimi" : `${e(s.parti.kisa)} Meclis grubu seçimi`;
   const pusula = (g) => { const ad = s.adaylar.filter(a => a.gorev === g && !a.elendi), oyladim = s.oylarim.includes(g);
     return `<div style="margin-top:8px"><div class="kucuk" style="font-weight:800;color:var(--txt2)">${MECLIS_GOREV[g].toUpperCase()}${g === "grup_bskv" ? ` · ${s.grup_bskv_sayi} kişi` : ""}</div>
       ${ad.map(a => `<div class="liste-satir"><div class="orta"><b>${e(a.kad)}</b> <span class="kucuk">${a.parti ? `<span style="color:${e(a.parti.renk)}">${e(a.parti.kisa)}</span>` : ""}${a.il ? " · " + e(a.il) : ""}</span></div>
-        ${s.durum === "oylama" && s.katilabilir && !oyladim ? `<button class="rozet altin" onclick="meclisOy(${s.id},'${g}','${e(a.kad)}')">Oy ver</button>` : ""}</div>`).join("") || `<div class="kucuk">Aday yok.</div>`}
+        ${oyAcik && s.katilabilir && !oyladim ? `<button class="rozet altin" onclick="meclisOy(${s.id},'${g}','${e(a.kad)}')">Oy ver</button>` : ""}</div>`).join("") || `<div class="kucuk">Aday yok.</div>`}
       ${s.durum === "oylama" && oyladim ? `<div class="kucuk iyi">Oyunu kullandın (gizli).</div>` : ""}
       ${adaylik && s.katilabilir ? (ad.some(a => a.kad === ben) ? `<button class="btn ikinci" onclick="meclisAday(${s.id},'${g}',false)">Adaylıktan çekil</button>` : `<button class="btn altin" onclick="meclisAday(${s.id},'${g}',true)">${MECLIS_GOREV[g]}na aday ol</button>`) : ""}</div>`; };
   const turlar = (s.turlar || []).map(t => `<div class="kucuk">${t.tur}. tur (gereken ${t.gerek || "en çok oy"}, katılım ${t.katilim}): ${(t.sonuc || []).map(x => `${e(x.kad)} ${x.oy}`).join(" · ")}</div>`).join("");
-  return `<div class="olay ${s.durum === "oylama" ? "oy" : "basvuru"}"><div class="baslik"><b>${baslik}</b><span class="rozet ${s.durum === "bitti" ? "" : "altin"}">${s.durum === "aday" ? "Adaylık" : s.durum === "oylama" ? (s.tur === "baskan" ? s.tur_no + ". tur" : "Oylama") : "Sonuçlandı"}</span></div>
-    ${s.durum === "aday" ? `<div class="kucuk" style="margin-top:4px">Adaylık bitişi ${tarihSaat(s.aday_bit)}</div>` : ""}
-    ${s.durum === "oylama" ? `<div class="kucuk" style="margin-top:4px">${s.tur === "baskan" ? `Bu turda seçilmek için ${s.gerek ? s.gerek + " oy" : "en çok oy"} gerekir · tur bitişi ${tarihSaat(s.tur_bit)}` : `Oylama bitişi ${tarihSaat(s.oy_bit)}`} · oylama gizli</div>` : ""}
+  return `<div class="olay ${s.durum === "oylama" ? "oy" : "basvuru"}"><div class="baslik"><b>${baslik}</b><span class="rozet ${s.durum === "bitti" ? "" : "altin"}">${s.durum === "aday" ? "Adaylık" : s.durum === "oylama" ? (s.tur === "baskan" ? (turBekliyor ? s.tur_no + ". tur bekleniyor" : s.tur_no + ". tur") : "Oylama") : "Sonuçlandı"}</span></div>
+    ${s.durum === "aday" ? `<div class="kucuk" style="margin-top:4px">Adaylık bitişi ${tarihSaat(s.aday_bit)}${s.tur === "baskan" && s.tur_bas ? " · İlk tur oylama " + tarihSaat(s.tur_bas) : ""}</div>` : ""}
+    ${s.durum === "oylama" ? `<div class="kucuk" style="margin-top:4px">${s.tur === "baskan" ? `${turBekliyor ? "Oy verme " + tarihSaat(s.tur_bas) + " tarihinde açılacak · " : "Sandık açık · "}Bu turda seçilmek için ${s.gerek ? s.gerek + " oy" : "en çok oy"} gerekir · tur bitişi ${tarihSaat(s.tur_bit)}` : `Oylama bitişi ${tarihSaat(s.oy_bit)}`} · oylama gizli</div>` : ""}
     ${s.sonuc ? `<div class="kucuk" style="margin-top:4px">${e(s.sonuc)}</div>` : ""}
     ${s.durum !== "bitti" ? gorevler.map(pusula).join("") : ""}${turlar ? `<div style="margin-top:6px">${turlar}</div>` : ""}</div>`;
 }
