@@ -1,5 +1,5 @@
 -- TBMM Başkanlığı her tur 90 dakika; turlar arası 15 dakika.
--- 600 tam üyeli Meclis: 1-2. tur 400 oy, 3. tur 301 oy, 4. tur iki aday arasında çok oy.
+-- Çoğunluk mevcut aktif milletvekili sayısına göre dinamik: 1-2. tur üçte iki, 3. tur salt çoğunluk, 4. tur iki aday arasında çok oy.
 alter table oyun.meclis_secim add column if not exists tur_bas timestamptz;
 -- Sadece devam eden ilk TBMM Başkanlığı seçiminde adaylık 18:00'de kapanır.
 -- Sonraki dönemlerde de adaylık bitiminden yarım saat sonra ilk tur açılır.
@@ -44,7 +44,7 @@ begin
     while s.durum = 'oylama' and t >= s.tur_bit and dongu < 5 loop
       dongu := dongu + 1;
       dolu := oyun.dolu_sandalye();
-      gerek := case when s.tur_no <= 2 then 400 when s.tur_no = 3 then 301 else 0 end;
+      gerek := case when s.tur_no <= 2 then ceil(dolu * 2 / 3.0)::int when s.tur_no = 3 then floor(dolu / 2.0)::int + 1 else 0 end;
       select * into ust from oyun.meclis_sayim(s.id, s.tur_no, 'baskan') x
         where oyun.aktif_vekil(x.user_id) limit 1;
       update oyun.meclis_secim set turlar = turlar || jsonb_build_array(jsonb_build_object('tur', s.tur_no, 'gerek', gerek, 'katilim',
@@ -139,7 +139,7 @@ create or replace function oyun.meclis_secim_json(s oyun.meclis_secim, p oyun.pr
     'oy_bit', coalesce(s.oy_bit, s.tur_bit), 'tur_no', s.tur_no, 'tur_bas', s.tur_bas, 'tur_bit', s.tur_bit, 'bskv_hakki', s.bskv_hakki, 'grup_bskv_sayi', s.grup_bskv_sayi,
     'sonuc', s.sonuc, 'turlar', s.turlar,
     'gerek', case when s.tur = 'baskan' and s.durum = 'oylama' then
-               case when s.tur_no <= 2 then 400 when s.tur_no = 3 then 301 else 0 end end,
+               case when s.tur_no <= 2 then ceil(oyun.dolu_sandalye() * 2 / 3.0)::int when s.tur_no = 3 then floor(oyun.dolu_sandalye() / 2.0)::int + 1 else 0 end end,
     'adaylar', coalesce((select jsonb_agg(jsonb_build_object('kad', pr.kad, 'gorev', a.gorev, 'elendi', a.elendi, 'parti', oyun.parti_json(pr.parti_id),
                    'il', (select i.ad from oyun.makamlar m join oyun.iller i on i.id = m.il_id where m.user_id = pr.id and m.tur = 'mv' and m.bit is null limit 1),
                    'benim', pr.id = p.id) order by a.gorev, a.zaman)
