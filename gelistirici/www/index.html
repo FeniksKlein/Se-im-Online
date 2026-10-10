@@ -1353,7 +1353,7 @@ async function hukumetHtml(){
       <div class="kv"><span class="k">Fiyat düzeyi</span><span class="v">×${fmt(u.endeks,3)}</span></div></div>
     <div class="kart"><h2>Bütçe ve bakanlık kasaları</h2>${u.butce.map(b => `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:13.5px"><span>${e(b.ad.replace(" Bakanlığı",""))}</span><span class="kucuk">%${fmt(b.pay,1)} · kasa ${fmt(b.kasa,1)}</span></div><div class="bar"><i style="width:${Math.min(100,b.pay*4)}%;background:var(--gold)"></i></div></div>`).join("")}</div>
     <div class="kart"><h2>Kabine (${dolu}/12)</h2>
-      ${yurutmeyim ? `<p class="alt" style="margin-bottom:6px">Bakanları sen atarsın. Başka aktif görevi olan oyuncu önce o görevden ayrılmalıdır.</p>` : ""}
+      ${yurutmeyim ? `<p class="alt" style="margin-bottom:6px">Bakanları sen atarsın. Milletvekilleri vekillikten ayrılmadan bakan atanabilir; diğer uyumsuz görevlerde istifa şartı devam eder.</p>` : ""}
       ${kab.bakanlar.map(b => `<div class="liste-satir"><div class="orta"><b>${e(b.ad.replace("Bakanlığı","Bakanı"))}</b><div class="kucuk">${b.kad ? `<a class="bag" href="#" onclick="oyuncuKart('${e(b.kad)}');return false">${e(b.kad)}</a> ${b.parti ? `· <span style="color:${e(b.parti.renk)}">${e(b.parti.kisa)}</span>` : "· Bağımsız"}` : "Atanmadı"}</div></div>
         ${yurutmeyim ? `<button class="rozet ${b.kad ? "" : "altin"}" onclick="bakanAtaModal('${b.kod}','${e(b.ad)}',${b.kad ? "true" : "false"})">${b.kad ? "Değiştir" : "Ata"}</button>` : ""}</div>`).join("")}</div>
     <div class="kart"><h2>En gelişmiş iller</h2>${u.iller.slice(0,5).map(x => `<div class="kv"><span class="k">${e(x.ad)}</span><span class="v">${fmt(x.gelisim,1)}</span></div>`).join("")}
@@ -1983,7 +1983,7 @@ async function kanunTeklifEkrani(tur0, kod0){
 }
 async function bakanAtaModal(kod, ad, dolu){
   const m = modal(`<h3 style="font-size:19px;font-weight:800">${e(ad.replace("Bakanlığı", "Bakanı"))}</h3>
-    <p class="alt">İstediğin oyuncuyu ara ve seç: herhangi bir partiden ya da bağımsız olabilir. Görev süren boyunca istediğin an görevden alıp yerine başkasını atayabilirsin. Milletvekili ya da belediye başkanı önce o görevden ayrılmalı.</p>
+    <p class="alt">İstediğin oyuncuyu ara ve seç: herhangi bir partiden ya da bağımsız olabilir. Görev süren boyunca istediğin an görevden alıp yerine başkasını atayabilirsin. Milletvekilleri görevlerini koruyarak bakan atanabilir; belediye başkanları önce görevlerinden ayrılmalıdır.</p>
     <div class="alan"><label>Oyuncu ara</label><input id="bkad" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Kullanıcı adı"></div>
     <div id="badaylar" style="max-height:40vh;overflow:auto;margin-bottom:8px"><div class="kucuk">Yükleniyor…</div></div>
     <button class="btn altin" id="ata">Ata</button>
