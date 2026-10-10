@@ -28,6 +28,27 @@ function stkEylemHtml(x, opt) {
     <p style="white-space:pre-wrap;margin-top:6px;font-size:14.5px">${e(x.metin)}</p>${katil}</div>`;
 }
 
+// Bildirimden doğrudan açıklamanın kendisine açılan detay sayfası.
+async function stkYayinGoster(id) {
+  yukleniyor("Yayın");
+  let x;
+  try { x = await API.rpc("dernek_eylem_oku", { p_eylem: id }); }
+  catch (err) {
+    iskelet("Yayın", '<div class="bos">' + e(hataCevir(err.message)) + '</div>', { geri: true });
+    return;
+  }
+  if (!x || !x.id) {
+    iskelet("Yayın", '<div class="bos">Bu yayın kaldırılmış veya artık erişilemiyor.</div>', { geri: true });
+    return;
+  }
+  const dId = Number(x.dernek && x.dernek.id);
+  const kId = x.hedef_tur === "kanun" && /^[0-9]+$/.test(String(x.hedef_id)) ? Number(x.hedef_id) : null;
+  iskelet(STK_TUR[x.tur] || "Yayın", stkEylemHtml(x) +
+    (Number.isSafeInteger(dId) && dId > 0 ? '<button class="btn ikinci" onclick="ekranAc(()=>stkDetay(' + dId + '))">Derneğin sayfasına git</button>' : '') +
+    (Number.isSafeInteger(kId) && kId > 0 ? '<button class="btn ikinci" onclick="ekranAc(()=>kanunEkrani(' + kId + '))">İlgili kanun teklifine git</button>' : ''),
+    { geri: true });
+}
+
 async function stkEkrani() {
   const kok = D.sekme === "dernek" && !D.yigin.length;   // alt menüden açıldı
   yukleniyor(kok ? "Dernekler" : "Sivil toplum");
