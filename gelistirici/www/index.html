@@ -929,6 +929,11 @@ async function gundemEkrani(){
   const govde = `
     ${seritHtml(haber)}
     ${sahneHtml(d.takvim)}
+    <div class="kart" style="border:1px solid var(--line2)">
+      <div class="baslik"><b>Adliye ve Yüksek Yargıç</b></div>
+      <p class="alt" style="margin:8px 0">Herkese açık dava aç, savunma yap, duruşmaları izle. Parti sözcüleri davalarda temsil edebilir.</p>
+      <button class="btn altin" onclick="sekmeAc('adliye')">Adliyeye gir</button>
+    </div>
     <div class="kart vit-gazete"><h2>📰 Gazeteler</h2>
       <div class="vit-dugme"><button class="btn altin" onclick="ekranAc(basinEkrani)">Oyuncu gazeteleri</button><button class="btn ikinci" onclick="otomatikGazeteEkrani()">Türkiye Gündem</button></div>
       <p class="kucuk">Haberler, köşe yazıları ve canlı siyasi gelişmeler</p></div>
@@ -3962,7 +3967,8 @@ async function basla(){
   }
   try { PARTI_ON = await API.rpc("partiler"); } catch (_) {}
   if (typeof kimlikYukle === "function") await kimlikYukle([D.durum.profil.kad]);
-  sekmeAc("gundem");
+  const adliyeBaglantisi = new URLSearchParams(window.location.search).get("ekran")==="adliye";
+  sekmeAc(adliyeBaglantisi ? "adliye" : "gundem");
   PUSH.baslat();
   if (D._bekleyenYon) { const v = D._bekleyenYon; D._bekleyenYon = null; PUSH.yonlendir(v); }
 }
