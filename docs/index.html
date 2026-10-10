@@ -2671,6 +2671,14 @@ async function ittifakKartCiz(pid){
   const el = $("#ittifakKart"); if (!el) return;
   let b; try { b = await API.rpc("ittifak_bilgi", { p_parti: pid }); } catch (_) { return; }
   const gb = b.gb_benim, it = b.ittifak;
+  // İttifak sohbetinin açılması sunucudaki üyelik ve makam yetkisine bağlıdır.
+  let ittifakSohbetIzinli = false;
+  if (it && D.durum.profil.parti && it.uyeler.some(x => x.id === D.durum.profil.parti.id)) {
+    try {
+      const oz = await API.rpc("sohbet_ozet");
+      ittifakSohbetIzinli = !!oz.kanallar.find(k => k.kanal === "ittifak" && !k.kilit);
+    } catch (_) { /* Yetki okunamazsa sohbet düğmesini gösterme. */ }
+  }
   el.innerHTML = `<div class="kart"><h2>İttifak</h2>
     ${it ? `<b style="font-size:17px">${e(it.ad)}</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${it.uyeler.map(x => `<span class="rozet">${partiRozet(x, true)}</span>`).join("")}</div>
       ${it.davetler.length ? `<div class="kucuk" style="margin-top:6px">Davet bekleyen: ${it.davetler.map(x => e(x.kisa)).join(", ")}</div>` : ""}
@@ -2682,7 +2690,7 @@ async function ittifakKartCiz(pid){
     ${b.kilit && gb ? `<p class="kucuk" style="margin-top:8px">${e(b.kilit)}</p>` : ""}
     ${gb && !b.kilit ? (it ? `<button class="btn ikinci" onclick="ittifakDavetModal(${pid})">Partiyi ittifaka davet et</button><button class="btn tehlike" onclick="ittifakAyril(${pid})">İttifaktan ayrıl</button>`
       : `<button class="btn ikinci" onclick="ittifakKurModal(${pid})">İttifak kur</button>`) : ""}
-    ${it && D.durum.profil.parti && it.uyeler.some(x => x.id === D.durum.profil.parti.id) ? `<button class="btn ikinci" onclick="ekranAc(()=>sohbetEkrani('ittifak'))">İttifak sohbeti</button>` : ""}
+    ${ittifakSohbetIzinli ? `<button class="btn ikinci" onclick="ekranAc(()=>sohbetEkrani('ittifak'))">İttifak sohbeti</button>` : ""}
     ${typeof ittifakTeklifHtml === "function" ? ittifakTeklifHtml(pid, b) : ""}<div id="ortakAdayAlan"></div></div>`;
   if (it && typeof ortakAdayCiz === "function") ortakAdayCiz(pid);
 }
@@ -2882,7 +2890,7 @@ async function sohbetListe(){
     meclis: kik(IKON.devlet.replace("<svg", '<svg width="22" height="22"'), "#0A84FF"),
     kabine: kik(sv('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>'), "#64D2FF") };
   const ALT = { genel: "Tüm oyuncular", il: "Senin ilindeki oyuncular", belediye: "Herkes izler; belediye başkanı ve ilin vekilleri konuşur",
-    parti: "Yalnızca parti üyeleri görür", yonetim: "Genel başkan ve yardımcıları", ittifak: "İttifak partilerinin üyeleri",
+    parti: "Yalnızca parti üyeleri görür", yonetim: "Genel başkan ve yardımcıları", ittifak: "Yalnızca ittifak partilerinin yöneticileri ve milletvekilleri",
     meclis: "Vekiller, bakanlar ve cumhurbaşkanı konuşur; herkes izler", kabine: "Cumhurbaşkanı ve bakanlar" };
   const GRUP = [["Herkese açık", ["genel", "il", "belediye"]], ["Siyasi örgüt", ["parti", "yonetim", "ittifak"]], ["Devlet", ["meclis", "grup", "divan", "kabine"]]];
   const satir = (k) => {
@@ -2895,7 +2903,7 @@ async function sohbetListe(){
   };
   iskelet("Sohbet", `
     <div class="kart" style="display:flex;justify-content:space-between;align-items:center"><b>Sohbet</b><span class="kucuk" style="color:var(--good)">● ${oz.cevrimici} oyuncu çevrimiçi</span></div>
-    ${GRUP.map(([ad, liste]) => `<div class="kart"><h2>${ad}</h2>${liste.map(kn => satir(oz.kanallar.find(k => k.kanal === kn))).join("")}</div>`).join("")}
+    ${GRUP.map(([ad, liste]) => `<div class="kart"><h2>${ad}</h2>${liste.filter(kn => kn !== "ittifak" || oz.kanallar.some(k => k.kanal === kn && !k.kilit)).map(kn => satir(oz.kanallar.find(k => k.kanal === kn))).join("")}</div>`).join("")}
     <div class="kart"><h2 id="ozelMesajBaslik">Özel mesajlar${dm.some(x=>+x.okunmamis>0) ? ` <span class="rozet kirmizi">${dm.reduce((n,x)=>n+(Number(x.okunmamis)||0),0)} yeni</span>` : ""}</h2>
       <div id="ozelMesajListesi">${ozelSatirlarHtml(dm)}</div>
       <button class="btn ikinci" onclick="yeniOzelModal()">Yeni mesaj</button></div>
