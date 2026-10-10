@@ -5342,7 +5342,7 @@ async function portreModal() {
     ${secici("goz", 3, (i, a) => a ? PORTRE.gozAd[i] : "")}
     ${secici("kiyafet", 8, (i, a) => a ? "Kıyafet " + (i + 1) : renkKutu(PORTRE.kiyafet[i]))}
     ${secici("zemin", 8, (i, a) => a ? "Zemin " + (i + 1) : renkKutu(PORTRE.zemin[i]))}
-    <div class="alan"><label for="ptBio">Kısa biyografi (en fazla 160 karakter)</label><textarea id="ptBio" class="alanmetin" style="min-height:76px" maxlength="160" placeholder="Örnek: İzmir. Kooperatifçi, kıyı ve emek.">${e(k0.biyografi || "")}</textarea></div>
+    <div class="alan"><label for="ptBio">Biyografi (en fazla 5.000 karakter)</label><textarea id="ptBio" class="alanmetin" style="min-height:140px" maxlength="5000" placeholder="Kendini, siyasi geçmişini ve hedeflerini anlatabilirsin.">${e(k0.biyografi || "")}</textarea></div>
     <div class="hata-metin" id="ptHata"></div>
     <button class="btn" id="ptKaydet">Portreyi kaydet</button>`);
   // Saç, sakal ve gözlük seçenekleri o anki portre üzerinde küçük önizleme olarak çizilir
