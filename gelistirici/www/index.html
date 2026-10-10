@@ -539,6 +539,17 @@ function gercekApi(){
   const k = async (pr) => { const { data, error } = await pr; if (error) throw new Error(hataCevir(error.message)); return data; };
   return {
     rpc: (fn, args) => k(sb.rpc(fn, args || {})),
+    async aiCezaOner(dava_id){
+      const {data,error}=await sb.auth.getSession();
+      if(error||!data.session||!data.session.access_token)throw new Error("Oyuncu oturumu gerekli.");
+      const r=await fetch(AYAR.SUPABASE_URL+"/functions/v1/adliye-ceza-oner",{
+        method:"POST",headers:{"Authorization":"Bearer "+data.session.access_token,"apikey":AYAR.SUPABASE_ANON,"Content-Type":"application/json"},
+        body:JSON.stringify({dava_id})
+      });
+      const v=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(v.error||"AI öneri servisi kullanılamıyor.");
+      return v;
+    },
     async oturum(){ const { data } = await sb.auth.getSession(); return data.session ? { email: data.session.user.email } : null; },
     async kayit(email, sifre){ const d = await k(sb.auth.signUp({ email, password: sifre })); return { onayGerekli: !d.session }; },
     async kodDogrula(email, kod, tur){ await k(sb.auth.verifyOtp({ email, token: kod, type: tur })); },
@@ -2132,7 +2143,7 @@ async function partiDetay(id){
       <div style="display:flex;justify-content:center;gap:16px;margin-top:12px">
         <div><b style="font-size:20px">${p.uye}</b><div class="kucuk">üye</div></div><div><b style="font-size:20px">${p.vekil}</b><div class="kucuk">vekil</div></div><div><b style="font-size:20px">${p.belediye}</b><div class="kucuk">belediye</div></div></div></div>
     <div class="kart"><h3>Parti Sözcüsü</h3><div class="kv"><span class="k">Görevdeki sözcü</span><span class="v">${e((sozcuBilgi && sozcuBilgi.sozcu) || "Henüz atanmadı")}</span></div>
-      <p class="alt">Parti adına açılan davalarda savunma yapabilir. Partili oyuncuların kişisel davalarında, oyuncunun izniyle onları temsil edebilir.</p>
+      <p class="alt"><b>Parti sözcüsünün görevi:</b> Parti adına açılan veya partiye karşı açılan davalarda iddia ve savunma sunar. Parti üyelerini kişisel davalarında yalnız üyeden alınmış dosyaya özel izinle temsil eder. Yargıç değildir, ceza veremez. Sözcüyü sadece parti genel başkanı atayabilir ve görevden alabilir.</p>
       ${sozcuBilgi && sozcuBilgi.gb_miyim ? `<button class="btn ikinci" onclick="partiSozcuModal(${p.id})">Parti Sözcüsü ata / görevden al</button>` : ""}</div>
     ${p.kurulus_bit ? `<div class="olay basvuru"><div class="baslik"><b>Kuruluş aşamasında</b><span class="rozet altin">${p.kurucu_gecerli} / ${p.kurucu_gerekli} kurucu</span></div>
       <p class="alt" style="margin-top:6px">Parti, ${tarihSaat(p.kurulus_bit)} tarihine kadar şartları taşıyan ${p.kurucu_gerekli} kurucu üyeye ulaşırsa kurulur ve seçimlere katılabilir; ulaşamazsa kuruluş düşer. Seçmen kartı hazır her üye kurucu sayılır.</p>
