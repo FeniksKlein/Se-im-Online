@@ -584,6 +584,11 @@ Karne oyuncu kartında, parti sayfasında, il sayfasında ve belediye ekranında
 - Başlayınca o ildeki herkese ve partinin tüm üyelerine bildirim gider. Kürsü, tepki, slogan ve coşku canlı meydanla aynıdır; katılıp tepki verenler o ilde yaşayanlardır, diğer illerden üyeler canlı izler.
 - Mitingin etkisi harcanan paraya bağlı değildir; meydanın coşkusu katılan gerçek oyuncuların tepkilerinden hesaplanır.
 
+### İttifak teklifi ve ortak aday (2026-10-10, modül 54)
+- Genel başkan başka bir partinin sayfasından ittifak teklif eder. Partisi bir ittifakta değilse ittifak, verdiği adla kurulur. Karşı partinin genel başkanı kabul ya da reddeder.
+- İttifak ortakları cumhurbaşkanlığı ve il il belediye başkanlığı için ortak aday önerir. Öneren ve kabul eden partilerin kendi adayları çekilir, ortak adayı desteklerler. Reddeden ortak kendi adayıyla yarışır. Herkes kabul edince ortak aday ilan edilir.
+- Öneri zamanı: cumhurbaşkanlığı için ayın 19-25'i, belediye için ön seçim sonucundan oy verme başlayana kadar. Genel seçim döneminde ittifak kurulamaz, değiştirilemez (önceki kural).
+
 ### Genel başkan yardımcılarının görevleri (2026-10-10, modül 52)
 - Genel başkan her yardımcısına bir görev alanı verir: Teşkilattan, Seçim İşlerinden, Siyasi ve Hukuki İşlerden, Ekonomi Politikalarından, Mali İşlerden, Tanıtım ve Medyadan, Dış İlişkilerden, Yerel Yönetimlerden, Sosyal Politikalardan, Halkla İlişkilerden Sorumlu ya da kendi yazdığı bir alan.
 - Unvan her yerde görünür ("CYP Teşkilattan Sorumlu Genel Başkan Yardımcısı"). Yardımcı değişince görev sıfırlanır.

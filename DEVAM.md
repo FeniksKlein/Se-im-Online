@@ -124,9 +124,9 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - **Not:** canlıdaki `teskilat_gorev_ver/al` depodakinden farklıydı (kaynakta olmayan canlı değişiklik). 53 canlı hâli temel aldı; kaynak artık eşit.
 - Test: `python3 test/gby_gorev_yetki.py` (hepsi.sh'te).
 
-## 2026-10-10 · İttifak teklifi + ittifak içi ortak aday (KAYNAKTA HAZIR, CANLIYA UYGULANMADI)
+## 2026-10-10 · 2026.10.10-5 İttifak teklifi + ittifak içi ortak aday
 - `54_ittifak_teklif_ortak_aday.sql` (+ `migrations/20261010_ittifak_teklif_ortak_aday.sql`): `ittifak_teklif(parti, ad)` başka partinin sayfasından tek adımda teklif (ittifak yoksa kurulur); `ittifak_ortak_aday_teklif/yanit/iptal`, `ittifak_masasi` — CB ve belediye (il il) ortak aday önerisi; kabul eden ortağın adayı çekilip `cb_destek`/`bel_aday_destek` uygulanır, herkes kabul edince "ortak aday" ilan edilir.
-- Arayüz kaynakta (`arayuz.js`: `ittifakTeklifHtml`, `ortakAdayCiz`; `index.html` ittifak kartı). **`docs/` ve `www/` derlemesi bilerek güncellenmedi**: canlı migration uygulanmadan yeni düğmeler hata verir.
-- Canlıya uygulama iki kez iptal edildi (Supabase onayı). Yapılacak: migration'ı canlıya uygula → `gelistirici/SURUM` 2026.10.10-5 → `node build/derle.js` + `node build/sql_birlestir.js` → docs/www/supabase-kurulum.sql kopyala → push.
+- Arayüz: `arayuz.js` (`ittifakTeklifHtml`, `ittifakTeklifModal`, `ortakAdayCiz`, `ortakAdayModal`), `index.html` ittifak kartı.
+- **Canlıya uygulandı** (Ercan SQL Editor'den çalıştırdı, 10 Ekim 10:52); canlıdaki 9 fonksiyon kaynakla birebir aynı doğrulandı. Web derlemesi 2026.10.10-5 ile yayına alındı.
 - Test: `python3 test/ittifak_ortak.py` (hepsi.sh'te). Canlıdaki bağımlı fonksiyonlar (cb_destek, bel_aday_destek, ittifak_*) 10 Ekim'de kaynakla aynıydı.
 
