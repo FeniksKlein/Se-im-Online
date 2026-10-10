@@ -54,6 +54,7 @@ async function halkaArzEkrani(id){
   <button class="btn ikinci" onclick="halkaArzPazarEkrani()">Tüm açık halka arzlar</button>
   `,{geri:true});
   haHesapCiz();
+  if(a&&!a.ben_baslattim)haTalepOnizle(a.id);
  }catch(err){iskelet("Halka arz",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true})}
 }
 async function haKarTercihDegistir(id,kasada){
@@ -118,24 +119,30 @@ function haAcikKart(a,sirketEkrani){
   <div class="kv"><span>Satılan pay (hedef dolarsa)</span><b>${haYuzde(a.satilan_pay_hedef)}</b></div>
   <div class="kv"><span>Her 10.000 ₺ talep</span><b>≈ ${haYuzde(10000/(Number(a.deger)+Number(a.hedef))*100)} pay</b></div>
   <div class="kv"><span>Haftalık ortalama net kâr</span><b>${haTL(a.ort_net_simdi)} → ${haTL(a.ort_net_hedef)}</b></div>
-  ${Number(a.talebim)>0?`<div class="kv"><span>Senin talebin</span><b>${haTL(a.talebim)}</b></div>`:""}
+  ${Number(a.talebim)>0?`<div class="kv"><span>Mevcut emrin</span><b>${haTL(a.talebim)}</b></div>`:""}
   ${a.ben_baslattim?`<button class="btn ikinci" onclick="halkaArzIptal(${a.id},${sirketEkrani?a.sirket_id:0})">Halka arzı iptal et</button>`:
-   `<div class="alan"><label>Talep tutarı (₺, en az 1.000 · kalan ${haTL(kalan)})</label><input id="ha_talep_${a.id}" type="number" min="1000" step="1000" max="${kalan}" value="${Math.min(kalan,10000)}" oninput="haTalepOnizle(${a.id})"><p class="kucuk" id="ha_talep_ozet_${a.id}"></p></div>
-   <button class="btn altin" onclick="halkaArzTalep(${a.id},${sirketEkrani?a.sirket_id:0})">Talep ver</button>
+   `<div class="alan"><label>${Number(a.talebim)>0?"Ekleyeceğin ek tutar":"Talep tutarı"} (₺, en az 1.000 · kalan ${haTL(kalan)})</label><input id="ha_talep_${a.id}" type="number" min="1000" step="1000" max="${kalan}" value="${Math.min(kalan,10000)}" oninput="haTalepOnizle(${a.id})"><p class="kucuk" id="ha_talep_ozet_${a.id}"></p></div>
+   <button class="btn altin" id="ha_talep_btn_${a.id}" onclick="halkaArzTalep(${a.id},${sirketEkrani?a.sirket_id:0})" ${kalan<1000?"disabled":""}>${Number(a.talebim)>0?"Talebimi artır":"Talep ver"}</button>
    ${Number(a.talebim)>0?`<button class="btn ikinci" onclick="halkaArzTalepGeri(${a.id},${sirketEkrani?a.sirket_id:0})">Talebimi geri al</button>`:""}`}
  </div>`;
 }
 let _haListe=[];
+function haArzBul(id){return _ha&&_ha.acik&&_ha.acik.id===id?_ha.acik:_haListe.find(x=>x.id===id)}
 function haTalepOnizle(id){
- const a=_haListe.find(x=>x.id===id)||(_ha&&_ha.acik&&_ha.acik.id===id?_ha.acik:null),el=document.getElementById("ha_talep_ozet_"+id);if(!a||!el)return;
- const t=Math.max(0,Number(document.getElementById("ha_talep_"+id).value)||0),pay=t/(Number(a.deger)+Number(a.hedef))*100;
- el.textContent=`Hedef dolarsa yaklaşık ${haYuzde(pay)} ortak olursun; haftalık ortalama payın ≈ ${haTL(Math.max(0,a.ort_net_hedef)*pay/100)}. Hedef dolmazsa payın biraz daha büyük olur.`;
+ const a=haArzBul(id),el=document.getElementById("ha_talep_ozet_"+id);if(!a||!el)return;
+ const t=Math.max(0,Number(document.getElementById("ha_talep_"+id).value)||0),once=Number(a.talebim)||0,pay=(once+t)/(Number(a.deger)+Number(a.hedef))*100;
+ el.textContent=`${once>0?`Mevcut ${haTL(once)} + ek ${haTL(t)} = toplam ${haTL(once+t)}. `:""}Hedef dolarsa yaklaşık ${haYuzde(pay)} ortak olursun; haftalık ortalama payın ≈ ${haTL(Math.max(0,a.ort_net_hedef)*pay/100)}. Hedef dolmazsa payın biraz daha büyük olur.`;
 }
 async function halkaArzTalep(arz,sirket){
- const t=Math.round(Number(document.getElementById("ha_talep_"+arz).value));
- if(!confirm(`${haTL(t)} talep verilsin mi? Para arz sonuçlanana kadar emanette kalır; arz gerçekleşmezse iade edilir.`))return;
- try{const r=await API.rpc("halka_arz_talep",{p_arz:arz,p_tutar:t});toast(r.durum==="tamam"?"Hedef doldu, halka arz tamamlandı; artık şirketin ortağısın.":"Talebin alındı.");sirket?halkaArzEkrani(sirket):halkaArzPazarEkrani()}
+ const a=haArzBul(arz),inp=document.getElementById("ha_talep_"+arz),btn=document.getElementById("ha_talep_btn_"+arz);
+ const t=Number(inp?.value),once=Number(a?.talebim)||0,kalan=a?Number(a.hedef)-Number(a.toplanan):0;
+ if(!Number.isSafeInteger(t)||t<1000||t>kalan){toast("Ek talep en az 1.000 ₺ olmalı ve arzın kalan hedefini aşmamalı.",true);return;}
+ const onay=once>0?`${haTL(t)} ek talep eklensin mi?\nMevcut emir: ${haTL(once)}\nYeni toplam emir: ${haTL(once+t)}`:`${haTL(t)} tutarında ilk talebin verilsin mi?`;
+ if(!confirm(onay+"\nYalnız ek tutar cüzdanından düşer; para arz sonuçlanana kadar emanette kalır, arz gerçekleşmezse iade edilir."))return;
+ if(btn)btn.disabled=true;
+ try{const r=await API.rpc("halka_arz_talep",{p_arz:arz,p_tutar:t});toast(r.durum==="tamam"?"Hedef doldu, halka arz tamamlandı; artık şirketin ortağısın.":`Talebin güncellendi. Toplam emrin: ${haTL(r.talebim)}.`);sirket?halkaArzEkrani(sirket):halkaArzPazarEkrani()}
  catch(err){toast(hataCevir(err.message),true)}
+ finally{if(btn&&document.getElementById("ha_talep_"+arz)===inp)btn.disabled=false;}
 }
 async function halkaArzTalepGeri(arz,sirket){
  if(!confirm("Talebin geri alınsın mı? Para cüzdanına döner."))return;
@@ -148,7 +155,7 @@ async function halkaArzPazarEkrani(){
  try{
   const d=await API.rpc("halka_arz_liste");_haListe=d.acik||[];
   iskelet("Halka arzlar",`
-  <div class="kart"><h2>Halka arzlar</h2><p class="alt">Oyuncu şirketlerinin halka arzlarına talep ver, şirkete ortak ol ve haftalık kârdan payını al. Cüzdanın: ${haTL(d.cuzdan)}</p>
+  <div class="kart"><h2>Halka arzlar</h2><p class="alt">Oyuncu şirketlerinin halka arzlarına talep ver, şirkete ortak ol ve haftalık kârdan payını al. Cüzdanın: ${haTL(d.cuzdan)}. Talep toplama bitmeden mevcut emrine istediğin kadar ek talep verebilirsin (her seferinde en az 1.000 ₺).</p>
    <button class="btn ikinci" onclick="sirketYonetimEkrani()">Şirketlerim</button></div>
   ${_haListe.length?_haListe.map(a=>haAcikKart(a,false)).join(""):'<div class="kart"><p class="alt">Şu anda talep toplayan halka arz yok.</p></div>'}
   ${(d.son||[]).length?`<div class="kart"><h2>Son sonuçlananlar</h2>${d.son.map(g=>`<div class="kv"><span>${e(g.sirket)} · ${haDurumAd(g.durum)}</span><b>${haTL(g.toplanan)}</b></div><p class="kucuk">${tarihSaat(g.sonuc_zaman)} · ${e(g.aciklama||"")}</p>`).join("")}</div>`:""}
