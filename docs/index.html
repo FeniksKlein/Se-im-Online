@@ -1029,7 +1029,7 @@ const TUR = {
   kurultay: { ad: "Kurultay — Genel Başkan Seçimi", kisa: "Kurultay", aday: "Genel başkanlığa aday ol" }
 };
 const MAKAM_AD = { mv: "Milletvekili", bel: "İl Belediye Başkanı", cb: "Cumhurbaşkanı", bakan: "Bakan", tbmm: "TBMM Başkanı", bskv: "TBMM Başkanvekili", grup_bskv: "Grup Başkanvekili" };
-const makamYaz = (m) => m.tur === "bakan" ? (m.bakanlik_ad || "Bakanlık").replace("Bakanlığı", "Bakanı") : (MAKAM_AD[m.tur] || m.tur) + (m.il_ad ? " · " + m.il_ad : "");
+const makamYaz = (m) => m.tur === "cb_yardimcisi" ? ((m.bakanlik || "?") + ". Cumhurbaşkanı Yardımcısı") : m.tur === "bakan" ? (m.bakanlik_ad || "Bakanlık").replace("Bakanlığı", "Bakanı") : (MAKAM_AD[m.tur] || m.tur) + (m.il_ad ? " · " + m.il_ad : "");
 
 /* =====================================================================
    3) DURUM VE GEZİNME
@@ -1721,6 +1721,7 @@ function bosMakamHtml(b){
 async function hukumetHtml(){
   const ben = D.durum.profil, cbmiyim = ben.cb_mi, bakanim = ben.makamlar.find(x => x.tur === "bakan");
   const kab = await API.rpc("kabine"), yurutmeyim = !!kab.yurutme_benim, parlamenter = kab.sistem === "parlamenter";
+  const cbY = await API.rpc("cb_yardimcilari").catch(() => ({ yardimcilar: [], bekleyen: [] }));
   const [u, panel, kl, bos, vp, siyasi, teklifler] = await Promise.all([
     API.rpc("ulke_karnesi"),
     bakanim ? API.rpc("bakanlik_paneli") : null,
@@ -1742,6 +1743,7 @@ async function hukumetHtml(){
     ${yurutmeKart}
     ${parlamenter && kab.cb ? `<div class="kart"><div class="kucuk">Cumhurbaşkanı · devlet başkanı</div><b>${e(kab.cb.kad)}</b><div class="alt">${partiRozet(kab.cb.parti)} · parlamenter sistemde yürütmeyi Başbakan ve hükümet kullanır.</div></div>` : ""}
     ${siyasiSistemHtml(siyasi)}
+    ${cbYardimcilariHtml(cbY,cbmiyim)}
     ${cbmiyim && bekleyen.length ? `<div class="olay basvuru"><div class="baslik"><b>Cumhurbaşkanı onay masası</b><span class="rozet altin">Kanunlar</span></div>
       <p class="alt" style="margin-top:6px">Meclisten geçen kanunlarda anayasal onay/veto yetkini burada kullanırsın.</p>
       ${bekleyen.map(k => `<div class="liste-satir" onclick="ekranAc(()=>kanunEkrani(${k.id}))" style="cursor:pointer"><div class="orta"><b>${e(k.baslik)}</b><div class="kucuk">Onayını bekliyor · son ${tarihSaat(k.cb_bit)}</div></div><span class="durum d-cb_onayinda">Karar ver</span></div>`).join("")}</div>` : ""}
@@ -1776,6 +1778,47 @@ async function hukumetHtml(){
         ${yurutmeyim ? `<button class="rozet ${b.kad ? "" : "altin"}" onclick="bakanAtaModal('${b.kod}','${e(b.ad)}',${b.kad ? "true" : "false"})">${b.kad ? "Değiştir" : "Ata"}</button>` : ""}</div>`).join("")}</div>
     <div class="kart"><h2>En gelişmiş iller</h2>${u.iller.slice(0,5).map(x => `<div class="kv"><span class="k">${e(x.ad)}</span><span class="v">${fmt(x.gelisim,1)}</span></div>`).join("")}
       <button class="btn ikinci" onclick="D.haritaMod='gelisim';sekmeAc('harita')">Gelişmişlik haritası</button></div>`;
+}
+function cbYardimcilariHtml(data, cbmiyim){
+  const slotlar = (data && data.yardimcilar) || [];
+  const bekleyen = (data && data.bekleyen) || [];
+  if (!slotlar.length) return "";
+  return `<div class="kart"><h2>Cumhurbaşkanı Yardımcıları</h2>
+    <p class="alt" style="margin-bottom:8px">Cumhurbaşkanı iki yardımcı atayabilir. Yardımcılar Cumhurbaşkanı yerine geçmez; mevcut görevlerini korurlar.</p>
+    ${slotlar.map(y => `<div class="liste-satir"><div class="orta"><b>${y.sira}. Cumhurbaşkanı Yardımcısı</b>
+      <div class="kucuk">${y.kad ? e(y.kad) + (y.parti ? " · " + e(y.parti.kisa) : " · Bağımsız") : "Atanmadı"}
+      ${bekleyen.filter(x => x.sira === y.sira).map(x => `<span style="color:var(--gold2)"> · Teklif bekleniyor: ${e(x.aday)}</span>`).join("")}</div></div>
+      ${cbmiyim ? `<button class="rozet ${y.kad ? "" : "altin"}" onclick="cbYardimciAtaModal(${Number(y.sira)},${!!y.kad})">${y.kad ? "Değiştir" : "Ata"}</button>` : ""}
+    </div>`).join("")}</div>`;
+}
+async function cbYardimciAtaModal(sira, dolu){
+  if (![1,2].includes(sira)) return;
+  const m = modal(`<h3>${sira}. Cumhurbaşkanı Yardımcısı</h3>
+    <p class="alt">Oyuncuya teklif gönderilir. Kabul ederse bu makama atanır ve önceki görevlerini korur. Makam doluysa yeni oyuncu kabul edene kadar mevcut yardımcı görevde kalır.</p>
+    <div class="alan"><label>Oyuncu ara</label><input id="bkad" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Kullanıcı adı"></div>
+    <div id="badaylar" style="max-height:40vh;overflow:auto;margin-bottom:8px"><div class="kucuk">Yükleniyor…</div></div>
+    <button class="btn altin" id="cbYata">Yardımcılık teklifi gönder</button>
+    ${dolu ? `<button class="btn tehlike" id="cbYal">Görevden al</button>` : ""}`);
+  const kutu = $("#badaylar",m); let zam=null;
+  $("#bkad",m).oninput=()=>{clearTimeout(zam);zam=setTimeout(()=>bakanAdayAra(m,kutu),250);};
+  bakanAdayAra(m,kutu);
+  $("#cbYata",m).onclick=async()=>{
+    const kad=$("#bkad",m).value.trim();if(!kad)return toast("Bir oyuncu seç.",true);
+    try{await islem(()=>API.rpc("cb_yardimcisi_ata",{p_sira:sira,p_kad:kad}),"Cumhurbaşkanı yardımcılığı teklifi gönderildi.");modalKapat();yenidenCiz();}catch(_){}
+  };
+  const al=$("#cbYal",m);
+  if(al) al.onclick=async()=>{
+    if(!await onayla("Yardımcıyı görevden al",`${sira}. Cumhurbaşkanı Yardımcısı görevden alınacak.`, "Görevden al",true))return;
+    try{await islem(()=>API.rpc("cb_yardimcisi_gorevden_al",{p_sira:sira}),"Yardımcı görevden alındı.");modalKapat();yenidenCiz();}catch(_){}
+  };
+}
+async function cbYardimciYanit(id,kabul){
+  if(!await onayla("Cumhurbaşkanı yardımcılığı teklifi",kabul ? "Görevi kabul edersen diğer makamlarını koruyacaksın." : "Teklifi reddetmek istiyor musun?",kabul ? "Kabul et":"Reddet"))return;
+  try{await islem(()=>API.rpc("cb_yardimcisi_yanit",{p_teklif:id,p_kabul:kabul}),kabul ? "Cumhurbaşkanı yardımcısı olarak atandın.":"Teklifi reddettin.");await durumYenile();bildirimEkrani();}catch(_){}
+}
+async function cbYardimciIstifa(){
+  if(!await onayla("Yardımcılıktan istifa","Cumhurbaşkanı yardımcılığı görevinden ayrılacaksın. Diğer makamların korunur.","İstifa et",true))return;
+  try{await islem(()=>API.rpc("cb_yardimcisi_istifa"),"Cumhurbaşkanı yardımcılığından istifa ettin.");await durumYenile();yenidenCiz();}catch(_){}
 }
 function politikaKartlari(l){
   const B = { tl_ay: "₺/ay", tl_gun: "₺/gün", yuzde: "%" };
@@ -2714,6 +2757,7 @@ function ekIstifaButonlari(p){
   let h = "";
   if (p.gb) h += '<button class="btn tehlike" onclick="makamIstifa(&quot;gb&quot;)">Genel başkanlıktan istifa et</button>';
   if (p.cb_mi) h += '<button class="btn tehlike" onclick="makamIstifa(&quot;cb&quot;)">Cumhurbaşkanlığından istifa et</button>';
+  if (p.makamlar.some(x => x.tur === "cb_yardimcisi")) h += '<button class="btn tehlike" onclick="cbYardimciIstifa()">Cumhurbaşkanı yardımcılığından istifa et</button>';
   if (p.makamlar.some(x => x.tur === "tbmm")) h += '<button class="btn tehlike" onclick="makamIstifa(&quot;tbmm&quot;)">TBMM Başkanlığından istifa et</button>';
   return h;
 }
@@ -3007,18 +3051,27 @@ async function oyuncuKart(kad){
 }
 async function bildirimEkrani(){
   yukleniyor("Bildirimler");
-  let liste, haklar, bakanTeklifleri = [];
+  let liste, haklar, bakanTeklifleri = [], cbYardimciTeklifleri = [];
   let hy = null;
-  try { [liste, haklar, bakanTeklifleri] = await Promise.all([
+  try { [liste, haklar, bakanTeklifleri, cbYardimciTeklifleri] = await Promise.all([
     API.rpc("bildirim_kutusu", { p_limit: 60 }),
     API.rpc("yayin_haklari"),
-    API.rpc("bakan_tekliflerim").catch(() => [])
+    API.rpc("bakan_tekliflerim").catch(() => []),
+    API.rpc("cb_yardimcisi_tekliflerim").catch(() => [])
   ]); if (haklar.length) { hy = await API.rpc("hayat"); D._hayat = hy; } }
   catch (err) { iskelet("Bildirimler", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
   D.okunmamis.bildirim = 0;
   D._haklar = haklar;
   const yayinTurAd = { cb: "Ulusa sesleniş", bakan: "Bakanlık açıklaması", parti: "Parti genelgesi", vekil: "Milletvekili mesajı", belediye: "Belediye duyurusu", aday: "Seçim propagandası" };
   iskelet("Bildirimler", `
+    ${cbYardimciTeklifleri.length ? `<div class="kart"><h2>Cumhurbaşkanı yardımcılığı tekliflerin (${cbYardimciTeklifleri.length})</h2>
+      <p class="alt">Görevi kabul edersen mevcut makamların korunur.</p>
+      ${cbYardimciTeklifleri.map(t => `<div class="liste-satir" style="display:block">
+        <b>${Number(t.sira)}. Cumhurbaşkanı Yardımcılığı</b><div class="kucuk">${e(t.teklif_eden)} · ${zamanKisa(t.zaman)}</div>
+        <div class="satir" style="gap:8px;margin-top:9px">
+          <button class="btn altin" style="flex:1" onclick="cbYardimciYanit(${Number(t.id)},true)">Kabul et</button>
+          <button class="btn ikinci" style="flex:1" onclick="cbYardimciYanit(${Number(t.id)},false)">Reddet</button>
+        </div></div>`).join("")}</div>` : ""}
     ${bakanTeklifleri.length ? `<div class="kart"><h2>Bakanlık tekliflerin (${bakanTeklifleri.length})</h2>
       <p class="alt">Teklifi kabul edersen mevcut görevlerin ve makamların korunur. Bakanlık ek görev olarak başlar.</p>
       ${bakanTeklifleri.map(t => `<div class="liste-satir" style="display:block">
