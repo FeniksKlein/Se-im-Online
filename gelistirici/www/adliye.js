@@ -164,3 +164,17 @@ function adlAfModal(id){
   adlIslem(()=>API.rpc("adliye_af_cikar",{p_dava:id,p_gerekce:gerekce}),"Cumhurbaşkanlığı af kararı yayımlandı.",id);
  };
 }
+
+/* Parti detayındaki görünür makam yönetimi */
+function partiSozcuModal(parti){
+ const m=modal('<p class="alt">Partinizden bir oyuncuyu Parti Sözcüsü atayın. Boş bırakmanız mevcut sözcüyü görevden alır.</p>'
+  +adlAlan("Parti Sözcüsü kullanıcı adı","yeniPartiSozcu","text","Görevden almak için boş bırakın")
+  +'<button class="btn altin" id="partiSozcuOnay">Atamayı uygula</button>');
+ adlFormBaslik(m,"Parti Sözcülüğü");
+ m.querySelector("#partiSozcuOnay").onclick=async()=>{
+  try {
+   await API.rpc("adliye_sozcu_ata",{p_parti:parti,p_kad:m.querySelector("#yeniPartiSozcu").value||null});
+   modalKapat();toast("Parti sözcülüğü güncellendi.");await partiDetay(parti);
+  } catch(err){toast(hataCevir(err.message),true);}
+ };
+}
