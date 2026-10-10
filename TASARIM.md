@@ -40,12 +40,13 @@ Oyunun saati gerçek hayatın saatidir. Bugün 2 Ekim 2026 ise oyunda da 2 Ekim 
 
 **Tek görev kuralı:** Kimse aynı anda iki görev taşıyamaz. Görevler: milletvekili, belediye başkanı, bakan, cumhurbaşkanı, genel başkan, genel başkan yardımcısı. İki istisna var:
 - **Milletvekili + genel başkan yardımcısı** birlikte olabilir.
+- **Milletvekili + genel başkan** birlikte olabilir. Ancak aynı seçim döneminde kesin cumhurbaşkanı adayı olan genel başkan, milletvekili adayı olamaz.
 - **Genel başkan + cumhurbaşkanı** birlikte olabilir: genel başkan kendini cumhurbaşkanı adayı gösterip seçilirse ikisini de taşır.
 
 Uygulaması:
 - **Atama:** Genel başkan yardımcılarını yalnızca genel başkan, bakanları yalnızca cumhurbaşkanı atar. Başka görevi olan biri bakan atanamaz; önce görevinden istifa etmelidir. Yardımcı olarak yalnızca milletvekilleri ve görevi olmayanlar atanabilir.
 - **Seçim:** Seçimi kazanan kişinin eski görevi sona erer (belediye başkanı seçilen vekil, vekil seçilen bakan gibi). Aday olurken bu uyarı gösterilir. Belediye ya da cumhurbaşkanı seçilen yardımcı yardımcılıktan, kurultayı kazanan vekil ve bakan eski görevinden düşer.
-- **Genel başkan** milletvekili ya da belediye başkanı adayı olamaz. Yalnızca cumhurbaşkanı adayı olabilir.
+- **Genel başkan** milletvekili adayı olabilir; milletvekili seçilse de genel başkanlığı sürer. Aynı dönem cumhurbaşkanı adayıysa milletvekili adayı olamaz. Belediye başkanı adaylığına ilişkin mevcut diğer kural değişmez.
 - **İstifa:** Bakan, genel başkan yardımcısı, milletvekili ve belediye başkanı istediği zaman istifa edebilir. İstifa eden vekilin yerine listedeki sıradaki aday girer.
 
 **Yapay oyuncu yok:** Oyunda bot ya da NPC bulunmaz. Her vekil, bakan, başkan ve seçmen gerçek bir oyuncudur. Makama aday çıkmazsa makam boş kalır. Test botları yalnızca geliştirici klasöründeki testlerde kullanılır; `supabase-kurulum.sql` içinde yoktur.
