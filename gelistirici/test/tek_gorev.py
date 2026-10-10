@@ -39,7 +39,16 @@ rpc(gb, "gby_ata", 3, "Yardimci")        # aynı kişinin sırası değişebilir
 assert q("select count(*) from oyun.parti_gby where parti_id=1") == "2"
 ok("Bakan, belediye başkanı ve cumhurbaşkanı genel başkan yardımcısı atanamaz; yardımcının sırası değişebilir")
 
-# ---- bakanı yalnızca cumhurbaşkanı atar; başka görevi olan atanamaz
+# ---- bir milletvekili vekillikten ayrilmadan bakan olabilir
+bakan_vekil = oyuncu("BakanVekil", 35, 1); makam("mv", bakan_vekil, 35)
+assert q("select oyun.rol_uyumlu('mv','bakan')") == "t"
+assert q("select oyun.rol_uyumlu('bakan','mv')") == "t"
+rpc(cb, "bakan_ata", "saglik", "BakanVekil")
+assert sorted(roller(bakan_vekil).split(",")) == ["bakan", "mv"]
+ok("Milletvekili, vekillikten istifa etmeden bakan olabilir")
+
+# ---- Uyumsuz ikinci görevi olanlar, belediye baskani ve ikinci bir bakan atanamaz
+# Vekil isimli oyuncu ayni zamanda gby oldugundan halen uyumsuz bir goreve sahiptir.
 hata_bekle(rpc, cb, "bakan_ata", "saglik", "Vekil", icerir="önce")
 hata_bekle(rpc, cb, "bakan_ata", "saglik", "Baskan", icerir="önce")
 hata_bekle(rpc, cb, "bakan_ata", "saglik", "Bakan", icerir="önce")
@@ -50,7 +59,8 @@ rpc(bel, "istifa", "bel")
 assert q(f"select count(*) from oyun.makamlar where user_id='{bel}' and bit is null") == "0"
 rpc(cb, "bakan_ata", "saglik", "Baskan")
 assert roller(bel) == "bakan"
-ok("Vekil, belediye başkanı, bakan, genel başkan ve yardımcı bakan atanamaz; belediye başkanı istifa edince atanabilir")
+assert roller(bakan_vekil) == "mv" # Bakanliktan alinsa da milletvekilligi devam eder
+ok("Bakanlik degisimi milletvekilligini etkilemez; diger uyumsuz gorevlerin engeli surer")
 hata_bekle(rpc, vek, "istifa", "bel", icerir="değilsin")
 rpc(vek, "istifa", "mv")
 assert roller(vek) == "gby"
