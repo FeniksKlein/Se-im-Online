@@ -6748,7 +6748,7 @@ function adlSiyasiHtml(){
   +'</div>';
 }
 function adlYargicOnerModal(parti){
- const p=ADL.partiler.find(x=>x.id===parti);
+ const p=(ADL.partiler||[]).find(x=>x.id===parti);
  const m=modal('<p class="alt">Partinizin yeni Yüksek Yargıç adayı kim olsun? Önerinizi bütün oyuncular görebilir. Cumhurbaşkanı bu öneriyle bağlı değildir. Aynı dönem içindeki önerinizi değiştirebilirsiniz.</p>'
  +adlAlan('Yargıç adayı kullanıcı adı','adlOnerAday','text','Aday oyuncunun kullanıcı adı')
  +adlAlan('Kamuya açık gerekçe (isteğe bağlı)','adlOnerGerekce','textarea')
