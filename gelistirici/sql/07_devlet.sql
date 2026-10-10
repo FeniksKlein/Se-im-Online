@@ -897,11 +897,11 @@ end $$;
 --   Genel seçim için oy verme başlayana dek kurma, teklif, kabul ve ayrılma serbesttir.
 --   Sandık açıldığında sonuç açıklanana kadar ittifak işlemleri kilitlenir.
 -- ---------------------------------------------------------------------
-create or replace function oyun.ittifak_kilit(t timestamptz) returns text language sql stable as $
+create or replace function oyun.ittifak_kilit(t timestamptz) returns text language sql stable as $$
   select 'Genel seçimde oy verme başladı; sonuçlar açıklanana kadar ittifaklarda değişiklik yapılamaz.'
   where exists (select 1 from oyun.secimler g
                 where g.tur = 'mv' and g.durum = 'bekliyor' and g.oy_bas is not null and t >= g.oy_bas)
-$;
+$$;
 
 create or replace function oyun.gb_partim(p oyun.profiller) returns oyun.partiler language plpgsql stable as $$
 declare pa oyun.partiler;

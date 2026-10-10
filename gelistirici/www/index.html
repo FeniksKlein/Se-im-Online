@@ -866,12 +866,12 @@ async function gundemEkrani(){
   const pp = DUR.profil, mvMi = pp.makamlar.some(x => x.tur === "mv"), cbMi = pp.makamlar.some(x => x.tur === "cb");
   // Bütün veriler paralel yüklenir; biri hata verirse ekranın geri kalanı yine çizilir
   const iste = (fn, args, varsay) => API.rpc(fn, args).catch(() => varsay);
-  const [ihaleR, haber, reflerR, kanunlar, dv, itt, ia, mitingler, haklar, meclis] = await Promise.all([
+  const [ihaleR, haber, reflerR, kanunlar, dv, itt, ia, mitingler, haklar, meclis, stk] = await Promise.all([
     iste("ihaleler", undefined, { acik: [] }), iste("haberler", { p_limit: 15 }, []), iste("referandumlar", { p_limit: 5 }, []),
     mvMi || cbMi ? iste("kanunlar", { p_limit: 40 }, []) : [], mvMi ? iste("meclis_baskanlik", undefined, null) : null,
     pp.gb && pp.parti ? iste("ittifak_bilgi", { p_parti: pp.parti.id }, null) : null,
     iste("ilk_adimlar", undefined, null), iste("mitingler", undefined, []), iste("miting_haklarim", undefined, []),
-    D._meclisOn && simdi() - D._meclisOn.t < 300e3 ? D._meclisOn.v : iste("meclis", undefined, null)]);
+    D._meclisOn && simdi() - D._meclisOn.t < 300e3 ? D._meclisOn.v : iste("meclis", undefined, null), iste("dernek_akis", { p_limit: 5 }, null)]);
   if (meclis && !(D._meclisOn && D._meclisOn.v === meclis)) D._meclisOn = { t: simdi(), v: meclis };
   if (D.durum !== DUR && !D.durum) return;      // bu arada çıkış yapıldıysa çizme
   const ihaleler = (ihaleR || {}).acik || [];
@@ -893,6 +893,8 @@ async function gundemEkrani(){
   if (p.kredi_uyari) is.push({ cls: "acil", ikon: IKON.uyari, bas: "Kredi borcun gecikmede", alt: e(p.kredi_uyari), git: "ekranAc(bankaEkrani)" });
   if (canliMiting) is.push({ cls: "acil", ikon: IKON.insanlar, bas: `Mitinge katıl: ${e(canliMiting.kad)}`, alt: `${e(canliMiting.il)} meydanı · ${canliMiting.katilim} kişi`, git: `mitingAc(${canliMiting.id})` });
   const benimCanli = (mitingler || []).find(m => m.benim && new Date(m.bas).getTime() <= t && new Date(m.bit).getTime() > t);
+  const canliProtesto = ((stk && stk.protestolar) || []).find(x => x.canli && x.benim_ilim && !x.katildim);
+  if (canliProtesto) is.push({ cls: "acil", ikon: IKON.insanlar, bas: `Protestoya katıl: ${e(canliProtesto.dernek.ad)}`, alt: `${e(canliProtesto.il)} · ${e(canliProtesto.baslik)} · ${canliProtesto.katilim} kişi`, git: `stkProtestoKatil(${canliProtesto.id})` });
   if (benimCanli) is.push({ cls: "acil", ikon: IKON.insanlar, bas: "Mitingin başladı: kürsüye çık", alt: `${e(benimCanli.il)} meydanı · ${benimCanli.katilim} kişi`, git: `mitingAc(${benimCanli.id})` });
   if (oylanacak.length) is.push({ cls: "acil", ikon: IKON.meclis, bas: `Meclis'te ${oylanacak.length} teklif oyunu bekliyor`, alt: e(oylanacak[0].baslik), git: `ekranAc(()=>kanunEkrani(${oylanacak[0].id}))` });
   if (onaylanacak.length) is.push({ cls: "eylem-mor", ikon: IKON.kalem, bas: `Onayını bekleyen ${onaylanacak.length} kanun`, alt: e(onaylanacak[0].baslik), git: `ekranAc(()=>kanunEkrani(${onaylanacak[0].id}))` });
@@ -927,6 +929,7 @@ async function gundemEkrani(){
       <p class="alt" style="margin-top:6px">Kent vergisini ve hemşehri desteğini belirle; kent lokantası, ücretsiz ulaşım, kira yardımı, istihdam ofisi aç. İlinde yaşayan oyuncuların cüzdanına doğrudan dokunursun.</p>
       <button class="btn altin" onclick="ekranAc(belediyeEkrani)">Belediyeme git</button></div>` : ""}
     ${mitingHtml(mitingler)}
+    ${typeof stkGundemHtml === "function" ? stkGundemHtml(stk) : ""}
     <div class="bolum-bas"><h2>Türkiye</h2></div>
     <div class="kart">
       ${cb ? `<div class="cb-kart" onclick="oyuncuKart('${e(cb.kad)}')" style="cursor:pointer">${portre(cb.kad, cb.parti && cb.parti.renk, 48)}<div><div class="kucuk">Cumhurbaşkanı</div><b style="font-family:var(--disp);font-size:22px;font-weight:700">${e(cb.kad)}</b><div class="alt">${partiRozet(cb.parti)}</div></div></div>`
@@ -2000,6 +2003,7 @@ async function partilerEkrani(){
         '<p class="alt">Henüz ideolojisi açıklanan parti yok.</p>'}
     </div>
     <button class="btn altin" onclick="kurucuDavetModal()" style="margin:0 0 12px">Kurucular kurulu · Gelen davetler</button>
+    ${typeof stkGirisHtml === "function" ? stkGirisHtml() : ""}
     <div class="bolum-bas"><h2>Tüm partiler</h2><span class="kucuk">${l.length} parti</span></div>
     <div class="kart">${l.map(p => { const k = (kim || []).find(x => x.parti.id === p.id); return `<div class="liste-satir" onclick="ekranAc(()=>partiDetay(${p.id}))" style="cursor:pointer">${amblemKutu(p)}
       <div class="orta"><b>${e(p.ad)}</b>${p.kurulus_bit ? ` <span class="rozet altin">Kuruluşta</span>` : ""}<div class="kucuk">${k && k.ideolojiler && k.ideolojiler.length ? e(ideolojiYaz(k.ideolojiler)) + " · " : ""}${p.uye} üye · ${p.vekil} vekil · ${p.belediye} belediye</div></div><span style="color:${e(p.renk)};font-family:var(--disp);font-weight:700;font-size:18px">${e(p.kisa)}</span></div>`; }).join("")}</div>
@@ -2602,6 +2606,8 @@ const METIN = {
     <p>Her vaadin günlük maliyeti hesaplanır ve ülkenin, ilin ya da partinin mali alanıyla karşılaştırılır. Ekonomi iyiyse daha büyük vaat verilebilir; karşılığı olmayan vaat kaydedilemez. Seçilenlerin vaatleri her gün kontrol edilir ve oyuncu kartında vaat karnesi olarak görünür.</p>
     <h4>İttifaklar</h4>
     <p>Genel başkanlar ittifak kurar ve diğer partileri davet eder. Genel seçimde ittifakın toplam oyu barajı aşmaya yeter. Bir parti cumhurbaşkanlığında kendi adayını çıkarmak yerine ittifak ortağının adayını destekleyebilir. Genel seçimde sandıklar açılana kadar ittifak kurulabilir, teklif gönderilebilir ve kabul edilebilir. Oy verme başlayınca sonuçlar açıklanana kadar ittifaklar değiştirilemez.</p>
+    <h4>Dernekler ve sivil toplum</h4>
+    <p>Her oyuncu bir dernek kurabilir (kuruluş harcı) ya da en fazla 5 derneğe üye olabilir. Kurucu başkan olur, en fazla 4 kişilik yönetim kurulu atar. Herkes derneğe bağış yapabilir; dernek kasasıyla illerde şube açılır. Başkan ve yönetim kurulu; basın açıklaması yapar, bildiri yayımlar, partilere ve adaylara destek açıklar, şubesi olan illerde bir saatlik protesto düzenler. Açıklamaların konusu bir kanun, parti, dernek ya da oyuncu olabilir; ilgilisine bildirim gider. Protestoya o ilde yaşayan herkes katılabilir. Dernek günde en fazla 3 açıklama ve 1 protesto yapar; seçim günlerinin oy saatlerinde protesto yapılamaz.</p>
     <h4>Sohbet ve propaganda</h4>
     <p>Türkiye Meydanı (herkes), il kahvesi (ilindekiler), parti sohbeti (üyeler) ve TBMM Genel Kurulu (vekiller, bakanlar ve cumhurbaşkanı konuşur, herkes izler) kanalları vardır. Oyuncular birbirine özel mesaj gönderebilir.</p>
     <p>Görev ve adaylıklar propaganda hakkı verir: cumhurbaşkanı ve bakanlar tüm Türkiye'ye günde 1, genel başkan partisine günde 3, yardımcıları günde 1, vekil ve belediye başkanı iline günde 1, adaylar her seçim için seçmenlerine günde 1 yayın gönderebilir. Yayınlar seçmenlerin bildirim kutusuna düşer.</p>
@@ -3800,6 +3806,7 @@ window.addEventListener("load", () => {
 <script src="parti_kimlik_ek.js"></script>
 <script src="otomatik_gazete.js"></script>
 <script src="arayuz.js"></script>
+<script src="sivil_toplum.js"></script>
 <script src="kurucu_ideoloji.js"></script>
 <script src="ekonomi_vitrin.js"></script>
 <script src="emlak_vitrin.js"></script>

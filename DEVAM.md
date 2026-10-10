@@ -130,3 +130,10 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - **Canlıya uygulandı** (Ercan SQL Editor'den çalıştırdı, 10 Ekim 10:52); canlıdaki 9 fonksiyon kaynakla birebir aynı doğrulandı. Web derlemesi 2026.10.10-5 ile yayına alındı.
 - Test: `python3 test/ittifak_ortak.py` (hepsi.sh'te). Canlıdaki bağımlı fonksiyonlar (cb_destek, bel_aday_destek, ittifak_*) 10 Ekim'de kaynakla aynıydı.
 
+## 2026-10-10 · Dernekler / sivil toplum (KAYNAKTA HAZIR, CANLI MIGRATION BEKLİYOR)
+- `55_dernekler.sql` (+ `migrations/20261010_dernekler.sql`): dernek kur (harç 5.000 ₺ × endeks, kurucu başkan, merkez şube), üyelik (en fazla 5), yönetim kurulu (≤4), başkanlık devri, bağış/kasa, il şubesi (1.000 ₺ × il büyüklüğü × endeks), eylemler: basın açıklaması, bildiri, destek (parti/oyuncu), protesto (şubeli ilde 1 saat, o ilde yaşayan herkes katılır). Konu: genel/kanun/parti/dernek/oyuncu; ilgilisine bildirim; Gündem'e `olay('dernek')`. Sınırlar: 3 açıklama/gün, 1 protesto/gün, aynı il 3 gün, seçim oy saatlerinde protesto yok. Motor: `oyun.miting_tick` başında `oyun.dernek_tick`.
+- Arayüz: `gelistirici/www/sivil_toplum.js` (derle.js'e eklendi); Partiler sekmesinde giriş kartı, Gündem'de "Protestoya katıl" ve "Sokaklar" bölümü, oyun rehberinde açıklama.
+- **`docs/` ve `www/` derlemesi canlı migration uygulanana kadar bilerek güncellenmedi.** Sonra: SURUM 2026.10.10-6 → derle → kopyala → push.
+- Ayrıca düzeltildi: `07_devlet.sql` `ittifak_kilit` başka oturumda `$$` yerine `$` ile kaydedilmişti (tam kurulum dosyası bozuktu). Canlıdaki fonksiyon doğruydu.
+- Test: `python3 test/dernek.py` (hepsi.sh'te).
+
