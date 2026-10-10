@@ -1757,7 +1757,7 @@ async function devletEkrani(){
     `<button class="${D.devletSekme === k ? "aktif" : ""}" onclick="D.devletSekme='${k}';devletEkrani()">${a}</button>`).join("")}</div>`;
   try {
     await durumYenile();
-    if (D.devletSekme === "hukumet") { iskelet("Devlet", seg + `<div class="kart"><button class="btn ikinci" onclick="aliciBagisModal('devlet',1,'Türkiye Cumhuriyeti Hazinesi')">Devlet hazinesine bağış yap</button></div>` + await hukumetHtml()); politikaBagla(); return; }
+    if (D.devletSekme === "hukumet") { iskelet("Devlet", seg + `<div class="kart"><button class="btn ikinci" onclick="aliciBagisModal('devlet',1,'Türkiye Cumhuriyeti Hazinesi')">Devlet hazinesine bağış yap</button><button class="btn ikinci" style="margin-top:8px" onclick="ekranAc(krizMerkeziEkrani)">Ülke Kriz Merkezi ve arşiv</button></div>` + await hukumetHtml()); politikaBagla(); return; }
     if (D.devletSekme === "meclis") {
       iskelet("Devlet", seg + await meclisHtml());
       if (D._meclisSecimOdak) {
@@ -7014,7 +7014,7 @@ function partiSozcuModal(parti){
 function krizGundemHtml(d) {
  if (!d) return "";
  const a=d.aktif;
- if (!a) return '<div class="kart" style="padding:10px 13px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span class="kucuk">🌿 Ülkede olağanüstü bir kriz yok.</span><button class="btn ikinci" onclick="ekranAc(krizMerkeziEkrani)">Kriz arşivi</button></div></div>';
+ if (!a) return "";
  return '<div class="kart" style="border-top:3px solid #d58a36">'+
  '<div class="kucuk">⚠️ ÜLKE KRİZ MERKEZİ · '+e(a.kategori)+'</div>'+
  '<h2 style="margin:8px 0">'+e(a.baslik)+'</h2><p class="alt">'+e(a.aciklama)+'</p>'+
