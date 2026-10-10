@@ -157,3 +157,12 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Devlet ekranındaki "Meclis" ve "Adliye" sekmeleri kaldırıldı (Adliye'nin zaten alt menüsü var). Eski bağlantılar (`D.devletSekme='meclis'/'adliye'`) devletEkrani başında ilgili alt menüye yönlenir; Gündem'deki Meclis seçimine git bağlantısı Başkanlık alt sekmesini açar.
 - Alt menü düğmeleri ekrana sığacak şekilde esnek (`flex:1 0 42px`, dar ekranda 9,5–10 px yazı); Bakanlığım sekmesi de çıkınca menü yine yatay kayar.
 - Değişiklik `gelistirici/www/index.html`, `docs/index.html`, `www/index.html` üçüne de aynı yama olarak işlendi. Sunucu değişikliği yok.
+
+## 2026-10-11 · 2026.10.11-1 Seçim gecesi, fırsatlar, akış, başarımlar, gün özeti
+- **Tek migration:** `migrations/20261011_yeni_ozellikler.sql` (76+75+77+78+79; Ercan Supabase SQL Editor'de tek Run). Önce bu çalışmadan arayüz yamasındaki parçalar sessizce gizli kalır (RPC yoksa hata vermez).
+- **76 (kritik):** `oyun._sonuc_mv` içinde `l.aday_id` belirsiz takma ad hatası; canlıda `mv_secim_modu.her_aday_vekil=true` olduğu için görünmüyor, test modu kapanınca genel seçim sayımı çökerdi. 72 numaralı modülün içinde düzeltildi (`bl`).
+- **75 Seçim gecesi:** sonuç 22:30'da motorca yazılır; `public.secim_detay` sarmalayıcısı sonucu 12 dk (`oyun.secim_gecesi_ayar.sure_sn`, 60–1800) boyunca il il açar; olaylar tetikleyicisiyle manşet sayım bitene ertelenir; `secim_gecesi_tick` (cron `secim-gecesi`) %25/50/75/bitti bildirimi. Arayüz: `canli_ek.js` (`geceKancasi`, 5 sn yenileme, titreşim/ses).
+- **77 Boş makam fırsatı:** `bos_makam_firsatlari()` + `bos_makam_firsat_tick()` (cron her 30 dk; 3 saatte bir tarar, 09–22 arası, günde 1 bildirim/kişi). **78 Akış:** `akis_*` RPC'leri, 280 karakter, şikâyet/engel/3 şikâyette gizle, `admin_akis_*` (moderatör arayüzü henüz yok). **79:** `basarimlar()`, `ay_raporu()`, `gun_ozeti()`, `gun_sonu_tick` (cron `gun-sonu`).
+- Not: canlıda `ayarlar.push_aktif=false` ve push_url boş; bildirimler push yerine uygulama içi bildirim kutusuna düşer, FCM kurulunca push da gider.
+- 72 ve 73 artık birleştirme listesinde (76 buna bağlı). Docs/www derlemeleri tam derlemeyle değil **yama** ile güncellendi (canlıyla kaynak arasındaki fark sürüyor).
+- Testler: `secim_gecesi.py`, `ek_ozellikler.py` (hepsi.sh'a eklendi), `node test/canli_ek_arayuz.js`.

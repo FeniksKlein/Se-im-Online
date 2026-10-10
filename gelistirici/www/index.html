@@ -920,12 +920,13 @@ async function gundemEkrani(){
   const pp = DUR.profil, mvMi = pp.makamlar.some(x => x.tur === "mv"), cbMi = pp.makamlar.some(x => x.tur === "cb");
   // Bütün veriler paralel yüklenir; biri hata verirse ekranın geri kalanı yine çizilir
   const iste = (fn, args, varsay) => API.rpc(fn, args).catch(() => varsay);
-  const [ihaleR, haber, reflerR, kanunlar, dv, itt, ia, mitingler, haklar, meclis, stk] = await Promise.all([
+  const [ihaleR, haber, reflerR, kanunlar, dv, itt, ia, mitingler, haklar, meclis, stk, EK] = await Promise.all([
     iste("ihaleler", undefined, { acik: [] }), iste("haberler", { p_limit: 15 }, []), iste("referandumlar", { p_limit: 5 }, []),
     mvMi || cbMi ? iste("kanunlar", { p_limit: 40 }, []) : [], mvMi ? iste("meclis_baskanlik", undefined, null) : null,
     pp.gb && pp.parti ? iste("ittifak_bilgi", { p_parti: pp.parti.id }, null) : null,
     iste("ilk_adimlar", undefined, null), iste("mitingler", undefined, []), iste("miting_haklarim", undefined, []),
-    D._meclisOn && simdi() - D._meclisOn.t < 300e3 ? D._meclisOn.v : iste("meclis", undefined, null), iste("dernek_akis", { p_limit: 5 }, null)]);
+    D._meclisOn && simdi() - D._meclisOn.t < 300e3 ? D._meclisOn.v : iste("meclis", undefined, null), iste("dernek_akis", { p_limit: 5 }, null),
+    typeof gundemEkVeri === "function" ? gundemEkVeri(iste).catch(() => null) : null]);
   if (meclis && !(D._meclisOn && D._meclisOn.v === meclis)) D._meclisOn = { t: simdi(), v: meclis };
   if (D.durum !== DUR && !D.durum) return;      // bu arada çıkış yapıldıysa çizme
   const ihaleler = (ihaleR || {}).acik || [];
@@ -962,6 +963,7 @@ async function gundemEkrani(){
   const cb = d.cb, ms = meclis && meclis.partiler ? meclis.partiler.filter(x => x.n > 0) : [];
   const govde = `
     ${seritHtml(haber)}
+    ${typeof gundemEkUst === "function" ? gundemEkUst(EK) : ""}
     ${sahneHtml(d.takvim)}
     <div class="kart vit-gazete"><h2>📰 Gazeteler</h2>
       <div class="vit-dugme"><button class="btn altin" onclick="ekranAc(basinEkrani)">Oyuncu gazeteleri</button><button class="btn ikinci" onclick="otomatikGazeteEkrani()">Türkiye Gündem</button></div>
@@ -969,6 +971,7 @@ async function gundemEkrani(){
     <div class="bolum-bas"><h2>Bugün</h2><span class="kucuk">${is.length ? is.length + " iş" : ""}</span></div>
     <div class="kart">${is.length ? is.map(yapilacakSatir).join("") : `<div class="bos" style="padding:8px 0">Bugün acil bir işin yok. Sohbete uğra ya da gazeteleri oku.</div>`}</div>
     ${ilkAdimlarHtml(ia)}
+    ${typeof gundemEkAlt === "function" ? gundemEkAlt(EK) : ""}
     ${aktif.length || ihaleler.length || meclisBekleyen.length || refler.length || cbKararKarti() ? `<div class="bolum-bas"><h2>Seçimler ve oylamalar</h2></div>` : ""}
     ${cbKararKarti()}
     ${aktif.map(s => `<div id="sec${s.id}">${olayKarti(s)}</div>`).join("")}
@@ -1059,10 +1062,10 @@ async function cbKararModal(){
 /* =====================================================================
    6) SEÇİM EKRANI: oy pusulası + sonuçlar
    ===================================================================== */
-async function secimEkrani(sid){
-  yukleniyor("Seçim");
+async function secimEkrani(sid, sessiz){
+  if (!sessiz) yukleniyor("Seçim");
   let s;
-  try { s = await API.rpc("secim_detay", { p_secim: sid }); } catch (err) { iskelet("Seçim", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
+  try { s = await API.rpc("secim_detay", { p_secim: sid }); } catch (err) { if (sessiz) return; iskelet("Seçim", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
   if (s.tur === "mv" && s.asama !== "bitti" && typeof mvOrtakListePusulaBilgi === "function") await mvOrtakListePusulaBilgi(s);
   const tur = TUR[s.tur];
   let govde = `<div class="kart"><h3>${tur.ad}</h3><div class="alt">Oylama: ${tarih(s.oy_bas)}, ${saatYaz(s.oy_bas)}–${saatYaz(s.oy_bit)} · Sonuç: ${saatYaz(s.sonuc_at)}${s.goreve_bas ? ` · Göreve başlama: ${tarihSaat(s.goreve_bas)}` : ""}</div>
@@ -1072,6 +1075,7 @@ async function secimEkrani(sid){
   else govde += `<div class="kart">${adayListesiHtml(s)}</div>`;
   iskelet(tur.kisa, govde, { geri: true });
   if (s.asama === "oy" && !s.oy_verdim && !s.oy_engeli) pusulaBagla(s);
+  if (typeof geceKancasi === "function") geceKancasi(s);
 }
 function secenekSatir(x, mv, destekler){
   const dst = destekler && destekler[String(x.parti_id)];
@@ -2958,6 +2962,8 @@ const PUSH = {
     if (v.ekran === "ozel" && v.kad) { D.sekme = "sohbet"; ekranAc(() => ozelEkrani(v.kad)); }
     else if (v.ekran === "secim" && v.id) { D.sekme = "gundem"; ekranAc(() => secimEkrani(+v.id)); }
     else if (v.ekran === "referandum" && v.id) { D.sekme = "gundem"; ekranAc(() => referandumEkrani(+v.id)); }
+    else if (v.ekran === "rapor" && typeof raporEkrani === "function") { D.sekme = "gundem"; ekranAc(raporEkrani); }
+    else if (v.ekran === "akis" && typeof akisEkrani === "function") { D.sekme = "gundem"; ekranAc(() => akisEkrani()); }
     else if (v.ekran === "bildirim") { D.sekme = "gundem"; ekranAc(bildirimEkrani); }
     else if (v.ekran === "hayat") sekmeAc("hayat");
     else sekmeAc("gundem");
@@ -4162,5 +4168,6 @@ window.addEventListener("load", () => {
 <script src="halka_arz.js"></script>
 <script src="gorevler.js"></script>
 <script src="adliye.js"></script>
+<script src="canli_ek.js"></script>
 </body>
 </html>

@@ -75,7 +75,7 @@ begin
     'gazete_abonelik', 'gazete_yazar_teklif', 'gazete_yazarlar', 'gazete_yayinlari', 'gazete_hareket',
     'parti_ad_gecmis', 'parti_tuzuk_teklifleri', 'parti_tuzuk_oylari', 'borc_aflari',
     'hukumetler', 'hukumet_partileri', 'hukumet_guven_oylari', 'gensorular', 'gensoru_oylari',
-    'erken_secim_teklifleri', 'erken_secim_oylari', 'banka_transfer'] loop
+    'erken_secim_teklifleri', 'erken_secim_oylari', 'banka_transfer', 'akis', 'akis_begeni', 'basarim'] loop
     if to_regclass('oyun.' || yeni_tablo) is null then continue; end if;
     execute format('select md5(coalesce(string_agg(to_jsonb(x)::text, '','' order by to_jsonb(x)::text), '''')) from oyun.%I x', yeni_tablo) into v;
     sonuc := sonuc || jsonb_build_object(yeni_tablo, v);
