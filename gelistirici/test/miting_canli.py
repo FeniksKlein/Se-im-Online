@@ -23,7 +23,7 @@ hata_bekle(rpc, dinleyenler[0], "miting_konus", mid, "Ben de konuşayım", iceri
 ok("Kürsüde yalnız düzenleyen konuşuyor; başlamadan ve arka arkaya konuşamıyor")
 
 k1 = d["konusmalar"][0]["id"]
-hata_bekle(rpc, dinleyenler[0], "miting_tepki", k1, "alkis", icerir="önce mitinge katıl")
+hata_bekle(rpc, uzak, "miting_tepki", k1, "alkis", icerir="İzmir ilinde yaşamalısın")   # 52: yerli oyuncu tepkiyle kendiliğinden katılır
 hata_bekle(rpc, uzak, "miting_katil", mid, icerir="Yalnızca bu ilde")
 izle = rpc(uzak, "miting_meydan", mid)
 assert not izle["katilabilir"] and izle["konusmalar"][0]["metin"].startswith("Merhaba")

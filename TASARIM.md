@@ -584,6 +584,11 @@ Karne oyuncu kartında, parti sayfasında, il sayfasında ve belediye ekranında
 - Başlayınca o ildeki herkese ve partinin tüm üyelerine bildirim gider. Kürsü, tepki, slogan ve coşku canlı meydanla aynıdır; katılıp tepki verenler o ilde yaşayanlardır, diğer illerden üyeler canlı izler.
 - Mitingin etkisi harcanan paraya bağlı değildir; meydanın coşkusu katılan gerçek oyuncuların tepkilerinden hesaplanır.
 
+### Genel başkan yardımcılarının görevleri (2026-10-10, modül 52)
+- Genel başkan her yardımcısına bir görev alanı verir: Teşkilattan, Seçim İşlerinden, Siyasi ve Hukuki İşlerden, Ekonomi Politikalarından, Mali İşlerden, Tanıtım ve Medyadan, Dış İlişkilerden, Yerel Yönetimlerden, Sosyal Politikalardan, Halkla İlişkilerden Sorumlu ya da kendi yazdığı bir alan.
+- Unvan her yerde görünür ("CYP Teşkilattan Sorumlu Genel Başkan Yardımcısı"). Yardımcı değişince görev sıfırlanır. Görev şimdilik unvandır, ek yetki vermez.
+- Mitingde o ilde yaşayan oyuncu bir söze tepki verdiğinde mitinge kendiliğinden katılmış sayılır.
+
 ### Bağımsız adayın partiye katılması (2026-10-09, modül 50)
 - Bağımsız aday, oy verme başlamadan önce istediği an bir partiye katılabilir (ya da parti kurabilir). Katıldığı anda bağımsız adaylığı düşer; başvuru harcı iade edilmez. Uygulama katılmadan önce uyarı gösterir.
 - Başvuru süresi hâlâ açıksa yeni partisinden aday adayı olabilir; kapanmışsa o dönem aday olamaz.

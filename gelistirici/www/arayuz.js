@@ -272,16 +272,16 @@ async function mitingMeydanEkrani(id) {
   MT = d;
   const sloganlar = [...(d.slogan ? [d.slogan] : []), ...MT_SLOGAN];
   iskelet(`${e(d.il)} mitingi`, `
-    <div id="mtSahne">${mtSahneHtml(d)}</div>
+    <div id="mtSahne">${MT_SAHNE = mtSahneHtml(d)}</div>
     <div class="bolum-bas"><h2>Kürsü</h2><span class="kucuk" id="mtKursuNot">${mtKursuNot(d)}</span></div>
     ${d.benim ? `<div class="kart mt-yaz" id="mtYazKart" ${d.canli ? "" : "hidden"}>
         <textarea id="mtMetin" maxlength="400" rows="3" placeholder="Meydana seslen: vaadini, hikâyeni, çağrını anlat…"></textarea>
         ${d.slogan ? `<button class="mt-cip" onclick="$('#mtMetin').value+=(($('#mtMetin').value?' ':'')+${e(JSON.stringify(d.slogan))})">Parti sloganı: ${e(d.slogan)}</button>` : ""}
         <button class="btn canli" id="mtKonus">${IKON.megafon} Kürsüden söyle</button></div>` : ""}
-    <div id="mtKursu">${mtKursuHtml(d)}</div>
+    <div id="mtKursu">${MT_KURSU = mtKursuHtml(d)}</div>
     <div class="bolum-bas"><h2>Meydandan sesler</h2><span class="kucuk">Sloganlar</span></div>
     <div class="kart" id="mtSesKart">
-      <div id="mtSesler" class="mt-sesler">${mtSeslerHtml(d)}</div>
+      <div id="mtSesler" class="mt-sesler">${MT_SES = mtSeslerHtml(d)}</div>
       <div id="mtSloganAlan" ${d.katildim && d.canli && !d.benim ? "" : "hidden"}>
         <div class="mt-cipler">${sloganlar.map(x => `<button class="mt-cip" data-slogan="${e(x)}">${e(x)}</button>`).join("")}</div>
         <div class="mt-satir"><input id="mtSlogan" maxlength="80" placeholder="Kendi sloganın…"><button class="btn" id="mtSloganAt" style="width:auto;margin:0">Slogan at</button></div>
@@ -313,15 +313,15 @@ function mtSahneHtml(d) {
     ${d.benim && !d.canli && !d.bitti ? `<p class="kucuk" style="margin-top:8px">Miting başladığında bu ekrandan kürsüye çıkıp konuşacaksın; katılanlar her sözüne tepki verecek.</p>` : ""}
   </div>`;
 }
-function mtKursuNot(d) { return d.benim && d.canli ? `${d.konusma_kalan} kez daha konuşabilirsin` : d.katildim && d.canli && !d.benim ? "Her söze tepki ver" : ""; }
+function mtKursuNot(d) { return d.benim && d.canli ? `${d.konusma_kalan} kez daha konuşabilirsin` : d.canli && !d.benim && (d.katildim || d.katilabilir) ? "Her söze tepki ver" : d.canli && !d.benim ? "Yalnız izliyorsun" : ""; }
 function mtKursuHtml(d) {
   if (!d.konusmalar.length) return `<div class="kart"><p class="alt">${d.canli ? (d.benim ? "Meydan seni bekliyor. İlk sözünü söyle." : `${e(d.kad)} henüz kürsüye çıkmadı.`) : d.bitti ? "Bu mitingde kürsüden konuşulmadı." : "Konuşmalar miting başlayınca burada görünecek."}</p></div>`;
-  const tepkiVer = d.canli && d.katildim && !d.benim;
+  const tepkiVer = d.canli && !d.benim && (d.katildim || d.katilabilir);
   return d.konusmalar.slice().reverse().map(k => {
     const p = trParca(k.zaman);
     return `<div class="kart mt-soz"><div class="kucuk">${p.s}:${p.d}</div><p>${e(k.metin)}</p>
       <div class="mt-tepkiler">${MT_TEPKI.map(([kod, ad]) => tepkiVer
-        ? `<button class="mt-tepki ${kod} ${k.tepkim === kod ? "secili" : ""}" data-konusma="${k.id}" data-tur="${kod}">${ad} <b>${k[kod]}</b></button>`
+        ? `<button type="button" class="mt-tepki ${kod} ${k.tepkim === kod ? "secili" : ""}" data-konusma="${k.id}" data-tur="${kod}" onclick="mtTepki(this)">${ad} <b>${k[kod]}</b></button>`
         : `<span class="mt-tepki ${kod}">${ad} <b>${k[kod]}</b></span>`).join("")}</div></div>`;
   }).join("");
 }
@@ -329,17 +329,20 @@ function mtSeslerHtml(d) {
   if (!d.sloganlar.length) return `<p class="alt">${d.canli ? "Meydan sessiz. İlk sloganı sen at." : "Slogan atılmadı."}</p>`;
   return d.sloganlar.slice().reverse().slice(0, 25).map(s => `<div class="mt-ses"><b>${e(s.kad)}</b> ${e(s.metin)}</div>`).join("");
 }
+let MT_SAHNE = "", MT_KURSU = "", MT_SES = "", MT_GONDER = 0;
 function mtCiz(d) {
-  const once = MT; MT = d;
+  MT = d;
   const sahne = $("#mtSahne"); if (!sahne) return;
-  sahne.innerHTML = mtSahneHtml(d);
+  const sh = mtSahneHtml(d);
+  const sahneDegisti = sh !== MT_SAHNE;
+  if (sahneDegisti) { MT_SAHNE = sh; sahne.innerHTML = sh; }
   $("#mtKursuNot").textContent = mtKursuNot(d);
-  if (!once || JSON.stringify(once.konusmalar) !== JSON.stringify(d.konusmalar) || once.katildim !== d.katildim || once.canli !== d.canli) $("#mtKursu").innerHTML = mtKursuHtml(d);
-  if (!once || JSON.stringify(once.sloganlar) !== JSON.stringify(d.sloganlar)) $("#mtSesler").innerHTML = mtSeslerHtml(d);
+  const kh = mtKursuHtml(d);
+  if (kh !== MT_KURSU && !MT_GONDER) { MT_KURSU = kh; $("#mtKursu").innerHTML = kh; }
+  const ses = mtSeslerHtml(d); if (ses !== MT_SES) { MT_SES = ses; $("#mtSesler").innerHTML = ses; }
   const yk = $("#mtYazKart"); if (yk) yk.hidden = !d.canli;
   const sa = $("#mtSloganAlan"); if (sa) sa.hidden = !(d.katildim && d.canli && !d.benim);
-  if (once && d.cosku !== once.cosku) { const c = $(".mt-cosku"); if (c) c.classList.add("degisti"); }
-  portreleriTazele(sahne);
+  if (sahneDegisti) portreleriTazele(sahne);
   if (d.bitti) canliDurdur();
 }
 async function mtTazele(id) { try { if (MT && MT.id === id && $("#mtSahne")) mtCiz(await API.rpc("miting_meydan", { p_id: id })); } catch (_) {} }
@@ -347,14 +350,22 @@ async function mtKatil(id) {
   try { const r = await API.rpc("miting_katil", { p_id: id }); toast(`Meydandasın: ${r.katilim} kişi${r.kidem ? " · +1 kıdem" : ""}.`); mtCiz(await API.rpc("miting_meydan", { p_id: id })); }
   catch (err) { toast(hataCevir(err.message), true); }
 }
+// Tepki: dokunur dokunmaz düğme işaretlenir ve sayı artar, sonra sunucuya gider
+async function mtTepki(b) {
+  if (!b || MT_GONDER) return;
+  const satir = b.parentElement, eski = satir.querySelector(".mt-tepki.secili");
+  if (eski === b) return;
+  MT_GONDER++;
+  if (eski) { eski.classList.remove("secili"); const n = eski.querySelector("b"); n.textContent = Math.max(0, +n.textContent - 1); }
+  b.classList.add("secili"); const n = b.querySelector("b"); n.textContent = +n.textContent + 1;
+  try {
+    const d = await API.rpc("miting_tepki", { p_konusma: +b.dataset.konusma, p_tur: b.dataset.tur });
+    MT_GONDER--; MT_KURSU = ""; mtCiz(d);
+  } catch (err) {
+    MT_GONDER--; toast(hataCevir(err.message), true); MT_KURSU = ""; if (MT) mtCiz(MT);
+  }
+}
 function mtBagla(id) {
-  const kursu = $("#mtKursu");
-  kursu.addEventListener("click", async ev => {
-    const b = ev.target.closest("button.mt-tepki"); if (!b) return;
-    b.disabled = true;
-    try { mtCiz(await API.rpc("miting_tepki", { p_konusma: +b.dataset.konusma, p_tur: b.dataset.tur })); }
-    catch (err) { toast(hataCevir(err.message), true); b.disabled = false; }
-  });
   const konus = $("#mtKonus");
   if (konus) konus.onclick = async () => {
     const ta = $("#mtMetin"), m = ta.value.trim(); if (!m) return;
@@ -565,5 +576,45 @@ function partiMitingModal(pid) {
         p_baslik: $("#pmBaslik", m).value, p_kasadan: $("#pmOde", m).value === "1" });
       modalKapat(); toast(`${r.il} mitingi duyuruldu.`); partiMitingKartCiz(pid);
     } catch (err) { btn.disabled = false; $("#pmHata", m).textContent = hataCevir(err.message); }
+  };
+}
+
+/* =====================================================================
+   GENEL BAŞKAN YARDIMCILARININ GÖREVLERİ
+   ===================================================================== */
+const GBY_GOREVLER = ["Teşkilattan Sorumlu", "Seçim İşlerinden Sorumlu", "Siyasi ve Hukuki İşlerden Sorumlu", "Ekonomi Politikalarından Sorumlu",
+  "Mali İşlerden Sorumlu", "Tanıtım ve Medyadan Sorumlu", "Dış İlişkilerden Sorumlu", "Yerel Yönetimlerden Sorumlu",
+  "Sosyal Politikalardan Sorumlu", "Halkla İlişkilerden Sorumlu"];
+async function gbyGorevCiz(pid) {
+  let l; try { l = await API.rpc("gby_gorevleri", { p_parti: pid }); } catch (_) { return; }
+  (l || []).forEach(g => {
+    const el = document.querySelector(`[data-gby-sira="${g.sira}"]`);
+    if (el) el.innerHTML = g.gorev ? `${e(g.gorev)} GB Yardımcısı` : `GB Yardımcısı ${g.sira}`;
+  });
+}
+async function gbyGorevModal(pid) {
+  let l; try { l = await API.rpc("gby_gorevleri", { p_parti: pid }); } catch (err) { return toast(hataCevir(err.message), true); }
+  if (!l || !l.length) return toast("Önce yardımcı ata; sonra her birine görev verebilirsin.", true);
+  const sec = (g) => {
+    const hazir = GBY_GOREVLER.includes(g.gorev), deger = !g.gorev ? "" : hazir ? g.gorev : "__diger";
+    return `<div class="alan"><label>${g.sira}. ${e(g.kad)}</label>
+      <select data-gorev-kad="${e(g.kad)}"><option value="">— Görev yok —</option>${GBY_GOREVLER.map(x => `<option ${x === deger ? "selected" : ""}>${e(x)}</option>`).join("")}<option value="__diger" ${deger === "__diger" ? "selected" : ""}>Başka bir görev yaz…</option></select>
+      <input data-gorev-ozel="${e(g.kad)}" maxlength="60" placeholder="Örnek: Çevre ve Şehircilikten Sorumlu" value="${hazir ? "" : e(g.gorev || "")}" ${deger === "__diger" ? "" : "hidden"} style="margin-top:6px"></div>`;
+  };
+  const m = modal(`<h3>Yardımcılara görev ver</h3><p class="alt">Her yardımcının görev alanı unvanında görünür: örneğin “Teşkilattan Sorumlu Genel Başkan Yardımcısı”. Yardımcı değişirse görevi de sıfırlanır.</p>
+    ${l.map(sec).join("")}<div class="hata-metin" id="ggHata"></div><button class="btn" id="ggKaydet">Kaydet</button>`);
+  m.querySelectorAll("select[data-gorev-kad]").forEach(s => s.onchange = () => {
+    const i = m.querySelector(`input[data-gorev-ozel="${CSS.escape(s.dataset.gorevKad)}"]`); if (i) i.hidden = s.value !== "__diger";
+  });
+  $("#ggKaydet", m).onclick = async () => {
+    const b = $("#ggKaydet", m); b.disabled = true;
+    try {
+      for (const g of l) {
+        const s = m.querySelector(`select[data-gorev-kad="${CSS.escape(g.kad)}"]`);
+        const yeni = s.value === "__diger" ? m.querySelector(`input[data-gorev-ozel="${CSS.escape(g.kad)}"]`).value.trim() : s.value;
+        if ((yeni || "") !== (g.gorev || "")) await API.rpc("gby_gorev_ver", { p_kad: g.kad, p_gorev: yeni || null });
+      }
+      modalKapat(); toast("Görevler kaydedildi."); gbyGorevCiz(pid);
+    } catch (err) { b.disabled = false; $("#ggHata", m).textContent = hataCevir(err.message); }
   };
 }

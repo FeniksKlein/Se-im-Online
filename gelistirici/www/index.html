@@ -394,6 +394,7 @@ details.acilir ul{margin:6px 0 0 18px;font-size:13px;color:var(--mut)}
 .mt-tepkiler{display:flex;flex-wrap:wrap;gap:6px}
 .mt-tepki{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:999px;background:var(--panel2);font-size:13px;font-weight:700;color:var(--txt2)}
 .mt-tepki b{font-family:var(--disp);font-size:15px}
+button.mt-tepki{min-height:40px;padding:8px 13px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 button.mt-tepki:active{transform:scale(.94)}
 .mt-tepki.secili.alkis,.mt-tepki.secili.tezahurat{background:rgba(52,201,138,.18);color:var(--good)}
 .mt-tepki.secili.islik,.mt-tepki.secili.yuh{background:var(--albg);color:var(--al2)}
@@ -2072,8 +2073,8 @@ async function partiDetay(id){
     <div class="kart"><h2>Yönetim</h2>
       <div class="kv"><span class="k">Genel Başkan</span><span class="v">${p.gb ? `<a class="bag" href="#" onclick="oyuncuKart('${e(p.gb)}');return false">${e(p.gb)}</a>` : "— (genel başkansız)"}</span></div>
       ${!p.gb && p.uyesiyim && !araKurultay ? `<button class="btn" onclick="gbUslen(${p.id})">Genel başkanlığı üstlen</button>` : ""}${araKurultay ? `<div class="kucuk" style="margin-top:8px;color:var(--gold2)">Olağanüstü kurultay süreci başladı; yeni genel başkan seçimle belirlenecek.</div>` : ""}
-      ${[1,2,3,4,5,6].map(i => { const g = p.gby.find(x => x.sira === i); return `<div class="kv"><span class="k">GB Yardımcısı ${i}</span><span class="v">${g ? `<a class="bag" href="#" onclick="oyuncuKart('${e(g.kad)}');return false">${e(g.kad)}</a>` : "—"}</span></div>`; }).join("")}
-      ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn ikinci" onclick="partiAdModal(${p.id})">Parti adını değiştir</button><button class="btn altin" onclick="ucretModal(${p.id})">Adaylık ücretlerini değiştir</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
+      ${[1,2,3,4,5,6].map(i => { const g = p.gby.find(x => x.sira === i); return `<div class="kv"><span class="k" data-gby-sira="${i}">GB Yardımcısı ${i}</span><span class="v">${g ? `<a class="bag" href="#" onclick="oyuncuKart('${e(g.kad)}');return false">${e(g.kad)}</a>` : "—"}</span></div>`; }).join("")}
+      ${gbyim ? `<button class="btn ikinci" onclick="gbyModal(${p.id})">Yardımcıları ata</button><button class="btn ikinci" onclick="gbyGorevModal(${p.id})">Yardımcılara görev ver</button><button class="btn ikinci" onclick="partiAdModal(${p.id})">Parti adını değiştir</button><button class="btn altin" onclick="ucretModal(${p.id})">Adaylık ücretlerini değiştir</button><button class="btn tehlike" onclick="makamIstifa('gb')">Genel başkanlıktan istifa et</button>` : ""}
       ${p.uyesiyim && ben.gby ? `<button class="btn tehlike" onclick="gbyIstifa()">Yardımcılıktan istifa et</button>` : ""}<button class="btn ikinci" onclick="ekranAc(()=>partiTuzukEkrani(${p.id}))">Parti tüzüğü ve üye oylamaları</button></div>
     ${p.uyesiyim ? `<button class="btn tehlike" style="margin:0 0 12px" onclick="partidenAyril()">Partiden ayrıl</button>` : `<button class="btn" style="margin:0 0 12px" onclick="partiyeKatil(${p.id})">Partiye katıl</button>`}
     <div class="kart"><h2>Parti içi yaşam</h2><button class="btn ikinci" onclick="ekranAc(()=>grupToplantiEkrani(${p.id}))">Grup toplantıları / Konuşmalar</button><button class="btn ikinci" onclick="ekranAc(()=>partiDisiplinEkrani(${p.id}))">Disiplin ve ihraç oylamaları</button></div>${p.uyesiyim ? `<div id="partiMitingKart"></div>` : ""}<div id="teskilatKart"></div>
@@ -2086,6 +2087,7 @@ async function partiDetay(id){
   partiKasaCiz(p.id);
   teskilatKartCiz(p.id);
   if (p.uyesiyim && typeof partiMitingKartCiz === "function") partiMitingKartCiz(p.id);
+  if (typeof gbyGorevCiz === "function") gbyGorevCiz(p.id);
 }
 async function partiKasaCiz(pid){
   const el = $("#kasaKart"); if (!el) return;

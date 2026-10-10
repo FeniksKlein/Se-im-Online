@@ -106,3 +106,10 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Kaynak: `17_basin_teskilat.sql` (`gazete_yayinla`); `migrations/20261010_gazete_propaganda_uzun_yazi.sql`. **Canlıya uygulandı** (Supabase migration `gazete_propaganda_uzun_yazi_20261010`).
 - Test: `python3 test/gazete_uzun.py` (hepsi.sh'te).
 
+## 2026-10-10 · 2026.10.10-3 gazete sekmeleri, miting tepkileri, GBY görevleri
+- Türkiye Gündem gazetesindeki kategori sekmeleri tıklanmıyordu: `otomatik_gazete.js` onclick içinde JSON.stringify çift tırnağı özniteliği bozuyordu → tek tırnak.
+- Miting tepkileri: canlıda hiç `miting_tepki` isteği gitmemişti (katılıp slogan atan oyuncu dahil). Düğmeler artık doğrudan `onclick="mtTepki(this)"` ile çalışıyor, dokununca anında işaretleniyor; meydan her 4 sn'de yalnız değişen kısmı yeniden çiziyor (eskiden sahne her seferinde baştan çiziliyordu); tepki gönderilirken kürsü yerinden oynamıyor; düğmeler büyütüldü, `touch-action:manipulation`. Sunucu (`52`): o ilde yaşayan ama katılmamış oyuncu tepki verince kendiliğinden katılır; başka ilden açık hata mesajı.
+- GB yardımcılarına görev alanı (`52_gby_gorev_miting_tepki.sql`): `parti_gby.gorev`, `gby_gorev_ver(kad, gorev)`, `gby_gorevleri(parti)`, `oyun.gby_unvan` → unvan "CYP Teşkilattan Sorumlu Genel Başkan Yardımcısı". Hazır 10 görev + serbest yazı (60 karakter). Yardımcı değişince görev sıfırlanır. Şimdilik unvan; ek yetki vermez.
+- **Canlıya uygulandı** (Supabase migration `gby_gorev_miting_tepki_20261010`); canlı `unvan` ve `miting_tepki` önce depodakiyle karşılaştırıldı (aynıydı).
+- Test: `python3 test/gby_gorev_tepki.py` (hepsi.sh'te); `miting_canli.py` yeni kurala göre güncellendi.
+

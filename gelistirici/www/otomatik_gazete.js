@@ -11,7 +11,7 @@ async function otomatikGazeteEkrani(kategori=null,offset=0){
   if(offset===0)tgCache={};(d.haberler||[]).forEach(x=>tgCache[x.id]=x);
   if(bas)tgCache[bas.id]=bas;
   const tabs=[[null,"Tümü"],...Object.entries(TG_KAT).map(([k,v])=>[k,v])];
-  const tab=`<div class="tg-secimler">${tabs.map(([k,v])=>`<button class="tg-filtre ${k===kategori?"secili":""}" onclick="otomatikGazeteEkrani(${k?JSON.stringify(k):"null"},0)">${e(v)}</button>`).join("")}</div>`;
+  const tab=`<div class="tg-secimler">${tabs.map(([k,v])=>`<button class="tg-filtre ${k===kategori?"secili":""}" onclick="otomatikGazeteEkrani(${k?`'${k}'`:"null"},0)">${e(v)}</button>`).join("")}</div>`;
   const lead=bas?`<article class="tg-manset" onclick="tgHaberOku(${bas.id})" tabindex="0" role="button" onkeydown="if(event.key==='Enter')tgHaberOku(${bas.id})">
     <span class="tg-ust">Son dakika · Günün manşeti</span>
     <span class="tg-kategori">${TG_RENK[bas.kategori]||""} ${e(TG_KAT[bas.kategori]||bas.kategori)}</span>
@@ -37,8 +37,8 @@ async function otomatikGazeteEkrani(kategori=null,offset=0){
     ${offset===0?lead:""}
     <div class="tg-govde"><div class="tg-bolum-bas"><h2>Son gelişmeler</h2><span>${fmt(d.toplam,0)} haber</span></div>
     <div class="tg-liste">${cards||"<div class='kart'>Bu kategoride henüz yayımlanmış haber bulunmuyor.</div>"}</div></div>
-    <div class="satir"><button class="btn ikinci yarim" onclick="otomatikGazeteEkrani(${kategori?JSON.stringify(kategori):"null"},Math.max(0,${offset}-30))" ${offset===0?"disabled":""}>← Önceki</button>
-    <button class="btn altin yarim" onclick="otomatikGazeteEkrani(${kategori?JSON.stringify(kategori):"null"},${offset}+30)" ${offset+30>=d.toplam?"disabled":""}>Daha fazla →</button></div>
+    <div class="satir"><button class="btn ikinci yarim" onclick="otomatikGazeteEkrani(${kategori?`'${kategori}'`:"null"},Math.max(0,${offset}-30))" ${offset===0?"disabled":""}>← Önceki</button>
+    <button class="btn altin yarim" onclick="otomatikGazeteEkrani(${kategori?`'${kategori}'`:"null"},${offset}+30)" ${offset+30>=d.toplam?"disabled":""}>Daha fazla →</button></div>
     <button class="btn ikinci" onclick="basinEkrani()">Oyuncuların gazetelerine dön</button>
   `,{geri:true});
  }catch(err){iskelet("Türkiye Gündem",`<div class="kart"><h2>Gazete geçici olarak okunamıyor</h2>

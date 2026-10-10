@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.10.10-1', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.10.10-3', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -22267,6 +22267,181 @@ grant execute on function public.parti_miting_duzenle(int, timestamptz, text, bo
   public.gby_miting_yetkisi(text, boolean) to authenticated;
 revoke all on function oyun.parti_miting_iptal(bigint, text, timestamptz), oyun.parti_miting_temizle(timestamptz),
   oyun.miting_tick(timestamptz) from public, anon, authenticated;
+-- 10.10.2026 | MatesTappen: tek basina, 0 TL ve serbest parti adi.
+-- Oyundaki diger oyuncularin sartlarini veya mevcut partilerini degistirmez.
+-- Yetki sadece kayitli Auth UUID'si icindir; ayni adi sonradan alan alamaz.
+insert into oyun_yonetim.ozel_parti_kurma_izni(user_id,aciklama)
+select id,'matestappen - serbest adli parti istisnasi'
+from oyun.profiller
+where lower(kad)=lower('matestappen')
+on conflict (user_id) do update set aciklama=excluded.aciklama;
+
+create or replace function public.matestappen_parti_kur(
+  p_ad text,p_kisa text,p_renk text,p_amblem text,p_ideolojiler text[] default null
+) returns jsonb
+language plpgsql security definer set search_path='' as $matestappen$
+declare
+  p oyun.profiller;
+  t timestamptz := oyun.simdi();
+  yeni bigint;
+  v_ideolojiler text[];
+begin
+  if auth.uid() is null
+    or not exists (
+      select 1 from oyun_yonetim.ozel_parti_kurma_izni o
+      where o.user_id=auth.uid()
+        and o.aciklama='matestappen - serbest adli parti istisnasi'
+    ) then
+    raise exception 'Serbest parti kurma yetkisi bu hesapta yok.';
+  end if;
+  p := oyun.profilim(); -- Yasakli profil de burada reddedilir.
+  if p.id is distinct from auth.uid() then
+    raise exception 'Oturum kimligi eslesmiyor.';
+  end if;
+
+  -- Parti adi serbesttir: normalde yasakli sayilan gercek parti adlari,
+  -- sayilar, semboller ve 5-40 karakter kisiti bu hesaba uygulanmaz.
+  -- Bos ad/kontrol karakteri ve mevcut aktif partiyle ayni ad teknik olarak reddedilir.
+  p_ad := btrim(regexp_replace(coalesce(p_ad,''),'\s+',' ','g'));
+  if char_length(p_ad) not between 1 and 80 or p_ad ~ '[[:cntrl:]]' then
+    raise exception 'Parti adi 1-80 gorunur karakter olmali.';
+  end if;
+  p_kisa := upper(btrim(coalesce(p_kisa,'')));
+  if p_kisa !~ '^[A-ZÇĞİÖŞÜ]{2,6}$' then
+    raise exception 'Kisaltma 2-6 buyuk harften olusmali.';
+  end if;
+  if p_renk !~ '^#[0-9a-fA-F]{6}$' or p_amblem !~ '^[a-z_]{2,20}$' then
+    raise exception 'Parti rengi ya da amblemi gecersiz.';
+  end if;
+  if exists (
+    select 1 from oyun.partiler
+    where not kapali
+      and (lower(ad)=lower(p_ad) or lower(kisa)=lower(p_kisa))
+  ) then
+    raise exception 'Secilen parti adi veya kisaltmasi zaten kullaniliyor.';
+  end if;
+  v_ideolojiler := case when oyun.ideoloji_gecerli(p_ideolojiler)
+                       then p_ideolojiler else array['karma']::text[] end;
+
+  -- 25 bin TL, 3 kurucu, kidem, hesap yasi ve parti kurma beklemesi aranmaz.
+  perform oyun._ayril(p.id,t);
+  insert into oyun.partiler
+    (ad,kisa,renk,amblem,gb,kurucu,kurulus,kurulus_bit,kurulus_ucret)
+  values
+    (p_ad,p_kisa,lower(p_renk),p_amblem,p.id,p.id,t,null,0)
+  returning id into yeni;
+  perform oyun.genel_merkez_ac(yeni,p,0,t);
+  update oyun.profiller
+     set parti_id=yeni,parti_at=t,son_parti_kur=t
+   where id=p.id;
+  insert into oyun.parti_kimlik(parti_id,ideolojiler,guncelleme)
+  values(yeni,v_ideolojiler,t);
+  update oyun.kurucu_basvuru
+    set durum='iptal'
+  where kurucu=p.id and durum='bekliyor';
+  perform oyun.olay('parti',format('%s (%s) partisi %s tarafindan kuruldu.',p_ad,p_kisa,p.kad),p.il_id,yeni,t);
+  return jsonb_build_object('parti_id',yeni,'kurucu_sayi',1,'sermaye',0,'tamam',true);
+end
+$matestappen$;
+
+revoke all on function public.matestappen_parti_kur(text,text,text,text,text[]) from public,anon,authenticated;
+grant execute on function public.matestappen_parti_kur(text,text,text,text,text[]) to authenticated;
+-- =====================================================================
+--  52 · GENEL BAŞKAN YARDIMCILARINA GÖREV + MİTİNG TEPKİSİNDE KENDİLİĞİNDEN KATILIM
+--
+--  1) Genel başkan, her yardımcısına bir görev alanı verir:
+--     "Teşkilattan Sorumlu", "Seçim İşlerinden Sorumlu", … ya da kendi yazdığı bir alan (en fazla 60 karakter).
+--     Unvan her yerde görünür: "CYP Teşkilattan Sorumlu Genel Başkan Yardımcısı".
+--     Yardımcı değişince görev de sıfırlanır (yeni kişiye yeniden verilir).
+--  2) Mitinge katılmamış ama o ilde yaşayan oyuncu bir söze tepki verirse önce mitinge katılmış sayılır
+--     (eskiden "önce mitinge katıl" hatası veriyordu).
+--  Oyuncu verisi değişmez; yalnız sütun ve fonksiyon eklenir.
+-- =====================================================================
+
+alter table oyun.parti_gby add column if not exists gorev text;
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'parti_gby_gorev_uzunluk') then
+    alter table oyun.parti_gby add constraint parti_gby_gorev_uzunluk check (gorev is null or char_length(gorev) between 2 and 60);
+  end if;
+end $$;
+
+-- "Teşkilattan Sorumlu" → "CYP Teşkilattan Sorumlu Genel Başkan Yardımcısı"
+create or replace function oyun.gby_unvan(u uuid) returns text language sql stable set search_path = '' as $$
+  select pa.kisa || ' ' || coalesce(nullif(btrim(g.gorev), '') || ' ', '') || 'Genel Başkan Yardımcısı'
+  from oyun.parti_gby g join oyun.partiler pa on pa.id = g.parti_id where g.user_id = u limit 1
+$$;
+
+-- 20_siyasi_sistem'deki unvanın aynısı; yalnız yardımcı satırı görev alanını gösterir
+create or replace function oyun.unvan(u uuid) returns text
+language sql stable set search_path='' as $body$
+  select coalesce(
+    (select 'Başbakan' from oyun.hukumetler h where h.basbakan=u and h.durum='gorevde' and h.bit is null limit 1),
+    (select 'Cumhurbaşkanı' from oyun.makamlar where user_id=u and tur='cb' and bit is null limit 1),
+    (select replace(b.ad,'Bakanlığı','Bakanı') from oyun.makamlar m join oyun.bakanliklar b on b.kod=m.bakanlik
+       where m.user_id=u and m.tur='bakan' and m.bit is null limit 1),
+    (select pa.kisa||' Genel Başkanı' from oyun.partiler pa where pa.gb=u and not pa.kapali limit 1),
+    (select i.ad||' Milletvekili' from oyun.makamlar m join oyun.iller i on i.id=m.il_id where m.user_id=u and m.tur='mv' and m.bit is null limit 1),
+    (select i.ad||' Belediye Başkanı' from oyun.makamlar m join oyun.iller i on i.id=m.il_id where m.user_id=u and m.tur='bel' and m.bit is null limit 1),
+    oyun.gby_unvan(u)
+  )
+$body$;
+
+-- Partinin yardımcıları, görevleri ve miting yetkileri (parti ekranı için; herkes görebilir)
+create or replace function public.gby_gorevleri(p_parti bigint) returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select coalesce(jsonb_agg(jsonb_build_object('sira', g.sira, 'kad', x.kad, 'gorev', g.gorev, 'miting', g.miting_yetkisi) order by g.sira), '[]'::jsonb)
+  from oyun.parti_gby g join oyun.profiller x on x.id = g.user_id where g.parti_id = p_parti
+$$;
+
+-- Genel başkan bir yardımcısına görev alanı verir (boş = görevi kaldır)
+create or replace function public.gby_gorev_ver(p_kad text, p_gorev text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); pa oyun.partiler; h oyun.profiller; gv text;
+begin
+  select * into pa from oyun.partiler where id = p.parti_id and not kapali for update;
+  if pa.id is null or pa.gb is distinct from p.id then raise exception 'Yardımcılara görevi yalnız genel başkan verebilir.'; end if;
+  select * into h from oyun.profiller where lower(kad) = lower(btrim(coalesce(p_kad, '')));
+  if h.id is null or not exists (select 1 from oyun.parti_gby where parti_id = pa.id and user_id = h.id) then
+    raise exception 'Bu oyuncu partinin genel başkan yardımcısı değil.';
+  end if;
+  if coalesce(btrim(p_gorev), '') = '' then
+    update oyun.parti_gby set gorev = null where parti_id = pa.id and user_id = h.id;
+    perform oyun.bildir(h.id, format('Genel Başkan %s görev alanını kaldırdı; %s genel başkan yardımcısı olarak devam ediyorsun.', p.kad, pa.kisa), t);
+    return public.gby_gorevleri(pa.id);
+  end if;
+  gv := regexp_replace(oyun.metin_temizle(p_gorev, 60), '\s+', ' ', 'g');
+  gv := regexp_replace(gv, '\s*genel başkan yardımcı(sı|lığı)?\s*$', '', 'i');   -- "… Genel Başkan Yardımcısı" yazıldıysa tekrarlanmasın
+  if char_length(gv) < 2 then raise exception 'Görev alanı en az 2 karakter olmalı.'; end if;
+  update oyun.parti_gby set gorev = gv where parti_id = pa.id and user_id = h.id;
+  perform oyun.bildir(h.id, format('Genel Başkan %s sana görev verdi: artık %s %s Genel Başkan Yardımcısısın.', p.kad, pa.kisa, gv), t);
+  perform oyun.olay('parti', format('%s, %s %s Genel Başkan Yardımcısı oldu.', h.kad, pa.kisa, gv), null, pa.id, t);
+  return public.gby_gorevleri(pa.id);
+end $$;
+
+-- 46'daki tepki; katılmamış ama o ilde yaşayan oyuncu tepki verince önce mitinge katılır
+create or replace function public.miting_tepki(p_konusma bigint, p_tur text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); k oyun.miting_konusma; m oyun.mitingler;
+begin
+  if p_tur not in ('alkis','tezahurat','islik','yuh') then raise exception 'Geçersiz tepki.'; end if;
+  select * into k from oyun.miting_konusma where id = p_konusma and not silindi;
+  if k.id is null then raise exception 'Konuşma bulunamadı.'; end if;
+  select * into m from oyun.mitingler where id = k.miting_id;
+  if t < m.bas or t >= m.bit then raise exception 'Miting canlı değil; tepki verilemez.'; end if;
+  if m.user_id = p.id then raise exception 'Kendi konuşmana tepki veremezsin.'; end if;
+  if not exists (select 1 from oyun.miting_katilim where miting_id = m.id and user_id = p.id) then
+    if p.il_id is distinct from m.il_id then
+      raise exception 'Tepki vermek için % ilinde yaşamalısın; başka ilden mitingi yalnız izleyebilirsin.', (select ad from oyun.iller where id = m.il_id);
+    end if;
+    perform public.miting_katil(m.id);
+  end if;
+  insert into oyun.miting_tepki(konusma_id, miting_id, user_id, tur, zaman) values (k.id, m.id, p.id, p_tur, t)
+  on conflict (konusma_id, user_id) do update set tur = excluded.tur, zaman = excluded.zaman;
+  return public.miting_meydan(m.id);
+end $$;
+
+revoke all on function public.gby_gorevleri(bigint), public.gby_gorev_ver(text, text) from public, anon;
+grant execute on function public.gby_gorevleri(bigint), public.gby_gorev_ver(text, text) to authenticated;
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 6) YETKİLER
 --  Yalnızca giriş yapmış oyuncular bu fonksiyonları çağırabilir.
