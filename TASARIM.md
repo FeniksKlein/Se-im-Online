@@ -584,6 +584,14 @@ Karne oyuncu kartında, parti sayfasında, il sayfasında ve belediye ekranında
 - Başlayınca o ildeki herkese ve partinin tüm üyelerine bildirim gider. Kürsü, tepki, slogan ve coşku canlı meydanla aynıdır; katılıp tepki verenler o ilde yaşayanlardır, diğer illerden üyeler canlı izler.
 - Mitingin etkisi harcanan paraya bağlı değildir; meydanın coşkusu katılan gerçek oyuncuların tepkilerinden hesaplanır.
 
+### Dernekler ve sivil toplum (2026-10-10, modül 55)
+- Alt menüde "Dernekler" sekmesi. Her oyuncu bir dernek kurabilir (kuruluş harcı, hesap en az 3 günlük); kurucu başkan olur, ili merkez şubedir. Bir oyuncu en fazla 5 derneğe üye, yalnız birinin başkanı olabilir.
+- Başkan en fazla 4 kişilik yönetim kurulu atar ve başkanlığı devredebilir. Son üye ayrılırsa dernek kapanır.
+- Herkes bağış yapabilir; kasa ile il şubeleri açılır (küçük/orta/büyük il 1.000/2.000/3.000 ₺ × fiyat düzeyi).
+- Başkan ve yönetim kurulu: basın açıklaması, bildiri, bir partiye ya da adaya destek açıklaması ve şubeli ilde bir saatlik protesto. Konu bir kanun, parti, dernek ya da oyuncu olabilir; ilgilisine bildirim gider; her eylem Gündem'e haber olur.
+- Protestoya o ilde yaşayan herkes katılabilir; başlayınca ildekilere ve derneğin üyelerine haber gider, bitince katılım haberi çıkar.
+- Sınırlar: dernek başına günde 3 açıklama ve 1 protesto, aynı ilde 3 günde 1 protesto, seçimlerin oy saatlerinde protesto yok.
+
 ### İttifak teklifi ve ortak aday (2026-10-10, modül 54)
 - Genel başkan başka bir partinin sayfasından ittifak teklif eder. Partisi bir ittifakta değilse ittifak, verdiği adla kurulur. Karşı partinin genel başkanı kabul ya da reddeder.
 - İttifak ortakları cumhurbaşkanlığı ve il il belediye başkanlığı için ortak aday önerir. Öneren ve kabul eden partilerin kendi adayları çekilir, ortak adayı desteklerler. Reddeden ortak kendi adayıyla yarışır. Herkes kabul edince ortak aday ilan edilir.

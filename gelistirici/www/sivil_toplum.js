@@ -10,7 +10,7 @@ const STK_HEDEF = { genel: "Genel konu", kanun: "Bir kanun", parti: "Bir parti",
 // Partiler sekmesindeki giriş kartı
 function stkGirisHtml() {
   return `<div class="kart"><h2>Sivil toplum</h2><p class="alt">Dernek kur ya da üye ol; protesto düzenle, basın açıklaması yap, bildiri yayımla, partilere ve adaylara destek açıkla.</p>
-    <button class="btn altin" onclick="ekranAc(stkEkrani)">Dernekler ve sivil toplum kuruluşları</button></div>`;
+    <button class="btn altin" onclick="sekmeAc('dernek')">Dernekler ve sivil toplum kuruluşları</button></div>`;
 }
 
 function stkEylemHtml(x, opt) {
@@ -29,17 +29,19 @@ function stkEylemHtml(x, opt) {
 }
 
 async function stkEkrani() {
-  yukleniyor("Sivil toplum");
+  const kok = D.sekme === "dernek" && !D.yigin.length;   // alt menüden açıldı
+  yukleniyor(kok ? "Dernekler" : "Sivil toplum");
   let l, a; try { [l, a] = await Promise.all([API.rpc("dernekler"), API.rpc("dernek_akis", { p_limit: 15 })]); }
-  catch (err) { iskelet("Sivil toplum", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
+  catch (err) { iskelet(kok ? "Dernekler" : "Sivil toplum", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: !kok }); return; }
   const benim = l.filter(x => x.uyesiyim);
-  iskelet("Sivil toplum", `
+  iskelet(kok ? "Dernekler" : "Sivil toplum", `
+    ${kok ? `<p class="alt" style="margin:0 0 12px">Dernek kur ya da üye ol; protesto düzenle, basın açıklaması yap, bildiri yayımla, partilere ve adaylara destek açıkla.</p>` : ""}
     ${benim.length ? `<div class="bolum-bas"><h2>Üyesi olduğun dernekler</h2></div><div class="kart">${benim.map(stkSatir).join("")}</div>` : ""}
     ${(a.protestolar || []).length ? `<div class="bolum-bas"><h2>Protestolar</h2><span class="kucuk">Sokaklar</span></div>${a.protestolar.map(x => stkEylemHtml(x)).join("")}` : ""}
     <div class="bolum-bas"><h2>Tüm dernekler</h2><span class="kucuk">${l.length} dernek</span></div>
     <div class="kart">${l.length ? l.map(stkSatir).join("") : `<div class="bos">Henüz dernek yok. İlk sivil toplum kuruluşunu sen kur.</div>`}</div>
     <button class="btn altin" style="margin:0 0 12px" onclick="stkKurModal()">Dernek kur</button>
-    ${(a.aciklamalar || []).length ? `<div class="bolum-bas"><h2>Son açıklamalar</h2></div>${a.aciklamalar.map(x => stkEylemHtml(x)).join("")}` : ""}`, { geri: true });
+    ${(a.aciklamalar || []).length ? `<div class="bolum-bas"><h2>Son açıklamalar</h2></div>${a.aciklamalar.map(x => stkEylemHtml(x)).join("")}` : ""}`, { geri: !kok });
 }
 function stkSatir(d) {
   return `<div class="liste-satir" onclick="ekranAc(()=>stkDetay(${d.id}))" style="cursor:pointer"><div class="orta"><b>${e(d.ad)}</b>${d.uyesiyim ? ` <span class="rozet">Üyesin</span>` : ""}
@@ -174,5 +176,5 @@ function stkGundemHtml(a) {
   const l = (a && a.protestolar) || [];
   if (!l.length) return "";
   return `<div class="bolum-bas"><h2>Sokaklar</h2><span class="kucuk">Protestolar</span></div>${l.slice(0, 5).map(x => stkEylemHtml(x)).join("")}
-    <button class="btn ikinci" style="margin:0 0 12px" onclick="ekranAc(stkEkrani)">Sivil toplum</button>`;
+    <button class="btn ikinci" style="margin:0 0 12px" onclick="sekmeAc('dernek')">Dernekler</button>`;
 }
