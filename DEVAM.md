@@ -166,3 +166,7 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Not: canlıda `ayarlar.push_aktif=false` ve push_url boş; bildirimler push yerine uygulama içi bildirim kutusuna düşer, FCM kurulunca push da gider.
 - 72 ve 73 artık birleştirme listesinde (76 buna bağlı). Docs/www derlemeleri tam derlemeyle değil **yama** ile güncellendi (canlıyla kaynak arasındaki fark sürüyor).
 - Testler: `secim_gecesi.py`, `ek_ozellikler.py` (hepsi.sh'a eklendi), `node test/canli_ek_arayuz.js`.
+
+## 2026-10-11 · 2026.10.11-2 Erken seçim takvim koruması
+- Hata: 11.10 00:45'te TBMM erken seçim kararı (teklif 1, 24/39 kabul), 12.10'daki olağan genel seçimi + 11.10 ön seçimlerini iptal edip 13.10'a yeni seçim kurdu; 30 MV aday adaylığı, 5 CB adaylığı boşa düştü, Gündem'de olmamış seçimler "Sonuçlandı" göründü.
+- `80_erken_secim_takvim_koruma.sql`: olağan seçim erken seçim gününden en geç 7 gün sonraysa takvim değişmez. `migrations/20261011_erken_secim_takvim_onarim.sql` aynı işlev + canlı onarım (2026-11 seçimleri geri açılır, boş erken takvim silinir, olay metni düzeltilir). Test: `test/erken_secim_takvim.py`.
