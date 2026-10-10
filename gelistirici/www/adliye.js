@@ -44,17 +44,104 @@ async function adlIslem(fn,success,geri,modalKapatilsin=true){
  try{await fn();if(modalKapatilsin)modalKapat();toast(success);if(geri)await adliyeDosya(geri);else{if(D.sekme==="adliye")await adliyeEkrani();else{D.devletSekme="adliye";await devletEkrani();}}}
  catch(err){toast(hataCevir(err.message),true);}
 }
+
+function adlSiyasiHtml(){
+ const a=ADL.siyasi||{oneriler:[],secimler:[],itirazlar:[]};
+ const secimler=a.secimler||[],oneriler=a.oneriler||[],itirazlar=a.itirazlar||[];
+ const adayHak=ADL.partiler.filter(p=>p.gb_miyim);
+ const itirazHak=ADL.partiler.filter(p=>p.gb_miyim||p.sozcu_muyum);
+ return '<div class="kart"><h3>Yüksek Yargıç aday önerileri</h3>'
+  +'<p class="alt">Yargıç istifa ettiğinde, görevden alındığında veya yeni yargıç atandığında öneri dönemi yenilenir. Partilerin genel başkanları bir sonraki yargıç için istedikleri oyuncuyu kamuya açık olarak önerebilir. Öneriler bağlayıcı değildir. <b>Son atama ve görevden alma yetkisi Cumhurbaşkanındadır.</b></p>'
+  +'<div class="kv"><span class="k">Aday önerisi dönemi</span><span class="v">'+e(a.oneri_donemi||1)+'</span></div>'
+  +oneriler.map(o=>'<div class="liste-satir"><div class="orta"><b>'+e(o.parti)+'</b><div class="kucuk">Yargıç adayımız: '+e(o.aday)+'</div>'+(o.aciklama?'<p class="alt">'+e(o.aciklama)+'</p>':'')+'</div></div>').join('')
+  +(!oneriler.length?'<p class="alt">Bu dönem için henüz parti önerisi yok.</p>':'')
+  +adayHak.map(p=>'<button class="btn ikinci" onclick="adlYargicOnerModal('+p.id+')">'+e(p.kisa||p.ad)+' adına aday öner / değiştir</button>').join('')
+  +'</div>'
+  +'<div class="kart"><h3>Seçim sonuçlarına itiraz</h3>'
+  +'<p class="alt">Seçim sonuçları açıklandıktan sonra <b>48 saat içinde</b> siyasi partinin genel başkanı veya parti sözcüsü, gerekçe ve delil göstererek başvurabilir. Her parti aynı seçime bir defa itiraz edebilir. İtirazlar herkese açık; değerlendirme ve nihai gerekçeli karar Yüksek Yargıca aittir.</p>'
+  +'<p class="alt">İtirazın kabulü, seçim oylarını veya seçilmiş makamları otomatik değiştirmez. Yeniden sayım ya da seçim sonucunu düzeltme ayrı işlem gerektirir.</p>'
+  +secimler.map(se=>'<div class="liste-satir"><div class="orta"><b>Seçim #'+se.id+' · '+e(se.tur)+' · '+e(se.donem)+'</b><div class="kucuk">İtiraz sonu: '+adlTarih(se.itiraz_son)+'</div></div>'
+   +(itirazHak.length?'<button class="btn ikinci" style="width:auto" onclick="adlSecimItirazModal('+se.id+')">İtiraz et</button>':'')+'</div>').join('')
+  +(!secimler.length?'<p class="alt">Şu anda 48 saatlik itiraz süresi açık olan bir seçim yok.</p>':'')
+  +'<h3>İtiraz dosyaları</h3>'
+  +itirazlar.map(i=>'<div class="liste-satir"><div class="orta"><b>İtiraz #'+i.id+' · '+e(i.parti)+'</b><div class="kucuk">Seçim #'+i.secim_id+' · '+e(i.secim_tur)+' · '+e(i.secim_donem)+' · '+e(i.durum==='bekliyor'?'İnceleniyor':i.durum==='kabul'?'İtiraz kabul edildi':'İtiraz reddedildi')+'</div><p class="alt">'+e(i.gerekce)+'</p>'
+    +(i.deliller?'<p class="kucuk">Deliller: '+e(i.deliller)+'</p>':'')
+    +(i.karar_gerekce?'<p class="kucuk">Yargıç kararı: '+e(i.karar_gerekce)+'</p>':'')
+    +'</div>'+(ADL.hakim_miyim&&i.durum==='bekliyor'?'<button class="btn ikinci" style="width:auto" onclick="adlSecimItirazKararModal('+i.id+')">Karar ver</button>':'')+'</div>').join('')
+  +(!itirazlar.length?'<p class="alt">Henüz sonuç itirazı yapılmadı.</p>':'')
+  +'</div>';
+}
+function adlYargicOnerModal(parti){
+ const p=ADL.partiler.find(x=>x.id===parti);
+ const m=modal('<p class="alt">Partinizin yeni Yüksek Yargıç adayı kim olsun? Önerinizi bütün oyuncular görebilir. Cumhurbaşkanı bu öneriyle bağlı değildir. Aynı dönem içindeki önerinizi değiştirebilirsiniz.</p>'
+ +adlAlan('Yargıç adayı kullanıcı adı','adlOnerAday','text','Aday oyuncunun kullanıcı adı')
+ +adlAlan('Kamuya açık gerekçe (isteğe bağlı)','adlOnerGerekce','textarea')
+ +'<button class="btn altin" id="adlOnerGonder">Aday önerisini yayımla</button>');
+ adlFormBaslik(m,'Partinin Yüksek Yargıç adayı'+(p?' · '+p.ad:''));
+ m.querySelector('#adlOnerGonder').onclick=async()=>{
+  const kad=m.querySelector('#adlOnerAday').value,acik=m.querySelector('#adlOnerGerekce').value;
+  try{
+   await API.rpc('adliye_yargic_oner',{p_parti:parti,p_kad:kad,p_aciklama:acik});
+   modalKapat();toast('Partinizin yargıç adayı kamuya duyuruldu.');
+   if(D.sekme==='adliye')await adliyeEkrani();else await partiDetay(parti);
+  }catch(err){toast(hataCevir(err.message),true);}
+ };
+}
+function adlSecimItirazModal(secim){
+ const a=ADL.siyasi||{secimler:[]};
+ const se=(a.secimler||[]).find(x=>x.id===secim);
+ const partiler=ADL.partiler.filter(p=>p.gb_miyim||p.sozcu_muyum);
+ if(!se||!partiler.length)return toast('Partiniz adına sonuç itirazı yapma yetkiniz yok.',true);
+ const m=modal('<p class="alt">Yalnız sonuç açıklanmış seçimlere, açıklamadan itibaren 48 saat içinde başvuru yapılır. Somut iddia ve delil ekleyin.</p>'
+ +'<div class="alan"><label>İtiraz eden parti</label><select id="adlItParti">'+partiler.map(p=>'<option value="'+p.id+'">'+e(p.ad)+'</option>').join('')+'</select></div>'
+ +adlAlan('İtiraz gerekçesi (30–1600 karakter)','adlItGerekce','textarea')
+ +adlAlan('Deliller, olay tarihleri ve kayıtlar','adlItDelil','textarea')
+ +'<button class="btn altin" id="adlItGonder">Seçim sonucuna itiraz et</button>');
+ adlFormBaslik(m,'Seçim #'+se.id+' · '+se.tur+' · '+se.donem);
+ m.querySelector('#adlItGonder').onclick=async()=>{
+  try{
+   const v=await API.rpc('adliye_secim_itiraz_ac',{p_secim:secim,p_parti:Number(m.querySelector('#adlItParti').value),p_gerekce:m.querySelector('#adlItGerekce').value,p_deliller:m.querySelector('#adlItDelil').value});
+   modalKapat();toast('Seçim itirazı #'+v.id+' kaydedildi.');await adliyeEkrani();
+  }catch(err){toast(hataCevir(err.message),true);}
+ };
+}
+function adlSecimItirazKararModal(id){
+ if(!ADL.hakim_miyim)return;
+ const a=ADL.siyasi||{itirazlar:[]};
+ const it=(a.itirazlar||[]).find(i=>i.id===id&&i.durum==='bekliyor');
+ if(!it)return;
+ const m=modal('<p class="alt">'+e(it.parti)+' · Seçim #'+it.secim_id+'</p>'
+ +'<p class="alt">Gerekçe: '+e(it.gerekce)+'</p><p class="alt">Delil: '+e(it.deliller||'Sunulmadı')+'</p>'
+ +'<div class="alan"><label>İtiraz kararı</label><select id="adlItKarar"><option value="ret">İtirazı reddet</option><option value="kabul">İtirazı kabul et (otomatik yeniden sayım yapmaz)</option></select></div>'
+ +adlAlan('Kamuya açık gerekçeli karar','adlItNeden','textarea')
+ +'<button class="btn altin" id="adlItKararGonder">Kararı açıklayıp kaydet</button>');
+ adlFormBaslik(m,'Yüksek Yargıç · Seçim itirazı #'+id);
+ m.querySelector('#adlItKararGonder').onclick=async()=>{
+  const karar=m.querySelector('#adlItKarar').value,gerekce=m.querySelector('#adlItNeden').value;
+  try{await API.rpc('adliye_secim_itiraz_karar',{p_itiraz:id,p_karar:karar,p_gerekce:gerekce});
+   modalKapat();toast('İtiraz kararı yayımlandı. Seçim sonucu otomatik değiştirilmedi.');await adliyeEkrani();
+  }catch(err){toast(hataCevir(err.message),true);}
+ };
+}
+async function adlYargicIstifa(){
+ if(!ADL.hakim_miyim)return;
+ if(!await onayla('Yüksek Yargıçlıktan istifa','İstifanız hemen geçerli olacak; yeni yargıcı Cumhurbaşkanı atayacak.','İstifa et',true))return;
+ try{await API.rpc('adliye_hakim_istifa');toast('Yüksek Yargıç görevinden istifa ettiniz.');await adliyeEkrani();}
+ catch(err){toast(hataCevir(err.message),true);}
+}
+
 async function adliyeHtml(){
- const d=await API.rpc("adliye_durum");ADL=d;
+ const [d,siyasi]=await Promise.all([API.rpc("adliye_durum"),API.rpc("adliye_siyasi_bilgi")]);ADL={...d,siyasi};
  const yer=d.partiler.find(p=>p.id===d.parti_id);
  const acik=d.davalar.filter(x=>x.durum==="acik");
  const bitmis=d.davalar.filter(x=>x.durum!=="acik");
  return adlBilgiHtml()+'<div class="kart"><h3>Yüksek Yargı</h3>'
   +'<p class="alt">Herkese açık davalar · Tek Yüksek Yargıç · Sözlü savunma · Gerekçeli karar · Cumhurbaşkanlığı affı</p>'
   +'<div class="kv"><span class="k">Yüksek Yargıç</span><span class="v">'+e(d.hakim||"Henüz atanmadı")+'</span></div>'
-  +(d.hakim_miyim?'<div class="rozet altin" style="margin-top:10px">Yüksek Yargıç yetkiniz aktif</div>':'')
+  +(d.hakim_miyim?'<div class="rozet altin" style="margin-top:10px">Yüksek Yargıç yetkiniz aktif</div><button class="btn tehlike" onclick="adlYargicIstifa()">Yüksek Yargıç görevinden istifa et</button>':'')
   +(d.cb_miyim?'<button class="btn altin" onclick="adlHakimModal()">Yargıç ata veya görevden al</button><button class="btn ikinci" onclick="adlAfModal(null)">Genel af ilan et</button>':'')
   +'<button class="btn" onclick="adlDavaModal()">Dava aç</button></div>'
+  +adlSiyasiHtml()
   +'<div class="kart"><h3>Parti Sözcüleri</h3>'+adlSozcuGorevleri()
   +d.partiler.map(pa=>'<div class="liste-satir"><div class="orta"><b>'+e(pa.kisa||pa.ad)+'</b><div class="kucuk">Sözcü: '+e(pa.sozcu||"Atanmadı")+' · Genel başkan: '+e(pa.gb||"—")+'</div></div>'
       +'<button class="btn ikinci" style="width:auto" onclick="ekranAc(()=>partiDetay('+pa.id+'))">Parti sayfası</button>'+'</div>').join("")
@@ -77,7 +164,7 @@ function adlDavaKart(d){
 }
 function adlHakimModal(){
  if(!ADL.cb_miyim)return toast("Bu yetki yalnız Cumhurbaşkanında.",true);
- const m=modal(adlAlan("Atanacak oyuncunun kullanıcı adı","adlHakim")+"<button class='btn altin' id='adlAta'>Yargıç ata</button>"
+ const m=modal('<p class="alt">Partilerin kamuya açık yargıç adayları öneri niteliğindedir. Son atama ve görevden alma yetkisi Cumhurbaşkanındadır.</p>'+adlAlan("Atanacak oyuncunun kullanıcı adı","adlHakim")+"<button class='btn altin' id='adlAta'>Yargıç ata</button>"
   +(ADL.hakim?adlAlan("Görevden alma gerekçesi","adlAlNeden","textarea")+"<button class='btn tehlike' id='adlAl'>Yargıcı görevden al</button>":""));
  adlFormBaslik(m,"Yüksek Yargıç");
  m.querySelector("#adlAta").onclick=()=>adlIslem(()=>API.rpc("adliye_hakim_ata",{p_kad:m.querySelector("#adlHakim").value}),"Yüksek Yargıç atandı.");
