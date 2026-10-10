@@ -1,7 +1,5 @@
 -- 2026-10-10 Dernek üyelerine özel sohbet kanalları
 -- Var olan mesajlar, okuma işaretleri ve oyuncu bilgileri korunur.
-begin;
-
 -- Dernek sohbetine yalnızca halen üye olan kullanıcı erişebilir.
 create or replace function oyun.dernek_sohbet_adi(p_dernek bigint, p_uye uuid)
 returns text language plpgsql stable set search_path = '' as $$
@@ -113,4 +111,3 @@ grant execute on function public.dernek_sohbetler() to authenticated;
 grant execute on function public.dernek_sohbet_oku(bigint,bigint,bigint) to authenticated;
 grant execute on function public.dernek_sohbet_yaz(bigint,text) to authenticated;
 
-commit;
