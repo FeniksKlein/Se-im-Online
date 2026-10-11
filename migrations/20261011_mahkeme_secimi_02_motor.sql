@@ -16,6 +16,12 @@ BEGIN
  VALUES(h.mv_id,h.baskan_secim,t,t+interval '45 minutes',
         t+interval '45 minutes',t+interval '135 minutes')
  ON CONFLICT(mv_secim_id) DO NOTHING;
+ IF FOUND THEN
+   PERFORM oyun.olay('adliye','Yüksek Mahkeme için iki üyelik adaylığı başladı. Başvurular 45 dakika boyunca Adliye ekranında açık.',null,null,t);
+   INSERT INTO oyun.bildirimler(user_id,zaman,metin)
+   SELECT pr.id,t,'Yüksek Mahkeme üyeliği için adaylık başladı! 45 dakika içinde Adliye bölümünden başvurabilirsin.'
+   FROM oyun.profiller pr WHERE oyun.yargic_uygunluk(pr.id) IS NULL;
+ END IF;
  SELECT * INTO s FROM oyun.mahkeme_toplu_secim WHERE mv_secim_id=h.mv_id FOR UPDATE;
  IF s.durum='aday' AND t>=s.aday_bit THEN
    UPDATE oyun.mahkeme_toplu_secim SET durum='oylama' WHERE id=s.id;
