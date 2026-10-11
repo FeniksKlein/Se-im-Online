@@ -707,7 +707,8 @@ function iskelet(baslik, govde, opt){
     `${cz ? `<button class="ikon para-cip" onclick="sekmeAc('hayat')" aria-label="Cüzdan">${paraKisa(cz.para)}</button>` : ""}<button class="ikon" onclick="ekranAc(bildirimEkrani)" aria-label="Bildirimler">${IKON.zil}<span id="zilSayi">${sayiRozet(ok.bildirim)}</span></button>
      <button class="ikon portre-ikon" onclick="sekmeAc('ben')" aria-label="Profilim">${typeof portre === "function" && D.durum && D.durum.profil ? portre(D.durum.profil.kad, D.durum.profil.parti && D.durum.profil.parti.renk) : IKON.ben}</button>`;
   const belediyeMenu = !!(D.durum && D.durum.profil && (D.durum.profil.makamlar || []).some(x => x.tur === "bel"));
-  const sekmeler = opt.sekmesiz ? "" : `<nav class="sekmeler">${[["gundem","Gündem"],["adliye","Adliye"],["hayat","Hayat"],...(belediyeMenu ? [["belediye","Belediyem"]] : []),["sohbet","Sohbet"],["devlet","Devlet"],["meclis","Meclis"],["harita","Harita"],["parti","Partiler"],["dernek","Dernekler"]]
+  const yonetimMenu = typeof yonetimVarMi === "function" && yonetimVarMi();
+  const sekmeler = opt.sekmesiz ? "" : `<nav class="sekmeler">${[["gundem","Gündem"],...(yonetimMenu ? [["yonetim","Yönetim"]] : []),["adliye","Adliye"],["hayat","Hayat"],["sohbet","Sohbet"],["devlet","Devlet"],["meclis","Meclis"],["harita","Harita"],["parti","Partiler"],["dernek","Dernekler"]]
     .map(([k, ad]) => `<button class="${D.sekme === k ? "aktif" : ""}${k === "sohbet" && +ok.ozel > 0 ? " mesaj-var" : ""}" ${k === "sohbet" ? `id="sohbetSekme" aria-label="Sohbet, ${+ok.ozel || 0} okunmamış özel mesaj"` : ""} onclick="sekmeAc('${k}')">${IKON[k]||IKON.devlet}<span>${ad}</span>${k === "sohbet" ? `<span id="dmSayi">${sayiRozet(ok.ozel)}</span>` : ""}${k === "hayat" && cz && (cz.dolu || cz.gunun_ilki) ? `<span class="nokta"></span>` : ""}</button>`).join("")}</nav>`;
   // Aynı ekran yenilenince (dakikalık tazeleme, işlem sonrası) kaydırma konumu korunur
   const anahtar = D.sekme + "|" + (D._ekranNo || 0) + "|" + baslik, eskiIc = $("#icerik");
@@ -962,6 +963,7 @@ async function gundemEkrani(){
   if (mitingHakki) is.push({ cls: "eylem-mor", ikon: IKON.insanlar, bas: "Miting düzenle", alt: `${e(mitingHakki.il)} meydanı · ${tlYaz(mitingHakki.bedel)}`, git: `mitingDuzenleModal(${e(JSON.stringify(mitingHakki))})` });
   if (davetler.length) is.push({ ikon: IKON.parti, bas: "İttifak daveti", alt: davetler.map(x => e(x.ad)).join(", "), git: `ekranAc(()=>partiDetay(${pp.parti ? pp.parti.id : 0}))` });
   aktif.filter(s => s.asama === "basvuru" && TUR[s.tur].aday && !s.adayim && !s.bagimsiz_adayim).forEach(s => is.push({ ikon: IKON.kalem, bas: `Başvuru açık: ${secimTakvimAdi(s)}`, alt: `Kapanış ${tarihSaat(s.basvuru_bit)}`, git: `document.getElementById('sec${s.id}').scrollIntoView({behavior:'smooth'})` }));
+  { const belM = p.makamlar.find(x => x.tur === "bel"); if (belM) is.unshift({ cls: "eylem-mor", ikon: IKON.yonetim || IKON.devlet, bas: `${e(belM.il_ad || "")} Belediyesini yönet`, alt: "Bütçe, binalar, vergiler, hizmetler ve CİMER başvuruları", git: "sekmeAc('yonetim')" }); }
   if (p.hesap_engeli) is.push({ ikon: IKON.uyari, bas: "Seçmen kartın henüz hazır değil", alt: e(p.hesap_engeli), git: "vatandaslikModal()" });
   if (!p.parti) is.push({ ikon: IKON.parti, bas: "Partilerin ideolojilerini incele", alt: "Partilerin ideolojilerini gör, bir partiye katıl", git: "sekmeAc(\'parti\')" });
 
@@ -989,7 +991,7 @@ async function gundemEkrani(){
       ${onaylanacak.map(k => `<div class="liste-satir" onclick="ekranAc(()=>kanunEkrani(${k.id}))" style="cursor:pointer"><div class="orta"><b>${e(k.baslik)}</b><div class="kucuk">Son: ${tarihSaat(k.cb_bit)}</div></div><span>›</span></div>`).join("")}</div>` : ""}
     ${pp.makamlar.some(x => x.tur === "bel") ? `<div class="olay basvuru"><div class="baslik"><b>${e((pp.makamlar.find(x => x.tur === "bel") || {}).il_ad || "")} Belediyesi</b><span class="rozet altin">Belediye başkanı</span></div>
       <p class="alt" style="margin-top:6px">Kent vergisini ve hemşehri desteğini belirle; kent lokantası, ücretsiz ulaşım, kira yardımı, istihdam ofisi aç. İlinde yaşayan oyuncuların cüzdanına doğrudan dokunursun.</p>
-      <button class="btn altin" onclick="ekranAc(belediyeEkrani)">Belediyeme git</button></div>` : ""}
+      <button class="btn altin" onclick="sekmeAc('yonetim')">Belediyeyi yönet</button></div>` : ""}
     ${mitingHtml(mitingler)}
     ${typeof stkGundemHtml === "function" ? stkGundemHtml(stk) : ""}
     <div class="bolum-bas"><h2>Türkiye</h2></div>
@@ -4130,7 +4132,7 @@ function teskilatGorevModal(pid){
 /* =====================================================================
    12) BAŞLAT
    ===================================================================== */
-const EKRAN = { belediye: () => window.belediyeSehirYonetimEkrani(), gundem: gundemEkrani, hayat: hayatEkrani, sohbet: sohbetListe, devlet: devletEkrani, meclis: () => meclisEkrani(), adliye: () => adliyeEkrani(), harita: haritaEkrani, parti: partilerEkrani, dernek: () => stkEkrani(), ben: benEkrani };
+const EKRAN = { yonetim: () => window.yonetimEkrani(), belediye: () => window.belediyeSehirYonetimEkrani(), gundem: gundemEkrani, hayat: hayatEkrani, sohbet: sohbetListe, devlet: devletEkrani, meclis: () => meclisEkrani(), adliye: () => adliyeEkrani(), harita: haritaEkrani, parti: partilerEkrani, dernek: () => stkEkrani(), ben: benEkrani };
 // Sunucu bu uygulama sürümünü artık desteklemiyorsa güncelleme ister (oyuncunun verisi sunucuda, kaybolmaz)
 function surumKucuk(a, b){ return /^\d/.test(a) && /^\d/.test(b) && a.localeCompare(b, "en", { numeric: true }) < 0; }
 async function surumKontrol(){
@@ -4378,5 +4380,6 @@ async function bhIptal(id){
 </script>
 <script src="banka_kredi_icra.js"></script>
 <script src="belediye_sehir.js"></script>
+<script src="yonetim.js"></script>
 </body>
 </html>

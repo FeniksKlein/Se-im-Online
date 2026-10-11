@@ -223,3 +223,10 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Testler: `test/guvenlik_ekonomi.py` (hepsi.sh), `test/guvenlik_arayuz.js`. `test/ajans.py` oyuncuları 7 günden eski olacak şekilde güncellendi.
 - **Canlı durum:** 85, 86, 88 canlıda değil. Sırayla: `20261011_ekonomi_borsa_rekabet.sql`, `20261011_reklam_anket_ajansi.sql`, `20261011_ekonomi_guvenligi.sql`. Gerçek oyuncular gelmeden: `migrations/YAYIN_ONCESI_AYARLAR.sql`.
 - Bilinen eksik: diğer oturumun `belediye_is_teklif` (belediye hizmet ihalesi) tablosuna ilişkili hesap kuralı eklenmedi (kaynağı gelistirici/'de yok).
+
+## 2026-10-11 · 2026.10.11-12 Yönetim alt menüsü, CİMER makam kutusu
+- Alt menüdeki "Bakanlığım" ve "Belediyem" kaldırıldı; yerine Gündem'in hemen yanında **Yönetim** (`EKRAN.yonetim` → `yonetimEkrani`, `www/yonetim.js`). Yalnız makamı (bel, cb, cb_yardimcisi, bakan, tbmm, bskv, grup_bskv, mv) ya da parti yönetim görevi (gb, gb_vekaleten, gby) olana görünür.
+- Sıra: makam listesi → CİMER (makama gelen başvuru sayısı) → **Belediye** (kasa/memnuniyet/gelişmişlik + şehir yönetimi, vergiler/hizmetler, kamu ihalesi, hizmet ihaleleri, CİMER) → Cumhurbaşkanlığı → Bakanlık panelleri (politika/icraat doğrudan burada) → TBMM → Parti.
+- Eski bağlantılar (`sekmeAc('bakanlik'|'belediye')`) Yönetim'e yönlenir; politika/icraat sonrası yenileme Yönetim'de kalır. Gündem › Bugün listesinin en üstüne "X Belediyesini yönet" eklendi; alttaki belediye kartı da Yönetim'i açar.
+- CİMER: sunucu doğruydu (canlıda belediye başvurusu → başkanın `cimer().gelen` listesinde, işlem geri alınarak sınandı). Sorun arayüzdeydi: "Makamıma gelen" sekmesi yalnız başvuru varken çıkıyordu ve belediye ekranlarında CİMER girişi yoktu. Artık belediye başkanı/bakan/CB için sekme her zaman görünür, Yönetim'de de kutusu var.
+- Sunucu değişikliği yok. `docs/` ve `www/` yama ile; kaynak `gelistirici/www/yonetim.js` + `cimer_ek.js` + `derle.js` listesi. Test: `HTML_PATH=../docs/index.html node test/yonetim_arayuz.js`.

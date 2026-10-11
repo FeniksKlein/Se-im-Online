@@ -82,7 +82,7 @@ async function cimerEkrani(sessiz){
   CIMER.veri = v;
   const bekleyen = v.gelen.filter(b => b.yanitlayabilirim).length;
   const sekmeler = [["yeni", "Yeni başvuru"], ["benim", `Başvurularım${v.basvurularim.length ? " · " + v.basvurularim.length : ""}`]]
-    .concat(v.gelen.length || CIMER.sekme === "gelen" ? [["gelen", `Makamıma gelen${bekleyen ? " · " + bekleyen : ""}`]] : [])
+    .concat(v.gelen.length || CIMER.sekme === "gelen" || (typeof cimerMakamVar === "function" && cimerMakamVar()) ? [["gelen", `Makamıma gelen${bekleyen ? " · " + bekleyen : ""}`]] : [])
     .concat([["karne", "Kurum karnesi"]]);
   if (!sekmeler.some(s => s[0] === CIMER.sekme)) CIMER.sekme = "yeni";
   let govde = `<div class="kart"><div class="cimer-bas"><div class="cimer-logo">CİMER</div><div><b style="font-family:var(--disp);font-size:20px">Cumhurbaşkanlığı İletişim Merkezi</b>
