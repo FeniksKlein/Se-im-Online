@@ -4304,6 +4304,7 @@ async function sirketHissePazariEkrani(seciliSirket=null){
   const [p,d]=await Promise.all([API.rpc("sirket_hisse_pazar"),API.rpc("sirket_liste")]);
   const sirketler=(d.sirketler||[]).filter(s=>s.sektor!=="banka" && Number(s.pay)>0);
   const aktif=p.ilanlar||[];
+  window._sirketHisseAktifIlanlar=aktif;
   const benim=p.benim||[];
   const satisKarti=s=>{
     const acik=benim.find(x=>Number(x.sirket_id)===Number(s.id));
@@ -4330,7 +4331,7 @@ async function sirketHissePazariEkrani(seciliSirket=null){
     <p class="alt">${e(i.sektor)} · Satıcı: ${e(i.satici)}</p>
     <div class="kv"><span>Satış bedeli</span><b>${fmt(i.bedel)} ₺</b></div>
     ${i.benim?`<button class="btn ikinci" onclick="sirketHisseIptal(${i.id})">İlanımı kaldır</button>`:
-      `<button class="btn altin" onclick="sirketHisseSatinAl(${i.id},${JSON.stringify(String(i.ad))},${Number(i.pay)},${Number(i.bedel)})">Hisseyi satın al</button>`}
+      `<button class="btn altin" onclick="sirketHisseSatinAl(${i.id})">Hisseyi satın al</button>`}
     </div>`).join(""):'<p class="alt">Şu an satılık hisse bulunmuyor.</p>'}</div>
   `,{geri:true});
   if(seciliSirket!==null){
@@ -4343,7 +4344,7 @@ async function sirketHisseIlanVer(id){
  const payInput=document.getElementById("hissePay_"+id),bedelInput=document.getElementById("hisseBedel_"+id);
  if(!payInput||!bedelInput)return;
  const pay=Number(payInput.value),bedel=Number(bedelInput.value);
- if(!Number.isFinite(pay)||pay<=0||pay>100||Math.round(pay*1000000)!==pay*1000000){toast("Pay oranını 0 ile 100 arasında, en fazla 6 ondalık olacak şekilde gir.",true);return;}
+ if(!Number.isFinite(pay)||pay<=0||pay>100||Math.abs(Math.round(pay*1000000)-pay*1000000)>0.000001){toast("Pay oranını 0 ile 100 arasında, en fazla 6 ondalık olacak şekilde gir.",true);return;}
  if(!Number.isSafeInteger(bedel)||bedel<100||bedel>1000000000){toast("Satış bedeli 100 ile 1.000.000.000 ₺ arasında tam sayı olmalı.",true);return;}
  if(!await onayla("Hisseyi satışa çıkar",`Şirketindeki %${fmt(pay,6)} payı ${fmt(bedel)} ₺ bedelle satışa çıkarıyorsun. Satılmadan önce ilanı kaldırabilirsin.`,"Satış ilanı ver"))return;
  try{await API.rpc("sirket_hisse_ilan_ver",{p_sirket:id,p_pay:pay,p_bedel:bedel});toast("Hisselerin satışa çıkarıldı.");sirketHissePazariEkrani(id);}
@@ -4354,8 +4355,10 @@ async function sirketHisseIptal(id){
  try{await API.rpc("sirket_hisse_ilan_iptal",{p_ilan:id});toast("Hisse satış ilanı kaldırıldı.");sirketHissePazariEkrani();}
  catch(err){toast(hataCevir(err.message),true);}
 }
-async function sirketHisseSatinAl(id,ad,pay,bedel){
- if(!await onayla("Şirket hissesi satın al",`${ad} şirketindeki %${fmt(pay,6)} hisse için ${fmt(bedel)} ₺ ödeyeceksin. İşlem onaylandığında hisseler hesabına geçer.`,"Hisse satın al"))return;
+async function sirketHisseSatinAl(id){
+ const i=(window._sirketHisseAktifIlanlar||[]).find(x=>Number(x.id)===Number(id));
+ if(!i){toast("İlanı yenile ve tekrar dene.",true);return;}
+ if(!await onayla("Şirket hissesi satın al",`${i.ad} şirketindeki %${fmt(i.pay,6)} hisse için ${fmt(i.bedel)} ₺ ödeyeceksin. İşlem onaylandığında hisseler hesabına geçer.`,"Hisse satın al"))return;
  try{await API.rpc("sirket_hisse_ilan_al",{p_ilan:id});toast("Hisseler hesabına geçti.");sirketHissePazariEkrani();}
  catch(err){toast(hataCevir(err.message),true);}
 }
