@@ -34,9 +34,9 @@ BEGIN
  'hareketler',coalesce((SELECT jsonb_agg(jsonb_build_object(
  'tutar',h.tutar,'aciklama',h.aciklama,'zaman',h.zaman) ORDER BY h.id DESC)
  FROM (SELECT * FROM oyun.sirket_hareket WHERE sirket_id=p_banka ORDER BY id DESC LIMIT 20) h),'[]'::jsonb));
-END $function$
+END $function$;
 
--- Mahkeme oy asamasi degiskeni sutun adi ile karistirilmaz.;
+-- Mahkeme oy asamasi degiskeni sutun adi ile karistirilmaz.
 
 CREATE OR REPLACE FUNCTION public.oyb_icra_karar(p_icra bigint,p_karar text,p_gerekce text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
