@@ -3510,7 +3510,7 @@ async function bildirimEkrani(){
     API.rpc("cb_yardimcisi_tekliflerim").catch(() => []),
     API.rpc("bildirim_yayin_ozet").catch(() => null)
   ]);
-  if (hy) D._hayat = { ...(D._hayat || {}), ...hy };
+  D._yayinOzet = hy;
   // Yalnız oyuncunun kişisel bildirimlerindeki gerçek yayınları bul.
   const hedefIdler = liste.filter(x => x.tur === "kisisel").map(x => Number(x.id)).filter(Number.isSafeInteger);
   if (hedefIdler.length) {
@@ -3569,7 +3569,7 @@ async function bakanTeklifYanit(id, kabul){
 }
 function yayinModal(){
   const haklar = D._haklar || [];
-  const ek = D._hayat && D._hayat.ek_yayin ? D._hayat.ek_yayin.elde : 0;
+  const ek = D._yayinOzet && D._yayinOzet.ek_yayin ? D._yayinOzet.ek_yayin.elde : (D._hayat && D._hayat.ek_yayin ? D._hayat.ek_yayin.elde : 0);
   let secili = haklar.findIndex(h => h.kalan > 0 || ek > 0);
   const m = modal(`<h3 style="font-size:19px;font-weight:800">Propaganda yayını</h3><p class="alt">Hangi sıfatla, kime sesleneceksin?</p>
     ${haklar.map((h, i) => `<div class="secenek ${h.kalan || ek ? "" : "pasif"} ${i === secili ? "secili" : ""}" data-i="${i}">
