@@ -1098,6 +1098,10 @@ async function durumYenile(){
 function paraKisa(n){ n = +n || 0; return n < 1e5 ? fmt(n) + " ₺" : n < 1e6 ? fmt(n / 1000) + " B ₺" : fmt(n / 1e6, 1) + " Mn ₺"; }
 function sayiRozet(n){ return n > 0 ? `<span class="sayi">${n > 99 ? "99+" : n}</span>` : ""; }
 function iskelet(baslik, govde, opt){
+  if(baslik==="Partiler")govde='<div class="kart"><button class="btn altin" onclick="ekranAc(koalisyonPazarlikEkrani)">Gizli siyasi pazarlıklar ve koalisyon protokolleri</button></div>'+govde;
+  if(baslik==="Şirketlerim")govde='<div class="kart"><button class="btn altin" onclick="ekranAc(belediyeHizmetIhaleEkrani)">Belediyelerin hizmet ihaleleri</button></div>'+govde;
+  if(typeof baslik==="string" && baslik.endsWith(" Belediyesi"))govde='<div class="kart"><button class="btn altin" onclick="ekranAc(belediyeHizmetIhaleEkrani)">Hizmet ihalesi aç / yönet</button></div>'+govde;
+
   opt = opt || {};
   canliDurdur();
   const ok = D.okunmamis || { bildirim: 0, ozel: 0 };
@@ -8577,6 +8581,161 @@ window.ekonomiMerkeziEkrani = ekonomiMerkeziEkrani;
 window.borsaEkrani = borsaEkrani;
 window.rekabetEkrani = rekabetEkrani;
 window.siyasiBagisEkrani = siyasiBagisEkrani;
+</script>
+<script>
+
+/* 2026-10-11: Koalisyon pazarligi ve belediye/sirket hizmet ihalesi */
+function khYazi(x){return e(x===null||x===undefined?"":String(x));}
+function khPara(x){return Number(x||0).toLocaleString("tr-TR",{maximumFractionDigits:0})+" ₺";}
+function khTarih(x){return x?new Date(x).toLocaleString("tr-TR",{dateStyle:"short",timeStyle:"short"}):"—";}
+function khSecenek(v,l){return '<option value="'+khYazi(v)+'">'+khYazi(l)+'</option>';}
+async function koalisyonPazarlikEkrani(){
+ yukleniyor("Siyasi pazarlıklar");
+ try{
+  var d=await API.rpc("koalisyon_durum"), ben=d.yonettigim;
+  var partiler=d.partiler||[], dep=d.bakanliklar||[];
+  var pa=function(id){var x=partiler.find(function(p){return p.id===id;});return x?x.kisa||x.ad:"Parti "+id;};
+  var durumlar={bekliyor:"Onay bekliyor",imzali:"İmzalı protokol",reddedildi:"Reddedildi",iptal:"İptal edildi",bozuldu:"İhlal edildi"};
+  var govde='<div class="kart"><h2>Siyasi pazarlıklar ve koalisyon protokolleri</h2><p class="alt">İki parti yönetimi aralarında gizli veya kamuya açık anlaşma imzalayabilir. Bakanlık paylaşımı, yasa desteği ve ittifak şartları kaydedilir. Anlaşmayı tek taraflı bozan partinin siyasi itibarında ihlal kaydı oluşur. Bakan ataması veya Mecliste oy kullanımı otomatik yapılmaz; yetkili oyuncular mevcut mekanizmaları kullanır.</p></div>';
+  if(ben){
+   govde+='<div class="kart"><h2>Yeni protokol teklifi</h2><div class="alan"><label>Teklif edilecek parti</label><select id="kh_hedef">'+partiler.filter(function(p){return p.id!==ben;}).map(function(p){return khSecenek(p.id,p.ad);}).join('')+'</select></div>'
+    +'<div class="alan"><label>Protokol başlığı</label><input id="kh_baslik" maxlength="120" placeholder="Koalisyon ve karşılıklı destek protokolü"></div>'
+    +'<div class="alan"><label>Yasa ve Meclis desteği</label><textarea id="kh_yasa" maxlength="1500" rows="3" placeholder="Hangi yasa teklifleri desteklenecek, güvenoyu, seçim ve Meclis şartları"></textarea></div>'
+    +'<div class="alan"><label>İttifak ve seçim şartları</label><textarea id="kh_ittifak" maxlength="1500" rows="3" placeholder="Ortak aday, ittifak koşulları, görev süresi"></textarea></div>'
+    +'<p class="alt">Bakanlık paylaşımı (isteğe bağlı; en fazla 4 bakanlık seç)</p>';
+   for(var i=0;i<4;i++){
+    govde+='<div class="alan"><label>'+(i+1)+'. Bakanlık</label><select id="kh_bakan_'+i+'">'+khSecenek("","Seçilmedi")+dep.map(function(v){return khSecenek(v.kod,v.ad);}).join('')+'</select>'
+    +'<select id="kh_pay_'+i+'">'+khSecenek(ben,"Bizim parti")+khSecenek("hedef","Teklif edilen parti")+'</select></div>';
+   }
+   govde+='<div class="alan"><label><input type="checkbox" id="kh_gizli" checked> Anlaşma gizli kalsın (yalnız iki partinin yetkilisi görsün)</label></div>'
+    +'<button class="btn altin" onclick="khTeklifGonder()">Protokolü gönder</button></div>';
+  }
+  govde+='<div class="kart"><h2>Protokoller</h2>';
+  if(!(d.anlasmalar||[]).length)govde+='<p class="alt">Henüz görüntüleyebileceğin protokol yok.</p>';
+  (d.anlasmalar||[]).forEach(function(k){
+   var isTo=ben===k.hedef_parti, isFrom=ben===k.teklif_parti;
+   govde+='<div style="border-top:1px solid var(--kenar,#ddd);padding:14px 0">'
+   +'<b>'+khYazi(k.baslik)+'</b><p class="alt">'+khYazi(pa(k.teklif_parti))+' ↔ '+khYazi(pa(k.hedef_parti))+' · '+khYazi(durumlar[k.durum]||k.durum)+(k.gizli?' · Gizli':' · Açık')+'</p>'
+   +'<p class="kucuk">'+khTarih(k.olusturma)+'</p>'
+   +'<p><b>Yasa desteği:</b> '+khYazi(k.yasa_destegi||"Belirlenmedi")+'</p>'
+   +'<p><b>İttifak şartları:</b> '+khYazi(k.ittifak_sartlari||"Belirlenmedi")+'</p>';
+   if((k.bakanliklar||[]).length)govde+='<p><b>Bakanlık paylaşımı:</b> '+k.bakanliklar.map(function(x){
+    var b=dep.find(function(z){return z.kod===x.kod;});
+    return khYazi((b?b.ad:x.kod)+" → "+pa(x.parti_id));
+   }).join(" · ")+'</p>';
+   if(k.durum==="bozuldu")govde+='<p class="alt">İhlal eden: '+khYazi(pa(k.bozan_parti))+' · '+khYazi(k.bozulma_nedeni)+'</p>';
+   if(isTo&&k.durum==="bekliyor")govde+='<button class="btn altin" onclick="khYanit('+k.id+',true)">İmzala / Kabul et</button> <button class="btn ikinci" onclick="khYanit('+k.id+',false)">Reddet</button>';
+   if(isFrom&&k.durum==="bekliyor")govde+='<button class="btn ikinci" onclick="khSonlandir('+k.id+',false)">Teklifi geri çek</button>';
+   if((isFrom||isTo)&&k.durum==="imzali")govde+='<button class="btn ikinci" onclick="khSonlandir('+k.id+',true)">Anlaşmayı boz (itibar cezası)</button>';
+   govde+='</div>';
+  });
+  govde+='</div>';
+  if(d.itibar&&d.itibar.some(function(x){return x.ihlal>0;}))
+   govde+='<div class="kart"><h2>Protokol güvenilirliği</h2>'+d.itibar.filter(function(x){return x.ihlal>0;}).map(function(x){return '<div class="kv"><span>'+khYazi(pa(x.parti_id))+'</span><b>'+Number(x.ihlal)+' ihlal</b></div>';}).join('')+'</div>';
+  iskelet("Siyasi pazarlıklar",govde,{geri:true});
+ }catch(err){iskelet("Siyasi pazarlıklar",'<div class="kart">'+khYazi(hataCevir(err.message))+'</div>',{geri:true});}
+}
+async function khTeklifGonder(){
+ var val=function(id){return document.getElementById(id).value;};
+ try{
+  var hedef=Number(val("kh_hedef")),liste=[],seen={};
+  for(var i=0;i<4;i++){var kod=val("kh_bakan_"+i);if(!kod)continue;
+   if(seen[kod]){toast("Aynı bakanlığı iki kez seçme.",true);return;}seen[kod]=true;
+   var v=val("kh_pay_"+i);liste.push({kod:kod,parti_id:v==="hedef"?hedef:Number(v)});
+  }
+  await API.rpc("koalisyon_teklif",{p_hedef:hedef,p_baslik:val("kh_baslik"),p_bakanliklar:liste,p_yasa:val("kh_yasa"),p_ittifak:val("kh_ittifak"),p_gizli:document.getElementById("kh_gizli").checked});
+  toast("Protokol teklifi gönderildi.");koalisyonPazarlikEkrani();
+ }catch(err){toast(hataCevir(err.message),true);}
+}
+async function khYanit(id,kabul){
+ if(!await onayla("Siyasi protokol",kabul?"Anlaşmayı imzalayıp şartları kabul ediyor musun?":"Teklifi reddediyor musun?",kabul?"İmzala":"Reddet"))return;
+ try{await API.rpc("koalisyon_yanit",{p_id:id,p_kabul:kabul});toast(kabul?"Protokol imzalandı.":"Teklif reddedildi.");koalisyonPazarlikEkrani();}
+ catch(err){toast(hataCevir(err.message),true);}
+}
+async function khSonlandir(id,imzali){
+ var neden=imzali?prompt("Anlaşmayı bozma gerekçeni yaz (en az 10 karakter). Bu işlem partinin itibarına olumsuz yansır."): "Teklif iptali";
+ if(neden===null)return;
+ if(!await onayla("Protokolü sonlandır",imzali?"İmzaladığın protokolü bozarsan itibar ihlali kaydedilecek. Emin misin?":"Bekleyen teklifi iptal etmek istiyor musun?","Sonlandır"))return;
+ try{await API.rpc("koalisyon_sonlandir",{p_id:id,p_neden:neden});toast("Protokol durumu güncellendi.");koalisyonPazarlikEkrani();}
+ catch(err){toast(hataCevir(err.message),true);}
+}
+async function belediyeHizmetIhaleEkrani(){
+ yukleniyor("Belediye hizmet ihaleleri");
+ try{
+  var d=await API.rpc("belediye_is_pazar");
+  var sirketler=d.sirketlerim||[],ihaleler=d.ihaleler||[];
+  var belediyeyim=!!(D.durum&&D.durum.profil&&(D.durum.profil.makamlar||[]).some(function(m){return m.tur==="bel";}));
+  var sektorler={insaat:"İnşaat",teknoloji:"Teknoloji",ticaret:"Ticaret",sanayi:"Sanayi",tarim:"Tarım",hizmet:"Hizmet"};
+  var durumlar={acik:"Teklife açık",is_verildi:"İş teslim bekliyor",tamamlandi:"Tamamlandı",iptal:"İptal",teklif_yok:"Teklif gelmedi",basarisiz:"Süresinde teslim edilmedi"};
+  var govde='<div class="kart"><h2>Gerçek oyuncularla belediye ekonomisi</h2><p class="alt">Başkan ihale açar, uygun sektördeki şirketler kapalı teklif verir. Süre bitince en düşük geçerli teklif kazanır. Belediye bütçesi önceden ayrılır; şirkete ödeme iş teslim edilince yapılır. Net şirket geliri teklifin %30’u; kalan %70 işçilik ve malzeme gideridir. İş 6 saatten önce tamamlanamaz, son teslim 72 saattir. Süresinde bitmezse ayrılan bütçe belediyeye döner.</p></div>';
+  if(belediyeyim){
+   govde+='<div class="kart"><h2>Yeni belediye hizmet ihalesi</h2>'
+    +'<div class="alan"><label>İşin adı</label><input id="bh_baslik" maxlength="120" placeholder="Örnek: Belediye web sitesi yenileme"></div>'
+    +'<div class="alan"><label>İşin kapsamı</label><textarea id="bh_aciklama" maxlength="1200" rows="3" placeholder="Teslim şartları ve hedeflenen kamu hizmeti"></textarea></div>'
+    +'<div class="alan"><label>Şirket sektörü</label><select id="bh_sektor">'+Object.keys(sektorler).map(function(k){return khSecenek(k,sektorler[k]);}).join('')+'</select></div>'
+    +'<div class="alan"><label>Azami bütçe (TL)</label><input type="number" id="bh_butce" min="100000" max="20000000" step="1000" placeholder="500000"></div>'
+    +'<div class="alan"><label>Teklif süresi</label><select id="bh_saat">'+khSecenek(6,"6 saat")+khSecenek(12,"12 saat")+khSecenek(24,"24 saat")+'</select></div>'
+    +'<button class="btn altin" onclick="bhIhaleAc()">İhaleyi duyur</button></div>';
+  }
+  govde+='<div class="kart"><h2>İhaleler</h2>';
+  if(!ihaleler.length)govde+='<p class="alt">Henüz belediye hizmet ihalesi açılmadı.</p>';
+  ihaleler.forEach(function(x){
+   var uygun=sirketler.filter(function(s){return s.sektor===x.sektor;});
+   var benKazandim=!!x.teslim_yetkim;
+   var zamaniGeldi=x.secim_zamani&&Date.now()>=new Date(x.secim_zamani).getTime()+6*3600000;
+   govde+='<div style="border-top:1px solid var(--kenar,#ddd);padding:14px 0">'
+    +'<b>'+khYazi(x.baslik)+'</b><p class="alt">'+khYazi(x.il)+' Belediyesi · '+khYazi(sektorler[x.sektor]||x.sektor)+' · '+khYazi(durumlar[x.durum]||x.durum)+'</p>'
+    +'<div class="kv"><span>Azami bütçe</span><b>'+khPara(x.butce)+'</b></div>'
+    +'<div class="kv"><span>Teklif sayısı</span><b>'+Number(x.teklif_sayisi||0)+'</b></div>'
+    +(x.aciklama?'<p>'+khYazi(x.aciklama)+'</p>':'');
+   if(x.durum==="acik"){
+    govde+='<p class="kucuk">Son teklif: '+khTarih(x.teklif_bit)+'</p>';
+    if((x.benim_tekliflerim||[]).length)govde+='<p class="alt">Teklifin: '+x.benim_tekliflerim.map(function(t){return khPara(t.teklif);}).join(", ")+'</p>';
+    if(uygun.length){
+     govde+='<div class="alan"><label>Teklif veren şirket</label><select id="bh_sirket_'+x.id+'">'
+      +uygun.map(function(s){return khSecenek(s.id,s.ad+" (pay %"+s.pay+")");}).join('')+'</select></div>'
+      +'<div class="alan"><label>Teklif (TL) · Min. '+khPara(x.butce*.6)+'</label><input type="number" id="bh_tutar_'+x.id+'" step="1" min="'+Math.ceil(x.butce*.6)+'" max="'+x.butce+'" placeholder="'+Math.round(x.butce*.9)+'"></div>'
+      +'<button class="btn altin" onclick="bhTeklifVer('+x.id+')">Teklif ver / güncelle</button>';
+    }
+    if(x.baskanim&&Number(x.teklif_sayisi)===0)govde+='<button class="btn ikinci" onclick="bhIptal('+x.id+')">İhaleyi iptal et</button>';
+   }else{
+    if(x.kazanan)govde+='<p><b>Kazanan:</b> '+khYazi(x.kazanan)+' · '+khPara(x.kazanan_teklif)+'</p>';
+    if(x.durum==="is_verildi"){
+     govde+='<p class="kucuk">Son teslim: '+khTarih(x.son_teslim)+'</p>';
+     if(benKazandim)govde+=zamaniGeldi
+      ?'<button class="btn altin" onclick="bhTeslimEt('+x.id+')">İşi tamamla ve ödemeyi al</button>'
+      :'<p class="alt">Teslim butonu, ihale sonuçlandıktan 6 saat sonra açılır.</p>';
+    }
+    if(x.durum==="tamamlandi")govde+='<p class="alt">Belediye memnuniyeti +'+Number(x.memnuniyet_puan||0).toLocaleString("tr-TR")+'</p>';
+   }
+   govde+='</div>';
+  });
+  govde+='</div>';
+  iskelet("Belediye hizmet ihaleleri",govde,{geri:true});
+ }catch(err){iskelet("Belediye hizmet ihaleleri",'<div class="kart">'+khYazi(hataCevir(err.message))+'</div>',{geri:true});}
+}
+async function bhIhaleAc(){
+ var v=function(id){return document.getElementById(id).value;};
+ try{await API.rpc("belediye_is_ihale_ac",{p_baslik:v("bh_baslik"),p_aciklama:v("bh_aciklama"),p_sektor:v("bh_sektor"),p_butce:Number(v("bh_butce")),p_saat:Number(v("bh_saat"))});
+ toast("İhale açıldı. Bütçe belediye kasasından ayrıldı.");belediyeHizmetIhaleEkrani();
+ }catch(err){toast(hataCevir(err.message),true);}
+}
+async function bhTeklifVer(id){
+ var s=Number(document.getElementById("bh_sirket_"+id).value),m=Number(document.getElementById("bh_tutar_"+id).value);
+ try{await API.rpc("belediye_is_teklif_ver",{p_ihale:id,p_sirket:s,p_tutar:m});toast("Teklifin kaydedildi.");belediyeHizmetIhaleEkrani();}
+ catch(err){toast(hataCevir(err.message),true);}
+}
+async function bhTeslimEt(id){
+ if(!await onayla("İşi teslim et","İş tamamlandı mı? Teslimi kesinleştirince şirketin net geliri kasasına yatırılır ve belediye memnuniyeti artar.","Teslim et"))return;
+ try{var v=await API.rpc("belediye_is_tamamla",{p_ihale:id});toast("İş tamamlandı. Şirket net geliri: "+khPara(v.sirket_kar));belediyeHizmetIhaleEkrani();}
+ catch(err){toast(hataCevir(err.message),true);}
+}
+async function bhIptal(id){
+ if(!await onayla("İhaleyi iptal et","Henüz teklif almamış ihalenin bütçesi belediyeye iade edilir.","İptal et"))return;
+ try{await API.rpc("belediye_is_iptal",{p_ihale:id});toast("İhale iptal edildi.");belediyeHizmetIhaleEkrani();}
+ catch(err){toast(hataCevir(err.message),true);}
+}
+
 </script>
 </body>
 </html>
