@@ -41,7 +41,7 @@ async function bankaDetayEkrani(id){
     <div class="alt" id="oyb_kredi_risk_${id}">Bu bankadaki kredi limitin gelirine, kredi notuna ve borçlarına göre hesaplanır.</div>
     <button class="btn ikinci" onclick="oybKrediRiskGoster(${id})">Kredi notumu ve limitimi göster</button>
     <div class="alan"><label>Kredi tutarı</label><input id="oyb_ktutar_${id}" type="number" min="1000" max="500000" value="10000"></div>
-    <div class="alan"><label>Kredi vadesi</label><select id="oyb_ksaat_${id}">${[1,3,6,12,24].map(h=>`<option value="${h}">${h} saat</option>`).join("")}</select></div>
+    <div class="alan"><label>Kredi vadesi</label><select id="oyb_ksaat_${id}" onchange="oybKrediRiskGoster(${id})">${[168,336,504,672,1,3,6,12,24].map(h=>`<option value="${h}">${h>=168?(h/168)+" hafta":h+" saat"}</option>`).join("")}</select></div>
     <button class="btn altin" ${b.bankam?"disabled":""} onclick="oybKrediBasvur(${id})">Kredi talebi gönder</button></div>
   <button class="btn ikinci" onclick="bankaRehberiEkrani()">Diğer bankaları gör</button>`,{geri:true});
  }catch(err){iskelet("Banka şubesi",'<div class="kart">'+e(hataCevir(err.message))+'</div>',{geri:true});}
