@@ -3549,8 +3549,8 @@ function mulkStokHtml(){
   const il = mulkStok.find(x=>x.il_id===mulkSecIl) || mulkStok[0];
   return `<div class="alan"><label>Hangi ilden?</label><select id="mulkIl" onchange="mulkSecIl=Number(this.value);$('#mulkStokAlan').innerHTML=mulkStokHtml()">
       ${mulkStok.map(x=>`<option value="${x.il_id}" ${x.il_id===il.il_id?"selected":""}>${e(x.il)}${x.benim_ilim?" (yaşadığın il)":""}</option>`).join("")}</select></div>
-    <p class="kucuk">Gelişmişlik ${fmt(il.gelismislik)}/100 · Haftalık mülk vergisi ${yuzde(il.vergi_oran)} (belediye çarpanı ${fmt(il.carpan)})</p>
-    ${il.urunler.map(u=>`<div class="kv"><span>${e(MULK_AD[u.tip]||u.tip)}<div class="kucuk">Kira ${tlYaz(u.kira)}/hafta · Vergi ${tlYaz(u.vergi)}/hafta</div><div class="kucuk">${u.kalan>0?`Satılık: ${fmt(u.kalan)} / ${fmt(u.kontenjan)}`:`Bu ilde satılık yeni ${e((MULK_AD[u.tip]||u.tip).toLocaleLowerCase("tr"))} kalmadı`}</div></span>
+    <p class="kucuk">Gelişmişlik ${fmt(il.gelismislik)}/100 · Mesken yıllık emlak vergisi ${yuzde(il.vergi_oran)} (dükkân oranı iki katıdır)</p>
+    ${il.urunler.map(u=>`<div class="kv"><span>${e(MULK_AD[u.tip]||u.tip)}<div class="kucuk">Kira ${tlYaz(u.kira)}/hafta · Emlak vergisi ${tlYaz(u.vergi)}/yıl</div><div class="kucuk">${u.kalan>0?`Satılık: ${fmt(u.kalan)} / ${fmt(u.kontenjan)}`:`Bu ilde satılık yeni ${e((MULK_AD[u.tip]||u.tip).toLocaleLowerCase("tr"))} kalmadı`}</div></span>
       <button class="btn ikinci" style="width:auto;margin:0;white-space:nowrap;flex-shrink:0" ${u.kalan>0?"":"disabled"} onclick="mulkAl('${u.tip}',${il.il_id},${u.fiyat})">${tlYaz(u.fiyat)} · Al</button></div>`).join("")}`;
 }
 function mulkCiz(d){
@@ -3559,17 +3559,17 @@ function mulkCiz(d){
       <div class="kv"><span class="k">Mülk sayısı</span><b>${fmt(d.adet)}</b></div>
       <div class="kv"><span class="k">Bugünkü değeri</span><b>${tlYaz(d.piyasa_degeri ?? d.mulk_degeri)}</b></div>
       <div class="kv"><span class="k">Haftalık toplam kira</span><b>${tlYaz(d.haftalik_toplam)}</b></div>
-      ${d.haftalik_vergi!=null?`<div class="kv"><span class="k">Haftalık mülk vergisi</span><b>${tlYaz(d.haftalik_vergi)}</b></div>`:""}
+      ${d.haftalik_vergi!=null?`<div class="kv"><span class="k">Yıllık emlak vergisi</span><b>${tlYaz(d.haftalik_vergi)}</b></div>`:""}
       ${d.vergi_borc>0?`<div class="kv"><span class="k">Ödenmemiş vergi</span><b class="kotu">${tlYaz(d.vergi_borc)}</b></div>`:""}
       <div class="kv"><span class="k">Cüzdan</span><b>${tlYaz(d.cuzdan)}</b></div>
-      <p class="kucuk">Kira ve mülk vergisi satın almadan 7 gün sonra, sonra her 7 günde bir işler; oyunu açtığında bekleyenler hesaplanır. Vergi, mülkün bulunduğu ilin belediyesine gider. Oranı TBMM kanunla, o ilin belediye başkanı çarpanla belirler. Parası yetmeyen oyuncunun vergisi borç olarak kalır ve mülk satılırken satıcıdan kesilir.</p></div>
+      <p class="kucuk">Kira 7 günde bir tahsil edilir. Emlak vergisi yıllık hesaplanır, Mayıs ve Kasım taksitlerinde ödenir. Yeni alıcının emlak vergisi mükellefiyeti takip eden yıl başlar. Parası yetmeyenin mevcut vergi borcu korunur ve satış sırasında satıcıdan tahsil edilir. Vergi bedeli il rayici üzerinden yaklaşık hesaplanır ve belediyeye gider.</p></div>
     <div class="kart"><h2>Yeni mülk satın al</h2>
       <p class="alt">Her ilde nüfusuna göre sınırlı sayıda yeni mülk var. Fiyat ve kira ilin büyüklüğüne ve gelişmişliğine göre değişir. Yaşamadığın bir ilden de alabilirsin.</p>
       <div id="mulkStokAlan">${mulkStokHtml()}</div></div>
     <div class="kart"><h2>Mülklerim (${fmt(d.adet)})</h2>
       ${d.mulkler.length ? d.mulkler.map(m=>`<div class="olay"><b>${e(MULK_AD[m.tip]||m.tip)} #${m.id} · ${e(m.il)}</b>
         <div class="kv"><span>Haftalık kira</span><b>${tlYaz(m.haftalik)}</b></div>
-        ${m.vergi!=null?`<div class="kv"><span>Haftalık mülk vergisi</span><b>${tlYaz(m.vergi)}</b></div>`:""}
+        ${m.vergi!=null?`<div class="kv"><span>Yıllık emlak vergisi</span><b>${tlYaz(m.vergi)}</b></div>`:""}
         ${m.vergi_borc>0?`<div class="kv"><span>Ödenmemiş vergi</span><b class="kotu">${tlYaz(m.vergi_borc)}</b></div>`:""}
         ${m.deger!=null?`<div class="kv"><span>Bugünkü değeri</span><b>${tlYaz(m.deger)}</b></div>`:""}
         <div class="kv"><span>Toplam kazanç</span><b>${tlYaz(m.toplam_kira)}</b></div>
