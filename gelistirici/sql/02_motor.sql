@@ -91,19 +91,28 @@ $$;
 -- SONUÇLANDIRMA
 -- ---------------------------------------------------------------------
 
--- Vekil ön seçimi: her il + parti için oy sırasına göre liste
-create or replace function oyun._sonuc_mv_on(s oyun.secimler) returns jsonb language plpgsql as $$
+-- Vekil ön seçimi: her il + parti için oy sırasına göre liste.
+-- Sıfır oy alan aday adayları da elenmez; sıralamanın sonunda asıl aday olur.
+create or replace function oyun._sonuc_mv_on(s oyun.secimler) returns jsonb language plpgsql as $
 begin
   perform oyun.aday_oylarini_say(s.id);
-  update oyun.adaylar a set sira = x.rn
-  from (select id, row_number() over (partition by il_id, parti_id order by oy desc, basvuru_at, id) rn
-        from oyun.adaylar where secim_id = s.id) x
+  with siralama as (
+    select a.id,
+      row_number() over (
+        partition by a.il_id, a.parti_id
+        order by coalesce(a.oy, 0) desc, a.basvuru_at asc nulls last, a.id asc
+      )::integer as liste_sirasi
+    from oyun.adaylar a
+    where a.secim_id = s.id -- oy > 0 filtresi yok: bütün aday adayları dahil
+  )
+  update oyun.adaylar a set sira = x.liste_sirasi
+  from siralama x
   where a.id = x.id;
   return jsonb_build_object(
     'katilim', (select count(*) from oyun.oylar where secim_id = s.id),
     'aday',    (select count(*) from oyun.adaylar where secim_id = s.id),
     'liste',   (select count(distinct (il_id, parti_id)) from oyun.adaylar where secim_id = s.id));
-end $$;
+end $;
 
 -- Parti içi tek kazananlı ön seçimler (bel_on: il+parti başına, cb_on: parti başına)
 create or replace function oyun._sonuc_tek_kazanan_on(s oyun.secimler, p_hedef_tur text) returns jsonb language plpgsql as $$
