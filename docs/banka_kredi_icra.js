@@ -170,3 +170,93 @@ async function bkIcraItiraz(id){await bkIslem("oyb_icra_itiraz",{p_icra:id,p_ger
 async function bkIcraOy(id,onay){await bkIslem("oyb_icra_karar",{p_icra:id,p_karar:onay?"kabul":"ret",p_gerekce:document.getElementById("bk_karar_"+id)?.value},"Mahkeme oyun kaydedildi.",adliyeEkrani);}
 async function bkHacizBaslat(id,tur,varlik){if(!await onayla("İcra satışına çıkar","Bu varlık mahkeme kararı kapsamında satışa çıkarılacak. Devam edilsin mi?","Satışa çıkar"))return;await bkIslem("oyb_icra_haciz_sec",{p_icra:id,p_tur:tur,p_varlik:varlik},"İcra satış ilanı açıldı.",adliyeEkrani);}
 async function bkHacizAl(id){if(!await onayla("İcra satışı","Bu oyun içi varlığı belirtilen sabit fiyattan satın alacaksın. Ödeme borca mahsup edilecek, fazlası borçluya kalacak. Onaylıyor musun?","Satın al"))return;await bkIslem("oyb_icra_haciz_al",{p_haciz:id},"İcra satışı tamamlandı.",adliyeEkrani);}
+
+
+/* GITHUB PAGES: tek dosyali surum icin uyumluluk baglantilari.
+   Kaynak derlendikten sonra da JS modulu yeniden baglanabilir. */
+(function bkSayfaBaglantilari(){
+ if(window.__BK_ICRA_BAGLANDI)return;
+ window.__BK_ICRA_BAGLANDI=true;
+ const eskiDetay=window.bankaDetayEkrani;
+ if(typeof eskiDetay==="function" && !eskiDetay.toString().includes("oyb_urunler")){
+  window.bankaDetayEkrani=async function(id){
+   await eskiDetay(id);
+   try{
+    const r=await API.rpc("oyb_urunler",{p_banka:id});
+    window.BK_BANKA_URUN=window.BK_BANKA_URUN||{};
+    window.BK_BANKA_URUN[id]=r.urunler||[];
+    const sel=document.getElementById("oyb_ksaat_"+id);
+    if(sel){
+     sel.innerHTML=(r.urunler||[]).filter(x=>x.aktif).map(x=>'<option value="'+Number(x.saat)+'">'+bkUrunAdi(x.saat)+' · '+Number(x.taksit)+' taksit · ek faiz %'+fmt(x.ek_faiz,2)+'</option>').join("");
+     if(!sel.options.length)sel.insertAdjacentHTML("beforeend",'<option value="">Banka kredi başvurularını kapattı</option>');
+     const kart=sel.closest(".kart");
+     if(kart&&!kart.querySelector(".bk-sozlesme"))kart.insertAdjacentHTML("beforeend",'<button class="btn ikinci bk-sozlesme" onclick="bankaKrediDosyaEkrani('+Number(id)+')">Ödeme takvimleri, kredi dosyaları ve bilgi izinleri</button>');
+    }
+   }catch(err){toast(hataCevir(err.message),true);}
+  };
+ }
+ const eskiYonetim=window.oybYonetim;
+ if(typeof eskiYonetim==="function"&&!eskiYonetim.toString().includes("bankaKrediDosyaEkrani")){
+  window.oybYonetim=async function(id){
+   await eskiYonetim(id);
+   const root=document.querySelector("#icerik")||document.querySelector("main")||document;
+   if(root.querySelector(".bk-kredi-yonetimi"))return;
+   const kart=[...root.querySelectorAll(".kart")].find(x=>x.textContent?.includes("Faiz oranlarını yönet"));
+   if(kart)kart.insertAdjacentHTML("beforeend",'<button class="btn altin bk-kredi-yonetimi" onclick="bankaKrediDosyaEkrani('+Number(id)+')">Kredi paketlerini, belgeleri ve icrayı yönet</button>');
+  };
+ }
+ const eskiPortfoy=window.bankaPortfoyEkrani;
+ if(typeof eskiPortfoy==="function"&&!eskiPortfoy.toString().includes("bankaKrediDosyaEkrani")){
+  window.bankaPortfoyEkrani=async function(){
+   await eskiPortfoy();
+   const root=document.querySelector("#icerik")||document.querySelector("main")||document;
+   const kart=[...root.querySelectorAll(".kart")].find(x=>x.textContent?.includes("Kredilerim"));
+   if(kart&&!kart.querySelector(".bk-kredi-portfoy"))kart.insertAdjacentHTML("beforeend",'<button class="btn altin bk-kredi-portfoy" onclick="bankaKrediDosyaEkrani()">Kredi taksitlerim ve bilgi izinlerim</button>');
+  };
+ }
+ const eskiAdliye=window.adliyeHtml;
+ if(typeof eskiAdliye==="function"&&!eskiAdliye.toString().includes("icraAdliyeKarti")){
+  window.adliyeHtml=async function(){return (await eskiAdliye())+(await icraAdliyeKarti());};
+ }
+ const eskiRisk=window.oybKrediRiskGoster;
+ if(typeof eskiRisk==="function"&&!eskiRisk.toString().includes("BK_BANKA_URUN")){
+  window.oybKrediRiskGoster=async function(id){
+   const sel=document.getElementById("oyb_ksaat_"+id);
+   const saat=Number(sel?.value);
+   if(!saat)return;
+   await eskiRisk(id);
+   const urun=(window.BK_BANKA_URUN?.[id]||[]).find(x=>Number(x.saat)===saat);
+   if(!urun)return;
+   const el=document.getElementById("oyb_kredi_risk_"+id);
+   try{
+    const offer=await API.rpc("kredi_uygunluk",{p_banka:id,p_saat:saat});
+    const toplamFaiz=Math.min(19.5,Number(offer.oran)+Number(urun.ek_faiz));
+    const tutar=Number(document.getElementById("oyb_ktutar_"+id)?.value||0);
+    const toplam=Math.round(tutar*(1+toplamFaiz/100));
+    const taksit=Math.ceil(toplam/Math.max(1,Number(urun.taksit)));
+    if(el)el.insertAdjacentHTML("beforeend",'<div class="kart"><div class="kv"><span>Kesin vade faizi (ek faiz dahil)</span><b>%'+fmt(toplamFaiz,2)+'</b></div><div class="kv"><span>Taksit sayısı</span><b>'+Number(urun.taksit)+'</b></div><div class="kv"><span>Toplam geri ödeme</span><b>'+bkTL(toplam)+'</b></div><div class="kv"><span>Yaklaşık taksit</span><b>'+bkTL(taksit)+'</b></div></div>');
+   }catch(err){if(el)el.textContent=hataCevir(err.message);}
+  };
+ }
+ const eskiBasvur=window.oybKrediBasvur;
+ if(typeof eskiBasvur==="function"&&!eskiBasvur.toString().includes("BK_BANKA_URUN")){
+  window.oybKrediBasvur=async function(id){
+   const tutar=Number(document.getElementById("oyb_ktutar_"+id)?.value);
+   const saat=Number(document.getElementById("oyb_ksaat_"+id)?.value);
+   if(!Number.isSafeInteger(tutar)||tutar<1000||tutar>500000||!saat){toast("Tutar veya kredi vadesi geçersiz.",true);return;}
+   try{
+    const teklif=await API.rpc("kredi_uygunluk",{p_banka:id,p_saat:saat});
+    if(tutar>Number(teklif.azami_kredi)||!teklif.uygun){toast("Kredi limitin "+bkTL(teklif.azami_kredi)+". "+(teklif.neden||""),true);return;}
+    const urun=(window.BK_BANKA_URUN?.[id]||[]).find(x=>Number(x.saat)===saat&&x.aktif);
+    if(!urun){toast("Banka bu vade için kredi paketi sunmuyor.",true);return;}
+    const oran=Math.min(19.5,Number(teklif.oran)+Number(urun.ek_faiz));
+    const toplam=Math.round(tutar*(1+oran/100));
+    const sure=bkUrunAdi(saat);
+    if(!await onayla("Özel banka kredisi",bkTL(tutar)+" · "+sure+" · "+urun.taksit+" taksit · Faiz %"+fmt(oran,2)+" · Toplam geri ödeme "+bkTL(toplam)+". Başvuruyu bankaya gönder?","Başvur"))return;
+    const r=await API.rpc("oyb_kredi_basvur",{p_banka:id,p_tutar:tutar,p_saat:saat});
+    toast("Kredi talebin bankaya iletildi. Toplam geri ödeme "+bkTL(r.toplam)+".");
+    if(typeof bankaDetayEkrani==="function")await bankaDetayEkrani(id);
+   }catch(err){toast(hataCevir(err.message),true);}
+  };
+ }
+})();
