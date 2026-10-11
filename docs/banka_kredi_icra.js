@@ -236,7 +236,22 @@ async function bkHacizAl(id){if(!await onayla("İcra satışı","Bu oyun içi va
     const tutar=Number(document.getElementById("oyb_ktutar_"+id)?.value||0);
     const toplam=Math.round(tutar*(1+toplamFaiz/100));
     const taksit=Math.ceil(toplam/Math.max(1,Number(urun.taksit)));
-    if(el)el.insertAdjacentHTML("beforeend",'<div class="kart"><div class="kv"><span>Kesin vade faizi (ek faiz dahil)</span><b>%'+fmt(toplamFaiz,2)+'</b></div><div class="kv"><span>Taksit sayısı</span><b>'+Number(urun.taksit)+'</b></div><div class="kv"><span>Toplam geri ödeme</span><b>'+bkTL(toplam)+'</b></div><div class="kv"><span>Yaklaşık taksit</span><b>'+bkTL(taksit)+'</b></div></div>');
+    if(el){
+     let oranG=false,toplamG=false;
+     for(const row of el.querySelectorAll(".kv")){
+      const key=row.querySelector("span")?.textContent||"";
+      const val=row.querySelector("b");
+      if(!val)continue;
+      if(key==="Bu kredi için vade faizi"){val.textContent="%"+fmt(toplamFaiz,2);oranG=true;}
+      else if(key==="Toplam geri ödeme"){val.textContent=bkTL(toplam);toplamG=true;}
+      else if(key==="Faiz maliyeti")val.textContent=bkTL(toplam-tutar);
+     }
+     el.insertAdjacentHTML("beforeend",'<div class="kart">'+
+       (!oranG?'<div class="kv"><span>Vade faizi</span><b>%'+fmt(toplamFaiz,2)+'</b></div>':'')+
+       (!toplamG?'<div class="kv"><span>Toplam ödeme</span><b>'+bkTL(toplam)+'</b></div>':'')+
+       '<div class="kv"><span>Taksit sayısı</span><b>'+Number(urun.taksit)+'</b></div>'+
+       '<div class="kv"><span>Yaklaşık taksit</span><b>'+bkTL(taksit)+'</b></div></div>');
+    }
    }catch(err){if(el)el.textContent=hataCevir(err.message);}
   };
  }
