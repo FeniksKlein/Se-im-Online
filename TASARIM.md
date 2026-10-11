@@ -727,3 +727,12 @@ Ekonomi, siyaset oyununun yakıtı olsun: oyuncu parayı şirketiyle kazanır, p
 1. **Modül 84 (yapıldı):** rekabetçi şirketler, kamu ihaleleri, sektör politikası, ruhsat harcı.
 2. **Modül 85 (bu güncelleme):** borsa, Rekabet Kurumu, şirket bağışları, danışman ve otopilot, yerel piyasa fiyatlarının geçime etkisi, piyasa raporu, paravan şirket kuralı.
 3. **Sonraki adaylar:** reklam ve anket ajansı (partiler kampanya hizmetini oyuncu şirketlerinden alır), şube ağı (bir şirketin birden çok ilde şubesi), sendika ve toplu sözleşme, ihracat (Dışişleri ve Ticaret ile), sigorta şirketi.
+
+## 14. Reklam ve anket ajansları (2026-10-11, modül 86)
+- Yeni şirket türü **ajans** (sermaye en az 150.000 ₺, bir oyuncu bir ajansın çoğunluğuna sahip olabilir). Sahibi fiyat (ucuz/orta/premium) ve kalite (0-3) seçer.
+- **Reklam:** parti (genel başkan, parti kasasından) ya da oyuncu (kendi cebinden) satın alır. Hedef ildeki (ya da tüm Türkiye'deki) oyuncuların Gündem'inin başında "Sponsorlu" kart olarak görünür; süre 12 + 8 × kalite saat, kalite 2+ ise başlarken bildirim. Bir ilde aynı anda en fazla 2, Türkiye genelinde 1 reklam. Gösterimler tekil sayılır.
+- **Anket:** 24 saat boyunca hedefteki oyunculara "Bugün seçim olsa hangi partiye oy verirdin?" sorusu (partiler + kararsızım). Cevaplayana ajans kasasından katılım ödülü (300 + 250 × kalite ₺, havuz ücretin %40'ı; 1 günden yeni hesaplara ödül yok). Sonuç (oranlar, kararsızlar, hata payı ±98/√n) yalnız sipariş verene ve parti genel başkanına gelir; isterse yayımlar (en az 3 katılımcı). **Seçim yasağı:** oy günü ve öncesindeki 24 saatte yayımlanamaz. Aynı hedefte aynı anda tek anket.
+- **Fiyat:** reklam 15.000 ₺, anket 20.000 ₺ × il büyüklüğü (küçük 1, orta 2, büyük 3, Türkiye 6) × fiyat katsayısı × fiyat düzeyi.
+- **Kapasite:** aynı anda 1 + kalite + her 300.000 ₺ sermaye için 1 iş (en fazla 6).
+- **Haftalık hesap:** sipariş geliri − katılım ödülleri − gider (sermayenin %3'ü + kalite × %1,2 + personel) − %20 kurumlar vergisi; kâr ortaklara. Kasa biterse iflas.
+- **Marka:** her biten iş ve yayımlanan anket büyütür; müşteri 1-5 puanı (3'ün üstü artırır, altı düşürür); haftalık %5 erir.

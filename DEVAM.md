@@ -206,3 +206,11 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - `piyasa_raporu` (Ekonomi merkezi), `sirket_vitrini` artık il, halka açıklık ve kurumlar vergisini de gösterir. `oyun.pazar_tick` rekabet ve endeksi de çalıştırır.
 - Testler: `test/ekonomi_borsa.py` (hepsi.sh), `test/ekonomi_borsa_arayuz.js` (veri: `test/veri/ekonomi_borsa_ornek.json`).
 - **Canlı durum:** canlıya uygulama denemesi iptal edildi; canlıda değişiklik yok. `migrations/20261011_ekonomi_borsa_rekabet.sql` Ercan tarafından SQL Editor'de bir kez çalıştırılmalı (84'ten sonra; 84 canlıda). Arayüz `docs/` ve `www/`'e yamalandı; migration çalışana kadar yeni ekranlar hata gösterir, danışman kartı sessizce gizlenir.
+
+## 2026-10-11 · 2026.10.11-8 Reklam ve anket ajansları
+- `86_reklam_anket_ajansi.sql` + `www/ajans.js`. Ayrıntı: `TASARIM.md` 14. bölüm.
+- Tablolar `ajans`, `ajans_is`, `ajans_gosterim`, `ajans_cevap`; RPC'ler `ajans_kur/ayarla/yonetim/liste/siparis/gundem/anket_cevap/anket_yayimla/puanla`; `oyun.ajans_hesapla` (sirket_hesapla'ya ajans dalı), `oyun.ajans_tick` (pazar_tick içinde).
+- Gündem'e sponsorlu kart ve anket kartı `gundemEkrani` sarmalanarak eklenir (EKRAN.gundem güncellenir).
+- Testler: `test/ajans.py` (hepsi.sh), `test/ajans_arayuz.js` (veri `test/veri/ajans_ornek.json`).
+- Bu arada başka bir oturum `sirket_hisse_satis_pazari` ve `belediye_sirket_hizmet_ihaleleri` migration'larını ekledi (yalnız migrations/ ve www/; gelistirici/ kaynağına alınmadı). Modül 85'teki borsa ile hisse ilan pazarı aynı işi farklı yoldan yapıyor; ileride tek ekranda birleştirilmeli.
+- **Canlı durum:** 85 ve 86 canlıda değil. Sırayla çalıştırılacak: `migrations/20261011_ekonomi_borsa_rekabet.sql`, sonra `migrations/20261011_reklam_anket_ajansi.sql`.

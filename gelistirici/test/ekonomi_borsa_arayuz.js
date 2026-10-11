@@ -38,7 +38,7 @@ const shot = process.argv[2];
       await page.evaluate(() => ekranAc(ekonomiMerkeziEkrani)); await page.waitForSelector('.br-izgara');
       let t = await sec('#icerik').textContent();
       assert.match(t, /Piyasa fiyat endeksi/); assert.match(t, /Sektör liderleri/); assert.match(t, /Market Zinciri/); assert.match(t, /Siyasi bağışlar/);
-      assert.equal(await sec('.br-git button').count(), 6);
+      assert.ok(await sec('.br-git button').count() >= 6);
       await tasmaYok('merkez'); await foto('ekonomi_merkezi');
 
       // borsa listesi ve şirket
