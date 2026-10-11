@@ -176,7 +176,8 @@ async function adliyeHtml(){
   +'<div class="bolum-bas"><h2>Karara bağlanan davalar</h2></div>'
   +(bitmis.length?bitmis.map(x=>adlDavaKart(x)).join(""):'<div class="kart"><p class="alt">Henüz karar verilmiş dava yok.</p></div>')
   +(d.aflar.length?'<div class="bolum-bas"><h2>Af kararları</h2></div><div class="kart">'+d.aflar.slice(0,8).map(a=>'<div class="liste-satir"><div class="orta"><b>'+e(a.tur==="genel"?"Genel af":"Bireysel af #"+a.dava_id)+'</b><div class="kucuk">'+e(a.cb)+' · '+e(a.gerekce)+' · '+adlTarih(a.zaman)+' · '+a.affedilen+' karar</div></div></div>').join("")+'</div>':'')
-  +(d.atamalar.length?'<div class="bolum-bas"><h2>Yargıç atama ve görevden almalar</h2></div><div class="kart">'+d.atamalar.slice(0,8).map(a=>'<p class="alt">'+e(a.yapan)+' · '+e(a.yeni||"Görevden alma")+' · '+e(a.gerekce||"")+' · '+adlTarih(a.zaman)+'</p>').join("")+'</div>':'');
+  +(d.atamalar.length?'<div class="bolum-bas"><h2>Yargıç atama ve görevden almalar</h2></div><div class="kart">'+d.atamalar.slice(0,8).map(a=>'<p class="alt">'+e(a.yapan)+' · '+e(a.yeni||"Görevden alma")+' · '+e(a.gerekce||"")+' · '+adlTarih(a.zaman)+'</p>').join("")+'</div>':'')
+  +(await icraAdliyeKarti());
 }
 function adlDavaKart(d){
  const ad=d.davali||d.davali_parti||"—";
