@@ -1,10 +1,8 @@
 // Şirket halka arzı ve yatırım hesaplayıcısı (sunucu: sql/62_halka_arz.sql)
-const HA_ORAN={tarim:.12,sanayi:.15,teknoloji:.20,ticaret:.14,insaat:.18,medya:.16,banka:.08};
 const HA_SEKTOR={tarim:"Tarım",sanayi:"Sanayi",teknoloji:"Teknoloji",ticaret:"Ticaret",insaat:"İnşaat",medya:"Medya",banka:"Banka"};
-let _ha=null;
+let _ha=null, _haIstek=0;
 const haTL=x=>fmt(Math.round(Number(x)||0))+" ₺";
 const haYuzde=x=>"%"+(Math.round((Number(x)||0)*100)/100).toLocaleString("tr-TR");
-function haOrtNet(sermaye,sektor,asgari){return Math.round(sermaye*(HA_ORAN[sektor]||.08)-sermaye*.0525-asgari)}
 function haKalan(bit){const ms=new Date(bit)-Date.now();if(ms<=0)return"süre doldu, sonuçlanıyor";const s=Math.floor(ms/36e5),d=Math.floor(ms%36e5/6e4);return(s?s+" sa ":"")+d+" dk kaldı"}
 function haCubuk(a){const o=Math.min(100,Number(a.toplanan)/Number(a.hedef)*100),as=Math.min(100,Number(a.asgari)/Number(a.hedef)*100);
  return `<div style="position:relative;height:12px;border-radius:6px;background:var(--panel2);overflow:hidden;margin:8px 0 4px" role="progressbar" aria-valuenow="${Math.round(o)}" aria-valuemin="0" aria-valuemax="100">
@@ -37,7 +35,7 @@ async function halkaArzEkrani(id){
   </div>`:""}
   ${a?haAcikKart(a,true):""}
   <div class="kart"><h2>Yatırım hesaplayıcı</h2>
-   <p class="alt">Şirkete yeni sermaye girerse haftalık ortalama kâr ve ortakların payı nasıl değişir? Haftalık kâr sermayeyle büyür; gider tarafındaki asgari ücret sabit kaldığı için büyüme oransal olandan da hızlıdır.</p>
+   <p class="alt">Şirkete yeni sermaye girerse haftalık ortalama kâr ve ortakların payı nasıl değişir? Sermaye artışı şirketin piyasa kapasitesini ve giderlerini birlikte etkiler; tahmin mevcut rekabet, fiyat ve talep şartlarına göre yapılır.</p>
    <div class="alan"><label>Gelecek yatırım (₺)</label><input id="ha_tutar" type="number" min="0" step="1000" value="${varsayilan}" oninput="haHesapCiz()"></div>
    <div class="alan"><label>Şirket değeri, yatırım öncesi (₺)</label><input id="ha_deger" type="number" min="${d.deger_en_az}" max="${d.deger_en_cok}" step="1000" value="${Math.round(d.deger_onerilen)}" oninput="haHesapCiz()">
     <p class="kucuk">${haTL(d.deger_en_az)} – ${haTL(d.deger_en_cok)} arası. Önerilen: ${haTL(d.deger_onerilen)} (yaklaşık 26 haftalık kâr). Değer yükseldikçe aynı para için daha az pay verirsin.</p></div>
@@ -66,14 +64,21 @@ async function haKarTercihDegistir(id,kasada){
 }
 function haDurumAd(d){return{acik:"Talep topluyor",tamam:"Tamamlandı",basarisiz:"Gerçekleşmedi",iptal:"İptal edildi"}[d]||d}
 
-function haHesapCiz(){
+async function haHesapCiz(){
  const d=_ha,el=document.getElementById("ha_sonuc");if(!d||!el)return;
  const tutar=Math.max(0,Math.round(Number(document.getElementById("ha_tutar").value)||0));
  let deger=Math.round(Number(document.getElementById("ha_deger").value)||Number(d.deger_onerilen));
  const degerUyari=deger<Number(d.deger_en_az)||deger>Number(d.deger_en_cok);
  deger=Math.min(Number(d.deger_en_cok),Math.max(Number(d.deger_en_az),deger));
- const sermaye=Number(d.sermaye),asg=Number(d.asgari_ucret),post=deger+tutar;
- const once=haOrtNet(sermaye,d.sektor,asg),sonra=haOrtNet(sermaye+tutar,d.sektor,asg);
+ const sermaye=Number(d.sermaye),post=deger+tutar;
+ const istek=++_haIstek;
+ el.innerHTML='<div class="kart"><p class="alt">Güncel pazar verileriyle hesaplanıyor...</p></div>';
+ const baslat=document.getElementById("ha_baslat");if(baslat)baslat.disabled=true;
+ let hesap;
+ try{hesap=await API.rpc("halka_arz_hesapla",{p_sirket:d.id,p_tutar:tutar,p_deger:deger});}
+ catch(err){if(istek===_haIstek)el.innerHTML='<div class="kart"><p class="alt">'+e(hataCevir(err.message))+'</p></div>';return;}
+ if(istek!==_haIstek||_ha!==d||document.getElementById("ha_sonuc")!==el)return;
+ const once=Number(hesap.ort_net_simdi),sonra=Number(hesap.ort_net_sonra);
  const yatPay=post?tutar/post*100:0,benimOnce=Number(d.payim),benimSonra=benimOnce*deger/post;
  const yatHafta=Math.max(0,sonra)*yatPay/100,geri=yatHafta>0?Math.ceil(tutar/yatHafta):null;
  const sinir=sermaye+tutar>1e8?"Sermaye 100.000.000 ₺'yi aşar.":yatPay>49?"Halka arzda en fazla %49 pay satılabilir; tutarı düşür ya da şirket değerini artır.":"";
