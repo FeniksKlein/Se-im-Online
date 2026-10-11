@@ -1268,8 +1268,7 @@ async function cikisYap(){ await PUSH.cikis(); await API.cikis(); D.durum = null
 // Tüm aktif seçimleri kayan haber bandının hemen altında gösterir.
 function gundemMeclisSecimineGit(id){
   D._meclisSecimOdak = Number(id);
-  D.devletSekme = "meclis";
-  sekmeAc("devlet");
+  meclisSekmeAc("baskanlik");
 }
 function gundemAktifSecimlerHtml(takvim, divan, referandumlar, dernekSecimleri, profil){
   const suAn = simdi(), liste = [];
@@ -2486,10 +2485,17 @@ function mvFiltre(){
 async function meclisOylamalarHtml(){
   const siyasi=await API.rpc("siyasi_sistem");
   D._siyasi=siyasi;
-  return `<div class="kart"><h2>Meclis oylamaları ve denetim</h2><p class="alt">Güvenoyu, gensoru, erken seçim ve Meclisin denetim görevleri burada.</p>
+  let yargiSecimleri="";
+  try {
+    const m=await API.rpc("adliye_mahkeme");
+    if (m && typeof adlMahkemeHtml === "function")
+      yargiSecimleri='<div class="bolum-bas"><h2>Meclisin Yüksek Mahkeme seçimleri</h2></div>'+adlMahkemeHtml(m);
+  } catch (_) { /* Yargı sistemi kurulmamışsa diğer Meclis oylamaları çalışır. */ }
+  return `<div class="kart"><h2>Meclis oylamaları ve denetim</h2><p class="alt">Güvenoyu, gensoru, erken seçim, yüksek mahkeme üye seçimi ve Meclisin denetim görevleri burada.</p>
     <div class="satir"><button class="btn yarim altin" onclick="ekranAc(maasEkrani)">Maaş oylamaları</button><button class="btn yarim ikinci" onclick="ekranAc(bakanSoruEkrani)">Bakanlara sorular</button></div>
     <button class="btn ikinci" style="margin-top:8px" onclick="ekranAc(()=>sohbetEkrani('meclis'))">TBMM Genel Kurulu</button></div>
-    ${siyasiSistemHtml(siyasi)}`;
+    ${siyasiSistemHtml(siyasi)}
+    ${yargiSecimleri}`;
 }
 async function meclisYasamaHtml(){
   const kl=await API.rpc("kanunlar",{p_limit:60});
@@ -6899,7 +6905,7 @@ function adlEtiket(d,ek){if(d.durum!=="karar")return "Yargılama sürüyor";if(d
 function adlFormBaslik(m,baslik){m.querySelector(".modal").insertAdjacentHTML("afterbegin",'<h3 style="font-size:20px;margin:0 0 12px">'+e(baslik)+'</h3>');}
 function adlAlan(ad,id,tur="text",placeholder=""){return '<div class="alan"><label>'+e(ad)+'</label>'+ (tur==="textarea"?'<textarea id="'+id+'" rows="4" placeholder="'+e(placeholder)+'"></textarea>':'<input id="'+id+'" type="'+tur+'" placeholder="'+e(placeholder)+'">')+'</div>';}
 async function adlIslem(fn,success,geri,modalKapatilsin=true){
- try{await fn();if(modalKapatilsin)modalKapat();toast(success);if(geri)await adliyeDosya(geri);else{if(D.sekme==="adliye")await adliyeEkrani();else{D.devletSekme="adliye";await devletEkrani();}}}
+ try{await fn();if(modalKapatilsin)modalKapat();toast(success);if(geri)await adliyeDosya(geri);else{if(D.sekme==="meclis")await meclisEkrani();else if(D.sekme==="adliye")await adliyeEkrani();else{D.devletSekme="adliye";await devletEkrani();}}}
  catch(err){toast(hataCevir(err.message),true);}
 }
 
@@ -7291,7 +7297,7 @@ function adlMeclisOyModal(sira){
  const m=modal('<p class="alt">Yargıç adayı partisiz olmalı ve başka makamı olmamalıdır. Partilerin yargıç önerilerine aşağıdaki "Yüksek Yargıç aday önerileri" bölümünden bakabilirsin.</p>'+adlAlan("Adayın kullanıcı adı","adlMecAday")+'<button class="btn altin" id="adlMecGonder">Oyumu ver</button>');
  adlFormBaslik(m,"Meclis · Yüksek Mahkeme "+sira+". üye seçimi");
  m.querySelector("#adlMecGonder").onclick=async()=>{
-  try{const r=await API.rpc("mahkeme_meclis_oy",{p_sira:sira,p_kad:m.querySelector("#adlMecAday").value});modalKapat();toast(r.secildi?"Aday salt çoğunluğa ulaştı ve göreve başladı.":"Oyun kaydedildi ("+r.oy+"/"+r.gerekli+").");await adliyeEkrani();}
+  try{const r=await API.rpc("mahkeme_meclis_oy",{p_sira:sira,p_kad:m.querySelector("#adlMecAday").value});modalKapat();toast(r.secildi?"Aday salt çoğunluğa ulaştı ve göreve başladı.":"Oyun kaydedildi ("+r.oy+"/"+r.gerekli+").");if(D.sekme==="meclis")await meclisEkrani();else await adliyeEkrani();}
   catch(err){toast(hataCevir(err.message),true);}
  };
 }
