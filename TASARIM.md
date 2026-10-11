@@ -644,3 +644,27 @@ Karne oyuncu kartında, parti sayfasında, il sayfasında ve belediye ekranında
 - **Talep:** başka oyuncular en az 1.000 ₺ talep verir; para arz bitene kadar emanette tutulur, arz sürerken geri alınabilir. Başlatan kendi arzına talep veremez.
 - **Sonuç:** hedef dolunca hemen, değilse süre bitince. Asgariye ulaşıldıysa toplanan para sermayeye ve kasaya girer, eski ortakların payı değer/(değer + toplanan) oranında seyrelir, yatırımcılar tutar/(değer + toplanan) oranında ortak olur; şirket "halka açık" olur. Ulaşılamazsa ya da iptal edilirse herkese iade. Toplanan para sermaye olduğu için kâr payı olarak dağıtılamaz; ortaklar haftalık kârdan paylarına göre alır.
 - Herkes açık arzları Şirketler › Halka arzlar ekranında görür; Gündem'e haber düşer, yatırımcılara ve ortaklara bildirim gider.
+
+
+## 12. Rekabetçi şirketler, kamu ihaleleri ve sektör politikası (2026-10-11, modül 84)
+
+### Rekabetçi şirketler
+- Beş tür: **Özel Okul** (Millî Eğitim), **Özel Hastane** (Sağlık), **Market Zinciri** (Ticaret), **Ulaşım Firması** (Ulaştırma), **Enerji Santrali** (Sanayi). Asgari sermaye 200-300 bin ₺.
+- Şirket bir ilde faaliyet gösterir. O ilin haftalık pazarı = sektör tabanı × il ağırlığı (vekil sayısı ve gelişmişlik) × ekonomi (büyüme, memnuniyet) × sektör politikası × kriz çarpanı.
+- Pazar, aynı ildeki aynı türdeki oyuncu şirketleri arasında **çekiciliğe** göre paylaşılır: çekicilik = (1 + 0,35 × kalite + marka/100) / fiyat^esneklik. Kamu hizmeti (ilgili bakanlığın kasası) müşterinin bir kısmını tutar.
+- Sahibin kararları: **fiyat** (ucuz ×0,8 / orta / premium ×1,3), **kalite bütçesi** (0-3, sermayenin %0-3,6'sı/hafta), enerjide **kaynak** (kömür ucuz ama ilin memnuniyetini düşürür, doğalgaz dolar kuruna bağlı, güneş-rüzgâr pahalı ama marka ve gelişim getirir). Market ve enerjide fiyat çok önemlidir, okul ve hastanede kalite.
+- Gelir sermayenin kapasitesiyle sınırlıdır (haftada sermayenin %25-30'u). Giderler: sabit gider, personel (asgari ücret × ölçek), kalite, yakıt.
+- Belediye **ruhsat harcı** (%0-8) il kasasına, **kurumlar vergisi** (%20, yalnız kârdan) hazineye gider. Her faaliyet haftası ilin gelişmişliğine katkı yapar.
+- Örnek denge: tek başına orta ilde haftalık %7-10, iki rakipte ~%1, dört rakipte zarar. Küçük ilde büyük sermaye giderini karşılayamaz.
+- Ekranda: 81 ilin pazar haritası (pazar, rakip sayısı, harç), haftalık tahmin, 12'li fiyat × kalite senaryo tablosu, rakiplerin fiyat/kalite bilgisi, haftalık raporlar. Ayarlar 10 dakikada bir, il taşıma 7 günde bir (bedel sermayenin %10'u, marka %60 erir).
+- Kasası sıfırlanan şirket **iflas eder**; kasa sermayenin %25'inin altına inince ortaklara uyarı gider.
+
+### Kamu ihaleleri
+- **Belediye başkanı** il kasasından: park, kreş, yol, metro (metro en az 1 teslim edilmiş iş ister). **Bakanlar** (boş bakanlıkta Cumhurbaşkanı) bakanlık kasasından, istedikleri ile: otoyol, şehir hastanesi, okul, OSB, sulama, emniyet, adliye, meslek merkezi, lojistik merkezi, askerî tesis, kongre merkezi, vergi dairesi.
+- Bütçe ilan anında kasadan ayrılır. Teklif süresi 12/24/48 saat; aynı anda en fazla 3 ihale.
+- Yalnız **inşaat şirketleri** teklif verir (kapalı zarf; teklif yaklaşık maliyetin %40-100'ü). En düşük geçerli teklif kazanır; artan para kasaya döner. İhaleyi açan, ortağı olduğu şirkete ihale veremez.
+- Kazanan **yapım yöntemini** seçer: standart (maliyet %70), kaliteli (%85, etki ×1,35, deneyim puanı), tasarruflu (%55, etki ×0,6). Tasarruflu iş teslimde %35 (inşaatta sıkı denetim varsa %60) ihtimalle yakalanır: hakedişin yarısı ödenmez, %20 ceza, 14 gün ihale yasağı, gazete manşeti.
+- Sonuç ve kazanan şirketin en büyük ortağı Resmî Gazete'de yayımlanır.
+
+### Sektör politikası
+- İlgili bakan 24 saatte bir: **teşvik** (7 gün, sektör pazarı ×1,15, bakanlık kasasından 2 milyar ₺) ya da **sıkı denetim** (7 gün, ×0,92; kalitesiz hizmete ve kömüre gelirin %12'si ceza). Eski türlere de işler: Tarım → tarım, Sanayi → sanayi ve teknoloji, Ticaret → ticaret, Ulaştırma → inşaat.

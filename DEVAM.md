@@ -182,3 +182,14 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Süre: `karar_son` = savunma + 72 sa; dolunca `dusme` (hiç üye yoksa süre işlemez). İstinaf 24 sa, kura jürisi 3 kişi (ilgisiz parti vekilleri → tarafsız aktif oyuncular; CB/yargıç/taraflar hariç), 48 sa, onay/boz. Ağır cezalar kesinleşince (`adliye_kesinlestir`).
 - Harç 5.000 ₺ (`mahkeme_ayar`), yeni cezalar `para_10b/para_50b/aday_yasagi/parti_para`, kararlar Akış'a #adliye. AYM: `aym_basvur/aym_gorus/aym_oy_ver`, `oyun.kanun_iptal_et` (bütçe, baraj, düzenleme, ekonomi yasası geri alınır; kanun durumu `aym_iptal`).
 - Zamanlayıcı `yuksek-mahkeme` (5 dk). Migration `migrations/20261011_yargi_reformu.sql`. Testler `test/yargi.py`, `test/yargi_arayuz.js`. `www/index.html` adliye bloğu eskiydi; yeni sürümle değiştirildi.
+
+## 2026-10-11 · 2026.10.11-6 Rekabetçi şirketler, kamu ihaleleri, sektör politikası
+- **Neden:** eski şirket kazancı yalnız "sermaye × sektör oranı × zar" idi; sahibin kararı, oyuncular arası rekabet ve siyasetin etkisi yoktu.
+- `84_ekonomi_pazar_ihale.sql` + `www/ekonomi_pazar.js`. Ayrıntı: `TASARIM.md` 12. bölüm.
+- **Rekabetçi şirketler** (`ozel_okul, ozel_hastane, market, ulasim, enerji`): `pazar_sirket` (il, fiyat 1-3, kalite 0-3, enerji kaynağı, marka). `oyun.pazar_tahmin` haftalık sonucu hesaplar (pazar × pay, kapasite sınırı, gider, ruhsat, vergi); `oyun.sirket_hesapla` bu türleri `oyun.pazar_hesapla`'ya yönlendirir. Cron `ekonomi-pazar` (10 dk) sahibi girmese de haftayı kapatır. Kasa ≤ 0 → iflas (`aktif=false`).
+- **Kamu ihaleleri:** `kamu_ihale(_proje/_teklif)`, `sirket_deneyim`. Belediye başkanı il kasasından, bakan (boşsa CB) bakanlık kasasından açar; inşaat şirketleri kapalı zarf; `oyun.ihale_tick` sonuçlandırır/teslim eder. Dönüşüm `pazar_ayar.tl_milyar` (1 milyar kamu ₺ = 150.000 ₺ × fiyat düzeyi).
+- **Politika:** `sektor_politika` (bakan, 7 gün teşvik ×1,15 / denetim ×0,92; eski türlere de işler), `il_ruhsat` (belediye başkanı %0-8).
+- Testler: `test/ekonomi_pazar.py` (hepsi.sh'ta), `test/ekonomi_pazar_arayuz.js` (gerçek RPC çıktıları `test/veri/ekonomi_pazar_ornek.json`).
+- Yerel kurulumda `63_halka_arz_kar_birikim.sql` birleştirme listesine eklendi (canlıda zaten vardı; `kar_kasada` sütunu yerelde eksikti). `simulasyon`, `guvenlik`, `kalicilik` testleri bu değişiklikten önce de "kurucu davetleri" beklentisi yüzünden kırıktı.
+- **Canlı durum:** migration 3 parçada uygulanıyordu; 1/3 (tablolar) ve 2/3 (motor + şirket RPC'leri) canlıda, 3/3 (ihale + politika + cron + yetkiler) iptal edildi. Tamamlamak için `migrations/20261011_ekonomi_pazar_ihale.sql` dosyasının tamamı bir kez çalıştırılır (iki kez çalışabilir).
+- Arayüz `docs/index.html` ve `www/index.html`'e yama olarak eklendi (Hayat ekonomi ızgarası, Şirketler, Şirketlerim, Devlet ekranına giriş kartları).
