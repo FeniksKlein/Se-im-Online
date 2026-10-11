@@ -13,7 +13,7 @@ function emlakYeniCiz(d){
  iskelet("Emlak pazarı",`
  <div class="kart vit-manset"><h2>🏡 Oyuncudan Emlak</h2><p class="alt">Oyuncuların satılık mülklerini incele, ilanları karşılaştır, doğrudan satın al veya pazarlık yap.</p>
  <div class="vit-dugme"><button class="btn altin" onclick="emlakPazarliklarimEkrani()">Pazarlıklarım</button><button class="btn ikinci" onclick="ekranAc(mulkEkrani)">Mülklerim</button></div></div>
- <div class="vit-ozet"><span><b>${emlakIlanlar.length}</b> satılık ilan</span><span><b>%2</b> işlem vergisi</span></div>
+ <div class="vit-ozet"><span><b>${emlakIlanlar.length}</b> satılık ilan</span><span><b>%2 + %2</b> alıcı/satıcı tapu harcı</span></div>
  <div class="kart">
    <div class="vit-filtre"><div class="alan"><label>Mülk tipi</label><select id="emlakTip" onchange="emlakYeniListeCiz()">
       <option value="">Tümü</option><option value="daire">Daire</option><option value="dukkan">Dükkân</option><option value="villa">Villa</option></select></div>
@@ -41,7 +41,7 @@ function emlakYeniDetay(id){
  <h2>${x.tip==="daire"?"🏢":x.tip==="dukkan"?"🏪":"🏡"} ${e(emlakAd[x.tip]||x.tip)} #${x.mulk_id}</h2>
  <p class="alt">📍 ${e(x.il)} · Satıcı: ${e(x.satici)}</p><div class="vit-emlak-fiyat">${emlakTL(x.fiyat)}</div>
  <div class="kv"><span>Haftalık kira geliri</span><b>${emlakTL(x.haftalik)}</b></div>
- <p class="kucuk">İlan fiyatı kirayı artırmaz. Satış tamamlanırsa %2 vergi satış bedelinden kesilir.</p>
+ <div class="kv"><span>Alıcının %2 tapu harcı</span><b>${emlakTL(x.fiyat*.02)}</b></div><div class="kv"><span>Alıcının toplam ödemesi</span><b>${emlakTL(x.fiyat*1.02)}</b></div><div class="kv"><span>Satıcının %2 tapu harcı</span><b>${emlakTL(x.fiyat*.02)}</b></div><div class="kv"><span>Satıcının eline geçecek (vergi borcu hariç)</span><b>${emlakTL(x.fiyat*.98)}</b></div><p class="kucuk">Alıcı ve satıcı ayrı ayrı %2 tapu harcı öder. İlan fiyatı kirayı artırmaz. Satıcının birikmiş emlak vergisi borcu varsa ayrıca tahsil edilir.</p>
  ${x.benim?`<button class="btn ikinci" onclick="emlakIlanIptal(${x.id})">İlanımı kaldır</button>`:
   `<button class="btn altin" onclick="emlakIlanAl(${x.id},${Number(x.fiyat)})">İlan fiyatından satın al</button>
     <button class="btn ikinci" onclick="emlakYeniTeklifModal(${x.id})">Satıcıyla pazarlık yap</button>`}
@@ -52,7 +52,7 @@ function emlakYeniTeklifModal(id){
  const m=modal(`<h3>Satıcıya teklif gönder</h3><p class="alt">${e(x.satici)} · ${e(emlakAd[x.tip]||x.tip)} #${x.mulk_id}</p>
  <div class="kv"><span>İlan fiyatı</span><b>${emlakTL(x.fiyat)}</b></div>
  <div class="alan"><label>Teklif ettiğin fiyat</label><input id="emTeklif" type="number" min="10000" step="1000" value="${Math.max(10000,Math.round(x.fiyat*.9))}"></div>
- <p class="alt">Teklif göndermek para kesmez. Satıcının kabulüyle satış tamamlanır; satıcı karşı fiyat da önerebilir.</p>
+ <p class="alt">Teklif göndermek para kesmez. Satıcı kabul edince alıcı anlaşma bedeline ek %2 tapu harcı öder; satıcıdan ayrıca %2 kesilir. Satıcı karşı fiyat önerebilir.</p>
  <button class="btn altin" id="emTeklifBtn">Satıcıya teklif gönder</button>`);
  $("#emTeklifBtn",m).onclick=async()=>{
   const b=$("#emTeklifBtn",m),f=Number($("#emTeklif",m).value);
@@ -78,7 +78,7 @@ async function emlakPazarliklarimEkrani(){
  }catch(err){iskelet("Emlak pazarlıklarım",'<div class="kart">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
 async function emSaticiYanit(id,karar){
- if(karar==="kabul"&&!await onayla("Satış teklifini kabul et","Teklif bedeliyle mülk el değiştirecek. İşlem geri alınamaz.","Satışı onayla"))return;
+ if(karar==="kabul"&&!await onayla("Satış teklifini kabul et","Alıcı fiyat + %2 tapu harcı öder, satıcıdan da %2 kesilir. İşlem geri alınamaz.","Satışı onayla"))return;
  try{await API.rpc("emlak_pazarlik_satici_yanit",{p_teklif:id,p_karar:karar,p_karsi:null});
  toast(karar==="kabul"?"Mülkün satıldı.":"Teklif reddedildi.");emlakPazarliklarimEkrani();}
  catch(err){toast(hataCevir(err.message),true);}
@@ -96,7 +96,7 @@ function emKarsiModal(id,onceki){
  };
 }
 async function emAliciYanit(id,onay){
- if(onay&&!await onayla("Karşı fiyatı kabul et","Bu bedeli ödeyerek mülkü satın alacaksın.","Satın al"))return;
+ if(onay&&!await onayla("Karşı fiyatı kabul et","Anlaşma bedeline ek %2 alıcı tapu harcı da ödeyeceksin.","Satın al"))return;
  try{await API.rpc("emlak_pazarlik_alici_yanit",{p_teklif:id,p_kabul:onay});
  toast(onay?"Mülk satın alındı.":"Teklif reddedildi.");emlakPazarliklarimEkrani();}
  catch(err){toast(hataCevir(err.message),true);}
