@@ -736,3 +736,12 @@ Ekonomi, siyaset oyununun yakıtı olsun: oyuncu parayı şirketiyle kazanır, p
 - **Kapasite:** aynı anda 1 + kalite + her 300.000 ₺ sermaye için 1 iş (en fazla 6).
 - **Haftalık hesap:** sipariş geliri − katılım ödülleri − gider (sermayenin %3'ü + kalite × %1,2 + personel) − %20 kurumlar vergisi; kâr ortaklara. Kasa biterse iflas.
 - **Marka:** her biten iş ve yayımlanan anket büyütür; müşteri 1-5 puanı (3'ün üstü artırır, altı düşürür); haftalık %5 erir.
+
+## 15. Ekonomi güvenliği (2026-10-11, modül 88)
+Haksız zenginleşmenin ana yolu, bir oyuncunun ikinci hesabıyla "meşru işlem" kılığında para taşımasıdır. Kurallar oyuncuyu yormaz; sunucuda tetikleyicilerle işler.
+- **İlişkili hesap:** Aynı cihazda açılmış hesaplar birbirleriyle borsada, şirket ve pay satışında, emlakta, ortaklık teklifinde işlem yapamaz; birbirinin ihalesine giremez (ortaklardan biri ihaleyi açanla aynı cihazdaysa); birbirinin ajansından sipariş veremez; birbirinin anketine katılamaz. Banka transferi ve hediyede bu kural zaten vardı. Aile içi ortak cihaz için yönetime başvurulur.
+- **Fiyat bantları:** Borsa: son işlem fiyatının ±%20'si (ilk işlemde referansın 0,5-2 katı). Şirket/pay satışı: %1 pay başına kasanın %0,5'i ile kasa/sermayenin %3'ü arası. Emlak: ilin rayiç bedelinin 0,4-2,5 katı.
+- **MASAK:** Şunlar kendiliğinden kaydedilir: 24 saatte 1.000.000 ₺ (fiyat düzeyiyle) üstü gelir (yönetici hediyeleri hariç); aynı iki oyuncu arasında 7 günde 3+ alım-satım; parti kasasından 250.000 ₺ ya da kasanın %30'u üstü tek harcama; ihalenin ihaleyi açanla aynı partiden birinin şirketine gitmesi. "MASAK (ekonomi denetimi)" yetkili moderatör inceler: temiz / ihtar (bildirim) / el koyma (para hazineye, oyuncuya bildirim, Gündem'de ve herkese açık listede).
+- **Ödül tavanı:** Anket katılım ödülü yalnız 7 günden eski hesaplara, kişi başı günde en fazla 3 kez.
+- **Şeffaflık:** Her partinin kasa defteri herkese açık; 50.000 ₺ üstü parti harcamasında genel başkan yardımcılarına bildirim. Yönetimin dağıttığı hediyeler ve el koyma kararları herkese açık.
+- Ayarlar `oyun.guvenlik_ayar`; yayın öncesi sıkı ayarlar `migrations/YAYIN_ONCESI_AYARLAR.sql`.

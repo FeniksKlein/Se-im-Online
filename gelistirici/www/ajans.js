@@ -160,7 +160,7 @@ function ajansGundemHtml(g){
   return h;
 }
 async function ajansAnketCevap(id, parti){
-  try { const r = await API.rpc("ajans_anket_cevap", { p_is: id, p_parti: parti }); toast(+r.odul ? `Teşekkürler! ${ajTL(r.odul)} cüzdanına yattı.` : "Teşekkürler, cevabın kaydedildi."); const k = $("#ajAnket"); if (k) k.remove(); }
+  try { const r = await API.rpc("ajans_anket_cevap", { p_is: id, p_parti: parti }); toast(+r.odul ? `Teşekkürler! ${ajTL(r.odul)} cüzdanına yattı.` : `Teşekkürler, cevabın kaydedildi.${r.odulsuz_neden ? " " + r.odulsuz_neden : ""}`); const k = $("#ajAnket"); if (k) k.remove(); }
   catch (err) { toast(hataCevir(err.message), true); }
 }
 

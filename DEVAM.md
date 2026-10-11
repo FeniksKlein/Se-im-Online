@@ -214,3 +214,12 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Testler: `test/ajans.py` (hepsi.sh), `test/ajans_arayuz.js` (veri `test/veri/ajans_ornek.json`).
 - Bu arada başka bir oturum `sirket_hisse_satis_pazari` ve `belediye_sirket_hizmet_ihaleleri` migration'larını ekledi (yalnız migrations/ ve www/; gelistirici/ kaynağına alınmadı). Modül 85'teki borsa ile hisse ilan pazarı aynı işi farklı yoldan yapıyor; ileride tek ekranda birleştirilmeli.
 - **Canlı durum:** 85 ve 86 canlıda değil. Sırayla çalıştırılacak: `migrations/20261011_ekonomi_borsa_rekabet.sql`, sonra `migrations/20261011_reklam_anket_ajansi.sql`.
+
+## 2026-10-11 · 2026.10.11-11 Ekonomi güvenliği (MASAK)
+- `88_ekonomi_guvenligi.sql` + `www/guvenlik.js`. Ayrıntı: `TASARIM.md` 15. bölüm.
+- RPC'lere dokunmadan tetikleyiciler: `borsa_emir` (bant), `borsa_islem`, `ticaret_devir_kayit`, `sirket_teklif`, `sirketler.satilik`, `mulk_ilan`, `emlak_pazarlik` (varsa), `sirket_hisse_ilanlari` (varsa), `kamu_ihale_teklif`, `kamu_ihale` (kayırma), `ajans_is`, `ajans_cevap`, `hesap_hareket` (ani servet), `parti_hareket` (harcama). `oyun.iliskili(a,b)` = `oyun.bagli_hesaplar` (aynı cihaz) + `ayarlar.coklu_kontrol`.
+- `public.ajans_anket_cevap` 88'de yeniden tanımlandı (ödül için hesap yaşı ve günlük sınır, `odulsuz_neden`).
+- Yeni moderatör yetkisi `ekonomi`; `admin_masak`, `admin_masak_karar`; herkese açık `parti_kasa_defteri`, `yonetim_hediyeleri`.
+- Testler: `test/guvenlik_ekonomi.py` (hepsi.sh), `test/guvenlik_arayuz.js`. `test/ajans.py` oyuncuları 7 günden eski olacak şekilde güncellendi.
+- **Canlı durum:** 85, 86, 88 canlıda değil. Sırayla: `20261011_ekonomi_borsa_rekabet.sql`, `20261011_reklam_anket_ajansi.sql`, `20261011_ekonomi_guvenligi.sql`. Gerçek oyuncular gelmeden: `migrations/YAYIN_ONCESI_AYARLAR.sql`.
+- Bilinen eksik: diğer oturumun `belediye_is_teklif` (belediye hizmet ihalesi) tablosuna ilişkili hesap kuralı eklenmedi (kaynağı gelistirici/'de yok).

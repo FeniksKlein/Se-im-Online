@@ -6,7 +6,7 @@ para = lambda u: float(q(f"select para from oyun.cuzdan where user_id='{u}'"))
 kasa = lambda sid: float(q(f"select kasa from oyun.sirketler where id={sid}"))
 def zaman(ts): q(f"update oyun.ayarlar set test_simdi = '{ts}+03'")
 
-zaman("2030-03-01 10:00")
+zaman("2030-02-20 10:00")
 def oyuncu(kad, il="İzmir", p=3000000):
     u = kullanici_ekle(f"{kad}@t.com"); rpc(u, "profil_olustur", kad, IL(il))
     q(f"update oyun.cuzdan set para={p} where user_id='{u}'"); return u
