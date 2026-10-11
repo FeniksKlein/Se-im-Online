@@ -7,7 +7,7 @@ BEGIN
  IF p_fiyat IS NULL OR p_fiyat<=0 OR p_alici IS NULL OR p_alici=p_satici THEN RAISE EXCEPTION 'Geçersiz tapu işlemi'; END IF;
  SELECT c.para INTO para FROM oyun.cuzdan c WHERE c.user_id=p_alici FOR UPDATE;
  IF coalesce(para,0) < p_fiyat+h THEN
-   RAISE EXCEPTION 'Alıcı bakiye yetersiz. Satış: % TL + alıcı tapu harcı: % TL (%2), toplam: % TL. Mevcut: % TL',
+   RAISE EXCEPTION 'Alıcı bakiye yetersiz. Satış: % TL + alıcı tapu harcı: % TL (%%2), toplam: % TL. Mevcut: % TL',
       oyun.tl(p_fiyat),oyun.tl(h),oyun.tl(p_fiyat+h),oyun.tl(coalesce(para,0));
  END IF;
  PERFORM oyun.para_islem(p_alici,-(p_fiyat+h),'emlak',
