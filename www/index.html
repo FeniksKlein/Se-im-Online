@@ -2437,13 +2437,35 @@ function meclisGruplarHtml(r){
   const gruplu = r.partiler.filter(p => p.grup), grupsuz = r.partiler.filter(p => !p.grup), bag = pv(null);
   return (gruplu.length ? gruplu.map(p => `<div class="kart mc-grup" style="border-left:4px solid ${e(p.renk)}">
       <div style="display:flex;gap:10px;align-items:center">${amblemKutu(p, 40)}<div style="flex:1;min-width:0"><b style="font-size:17px">${e(p.ad)}</b><div class="kucuk">${e(p.kisa)} Grubu · ${p.n} milletvekili · ${p.sira}. büyük grup</div></div></div>
-      <div class="kv" style="margin-top:10px"><span class="k">Grup Başkanı</span><span class="v">${p.gb_vekil && p.gb ? mvAdLink(p.gb) : `<span class="kucuk">Genel başkan${p.gb ? " (" + e(p.gb) + ")" : ""} milletvekili değil</span>`}</span></div>
+      <div class="kv" style="margin-top:10px"><span class="k">Grup Başkanı</span><span class="v">${p.baskan ? mvAdLink(p.baskan) : `<span class="kucuk">Henüz grup başkanı yok${p.gb ? " · Genel Başkan: " + e(p.gb) : ""}</span>`}</span></div>
+      ${p.baskan_benim && p.baskan && p.devir_adaylari && p.devir_adaylari.length ? `<button class="btn ikinci" style="margin-top:8px" onclick="grupBaskanDevirModal(${p.id})">Grup başkanlığını devret</button>` : ""}
       <div class="kv"><span class="k">Grup başkanvekilleri <span class="kucuk">${p.bskv.length}/${p.bskv_kota}</span></span><span class="v">${p.bskv.length ? p.bskv.map(mvAdLink).join(", ") : `<span class="kucuk">Henüz seçilmedi</span>`}</span></div>
       <details class="acilir"><summary>Grubun milletvekilleri (${p.n})</summary>${vekilCipleri(pv(p.id))}</details></div>`).join("")
     : `<div class="kart"><div class="bos">Meclis'te henüz grup kuracak sayıda (en az ${r.grup_esigi}) vekili olan parti yok.</div></div>`)
   + (grupsuz.length ? `<div class="kart"><h2>Grubu olmayan partiler</h2><p class="kucuk">Grup kurmak için en az ${r.grup_esigi} milletvekili gerekir.</p>
       ${grupsuz.map(p => `<div class="kv"><span class="k">${partiRozet(p)}</span><span class="v">${p.n} vekil</span></div>${vekilCipleri(pv(p.id))}`).join("")}</div>` : "")
   + (bag.length ? `<div class="kart"><h2>Bağımsızlar (${bag.length})</h2>${vekilCipleri(bag)}</div>` : "");
+}
+function grupBaskanDevirModal(pid){
+  const rehber = D._mr && D._mr.v;
+  const g = rehber && (rehber.partiler || []).find(x => x.id === pid && x.grup && x.baskan_benim);
+  if (!g) return toast("Bu grubun başkanlık devri için yetkin yok. Sayfayı yenile.", true);
+  const adaylar = (g.devir_adaylari || []).filter(x => x && x.id && x.kad);
+  if (!adaylar.length) return toast("Grubunda devralabilecek uygun milletvekili yok.", true);
+  const m = modal(`<h3>Grup başkanlığını devret</h3>
+    <p class="alt">${e(g.kisa)} Meclis Grubu Başkanı olarak görevi kendi partinden bir milletvekiline devredebilirsin. Parti genel başkanı devralamaz. Devirden sonra grup kararı yetkisi yeni başkana geçer.</p>
+    <div class="alan"><label>Yeni grup başkanı</label><select id="grupDevirHedef">
+    ${adaylar.map(a=>`<option value="${e(a.id)}">${e(a.kad)}</option>`).join("")}</select></div>
+    <button id="grupDevirOnay" class="btn altin">Görevi devret</button>`);
+  $("#grupDevirOnay",m).onclick = async () => {
+    const aday = adaylar.find(a=>a.id === $("#grupDevirHedef",m).value);
+    if (!aday) return toast("Önce bir milletvekili seç.",true);
+    if (!await onayla("Grup başkanlığı devri", `Görevi <b>${e(aday.kad)}</b> adlı milletvekiline devretmek istiyor musun? İşlem grup üyelerine bildirilecek.`, "Devret")) return;
+    try {
+      await islem(() => API.rpc("grup_baskan_devret",{p_hedef:aday.id}),"Grup başkanlığı devredildi.");
+      modalKapat(); D._mr=null; meclisSekmeAc("gruplar");
+    } catch (_) {}
+  };
 }
 function meclisVekillerHtml(r){
   const ps = r.partiler, secili = D.mvParti == null ? "" : String(D.mvParti);
