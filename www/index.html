@@ -4180,8 +4180,8 @@ function mulkStokHtml(){
   const il = mulkStok.find(x=>x.il_id===mulkSecIl) || mulkStok[0];
   return `<div class="alan"><label>Hangi ilden?</label><select id="mulkIl" onchange="mulkSecIl=Number(this.value);$('#mulkStokAlan').innerHTML=mulkStokHtml()">
       ${mulkStok.map(x=>`<option value="${x.il_id}" ${x.il_id===il.il_id?"selected":""}>${e(x.il)}${x.benim_ilim?" (yaşadığın il)":""}</option>`).join("")}</select></div>
-    <p class="kucuk">Gelişmişlik ${fmt(il.gelismislik)}/100 · Haftalık mülk vergisi ${yuzde(il.vergi_oran)} (belediye çarpanı ${fmt(il.carpan)})</p>
-    ${il.urunler.map(u=>`<div class="kv"><span>${e(MULK_AD[u.tip]||u.tip)}<div class="kucuk">Kira ${tlYaz(u.kira)}/hafta · Vergi ${tlYaz(u.vergi)}/hafta</div><div class="kucuk">${u.kalan>0?`Satılık: ${fmt(u.kalan)} / ${fmt(u.kontenjan)}`:`Bu ilde satılık yeni ${e((MULK_AD[u.tip]||u.tip).toLocaleLowerCase("tr"))} kalmadı`}</div></span>
+    <p class="kucuk">Gelişmişlik ${fmt(il.gelismislik)}/100 · Mesken yıllık emlak vergisi ${yuzde(il.vergi_oran)} (dükkân oranı iki katıdır)</p>
+    ${il.urunler.map(u=>`<div class="kv"><span>${e(MULK_AD[u.tip]||u.tip)}<div class="kucuk">Kira ${tlYaz(u.kira)}/hafta · Emlak vergisi ${tlYaz(u.vergi)}/yıl</div><div class="kucuk">${u.kalan>0?`Satılık: ${fmt(u.kalan)} / ${fmt(u.kontenjan)}`:`Bu ilde satılık yeni ${e((MULK_AD[u.tip]||u.tip).toLocaleLowerCase("tr"))} kalmadı`}</div></span>
       <button class="btn ikinci" style="width:auto;margin:0;white-space:nowrap;flex-shrink:0" ${u.kalan>0?"":"disabled"} onclick="mulkAl('${u.tip}',${il.il_id},${u.fiyat})">${tlYaz(u.fiyat)} · Al</button></div>`).join("")}`;
 }
 function mulkCiz(d){
@@ -4190,17 +4190,17 @@ function mulkCiz(d){
       <div class="kv"><span class="k">Mülk sayısı</span><b>${fmt(d.adet)}</b></div>
       <div class="kv"><span class="k">Bugünkü değeri</span><b>${tlYaz(d.piyasa_degeri ?? d.mulk_degeri)}</b></div>
       <div class="kv"><span class="k">Haftalık toplam kira</span><b>${tlYaz(d.haftalik_toplam)}</b></div>
-      ${d.haftalik_vergi!=null?`<div class="kv"><span class="k">Haftalık mülk vergisi</span><b>${tlYaz(d.haftalik_vergi)}</b></div>`:""}
+      ${d.haftalik_vergi!=null?`<div class="kv"><span class="k">Yıllık emlak vergisi</span><b>${tlYaz(d.haftalik_vergi)}</b></div>`:""}
       ${d.vergi_borc>0?`<div class="kv"><span class="k">Ödenmemiş vergi</span><b class="kotu">${tlYaz(d.vergi_borc)}</b></div>`:""}
       <div class="kv"><span class="k">Cüzdan</span><b>${tlYaz(d.cuzdan)}</b></div>
-      <p class="kucuk">Kira ve mülk vergisi satın almadan 7 gün sonra, sonra her 7 günde bir işler; oyunu açtığında bekleyenler hesaplanır. Vergi, mülkün bulunduğu ilin belediyesine gider. Oranı TBMM kanunla, o ilin belediye başkanı çarpanla belirler. Parası yetmeyen oyuncunun vergisi borç olarak kalır ve mülk satılırken satıcıdan kesilir.</p></div>
+      <p class="kucuk">Kira 7 günde bir tahsil edilir. Emlak vergisi yıllık hesaplanır, Mayıs ve Kasım taksitlerinde ödenir. Yeni alıcının emlak vergisi mükellefiyeti takip eden yıl başlar. Parası yetmeyenin mevcut vergi borcu korunur ve satış sırasında satıcıdan tahsil edilir. Vergi bedeli il rayici üzerinden yaklaşık hesaplanır ve belediyeye gider.</p></div>
     <div class="kart"><h2>Yeni mülk satın al</h2>
       <p class="alt">Her ilde nüfusuna göre sınırlı sayıda yeni mülk var. Fiyat ve kira ilin büyüklüğüne ve gelişmişliğine göre değişir. Yaşamadığın bir ilden de alabilirsin.</p>
       <div id="mulkStokAlan">${mulkStokHtml()}</div></div>
     <div class="kart"><h2>Mülklerim (${fmt(d.adet)})</h2>
       ${d.mulkler.length ? d.mulkler.map(m=>`<div class="olay"><b>${e(MULK_AD[m.tip]||m.tip)} #${m.id} · ${e(m.il)}</b>
         <div class="kv"><span>Haftalık kira</span><b>${tlYaz(m.haftalik)}</b></div>
-        ${m.vergi!=null?`<div class="kv"><span>Haftalık mülk vergisi</span><b>${tlYaz(m.vergi)}</b></div>`:""}
+        ${m.vergi!=null?`<div class="kv"><span>Yıllık emlak vergisi</span><b>${tlYaz(m.vergi)}</b></div>`:""}
         ${m.vergi_borc>0?`<div class="kv"><span>Ödenmemiş vergi</span><b class="kotu">${tlYaz(m.vergi_borc)}</b></div>`:""}
         ${m.deger!=null?`<div class="kv"><span>Bugünkü değeri</span><b>${tlYaz(m.deger)}</b></div>`:""}
         <div class="kv"><span>Toplam kazanç</span><b>${tlYaz(m.toplam_kira)}</b></div>
@@ -6495,7 +6495,7 @@ function emlakYeniCiz(d){
  iskelet("Emlak pazarı",`
  <div class="kart vit-manset"><h2>🏡 Oyuncudan Emlak</h2><p class="alt">Oyuncuların satılık mülklerini incele, ilanları karşılaştır, doğrudan satın al veya pazarlık yap.</p>
  <div class="vit-dugme"><button class="btn altin" onclick="emlakPazarliklarimEkrani()">Pazarlıklarım</button><button class="btn ikinci" onclick="ekranAc(mulkEkrani)">Mülklerim</button></div></div>
- <div class="vit-ozet"><span><b>${emlakIlanlar.length}</b> satılık ilan</span><span><b>%2</b> işlem vergisi</span></div>
+ <div class="vit-ozet"><span><b>${emlakIlanlar.length}</b> satılık ilan</span><span><b>%2 + %2</b> alıcı/satıcı tapu harcı</span></div>
  <div class="kart">
    <div class="vit-filtre"><div class="alan"><label>Mülk tipi</label><select id="emlakTip" onchange="emlakYeniListeCiz()">
       <option value="">Tümü</option><option value="daire">Daire</option><option value="dukkan">Dükkân</option><option value="villa">Villa</option></select></div>
@@ -6523,7 +6523,7 @@ function emlakYeniDetay(id){
  <h2>${x.tip==="daire"?"🏢":x.tip==="dukkan"?"🏪":"🏡"} ${e(emlakAd[x.tip]||x.tip)} #${x.mulk_id}</h2>
  <p class="alt">📍 ${e(x.il)} · Satıcı: ${e(x.satici)}</p><div class="vit-emlak-fiyat">${emlakTL(x.fiyat)}</div>
  <div class="kv"><span>Haftalık kira geliri</span><b>${emlakTL(x.haftalik)}</b></div>
- <p class="kucuk">İlan fiyatı kirayı artırmaz. Satış tamamlanırsa %2 vergi satış bedelinden kesilir.</p>
+ <div class="kv"><span>Alıcının %2 tapu harcı</span><b>${emlakTL(x.fiyat*.02)}</b></div><div class="kv"><span>Alıcının toplam ödemesi</span><b>${emlakTL(x.fiyat*1.02)}</b></div><div class="kv"><span>Satıcının %2 tapu harcı</span><b>${emlakTL(x.fiyat*.02)}</b></div><div class="kv"><span>Satıcının eline geçecek (vergi borcu hariç)</span><b>${emlakTL(x.fiyat*.98)}</b></div><p class="kucuk">Alıcı ve satıcı ayrı ayrı %2 tapu harcı öder. İlan fiyatı kirayı artırmaz. Satıcının birikmiş emlak vergisi borcu varsa ayrıca tahsil edilir.</p>
  ${x.benim?`<button class="btn ikinci" onclick="emlakIlanIptal(${x.id})">İlanımı kaldır</button>`:
   `<button class="btn altin" onclick="emlakIlanAl(${x.id},${Number(x.fiyat)})">İlan fiyatından satın al</button>
     <button class="btn ikinci" onclick="emlakYeniTeklifModal(${x.id})">Satıcıyla pazarlık yap</button>`}
@@ -6534,7 +6534,7 @@ function emlakYeniTeklifModal(id){
  const m=modal(`<h3>Satıcıya teklif gönder</h3><p class="alt">${e(x.satici)} · ${e(emlakAd[x.tip]||x.tip)} #${x.mulk_id}</p>
  <div class="kv"><span>İlan fiyatı</span><b>${emlakTL(x.fiyat)}</b></div>
  <div class="alan"><label>Teklif ettiğin fiyat</label><input id="emTeklif" type="number" min="10000" step="1000" value="${Math.max(10000,Math.round(x.fiyat*.9))}"></div>
- <p class="alt">Teklif göndermek para kesmez. Satıcının kabulüyle satış tamamlanır; satıcı karşı fiyat da önerebilir.</p>
+ <p class="alt">Teklif göndermek para kesmez. Satıcı kabul edince alıcı anlaşma bedeline ek %2 tapu harcı öder; satıcıdan ayrıca %2 kesilir. Satıcı karşı fiyat önerebilir.</p>
  <button class="btn altin" id="emTeklifBtn">Satıcıya teklif gönder</button>`);
  $("#emTeklifBtn",m).onclick=async()=>{
   const b=$("#emTeklifBtn",m),f=Number($("#emTeklif",m).value);
@@ -6560,7 +6560,7 @@ async function emlakPazarliklarimEkrani(){
  }catch(err){iskelet("Emlak pazarlıklarım",'<div class="kart">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
 async function emSaticiYanit(id,karar){
- if(karar==="kabul"&&!await onayla("Satış teklifini kabul et","Teklif bedeliyle mülk el değiştirecek. İşlem geri alınamaz.","Satışı onayla"))return;
+ if(karar==="kabul"&&!await onayla("Satış teklifini kabul et","Alıcı fiyat + %2 tapu harcı öder, satıcıdan da %2 kesilir. İşlem geri alınamaz.","Satışı onayla"))return;
  try{await API.rpc("emlak_pazarlik_satici_yanit",{p_teklif:id,p_karar:karar,p_karsi:null});
  toast(karar==="kabul"?"Mülkün satıldı.":"Teklif reddedildi.");emlakPazarliklarimEkrani();}
  catch(err){toast(hataCevir(err.message),true);}
@@ -6578,7 +6578,7 @@ function emKarsiModal(id,onceki){
  };
 }
 async function emAliciYanit(id,onay){
- if(onay&&!await onayla("Karşı fiyatı kabul et","Bu bedeli ödeyerek mülkü satın alacaksın.","Satın al"))return;
+ if(onay&&!await onayla("Karşı fiyatı kabul et","Anlaşma bedeline ek %2 alıcı tapu harcı da ödeyeceksin.","Satın al"))return;
  try{await API.rpc("emlak_pazarlik_alici_yanit",{p_teklif:id,p_kabul:onay});
  toast(onay?"Mülk satın alındı.":"Teklif reddedildi.");emlakPazarliklarimEkrani();}
  catch(err){toast(hataCevir(err.message),true);}
@@ -6759,12 +6759,10 @@ async function sosPartiImzala(id){try{await API.rpc('sos_parti_imzala',{p_parti:
   if(typeof EKRAN!=='undefined'){EKRAN.gundem=window.gundemEkrani;EKRAN.parti=window.partilerEkrani;EKRAN.devlet=window.devletEkrani;}
 })();</script>
 <script>// Şirket halka arzı ve yatırım hesaplayıcısı (sunucu: sql/62_halka_arz.sql)
-const HA_ORAN={tarim:.12,sanayi:.15,teknoloji:.20,ticaret:.14,insaat:.18,medya:.16,banka:.08};
 const HA_SEKTOR={tarim:"Tarım",sanayi:"Sanayi",teknoloji:"Teknoloji",ticaret:"Ticaret",insaat:"İnşaat",medya:"Medya",banka:"Banka"};
-let _ha=null;
+let _ha=null, _haIstek=0;
 const haTL=x=>fmt(Math.round(Number(x)||0))+" ₺";
 const haYuzde=x=>"%"+(Math.round((Number(x)||0)*100)/100).toLocaleString("tr-TR");
-function haOrtNet(sermaye,sektor,asgari){return Math.round(sermaye*(HA_ORAN[sektor]||.08)-sermaye*.0525-asgari)}
 function haKalan(bit){const ms=new Date(bit)-Date.now();if(ms<=0)return"süre doldu, sonuçlanıyor";const s=Math.floor(ms/36e5),d=Math.floor(ms%36e5/6e4);return(s?s+" sa ":"")+d+" dk kaldı"}
 function haCubuk(a){const o=Math.min(100,Number(a.toplanan)/Number(a.hedef)*100),as=Math.min(100,Number(a.asgari)/Number(a.hedef)*100);
  return `<div style="position:relative;height:12px;border-radius:6px;background:var(--panel2);overflow:hidden;margin:8px 0 4px" role="progressbar" aria-valuenow="${Math.round(o)}" aria-valuemin="0" aria-valuemax="100">
@@ -6797,7 +6795,7 @@ async function halkaArzEkrani(id){
   </div>`:""}
   ${a?haAcikKart(a,true):""}
   <div class="kart"><h2>Yatırım hesaplayıcı</h2>
-   <p class="alt">Şirkete yeni sermaye girerse haftalık ortalama kâr ve ortakların payı nasıl değişir? Haftalık kâr sermayeyle büyür; gider tarafındaki asgari ücret sabit kaldığı için büyüme oransal olandan da hızlıdır.</p>
+   <p class="alt">Şirkete yeni sermaye girerse haftalık ortalama kâr ve ortakların payı nasıl değişir? Sermaye artışı şirketin piyasa kapasitesini ve giderlerini birlikte etkiler; tahmin mevcut rekabet, fiyat ve talep şartlarına göre yapılır.</p>
    <div class="alan"><label>Gelecek yatırım (₺)</label><input id="ha_tutar" type="number" min="0" step="1000" value="${varsayilan}" oninput="haHesapCiz()"></div>
    <div class="alan"><label>Şirket değeri, yatırım öncesi (₺)</label><input id="ha_deger" type="number" min="${d.deger_en_az}" max="${d.deger_en_cok}" step="1000" value="${Math.round(d.deger_onerilen)}" oninput="haHesapCiz()">
     <p class="kucuk">${haTL(d.deger_en_az)} – ${haTL(d.deger_en_cok)} arası. Önerilen: ${haTL(d.deger_onerilen)} (yaklaşık 26 haftalık kâr). Değer yükseldikçe aynı para için daha az pay verirsin.</p></div>
@@ -6826,14 +6824,21 @@ async function haKarTercihDegistir(id,kasada){
 }
 function haDurumAd(d){return{acik:"Talep topluyor",tamam:"Tamamlandı",basarisiz:"Gerçekleşmedi",iptal:"İptal edildi"}[d]||d}
 
-function haHesapCiz(){
+async function haHesapCiz(){
  const d=_ha,el=document.getElementById("ha_sonuc");if(!d||!el)return;
  const tutar=Math.max(0,Math.round(Number(document.getElementById("ha_tutar").value)||0));
  let deger=Math.round(Number(document.getElementById("ha_deger").value)||Number(d.deger_onerilen));
  const degerUyari=deger<Number(d.deger_en_az)||deger>Number(d.deger_en_cok);
  deger=Math.min(Number(d.deger_en_cok),Math.max(Number(d.deger_en_az),deger));
- const sermaye=Number(d.sermaye),asg=Number(d.asgari_ucret),post=deger+tutar;
- const once=haOrtNet(sermaye,d.sektor,asg),sonra=haOrtNet(sermaye+tutar,d.sektor,asg);
+ const sermaye=Number(d.sermaye),post=deger+tutar;
+ const istek=++_haIstek;
+ el.innerHTML='<div class="kart"><p class="alt">Güncel pazar verileriyle hesaplanıyor...</p></div>';
+ const baslat=document.getElementById("ha_baslat");if(baslat)baslat.disabled=true;
+ let hesap;
+ try{hesap=await API.rpc("halka_arz_hesapla",{p_sirket:d.id,p_tutar:tutar,p_deger:deger});}
+ catch(err){if(istek===_haIstek)el.innerHTML='<div class="kart"><p class="alt">'+e(hataCevir(err.message))+'</p></div>';return;}
+ if(istek!==_haIstek||_ha!==d||document.getElementById("ha_sonuc")!==el)return;
+ const once=Number(hesap.ort_net_simdi),sonra=Number(hesap.ort_net_sonra);
  const yatPay=post?tutar/post*100:0,benimOnce=Number(d.payim),benimSonra=benimOnce*deger/post;
  const yatHafta=Math.max(0,sonra)*yatPay/100,geri=yatHafta>0?Math.ceil(tutar/yatHafta):null;
  const sinir=sermaye+tutar>1e8?"Sermaye 100.000.000 ₺'yi aşar.":yatPay>49?"Halka arzda en fazla %49 pay satılabilir; tutarı düşür ya da şirket değerini artır.":"";
