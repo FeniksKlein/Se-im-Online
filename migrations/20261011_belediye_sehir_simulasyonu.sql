@@ -78,7 +78,7 @@ END $$;
 CREATE OR REPLACE FUNCTION oyun.belediye_bina_tick() RETURNS integer
 LANGUAGE plpgsql SET search_path='oyun','public','pg_temp' AS $$
 DECLARE r record; bugun date := (now() AT TIME ZONE 'Europe/Istanbul')::date;
-        gun int; gider numeric; gelir numeric; kasa numeric; n integer := 0;
+        gun int; gider numeric; gelir numeric; v_kasa numeric; n integer := 0;
 BEGIN
  IF NOT pg_try_advisory_xact_lock(772921,1) THEN RETURN 0; END IF;
  FOR r IN SELECT b.id,b.il_id,b.kod,b.hedef_seviye,k.gelisim,k.memnuniyet,k.ad
@@ -96,8 +96,8 @@ BEGIN
   WHERE b.durum='aktif' AND b.son_bakim<bugun ORDER BY b.id FOR UPDATE OF b LOOP
    gun:=LEAST(30,bugun-r.son_bakim); gider:=round(r.gunluk_bakim*r.seviye*gun,6);
    gelir:=round(r.gunluk_gelir*r.seviye*gun,6);
-   SELECT d.kasa INTO kasa FROM oyun.il_durum d WHERE d.il_id=r.il_id FOR UPDATE;
-   IF kasa < gider THEN
+   SELECT d.kasa INTO v_kasa FROM oyun.il_durum d WHERE d.il_id=r.il_id FOR UPDATE;
+   IF v_kasa < gider THEN
      UPDATE oyun.belediye_bina SET durum='askida',son_bakim=bugun WHERE id=r.id;
      UPDATE oyun.il_durum SET memnuniyet=oyun.sinir(memnuniyet-0.15,0,100) WHERE il_id=r.il_id;
      INSERT INTO oyun.belediye_sehir_hareket(il_id,bina_id,tur,aciklama)
@@ -116,13 +116,13 @@ END $$;
 CREATE OR REPLACE FUNCTION public.belediye_bina_islem(p_kod text,p_islem text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='oyun','public','pg_temp' AS $$
 DECLARE p oyun.profiller := oyun.profilim(); m oyun.makamlar := oyun.baskan_zorunlu(p);
- k oyun.belediye_bina_katalog; b oyun.belediye_bina; kasa numeric; bedel numeric; hedef int; sure int; yeni_id bigint;
+ k oyun.belediye_bina_katalog; b oyun.belediye_bina; v_kasa numeric; bedel numeric; hedef int; sure int; yeni_id bigint;
 BEGIN
  IF p_islem NOT IN ('insa','yukselt','yeniden_ac') THEN RAISE EXCEPTION 'Gecersiz bina islemi'; END IF;
  SELECT * INTO k FROM oyun.belediye_bina_katalog WHERE kod=p_kod;
  IF k.kod IS NULL THEN RAISE EXCEPTION 'Bina katalogda yok'; END IF;
  PERFORM pg_advisory_xact_lock(772922,m.il_id::integer);
- SELECT kasa INTO kasa FROM oyun.il_durum WHERE il_id=m.il_id FOR UPDATE;
+ SELECT kasa INTO v_kasa FROM oyun.il_durum WHERE il_id=m.il_id FOR UPDATE;
  SELECT * INTO b FROM oyun.belediye_bina WHERE il_id=m.il_id AND kod=p_kod FOR UPDATE;
  IF p_islem='insa' THEN
    IF b.id IS NOT NULL THEN RAISE EXCEPTION 'Bu bina sehirde zaten var. Yukseltme secenegini kullan'; END IF;
@@ -134,7 +134,7 @@ BEGIN
    IF b.id IS NULL OR b.durum<>'askida' THEN RAISE EXCEPTION 'Yalnizca bakim nedeniyle kapanmis bina yeniden acilabilir'; END IF;
    hedef:=b.seviye; bedel:=round(k.gunluk_bakim*3*b.seviye,6); sure:=1;
  END IF;
- IF kasa<bedel THEN RAISE EXCEPTION 'Belediye kasasi yetersiz. Gerekli: % milyar TL; kasa: % milyar TL',bedel,kasa; END IF;
+ IF v_kasa<bedel THEN RAISE EXCEPTION 'Belediye kasasi yetersiz. Gerekli: % milyar TL; kasa: % milyar TL',bedel,v_kasa; END IF;
  UPDATE oyun.il_durum SET kasa=kasa-bedel WHERE il_id=m.il_id;
  IF b.id IS NULL THEN
    INSERT INTO oyun.belediye_bina(il_id,kod,seviye,hedef_seviye,durum,baslangic,bitis,baskan,son_yatirim)
@@ -153,7 +153,7 @@ END $$;
 CREATE OR REPLACE FUNCTION public.belediye_ekonomi_programi(p_kod text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='oyun','public','pg_temp' AS $$
 DECLARE p oyun.profiller := oyun.profilim(); m oyun.makamlar := oyun.baskan_zorunlu(p);
- k oyun.belediye_ekonomi_katalog; kasa numeric; t timestamptz:=now();
+ k oyun.belediye_ekonomi_katalog; v_kasa numeric; t timestamptz:=now();
 BEGIN
  SELECT * INTO k FROM oyun.belediye_ekonomi_katalog WHERE kod=p_kod;
  IF k.kod IS NULL THEN RAISE EXCEPTION 'Ekonomi programi bulunamadi'; END IF;
@@ -162,8 +162,8 @@ BEGIN
   RAISE EXCEPTION 'Belediye 12 saatte bir ekonomi programi uygulayabilir'; END IF;
  IF EXISTS(SELECT 1 FROM oyun.belediye_ekonomi_karar WHERE il_id=m.il_id AND kod=p_kod AND zaman>t-interval '48 hours') THEN
   RAISE EXCEPTION 'Ayni program 48 saatte bir uygulanabilir'; END IF;
- SELECT kasa INTO kasa FROM oyun.il_durum WHERE il_id=m.il_id FOR UPDATE;
- IF kasa<k.maliyet THEN RAISE EXCEPTION 'Butce yetersiz: % milyar TL gerekli',k.maliyet; END IF;
+ SELECT kasa INTO v_kasa FROM oyun.il_durum WHERE il_id=m.il_id FOR UPDATE;
+ IF v_kasa<k.maliyet THEN RAISE EXCEPTION 'Butce yetersiz: % milyar TL gerekli',k.maliyet; END IF;
  UPDATE oyun.il_durum SET kasa=kasa-k.maliyet,gelisim=oyun.sinir(gelisim+k.gelisim,0,100),
   memnuniyet=oyun.sinir(memnuniyet+k.memnuniyet,0,100) WHERE il_id=m.il_id;
  INSERT INTO oyun.belediye_ekonomi_karar(il_id,kod,baskan,maliyet,zaman) VALUES(m.il_id,p_kod,p.id,k.maliyet,t);
