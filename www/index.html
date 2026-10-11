@@ -4309,7 +4309,7 @@ async function sirketSatisaCikar(id){
   await sirketYonetimEkrani();
  }catch(err){toast(hataCevir(err.message),true);}
 }
-async function sirketSatistanCikar(id){
+async function sirketSatistanCikar(id,nereden="yonetim"){
  if(!await onayla("Şirketin satış ilanını kaldır","Şirketin sende kalacak ve satılık listesinden kaldırılacak. Devam edilsin mi?","İlanı kaldır"))return;
  try{
   const sonuc=await API.rpc("sirket_satiliga_cikar",{p_sirket:id,p_fiyat:null});
@@ -4318,7 +4318,7 @@ async function sirketSatistanCikar(id){
   const sirket=(d.sirketler||[]).find(s=>Number(s.id)===Number(id));
   if(!sirket||sirket.satilik!=null)throw new Error("İlanın kaldırıldığı doğrulanamadı, tekrar deneyin.");
   toast("Şirket satılık listesinden kaldırıldı.");
-  await sirketYonetimEkrani();
+  if(nereden==="pazar")await sirketPazarEkrani();else await sirketYonetimEkrani();
  }catch(err){toast(hataCevir(err.message),true);}
 }
 async function sirketPazardanAl(id){try{await API.rpc("sirket_satilik_al",{p_sirket:id});toast("Şirket satın alındı.");sirketYonetimEkrani()}catch(err){toast(hataCevir(err.message),true)}}
