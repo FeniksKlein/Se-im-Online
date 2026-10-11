@@ -1680,34 +1680,70 @@ function pusulaHtml(s){
   if (s.oy_verdim) return `<div class="kart" style="text-align:center;padding:22px 15px"><div class="logo" style="margin:0 auto 12px;width:76px;height:76px;font-family:var(--disp);font-weight:700;font-size:15px">TERCİH</div><h3>Oyun sandıkta</h3><div class="alt">Sonuçlar ${saatYaz(s.sonuc_at)}'de açıklanacak. Oyun gizlidir; kime verdiğini kimse göremez.</div></div>`;
   if (s.oy_engeli) return `<div class="kart"><b>Bu seçimde oy kullanamıyorsun</b><div class="alt">${e(s.oy_engeli)}</div></div>`;
   if (!s.secenekler.length) return `<div class="kart"><div class="bos">${s.tur === "mv" ? "İlinde aday listesi veya bağımsız aday yok." : "Bu seçimde sana uygun aday yok."}</div></div>`;
+  const coklu = s.tur === "mv_on";
   const aciklama = {
     mv: `${e(ilAd(s.benim_il))} için bir partiye oy ver. Sandalyeler partilerin aldığı oya göre D'Hondt usulüyle dağıtılır; parti listesindeki sırayla vekiller belirlenir.`,
-    mv_on: "Partinin ilindeki aday adaylarından birine oy ver. En çok oy alan listenin başına yazılır.",
+    mv_on: "Yalnızca kendi ilindeki, kendi partinin aday adayları arasından EN AZ 1, EN FAZLA 5 farklı kişiye oy verebilirsin. Birden fazla kişiyi işaretleyip tek seferde onayla.",
     bel_on: "Partinin belediye başkanı adayını seç.", bel: "İlinin belediye başkanını seç. En çok oyu alan kazanır.",
-    kurultay: "Partinin genel başkanını seç.", cb_on: "Partinin cumhurbaşkanı adayını seç.",
+    kurultay: "Partinin genel başkanını seç.", cb_on: "Partinin cumhurbaşkanı aday adaylarından yalnızca birini seç.",
     cb: "Cumhurbaşkanını seç. Oyların yarısından fazlasını alan kazanır; yoksa ilk iki aday ertesi gün ikinci tura kalır.",
     cb2: "İkinci tur: iki adaydan birini seç."
   }[s.tur];
-  return `<div class="kart duz"><p class="alt">${aciklama}</p>
+  return `<div class="kart duz"><p class="alt" style="${coklu ? "font-weight:800" : ""}">${aciklama}</p>
     <div class="pusula-kagit"><div class="pusula-bas"><b>Oy pusulası</b><span>${TUR[s.tur].kisa}${s.benim_il && ["mv","bel","mv_on","bel_on"].includes(s.tur) ? " · " + e(ilAd(s.benim_il)) : ""}</span></div>
     <div id="pusula">${s.secenekler.map(x => secenekSatir(x, s.tur === "mv", s.destekler).trim().replace(/<\/div>$/, '<span class="muhur-yeri" aria-hidden="true"></span></div>')).join("")}</div></div>
-    <button class="btn" id="muhurle" disabled>Mühürle ve zarfa koy</button><p class="kucuk" style="margin-top:8px;text-align:center">Tercih ettiğin yere dokun. Oyun gizlidir ve geri alınamaz.</p></div>`;
+    ${coklu ? '<p class="kucuk" id="onsecim-sayac" style="margin:10px 0;font-weight:900">0 / 5 aday seçildi · En az 1, en fazla 5 kişiye oy verebilirsin.</p>' : ""}
+    <button class="btn" id="muhurle" disabled>${coklu ? "Seçtiğim adaylara oy ver (0)" : "Mühürle ve zarfa koy"}</button><p class="kucuk" style="margin-top:8px;text-align:center">Tercih ettiğin yere dokun. Oyun gizlidir ve geri alınamaz.</p></div>`;
 }
 function pusulaBagla(s){
+  const coklu = s.tur === "mv_on";
+  const secililer = new Set();
   let secili = null;
-  document.querySelectorAll(".pusula-secenek").forEach(el => el.onclick = () => {
-    document.querySelectorAll(".pusula-secenek").forEach(x => x.classList.remove("secili"));
-    el.classList.add("secili"); secili = +el.dataset.h; $("#muhurle").disabled = false;
+  const satirlar = [...document.querySelectorAll(".pusula-secenek")];
+  const dugme = $("#muhurle");
+  function ciz(){
+    satirlar.forEach(el => {
+      const id = Number(el.dataset.h);
+      const aktif = coklu ? secililer.has(id) : id === secili;
+      el.classList.toggle("secili", aktif);
+      el.setAttribute("aria-checked", aktif ? "true" : "false");
+    });
+    const n = coklu ? secililer.size : (secili == null ? 0 : 1);
+    dugme.disabled = n === 0;
+    if (coklu) {
+      const sayac = $("#onsecim-sayac");
+      if(sayac) sayac.textContent = n + " / 5 aday seçildi · En az 1, en fazla 5 kişiye oy verebilirsin.";
+      dugme.textContent = "Seçtiğim adaylara oy ver (" + n + ")";
+    }
+  }
+  satirlar.forEach(el => {
+    if (coklu) {
+      el.setAttribute("role","checkbox");
+      el.setAttribute("tabindex","0");
+    }
+    const tercih = () => {
+      const id = Number(el.dataset.h);
+      if (coklu) {
+        if (secililer.has(id)) secililer.delete(id);
+        else if (secililer.size >= 5) { toast("En fazla 5 farklı aday seçebilirsin.", true); return; }
+        else secililer.add(id);
+      } else secili = id;
+      ciz();
+    };
+    el.onclick = tercih;
+    if (coklu) el.onkeydown = ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); tercih(); } };
   });
-  $("#muhurle").onclick = async () => {
-    if (!secili) return;
-    $("#muhurle").disabled = true;
+  ciz();
+  dugme.onclick = async () => {
+    if (coklu ? !secililer.size : secili == null) return;
+    dugme.disabled = true;
     try {
-      await API.rpc("oy_ver", { p_secim: s.id, p_hedef: secili });
+      if (coklu) await API.rpc("oy_ver_coklu", {p_secim:s.id,p_hedefler:[...secililer]});
+      else await API.rpc("oy_ver", { p_secim: s.id, p_hedef: secili });
       const m = document.createElement("div"); m.className = "mühür"; m.innerHTML = `<div>TERCİH<small>OYUNUZ SANDIKTA</small></div>`;
       document.body.appendChild(m); setTimeout(() => { m.remove(); secimEkrani(s.id); }, 1300);
       if (navigator.vibrate) navigator.vibrate(30);
-    } catch (err) { toast(hataCevir(err.message), true); $("#muhurle").disabled = false; }
+    } catch (err) { toast(hataCevir(err.message), true); ciz(); }
   };
 }
 function adayListesiHtml(s){
