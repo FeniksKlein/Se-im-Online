@@ -36,7 +36,7 @@ BEGIN
  FROM (SELECT * FROM oyun.sirket_hareket WHERE sirket_id=p_banka ORDER BY id DESC LIMIT 20) h),'[]'::jsonb));
 END $function$
 
--- Mahkeme oy asamasi degiskeni sutun adi ile karistirilmaz.
+-- Mahkeme oy asamasi degiskeni sutun adi ile karistirilmaz.;
 
 CREATE OR REPLACE FUNCTION public.oyb_icra_karar(p_icra bigint,p_karar text,p_gerekce text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
