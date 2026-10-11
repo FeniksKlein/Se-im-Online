@@ -23,7 +23,7 @@ async function bankaRehberiEkrani(){
 async function bankaDetayEkrani(id){
  yukleniyor("Banka şubesi");
  try{
-  const d=await API.rpc("oyb_liste"),b=(d.bankalar||[]).find(x=>x.id===id);
+  const [d,ur]=await Promise.all([API.rpc("oyb_liste"),API.rpc("oyb_urunler",{p_banka:id})]);window.BK_BANKA_URUN=window.BK_BANKA_URUN||{};window.BK_BANKA_URUN[id]=ur.urunler||[];const b=(d.bankalar||[]).find(x=>x.id===id);
   if(!b){toast("Banka bulunamadı.",true);bankaRehberiEkrani();return;}
   iskelet(e(b.ad),`<div class="kart vit-manset"><h2>🏦 ${e(b.ad)}</h2>
     <div class="kv"><span>Banka kasası</span><b>${vitTL(b.kasa)}</b></div>
@@ -41,8 +41,9 @@ async function bankaDetayEkrani(id){
     <div class="alt" id="oyb_kredi_risk_${id}">Bu bankadaki kredi limitin gelirine, kredi notuna ve borçlarına göre hesaplanır.</div>
     <button class="btn ikinci" onclick="oybKrediRiskGoster(${id})">Kredi notumu ve limitimi göster</button>
     <div class="alan"><label>Kredi tutarı</label><input id="oyb_ktutar_${id}" type="number" min="1000" max="500000" value="10000"></div>
-    <div class="alan"><label>Kredi vadesi</label><select id="oyb_ksaat_${id}" onchange="oybKrediRiskGoster(${id})">${[168,336,504,672,1,3,6,12,24].map(h=>`<option value="${h}">${h>=168?(h/168)+" hafta":h+" saat"}</option>`).join("")}</select></div>
+    <div class="alan"><label>Kredi vadesi</label><select id="oyb_ksaat_${id}" onchange="oybKrediRiskGoster(${id})">${(ur.urunler||[]).filter(x=>x.aktif).map(x=>`<option value="${x.saat}">${bkUrunAdi(x.saat)} · ${x.taksit} taksit · ek faiz %${fmt(x.ek_faiz,2)}</option>`).join("")}</select></div>
     <button class="btn altin" ${b.bankam?"disabled":""} onclick="oybKrediBasvur(${id})">Kredi talebi gönder</button></div>
+  <button class="btn ikinci" onclick="bankaKrediDosyaEkrani(${id})">Kredi paketleri / ödeme takvimi / finansal izinler</button>
   <button class="btn ikinci" onclick="bankaRehberiEkrani()">Diğer bankaları gör</button>`,{geri:true});
  }catch(err){iskelet("Banka şubesi",'<div class="kart">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
@@ -60,6 +61,7 @@ async function bankaPortfoyEkrani(){
  ${(d.krediler||[]).map(x=>`<div class="vit-kayit"><b>${e(x.banka)}</b><div class="kv"><span>Kalan borç</span><b>${vitTL(x.kalan)}</b></div><div class="kucuk">${e(x.durum)}</div>
  ${x.durum==="basvuru"?`<button class="btn ikinci" onclick="oybKrediBasvuruIptal(${x.id})">Başvuruyu iptal et</button>`:""}
  ${["aktif","gecikmis"].includes(x.durum)?`<div class="alan"><label>Ödenecek tutar</label><input id="oyb_kode_${x.id}" type="number" min="1" value="${Math.ceil(x.kalan)}"></div><button class="btn altin" onclick="oybKrediOde(${x.id})">Öde</button>`:""}</div>`).join("")||'<p class="alt">Kredin yok.</p>'}</div>
+ <button class="btn altin" onclick="bankaKrediDosyaEkrani()">Kredi taksitlerim / mali bilgi izinlerim</button>
  <button class="btn ikinci" onclick="bankaRehberiEkrani()">Banka rehberine dön</button>`,{geri:true});
  }catch(err){iskelet("Bankacılık portföyüm",'<div class="kart">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
