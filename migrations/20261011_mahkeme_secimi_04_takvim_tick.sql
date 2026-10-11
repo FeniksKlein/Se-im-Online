@@ -23,8 +23,7 @@ begin
   insert into oyun.bildirimler(user_id, zaman, metin)
     select x.user_id, t, 'Yeni yasama dönemi: TBMM Başkanlığına ve partinin grup görevlerine 24 saat içinde aday olabilirsin (Devlet › Meclis).'
     from oyun.makamlar x where x.tur = 'mv' and x.bit is null;
-end $function$
-
+end $function$;
 CREATE OR REPLACE FUNCTION oyun.tick()
  RETURNS integer
  LANGUAGE plpgsql
@@ -53,5 +52,4 @@ begin
   perform oyun.guvenlik_tick(t); perform oyun.gunluk_ekonomi(t); perform oyun.banka_tick(t); perform oyun.meclis_olcek_uygula(t); perform oyun.ihmal_tick(t); perform oyun.miting_tick(t);
   perform oyun.push_hatirlatmalar(t); perform oyun.push_tetikle();
   return n;
-end $function$
-
+end $function$;
