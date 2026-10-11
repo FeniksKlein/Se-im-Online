@@ -1779,25 +1779,15 @@ function gostergeHtml(u){
 async function devletEkrani(){
   // Meclis ve Adliye artık ayrı alt menüdür; eski bağlantılar oraya yönlenir.
   if (D.devletSekme === "meclis") { D.devletSekme = "hukumet"; if (D._meclisSecimOdak) D.meclisSekme = "baskanlik"; return sekmeAc("meclis"); }
+  if (D.devletSekme === "mevzuat") { D.devletSekme = "hukumet"; D.meclisSekme = "mevzuat"; return sekmeAc("meclis"); }
   if (D.devletSekme === "adliye") { D.devletSekme = "hukumet"; return sekmeAc("adliye"); }
   D.devletSekme = D.devletSekme || "hukumet";
   yukleniyor("Devlet");
-  const seg = `<div class="segment" style="margin-bottom:12px">${[["hukumet","Hükümet"],["mevzuat","Mevzuat"],["gazete","Gazete"],["tarih","Tarih"]].map(([k, a]) =>
+  const seg = `<div class="segment" style="margin-bottom:12px">${[["hukumet","Hükümet"],["gazete","Gazete"],["tarih","Tarih"]].map(([k, a]) =>
     `<button class="${D.devletSekme === k ? "aktif" : ""}" onclick="D.devletSekme='${k}';devletEkrani()">${a}</button>`).join("")}</div>`;
   try {
     await durumYenile();
     if (D.devletSekme === "hukumet") { iskelet("Devlet", seg + `<div class="kart"><button class="btn ikinci" onclick="aliciBagisModal('devlet',1,'Türkiye Cumhuriyeti Hazinesi')">Devlet hazinesine bağış yap</button><button class="btn ikinci" style="margin-top:8px" onclick="ekranAc(krizMerkeziEkrani)">Ülke Kriz Merkezi ve arşiv</button></div>` + await hukumetHtml()); politikaBagla(); return; }
-    if (D.devletSekme === "meclis") {
-      iskelet("Devlet", seg + await meclisHtml());
-      if (D._meclisSecimOdak) {
-        const hedef = document.getElementById("meclisSecim" + D._meclisSecimOdak);
-        D._meclisSecimOdak = null;
-        if (hedef) hedef.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-      return;
-    }
-    if (D.devletSekme === "adliye") return iskelet("Devlet", seg + await adliyeHtml());
-    if (D.devletSekme === "mevzuat") { iskelet("Devlet", seg + await mevzuatHtml()); kuralBagla(); return; }
     if (D.devletSekme === "tarih") return iskelet("Devlet", seg + await tarihHtml());
     return iskelet("Devlet", seg + await gazeteHtml());
   } catch (err) { iskelet("Devlet", seg + `<div class="bos">${e(hataCevir(err.message))}</div>`); }
@@ -1881,11 +1871,8 @@ async function hukumetHtml(){
   return `
     ${yurutmeKart}
     ${parlamenter && kab.cb ? `<div class="kart"><div class="kucuk">Cumhurbaşkanı · devlet başkanı</div><b>${e(kab.cb.kad)}</b><div class="alt">${partiRozet(kab.cb.parti)} · parlamenter sistemde yürütmeyi Başbakan ve hükümet kullanır.</div></div>` : ""}
-    ${siyasiSistemHtml(siyasi)}
+    <div class="kart"><h2>Meclis ve siyasi sistem</h2><p class="alt">Güvenoyu, gensoru, erken seçim ve yasa değişiklikleri Meclis sayfasında yönetilir.</p><button class="btn ikinci" onclick="meclisSekmeAc('oylamalar')">Meclis işlemlerine git</button></div>
     ${cbYardimcilariHtml(cbY,cbmiyim)}
-    ${cbmiyim && bekleyen.length ? `<div class="olay basvuru"><div class="baslik"><b>Cumhurbaşkanı onay masası</b><span class="rozet altin">Kanunlar</span></div>
-      <p class="alt" style="margin-top:6px">Meclisten geçen kanunlarda anayasal onay/veto yetkini burada kullanırsın.</p>
-      ${bekleyen.map(k => `<div class="liste-satir" onclick="ekranAc(()=>kanunEkrani(${k.id}))" style="cursor:pointer"><div class="orta"><b>${e(k.baslik)}</b><div class="kucuk">Onayını bekliyor · son ${tarihSaat(k.cb_bit)}</div></div><span class="durum d-cb_onayinda">Karar ver</span></div>`).join("")}</div>` : ""}
     ${yurutmeyim ? `<div class="olay basvuru"><div class="baslik"><b>${parlamenter ? "Başbakanlık" : "Cumhurbaşkanlığı"} masası</b><span class="rozet altin">Yürütme</span></div>
       <p class="alt" style="margin-top:6px">Ekonomiyi ve kabineyi yönetirsin. Asgari ücret, vergi, kıdem primi, sosyal destek ve taşınma desteği aşağıdaki ekonomi masasından ayarlanır. Bakanları atayıp görevden alabilirsin.${parlamenter ? " Hükümet, Meclis güvenini kaybederse veya koalisyon ortağı çekilirse düşer." : ` Ayrıca anayasal sınır içinde kararname çıkarabilirsin (günde ${fmt(u.kararname_sinir ?? 3)}).`}</p>
       ${parlamenter ? "" : `<button class="btn altin" onclick="kararnameModal()">Kararname çıkar</button>`}</div>
@@ -2161,7 +2148,7 @@ function kuralBagla(){
       const k = D._mevzuat.kurallar.find(x => x.kod === kod);
       if (!await onayla(e(k.ad), `Cumhurbaşkanlığı kararnamesiyle <b>${kuralYaz(k.birim, +inp.value)}</b> olacak. Son 7 günde oyuna giren herkese bildirim gider. Meclis bu konuyu kanunla düzenlerse senin kararın geçersiz olur.`, "İmzala ve yayımla")) return;
       try { const r = await API.rpc("kararname_cikar", { p_tur: "duzenleme", p_baslik: null, p_metin: null, p_veri: { kod, deger: +inp.value } });
-        toast(`${r.no} sayılı karar Resmî Gazete'de yayımlandı.`); devletEkrani(); }
+        toast(`${r.no} sayılı karar Resmî Gazete'de yayımlandı.`); meclisSekmeAc("mevzuat"); }
       catch (err) { toast(hataCevir(err.message), true); }
     };
   });
@@ -2352,7 +2339,7 @@ function siyasiSistemHtml(s){
       <p class="alt">${e(er.gerekce)}</p><div class="kv"><span class="k">Kabul</span><span class="v">${er.kabul} / ${er.gerekli}</span></div>
       ${s.ben.vekil_mi?`<div class="oybtn">${["kabul","ret","cekimser"].map(o=>`<button class="${er.benim_oy===o?"sec-"+o:""}" onclick="erkenSecimOy(${er.id},'${o}')">${{kabul:"Kabul",ret:"Ret",cekimser:"Çekimser"}[o]}</button>`).join("")}</div>`:""}</div>`
       :(s.ben.gb_mi?`<button class="btn ikinci" onclick="erkenSecimModal()">Erken seçim kararı / çağrısı başlat</button>`:"")}
-    <button class="btn ikinci" onclick="D.devletSekme='mevzuat';devletEkrani()">Anayasayı ve sistem kurallarını gör</button></div>`;
+    <button class="btn ikinci" onclick="meclisSekmeAc('mevzuat')">Anayasayı ve sistem kurallarını gör</button></div>`;
 }
 async function hukumetTeklifModal(){
   let s; try{s=await API.rpc("siyasi_sistem");}catch(err){return toast(hataCevir(err.message),true);}
@@ -2360,21 +2347,21 @@ async function hukumetTeklifModal(){
   const m=modal(`<h3 style="font-size:19px;font-weight:800">Hükümet kurma görüşmesi</h3><p class="alt">Her parti için koalisyon ortaklığı, dışarıdan destek veya görüşme dışı seç. Davetlilerin hepsi kabul edince hükümet TBMM güvenoyuna gider.</p>
     ${l.map(x=>`<div class="payinput"><span>${partiRozet(x)} <span class="kucuk">${x.vekil} vekil · GB ${e(x.gb)}</span></span><select data-hparti="${x.id}"><option value="">Görüşme dışı</option><option value="ortak">Koalisyon ortağı</option><option value="destek">Dışarıdan destek</option></select></div>`).join("")}<button class="btn altin" id="hkok">Teklifi gönder</button>`);
   $("#hkok",m).onclick=async()=>{const ortak=[],destek=[];m.querySelectorAll("[data-hparti]").forEach(x=>{if(x.value==="ortak")ortak.push(+x.dataset.hparti);if(x.value==="destek")destek.push(+x.dataset.hparti);});
-    try{await API.rpc("hukumet_teklif",{p_ortaklar:ortak,p_destek:destek});modalKapat();toast("Hükümet kurma süreci başladı.");devletEkrani();}catch(err){toast(hataCevir(err.message),true);}};
+    try{await API.rpc("hukumet_teklif",{p_ortaklar:ortak,p_destek:destek});modalKapat();toast("Hükümet kurma süreci başladı.");meclisYenile();}catch(err){toast(hataCevir(err.message),true);}};
 }
-async function hukumetYanit(id,kabul){try{await API.rpc("hukumet_teklif_yanit",{p_hukumet:id,p_kabul:kabul});toast(kabul?"Teklifi kabul ettin.":"Teklifi reddettin.");devletEkrani();}catch(err){toast(hataCevir(err.message),true);}}
-async function hukumetGuvenOy(id,oy){try{await API.rpc("hukumet_guven_oy",{p_hukumet:id,p_oy:oy});toast("Güvenoyu kaydedildi.");devletEkrani();}catch(err){toast(hataCevir(err.message),true);}}
+async function hukumetYanit(id,kabul){try{await API.rpc("hukumet_teklif_yanit",{p_hukumet:id,p_kabul:kabul});toast(kabul?"Teklifi kabul ettin.":"Teklifi reddettin.");meclisYenile();}catch(err){toast(hataCevir(err.message),true);}}
+async function hukumetGuvenOy(id,oy){try{await API.rpc("hukumet_guven_oy",{p_hukumet:id,p_oy:oy});toast("Güvenoyu kaydedildi.");meclisYenile();}catch(err){toast(hataCevir(err.message),true);}}
 async function hukumetDestekCek(){if(!await onayla("Hükümet desteğini çek","Koalisyon ortağıysan hükümet hemen düşer; dış destekçiysen hükümet devam eder ama kanunlarda yeniden çoğunluk aramak zorunda kalır.","Desteği çek",true))return;
-  try{await API.rpc("hukumet_destek_cek");toast("Desteğin çekildi.");devletEkrani();}catch(err){toast(hataCevir(err.message),true);}}
+  try{await API.rpc("hukumet_destek_cek");toast("Desteğin çekildi.");meclisYenile();}catch(err){toast(hataCevir(err.message),true);}}
 function gensoruModal(){const m=modal(`<h3 style="font-size:19px;font-weight:800">Gensoru</h3><p class="alt">Gerekçeni yaz. Aktif milletvekillerinin salt çoğunluğu kabul ederse hükümet düşer.</p><textarea class="alanmetin" id="ggerekce" maxlength="1000"></textarea><button class="btn tehlike" id="ggonder">Gensoruyu ver</button>`);
-  $("#ggonder",m).onclick=async()=>{try{await API.rpc("gensoru_ver",{p_gerekce:$("#ggerekce",m).value});modalKapat();toast("Gensoru oylamaya açıldı.");devletEkrani();}catch(err){toast(hataCevir(err.message),true);}};}
-async function gensoruOy(id,oy){try{await API.rpc("gensoru_oy",{p_id:id,p_oy:oy});toast("Oyun kaydedildi.");devletEkrani();}catch(err){toast(hataCevir(err.message),true);}}
+  $("#ggonder",m).onclick=async()=>{try{await API.rpc("gensoru_ver",{p_gerekce:$("#ggerekce",m).value});modalKapat();toast("Gensoru oylamaya açıldı.");meclisYenile();}catch(err){toast(hataCevir(err.message),true);}};}
+async function gensoruOy(id,oy){try{await API.rpc("gensoru_oy",{p_id:id,p_oy:oy});toast("Oyun kaydedildi.");meclisYenile();}catch(err){toast(hataCevir(err.message),true);}}
 function erkenSecimModal(){const m=modal(`<h3 style="font-size:19px;font-weight:800">Erken seçim</h3><p class="alt">İktidar partisiysen erken seçim kararı, muhalefetteysen erken seçim çağrısı olarak Meclis gündemine gelir. Anayasal çoğunluk oluşursa seçim en yakın takvime çekilir.</p><textarea class="alanmetin" id="esgerekce" maxlength="1000" placeholder="Gerekçe"></textarea><button class="btn altin" id="esgonder">TBMM gündemine getir</button>`);
-  $("#esgonder",m).onclick=async()=>{try{await API.rpc("erken_secim_teklif",{p_gerekce:$("#esgerekce",m).value});modalKapat();toast("Erken seçim önerisi TBMM gündeminde.");devletEkrani();}catch(err){toast(hataCevir(err.message),true);}};}
-async function erkenSecimOy(id,oy){try{await API.rpc("erken_secim_oy",{p_id:id,p_oy:oy});toast("Oyun kaydedildi.");devletEkrani();}catch(err){toast(hataCevir(err.message),true);}}
+  $("#esgonder",m).onclick=async()=>{try{await API.rpc("erken_secim_teklif",{p_gerekce:$("#esgerekce",m).value});modalKapat();toast("Erken seçim önerisi TBMM gündeminde.");meclisYenile();}catch(err){toast(hataCevir(err.message),true);}};}
+async function erkenSecimOy(id,oy){try{await API.rpc("erken_secim_oy",{p_id:id,p_oy:oy});toast("Oyun kaydedildi.");meclisYenile();}catch(err){toast(hataCevir(err.message),true);}}
 
 /* ---------- Meclis rehberi: sandalyeler, başkanlık, gruplar, il il vekiller, yasama ---------- */
-const MECLIS_SEKME = [["genel","Sandalyeler"],["baskanlik","Başkanlık"],["gruplar","Gruplar"],["vekiller","İl il vekiller"],["yasama","Yasama"]];
+const MECLIS_SEKME = [["genel","Sandalyeler"],["baskanlik","Başkanlık"],["gruplar","Gruplar"],["vekiller","İl il vekiller"],["yasama","Yasama / Kanunlar"],["oylamalar","Oylamalar"],["mevzuat","Anayasa / Mevzuat"]];
 function meclisSekmeAc(k, parti){
   D.meclisSekme = k;
   if (parti !== undefined) { D.mvParti = parti; D.mvAra = ""; }
@@ -2386,6 +2373,7 @@ async function meclisEkrani(){
     await durumYenile();
     if (D._meclisSecimOdak) D.meclisSekme = "baskanlik";
     iskelet("Meclis", await meclisHtml());
+    if (D.meclisSekme === "mevzuat") kuralBagla();
     if (D._meclisSecimOdak) {
       const hedef = document.getElementById("meclisSecim" + D._meclisSecimOdak);
       D._meclisSecimOdak = null;
@@ -2406,6 +2394,8 @@ async function meclisHtml(){
   const alt = `<div class="segment mc-seg">${MECLIS_SEKME.map(([k, a]) => `<button class="${sek === k ? "aktif" : ""}" onclick="meclisSekmeAc('${k}')">${a}</button>`).join("")}</div>`;
   let govde;
   if (sek === "yasama") govde = await meclisYasamaHtml();
+  else if (sek === "oylamalar") govde = await meclisOylamalarHtml();
+  else if (sek === "mevzuat") govde = await mevzuatHtml();
   else {
     let r; try { r = await meclisRehberAl(); } catch (err) { return alt + `<div class="bos">${e(hataCevir(err.message))}</div>`; }
     govde = sek === "genel" ? meclisGenelHtml(r) : sek === "baskanlik" ? await meclisBaskanlikHtml(r) : sek === "gruplar" ? meclisGruplarHtml(r) : meclisVekillerHtml(r);
@@ -2428,7 +2418,7 @@ function meclisGenelHtml(r){
         <div class="cubuk"><i style="width:${(p.n * 100 / Math.max(1, r.dolu)).toFixed(1)}%;background:${e(p.renk)}"></i></div>
         <div class="kucuk">${p.id == null ? "Herhangi bir partiye üye olmayan vekiller" : p.grup ? `Siyasi parti grubu · ${p.sira}. büyük grup` : `Grup kuramadı (en az ${r.grup_esigi} vekil gerekir)`}</div></div>`).join("")
       : `<div class="bos">Meclis henüz boş. İlk genel seçim ayın 1'inde.</div>`}
-    <div class="satir" style="margin-top:12px"><button class="btn yarim altin" onclick="meclisSekmeAc('vekiller','')">İl il vekiller</button><button class="btn yarim ikinci" onclick="ekranAc(()=>sohbetEkrani('meclis'))">TBMM Genel Kurulu</button></div></div>`;
+    <div class="satir" style="margin-top:12px"><button class="btn yarim altin" onclick="meclisSekmeAc('vekiller','')">İl il vekiller</button><button class="btn yarim ikinci" onclick="ekranAc(()=>sohbetEkrani('meclis'))">TBMM Genel Kurulu</button></div><div class="satir" style="margin-top:8px"><button class="btn yarim altin" onclick="meclisSekmeAc('yasama')">Kanun ve yasa değişiklikleri</button><button class="btn yarim ikinci" onclick="meclisSekmeAc('oylamalar')">Meclis oylamaları</button></div><button class="btn ikinci" style="margin-top:8px" onclick="meclisSekmeAc('mevzuat')">Anayasa ve mevzuat</button></div>`;
 }
 async function meclisBaskanlikHtml(r){
   let b = null; try { b = await API.rpc("meclis_baskanlik"); D._divan = b; } catch (_) {}
@@ -2493,14 +2483,21 @@ function mvFiltre(){
   const say = $("#mvSay"); if (say) say.textContent = `${il} il · ${mv} milletvekili`;
   const yok = $("#mvYok"); if (yok) yok.style.display = il ? "none" : "";
 }
+async function meclisOylamalarHtml(){
+  const siyasi=await API.rpc("siyasi_sistem");
+  D._siyasi=siyasi;
+  return `<div class="kart"><h2>Meclis oylamaları ve denetim</h2><p class="alt">Güvenoyu, gensoru, erken seçim ve Meclisin denetim görevleri burada.</p>
+    <div class="satir"><button class="btn yarim altin" onclick="ekranAc(maasEkrani)">Maaş oylamaları</button><button class="btn yarim ikinci" onclick="ekranAc(bakanSoruEkrani)">Bakanlara sorular</button></div>
+    <button class="btn ikinci" style="margin-top:8px" onclick="ekranAc(()=>sohbetEkrani('meclis'))">TBMM Genel Kurulu</button></div>
+    ${siyasiSistemHtml(siyasi)}`;
+}
 async function meclisYasamaHtml(){
-  const [kl,s]=await Promise.all([API.rpc("kanunlar",{p_limit:60}),API.rpc("siyasi_sistem")]);
-  D._siyasi=s;
+  const kl=await API.rpc("kanunlar",{p_limit:60});
   const vekilim=D.durum.profil.makamlar.some(x=>x.tur==="mv");
   const aktif=kl.filter(k=>["gorusmede","oylamada","cb_onayinda","israr"].includes(k.durum)),biten=kl.filter(k=>!aktif.includes(k));
-  return `${siyasiSistemHtml(s)}<div class="kart"><h2>Meclis İşlemleri</h2><div class="satir"><button class="btn yarim altin" onclick="ekranAc(maasEkrani)">Maaş oylamaları</button><button class="btn yarim ikinci" onclick="ekranAc(bakanSoruEkrani)">Bakanlara sorular</button></div>
-      <button class="btn ikinci" style="margin-top:8px" onclick="ekranAc(()=>sohbetEkrani('meclis'))">TBMM Genel Kurulu</button></div>
+  return `<div class="kart"><h2>Kanunlar ve yasa değişiklikleri</h2><p class="alt">Kanun teklifi, bütçe, seçim yasası ve anayasa değişiklikleri burada takip edilir.</p><div class="satir"><button class="btn yarim ikinci" onclick="meclisSekmeAc('mevzuat')">Anayasa ve güncel yasalar</button><button class="btn yarim ikinci" onclick="meclisSekmeAc('oylamalar')">Meclis oylamaları</button></div></div>
     ${vekilim?`<button class="btn altin" style="margin:0 0 12px" onclick="ekranAc(kanunTeklifEkrani)">+ Kanun teklifi ver</button>`:""}
+    <div class="kart"><h2>Diğer yasa değişiklikleri</h2><button class="btn ikinci" onclick="ekranAc(ozelYasaEkrani)">Asgari ücret ve dokunulmazlık kanunları</button></div>
     <div class="kart cizgili"><h2>Ekonomi yasası teklifleri</h2><p class="alt">Gelir vergisi, ilk konut, gayrimenkul, mevduat, piyango, tahvil, vergi affı, parti ve belediye yardımları: 10 farklı kanun teklifi. Yasalar görüşme, oylama ve Cumhurbaşkanı onayıyla yürürlüğe girer.</p><button class="btn altin" onclick="ekranAc(ekonomiYasaEkrani)">10 yasa teklifini incele / Meclise sun</button></div>
     <div class="kart"><h2>Gündemdeki teklifler</h2>${aktif.map(kanunSatir).join("")||`<div class="bos">Şu anda Meclis gündeminde teklif yok.${vekilim?"":" Kanun teklifini milletvekilleri verir."}</div>`}</div>
     ${biten.length?`<div class="kart"><h2>Sonuçlanan teklifler</h2>${biten.map(kanunSatir).join("")}</div>`:""}`;
