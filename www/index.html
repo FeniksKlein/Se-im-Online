@@ -4275,7 +4275,7 @@ async function sirketYonetimEkrani(){
   _sirketEkonomi={asgari:Number(d.asgari),normal:Number(d.sirket_asgari_sermaye||100000),banka:Number(d.banka_asgari_sermaye||1000000)};
   _sirketSonMin=_sirketEkonomi.normal;
   iskelet("Şirketlerim",`
-  <div class="kart"><h2>Şirketlerimi yönet</h2><p class="alt">Ortak olduğun ticari şirketleri burada yönet. Diğer şirketler ayrı rehberde.</p><button class="btn ikinci" onclick="sirketVitrinEkrani()">Tüm şirketleri gör</button><button class="btn ikinci" onclick="ticaretGecmisimEkrani()">Alım-satım geçmişim</button><button class="btn ikinci" onclick="halkaArzPazarEkrani()">Halka arzlar</button></div>
+  <div class="kart"><h2>Şirketlerimi yönet</h2><p class="alt">Ortak olduğun ticari şirketleri burada yönet. Diğer şirketler ayrı rehberde.</p><button class="btn ikinci" onclick="sirketVitrinEkrani()">Tüm şirketleri gör</button><button class="btn ikinci" onclick="ticaretGecmisimEkrani()">Alım-satım geçmişim</button><button class="btn ikinci" onclick="halkaArzPazarEkrani()">Halka arzlar</button><button class="btn altin" onclick="sirketHissePazariEkrani()">💰 Hisselerimi sat / Hisse Pazarı</button></div>
   <div class="kart"><h2>Şirket kur</h2><p class="alt">Asgari sermaye 100.000 ₺. Bütçene göre 7 günlük gelir, gider ve kâr/zarar tahminlerini incele.</p>
   <div class="alan"><label>Şirket adı</label><input id="sir_ad" maxlength="50" placeholder="Şirket adı"></div>
   <div class="alan"><label>Sektör</label><select id="sir_sektor" onchange="sirketOnizleme(true)"><option value="tarim">Tarım</option><option value="sanayi">Sanayi</option><option value="teknoloji">Teknoloji</option><option value="ticaret">Ticaret</option><option value="insaat">İnşaat</option><option value="medya">Medya</option></select></div>
@@ -4283,7 +4283,7 @@ async function sirketYonetimEkrani(){
   <div class="kart" id="sir_kazanc_onizleme" style="background:var(--panel2);margin-top:12px" aria-live="polite"></div><p id="sir_sermaye_uyari" role="alert" class="alt" style="color:var(--acc2);display:none"></p>
   <button id="sir_kur_btn" class="btn altin" onclick="sirketKur()">Şirketi kur</button></div>
   <div class="kart"><h2>Ortak olduğum şirketler</h2>
-  ${d.sirketler.filter(s=>s.sektor!=="banka").length?d.sirketler.filter(s=>s.sektor!=="banka").map(s=>`<div class="kart"><h3>${e(s.ad)} · ${e(s.sektor)}</h3><div class="kv"><span>Payım</span><b>%${s.pay}</b></div><div class="kv"><span>Şirket kasası</span><b>${fmt(s.kasa)} ₺</b></div><button class="btn ikinci" onclick="aliciBagisModal('sirket',${s.id},decodeURIComponent('${encodeURIComponent(s.ad).replace(/\x27/g,"%27")}'))">Bu şirkete bağış yap</button>${sirketMiniFinans(s,d.asgari)}${typeof halkaArzKart==='function'?halkaArzKart(s):''}<div class="kv"><span>Dağıtılabilir kâr</span><b>${fmt(s.dagitilabilir_kar??0)} ₺</b></div><p class="alt">Haftalık hesaplama: ${s.sonraki_kazanc?new Date(s.sonraki_kazanc).toLocaleString("tr-TR"):"Belirsiz"}</p>  ${s.pay===100?`<div class="alan"><label>Sermaye artırımı (₺)</label><input id="sir_artis_${s.id}" type="number" min="10000" value="10000"></div><button class="btn altin" onclick="sirketSermayeArtir(${s.id})">Sermaye artır</button><div class="alan"><label>Şirketin tamamı için satış fiyatı (₺)</label><input id="sir_satis_${s.id}" type="number" min="1000" placeholder="Satış fiyatını gir" value="${s.satilik??''}"></div><button class="btn ikinci" onclick="sirketSatisaCikar(${s.id})">${s.satilik!=null?"Satış fiyatını güncelle":"Şirketi satışa çıkar"}</button>${s.satilik!=null?`<button class="btn ikinci" onclick="sirketSatistanCikar(${s.id})">Satış ilanını kaldır</button>`:""}`:''}
+  ${d.sirketler.filter(s=>s.sektor!=="banka").length?d.sirketler.filter(s=>s.sektor!=="banka").map(s=>`<div class="kart"><h3>${e(s.ad)} · ${e(s.sektor)}</h3><div class="kv"><span>Payım</span><b>%${s.pay}</b></div><button class="btn ikinci" onclick="sirketHissePazariEkrani(${s.id})">Hisselerimi sat / İlan ver</button><div class="kv"><span>Şirket kasası</span><b>${fmt(s.kasa)} ₺</b></div><button class="btn ikinci" onclick="aliciBagisModal('sirket',${s.id},decodeURIComponent('${encodeURIComponent(s.ad).replace(/\x27/g,"%27")}'))">Bu şirkete bağış yap</button>${sirketMiniFinans(s,d.asgari)}${typeof halkaArzKart==='function'?halkaArzKart(s):''}<div class="kv"><span>Dağıtılabilir kâr</span><b>${fmt(s.dagitilabilir_kar??0)} ₺</b></div><p class="alt">Haftalık hesaplama: ${s.sonraki_kazanc?new Date(s.sonraki_kazanc).toLocaleString("tr-TR"):"Belirsiz"}</p>  ${s.pay===100?`<div class="alan"><label>Sermaye artırımı (₺)</label><input id="sir_artis_${s.id}" type="number" min="10000" value="10000"></div><button class="btn altin" onclick="sirketSermayeArtir(${s.id})">Sermaye artır</button><div class="alan"><label>Şirketin tamamı için satış fiyatı (₺)</label><input id="sir_satis_${s.id}" type="number" min="1000" placeholder="Satış fiyatını gir" value="${s.satilik??''}"></div><button class="btn ikinci" onclick="sirketSatisaCikar(${s.id})">${s.satilik!=null?"Satış fiyatını güncelle":"Şirketi satışa çıkar"}</button>${s.satilik!=null?`<button class="btn ikinci" onclick="sirketSatistanCikar(${s.id})">Satış ilanını kaldır</button>`:""}`:''}
   ${s.pay>=50?`<div class="alan"><label>Dağıtılacak kâr payı</label><input id="sir_kar_${s.id}" type="number" min="1" placeholder="Tutar"></div><button class="btn ikinci" onclick="sirketKarPayi(${s.id})">Kâr payı dağıt</button>`:''}
   <div class="alan"><label>Ortaklık/devretme: alıcı oyuncunun kullanıcı UUID'si</label><input id="sir_alici_${s.id}" placeholder="Oyuncu UUID"></div>
   <div class="alan"><label>Devredilecek pay (%)</label><input id="sir_pay_${s.id}" type="number" min="1" max="${s.pay}" value="${s.pay}"></div>
@@ -4296,6 +4296,74 @@ async function sirketYonetimEkrani(){
   sirketOnizleme();
  }catch(err){iskelet("Şirketler",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true});}
 }
+
+// Ortaklarin sahip olduklari hisseleri diger oyunculara satabildigi ikincil pazar.
+async function sirketHissePazariEkrani(seciliSirket=null){
+ yukleniyor("Hisse Pazarı");
+ try{
+  const [p,d]=await Promise.all([API.rpc("sirket_hisse_pazar"),API.rpc("sirket_liste")]);
+  const sirketler=(d.sirketler||[]).filter(s=>s.sektor!=="banka" && Number(s.pay)>0);
+  const aktif=p.ilanlar||[];
+  const benim=p.benim||[];
+  const satisKarti=s=>{
+    const acik=benim.find(x=>Number(x.sirket_id)===Number(s.id));
+    const fiyat=Math.max(100,Math.round((Number(s.sermaye)||100000)*(Number(s.pay)||0)/100));
+    return `<div class="kart" id="hisse-sirket-${s.id}">
+       <h3>${e(s.ad)}</h3><p class="alt">${e(s.sektor)} · Elindeki pay: %${fmt(s.pay,6)}</p>
+       ${acik?`<p class="alt">Açık ilan: %${fmt(acik.pay,6)} pay · ${fmt(acik.bedel)} ₺</p><button class="btn ikinci" onclick="sirketHisseIptal(${acik.id})">İlanı kaldır</button>`:
+       `<div class="alan"><label>Satmak istediğin hisse oranı (%)</label><input id="hissePay_${s.id}" type="number" min="0.000001" max="${s.pay}" step="0.000001" value="${s.pay}"></div>
+        <div class="alan"><label>Toplam satış bedeli (₺)</label><input id="hisseBedel_${s.id}" type="number" min="100" max="1000000000" step="1" value="${fiyat}"></div>
+        <p class="kucuk">Belirlediğin bedel bu payın tamamı içindir; alıcı tüm payı satın alır.</p>
+        <button class="btn altin" onclick="sirketHisseIlanVer(${s.id})">Hisselerimi satışa çıkar</button>`}</div>`;
+  };
+  const sirketListesi=[...sirketler].sort((a,b)=>Number(a.id===Number(seciliSirket))*-1-Number(b.id===Number(seciliSirket))*-1);
+  iskelet("Hisse Pazarı",`
+   <div class="kart"><h2>🏢 Şirket hisselerini al ve sat</h2>
+   <p class="alt">Şirketteki hissenin tamamını veya istediğin kısmını satışa çıkar. Alıcı satın aldığında ödeme doğrudan cüzdanına, hisseler alıcının ortaklığına geçer. Halka arz yapman gerekmez.</p>
+   <div class="kv"><span>Cüzdanın</span><b>${fmt(p.cuzdan)} ₺</b></div>
+   <button class="btn ikinci" onclick="sirketYonetimEkrani()">Şirketlerime dön</button></div>
+   <div class="kart"><h2>Satışa çıkarabileceğim hisseler</h2>
+   ${sirketler.length?sirketListesi.map(satisKarti).join(""):'<p class="alt">Henüz ortak olduğun bir şirket yok.</p>'}</div>
+   <div class="kart"><h2>Diğer oyuncuların satılık hisseleri</h2><p class="kucuk">Satın alınan paylar haftalık şirket kârına payları oranında ortak olur. İlan bedeli şirket kasasına değil, satıcıya ödenir.</p>
+   ${aktif.length?aktif.map(i=>`<div class="kart">
+    <h3>${e(i.ad)} · %${fmt(i.pay,6)} hisse</h3>
+    <p class="alt">${e(i.sektor)} · Satıcı: ${e(i.satici)}</p>
+    <div class="kv"><span>Satış bedeli</span><b>${fmt(i.bedel)} ₺</b></div>
+    ${i.benim?`<button class="btn ikinci" onclick="sirketHisseIptal(${i.id})">İlanımı kaldır</button>`:
+      `<button class="btn altin" onclick="sirketHisseSatinAl(${i.id},${JSON.stringify(String(i.ad))},${Number(i.pay)},${Number(i.bedel)})">Hisseyi satın al</button>`}
+    </div>`).join(""):'<p class="alt">Şu an satılık hisse bulunmuyor.</p>'}</div>
+  `,{geri:true});
+  if(seciliSirket!==null){
+    const el=document.getElementById("hisse-sirket-"+Number(seciliSirket));
+    if(el)el.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+ }catch(err){iskelet("Hisse Pazarı",`<div class="kart"><p class="alt">${e(hataCevir(err.message))}</p><button class="btn ikinci" onclick="sirketYonetimEkrani()">Şirketlerime dön</button></div>`,{geri:true});}
+}
+async function sirketHisseIlanVer(id){
+ const payInput=document.getElementById("hissePay_"+id),bedelInput=document.getElementById("hisseBedel_"+id);
+ if(!payInput||!bedelInput)return;
+ const pay=Number(payInput.value),bedel=Number(bedelInput.value);
+ if(!Number.isFinite(pay)||pay<=0||pay>100||Math.round(pay*1000000)!==pay*1000000){toast("Pay oranını 0 ile 100 arasında, en fazla 6 ondalık olacak şekilde gir.",true);return;}
+ if(!Number.isSafeInteger(bedel)||bedel<100||bedel>1000000000){toast("Satış bedeli 100 ile 1.000.000.000 ₺ arasında tam sayı olmalı.",true);return;}
+ if(!await onayla("Hisseyi satışa çıkar",`Şirketindeki %${fmt(pay,6)} payı ${fmt(bedel)} ₺ bedelle satışa çıkarıyorsun. Satılmadan önce ilanı kaldırabilirsin.`,"Satış ilanı ver"))return;
+ try{await API.rpc("sirket_hisse_ilan_ver",{p_sirket:id,p_pay:pay,p_bedel:bedel});toast("Hisselerin satışa çıkarıldı.");sirketHissePazariEkrani(id);}
+ catch(err){toast(hataCevir(err.message),true);}
+}
+async function sirketHisseIptal(id){
+ if(!await onayla("Hisse ilanını kaldır","Satış ilanını kaldırmak istiyor musun? Hisselerin sende kalacak.","İlanı kaldır"))return;
+ try{await API.rpc("sirket_hisse_ilan_iptal",{p_ilan:id});toast("Hisse satış ilanı kaldırıldı.");sirketHissePazariEkrani();}
+ catch(err){toast(hataCevir(err.message),true);}
+}
+async function sirketHisseSatinAl(id,ad,pay,bedel){
+ if(!await onayla("Şirket hissesi satın al",`${ad} şirketindeki %${fmt(pay,6)} hisse için ${fmt(bedel)} ₺ ödeyeceksin. İşlem onaylandığında hisseler hesabına geçer.`,"Hisse satın al"))return;
+ try{await API.rpc("sirket_hisse_ilan_al",{p_ilan:id});toast("Hisseler hesabına geçti.");sirketHissePazariEkrani();}
+ catch(err){toast(hataCevir(err.message),true);}
+}
+window.sirketHissePazariEkrani=sirketHissePazariEkrani;
+window.sirketHisseIlanVer=sirketHisseIlanVer;
+window.sirketHisseIptal=sirketHisseIptal;
+window.sirketHisseSatinAl=sirketHisseSatinAl;
+
 async function sirketSermayeArtir(id){const el=document.getElementById("sir_artis_"+id);try{await API.rpc("sirket_sermaye_artir",{p_sirket:id,p_tutar:Number(el.value)});toast("Sermaye artırıldı; sonraki haftalık kazanç hesabına yansıyacak.");sirketYonetimEkrani()}catch(err){toast(hataCevir(err.message),true)}}
 async function sirketSatisaCikar(id){
  const el=document.getElementById("sir_satis_"+id);
@@ -6325,7 +6393,7 @@ async function sirketVitrinEkrani(){
  try{
  const d=await API.rpc("sirket_vitrini");vitSirketler=d.sirketler||[];
  iskelet("Şirketler",`<div class="kart vit-manset"><h2>🏢 Türkiye şirket rehberi</h2><p class="alt">Gerçek oyuncuların şirketleri, sahipleri ve paydaşları. Kâr ve vergi sıralamaları gerçek faaliyet kayıtlarından hesaplanır.</p>
- <div class="vit-dugme"><button class="btn altin" onclick="sirketYonetimEkrani()">Şirketlerim / Şirket kur</button><button class="btn ikinci" onclick="sirketPazarEkrani()">Satılık şirketler</button><button class="btn ikinci" onclick="halkaArzPazarEkrani()">Halka arzlar</button></div></div>
+ <div class="vit-dugme"><button class="btn altin" onclick="sirketYonetimEkrani()">Şirketlerim / Şirket kur</button><button class="btn ikinci" onclick="sirketPazarEkrani()">Satılık şirketler</button><button class="btn ikinci" onclick="halkaArzPazarEkrani()">Halka arzlar</button><button class="btn altin" onclick="sirketHissePazariEkrani()">Hisse Pazarı</button></div></div>
  <div class="vit-ozet"><span><b>${vitSirketler.length}</b> şirket</span><span><b>${vitSirketler.reduce((a,b)=>a+(b.ortaklar||[]).length,0)}</b> ortaklık kaydı</span></div>
  <div class="kart"><h3>Sıralama</h3>
  <select id="vitSirketSort" onchange="sirketVitrinListeCiz()"><option value="kazanc">En çok net kazanan</option><option value="vergi">En çok vergi ödeyen (kayıtlı)</option><option value="sermaye">En yüksek sermaye</option><option value="yeni">En yeni şirket</option></select>
