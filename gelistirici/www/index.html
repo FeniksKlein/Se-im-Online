@@ -3782,6 +3782,7 @@ async function oybKrediRiskGoster(id){
  el.textContent="Kredi uygunluğun hesaplanıyor...";
  try{
   const r=await API.rpc("kredi_uygunluk",{p_banka:id,p_saat:saat});
+  const urun=(window.BK_BANKA_URUN?.[id]||[]).find(x=>Number(x.saat)===saat);if(urun)r.oran=Math.min(19.5,Number(r.oran||0)+Number(urun.ek_faiz||0));
   el.innerHTML='<div class="kv"><span>Kredi notun</span><b>'+fmt(r.kredi_notu)+' / 1900</b></div>'+
    '<div class="kv"><span>Haftalık düzenli gelirin</span><b>'+fmt(r.haftalik_gelir)+' ₺</b></div>'+
    '<div class="kv"><span>Nakit bütçen</span><b>'+fmt(r.nakit)+' ₺</b></div>'+
@@ -3835,6 +3836,7 @@ async function oybKrediBasvur(id){
  if(!Number.isSafeInteger(tutar)||tutar<1000||tutar>500000){toast("Kredi 1.000 - 500.000 ₺ arasında olmalı.",true);return;}
  try{
  const teklif=await API.rpc("kredi_uygunluk",{p_banka:id,p_saat:saat});
+ const urun=(window.BK_BANKA_URUN?.[id]||[]).find(x=>Number(x.saat)===saat);if(urun)teklif.oran=Math.min(19.5,Number(teklif.oran||0)+Number(urun.ek_faiz||0));
  if(tutar>Number(teklif.azami_kredi)||!teklif.uygun){toast("Bu vadede kredi limitin "+fmt(teklif.azami_kredi)+" ₺. "+(teklif.neden||""),true);return;}
  const toplam=Math.round(tutar*(1+Number(teklif.oran)/100));
  const sure=saat>=168?(saat/168)+" hafta":saat+" saat";
@@ -3897,6 +3899,7 @@ async function oybYonetim(id){
   <div class="kart"><h2>Banka gelir-gider hareketleri</h2>
     ${(b.hareketler||[]).map(h=>`<div class="kv"><span>${e(h.aciklama)} · ${oybTarih(h.zaman)}</span><b>${fmt(h.tutar)} ₺</b></div>`).join("")||"<p class='alt'>Hareket bulunamadı.</p>"}
   </div>
+  <button class="btn altin" onclick="bankaKrediDosyaEkrani(${id})">Kredi ürünleri / finansal inceleme / icra</button>
   <button class="btn ikinci" onclick="oyuncuBankaEkrani()">Banka listesine dön</button>
  `,{geri:true});
  }catch(err){iskelet("Banka yönetimi",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true})}
@@ -4371,5 +4374,6 @@ async function bhIptal(id){
 }
 
 </script>
+<script src="banka_kredi_icra.js"></script>
 </body>
 </html>
