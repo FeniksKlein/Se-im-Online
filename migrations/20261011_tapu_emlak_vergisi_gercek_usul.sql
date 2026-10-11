@@ -59,10 +59,10 @@ RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO '' AS $yillik$
 DECLARE m record; t timestamptz:=oyun.simdi(); v timestamptz;
   yil_vergi numeric; tahakkuk numeric; odeme numeric; hazir numeric; donem integer;
 BEGIN
- FOR m IN SELECT m.id,m.il_id,m.vergi_sonraki,m.vergi_borc,m.satin_alma,i.ad il_ad
-          FROM oyun.yatirim_mulkleri m JOIN oyun.iller i ON i.id=m.il_id
-          WHERE m.user_id=p_user AND (m.vergi_sonraki<=t OR m.vergi_borc>0 OR m.vergi_sonraki IS NULL)
-          ORDER BY m.id FOR UPDATE OF m LOOP
+ FOR m IN SELECT ym.id,ym.il_id,ym.vergi_sonraki,ym.vergi_borc,ym.satin_alma,i.ad il_ad
+          FROM oyun.yatirim_mulkleri ym JOIN oyun.iller i ON i.id=ym.il_id
+          WHERE ym.user_id=p_user AND (ym.vergi_sonraki<=t OR ym.vergi_borc>0 OR ym.vergi_sonraki IS NULL)
+          ORDER BY ym.id FOR UPDATE OF ym LOOP
    v:=coalesce(m.vergi_sonraki,oyun.mulk_vergi_ilk_vade(m.satin_alma));
    yil_vergi:=coalesce(oyun.mulk_yillik_vergi_tutar(m.id),0);
    tahakkuk:=0;donem:=0;
