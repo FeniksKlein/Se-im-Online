@@ -3350,15 +3350,18 @@ async function oyuncuKart(kad){
 }
 async function bildirimEkrani(){
   yukleniyor("Bildirimler");
-  let liste, haklar, bakanTeklifleri = [], cbYardimciTeklifleri = [], hedefler = {};
+  let liste = [], haklar = [], bakanTeklifleri = [], cbYardimciTeklifleri = [], hedefler = {};
   let hy = null;
-  try { [liste, haklar, bakanTeklifleri, cbYardimciTeklifleri] = await Promise.all([
-    API.rpc("bildirim_kutusu", { p_limit: 60 }),
-    API.rpc("yayin_haklari"),
+  // Önce temel bildirimler alınır. Ek haklar veya görev teklifleri hata verirse liste bozulmaz.
+  try { liste = await API.rpc("bildirim_kutusu", { p_limit: 60 }); }
+  catch (err) { iskelet("Bildirimler", `<div class="bos">${e(hataCevir(err.message))}</div><button class="btn ikinci" onclick="bildirimEkrani()">Tekrar dene</button>`, { geri: true }); return; }
+  [haklar, bakanTeklifleri, cbYardimciTeklifleri, hy] = await Promise.all([
+    API.rpc("yayin_haklari").catch(() => []),
     API.rpc("bakan_tekliflerim").catch(() => []),
-    API.rpc("cb_yardimcisi_tekliflerim").catch(() => [])
-  ]); if (haklar.length) { hy = await API.rpc("hayat"); D._hayat = hy; } }
-  catch (err) { iskelet("Bildirimler", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
+    API.rpc("cb_yardimcisi_tekliflerim").catch(() => []),
+    API.rpc("bildirim_yayin_ozet").catch(() => null)
+  ]);
+  if (hy) D._hayat = { ...(D._hayat || {}), ...hy };
   // Yalnız oyuncunun kişisel bildirimlerindeki gerçek yayınları bul.
   const hedefIdler = liste.filter(x => x.tur === "kisisel").map(x => Number(x.id)).filter(Number.isSafeInteger);
   if (hedefIdler.length) {
