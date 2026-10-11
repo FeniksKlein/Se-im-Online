@@ -696,7 +696,7 @@ function sayiRozet(n){ return n > 0 ? `<span class="sayi">${n > 99 ? "99+" : n}<
 function iskelet(baslik, govde, opt){
   if(baslik==="Partiler")govde='<div class="kart"><button class="btn altin" onclick="ekranAc(koalisyonPazarlikEkrani)">Gizli siyasi pazarlıklar ve koalisyon protokolleri</button></div>'+govde;
   if(baslik==="Şirketlerim")govde='<div class="kart"><button class="btn altin" onclick="ekranAc(belediyeHizmetIhaleEkrani)">Belediyelerin hizmet ihaleleri</button></div>'+govde;
-  if(typeof baslik==="string" && baslik.endsWith(" Belediyesi"))govde='<div class="kart"><button class="btn altin" onclick="ekranAc(belediyeHizmetIhaleEkrani)">Hizmet ihalesi aç / yönet</button></div>'+govde;
+  if(typeof baslik==="string" && baslik.endsWith(" Belediyesi"))govde='<div class="kart"><button class="btn altin" onclick="ekranAc(belediyeSehirYonetimEkrani)">🏙️ Şehir yönetimi, binalar ve ekonomi</button><button class="btn ikinci" onclick="ekranAc(belediyeHizmetIhaleEkrani)">Hizmet ihalesi aç / yönet</button></div>'+govde;
 
   opt = opt || {};
   canliDurdur();
@@ -706,8 +706,9 @@ function iskelet(baslik, govde, opt){
   const ikonlar = opt.geri || opt.ikonsuz ? "" :
     `${cz ? `<button class="ikon para-cip" onclick="sekmeAc('hayat')" aria-label="Cüzdan">${paraKisa(cz.para)}</button>` : ""}<button class="ikon" onclick="ekranAc(bildirimEkrani)" aria-label="Bildirimler">${IKON.zil}<span id="zilSayi">${sayiRozet(ok.bildirim)}</span></button>
      <button class="ikon portre-ikon" onclick="sekmeAc('ben')" aria-label="Profilim">${typeof portre === "function" && D.durum && D.durum.profil ? portre(D.durum.profil.kad, D.durum.profil.parti && D.durum.profil.parti.renk) : IKON.ben}</button>`;
-  const sekmeler = opt.sekmesiz ? "" : `<nav class="sekmeler">${[["gundem","Gündem"],["adliye","Adliye"],["hayat","Hayat"],["sohbet","Sohbet"],["devlet","Devlet"],["meclis","Meclis"],["harita","Harita"],["parti","Partiler"],["dernek","Dernekler"]]
-    .map(([k, ad]) => `<button class="${D.sekme === k ? "aktif" : ""}${k === "sohbet" && +ok.ozel > 0 ? " mesaj-var" : ""}" ${k === "sohbet" ? `id="sohbetSekme" aria-label="Sohbet, ${+ok.ozel || 0} okunmamış özel mesaj"` : ""} onclick="sekmeAc('${k}')">${IKON[k]}<span>${ad}</span>${k === "sohbet" ? `<span id="dmSayi">${sayiRozet(ok.ozel)}</span>` : ""}${k === "hayat" && cz && (cz.dolu || cz.gunun_ilki) ? `<span class="nokta"></span>` : ""}</button>`).join("")}</nav>`;
+  const belediyeMenu = !!(D.durum && D.durum.profil && (D.durum.profil.makamlar || []).some(x => x.tur === "bel"));
+  const sekmeler = opt.sekmesiz ? "" : `<nav class="sekmeler">${[["gundem","Gündem"],["adliye","Adliye"],["hayat","Hayat"],...(belediyeMenu ? [["belediye","Belediyem"]] : []),["sohbet","Sohbet"],["devlet","Devlet"],["meclis","Meclis"],["harita","Harita"],["parti","Partiler"],["dernek","Dernekler"]]
+    .map(([k, ad]) => `<button class="${D.sekme === k ? "aktif" : ""}${k === "sohbet" && +ok.ozel > 0 ? " mesaj-var" : ""}" ${k === "sohbet" ? `id="sohbetSekme" aria-label="Sohbet, ${+ok.ozel || 0} okunmamış özel mesaj"` : ""} onclick="sekmeAc('${k}')">${IKON[k]||IKON.devlet}<span>${ad}</span>${k === "sohbet" ? `<span id="dmSayi">${sayiRozet(ok.ozel)}</span>` : ""}${k === "hayat" && cz && (cz.dolu || cz.gunun_ilki) ? `<span class="nokta"></span>` : ""}</button>`).join("")}</nav>`;
   // Aynı ekran yenilenince (dakikalık tazeleme, işlem sonrası) kaydırma konumu korunur
   const anahtar = D.sekme + "|" + (D._ekranNo || 0) + "|" + baslik, eskiIc = $("#icerik");
   const eskiKaydirma = eskiIc && D._sonAnahtar === anahtar ? eskiIc.scrollTop : 0;
@@ -4129,7 +4130,7 @@ function teskilatGorevModal(pid){
 /* =====================================================================
    12) BAŞLAT
    ===================================================================== */
-const EKRAN = { gundem: gundemEkrani, hayat: hayatEkrani, sohbet: sohbetListe, devlet: devletEkrani, meclis: () => meclisEkrani(), adliye: () => adliyeEkrani(), harita: haritaEkrani, parti: partilerEkrani, dernek: () => stkEkrani(), ben: benEkrani };
+const EKRAN = { belediye: () => window.belediyeSehirYonetimEkrani(), gundem: gundemEkrani, hayat: hayatEkrani, sohbet: sohbetListe, devlet: devletEkrani, meclis: () => meclisEkrani(), adliye: () => adliyeEkrani(), harita: haritaEkrani, parti: partilerEkrani, dernek: () => stkEkrani(), ben: benEkrani };
 // Sunucu bu uygulama sürümünü artık desteklemiyorsa güncelleme ister (oyuncunun verisi sunucuda, kaybolmaz)
 function surumKucuk(a, b){ return /^\d/.test(a) && /^\d/.test(b) && a.localeCompare(b, "en", { numeric: true }) < 0; }
 async function surumKontrol(){
@@ -4376,5 +4377,6 @@ async function bhIptal(id){
 
 </script>
 <script src="banka_kredi_icra.js"></script>
+<script src="belediye_sehir.js"></script>
 </body>
 </html>
