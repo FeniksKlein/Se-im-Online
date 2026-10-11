@@ -4830,7 +4830,7 @@ function teskilatGorevModal(pid){
 /* =====================================================================
    12) BAŞLAT
    ===================================================================== */
-const EKRAN = { belediye: belediyeSehirYonetimEkrani, gundem: gundemEkrani, hayat: hayatEkrani, sohbet: sohbetListe, devlet: devletEkrani, meclis: () => meclisEkrani(), adliye: () => adliyeEkrani(), bakanlik: bakanligimEkrani, harita: haritaEkrani, parti: partilerEkrani, dernek: () => stkEkrani(), ben: benEkrani };
+const EKRAN = { belediye: () => window.belediyeSehirYonetimEkrani(), gundem: gundemEkrani, hayat: hayatEkrani, sohbet: sohbetListe, devlet: devletEkrani, meclis: () => meclisEkrani(), adliye: () => adliyeEkrani(), bakanlik: bakanligimEkrani, harita: haritaEkrani, parti: partilerEkrani, dernek: () => stkEkrani(), ben: benEkrani };
 // Sunucu bu uygulama sürümünü artık desteklemiyorsa güncelleme ister (oyuncunun verisi sunucuda, kaybolmaz)
 function surumKucuk(a, b){ return /^\d/.test(a) && /^\d/.test(b) && a.localeCompare(b, "en", { numeric: true }) < 0; }
 async function surumKontrol(){
