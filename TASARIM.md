@@ -668,3 +668,62 @@ Karne oyuncu kartında, parti sayfasında, il sayfasında ve belediye ekranında
 
 ### Sektör politikası
 - İlgili bakan 24 saatte bir: **teşvik** (7 gün, sektör pazarı ×1,15, bakanlık kasasından 2 milyar ₺) ya da **sıkı denetim** (7 gün, ×0,92; kalitesiz hizmete ve kömüre gelirin %12'si ceza). Eski türlere de işler: Tarım → tarım, Sanayi → sanayi ve teknoloji, Ticaret → ticaret, Ulaştırma → inşaat.
+
+## 13. Ekonomi planı (2026-10-11, modül 85 ile birlikte)
+
+### Amaç
+Ekonomi, siyaset oyununun yakıtı olsun: oyuncu parayı şirketiyle kazanır, partisine ve kampanyasına harcar; siyasetçinin kararı (vergi, teşvik, ihale, harç) oyuncuların cebine dokunur. Kural: **kapsamlı ama sade.** Bir şirketi yönetmek için iki karar (fiyat, kalite) yeterli; istemeyen otopilota bırakır. Angarya yok: her şey haftalık hesaplanır, sürekli girip tıklamak gerekmez.
+
+### Dört katman
+| Katman | Kim | Ne yapar |
+|---|---|---|
+| Vatandaş | Herkes | Maaş kumbarası, makam maaşı, geçim masrafı, kıdem, banka hesabı |
+| Şirket | Girişimci oyuncular | Eski şirketler (pasif getiri), rekabetçi şirketler (ilde pazar payı), inşaat şirketleri (kamu ihalesi) |
+| Piyasa | Yatırımcılar | Oyuncu bankaları, halka arz, **borsa** (halka açık şirket payları), döviz/altın/hisse, emlak |
+| Devlet | Seçilmişler | Hazine ve bakanlık kasaları, belediye kasası, vergi, teşvik/denetim, ihale, **Rekabet Kurumu** |
+
+### Para nereden girer, nereye çıkar
+- **Giriş (yeni para):** maaş ve makam maaşı, devlet/belediye destekleri, reklam ödülü ve mağaza paketleri, şirket faaliyet kârı, ihale hakedişi (kamu kasasından), faiz.
+- **Çıkış (yok olan para):** geçim masrafı, şirket giderleri (personel, sabit gider, kalite, yakıt), adaylık ve parti ücretleri, taşınma, cezalar.
+- **Kamuya aktarılan:** gelir vergisi, kurumlar vergisi (%20, kârdan), belediye ruhsat harcı (%0-8), borsa komisyonu (%0,5), Rekabet Kurumu cezaları. Kamu bu parayı ihale ve icraatla oyunculara geri döndürür.
+- Ölçek: kamu kasaları milyar ₺, oyuncu parası ₺; 1 milyar kamu ₺ = 150.000 oyuncu ₺ × fiyat düzeyi.
+
+### Denge hedefleri
+| Durum | Haftalık getiri (sermayeye oran) |
+|---|---|
+| Eski pasif şirket | yaklaşık %5-7 (rastgele) |
+| Rekabetçi şirket, ilde tek | %7-10 |
+| İki rakip | %1-3 |
+| Dört ve fazla rakip / yanlış il | zarar → iflas riski |
+| Kamu ihalesi (standart yapım) | teklife göre %0-25 marj |
+| Borsa | şirketin gerçek kârı ve oyuncuların alım-satımı belirler |
+
+### Şirket yönetimi nasıl sade kalır
+1. **Üç adımda kur:** tür seç → haritadan il seç (fırsat çubuğu) → sermaye gir.
+2. **İki karar:** fiyat (ucuz/orta/premium) ve kalite (0-3). Enerjide bir de kaynak.
+3. **Danışman önerisi:** sunucu 12 seçeneği hesaplar, en kârlısını "Önerilen" diye gösterir; tek dokunuşla uygulanır.
+4. **Otopilot:** açıksa her hafta en kârlı ayarı kendisi seçer; bedeli gelirin %4'ü (profesyonel yönetici ücreti).
+5. **Sağlık rozeti:** Kârda / Başa baş / Zararda / İflas riski. Kasa sermayenin %25'inin altına inince bildirim.
+
+### Siyasetin ekonomiye dokunduğu yerler
+| Makam | Araç | Etki |
+|---|---|---|
+| İlgili bakan | Teşvik / sıkı denetim (7 gün) | Sektör pazarı ×1,15 / ×0,92, kalitesize ceza |
+| Ticaret Bakanı | Rekabet Kurumu soruşturması | Kartel (ildeki tüm rakipler premium) ve hâkim durumun kötüye kullanılması (tek şirket %55+ pay ve premium) → kasasının %8'i ceza |
+| Belediye başkanı | Ruhsat harcı, belediye ihaleleri | İl kasası dolar; park/yol/metro ile il gelişir |
+| Bakanlar | Bakanlık ihaleleri | Seçilen il gelişir, inşaat şirketleri iş alır |
+| Meclis / CB | Vergi, asgari ücret | Şirket personel gideri asgari ücrete bağlıdır |
+
+### Şirketler halkı nasıl etkiler
+- **Geçim masrafı:** Bir ildeki market zincirleri ve enerji santrallerinin fiyatları o ilde yaşayan **herkesin** geçim masrafını değiştirir. Ucuz ve rekabetçi piyasa geçimi %5'e kadar düşürür, premium tekel %7,5'e kadar artırır (Vatandaş › Süreli etkiler'de "Yerel piyasa fiyatları" olarak görünür, günde bir güncellenir).
+- **Enflasyon:** Ülke genelindeki market/enerji fiyat endeksi günlük enflasyona küçük bir itki verir.
+- **İl gelişimi:** Her faaliyet haftası ve teslim edilen ihale ili geliştirir; kömür santrali memnuniyeti düşürür.
+
+### Şeffaflık
+- **Şirket bağışı:** Şirketin en büyük ortağı şirket kasasından bir partiye bağış yapabilir (7 günde en fazla sermayenin %20'si). Her bağış herkese açık "Siyasi bağışlar" listesinde ve Gündem'de yayımlanır.
+- İhale kazananları, Rekabet Kurumu kararları ve politika değişiklikleri Resmî Gazete'ye düşer.
+
+### Aşamalar
+1. **Modül 84 (yapıldı):** rekabetçi şirketler, kamu ihaleleri, sektör politikası, ruhsat harcı.
+2. **Modül 85 (bu güncelleme):** borsa, Rekabet Kurumu, şirket bağışları, danışman ve otopilot, yerel piyasa fiyatlarının geçime etkisi, piyasa raporu, paravan şirket kuralı.
+3. **Sonraki adaylar:** reklam ve anket ajansı (partiler kampanya hizmetini oyuncu şirketlerinden alır), şube ağı (bir şirketin birden çok ilde şubesi), sendika ve toplu sözleşme, ihracat (Dışişleri ve Ticaret ile), sigorta şirketi.

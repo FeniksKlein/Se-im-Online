@@ -193,3 +193,16 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Yerel kurulumda `63_halka_arz_kar_birikim.sql` birleştirme listesine eklendi (canlıda zaten vardı; `kar_kasada` sütunu yerelde eksikti). `simulasyon`, `guvenlik`, `kalicilik` testleri bu değişiklikten önce de "kurucu davetleri" beklentisi yüzünden kırıktı.
 - **Canlı durum:** migration 3 parçada uygulanıyordu; 1/3 (tablolar) ve 2/3 (motor + şirket RPC'leri) canlıda, 3/3 (ihale + politika + cron + yetkiler) iptal edildi. Tamamlamak için `migrations/20261011_ekonomi_pazar_ihale.sql` dosyasının tamamı bir kez çalıştırılır (iki kez çalışabilir).
 - Arayüz `docs/index.html` ve `www/index.html`'e yama olarak eklendi (Hayat ekonomi ızgarası, Şirketler, Şirketlerim, Devlet ekranına giriş kartları).
+
+## 2026-10-11 · 2026.10.11-7 Ekonomi 2. aşama: borsa, Rekabet Kurumu, bağış, otopilot, yerel fiyat → geçim
+- Ekonomi planı: `TASARIM.md` 13. bölüm (katmanlar, para akışı, denge hedefleri, sadelik ilkeleri, aşamalar).
+- `85_ekonomi_borsa_rekabet.sql` + `www/ekonomi_borsa.js` (+ `ekonomi_pazar.js`'e Yönetim kartı ve "Üç adımda şirket").
+- Danışman `pazar_danisman` (sağlık rozeti, 12 seçenekten en kârlı öneri), otopilot `pazar_otopilot` (haftalık en iyi ayar, gelirin %4'ü; `oyun.pazar_hesapla` güncellendi).
+- Paravan kuralı: `pazar_sirket` üzerinde `pazar_paravan` tetikleyicisi.
+- Borsa: `borsa_emir`, `borsa_islem`; `borsa_liste/sirket/sat/al/iptal`; yalnız `halka_acik` şirketler, alıcıdan %0,5 komisyon hazineye.
+- Rekabet Kurumu: `rekabet_sorusturma`, `rekabet_ekrani/rekabet_ac`, `oyun.rekabet_tick` (paravan, kartel, hâkim durum → kasanın %8'i ceza).
+- Şirket bağışı: `sirket_bagis`, `sirket_parti_bagis` (7 günde sermayenin %20'si), `siyasi_bagislar`.
+- Yerel fiyat: `oyun.piyasa_endeks_tick` günde bir `oyun.etkiler`e il bazlı `gecim` satırı yazar (kaynak_tur 'piyasa', −7,5…+5) ve enflasyona itki verir.
+- `piyasa_raporu` (Ekonomi merkezi), `sirket_vitrini` artık il, halka açıklık ve kurumlar vergisini de gösterir. `oyun.pazar_tick` rekabet ve endeksi de çalıştırır.
+- Testler: `test/ekonomi_borsa.py` (hepsi.sh), `test/ekonomi_borsa_arayuz.js` (veri: `test/veri/ekonomi_borsa_ornek.json`).
+- **Canlı durum:** canlıya uygulama denemesi iptal edildi; canlıda değişiklik yok. `migrations/20261011_ekonomi_borsa_rekabet.sql` Ercan tarafından SQL Editor'de bir kez çalıştırılmalı (84'ten sonra; 84 canlıda). Arayüz `docs/` ve `www/`'e yamalandı; migration çalışana kadar yeni ekranlar hata gösterir, danışman kartı sessizce gizlenir.

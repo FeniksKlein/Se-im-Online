@@ -61,6 +61,12 @@ async function pazarMerkezEkrani(){
       <div class="kart"><div class="pz-bas"><span class="pz-logo">${PZ_IKON.sirket}</span><div><h2>Kendi işini kur, rakiplerinle yarış</h2>
         <p class="alt">Şirketin seçtiğin ilde faaliyet gösterir. O ilin pazarını aynı türdeki oyuncu şirketleriyle paylaşırsın: boş ilde kazanırsın, kalabalık ilde fiyat savaşı zarar ettirir.</p></div></div>
         <p class="pz-not">Fiyatını ve kaliteni sen seçersin. Haftalık kâr ortaklara ödenir, %${fmt(k.kurumlar)} kurumlar vergisi hazineye, belediyenin ruhsat harcı il kasasına gider. Kasası biten şirket iflas eder.</p></div>
+      <div class="kart"><h2>Üç adımda şirket</h2>
+        <div class="kv"><span>1. Aşağıdan şirket türünü seç</span><b>Okul, hastane, market…</b></div>
+        <div class="kv"><span>2. Haritadan rakibi az ili seç</span><b>Fırsat çubuğu</b></div>
+        <div class="kv"><span>3. Kurduktan sonra otopilotu aç</span><b>İstersen</b></div>
+        <p class="pz-not">Otopilot her hafta en kârlı fiyat ve kaliteyi kendisi seçer (gelirin %4'ü yönetici ücreti). İstersen kararları kendin verirsin; danışman her zaman en iyi ayarı önerir.</p>
+        ${typeof ekonomiMerkeziEkrani === "function" ? `<button class="btn ikinci" onclick="ekranAc(ekonomiMerkeziEkrani)">Ekonomi merkezi ve piyasa raporu</button>` : ""}</div>
       <div class="bolum-bas"><h2>Şirketlerim</h2></div>
       <div class="kart">${(k.sirketlerim || []).map(s => `<button class="pz-satir" onclick="ekranAc(()=>pazarDetayEkrani(${s.id}))">
           <span class="sol"><b>${e(s.ad)}</b><span class="kucuk" style="display:block">${e(pzSektorAd(s.sektor))} · ${e(s.il)} · Payın %${fmt(s.pay, 1)}</span></span>
@@ -137,14 +143,15 @@ function pazarKurModal(sektor, ilId){
 async function pazarDetayEkrani(id){
   yukleniyor("Şirket");
   try {
-    const d = await API.rpc("pazar_detay", { p_sirket: id });
-    PZ.detay = d; PZ.secim = { fiyat: d.fiyat, kalite: d.kalite, kaynak: d.kaynak };
+    const [d, dn] = await Promise.all([API.rpc("pazar_detay", { p_sirket: id }), API.rpc("pazar_danisman", { p_sirket: id }).catch(() => null)]);
+    PZ.detay = d; PZ.danisman = dn; PZ.secim = { fiyat: d.fiyat, kalite: d.kalite, kaynak: d.kaynak };
     const t = d.tahmin || {};
     iskelet(e(d.ad), `
       <div class="kart"><div class="pz-bas"><span class="pz-logo">${PZ_IKON.sirket}</span><div style="min-width:0"><h2>${e(d.ad)}</h2>
         <p class="alt">${e(d.sektor_ad)} · ${e(d.il)} · ${d.hafta ? fmt(d.hafta) + ". hafta" : "yeni açıldı"}</p></div></div>
         ${d.aktif ? `<div class="pz-grid"><span><small>Şirket kasası</small><b>${pzTL(d.kasa)}</b></span><span><small>Sermaye</small><b>${pzTL(d.sermaye)}</b></span><span><small>Marka</small><b>${fmt(d.marka)} / 100</b></span></div>
         <p class="pz-not">Sonraki haftalık hesap: ${tarihSaat(d.sonraki)}${d.kasa < d.sermaye * 0.25 ? ' · <b style="color:var(--al2)">Kasa eriyor, iflas riski var.</b>' : ""}</p>` : `<p class="alt" style="margin-top:8px"><span class="rozet kirmizi">İflas etti</span> Kasası tükendiği için faaliyet durdu.</p>`}</div>
+      ${d.aktif && dn ? pazarYonetimKart(d, dn) : ""}
       ${d.aktif ? `<div class="kart"><h2>Bu haftanın tahmini</h2><p class="alt">Bugünkü ayarlarınla ve rakiplerinle hesaplanır. Gerçek sonuç %10 oynayabilir.</p>
         <div class="pz-net" style="color:${pzRenk(t.net)}">${pzIsaret(t.net)}</div><div class="kucuk">net / hafta · sermayenin %${fmt(t.getiri, 1)}'i</div>
         <div class="kv"><span>Pazardaki payın</span><b>%${fmt(t.pay, 1)} · ${t.rakip ? fmt(t.rakip) + " rakip" : "rakipsiz"}</b></div>
@@ -173,7 +180,7 @@ async function pazarDetayEkrani(id){
 }
 function pazarAyarKart(d){
   const enerji = d.sektor === "enerji";
-  return `<div class="kart"><h2>Kararların</h2><p class="alt">Değişiklik bir sonraki haftalık hesaba işler. Aşağıdaki tahmin rakiplerin bugünkü ayarlarına göredir.</p>
+  return `<div class="kart"><h2>Kararların</h2><p class="alt">Değişiklik bir sonraki haftalık hesaba işler. Aşağıdaki tahmin rakiplerin bugünkü ayarlarına göredir.${(PZ.danisman || {}).otopilot ? " Otopilot açıkken fiyat ve kaliteyi her hafta otopilot belirler." : ""}</p>
     <div class="alan"><label>Fiyat politikası</label><div class="pz-secim" id="pzFiyat">${[1, 2, 3].map(f => `<button data-v="${f}" onclick="pazarSec('fiyat',${f})">${PZ_FIYAT[f]}<small id="pzF${f}"></small></button>`).join("")}</div></div>
     <div class="alan"><label>Kalite bütçesi</label><div class="pz-secim" id="pzKalite" style="--n:4">${[0, 1, 2, 3].map(k => `<button data-v="${k}" onclick="pazarSec('kalite',${k})">${PZ_KALITE[k]}<small id="pzK${k}"></small></button>`).join("")}</div></div>
     ${enerji ? `<div class="alan"><label>Enerji kaynağı</label><div class="pz-secim" id="pzKaynak">${Object.keys(PZ_KAYNAK).map(k => `<button data-v="${k}" onclick="pazarSec('kaynak','${k}')">${PZ_KAYNAK[k]}<small id="pzY${k}"></small></button>`).join("")}</div>
@@ -186,6 +193,29 @@ function pazarAyarKart(d){
     <div class="alan" style="margin-top:14px"><label>Başka ile taşı (bedel ${pzTL(d.tasima_bedel)}, marka %60 erir, 7 günde bir)</label>
       <select id="pzTasiIl">${[...VERI.iller].sort((a, b) => a.ad.localeCompare(b.ad, "tr")).map(i => `<option value="${i.id}" ${i.id === d.il_id ? "selected" : ""}>${e(i.ad)}</option>`).join("")}</select></div>
     <button class="btn ikinci" onclick="pazarTasi()">Şirketi taşı</button></div>`;
+}
+const PZ_SAGLIK = { karda: ["yesil", "Kârda"], basabas: ["sari", "Başa baş"], zararda: ["kirmizi", "Zararda"], iflas_riski: ["kirmizi", "İflas riski"], iflas: ["kirmizi", "İflas etti"] };
+function pazarYonetimKart(d, dn){
+  const [renk, ad] = PZ_SAGLIK[dn.saglik] || ["", ""];
+  const o = dn.oneri;
+  return `<div class="kart"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>Yönetim</h2><span class="rozet ${renk}">${ad}</span></div>
+    ${dn.otopilot ? `<p class="alt">Otopilot açık: her hafta en kârlı fiyat ve kaliteyi kendisi seçiyor. Yönetici ücreti gelirin %${fmt(dn.yonetici_ucret)}'ü.</p>`
+      : o && dn.oneri_farkli ? `<p class="alt">Danışman önerisi: <b>${PZ_FIYAT[o.fiyat]} fiyat, ${PZ_KALITE[o.kalite].toLocaleLowerCase("tr")} kalite</b>. Tahmini net ${pzIsaret(o.net)} (şu an ${pzIsaret(dn.mevcut_net)}).</p>
+        ${d.yonetici ? `<button class="btn" onclick="pazarOneriUygula()">Öneriyi uygula</button>` : ""}`
+      : `<p class="alt">Ayarların şu an en kârlı seçenek. Rakipler değişirse danışman yeni öneri verir.</p>`}
+    ${d.yonetici ? `<div class="kv" style="margin-top:8px"><span>Otopilot<span class="kucuk" style="display:block">Haftalık en iyi ayar · gelirin %${fmt(dn.yonetici_ucret)}'ü</span></span>
+      <button class="btn ${dn.otopilot ? "ikinci" : "altin"} yarim" style="margin:0;flex:none;padding:9px 14px" onclick="pazarOtopilot(${!dn.otopilot})">${dn.otopilot ? "Kapat" : "Aç"}</button></div>` : ""}
+    ${dn.saglik === "zararda" || dn.saglik === "iflas_riski" ? `<p class="pz-not">Zarardan çıkmak için: öneriyi uygula, rakibi az bir ile taşın ya da sermayeyi artır.</p>` : ""}</div>`;
+}
+async function pazarOneriUygula(){
+  const d = PZ.detay, o = (PZ.danisman || {}).oneri; if (!o) return;
+  try { const t = await API.rpc("pazar_ayarla", { p_sirket: d.id, p_fiyat: o.fiyat, p_kalite: o.kalite, p_kaynak: d.sektor === "enerji" ? d.kaynak : null }); toast(`Öneri uygulandı. Tahmini net ${pzIsaret(t.net)}.`); pazarDetayEkrani(d.id); }
+  catch (err) { toast(hataCevir(err.message), true); }
+}
+async function pazarOtopilot(acik){
+  const d = PZ.detay;
+  try { await API.rpc("pazar_otopilot", { p_sirket: d.id, p_acik: acik }); toast(acik ? "Otopilot açıldı; en kârlı ayar uygulandı." : "Otopilot kapandı; kararlar sende."); pazarDetayEkrani(d.id); }
+  catch (err) { toast(hataCevir(err.message), true); }
 }
 function pazarSenaryo(f, k){ return ((PZ.detay || {}).senaryo || []).find(x => x.fiyat === f && x.kalite === k); }
 function pazarSec(alan, v){ PZ.secim[alan] = v; pazarAyarOnizle(); }
