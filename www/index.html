@@ -9533,7 +9533,7 @@ function kmYonetimHtml(v){
   h += `<div class="kart"><h2>Kredi paketlerin</h2><p class="alt">Vade (1–30 gün), taksit sayısı, vadenin tamamı için faiz (%0–20), tutar aralığı ve asgari kredi notunu sen belirlersin. "Anında" paketlerde şartları tutan müşteri onayını beklemeden kredi çeker.</p>
     ${(v.paketler || []).map(p => `<div class="km-paket"><div style="display:flex;justify-content:space-between;gap:8px"><b>${e(p.ad)}</b><span class="rozet ${p.aktif ? "yesil" : ""}">${p.aktif ? (p.otomatik ? "Anında" : "Onaylı") : "Kapalı"}</span></div>
       <div><span class="km-cip">${kmVade(p.vade_gun)}</span><span class="km-cip">${p.taksit_sayisi} taksit</span><span class="km-cip">%${fmt(p.faiz, 2)}</span><span class="km-cip">${kmTL(p.min_tutar)} – ${kmTL(p.max_tutar)}</span><span class="km-cip">not ≥ ${p.min_not}</span></div>
-      <button class="btn ikinci" onclick="kmPaketModal(${p.id})">Düzenle</button></div>`).join("") || `<p class="alt">Henüz paket yok.</p>`}
+      <div class="km-sat" style="margin-top:8px"><button class="btn ikinci" onclick="kmPaketModal(${p.id})">Düzenle</button><button class="btn tehlike" onclick="kmPaketSil(${p.id})">Sil</button></div></div>`).join("") || `<p class="alt">Henüz paket yok.</p>`}
     ${(v.paketler || []).length < 8 ? `<button class="btn altin" onclick="kmPaketModal(null)">Yeni kredi paketi</button>` : ""}</div>`;
   h += `<div class="kart"><h2>Açık krediler</h2>${aktif.map(k => `<div class="km-paket"><div style="display:flex;justify-content:space-between;gap:8px"><b>${e(k.borclu)} · #${k.id}</b>${+k.geciken > 0 ? `<span class="rozet kirmizi">Gecikmiş ${kmTL(k.geciken)}</span>` : `<span class="rozet">${k.kaynak === "teklif" ? "Teklif" : k.kaynak === "paket" ? "Paket" : "Başvuru"}</span>`}</div>
       <div class="kv"><span class="k">Kalan / toplam</span><span class="v">${kmTL(k.kalan)} / ${kmTL(k.toplam)}</span></div>
@@ -9577,6 +9577,16 @@ function kmPaketModal(id){
       p_faiz: +$("#kpFaiz", m).value, p_min: +$("#kpMin", m).value, p_max: +$("#kpMax", m).value, p_otomatik: $("#kpOto", m).checked, p_min_not: +$("#kpNot", m).value, p_aktif: $("#kpAktif", m).checked }), "Kredi paketi kaydedildi.");
       modalKapat(); oybKrediMasasiEkrani(null, true); } catch (_) {}
   };
+}
+async function kmPaketSil(id){
+  if (!KM.veri || !KM.veri.yonetebilir) { toast("Bu bankanın kredi yönetim yetkin yok.", true); return; }
+  const p = (KM.veri.paketler || []).find(x => Number(x.id) === Number(id));
+  if (!p) { toast("Kredi paketi bulunamadı.", true); return; }
+  if (!await onayla("Kredi paketini sil", `<b>${e(p.ad)}</b> paketi kalıcı olarak listelerden kaldırılacak; müşteriler bu paketle yeni kredi alamayacak. Daha önce verilmiş krediler, taksitler ve ödeme planları etkilenmeyecek.`, "Paketi sil")) return;
+  try {
+    await islem(() => API.rpc("oyb_paket_sil", { p_banka: KM.banka, p_id: Number(id) }), "Kredi paketi silindi.");
+    await oybKrediMasasiEkrani(null, true);
+  } catch (_) {}
 }
 function kmBilgiIsteModal(kad){
   const m = modal(`<h3 style="font-size:19px;font-weight:800">${e(kad)} adlı müşteriden mali bilgi iste</h3>
