@@ -42,6 +42,8 @@ async function bankaKrediDosyaEkrani(id){
     html+='<div class="kart"><b>'+e(k.borclu)+' · Kredi #'+km+'</b>'+
      '<div class="kv"><span>Kalan</span><b>'+bkTL(k.kalan)+'</b></div>'+
      '<p class="alt">Durum: '+e(k.durum)+' · İzin: '+e(ext.bilgi_durum||"yok")+'</p>';
+    if(bkKontrol(ext.taksitler).length)html+='<details><summary>Ödeme planı ('+Number(ext.taksit_sayisi||1)+' taksit)</summary>'+
+     bkKontrol(ext.taksitler).map(t=>'<div class="kv"><span>'+Number(t.sira)+'. taksit · '+bkTarih(t.vade)+'</span><b>'+bkTL(Math.max(0,Number(t.tutar)-Number(t.odenen)))+'</b></div>').join('')+'</details>';
     if(k.durum==='basvuru'){
      html+='<p class="alt">İstenecek belgeleri seç:</p>'+
       kapsam.map(a=>'<label style="display:block;margin:5px 0"><input type="checkbox" name="bk_iste_'+km+'" value="'+a+'" checked> '+e(bkBilgiAd(a))+'</label>').join('')+
