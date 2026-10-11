@@ -7161,11 +7161,11 @@ async function adlYargicIstifa(){
 }
 
 async function adliyeHtml(){
- const [d,siyasi,mahkeme]=await Promise.all([API.rpc("adliye_durum"),API.rpc("adliye_siyasi_bilgi"),API.rpc("adliye_mahkeme").catch(()=>null)]);ADL={...d,siyasi,mahkeme};
+ const [d,siyasi,mahkeme,toplu]=await Promise.all([API.rpc("adliye_durum"),API.rpc("adliye_siyasi_bilgi"),API.rpc("adliye_mahkeme").catch(()=>null),API.rpc("mahkeme_toplu_durum").catch(()=>null)]);ADL={...d,siyasi,mahkeme,toplu};
  const yer=d.partiler.find(p=>p.id===d.parti_id);
  const acik=d.davalar.filter(x=>x.durum==="acik");
  const bitmis=d.davalar.filter(x=>x.durum!=="acik");
- return adlBilgiHtml()+(mahkeme?adlJuriHtml(mahkeme)+adlMahkemeHtml(mahkeme)+'<div class="kart"><button class="btn" onclick="adlDavaModal()">Dava aç'+(mahkeme.ayar&&mahkeme.ayar.harc?' · harç '+tlYaz(mahkeme.ayar.harc):'')+'</button></div>':'<div class="kart"><h3>Yüksek Yargı</h3>'
+ return adlBilgiHtml()+(mahkeme?adlJuriHtml(mahkeme)+adlTopluMahkemeHtml(toplu)+adlMahkemeHtml(mahkeme)+'<div class="kart"><button class="btn" onclick="adlDavaModal()">Dava aç'+(mahkeme.ayar&&mahkeme.ayar.harc?' · harç '+tlYaz(mahkeme.ayar.harc):'')+'</button></div>':'<div class="kart"><h3>Yüksek Yargı</h3>'
   +'<p class="alt">Herkese açık davalar · Tek Yüksek Yargıç · Sözlü savunma · Gerekçeli karar · Cumhurbaşkanlığı affı</p>'
   +'<div class="kv"><span class="k">Yüksek Yargıç</span><span class="v">'+e(d.hakim||"Henüz atanmadı")+'</span></div>'
   +(d.hakim_miyim?'<div class="rozet altin" style="margin-top:10px">Yüksek Yargıç yetkiniz aktif</div><button class="btn tehlike" onclick="adlYargicIstifa()">Yüksek Yargıç görevinden istifa et</button>':'')
@@ -7377,6 +7377,44 @@ function partiSozcuModal(parti){
 
 
 /* ===================== YARGI REFORMU (83): 3 üyeli mahkeme, istinaf jürisi, AYM ===================== */
+function adlTopluMahkemeHtml(v){
+ if(!v) return '';
+ const d=v.durum;
+ const adaylar=v.adaylar||[];
+ let h='<div class="kart" style="border-top:3px solid var(--gold2)"><h3>13 Ekim · Yüksek Mahkeme üye seçimi</h3>'+
+  '<p class="alt">Yeni TBMM Başkanı seçildikten sonra 45 dakika adaylık, ardından 90 dakika oy verme. Meclis iki üye seçer: en çok oy alan iki uygun aday atanır. Her milletvekilinin bir oy hakkı vardır; eşitlikte önce başvuran öne geçer.</p>';
+ if(d==='bekleniyor'){
+   h+='<p class="kucuk">'+e(v.aciklama||'Yeni TBMM Başkanı seçilince adaylık açılacak.')+'</p>';
+ } else if(d==='aday'){
+   h+='<p class="kucuk"><b>Adaylık açık · son: '+adlTarih(v.aday_bit)+'</b></p>';
+   if(v.adayim) h+='<span class="rozet altin">✓ Adaylığın alındı</span><button class="btn ikinci" onclick="adlTopluAday(false)">Adaylıktan çekil</button>';
+   else if(v.aday_olabilirim) h+='<button class="btn altin" onclick="adlTopluAday(true)">Yüksek Mahkeme üyeliğine aday ol</button>';
+   else h+='<p class="kucuk">Adaylık şartları: '+e(v.engel||'Partisiz ve başka görevde olmayan oyuncular aday olabilir.')+'</p>';
+ } else if(d==='oylama'){
+   h+='<p class="kucuk"><b>Sandık açık · son: '+adlTarih(v.oy_bit)+'</b></p>';
+   if(v.oyum) h+='<p class="kucuk">✓ Oyun kaydedildi: '+e(v.oyum)+'</p>';
+   else if(!v.vekil_miyim) h+='<p class="alt">Oy hakkı yalnızca aktif milletvekillerinindir.</p>';
+ } else if(d==='bitti'){
+   h+='<p class="kucuk"><b>Sonuçlandı.</b></p>';
+   const kaz=(v.sonuc&&v.sonuc.atananlar)||[];
+   h+=kaz.length?kaz.map(x=>'<div class="liste-satir"><div class="orta"><b>'+e(x.kad)+'</b><div class="kucuk">'+x.oy+' oy · '+x.sira+'. üye</div></div></div>').join(''):'<p class="alt">Bu seçimde atanabilecek uygun ve oy almış aday bulunmadı.</p>';
+ }
+ if(d!=='bekleniyor'&&d!=='bitti') h+='<div class="kucuk" style="margin:10px 0">Başvuranlar ('+adaylar.length+')</div>';
+ if(d==='aday'||d==='oylama'){
+   h+=adaylar.length?adaylar.map(a=>'<div class="liste-satir"><div class="orta"><b>'+e(a.kad)+'</b><div class="kucuk">'+(a.uygun?'Aday':'Adaylık şartı artık sağlanmıyor')+'</div></div>'+
+      (d==='oylama'&&v.vekil_miyim&&!v.oyum&&a.uygun?'<button class="btn altin" style="width:auto" onclick="adlTopluOy(\''+e(a.id)+'\')">Oy ver</button>':'')+'</div>').join(''):'<p class="alt">Henüz aday başvurusu bulunmuyor.</p>';
+ }
+ return h+'</div>';
+}
+async function adlTopluAday(aday){
+ try{await API.rpc('mahkeme_toplu_aday_ol',{p_aday:aday});toast(aday?'Adaylığın kabul edildi.':'Adaylığından çekildin.');await adliyeEkrani();}
+ catch(err){toast(hataCevir(err.message),true);}
+}
+async function adlTopluOy(aday){
+ if(!await onayla('Yüksek Mahkeme seçimi','Seçtiğin adaya tek oyun kaydedilecek ve değiştirilemeyecek.','Oyumu onayla'))return;
+ try{await API.rpc('mahkeme_toplu_oy_ver',{p_aday:aday});toast('Oyun sandığa kaydedildi.');await adliyeEkrani();}
+ catch(err){toast(hataCevir(err.message),true);}
+}
 function adlMahkemeHtml(M){
  const kaynak=u=>u.sira===1?"Mahkeme başkanı · Cumhurbaşkanı atar":u.sira+". üye · Meclis seçer";
  const satir=u=>{
@@ -7392,7 +7430,9 @@ function adlMahkemeHtml(M){
   } else {
    h+='<b style="color:var(--txt2)">Boş koltuk</b>';
    if(u.sira===1) h+='<div class="kucuk">Cumhurbaşkanının ataması bekleniyor.</div>';
-   else {
+   else if(ADL.toplu && ADL.toplu.durum!=='bitti'){
+    h+='<div class="kucuk">13 Ekim Yüksek Mahkeme seçimiyle iki üyelik birlikte belirlenecek. Adaylık ve oy verme aşağıdadır.</div>';
+   } else {
     h+='<div class="kucuk">Meclis seçimi: '+M.salt_cogunluk+' vekil oyu alan seçilir; koltuk 72 saat boş kalırsa en çok oyu alan (en az 3) göreve gelir.</div>';
     h+=(u.adaylar||[]).map(a=>'<div class="kucuk">• '+e(a.kad)+' — '+a.oy+' oy</div>').join('');
     if(M.vekil_miyim) h+='<button class="btn ikinci" style="margin-top:6px" onclick="adlMeclisOyModal('+u.sira+')">'+(u.oyum?'Oyunu değiştir (şu an: '+e(u.oyum)+')':'Aday için oy ver')+'</button>';
