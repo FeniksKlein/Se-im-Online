@@ -93,7 +93,7 @@ $$;
 
 -- Vekil ön seçimi: her il + parti için oy sırasına göre liste.
 -- Sıfır oy alan aday adayları da elenmez; sıralamanın sonunda asıl aday olur.
-create or replace function oyun._sonuc_mv_on(s oyun.secimler) returns jsonb language plpgsql as $
+create or replace function oyun._sonuc_mv_on(s oyun.secimler) returns jsonb language plpgsql as $mv_on$
 begin
   perform oyun.aday_oylarini_say(s.id);
   with siralama as (
@@ -112,7 +112,7 @@ begin
     'katilim', (select count(*) from oyun.oylar where secim_id = s.id),
     'aday',    (select count(*) from oyun.adaylar where secim_id = s.id),
     'liste',   (select count(distinct (il_id, parti_id)) from oyun.adaylar where secim_id = s.id));
-end $;
+end $mv_on$;
 
 -- Parti içi tek kazananlı ön seçimler (bel_on: il+parti başına, cb_on: parti başına)
 create or replace function oyun._sonuc_tek_kazanan_on(s oyun.secimler, p_hedef_tur text) returns jsonb language plpgsql as $$
