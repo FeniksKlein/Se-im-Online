@@ -239,3 +239,12 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Kredi tutarı banka kasasının mevduat güvencesi dışındaki kısmıyla sınırlı (`oyb_saglik.kredi_verilebilir`).
 - Arayüz: `www/banka_kredi_masasi.js` (`oybKrediMasasiEkrani`); banka şubesi ve "Bankamı yönet" ekranlarına giriş kartı.
 - Testler: `bash test/oyb_kredi_masasi.sh` (yerel DB + canlıdaki banka migration'ları + bu migration, 10 senaryo), `node test/oyb_kredi_masasi_arayuz.js` (veri `test/veri/oyb_kredi_masasi_ornek.json`).
+
+## 2026-10-11 · 2026.10.11-14 Belediye: bağış hatası, hizmet karnesi, kriz masası, İller Bankası
+- **Hata:** `serbest_bagis` şehre/hazineye bağışı milyar ₺ sanıyordu (1.000 ₺ → 1.000 milyar). Canlıda düzeltildi (`bagis_kamu_birim_duzeltme_20261011`), önce `yedek_al` alındı. Onarım: 10 Ekim 21:00 UTC sonrası şehir bağışlarının fazlası düşüldü (Ankara, Giresun, Yalova, Hatay, Bayburt kasası 0'a indi; şişen parayla yapılan binalar yerinde bırakıldı), hazineden 500 milyar fazlası düşüldü (744,5 → 244,6). Kayıt: `migrations/20261011_bagis_kamu_birim_duzeltme.sql` (yorum; tekrar çalıştırma).
+- Diğer oturumun belediye şehir migration'ları kaynağa alındı: `gelistirici/sql/89_belediye_sehir.sql` (cron 04'e taşındı).
+- Yeni modül `91_belediye_detay.sql` + `www/belediye_sehir.js` yeniden yazıldı. Ayrıntı: `TASARIM.md` 16. bölüm. RPC'ler: `belediye_detay_paneli`, `belediye_karnesi(p_il)` (herkese açık), `belediye_kredi_al(p_tutar milyar, p_gun)`, `belediye_kredi_kapat`, `belediye_kriz_karar(p_id, p_secim)`. Zamanlayıcı `belediye-kriz` (saatte bir, dakika 7). `oyun.belediye_gunluk` yeniden tanımlandı (tavan kesmiyor, kredi taksiti, karne → memnuniyet).
+- İl sayfasındaki "1.000,1 mlr" gösterimi `kasaYaz` ile milyar/milyon/bin oldu; il sayfasına "Belediye karnesi" düğmesi eklendi. `docs/` ve `www/` yama ile güncellendi.
+- Testler: `python3 test/belediye_detay.py` (bağış, tavan, karne, kredi/gecikme, kriz/sessiz/soğuma), `node test/belediye_detay_arayuz.js` (veri `test/veri/belediye_detay_ornek.json`; sunucuda modül yokken eski ekranın çalıştığı da sınanır).
+- **Canlı durum:** bağış düzeltmesi canlıda. `migrations/20261011_belediye_detay.sql` canlıya henüz uygulanmadı (deneme iptal edildi); Supabase SQL Editor'de bir kez çalıştırılmalı (iki kez çalışabilir). Çalışana kadar arayüz yeni sekmeleri gizler.
+- Bilinen tutarsızlık (dokunulmadı): hazineye/il kasasına para aktaran bazı eski fonksiyonlar `/1e6` ya da `/1e9` kullanıyor (tahvil, piyango, kira vergisi, emlak vergisi); oyunun resmî kuru `pazar_tl_milyar()`.

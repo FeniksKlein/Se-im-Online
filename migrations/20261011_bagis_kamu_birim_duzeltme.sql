@@ -1,0 +1,14 @@
+-- 11 Ekim 2026 23:20 — canlıya uygulandı (bagis_kamu_birim_duzeltme_20261011).
+-- Şehre ve hazineye bağış oyuncu ₺'sini milyar ₺ sanıyordu: 1.000 ₺ bağış kasaya 1.000 milyar ekliyordu.
+-- Fonksiyon düzeltmesi 91_belediye_detay.sql içinde de var (tekrar çalıştırılabilir).
+-- Aşağıdaki veri onarımı YALNIZ BİR KEZ çalıştırıldı; tekrar çalıştırmayın.
+--
+-- select oyun.yedek_al('bagis birim duzeltmesi oncesi');
+-- update oyun.il_durum d set kasa = greatest(0, d.kasa - (x.s - x.s / oyun.pazar_tl_milyar()))
+--   from (select alici_id::smallint il, sum(tutar) s from oyun.serbest_bagis_kayit
+--          where alici_tur='il' and zaman >= '2026-10-10 21:00:00+00' group by 1) x
+--  where d.il_id = x.il and d.kasa > x.s / oyun.pazar_tl_milyar();
+-- update oyun.ulke set hazine = round(hazine - (s - s / oyun.pazar_tl_milyar()), 6)
+--   from (select sum(tutar) s from oyun.serbest_bagis_kayit where alici_tur='devlet') x where id = 1;
+-- Etkilenen iller: Ankara, Giresun, Yalova, Hatay, Bayburt (kasa 0'a indi; şişen parayla yapılan binalar yerinde kaldı).
+-- Hazine 744,5 → 244,6 milyar ₺.

@@ -80,7 +80,7 @@ async function yonetimEkrani(){
   // 1) Belediye başkanlığı — en üstte
   if (bel) {
     h += `<div class="kart ynt-bolum"><div class="baslik" style="display:flex;justify-content:space-between;gap:8px;align-items:center"><h2 style="margin:0">🏙️ ${e(bel.il_ad || "")} Belediyesi</h2><span class="rozet altin">Belediye başkanı</span></div>
-      ${sehir ? `<div class="gosterge" style="margin-top:10px"><div><div class="ad">Belediye kasası</div><div class="deger">${fmt(sehir.kasa, 3)}<small class="kucuk"> mlr ₺</small></div></div><div><div class="ad">Memnuniyet</div><div class="deger">${fmt(sehir.memnuniyet, 1)}</div></div><div><div class="ad">Gelişmişlik</div><div class="deger">${fmt(sehir.gelisim, 1)}</div></div></div>` : ""}
+      ${sehir ? `<div class="gosterge" style="margin-top:10px"><div><div class="ad">Belediye kasası</div><div class="deger" style="font-size:18px">${kasaYaz(sehir.kasa)}</div></div><div><div class="ad">Memnuniyet</div><div class="deger">${fmt(sehir.memnuniyet, 1)}</div></div><div><div class="ad">Gelişmişlik</div><div class="deger">${fmt(sehir.gelisim, 1)}</div></div></div>` : ""}
       <button class="btn altin" onclick="D._belediyeSehirMod='ozet';ekranAc(belediyeSehirYonetimEkrani)">Şehir yönetimi: bütçe, binalar, ekonomi</button>
       <button class="btn ikinci" onclick="ekranAc(belediyeEkrani)">Vergiler, sosyal yardımlar ve hizmetler</button>
       ${ihaleVar ? `<button class="btn ikinci" onclick="PZ.ihaleSekme='masa';ekranAc(ihaleEkrani)">Kamu ihalesi aç / yönet</button>` : ""}

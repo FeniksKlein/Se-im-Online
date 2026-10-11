@@ -1240,7 +1240,7 @@ async function ilDetay(id){
     ${d.durum ? `<div class="gosterge" style="margin-top:12px">
       <div><div class="ad">Gelişmişlik</div><div class="deger">${fmt(d.durum.gelisim, 1)}</div></div>
       <div><div class="ad">Halk memnuniyeti</div><div class="deger">${fmt(d.durum.memnuniyet, 1)}</div></div>
-      <div><div class="ad">Belediye kasası</div><div class="deger">${fmt(d.durum.kasa, 1)}<span class="kucuk"> mlr</span></div></div></div>` : ""}
+      <div><div class="ad">Belediye kasası</div><div class="deger" style="font-size:18px">${typeof kasaYaz==="function"?kasaYaz(d.durum.kasa):fmt(d.durum.kasa, 3)+" mlr"}</div></div></div>` : ""}
     <div class="kart" style="margin-top:12px"><h2>Belediye başkanı</h2>${d.bel ? `<b onclick="oyuncuKart('${e(d.bel.kad)}')" style="cursor:pointer">${e(d.bel.kad)}</b> · ${partiRozet(d.bel.parti, true)}<div class="kucuk">Göreve başlama: ${tarih(d.bel.bas)}</div>` : `<div class="alt">Makam boş</div>`}
       ${(d.bel_vaatler || []).length ? `<div class="kucuk" style="margin-top:8px;font-weight:800;color:var(--txt2)">Vaat karnesi</div>${vaatCipleri(d.bel_vaatler, true)}` : ""}
       <div class="kucuk" style="margin-top:8px">Kent vergisi %${fmt(d.kent_vergisi, 1)} · hemşehri desteği ${d.hemsehri ? fmt(d.hemsehri) + " ₺/gün" : "yok"} · maaş çarpanı ×${fmt(d.il_carpan, 2)}</div>
@@ -1251,6 +1251,7 @@ async function ilDetay(id){
     ${Object.entries(grup).map(([t, l]) => `<div class="kart"><h2>${TUR[t].ad} adayları</h2>${l.map(a => `<div class="liste-satir"><div class="orta"><b>${a.sira ? a.sira + ". " : ""}${e(a.kad)}</b> ${itibarCip(a.itibar)}${a.vaat ? `<div class="vaat">“${e(a.vaat)}”</div>` : ""}${vaatHtml(a.vaatler)}</div><span style="color:${e(a.renk)};font-weight:700">${e(a.kisa)}</span></div>`).join("")}</div>`).join("")}
     ${d.partiler.length ? `<div class="kart"><h2>Partilerin üye sayısı</h2>${d.partiler.map(x => `<div class="kv"><span class="k">${partiRozet(x)}</span><span class="v">${x.uye}</span></div>`).join("")}</div>` : ""}
     ${p && !d.benim_ilim ? `<button class="btn ikinci" onclick="ilDegistir(${d.id}, ${d.tasinma == null ? "null" : d.tasinma})">Bu ile taşın${d.tasinma != null ? ` (${fmt(d.tasinma)} ₺)` : ""}</button>` : ""}
+    ${typeof belediyeKarneModal==="function"?`<button class="btn ikinci" onclick="belediyeKarneModal(${d.id})">Belediye karnesi</button>`:""}
     <button class="btn altin" onclick="aliciBagisModal('il',${d.id},decodeURIComponent('${encodeURIComponent(d.ad).replace(/\x27/g,"%27")}'))">Bu şehre bağış yap</button>
     <button class="btn ikinci" onclick="modalKapat()">Kapat</button>`;
 }

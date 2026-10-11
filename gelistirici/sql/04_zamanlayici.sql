@@ -22,3 +22,6 @@ select cron.schedule('halka-arz', '* * * * *', 'select oyun.halka_arz_tick()');
 
 -- İlk takvimi hemen üret
 select oyun.tick();
+-- Belediye: bina inşaat/bakım (30 dk) ve kriz masası (saatte bir; açık krizlerin süresini de kapatır)
+select cron.schedule('belediye-sehir-bina-tick', '*/30 * * * *', 'select oyun.belediye_bina_tick()');
+select cron.schedule('belediye-kriz', '7 * * * *', 'select oyun.belediye_kriz_tick()');
