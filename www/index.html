@@ -4210,7 +4210,7 @@ function mulkCiz(d){
 }
 async function mulkAl(tur,il,bedel){
   const x = mulkStok.find(y=>y.il_id===il);
-  if(!await onayla("Gayrimenkul satın al",`${e(x?x.il:"")} ilinden bir ${e((MULK_AD[tur]||tur).toLocaleLowerCase("tr"))} ${tlYaz(bedel)} karşılığında satın alınsın mı? İlk kira ve ilk mülk vergisi 7 gün sonra işler.`,"Satın al"))return;
+  if(!await onayla("Gayrimenkul satın al",`${e(x?x.il:"")} ilinden bir ${e((MULK_AD[tur]||tur).toLocaleLowerCase("tr"))} satın alınsın mı? Satış bedeli: ${tlYaz(bedel)} · Alıcı tapu harcı (%2): ${tlYaz(Math.round(bedel*.02))} · Cüzdandan toplam: ${tlYaz(bedel+Math.round(bedel*.02))}. İlk kira 7 gün sonra; emlak vergisi yükümlülüğü takip eden yıl başlar.`,"Satın al"))return;
   try {
     const d=await API.rpc("mulk_il_satin_al",{p_tip:tur,p_il:il});
     mulkStok = (await API.rpc("mulk_il_stok").catch(()=>mulkStok)).slice().sort((a,b)=>a.il.localeCompare(b.il,"tr"));
