@@ -1,0 +1,407 @@
+{
+ "banka": 1,
+ "paket": 1,
+ "sahip": {
+  "banka": {
+   "ad": "Ege Katılım Bankası",
+   "id": 1,
+   "kasa": 955360,
+   "kredi_verilebilir": 855360
+  },
+  "hesap": null,
+  "ortak": true,
+  "not_ad": "Az riskli",
+  "saglik": {
+   "kasa": 955360,
+   "tampon": 100000,
+   "sermaye": 1000000,
+   "yaklasan_odeme": 0,
+   "asgari_likidite": 100000,
+   "mevduat_anapara": 0,
+   "dagitilabilir_kar": 0,
+   "kredi_verilebilir": 855360,
+   "mevduat_yukumluluk": 0,
+   "riskli_kredi_varligi": 31500
+  },
+  "hesaplar": [
+   {
+    "kad": "CanMusteri",
+    "borc": 0,
+    "bilgi": {
+     "durum": "talep",
+     "izinli": [],
+     "istenen": [
+      "maas",
+      "mulk"
+     ]
+    },
+    "acilis": "2026-10-15T00:00:00+03:00",
+    "teklif": {
+     "id": 2,
+     "son": "2026-10-17T00:00:00+03:00",
+     "tutar": 8000
+    },
+    "kredi_notu": 1100,
+    "aktif_kredi": false
+   },
+   {
+    "kad": "VeliMusteri",
+    "borc": 32700,
+    "bilgi": null,
+    "acilis": "2026-10-04T12:00:00+03:00",
+    "teklif": null,
+    "kredi_notu": 1200,
+    "aktif_kredi": true
+   },
+   {
+    "kad": "AliMusteri",
+    "borc": 15450,
+    "bilgi": {
+     "durum": "izin",
+     "izinli": [
+      "gunluk",
+      "maas"
+     ],
+     "istenen": [
+      "gunluk",
+      "maas",
+      "mulk"
+     ]
+    },
+    "acilis": "2026-10-02T12:00:00+03:00",
+    "teklif": null,
+    "kredi_notu": 1130,
+    "aktif_kredi": true
+   }
+  ],
+  "paketler": [
+   {
+    "ad": "Hızlı ihtiyaç",
+    "id": 1,
+    "faiz": 4,
+    "aktif": true,
+    "limitim": 40000,
+    "min_not": 900,
+    "otomatik": true,
+    "vade_gun": 10,
+    "max_tutar": 50000,
+    "min_tutar": 1000,
+    "taksit_sayisi": 5
+   },
+   {
+    "ad": "Büyük yatırım",
+    "id": 2,
+    "faiz": 9,
+    "aktif": true,
+    "limitim": 40000,
+    "min_not": 1000,
+    "otomatik": false,
+    "vade_gun": 30,
+    "max_tutar": 500000,
+    "min_tutar": 5000,
+    "taksit_sayisi": 3
+   }
+  ],
+  "kredi_notu": 1100,
+  "kredilerim": [],
+  "baska_kredi": false,
+  "tekliflerim": [],
+  "yonetebilir": true,
+  "bilgi_talebi": null,
+  "banka_kredileri": [
+   {
+    "id": 4,
+    "icra": null,
+    "oran": 3,
+    "risk": null,
+    "vade": "2026-10-21T00:00:00+03:00",
+    "durum": "aktif",
+    "kalan": 15450,
+    "acilis": "2026-10-15T00:00:00+03:00",
+    "borclu": "AliMusteri",
+    "kaynak": "teklif",
+    "toplam": 15450,
+    "anapara": 15000,
+    "geciken": 0,
+    "vade_gun": 6,
+    "dava_acilabilir": false
+   },
+   {
+    "id": 3,
+    "icra": {
+     "id": 1,
+     "tur": "gelir",
+     "durum": "acik"
+    },
+    "oran": 9,
+    "risk": null,
+    "vade": "2026-11-03T12:00:00+03:00",
+    "durum": "aktif",
+    "kalan": 32700,
+    "acilis": "2026-10-04T12:00:00+03:00",
+    "borclu": "VeliMusteri",
+    "kaynak": "paket",
+    "toplam": 32700,
+    "anapara": 30000,
+    "geciken": 10900,
+    "vade_gun": 30,
+    "dava_acilabilir": false
+   }
+  ],
+  "gonderilen_teklifler": [
+   {
+    "id": 2,
+    "kad": "CanMusteri",
+    "son": "2026-10-17T00:00:00+03:00",
+    "faiz": 4,
+    "durum": "teklif",
+    "tutar": 8000,
+    "vade_gun": 10,
+    "taksit_sayisi": 5
+   },
+   {
+    "id": 1,
+    "kad": "AliMusteri",
+    "son": "2026-10-17T00:00:00+03:00",
+    "faiz": 3,
+    "durum": "kabul",
+    "tutar": 15000,
+    "vade_gun": 6,
+    "taksit_sayisi": 3
+   }
+  ]
+ },
+ "veli": {
+  "banka": {
+   "ad": "Ege Katılım Bankası",
+   "id": 1,
+   "kasa": 955360,
+   "kredi_verilebilir": 855360
+  },
+  "hesap": {
+   "acilis": "2026-10-04T12:00:00+03:00"
+  },
+  "ortak": false,
+  "not_ad": "Az riskli",
+  "paketler": [
+   {
+    "ad": "Hızlı ihtiyaç",
+    "id": 1,
+    "faiz": 4,
+    "aktif": true,
+    "limitim": 40000,
+    "min_not": 900,
+    "otomatik": true,
+    "vade_gun": 10,
+    "max_tutar": 50000,
+    "min_tutar": 1000,
+    "taksit_sayisi": 5
+   },
+   {
+    "ad": "Büyük yatırım",
+    "id": 2,
+    "faiz": 9,
+    "aktif": true,
+    "limitim": 40000,
+    "min_not": 1000,
+    "otomatik": false,
+    "vade_gun": 30,
+    "max_tutar": 500000,
+    "min_tutar": 5000,
+    "taksit_sayisi": 3
+   }
+  ],
+  "kredi_notu": 1200,
+  "kredilerim": [
+   {
+    "id": 3,
+    "icra": "acik",
+    "oran": 9,
+    "vade": "2026-11-03T12:00:00+03:00",
+    "durum": "gecikmis",
+    "kalan": 32700,
+    "acilis": "2026-10-04T12:00:00+03:00",
+    "toplam": 32700,
+    "anapara": 30000,
+    "vade_gun": 30,
+    "taksitler": [
+     {
+      "sira": 1,
+      "vade": "2026-10-14T12:00:00+03:00",
+      "tutar": 10900,
+      "odenen": 0
+     },
+     {
+      "sira": 2,
+      "vade": "2026-10-24T12:00:00+03:00",
+      "tutar": 10900,
+      "odenen": 0
+     },
+     {
+      "sira": 3,
+      "vade": "2026-11-03T12:00:00+03:00",
+      "tutar": 10900,
+      "odenen": 0
+     }
+    ],
+    "erken_kapama": {
+     "tutar": 31245,
+     "ucret": 300,
+     "indirim": 1455,
+     "gecen_oran": 35
+    },
+    "erken_indirim": 0,
+    "erken_kapandi": false
+   }
+  ],
+  "baska_kredi": true,
+  "tekliflerim": [],
+  "yonetebilir": false,
+  "bilgi_talebi": null
+ },
+ "can": {
+  "banka": {
+   "ad": "Ege Katılım Bankası",
+   "id": 1,
+   "kasa": 955360,
+   "kredi_verilebilir": 855360
+  },
+  "hesap": {
+   "acilis": "2026-10-15T00:00:00+03:00"
+  },
+  "ortak": false,
+  "not_ad": "Az riskli",
+  "paketler": [
+   {
+    "ad": "Hızlı ihtiyaç",
+    "id": 1,
+    "faiz": 4,
+    "aktif": true,
+    "limitim": 40000,
+    "min_not": 900,
+    "otomatik": true,
+    "vade_gun": 10,
+    "max_tutar": 50000,
+    "min_tutar": 1000,
+    "taksit_sayisi": 5
+   },
+   {
+    "ad": "Büyük yatırım",
+    "id": 2,
+    "faiz": 9,
+    "aktif": true,
+    "limitim": 40000,
+    "min_not": 1000,
+    "otomatik": false,
+    "vade_gun": 30,
+    "max_tutar": 500000,
+    "min_tutar": 5000,
+    "taksit_sayisi": 3
+   }
+  ],
+  "kredi_notu": 1100,
+  "kredilerim": [],
+  "baska_kredi": false,
+  "tekliflerim": [
+   {
+    "id": 2,
+    "son": "2026-10-17T00:00:00+03:00",
+    "faiz": 4,
+    "plan": {
+     "toplam": 8320,
+     "anapara": 8000,
+     "vade_gun": 10,
+     "son_odeme": "2026-10-25T00:00:00+03:00",
+     "taksitler": [
+      {
+       "sira": 1,
+       "vade": "2026-10-17T00:00:00+03:00",
+       "tutar": 1664
+      },
+      {
+       "sira": 2,
+       "vade": "2026-10-19T00:00:00+03:00",
+       "tutar": 1664
+      },
+      {
+       "sira": 3,
+       "vade": "2026-10-21T00:00:00+03:00",
+       "tutar": 1664
+      },
+      {
+       "sira": 4,
+       "vade": "2026-10-23T00:00:00+03:00",
+       "tutar": 1664
+      },
+      {
+       "sira": 5,
+       "vade": "2026-10-25T00:00:00+03:00",
+       "tutar": 1664
+      }
+     ],
+     "faiz_orani": 4,
+     "faiz_tutari": 320,
+     "taksit_sayisi": 5,
+     "taksit_araligi_saat": 48
+    },
+    "mesaj": "Hoş geldin",
+    "tutar": 8000,
+    "vade_gun": 10,
+    "taksit_sayisi": 5
+   }
+  ],
+  "yonetebilir": false,
+  "bilgi_talebi": {
+   "durum": "talep",
+   "izinli": [],
+   "istenen": [
+    "maas",
+    "mulk"
+   ],
+   "istek_at": "2026-10-15T00:00:00+03:00"
+  }
+ },
+ "plan": {
+  "engel": null,
+  "paket": "Hızlı ihtiyaç",
+  "uygun": true,
+  "toplam": 5200,
+  "anapara": 5000,
+  "limitim": 40000,
+  "otomatik": true,
+  "vade_gun": 10,
+  "son_odeme": "2026-10-25T00:00:00+03:00",
+  "taksitler": [
+   {
+    "sira": 1,
+    "vade": "2026-10-17T00:00:00+03:00",
+    "tutar": 1040
+   },
+   {
+    "sira": 2,
+    "vade": "2026-10-19T00:00:00+03:00",
+    "tutar": 1040
+   },
+   {
+    "sira": 3,
+    "vade": "2026-10-21T00:00:00+03:00",
+    "tutar": 1040
+   },
+   {
+    "sira": 4,
+    "vade": "2026-10-23T00:00:00+03:00",
+    "tutar": 1040
+   },
+   {
+    "sira": 5,
+    "vade": "2026-10-25T00:00:00+03:00",
+    "tutar": 1040
+   }
+  ],
+  "faiz_orani": 4,
+  "kredi_notu": 1100,
+  "faiz_tutari": 200,
+  "taksit_sayisi": 5,
+  "taksit_araligi_saat": 48
+ }
+}
