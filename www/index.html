@@ -6358,9 +6358,9 @@ function sirketDetayEkrani(id){
 }
 async function sirketPazarEkrani(){
  yukleniyor("Satılık şirketler");
- try{const d=await API.rpc("sirket_liste"),l=(d.pazar||[]).filter(x=>x.sektor!=="banka");
+ try{const d=await API.rpc("sirket_liste"),l=(d.pazar||[]).filter(x=>x.sektor!=="banka"),benimTamSirketler=new Set((d.sirketler||[]).filter(s=>Number(s.pay)===100).map(s=>Number(s.id)));
  iskelet("Satılık şirketler",`<div class="kart"><h2>Satılık şirketler</h2></div>
- ${l.map(x=>`<div class="kart"><h3>${e(x.ad)}</h3><p class="alt">${e(vitSektor[x.sektor]||x.sektor)}</p><div class="kv"><span>Fiyat</span><b>${vitTL(x.fiyat)}</b></div><button class="btn altin" onclick="sirketPazarAl(${x.id})">Satın al</button></div>`).join("")||'<div class="kart">Satılık şirket bulunmuyor.</div>'}`,{geri:true});
+ ${l.map(x=>`<div class="kart"><h3>${e(x.ad)}</h3><p class="alt">${e(vitSektor[x.sektor]||x.sektor)}</p><div class="kv"><span>Fiyat</span><b>${vitTL(x.fiyat)}</b></div>${benimTamSirketler.has(Number(x.id))?`<button class="btn ikinci" onclick="sirketSatistanCikar(${x.id},'pazar')">İlanımı kaldır</button>`:`<button class="btn altin" onclick="sirketPazarAl(${x.id})">Satın al</button>`}</div>`).join("")||'<div class="kart">Satılık şirket bulunmuyor.</div>'}`,{geri:true});
  }catch(err){iskelet("Şirket pazarı",'<div class="kart">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
 window.oyuncuBankaEkrani=bankaRehberiEkrani;
