@@ -26,6 +26,7 @@ function idAltPanel(){
    out='<div class="kart"><h2>Benim işletmelerim</h2>'+(m.length?m.map(s=>sat(idTxt(s.ad),idAd(s.tur)+' · '+idTL(s.kasa)+' · %'+s.pay)).join(""):'<p class="alt">Henüz şirketin yok. İlk işletmeni kurabilirsin.</p>')+'</div>';
    out+='<div class="id-quick"><button onclick="ekranAc(sirketYonetimEkrani)">🏢 Mevcut şirketlerim</button><button onclick="ekranAc(halkaArzPazarEkrani)">📈 Halka arzlar</button><button onclick="ekranAc(pazarMerkezEkrani)">📊 Rekabetçi pazar</button><button onclick="ekranAc(emlakYeniEkrani)">🏡 Emlak pazarı</button></div>';
    out+=idKutu("Yeni ticaret sistemi","Fabrikanın ürettiği ürün mağazanın stoklarına gider. Tüm alım-satımlar ve şirket kasaları birbirine bağlıdır.","idYeniIsletme()","Yeni işletme aç");
+   out+=idKutu("Mevcut şirketini kullan","Halka açık olmayan %100 sahibi olduğun şirketini yeni sisteme taşıyabilirsin. Bu işlemden sonra eski otomatik kâr yerine gerçek ticaret kazancı işler.","idEskiSirket()","Şirketimi ekonomiye bağla");
  }
  if(k==="uretim"){
    out=idKutu("Fabrika kur","Gıda, teknoloji veya inşaat malzemesi üret. Gerçek şirket kasandan üretim maliyeti öde; ürününü diğer oyuncu mağazalarına sat.","idYeniIsletme('fabrika')","Fabrika aç");
@@ -94,6 +95,15 @@ function idModal(title,body,button,fn){
 const idInput=(id,label,value,min,max)=>'<div class="alan"><label>'+label+'</label><input id="'+id+'" type="number" inputmode="numeric" min="'+(min||0)+'" '+(max?'max="'+max+'"':'')+' step="1" value="'+value+'"></div>';
 const idSelect=(id,label,items)=>'<div class="alan"><label>'+label+'</label><select id="'+id+'">'+items+'</select></div>';
 const idValue=(m,id)=>$("#"+id,m).value;
+function idEskiSirket(){
+ const m=(ID.veri.benim||[]).filter(s=>!s.tur&&Number(s.pay)===100&&s.sektor!=="banka");
+ if(!m.length){toast("Dönüştürülebilecek halka kapalı şirketin yok.",true);return;}
+ const type='<option value="fabrika">Fabrika (sanayi/teknoloji/tarım)</option><option value="magaza">Mağaza (ticaret)</option><option value="insaat">İnşaat (inşaat)</option><option value="sigorta">Sigorta (ticaret)</option>';
+ idModal("Mevcut şirketi bağla",'<p class="alt">Bu işlem şirketin haftalık otomatik kazancını durdurur; yerine üretim ve ticaret gelirleri geçer. Sadece halka kapalı, tamamen sana ait şirketler için uygulanır.</p>'+idSelect("idSirket","Şirket",idOpt(m))+idSelect("idTur","Dönüşüm türü",type)+idSelect("idUrun","Fabrika ürün grubu",'<option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option><option value="malzeme">İnşaat malzemesi</option>'),"Şirketi dönüştür",async el=>{
+  if(!await onayla("Şirket dönüşümü","Mevcut şirketin haftalık pasif kazancı durur, ticari gelirle çalışır. Onaylıyor musun?","Dönüştür"))return;
+  await idIslem("etkinlestir",{sirket:Number(idValue(el,"idSirket")),tur:idValue(el,"idTur"),urun:idValue(el,"idUrun")},"Şirket ticaret sistemine bağlandı.");
+ });
+}
 function idYeniIsletme(pref){
  const tur= pref||"fabrika",il=D.durum&&D.durum.profil?D.durum.profil.il_id:1;
  const types=[["fabrika","🏭 Fabrika"],["magaza","🛍️ Mağaza"],["insaat","🏗️ Müteahhitlik"],["sigorta","🛡️ Sigorta"]];
@@ -108,6 +118,8 @@ function idYeniIsletme(pref){
 }
 function idFabrikaModal(s){
  idModal("Fabrika üretimi",idInput("idAdet","Üretim adedi (1-250)",10,1,250),"Üret",m=>idIslem("uretim",{sirket:s,adet:Number(idValue(m,"idAdet"))},"Stoklara eklendi."));
+ const md=document.querySelector("#idKaydet");
+ if(md){const b=document.createElement("button");b.className="btn ikinci";b.textContent="Toptan fiyatı değiştir";md.parentNode.insertBefore(b,md);b.onclick=()=>idModal("Yeni toptan fiyat",idInput("idTutar","Birim fiyat ₺",6000,1000,50000),"Fiyatı kaydet",m=>idIslem("fiyat",{sirket:s,tutar:Number(idValue(m,"idTutar"))},"Toptan fiyat güncellendi."));}
 }
 function idMagazaModal(s){
  const fab=(ID.veri.fabrikalar||[]).filter(f=>f.stok>0);
@@ -116,7 +128,14 @@ function idMagazaModal(s){
  idModal("Mağaza: toptan ürün al",'<p class="alt">Ürün bedeli mağaza kasasından fabrikaya geçer. Dilediğin zaman sanal müşterilere satış yapabilirsin.</p>'+sel+idInput("idAdet","Adet",5,1,250),"Toptan satın al",m=>idIslem("toptan",{sirket:s,hedef:Number(idValue(m,"idFab")),adet:Number(idValue(m,"idAdet"))},"Mağaza stoklarına işlendi."));
  // Ayrı butonlar aynı modalin icinde, ek alanlar.
  const md=document.querySelector("#idKaydet");
- if(md){const b=document.createElement("button");b.className="btn ikinci";b.textContent="Stoktan müşterilere sat";md.parentNode.insertBefore(b,md);b.onclick=()=>idModal("Mağaza satış",ur+idInput("idAdet","Satış adedi (1-100)",5,1,100),"Satış yap",m=>idIslem("satis",{sirket:s,urun:idValue(m,"idUrun"),adet:Number(idValue(m,"idAdet"))},"Ürünler satıldı."));}
+ if(md){
+  const b=document.createElement("button");b.className="btn ikinci";b.textContent="Stoktan müşterilere sat";
+  md.parentNode.insertBefore(b,md);
+  b.onclick=()=>idModal("Mağaza satış",ur+idInput("idAdet","Satış adedi (1-100)",5,1,100),"Satış yap",m=>idIslem("satis",{sirket:s,urun:idValue(m,"idUrun"),adet:Number(idValue(m,"idAdet"))},"Ürünler satıldı."));
+  const p=document.createElement("button");p.className="btn ikinci";p.textContent="Perakende fiyatını değiştir";
+  md.parentNode.insertBefore(p,md);
+  p.onclick=()=>idModal("Mağaza satış fiyatı",idInput("idTutar","Ürün birim fiyatı ₺",9500,1000,50000),"Fiyatı güncelle",m=>idIslem("fiyat",{sirket:s,tutar:Number(idValue(m,"idTutar"))},"Perakende fiyat güncellendi."));
+ }
 }
 function idProjeModal(s){
  idModal("Yeni inşaat projesi",idSelect("idTip","Gayrimenkul türü",'<option value="daire">Daire</option><option value="dukkan">Dükkân</option><option value="villa">Villa</option>')+idInput("idAdet","Bağımsız bölüm sayısı (1-8)",2,1,8)+'<p class="alt">Maliyet şirket kasasından çıkar. Proje 24 saatte tamamlanır.</p>',"Projeyi başlat",m=>idIslem("proje",{sirket:s,tip:idValue(m,"idTip"),adet:Number(idValue(m,"idAdet"))},"İnşaat başladı."));
@@ -129,7 +148,7 @@ function idSozlesmeYeni(){
  const mine=idMine();if(!mine.length){toast("Önce yönetebileceğin bir şirket gerekli.",true);return;}
  const others=ID.veri.benim||[];
  idModal("Ticari sözleşme öner",idSelect("idA","Satıcı şirketin",idOpt(mine))+
- '<div class="alan"><label>Alıcı şirket ID (Şirketler ekranında görünür)</label><input id="idB" type="number" min="1" placeholder="Alıcı şirket numarası"></div>'+
+ idSelect("idB","Alıcı şirket",(ID.veri.sirketler||[]).filter(s=>!mine.some(a=>a.id===s.id)).map(s=>'<option value="'+s.id+'">'+idTxt(s.ad)+'</option>').join(""))+
  '<div class="alan"><label>İş veya hizmet açıklaması</label><input id="idKonu" maxlength="140" placeholder="Örn. teknoloji malzemesi tedariki"></div>'+
  idInput("idTutar","Toplam sözleşme bedeli ₺",50000,1000,10000000),"Teklifi gönder",m=>idIslem("sozlesme_teklif",{sirket:Number(idValue(m,"idA")),hedef:Number(idValue(m,"idB")),konu:idValue(m,"idKonu"),tutar:Number(idValue(m,"idTutar"))},"Sözleşme teklifi gönderildi."));
 }
