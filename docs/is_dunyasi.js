@@ -7,7 +7,7 @@ const ID_BAS = {
 };
 const idTL=n=>tlYaz(Math.round(Number(n)||0));
 const idTxt=n=>e(String(n===null||n===undefined?"":n));
-const idAd=t=>({fabrika:"Fabrika",magaza:"Mağaza",insaat:"Müteahhit",sigorta:"Sigortacı"})[t]||t;
+const idAd=t=>({fabrika:"Fabrika",magaza:"Mağaza",insaat:"Müteahhit",sigorta:"Sigortacı",sanayi:"Sanayi",tarim:"Tarım",teknoloji:"Teknoloji",ticaret:"Ticaret",medya:"Medya",banka:"Banka"})[t]||t||"Mevcut şirket";
 const idUrun=u=>({gida:"Gıda",teknoloji:"Teknoloji",malzeme:"İnşaat malzemesi"})[u]||u;
 const idTarih=t=>t?new Date(t).toLocaleString("tr-TR",{dateStyle:"short",timeStyle:"short"}):"—";
 const idMine=(tur,yonetici=true)=>((ID.veri||{}).benim||[]).filter(s=>(!tur||s.tur===tur)&&(!yonetici||s.yonetici===true));
@@ -23,7 +23,7 @@ function idAltPanel(){
  const sat=(h,alt)=>'<div class="kv"><span>'+h+'</span><b>'+alt+'</b></div>';
  let out="";
  if(k==="ozet"){
-   out='<div class="kart"><h2>Benim işletmelerim</h2>'+(m.length?m.map(s=>sat(idTxt(s.ad),idAd(s.tur)+' · '+idTL(s.kasa)+' · %'+s.pay)).join(""):'<p class="alt">Henüz şirketin yok. İlk işletmeni kurabilirsin.</p>')+'</div>';
+   out='<div class="kart"><h2>Benim işletmelerim</h2>'+(m.length?m.map(s=>sat(idTxt(s.ad),idAd(s.tur||s.sektor)+' · '+idTL(s.kasa)+' · %'+s.pay)).join(""):'<p class="alt">Henüz şirketin yok. İlk işletmeni kurabilirsin.</p>')+'</div>';
    out+='<div class="id-quick"><button onclick="ekranAc(sirketYonetimEkrani)">🏢 Mevcut şirketlerim</button><button onclick="ekranAc(halkaArzPazarEkrani)">📈 Halka arzlar</button><button onclick="ekranAc(pazarMerkezEkrani)">📊 Rekabetçi pazar</button><button onclick="ekranAc(emlakYeniEkrani)">🏡 Emlak pazarı</button></div>';
    out+=idKutu("Yeni ticaret sistemi","Fabrikanın ürettiği ürün mağazanın stoklarına gider. Tüm alım-satımlar ve şirket kasaları birbirine bağlıdır.","idYeniIsletme()","Yeni işletme aç");
    out+=idKutu("Mevcut şirketini kullan","Halka açık olmayan %100 sahibi olduğun şirketini yeni sisteme taşıyabilirsin. Bu işlemden sonra eski otomatik kâr yerine gerçek ticaret kazancı işler.","idEskiSirket()","Şirketimi ekonomiye bağla");
