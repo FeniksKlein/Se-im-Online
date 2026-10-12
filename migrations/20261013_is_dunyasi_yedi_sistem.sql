@@ -280,7 +280,7 @@ begin
    select * into pr from oyun.eko_projeler where id=(p_veri->>'proje')::bigint for update;
    if pr.id is null or pr.kalan<=0 or pr.hazir>t then raise exception 'Proje hazir degil veya stok bitti.';end if;
    perform pg_advisory_xact_lock(90181,pr.il_id::integer);
-   if (select count(*) from oyun.yatirim_mulkleri where il_id=pr.il_id and tip=pr.tip)>=oyun.mulk_il_kota(pr.il_id,pr.tip)
+   if (select count(*) from oyun.yatirim_mulkleri ym where ym.il_id=pr.il_id and ym.tip=pr.tip)>=oyun.mulk_il_kota(pr.il_id,pr.tip)
      then raise exception 'Bu ilde ilgili gayrimenkul kotasi doldu.';end if;
    x:=round(pr.birim_fiyat*.02); -- Alici tapu harci.
    perform oyun.para_islem(u,-pr.birim_fiyat-x,'emlak','Müteahhitten yeni konut + %2 tapu harci',t,x);
