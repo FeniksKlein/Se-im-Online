@@ -1224,8 +1224,8 @@ function iskelet(baslik, govde, opt){
   const bakanMenu = !!(D.durum && D.durum.profil && (D.durum.profil.makamlar || []).some(x => x.tur === "bakan"));
   const belediyeMenu = !!(D.durum && D.durum.profil && (D.durum.profil.makamlar || []).some(x => x.tur === "bel"));
   const yonetimMenu = typeof yonetimVarMi === "function" && yonetimVarMi();
-  const sekmeler = opt.sekmesiz ? "" : `<nav class="sekmeler">${[["gundem","Gündem"],...(yonetimMenu ? [["yonetim","Yönetim"]] : []),["adliye","Adliye"],["hayat","Hayat"],["sohbet","Sohbet"],["devlet","Devlet"],["meclis","Meclis"],["harita","Harita"],["parti","Partiler"],["dernek","Dernekler"]]
-    .map(([k, ad]) => `<button class="${D.sekme === k ? "aktif" : ""}${k === "sohbet" && +ok.ozel > 0 ? " mesaj-var" : ""}" ${k === "sohbet" ? `id="sohbetSekme" aria-label="Sohbet, ${+ok.ozel || 0} okunmamış özel mesaj"` : ""} onclick="sekmeAc('${k}')">${IKON[k] || IKON.devlet}<span>${ad}</span>${k === "sohbet" ? `<span id="dmSayi">${sayiRozet(ok.ozel)}</span>` : ""}${k === "hayat" && cz && (cz.dolu || cz.gunun_ilki) ? `<span class="nokta"></span>` : ""}</button>`).join("")}</nav>`;
+  const sekmeler = opt.sekmesiz ? "" : `<nav class="sekmeler">${[["gundem","Gündem"],["devlet","Devlet"],["adliye","Adliye"],["hayat","Hayat"],["ekonomi","Ekonomi"],["sohbet","Sohbet"],["meclis","Meclis"],["harita","Harita"],["parti","Partiler"],["dernek","Dernekler"]]
+    .map(([k, ad]) => `<button class="${D.sekme === k || (k === "devlet" && D.sekme === "yonetim") ? "aktif" : ""}${k === "sohbet" && +ok.ozel > 0 ? " mesaj-var" : ""}" ${k === "sohbet" ? `id="sohbetSekme" aria-label="Sohbet, ${+ok.ozel || 0} okunmamış özel mesaj"` : ""} onclick="sekmeAc('${k}')">${IKON[k] || IKON.devlet}<span>${ad}</span>${k === "sohbet" ? `<span id="dmSayi">${sayiRozet(ok.ozel)}</span>` : ""}${k === "hayat" && cz && (cz.dolu || cz.gunun_ilki) ? `<span class="nokta"></span>` : ""}</button>`).join("")}</nav>`;
   // Aynı ekran yenilenince (dakikalık tazeleme, işlem sonrası) kaydırma konumu korunur
   const anahtar = D.sekme + "|" + (D._ekranNo || 0) + "|" + baslik, eskiIc = $("#icerik");
   const eskiKaydirma = eskiIc && D._sonAnahtar === anahtar ? eskiIc.scrollTop : 0;
@@ -4139,13 +4139,7 @@ function hayatCiz(h){
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><span class="rozet altin">${e(st.ad)}</span>${kb.seri > 1 ? `<span class="rozet">${h.bugun_toplandi ? kb.seri : kb.seri - 1} günlük seri</span>` : ""}${bk.vadesiz ? `<span class="rozet">Bankada ${tlYaz(bk.vadesiz + (bk.vadeli || 0))}</span>` : ""}</div>
     </section>
     <section class="kart" style="margin-bottom:12px"><h2>🎯 Görevler</h2><p class="alt">270 günlük, haftalık ve kalıcı görev. Gerçek oyun faaliyetlerinden oyun parası kazan.</p><button class="btn altin" onclick="ekranAc(gorevEkrani)">Görevleri gör ve ödül kazan</button></section>
-    <div class="bolum-bas"><h2>Ekonomi ve ticaret</h2><span class="kucuk">Hızlı erişim</span></div>
-    <div class="vit-ana-izgara">
-      <button class="vit-ana-kart" onclick="bankaRehberiEkrani()"><span class="vit-ikon">🏦</span><b>Oyuncu bankaları</b><span>Mevduat ve kredi fırsatları</span></button>
-      <button class="vit-ana-kart" onclick="sirketVitrinEkrani()"><span class="vit-ikon">🏢</span><b>Şirketler</b><span>Oyundaki şirketleri keşfet</span></button>
-      <button class="vit-ana-kart" onclick="halkaArzPazarEkrani()"><span class="vit-ikon">📈</span><b>Halka arzlar</b><span>Şirketlere yatırım yap, ortak ol</span></button>
-      <button class="vit-ana-kart" onclick="emlakYeniEkrani()"><span class="vit-ikon">🏡</span><b>Satılık mülkler</b><span>İlanları gör, pazarlık yap</span></button>
-    </div>
+    <div class="kart" style="margin-bottom:12px"><button class="giris-satir ms-giris" onclick="sekmeAc('ekonomi')"><span class="yik">${IKON.ekonomi || ""}</span><span class="orta"><b>Ekonomi</b><span class="kucuk">Şirketler, borsa, halka arz, bankalar, emlak, para gönder</span></span><span class="ok">›</span></button></div>
     <div class="olay ${dolu ? "oy" : "basvuru"}" style="margin-top:4px">
       <div class="baslik"><b>Maaş kumbarası</b><span class="rozet ${dolu ? "kirmizi" : "altin"}">${dolu ? "Doldu!" : fmt(kb.saat, 1) + " / " + fmt(kb.kapasite || 16) + " saat"}</span></div>
       <div class="sayac" style="font-size:30px">${tlYaz(kb.birikmis)}</div>
@@ -4154,13 +4148,6 @@ function hayatCiz(h){
       ${desteklerBugun ? `<div class="kucuk" style="margin-top:4px;color:var(--good)">Bugünkü destekler ilk toplamada yatar: ${kb.gunluk_destek.devlet ? tlYaz(kb.gunluk_destek.devlet) + " devlet" : ""}${kb.gunluk_destek.devlet && kb.gunluk_destek.belediye ? " + " : ""}${kb.gunluk_destek.belediye ? tlYaz(kb.gunluk_destek.belediye) + " belediye" : ""}</div>` : ""}
       ${kb.seri > 1 ? `<div class="kucuk" style="margin-top:4px">${kb.seri}. gün serisi: maaşa +%${fmt(kb.seri_bonus)}${h.bugun_toplandi ? "" : " (bugün topla, seri sürsün)"}</div>` : `<div class="kucuk" style="margin-top:4px">Her gün gelip toplarsan seri kurarsın: her gün +%5, en fazla +%30.</div>`}
       <button class="btn ${dolu || !h.bugun_toplandi ? "" : "ikinci"}" id="hTopla" ${kb.birikmis >= 1 || !h.bugun_toplandi ? "" : "disabled"}>Topla</button></div>
-    <div class="bolum-bas"><h2>Diğer para işlemleri</h2></div>
-    <div class="kart">
-      <button class="giris-satir" onclick="ekranAc(bankaEkrani)"><span class="yik">🏦</span><span class="orta"><b>Devlet bankası</b><span class="kucuk">Vadeli ve vadesiz hesap</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="ekranAc(piyasaEkrani)"><span class="yik">📈</span><span class="orta"><b>Piyasalar</b><span class="kucuk">Altın, döviz, hisse</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="paraGonderModal()"><span class="yik">💸</span><span class="orta"><b>Para gönder</b><span class="kucuk">Banka havalesi</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="ticaretGecmisimEkrani()"><span class="yik">🧾</span><span class="orta"><b>Alım-satım geçmişim</b><span class="kucuk">Geçmiş işlemlerim</span></span><span class="ok">›</span></button>
-    </div>
     <div class="satir" style="margin-bottom:12px">
       <button class="btn yarim ikinci" style="margin:0" id="hReklam" ${reklamHazir ? "" : "disabled"}>Reklam izle<br><span class="kucuk">+${tlYaz(kb.reklam_odul)} · ${h.reklam.kalan}/5</span></button>
       <button class="btn yarim ikinci" style="margin:0" id="hMagaza">Mağaza<br><span class="kucuk">₺ paketleri</span></button></div>
@@ -9855,5 +9842,6 @@ window.oybKrediMasasiEkrani = oybKrediMasasiEkrani;
 <script src="secim_detay_sonuclar.js?v=20261012"></script>
 <script src="is_dunyasi.js?v=20261013-2"></script>
 <script src="ekonomi_kurumlar.js?v=20261013-2"></script>
+<script src="menu_sade.js?v=20261013-1"></script>
 </body>
 </html>

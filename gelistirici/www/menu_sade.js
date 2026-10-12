@@ -1,0 +1,165 @@
+/* =====================================================================
+   MENÜ SADELEŞTİRME (2026-10-13)
+   1) Ekonomi: Hayat'taki dağınık kartlar (İş Dünyası, Ekonomi merkezi, Şirketler,
+      Rekabetçi şirketler, Halka arzlar, bankalar, ihaleler, ajanslar, emlak…)
+      tek bir alt menü sekmesinde toplanır: "Ekonomi".
+   2) Yönetim + Devlet: alt menüdeki ayrı "Yönetim" sekmesi kalktı. Makamı olan
+      oyuncu Devlet sekmesinin ilk bölümünde ("Makamım") aynı işlemleri görür.
+   Bu dosya en son yüklenmeli (diğer modüllerin iskelet sarmalayıcılarının dışında kalır).
+   ===================================================================== */
+(function(){
+  const sv = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const MS_IKON = {
+    ekonomi: sv('<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 6-7"/><path d="M16 7h4v4"/>'),
+    sirket: sv('<rect x="4" y="3" width="10" height="18" rx="1"/><path d="M14 9h6v12h-6M7 7h4M7 11h4M7 15h4"/>'),
+    dunya: sv('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>'),
+    yaris: sv('<path d="M6 20V10M12 20V4M18 20v-7"/>'),
+    rehber: sv('<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M9 7h6"/>'),
+    ihale: sv('<path d="m14 13-7.5 7.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/>'),
+    ajans: sv('<path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 9a3 3 0 0 1 0 6M19 6a7 7 0 0 1 0 12"/>'),
+    rapor: sv('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 16v-3M12 16V8M16 16v-6"/>'),
+    borsa: sv('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'),
+    arz: sv('<circle cx="12" cy="12" r="9"/><path d="M12 7v10M8.5 10.5 12 7l3.5 3.5"/>'),
+    altin: sv('<path d="M5 17h14l-2-6H7z"/><path d="M8.5 11 10 7h4l1.5 4"/>'),
+    tahvil: sv('<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>'),
+    banka: sv('<path d="M3 21h18M5 21V10M9.5 21V10M14.5 21V10M19 21V10M2.5 10 12 3l9.5 7z"/>'),
+    oyb: sv('<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>'),
+    gonder: sv('<path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4z"/>'),
+    gecmis: sv('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>'),
+    emlak: sv('<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10M10 20v-6h4v6"/>'),
+    mb: sv('<circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .9-3 2s1.3 1.7 3 2 3 .9 3 2-1.3 2-3 2c-1.4 0-2.5-.5-3-1.5M12 6v2M12 16v2"/>'),
+    spk: sv('<circle cx="11" cy="11" r="7"/><path d="m21 21-5-5"/>'),
+    terazi: sv('<path d="M12 3v18M5 21h14M3 7h18M6 7l-3 5h6zM18 7l-3 5h6z"/>'),
+    konk: sv('<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>'),
+    bagis: sv('<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/>')
+  };
+  if (typeof IKON === "object" && IKON && !IKON.ekonomi) IKON.ekonomi = MS_IKON.ekonomi;
+
+  const var_ = ad => typeof window[ad] === "function";
+  // [ikon, başlık, açıklama, çağrı, gereken fonksiyon]
+  const satir = (ik, bas, alt, cagri, fn) => (fn && !var_(fn)) ? "" :
+    `<button class="giris-satir" onclick="${cagri}"><span class="yik ms-yik">${MS_IKON[ik]}</span><span class="orta"><b>${bas}</b><span class="kucuk">${alt}</span></span><span class="ok">›</span></button>`;
+  const grup = (baslik, alt, satirlar) => {
+    const ic = satirlar.join("");
+    return ic ? `<div class="bolum-bas"><h2>${baslik}</h2>${alt ? `<span class="kucuk">${alt}</span>` : ""}</div><div class="kart ms-grup">${ic}</div>` : "";
+  };
+  const hizli = (ik, bas, cagri, fn) => (fn && !var_(fn)) ? "" :
+    `<button class="ms-hizli" onclick="${cagri}">${MS_IKON[ik]}<b>${bas}</b></button>`;
+
+  function msCss(){
+    return `<style id="menuSadeCss">
+      .ms-yik svg{width:22px;height:22px;color:var(--ink2,#a995ff)}
+      .ms-grup{padding-top:4px;padding-bottom:4px}
+      .ms-ust{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 14px}
+      .ms-hizli{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border-radius:14px;background:var(--panel);border:1px solid var(--line2);color:var(--txt);min-width:0}
+      .ms-hizli svg{width:24px;height:24px;color:var(--ink2,#a995ff)}
+      .ms-hizli b{font-size:11.5px;line-height:1.2;text-align:center}
+      .ms-giris .yik svg{width:22px;height:22px;color:var(--ink2,#a995ff)}
+    </style>`;
+  }
+
+  try { if (!document.getElementById("menuSadeCss")) document.head.insertAdjacentHTML("beforeend", msCss()); } catch (_) {}
+
+  /* ---------------- Ekonomi sekmesi ---------------- */
+  function ekonomiEkrani(){
+    const cz = D.durum && D.durum.profil && D.durum.profil.cuzdan;
+    const h = `
+      <section class="sahne" style="margin-bottom:12px">
+        <div class="ne">Cüzdanın</div>
+        <div class="para" style="font-size:34px;margin-top:2px">${cz ? tlYaz(cz.para) : "—"}</div>
+        <div class="kucuk" style="margin-top:6px">Şirketler, yatırımlar, bankalar ve emlak tek yerde.</div>
+      </section>
+      <div class="ms-ust">
+        ${hizli("sirket", "Şirketlerim", "ekranAc(sirketYonetimEkrani)", "sirketYonetimEkrani")}
+        ${hizli("arz", "Halka arzlar", "ekranAc(halkaArzPazarEkrani)", "halkaArzPazarEkrani")}
+        ${hizli("borsa", "Borsa", "ekranAc(borsaEkrani)", "borsaEkrani")}
+        ${hizli("gonder", "Para gönder", "paraGonderModal()", "paraGonderModal")}
+      </div>
+      ${grup("Şirket ve iş", "Kur, yönet, yarış", [
+        satir("sirket", "Şirketlerim ve şirket kur", "Ortak olduğun şirketleri yönet, yeni şirket kur", "ekranAc(sirketYonetimEkrani)", "sirketYonetimEkrani"),
+        satir("dunya", "İş dünyası", "Üretim, mağaza, inşaat, sigorta, franchise, birleşme", "ekranAc(isDunyasiEkrani)", "isDunyasiEkrani"),
+        satir("yaris", "Rekabetçi şirketler", "Okul, hastane, market, ulaşım, enerji; fiyat ve kalite", "ekranAc(pazarMerkezEkrani)", "pazarMerkezEkrani"),
+        satir("ihale", "Kamu ihaleleri", "Belediye ve bakanlık ihalelerine teklif ver", "ekranAc(ihaleEkrani)", "ihaleEkrani"),
+        satir("ajans", "Reklam ve anket ajansları", "Kampanya reklamı, kamuoyu araştırması", "ekranAc(ajansMerkezEkrani)", "ajansMerkezEkrani"),
+        satir("rehber", "Şirket rehberi", "Oyundaki tüm şirketler, sahipleri, kâr sıralaması", "ekranAc(sirketVitrinEkrani)", "sirketVitrinEkrani"),
+        satir("gecmis", "Satılık şirketler", "Devren satılan şirketleri incele", "ekranAc(sirketPazarEkrani)", "sirketPazarEkrani")
+      ])}
+      ${grup("Yatırım", "Hisse, arz, altın, tahvil", [
+        satir("rapor", "Piyasa raporu", "Enflasyon, fiyat endeksi, sektör liderleri", "ekranAc(ekonomiMerkeziEkrani)", "ekonomiMerkeziEkrani"),
+        satir("borsa", "Borsa", "Şirket hisselerini al, sat", "ekranAc(borsaEkrani)", "borsaEkrani"),
+        satir("arz", "Halka arzlar", "Arzlara talep ver, ortak ol", "ekranAc(halkaArzPazarEkrani)", "halkaArzPazarEkrani"),
+        satir("altin", "Altın ve döviz", "Emtia ve döviz piyasaları", "ekranAc(piyasaEkrani)", "piyasaEkrani"),
+        satir("tahvil", "Belediye tahvilleri", "Belediyelere borç ver, faiz kazan", "ekranAc(belediyeTahvilEkrani)", "belediyeTahvilEkrani")
+      ])}
+      ${grup("Banka ve para", "", [
+        satir("banka", "Devlet bankası", "Vadeli ve vadesiz hesap, kredi", "ekranAc(bankaEkrani)", "bankaEkrani"),
+        satir("oyb", "Oyuncu bankaları", "Mevduat ve kredi fırsatları", "ekranAc(bankaRehberiEkrani)", "bankaRehberiEkrani"),
+        satir("gonder", "Para gönder", "Başka oyuncuya havale", "paraGonderModal()", "paraGonderModal"),
+        satir("gecmis", "Alım-satım geçmişim", "Geçmiş işlemlerin", "ekranAc(ticaretGecmisimEkrani)", "ticaretGecmisimEkrani")
+      ])}
+      ${grup("Emlak", "", [
+        satir("emlak", "Satılık mülkler", "İlanları gör, pazarlık yap, mülkünü ilana koy", "ekranAc(emlakYeniEkrani)", "emlakYeniEkrani")
+      ])}
+      ${grup("Ekonomi kurumları", "Herkes izleyebilir", [
+        satir("mb", "Merkez Bankası", "Politika faizi ve PPK kararları", "ekranAc(merkezBankasiEkrani)", "merkezBankasiEkrani"),
+        satir("spk", "Sermaye Piyasası Kurulu", "Borsa gözetimi ve cezalar", "ekranAc(spkEkrani)", "spkEkrani"),
+        satir("terazi", "Rekabet Kurumu", "Kartel ve tekel soruşturmaları", "ekranAc(rekabetEkrani)", "rekabetEkrani"),
+        satir("konk", "Konkordato ve iflas", "Zor durumdaki şirketler", "ekranAc(konkordatoEkrani)", "konkordatoEkrani"),
+        satir("bagis", "Siyasi bağışlar", "Şirketlerin partilere bağışları", "ekranAc(siyasiBagisEkrani)", "siyasiBagisEkrani")
+      ])}`;
+    iskelet("Ekonomi", h);
+  }
+  window.ekonomiEkrani = ekonomiEkrani;
+  if (typeof EKRAN === "object" && EKRAN) EKRAN.ekonomi = () => ekonomiEkrani();
+
+  /* ---------------- Devlet + Makamım ---------------- */
+  const makamVar = () => typeof yonetimVarMi === "function" && yonetimVarMi();
+  const DV_SEG = [["yonetim", "Makamım"], ["hukumet", "Hükümet"], ["mevzuat", "Mevzuat"], ["gazete", "Gazete"], ["tarih", "Tarih"]];
+  const dvSeg = aktif => `<div class="segment" style="margin-bottom:12px">${DV_SEG.filter(([k]) => k !== "yonetim" || makamVar())
+    .map(([k, a]) => `<button class="${aktif === k ? "aktif" : ""}" onclick="D.devletSekme='${k}';devletEkrani()">${a}</button>`).join("")}</div>`;
+
+  if (typeof devletEkrani === "function") {
+    const eskiDevlet = devletEkrani;
+    window.devletEkrani = devletEkrani = async function(){
+      // Makamı olan oyuncu Devlet'i ilk açışında "Makamım" bölümüyle başlar
+      if (!D._dvMakamIlk && makamVar() && (!D.devletSekme || D.devletSekme === "hukumet")) D.devletSekme = "yonetim";
+      D._dvMakamIlk = true;
+      if (D.devletSekme === "yonetim" && !makamVar()) D.devletSekme = "hukumet";
+      if (D.devletSekme === "yonetim" && typeof yonetimEkrani === "function") {
+        D.sekme = "devlet";
+        return yonetimEkrani();
+      }
+      const r = await eskiDevlet.apply(this, arguments);
+      try {
+        const h1 = $("header.ust h1");
+        if (D.sekme === "devlet" && h1 && h1.textContent === "Devlet" && makamVar()) {
+          const seg = $("#icerik .segment");
+          if (seg && !seg.querySelector(".ms-makam")) seg.insertAdjacentHTML("afterbegin", `<button class="ms-makam" onclick="D.devletSekme='yonetim';devletEkrani()">Makamım</button>`);
+        }
+      } catch (_) {}
+      return r;
+    };
+  }
+  if (typeof EKRAN === "object" && EKRAN) {
+    EKRAN.devlet = () => devletEkrani();
+    const makama = () => { D.sekme = "devlet"; D.devletSekme = "yonetim"; return devletEkrani(); };
+    EKRAN.yonetim = makama; EKRAN.bakanlik = makama; EKRAN.belediye = makama;
+  }
+
+  /* ---------------- Dış sarmalayıcı: başlık ve sekme düzeltmeleri ---------------- */
+  if (typeof iskelet === "function") {
+    const eski = iskelet;
+    window.iskelet = iskelet = function(baslik, govde, opt){
+      const args = Array.prototype.slice.call(arguments);
+      try {
+        // Yönetim ekranı artık Devlet sekmesinin "Makamım" bölümüdür
+        if (baslik === "Yönetim" && (D.sekme === "devlet" || D.sekme === "yonetim") && !(opt && opt.geri)) {
+          D.sekme = "devlet"; D.devletSekme = "yonetim";
+          args[0] = "Devlet";
+          args[1] = dvSeg("yonetim") + (govde || "");
+        }
+      } catch (_) {}
+      return eski.apply(this, args);
+    };
+  }
+})();

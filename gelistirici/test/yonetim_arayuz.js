@@ -2,7 +2,9 @@
 // Çalıştır: NODE_PATH=/opt/npm-tools/node_modules HTML_PATH=../docs/index.html node test/yonetim_arayuz.js [ekran_klasoru]
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path'), assert = require('assert/strict');
-const html = fs.readFileSync(process.env.HTML_PATH || path.join(__dirname, '../dist/index.html'), 'utf8');
+const htmlYol = process.env.HTML_PATH || path.join(__dirname, '../dist/index.html');
+const html = fs.readFileSync(htmlYol, 'utf8').replace(/<script src="([\w.-]+\.js)(?:\?[^"]*)?"><\/script>/g, (t, ad) => {
+  const f = path.join(path.dirname(htmlYol), ad); return fs.existsSync(f) ? '<script>' + fs.readFileSync(f, 'utf8') + '</script>' : t; });
 const shot = process.argv[2];
 (async () => {
   const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}) });
@@ -26,12 +28,13 @@ const shot = process.argv[2];
       } };
       D.durum = { profil: PROFIL };
     });
-    // Alt menü: Yönetim var, Belediyem/Bakanlığım yok; Yönetim Gündem'in hemen yanında
+    // Alt menü: Yönetim artık Devlet › Makamım; Devlet Gündem'in hemen yanında (2026-10-13)
     await page.evaluate(() => sekmeAc('yonetim'));
     await page.waitForSelector('.ynt-bolum');
     const menu = await page.locator('nav.sekmeler button span').allTextContents();
-    assert.equal(menu[0], 'Gündem'); assert.equal(menu[1], 'Yönetim');
-    assert.ok(!menu.includes('Belediyem') && !menu.includes('Bakanlığım'), menu.join(','));
+    assert.equal(menu[0], 'Gündem'); assert.equal(menu[1], 'Devlet');
+    assert.ok(!menu.includes('Yönetim') && !menu.includes('Belediyem') && !menu.includes('Bakanlığım'), menu.join(','));
+    assert.equal(await page.locator('#icerik .segment button.aktif').textContent(), 'Makamım');
     // Belediye bölümü en üstte (ilk makam bölümü), Meclis ve parti bölümleri altta
     const bas = await page.locator('.ynt-bolum h2').allTextContents();
     assert.match(bas[0], /İzmir Belediyesi/); assert.equal(bas[1], 'TBMM'); assert.match(bas[2], /Örnek Parti/);
@@ -40,7 +43,7 @@ const shot = process.argv[2];
     if (shot) await page.screenshot({ path: path.join(shot, 'yonetim.png'), fullPage: true });
     // Eski bağlantılar Yönetim'e döner
     await page.evaluate(() => sekmeAc('belediye')); await page.waitForSelector('.ynt-bolum');
-    assert.equal(await page.evaluate(() => D.sekme), 'yonetim');
+    assert.equal(await page.evaluate(() => D.sekme), 'devlet');
     // CİMER: belediye başkanına başvuru hiç gelmemişken bile "Makamıma gelen" sekmesi görünür
     await page.click('.ynt-cimer'); await page.waitForSelector('[data-cs="gelen"]');
     assert.match(await page.locator('#icerik').textContent(), /Bekleyen başvuru yok/);

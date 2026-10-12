@@ -258,3 +258,10 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Arayüz: `gelistirici/www/ekonomi_kurumlar.js` (Hayat › Ekonomi merkezi'nde dört yeni kart; Borsa'da SPK, Şehir Yönetimi'nde tahvil düğmesi).
 - Testler: `test/ekonomi_kurumlar.py` (hepsi.sh'e eklendi), `test/ekonomi_kurumlar_arayuz.js`. `guvenlik.py` ve `kalicilik.py` bu değişiklikten önce de parti kurucu davet kuralı yüzünden bayat beklentiyle düşüyor.
 - Yayın: `docs/index.html`'e yalnızca `<script src="ekonomi_kurumlar.js?v=20261013-2">` eklendi ve `docs/ekonomi_kurumlar.js` kopyalandı (İş Dünyası ile aynı yöntem; başka değişiklik yayına taşınmadı). `www/index.html` (mağaza paketi) bir sonraki tam derlemede güncellenir.
+
+## 2026-10-13 · 2026.10.13-3 Menü sadeleştirme (yalnız arayüz)
+- **Ekonomi alt menüsü:** Hayat'taki dağınık ekonomi kartları (İş Dünyası, Ekonomi merkezi, Şirketler, Rekabetçi şirketler, Halka arzlar, Oyuncu bankaları, Satılık mülkler, Kamu ihaleleri, Reklam ve anket) ve "Diğer para işlemleri" kaldırıldı; hepsi yeni `ekonomi` sekmesinde (`ekonomiEkrani`) gruplu tek listede: Şirket ve iş · Yatırım · Banka ve para · Emlak · Ekonomi kurumları. Hayat'ta yalnız tek "Ekonomi" giriş kartı kaldı. Eski modüllerin Hayat ızgarasına kart ekleyen sarmalayıcıları artık ızgara olmadığı için hiçbir şey yapmaz (zararsız).
+- **Yönetim → Devlet:** alt menüdeki "Yönetim" sekmesi kalktı. Devlet ekranının ilk bölümü "Makamım" (yalnız makamı/parti yönetim görevi olana görünür; ilk açılışta seçili gelir). `sekmeAc('yonetim'|'belediye'|'bakanlik')` → Devlet › Makamım. `yonetimEkrani` değişmedi; dış `iskelet` sarmalayıcısı başlığı "Devlet" yapıp bölüm çubuğunu ekler.
+- Alt menü sırası: Gündem, Devlet, Adliye, Hayat, Ekonomi, Sohbet, Meclis, Harita, Partiler, Dernekler.
+- Kod: `gelistirici/www/menu_sade.js` (en son yüklenir; `derle.js` listesine eklendi), `index.html`'de nav satırı ve `hayatCiz` ekonomi bloğu. Yayın: `docs/menu_sade.js` + `docs/index.html` aynı düzenlemeler.
+- Test: `node test/menu_sade_arayuz.js` (yeni), `yonetim_arayuz.js` yeni davranışa göre güncellendi. Sunucu değişikliği yok, migration yok.
