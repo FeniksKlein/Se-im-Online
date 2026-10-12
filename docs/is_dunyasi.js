@@ -1,16 +1,14 @@
 /* Is Dunyasi 2026-10-13 — mevcut ekonomi ekranlarina bagli yeni ticaret paneli. */
 const ID = {veri:null, sekme:"ozet"};
 const ID_BAS = {
- ozet:["🏙️","Genel bakış"], uretim:["🏭","Üretim"], magaza:["🛍️","Mağazalar"],
- insaat:["🏗️","İnşaat"], sozlesme:["🤝","Sözleşmeler"], sigorta:["🛡️","Sigorta"],
- marka:["🏷️","Franchise"], birlesme:["🔗","Birleşmeler"]
+ ozet:["🏙️","Genel bakış"], sozlesme:["🤝","Sözleşmeler"], sigorta:["🛡️","Sigorta"], birlesme:["🔗","Birleşmeler"]
 };
 const idTL=n=>tlYaz(Math.round(Number(n)||0));
 const idTxt=n=>e(String(n===null||n===undefined?"":n));
 const idAd=t=>({fabrika:"Fabrika",magaza:"Mağaza",insaat:"Müteahhit",sigorta:"Sigortacı",sanayi:"Sanayi",tarim:"Tarım",teknoloji:"Teknoloji",ticaret:"Ticaret",medya:"Medya",banka:"Banka"})[t]||t||"Mevcut şirket";
 const idUrun=u=>({gida:"Gıda",teknoloji:"Teknoloji",malzeme:"İnşaat malzemesi"})[u]||u;
 const idTarih=t=>t?new Date(t).toLocaleString("tr-TR",{dateStyle:"short",timeStyle:"short"}):"—";
-const idMine=(tur,yonetici=true)=>((ID.veri||{}).benim||[]).filter(s=>(!tur||s.tur===tur)&&(!yonetici||s.yonetici===true));
+const idMine=(tur,yonetici=true)=>((ID.veri||{}).benim||[]).filter(s=>(!tur||s.tur===tur)&&(!yonetici||s.yonetici!==false));
 const idOpt=(liste,ek)=>liste.map(s=>'<option value="'+Number(s.id)+'">'+idTxt(s.ad)+(ek&&s.stok!==undefined?' · '+s.stok+' stok':'')+'</option>').join("");
 const idKutu=(baslik,metin,aksiyon,label)=>'<div class="id-bilgi"><b>'+baslik+'</b><p>'+metin+'</p>'+(aksiyon?'<button class="btn altin" onclick="'+aksiyon+'">'+label+'</button>':'')+'</div>';
 function idBicim(){
@@ -25,7 +23,7 @@ function idAltPanel(){
  if(k==="ozet"){
    out='<div class="kart"><h2>Benim işletmelerim</h2>'+(m.length?m.map(s=>sat(idTxt(s.ad),idAd(s.tur||s.sektor)+' · '+idTL(s.kasa)+' · %'+s.pay)).join(""):'<p class="alt">Henüz şirketin yok. İlk işletmeni kurabilirsin.</p>')+'</div>';
    out+='<div class="id-quick"><button onclick="ekranAc(sirketYonetimEkrani)">🏢 Mevcut şirketlerim</button><button onclick="ekranAc(halkaArzPazarEkrani)">📈 Halka arzlar</button><button onclick="ekranAc(pazarMerkezEkrani)">📊 Rekabetçi pazar</button><button onclick="ekranAc(emlakYeniEkrani)">🏡 Emlak pazarı</button></div>';
-   out+=idKutu("Şirketlerim","Şirket kuruluşu ve sermaye işlemlerini tek şirket yönetimi ekranından yap. İş Dünyası için ayrı bir işletme kuruluş ekranı kullanılmaz.","ekranAc(sirketYonetimEkrani)","Şirketlerime git");
+   out+=idKutu("Üretim · Mağaza · Franchise","Çok çeşitli ürünleri üret, oyunculardan stok tedarik et, zamanlı sanal müşteri satışları yap; fast food, kahve ve market zincirleri kur.","ticaretMerkezEkrani()","Üretim ve ticarete git");
    out+=idKutu("Mevcut şirketini kullan","Halka açık olmayan %100 sahibi olduğun şirketini yeni sisteme taşıyabilirsin. Bu işlemden sonra eski otomatik kâr yerine gerçek ticaret kazancı işler.","idEskiSirket()","Şirketimi ekonomiye bağla");
  }
  if(k==="uretim"){
@@ -77,8 +75,8 @@ async function isDunyasiEkrani(){
    ID.veri=await API.rpc("eko_panel");
    const d=ID.veri,m=d.benim||[],oz=m.reduce((a,s)=>a+Number(s.kasa||0)*Number(s.pay||0)/100,0);
    iskelet("İş Dünyası",idBicim()+
-    '<section class="id-hero"><div class="id-kicker">EKONOMİ · TİCARET · YATIRIM</div><h2>İş Dünyası</h2><p>Üret, yatırım yap, satış gerçekleştir. Kendi ticaret imparatorluğunu kur.</p><div class="id-stat"><span><small>Şirketlerin</small><b>'+m.length+'</b></span><span><small>Kasa payların</small><b>'+idTL(oz)+'</b></span><span><small>Aktif projeler</small><b>'+(d.projeler||[]).length+'</b></span></div></section>'+
-    '<div class="id-grid">'+Object.entries(ID_BAS).map(([k,v])=>'<button class="id-kart '+(ID.sekme===k?'aktif':'')+'" onclick="idSekme(\''+k+'\')"><span class="emo">'+v[0]+'</span><b>'+v[1]+'</b><small>'+({ozet:"Ekonomik varlıklarını yönet",uretim:"Fabrika ve toptan satış",magaza:"Perakende ve stok",insaat:"Konut yap ve sat",sozlesme:"Gerçek oyuncu anlaşmaları",sigorta:"Poliçe ve risk yönetimi",marka:"Marka zinciri oluştur",birlesme:"Şirket imparatorluğu kur"})[k]+'</small></button>').join("")+'</div>'+
+    '<section class="id-hero"><div class="id-kicker">EKONOMİ · TİCARET · YATIRIM</div><h2>İş Dünyası</h2><p>Üret, yatırım yap, satış gerçekleştir. Kendi ticaret imparatorluğunu kur.</p><div class="id-stat"><span><small>Şirketlerin</small><b>'+m.length+'</b></span><span><small>Kasa payların</small><b>'+idTL(oz)+'</b></span><span><small>İşletmelerim</small><b>'+m.filter(x=>!!x.tur).length+'</b></span></div></section>'+
+    '<div class="id-grid"><button class="id-kart" style="border-color:#a995ff;background:linear-gradient(140deg,#44386e,#20284c)" onclick="ticaretMerkezEkrani()"><span class="emo">🏭</span><b>Üretim ve Ticaret</b><small>26 ürün · Sanal müşteri · Franchise · Mağaza zinciri</small></button>'+Object.entries(ID_BAS).map(([k,v])=>'<button class="id-kart '+(ID.sekme===k?'aktif':'')+'" onclick="idSekme(\''+k+'\')"><span class="emo">'+v[0]+'</span><b>'+v[1]+'</b><small>'+({ozet:"Ekonomik varlıklarını yönet",uretim:"Fabrika ve toptan satış",magaza:"Perakende ve stok",sozlesme:"Gerçek oyuncu anlaşmaları",sigorta:"Poliçe ve risk yönetimi",marka:"Marka zinciri oluştur",birlesme:"Şirket imparatorluğu kur"})[k]+'</small></button>').join("")+'</div>'+
     '<div class="bolum-bas"><h2>'+ID_BAS[ID.sekme][0]+' '+ID_BAS[ID.sekme][1]+'</h2><span class="kucuk">Canlı ekonomi</span></div>'+idAltPanel(),{geri:true});
  }catch(err){iskelet("İş Dünyası",'<div class="kart"><h2>Bağlantı kontrolü</h2><p class="alt">'+idTxt(hataCevir(err.message))+'</p></div>',{geri:true});}
 }
@@ -206,4 +204,12 @@ window.isDunyasiEkrani=isDunyasiEkrani;
    }catch(err){console.warn("İş Dünyası giriş hatası:",err);}
    return sonuc;
  };
+})();
+
+/* Zamanli uretim ve magaza zincirleri (ayri isletme kurma ekrani yok). */
+(function(){
+ if(document.getElementById("ticaretGercekciModul"))return;
+ const script=document.createElement("script");
+ script.id="ticaretGercekciModul";script.src="ticaret_gercekci.js?v=20261013-3";script.async=false;
+ document.body.appendChild(script);
 })();
