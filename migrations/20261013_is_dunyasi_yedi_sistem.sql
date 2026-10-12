@@ -373,11 +373,11 @@ begin
  elsif p_eylem='birles' then
    if b is null or a=b then raise exception 'Iki farkli sirket sec.';end if;
    select * into sb from oyun.sirketler where id=b for update;
+   select * into ib from oyun.eko_isletmeler where sirket_id=b;
    if sb.id is null or not sb.aktif or not sa.aktif or sa.sektor='banka' or sb.sektor='banka'
    or sa.halka_acik or sb.halka_acik then raise exception 'Banka veya halka acik sirketler bu islemle birlesemez.';end if;
    if coalesce((select pay from oyun.sirket_ortaklari where sirket_id=a and user_id=u),0)<>100
      or coalesce((select pay from oyun.sirket_ortaklari where sirket_id=b and user_id=u),0)<>100
-     or exists(select 1 from oyun.eko_isletmeler where sirket_id=b)
      or exists(select 1 from oyun.sirket_teklif where sirket_id=b and durum='bekliyor')
      or exists(select 1 from oyun.sirket_hisse_ilanlari where sirket_id=b and durum='acik')
      or sb.satilik is not null
@@ -389,6 +389,19 @@ begin
      or exists(select 1 from oyun.eko_projeler where sirket_id=b and kalan>0)
      or exists(select 1 from oyun.kamu_ihale where kazanan=b and durum not in ('tamam','iptal','bitti','teslim'))
      then raise exception 'Birlesme icin iki sirket de %%100 sana ait olmali ve devrolan sirkette aktif taahhut bulunmamali.';end if;
+   if ib.sirket_id is not null and (ia.sirket_id is null or ia.tur<>ib.tur
+     or ia.il_id<>ib.il_id or ia.urun is distinct from ib.urun) then
+     raise exception 'Yeni isletmeler yalniz ayni tur, il ve urun grubuyla birlesebilir.';
+   end if;
+   if ib.sirket_id is not null then
+     insert into oyun.eko_stok(sirket_id,urun,adet)
+       select a,urun,adet from oyun.eko_stok where sirket_id=b
+       on conflict(sirket_id,urun) do update set adet=oyun.eko_stok.adet+excluded.adet;
+     delete from oyun.eko_stok where sirket_id=b;
+     insert into oyun.eko_gunluk_satis(sirket_id,gun,adet)
+       select a,gun,adet from oyun.eko_gunluk_satis where sirket_id=b
+       on conflict(sirket_id,gun) do update set adet=oyun.eko_gunluk_satis.adet+excluded.adet;
+   end if;
    update oyun.sirketler set kasa=kasa+sb.kasa,sermaye=sermaye+sb.sermaye where id=a;
    update oyun.sirketler set kasa=0,aktif=false,satilik=null where id=b;
    insert into oyun.eko_birlesme(alan,katilan,yonetici,aktaran) values(a,b,u,sb.kasa);
