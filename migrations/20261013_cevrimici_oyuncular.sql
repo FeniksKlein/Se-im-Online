@@ -34,4 +34,5 @@ begin
 end;
 $$;
 revoke all on function public.cevrimici_oyuncular() from public;
+revoke execute on function public.cevrimici_oyuncular() from anon;
 grant execute on function public.cevrimici_oyuncular() to authenticated;
