@@ -115,6 +115,8 @@ declare u uuid:=auth.uid();
 begin
  if u is null or not exists(select 1 from oyun.profiller where id=u and not yasakli) then raise exception 'Giris yapmalisin.';end if;
  return jsonb_build_object(
+ 'sirketler',coalesce((select jsonb_agg(jsonb_build_object('id',s.id,'ad',s.ad))
+ from oyun.sirketler s where s.aktif and s.sektor<>'banka'),'[]'::jsonb),
  'benim',coalesce((select jsonb_agg(jsonb_build_object(
     'id',s.id,'ad',s.ad,'sektor',s.sektor,'tur',i.tur,'il',i.il_id,
     'urun',i.urun,'pay',o.pay,'kasa',s.kasa,'sermaye',s.sermaye,
@@ -166,6 +168,25 @@ declare u uuid:=auth.uid();t timestamptz:=oyun.simdi();
 begin
  if u is null or not exists(select 1 from oyun.profiller where id=u and not yasakli) then raise exception 'Giris yapmalisin.';end if;
  if p_veri is null or jsonb_typeof(p_veri)<>'object' then raise exception 'Gecersiz islem.';end if;
+ if p_eylem='etkinlestir' then
+   tur:=p_veri->>'tur';ur:=p_veri->>'urun'; 
+   if a is null or tur not in ('fabrika','magaza','insaat','sigorta') then raise exception 'Sektor veya sirket gerekli.';end if;
+   select * into sa from oyun.sirketler where id=a for update;
+   if sa.id is null or not sa.aktif or sa.halka_acik or sa.sektor='banka'
+       or coalesce((select pay from oyun.sirket_ortaklari where sirket_id=a and user_id=u),0)<>100
+       or exists(select 1 from oyun.eko_isletmeler where sirket_id=a)
+       then raise exception 'Yalnizca %%100 sahibi oldugun, halka acik olmayan, eski bir sirketi etkinlestirebilirsin.';end if;
+   if (tur='fabrika' and (sa.sektor not in ('sanayi','teknoloji','tarim') or ur not in ('gida','teknoloji','malzeme')))
+   or (tur='magaza' and sa.sektor<>'ticaret')
+   or (tur='insaat' and sa.sektor<>'insaat')
+   or (tur='sigorta' and sa.sektor<>'ticaret')
+   then raise exception 'Bu sirket sektoru secilen isletmeye donusturulemez.';end if;
+   il:=coalesce((select il_id from oyun.profiller where id=u),1);
+   insert into oyun.eko_isletmeler(sirket_id,tur,il_id,urun,uretim_fiyat,perakende_fiyat)
+     values(a,tur,il,case when tur='fabrika' then ur else null end,
+     case ur when 'gida' then 6000 when 'teknoloji' then 18000 when 'malzeme' then 10000 else 0 end,9500);
+   return jsonb_build_object('id',a,'aktiflestirildi',true);
+ end if;
  if p_eylem='kur' then
    tur:=p_veri->>'tur';il:=(p_veri->>'il')::smallint;ur:=p_veri->>'urun';
    if tur not in ('fabrika','magaza','insaat','sigorta') or not exists(select 1 from oyun.iller where id=il)
@@ -359,6 +380,7 @@ begin
      or exists(select 1 from oyun.eko_isletmeler where sirket_id=b)
      or exists(select 1 from oyun.sirket_teklif where sirket_id=b and durum='bekliyor')
      or exists(select 1 from oyun.sirket_hisse_ilanlari where sirket_id=b and durum='acik')
+     or sb.satilik is not null
      or exists(select 1 from oyun.halka_arz where sirket_id=b and durum='acik')
      or exists(select 1 from oyun.eko_sozlesmeler where (satici=b or alici=b) and durum in ('teklif','aktif','teslim'))
      or exists(select 1 from oyun.eko_policeler where sirket_id=b and durum='aktif')
@@ -431,5 +453,4 @@ begin
  values(p_id,t,net,'7 günlük faaliyet: gelir - gider = net sonuç; gerçekleşen ortak ödemesi ayrıca kaydedildi',income,cost,distributed);
  end loop;
  update oyun.sirketler set sonraki_kazanc=sonraki_kazanc+n*interval '7 days',son_islem=t where id=p_id;
-end $function$
-
+end $function$;
