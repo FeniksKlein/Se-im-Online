@@ -146,6 +146,69 @@
     EKRAN.yonetim = makama; EKRAN.bakanlik = makama; EKRAN.belediye = makama;
   }
 
+
+  /* ---------------- Çevrimiçi oyuncular — sohbetten erişilebilir ---------------- */
+  try {
+    if (!document.getElementById("coStil")) {
+      const css = document.createElement("style");
+      css.id = "coStil";
+      css.textContent =
+        '.co-sayi{display:flex;align-items:center;gap:6px;flex-wrap:wrap;text-align:right;color:var(--good);font-size:12.5px;font-weight:700;background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:9px 10px}' +
+        '.co-sayi span{color:var(--txt2);font-size:11px}' +
+        '.co-kisi{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}' +
+        '.co-avatar{width:39px;height:39px;border-radius:50%;background:var(--panel3);color:var(--txt);display:grid;place-items:center;font-weight:800;flex:none}' +
+        '.co-kim{min-width:0;flex:1}.co-kim b{display:block;overflow-wrap:anywhere}' +
+        '.co-islem{display:flex;gap:5px;flex:none}.co-islem button{font-size:12px;font-weight:700;padding:7px 8px;border-radius:8px;background:var(--panel2);color:var(--txt)}' +
+        '.co-islem .co-dm{background:var(--ink);color:#fff}';
+      document.head.appendChild(css);
+    }
+  } catch (_) {}
+  async function cevrimiciListeAc() {
+    const m = modal('<h3 style="font-size:21px">● Çevrimiçi oyuncular</h3>' +
+      '<p class="alt" id="coAciklama" style="margin:5px 0 12px">Son 5 dakikada aktif olan oyuncular listeleniyor.</p>' +
+      '<div id="coSonuc" style="max-height:55vh;overflow-y:auto"><div class="yukleniyor">Yükleniyor…</div></div>' +
+      '<button type="button" class="btn ikinci" id="coYenile">↻ Listeyi yenile</button>');
+    const alan = m.querySelector("#coSonuc");
+    async function yenile() {
+      if (!m.isConnected) return;
+      alan.innerHTML = '<div class="yukleniyor">Yükleniyor…</div>';
+      try {
+        const r = await API.rpc("cevrimici_oyuncular");
+        if (!m.isConnected) return;
+        const liste = Array.isArray(r && r.oyuncular) ? r.oyuncular : [];
+        m.querySelector("#coAciklama").textContent = liste.length + ' oyuncu çevrimiçi · son 5 dakikada aktif';
+        alan.innerHTML = liste.length ? liste.map((k, i) => {
+          const kad = String(k.kad || "");
+          const ilk = kad.slice(0, 1).toLocaleUpperCase("tr-TR");
+          const detay = [k.il, k.parti].filter(Boolean).map(x => e(String(x))).join(" · ");
+          return '<div class="co-kisi">' +
+            '<div class="co-avatar" aria-hidden="true">' + e(ilk) + '</div>' +
+            '<div class="co-kim"><b>' + e(kad) + '</b><span class="kucuk">' + (detay || 'Oyuncu') + '</span></div>' +
+            '<div class="co-islem"><button type="button" data-co-profil="' + i + '">Profil</button>' +
+            '<button type="button" class="co-dm" data-co-mesaj="' + i + '">Mesaj</button></div></div>';
+        }).join("") : '<div class="bos">Şu anda çevrimiçi oyuncu yok.</div>';
+        alan.querySelectorAll("[data-co-profil]").forEach(b => {
+          b.onclick = () => oyuncuKart(liste[Number(b.dataset.coProfil)].kad);
+        });
+        alan.querySelectorAll("[data-co-mesaj]").forEach(b => {
+          b.onclick = () => {
+            const kad = liste[Number(b.dataset.coMesaj)].kad;
+            modalKapat();
+            ekranAc(() => ozelEkrani(kad));
+          };
+        });
+      } catch (err) {
+        if (m.isConnected) {
+          m.querySelector("#coAciklama").textContent = "Oyuncular yüklenemedi";
+          alan.textContent = hataCevir(err.message || String(err));
+        }
+      }
+    }
+    m.querySelector("#coYenile").onclick = yenile;
+    await yenile();
+  }
+  window.cevrimiciListeAc = cevrimiciListeAc;
+
   /* ---------------- Dış sarmalayıcı: başlık ve sekme düzeltmeleri ---------------- */
   if (typeof iskelet === "function") {
     const eski = iskelet;
@@ -159,6 +222,13 @@
           args[1] = dvSeg("yonetim") + (govde || "");
         }
       } catch (_) {}
+      // Sohbetin üstündeki çevrimiçi sayısına dokununca kullanıcıları göster.
+      if (baslik === "Sohbet" && typeof args[1] === "string") {
+        args[1] = args[1].replace(/<span class="kucuk" style="color:var\(--good\)">●\s*(\d+) oyuncu çevrimiçi<\/span>/,
+          (_tum, n) => '<button type="button" class="co-sayi" onclick="cevrimiciListeAc()" aria-label="' +
+          n + ' çevrimiçi oyuncunun listesini aç">● ' + n +
+          ' oyuncu çevrimiçi <span>Kişileri gör ›</span></button>');
+      }
       return eski.apply(this, args);
     };
   }
