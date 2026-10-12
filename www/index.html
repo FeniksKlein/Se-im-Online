@@ -969,6 +969,47 @@ input:focus,select:focus,textarea:focus {
   border-color:var(--ink2);
   box-shadow:0 0 0 2px var(--inkbg);
 }
+
+/* Adliye ve diğer modal metin kutularında iOS Safari okunabilirliği — 2026-10-12 v2 */
+/* iOS Safari bazen sınıfsız textarea'yı beyaz sistem alanı olarak çiziyordu.
+   Özellikle Adliye ve modal formlarında tema renklerini kesin uygula. */
+.modal .alan textarea,
+.modal textarea.alanmetin,
+.icerik .alan textarea,
+textarea.adl-metin-kutusu {
+  display:block;
+  box-sizing:border-box;
+  width:100% !important;
+  max-width:100% !important;
+  min-height:128px;
+  padding:12px 14px;
+  background-color:#0E1530 !important;
+  background-image:none !important;
+  color:#EEF1F8 !important;
+  -webkit-text-fill-color:#EEF1F8 !important;
+  caret-color:#EEF1F8 !important;
+  border:1px solid #354063 !important;
+  border-radius:10px;
+  font-size:16px;
+  line-height:1.5;
+  opacity:1 !important;
+  resize:vertical;
+}
+.modal .alan textarea::placeholder,
+.modal textarea.alanmetin::placeholder,
+.icerik .alan textarea::placeholder,
+textarea.adl-metin-kutusu::placeholder {
+  color:#98A4C4 !important;
+  -webkit-text-fill-color:#98A4C4 !important;
+  opacity:1 !important;
+}
+.modal .alan textarea:focus,
+.modal textarea.alanmetin:focus,
+.icerik .alan textarea:focus {
+  border-color:#A895FF !important;
+  outline:2px solid rgba(168,149,255,.45);
+  outline-offset:0;
+}
 </style>
 </head>
 <body>
@@ -7106,7 +7147,7 @@ let ADL={};
 function adlTarih(t){return t?tarihSaat(t):"—";}
 function adlEtiket(d,ek){if(d.durum!=="karar")return "Yargılama sürüyor";if(d.af_at)return "Af çıkarıldı";if(d.karar==="dusme")return "Düştü";if(ek&&ek.istinaf&&ek.istinaf.durum==="acik")return "İstinafta";if(ek&&ek.kesin===false)return "İstinaf süresi";return "Kesinleşti";}
 function adlFormBaslik(m,baslik){m.querySelector(".modal").insertAdjacentHTML("afterbegin",'<h3 style="font-size:20px;margin:0 0 12px">'+e(baslik)+'</h3>');}
-function adlAlan(ad,id,tur="text",placeholder=""){return '<div class="alan"><label>'+e(ad)+'</label>'+ (tur==="textarea"?'<textarea id="'+id+'" rows="4" placeholder="'+e(placeholder)+'"></textarea>':'<input id="'+id+'" type="'+tur+'" placeholder="'+e(placeholder)+'">')+'</div>';}
+function adlAlan(ad,id,tur="text",placeholder=""){return '<div class="alan"><label>'+e(ad)+'</label>'+ (tur==="textarea"?'<textarea class="alanmetin adl-metin-kutusu" style="display:block;width:100%;min-height:130px;padding:12px 14px;background:#0E1530;color:#EEF1F8;-webkit-text-fill-color:#EEF1F8;caret-color:#EEF1F8;border:1px solid #354063;border-radius:10px;font-size:16px;line-height:1.5" id="'+id+'" rows="4" placeholder="'+e(placeholder)+'"></textarea>':'<input id="'+id+'" type="'+tur+'" placeholder="'+e(placeholder)+'">')+'</div>';}
 async function adlIslem(fn,success,geri,modalKapatilsin=true){
  try{await fn();if(modalKapatilsin)modalKapat();toast(success);if(geri)await adliyeDosya(geri);else{if(D.sekme==="meclis")await meclisEkrani();else if(D.sekme==="adliye")await adliyeEkrani();else{D.devletSekme="adliye";await devletEkrani();}}}
  catch(err){toast(hataCevir(err.message),true);}
