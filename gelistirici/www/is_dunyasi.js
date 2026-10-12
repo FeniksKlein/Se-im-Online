@@ -25,20 +25,20 @@ function idAltPanel(){
  if(k==="ozet"){
    out='<div class="kart"><h2>Benim işletmelerim</h2>'+(m.length?m.map(s=>sat(idTxt(s.ad),idAd(s.tur||s.sektor)+' · '+idTL(s.kasa)+' · %'+s.pay)).join(""):'<p class="alt">Henüz şirketin yok. İlk işletmeni kurabilirsin.</p>')+'</div>';
    out+='<div class="id-quick"><button onclick="ekranAc(sirketYonetimEkrani)">🏢 Mevcut şirketlerim</button><button onclick="ekranAc(halkaArzPazarEkrani)">📈 Halka arzlar</button><button onclick="ekranAc(pazarMerkezEkrani)">📊 Rekabetçi pazar</button><button onclick="ekranAc(emlakYeniEkrani)">🏡 Emlak pazarı</button></div>';
-   out+=idKutu("Yeni ticaret sistemi","Fabrikanın ürettiği ürün mağazanın stoklarına gider. Tüm alım-satımlar ve şirket kasaları birbirine bağlıdır.","idYeniIsletme()","Yeni işletme aç");
+   out+=idKutu("Şirketlerim","Şirket kuruluşu ve sermaye işlemlerini tek şirket yönetimi ekranından yap. İş Dünyası için ayrı bir işletme kuruluş ekranı kullanılmaz.","ekranAc(sirketYonetimEkrani)","Şirketlerime git");
    out+=idKutu("Mevcut şirketini kullan","Halka açık olmayan %100 sahibi olduğun şirketini yeni sisteme taşıyabilirsin. Bu işlemden sonra eski otomatik kâr yerine gerçek ticaret kazancı işler.","idEskiSirket()","Şirketimi ekonomiye bağla");
  }
  if(k==="uretim"){
-   out=idKutu("Fabrika kur","Gıda, teknoloji veya inşaat malzemesi üret. Gerçek şirket kasandan üretim maliyeti öde; ürününü diğer oyuncu mağazalarına sat.","idYeniIsletme('fabrika')","Fabrika aç");
+   out=idKutu("Fabrika kur","Gıda, teknoloji veya inşaat malzemesi üret. Gerçek şirket kasandan üretim maliyeti öde; ürününü diğer oyuncu mağazalarına sat.","idEskiSirket()","Şirketimi ekonomiye bağla");
    for(const s of select("fabrika"))out+=idKutu(idTxt(s.ad),idUrun(s.urun)+" · Kasada "+idTL(s.kasa)+" · "+s.stok+" adet stok · Birim toptan fiyat "+idTL(s.uretim_fiyat),"idFabrikaModal("+s.id+")","Üretim ve fiyatı yönet");
    out+='<div class="bolum-bas"><h2>Üreticiler</h2></div>'+(d.fabrikalar||[]).map(s=>sat(idTxt(s.ad)+" · "+idUrun(s.urun),idTL(s.fiyat)+" · "+s.stok+" adet")).join("")||bos("Henüz üretici yok.");
  }
  if(k==="magaza"){
-   out=idKutu("Mağaza işlet","Şirket kasandan toptan ürün satın al. Mağazan sınırlı günlük sanal müşteri talebine satış yapar. Rakip sayısı ve yüksek fiyat satış limitini düşürür; ürün bazlı KDV satış sırasında tahsil edilir.","idYeniIsletme('magaza')","Mağaza aç");
+   out=idKutu("Mağaza işlet","Şirket kasandan toptan ürün satın al. Mağazan sınırlı günlük sanal müşteri talebine satış yapar. Rakip sayısı ve yüksek fiyat satış limitini düşürür; ürün bazlı KDV satış sırasında tahsil edilir.","idEskiSirket()","Şirketimi ekonomiye bağla");
    for(const s of select("magaza"))out+=idKutu(idTxt(s.ad),"Kasa "+idTL(s.kasa)+" · Toplam stok "+s.stok+" · Baz satış fiyatı "+idTL(s.perakende_fiyat),"idMagazaModal("+s.id+")","Stok ve satış yönetimi");
  }
  if(k==="insaat"){
-   out=idKutu("Müteahhitlik","Projeye harcanan para şirket kasandan çıkar. İnşaat 24 saatte tamamlanır, 81 ilde mevcut emlak kotasına ve tapu sistemine bağlı daire, dükkân veya villa satılır.","idYeniIsletme('insaat')","İnşaat şirketi kur");
+   out=idKutu("Müteahhitlik","Projeye harcanan para şirket kasandan çıkar. İnşaat 24 saatte tamamlanır, 81 ilde mevcut emlak kotasına ve tapu sistemine bağlı daire, dükkân veya villa satılır.","idEskiSirket()","Şirketimi ekonomiye bağla");
    for(const s of select("insaat"))out+=idKutu(idTxt(s.ad),"Şirket kasası: "+idTL(s.kasa),"idProjeModal("+s.id+")","Yeni proje başlat");
    out+='<div class="bolum-bas"><h2>Satıştaki projeler</h2></div>'+(d.projeler||[]).map(p=>idKutu(idTxt(p.sirket)+" · "+idTxt(p.tip),idTxt(p.kalan)+" adet · "+idTL(p.birim_fiyat)+" / adet · "+(new Date(p.hazir)>new Date()?"Hazır olacağı zaman: "+idTarih(p.hazir):"Teslime hazır"),new Date(p.hazir)>new Date()?null:"idProjeSatinAl("+p.id+")","Konut satın al")).join("");
  }
@@ -56,7 +56,7 @@ function idAltPanel(){
    }).join("");
  }
  if(k==="sigorta"){
-   out=idKutu("Sigorta sektörü","Oyuncular 3 günlük poliçe satın alır. Prim şirket kasasına gelir; şirket tazminat için yeterli rezerv tutmalıdır. 48 saat sonra sunucu tarafında tek seferlik hasar kontrolü yapılır.","idYeniIsletme('sigorta')","Sigorta şirketi kur");
+   out=idKutu("Sigorta sektörü","Oyuncular 3 günlük poliçe satın alır. Prim şirket kasasına gelir; şirket tazminat için yeterli rezerv tutmalıdır. 48 saat sonra sunucu tarafında tek seferlik hasar kontrolü yapılır.","idEskiSirket()","Şirketimi ekonomiye bağla");
    out+='<div class="bolum-bas"><h2>Sigorta teklifleri</h2></div>'+(d.sigortalar||[]).map(s=>idKutu(idTxt(s.ad),"Sigorta kasası "+idTL(s.kasa)+" · Prim teminatın %12'si","idPoliceModal("+s.id+")","Poliçe satın al")).join("");
    out+='<div class="bolum-bas"><h2>Poliçelerim</h2></div>'+(d.policeler||[]).map(p=>idKutu(idTxt(p.sirket)+" · "+idTxt(p.durum),"Prim "+idTL(p.prim)+" · Teminat "+idTL(p.teminat)+" · "+idTarih(p.bit),p.durum==="aktif"?"idPoliceKontrol("+p.id+")":null,"Hasar durumunu kontrol et")).join("");
  }
@@ -97,7 +97,7 @@ const idSelect=(id,label,items)=>'<div class="alan"><label>'+label+'</label><sel
 const idValue=(m,id)=>$("#"+id,m).value;
 function idEskiSirket(){
  const mine=(ID.veri.benim||[]).filter(s=>!s.tur&&Number(s.pay)===100&&s.sektor!=="banka");
- if(!mine.length){toast("Dönüştürülebilecek halka kapalı şirketin yok.",true);return;}
+ if(!mine.length){toast("Uygun şirketin yok. Önce Şirketlerim ekranından şirket kurup ardından ekonomiye bağlamalısın.",true);return;}
  const types='<option value="fabrika">🏭 Fabrika</option><option value="magaza">🛍️ Mağaza</option><option value="insaat">🏗️ Müteahhitlik</option><option value="sigorta">🛡️ Sigorta</option>';
  idModal("Mevcut şirketi bağla",'<p class="alt">Yalnızca %100 sahibi olduğun halka kapalı şirketler dönüştürülebilir. Eski pasif kazanç yerine faaliyet kazancı geçer.</p>'+
  idSelect("idSirket","Şirket",idOpt(mine))+
@@ -120,34 +120,6 @@ function idEskiSirket(){
   if(msg)msg.textContent=type.value==="sigorta"?"Sigorta şirketi poliçe satar; fabrika ürünü bulunmaz.":type.value==="insaat"?"Müteahhit arsaya bina yapar; fabrika ürünü bulunmaz.":type.value==="magaza"?"Mağaza ürünleri fabrikalardan satın alır.":"Fabrika, üreteceği ürün grubunu seçer.";
  };
  co.addEventListener("change",refresh);type.addEventListener("change",refresh);refresh();
-}
-function idYeniIsletme(pref){
- const tur=pref||"fabrika",il=D.durum&&D.durum.profil?D.durum.profil.il_id:1;
- const iller=Array.from({length:81},(_,i)=>i+1).map(i=>'<option value="'+i+'" '+(i===Number(il)?'selected':'')+'>'+String(i).padStart(2,"0")+' · '+idTxt(typeof ilAd==="function"?ilAd(i):"İl "+i)+'</option>').join("");
- const types=[["fabrika","🏭 Fabrika"],["magaza","🛍️ Mağaza"],["insaat","🏗️ Müteahhitlik"],["sigorta","🛡️ Sigorta"]];
- idModal("Yeni işletme kur",'<p class="alt">En az 100.000 TL sermaye kendi cüzdanından çıkar, şirket kasasına aktarılır.</p>'+
- '<div class="alan"><label>Şirket adı</label><input id="idAd" maxlength="50" placeholder="Şirketin adı"></div>'+
- idSelect("idTur","Şirket türü",types.map(a=>'<option value="'+a[0]+'" '+(a[0]===tur?'selected':'')+'>'+a[1]+'</option>').join(""))+
- idSelect("idIl","İşletmenin faaliyet ili",iller)+
- '<div id="idUrunAlan">'+idSelect("idUrun","Üretilecek fabrika ürünü",'<option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option><option value="malzeme">İnşaat malzemesi</option>')+'</div>'+
- '<p class="alt" id="idTurAciklama"></p>'+
- idInput("idTutar","Kuruluş sermayesi ₺",200000,100000,100000000),
- "Şirketi kur",m=>idIslem("kur",{
- ad:idValue(m,"idAd").trim(),tur:idValue(m,"idTur"),il:Number(idValue(m,"idIl")),
- urun:idValue(m,"idTur")==="fabrika"?idValue(m,"idUrun"):null,tutar:Number(idValue(m,"idTutar"))},"İşletme kuruldu."));
- const select=document.querySelector("#idTur"),area=document.querySelector("#idUrunAlan"),description=document.querySelector("#idTurAciklama");
- if(select){
-  const update=()=>{
-   if(area)area.style.display=select.value==="fabrika"?"":"none";
-   if(description)description.textContent={
-    fabrika:"Üretim için bir ürün grubu seç; şirketin fabrika stoklarını yönetecek.",
-    magaza:"Mağaza ürünleri üreticilerden tedarik eder. Kiralık dükkânla başka şehirlerde şube açabilir.",
-    insaat:"Müteahhit, belediye arsası satın alıp daire ve dükkân projeleri geliştirebilir.",
-    sigorta:"Sigortacılık poliçe ve tazminat teminatları üzerine kuruludur; fabrika ürünü seçilmez."
-   }[select.value]||"";
-  };
-  select.addEventListener("change",update);update();
- }
 }
 function idFabrikaModal(s){
  idModal("Fabrika üretimi",idInput("idAdet","Üretim adedi (1-250)",10,1,250),"Üret",m=>idIslem("uretim",{sirket:s,adet:Number(idValue(m,"idAdet"))},"Stoklara eklendi."));
