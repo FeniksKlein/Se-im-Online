@@ -1083,6 +1083,7 @@ async function secimEkrani(sid, sessiz){
   iskelet(tur.kisa, govde, { geri: true });
   if (s.asama === "oy" && !s.oy_verdim && !s.oy_engeli) pusulaBagla(s);
   if (typeof geceKancasi === "function") geceKancasi(s);
+  if (typeof ayrintiliSecimSonucGoster === "function") ayrintiliSecimSonucGoster(s);
 }
 function secenekSatir(x, mv, destekler){
   const dst = destekler && destekler[String(x.parti_id)];
@@ -4383,5 +4384,6 @@ async function bhIptal(id){
 <script src="belediye_sehir.js"></script>
 <script src="yonetim.js"></script>
 <script src="banka_kredi_masasi.js"></script>
+<script src="secim_detay_sonuclar.js?v=20261012"></script>
 </body>
 </html>
