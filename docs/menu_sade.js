@@ -233,3 +233,10 @@
     };
   }
 })();
+
+/* Belediye arsasi / gayrimenkul modulu (is dunyasi uzerinde yuklenir). */
+(function(){
+ if(document.getElementById("arsaInsaatModul"))return;
+ const s=document.createElement("script");s.id="arsaInsaatModul";s.src="arsa_insaat_magaza.js?v=20261013-1";
+ s.async=false;document.body.appendChild(s);
+})();
