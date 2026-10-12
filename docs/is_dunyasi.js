@@ -10,7 +10,7 @@ const idTxt=n=>e(String(n===null||n===undefined?"":n));
 const idAd=t=>({fabrika:"Fabrika",magaza:"Mağaza",insaat:"Müteahhit",sigorta:"Sigortacı"})[t]||t;
 const idUrun=u=>({gida:"Gıda",teknoloji:"Teknoloji",malzeme:"İnşaat malzemesi"})[u]||u;
 const idTarih=t=>t?new Date(t).toLocaleString("tr-TR",{dateStyle:"short",timeStyle:"short"}):"—";
-const idMine=(tur,yonetici=true)=>((ID.veri||{}).benim||[]).filter(s=>(!tur||s.tur===tur)&&(!yonetici||Number(s.pay)>=50));
+const idMine=(tur,yonetici=true)=>((ID.veri||{}).benim||[]).filter(s=>(!tur||s.tur===tur)&&(!yonetici||s.yonetici===true));
 const idOpt=(liste,ek)=>liste.map(s=>'<option value="'+Number(s.id)+'">'+idTxt(s.ad)+(ek&&s.stok!==undefined?' · '+s.stok+' stok':'')+'</option>').join("");
 const idKutu=(baslik,metin,aksiyon,label)=>'<div class="id-bilgi"><b>'+baslik+'</b><p>'+metin+'</p>'+(aksiyon?'<button class="btn altin" onclick="'+aksiyon+'">'+label+'</button>':'')+'</div>';
 function idBicim(){
