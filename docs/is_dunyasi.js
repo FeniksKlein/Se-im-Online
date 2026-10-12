@@ -96,26 +96,58 @@ const idInput=(id,label,value,min,max)=>'<div class="alan"><label>'+label+'</lab
 const idSelect=(id,label,items)=>'<div class="alan"><label>'+label+'</label><select id="'+id+'">'+items+'</select></div>';
 const idValue=(m,id)=>$("#"+id,m).value;
 function idEskiSirket(){
- const m=(ID.veri.benim||[]).filter(s=>!s.tur&&Number(s.pay)===100&&s.sektor!=="banka");
- if(!m.length){toast("Dönüştürülebilecek halka kapalı şirketin yok.",true);return;}
- const type='<option value="fabrika">Fabrika (sanayi/teknoloji/tarım)</option><option value="magaza">Mağaza (ticaret)</option><option value="insaat">İnşaat (inşaat)</option><option value="sigorta">Sigorta (ticaret)</option>';
- idModal("Mevcut şirketi bağla",'<p class="alt">Bu işlem şirketin haftalık otomatik kazancını durdurur; yerine üretim ve ticaret gelirleri geçer. Sadece halka kapalı, tamamen sana ait şirketler için uygulanır.</p>'+idSelect("idSirket","Şirket",idOpt(m))+idSelect("idTur","Dönüşüm türü",type)+idSelect("idUrun","Fabrika ürün grubu",'<option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option><option value="malzeme">İnşaat malzemesi</option>'),"Şirketi dönüştür",async el=>{
-  if(!await onayla("Şirket dönüşümü","Mevcut şirketin haftalık pasif kazancı durur, ticari gelirle çalışır. Onaylıyor musun?","Dönüştür"))return;
-  await idIslem("etkinlestir",{sirket:Number(idValue(el,"idSirket")),tur:idValue(el,"idTur"),urun:idValue(el,"idUrun")},"Şirket ticaret sistemine bağlandı.");
+ const mine=(ID.veri.benim||[]).filter(s=>!s.tur&&Number(s.pay)===100&&s.sektor!=="banka");
+ if(!mine.length){toast("Dönüştürülebilecek halka kapalı şirketin yok.",true);return;}
+ const types='<option value="fabrika">🏭 Fabrika</option><option value="magaza">🛍️ Mağaza</option><option value="insaat">🏗️ Müteahhitlik</option><option value="sigorta">🛡️ Sigorta</option>';
+ idModal("Mevcut şirketi bağla",'<p class="alt">Yalnızca %100 sahibi olduğun halka kapalı şirketler dönüştürülebilir. Eski pasif kazanç yerine faaliyet kazancı geçer.</p>'+
+ idSelect("idSirket","Şirket",idOpt(mine))+
+ idSelect("idTur","Faaliyet alanı",types)+
+ '<div id="idUrunAlan">'+idSelect("idUrun","Üretilecek ürün grubu",'<option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option><option value="malzeme">İnşaat malzemesi</option>')+'</div>'+
+ '<p class="alt" id="idTurAciklama"></p>',
+ "Şirketi dönüştür",async el=>{
+  if(!await onayla("Şirket dönüşümü","Şirketin eski otomatik kazancı duracak ve sektör faaliyetleri başlayacak.","Dönüştür"))return;
+  await idIslem("etkinlestir",{sirket:Number(idValue(el,"idSirket")),tur:idValue(el,"idTur"),urun:idValue(el,"idTur")==="fabrika"?idValue(el,"idUrun"):null},"Şirket ticaret sistemine bağlandı.");
  });
+ const m=document.querySelector("#idSirket")?.closest(".modal")||document;
+ const co=m.querySelector("#idSirket"),type=m.querySelector("#idTur"),area=m.querySelector("#idUrunAlan"),msg=m.querySelector("#idTurAciklama");
+ if(!co||!type)return;
+ const refresh=()=>{
+  const sel=mine.find(x=>Number(x.id)===Number(co.value));const sector=sel?.sektor;
+  const allowed=sector==="insaat"?["insaat"]:sector==="ticaret"?["magaza","sigorta"]:["sanayi","teknoloji","tarim"].includes(sector)?["fabrika"]:[];
+  [...type.options].forEach(o=>o.disabled=!allowed.includes(o.value));
+  if(!allowed.includes(type.value))type.value=allowed[0]||"fabrika";
+  if(area)area.style.display=type.value==="fabrika"?"":"none";
+  if(msg)msg.textContent=type.value==="sigorta"?"Sigorta şirketi poliçe satar; fabrika ürünü bulunmaz.":type.value==="insaat"?"Müteahhit arsaya bina yapar; fabrika ürünü bulunmaz.":type.value==="magaza"?"Mağaza ürünleri fabrikalardan satın alır.":"Fabrika, üreteceği ürün grubunu seçer.";
+ };
+ co.addEventListener("change",refresh);type.addEventListener("change",refresh);refresh();
 }
 function idYeniIsletme(pref){
- const tur= pref||"fabrika",il=D.durum&&D.durum.profil?D.durum.profil.il_id:1;
+ const tur=pref||"fabrika",il=D.durum&&D.durum.profil?D.durum.profil.il_id:1;
  const iller=Array.from({length:81},(_,i)=>i+1).map(i=>'<option value="'+i+'" '+(i===Number(il)?'selected':'')+'>'+String(i).padStart(2,"0")+' · '+idTxt(typeof ilAd==="function"?ilAd(i):"İl "+i)+'</option>').join("");
  const types=[["fabrika","🏭 Fabrika"],["magaza","🛍️ Mağaza"],["insaat","🏗️ Müteahhitlik"],["sigorta","🛡️ Sigorta"]];
- idModal("Yeni işletme kur",'<p class="alt">En az 100.000 TL sermaye kendi cüzdanından çıkar, şirketin kasasına aktarılır.</p>'+
+ idModal("Yeni işletme kur",'<p class="alt">En az 100.000 TL sermaye kendi cüzdanından çıkar, şirket kasasına aktarılır.</p>'+
  '<div class="alan"><label>Şirket adı</label><input id="idAd" maxlength="50" placeholder="Şirketin adı"></div>'+
  idSelect("idTur","Şirket türü",types.map(a=>'<option value="'+a[0]+'" '+(a[0]===tur?'selected':'')+'>'+a[1]+'</option>').join(""))+
  idSelect("idIl","İşletmenin faaliyet ili",iller)+
- idSelect("idUrun","Fabrika ürün türü",'<option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option><option value="malzeme">İnşaat malzemesi</option>')+
- idInput("idTutar","Kuruluş sermayesi ₺",200000,100000,100000000),"Şirketi kur",m=>idIslem("kur",{
+ '<div id="idUrunAlan">'+idSelect("idUrun","Üretilecek fabrika ürünü",'<option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option><option value="malzeme">İnşaat malzemesi</option>')+'</div>'+
+ '<p class="alt" id="idTurAciklama"></p>'+
+ idInput("idTutar","Kuruluş sermayesi ₺",200000,100000,100000000),
+ "Şirketi kur",m=>idIslem("kur",{
  ad:idValue(m,"idAd").trim(),tur:idValue(m,"idTur"),il:Number(idValue(m,"idIl")),
- urun:idValue(m,"idUrun"),tutar:Number(idValue(m,"idTutar"))},"İşletme kuruldu."));
+ urun:idValue(m,"idTur")==="fabrika"?idValue(m,"idUrun"):null,tutar:Number(idValue(m,"idTutar"))},"İşletme kuruldu."));
+ const select=document.querySelector("#idTur"),area=document.querySelector("#idUrunAlan"),description=document.querySelector("#idTurAciklama");
+ if(select){
+  const update=()=>{
+   if(area)area.style.display=select.value==="fabrika"?"":"none";
+   if(description)description.textContent={
+    fabrika:"Üretim için bir ürün grubu seç; şirketin fabrika stoklarını yönetecek.",
+    magaza:"Mağaza ürünleri üreticilerden tedarik eder. Kiralık dükkânla başka şehirlerde şube açabilir.",
+    insaat:"Müteahhit, belediye arsası satın alıp daire ve dükkân projeleri geliştirebilir.",
+    sigorta:"Sigortacılık poliçe ve tazminat teminatları üzerine kuruludur; fabrika ürünü seçilmez."
+   }[select.value]||"";
+  };
+  select.addEventListener("change",update);update();
+ }
 }
 function idFabrikaModal(s){
  idModal("Fabrika üretimi",idInput("idAdet","Üretim adedi (1-250)",10,1,250),"Üret",m=>idIslem("uretim",{sirket:s,adet:Number(idValue(m,"idAdet"))},"Stoklara eklendi."));
