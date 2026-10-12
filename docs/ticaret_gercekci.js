@@ -34,7 +34,7 @@ async function action(kind,data,text){
 }
 function convert(){
  const all=(TC.veri?.sirketler||[]).filter(x=>!x.tur&&x.yonetici);
- const allowed=all.filter(x=>["tarim","sanayi","teknoloji","ticaret"].includes(x.sektor));
+ const allowed=all.filter(x=>["tarim","sanayi","teknoloji","ticaret","market"].includes(x.sektor));
  if(!allowed.length){toast("Önce Şirketlerim ekranında tarım, sanayi, teknoloji veya ticaret şirketi kurmalısın.",true);return;}
  const el=popup("Mevcut şirketi işletmeye bağla",
   '<p class="alt">Ayrı şirket kurmadan elindeki şirketi üretim veya mağazacılığa bağla. Eski otomatik gelirler yerine ticaret geliri işler.</p>'+
@@ -44,7 +44,7 @@ function convert(){
     const group=tur==="fabrika"?sel(m,"tcGroup"):null;
     if(!await onayla("Ticaret faaliyeti başlasın","Şirketin eski otomatik faaliyet kazancı yerine ticaret faaliyetleri uygulanır.","Bağla"))return;
     try{
-      await API.rpc("eko_islem",{p_eylem:"etkinlestir",p_veri:{sirket:s.id,tur,urun:group}});
+      await API.rpc("eko_ticaret_islem",{p_eylem:"bagla",p_veri:{sirket:s.id,urun:group}});
       modalKapat();toast("Şirket ekonomiye bağlandı.");await ticaretMerkezEkrani();
     }catch(err){toast(hataCevir(err.message),true);}
   });
