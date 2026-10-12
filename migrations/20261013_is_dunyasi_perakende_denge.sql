@@ -1,0 +1,258 @@
+-- Perakende satisina fiyat esnekligi, sehir rekabeti ve KDV, banka kasalarina sozlesme korumasi
+CREATE OR REPLACE FUNCTION public.eko_islem(p_eylem text, p_veri jsonb DEFAULT '{}'::jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare u uuid:=auth.uid();t timestamptz:=oyun.simdi();
+ a bigint:=nullif(p_veri->>'sirket','')::bigint;
+ b bigint:=nullif(p_veri->>'hedef','')::bigint;
+ n integer:=coalesce(nullif(p_veri->>'adet','')::integer,0);
+ v numeric:=coalesce(nullif(p_veri->>'tutar','')::numeric,0);
+ x numeric;y numeric; z numeric; k numeric;
+ yeni bigint; tur text; ur text; tip text; il smallint;
+ sa oyun.sirketler; sb oyun.sirketler; ia oyun.eko_isletmeler; ib oyun.eko_isletmeler;
+ pr oyun.eko_projeler; c oyun.eko_sozlesmeler; po oyun.eko_policeler;
+ f oyun.eko_franchise; m oyun.eko_markalar;
+begin
+ if u is null or not exists(select 1 from oyun.profiller where id=u and not yasakli) then raise exception 'Giris yapmalisin.';end if;
+ if p_veri is null or jsonb_typeof(p_veri)<>'object' then raise exception 'Gecersiz islem.';end if;
+ if p_eylem='etkinlestir' then
+   tur:=p_veri->>'tur';ur:=p_veri->>'urun'; 
+   if a is null or tur not in ('fabrika','magaza','insaat','sigorta') then raise exception 'Sektor veya sirket gerekli.';end if;
+   select * into sa from oyun.sirketler where id=a for update;
+   if sa.id is null or not sa.aktif or sa.halka_acik or sa.sektor='banka'
+       or coalesce((select pay from oyun.sirket_ortaklari where sirket_id=a and user_id=u),0)<>100
+       or exists(select 1 from oyun.eko_isletmeler where sirket_id=a)
+       then raise exception 'Yalnizca %%100 sahibi oldugun, halka acik olmayan, eski bir sirketi etkinlestirebilirsin.';end if;
+   if (tur='fabrika' and (sa.sektor not in ('sanayi','teknoloji','tarim') or ur not in ('gida','teknoloji','malzeme')))
+   or (tur='magaza' and sa.sektor<>'ticaret')
+   or (tur='insaat' and sa.sektor<>'insaat')
+   or (tur='sigorta' and sa.sektor<>'ticaret')
+   then raise exception 'Bu sirket sektoru secilen isletmeye donusturulemez.';end if;
+   il:=coalesce((select il_id from oyun.profiller where id=u),1);
+   insert into oyun.eko_isletmeler(sirket_id,tur,il_id,urun,uretim_fiyat,perakende_fiyat)
+     values(a,tur,il,case when tur='fabrika' then ur else null end,
+     case ur when 'gida' then 6000 when 'teknoloji' then 18000 when 'malzeme' then 10000 else 0 end,9500);
+   return jsonb_build_object('id',a,'aktiflestirildi',true);
+ end if;
+ if p_eylem='kur' then
+   tur:=p_veri->>'tur';il:=(p_veri->>'il')::smallint;ur:=p_veri->>'urun';
+   if tur not in ('fabrika','magaza','insaat','sigorta') or not exists(select 1 from oyun.iller where id=il)
+      or (tur='fabrika' and ur not in ('gida','teknoloji','malzeme'))
+      or v<>round(v) or v<100000 or v>100000000 then raise exception 'Tur, il veya sermaye gecersiz.';end if;
+   select (public.sirket_kur(p_veri->>'ad',case tur when 'fabrika' then 'sanayi' when 'insaat' then 'insaat' else 'ticaret' end,v)->>'id')::bigint into yeni;
+   insert into oyun.eko_isletmeler(sirket_id,tur,il_id,urun,uretim_fiyat,perakende_fiyat)
+   values(yeni,tur,il,case when tur='fabrika' then ur else null end,
+   case ur when 'gida' then 6000 when 'teknoloji' then 18000 when 'malzeme' then 10000 else 0 end,9500);
+   return jsonb_build_object('id',yeni);
+ end if;
+ -- Kilit, hak kontrolu ve kasa bakiyesi sorgusu birlikte yapilir.
+ if a is not null then
+  select * into sa from oyun.sirketler where id=a for update;
+  select * into ia from oyun.eko_isletmeler where sirket_id=a;
+ end if;
+ if p_eylem in ('uretim','fiyat','toptan','satis','proje','sozlesme_teklif','marka_ac','franchise_al','birles') then
+   if sa.id is null or not sa.aktif or not oyun.sirket_yonetici_mi(a,u) then raise exception 'Bu sirketi yonetme yetkin yok.';end if;
+ end if;
+ if p_eylem='uretim' then
+   if ia.tur<>'fabrika' or n not between 1 and 250 then raise exception 'Uretim adedi 1-250 olmali.';end if;
+   k:=case ia.urun when 'gida' then 4000 when 'teknoloji' then 12000 else 6500 end * n;
+   update oyun.sirketler set kasa=kasa-k where id=a and kasa>=k;
+   if not found then raise exception 'Uretim icin sirket kasasinda yeterli para yok.';end if;
+   insert into oyun.eko_stok(sirket_id,urun,adet) values(a,ia.urun,n)
+   on conflict(sirket_id,urun) do update set adet=oyun.eko_stok.adet+excluded.adet;
+   insert into oyun.eko_islem_kayit(sirket_id,oyuncu,tur,tutar,aciklama)
+    values(a,u,'uretim',-k,format('%s adet %s uretimi',n,ia.urun));
+   return jsonb_build_object('uretilen',n,'maliyet',k);
+ elsif p_eylem='fiyat' then
+   if v<>round(v) then raise exception 'Fiyat tam TL olmali.';end if;
+   if ia.tur='fabrika' then
+     k:=case ia.urun when 'gida' then 4000 when 'teknoloji' then 12000 else 6500 end;
+     if v<k or v>k*2 then raise exception 'Toptan fiyat maliyet ile iki kati arasinda olmali.';end if;
+     update oyun.eko_isletmeler set uretim_fiyat=v where sirket_id=a;
+   elsif ia.tur='magaza' then
+     if v<7000 or v>14000 then raise exception 'Baz satis fiyati 7.000-14.000 TL arasinda olmali.';end if;
+     update oyun.eko_isletmeler set perakende_fiyat=v where sirket_id=a;
+   else raise exception 'Bu isletmenin urun fiyati bulunmuyor.';end if;
+   return jsonb_build_object('fiyat',v);
+ elsif p_eylem='toptan' then
+   if ia.tur<>'magaza' or n not between 1 and 250 or b is null or b=a then raise exception 'Magaza, fabrika ve adet sec.';end if;
+   select * into sb from oyun.sirketler where id=b for update;
+   select * into ib from oyun.eko_isletmeler where sirket_id=b;
+   if not sb.aktif or ib.tur<>'fabrika' then raise exception 'Gecerli fabrika sec.';end if;
+   x:=ib.uretim_fiyat*n;
+   update oyun.eko_stok set adet=adet-n where sirket_id=b and urun=ib.urun and adet>=n;
+   if not found then raise exception 'Fabrika stogu yetersiz.';end if;
+   update oyun.sirketler set kasa=kasa-x where id=a and kasa>=x;
+   if not found then raise exception 'Magaza kasasi yetersiz.';end if;
+   update oyun.sirketler set kasa=kasa+x where id=b;
+   insert into oyun.eko_stok(sirket_id,urun,adet) values(a,ib.urun,n)
+     on conflict(sirket_id,urun) do update set adet=oyun.eko_stok.adet+excluded.adet;
+   insert into oyun.eko_islem_kayit(sirket_id,diger_sirket,oyuncu,tur,tutar,aciklama)
+    values(a,b,u,'toptan',-x,format('%s adet %s alimi',n,ib.urun));
+   return jsonb_build_object('alindi',n,'tutar',x);
+ elsif p_eylem='satis' then
+   if ia.tur<>'magaza' or n not between 1 and 100 or (p_veri->>'urun') not in ('gida','teknoloji','malzeme') then raise exception 'Magaza, urun ve miktar sec.';end if;
+   ur:=p_veri->>'urun';
+   insert into oyun.eko_gunluk_satis(sirket_id,gun,adet) values(a,(t at time zone 'Europe/Istanbul')::date,0)
+      on conflict do nothing;
+   -- 24 saatte sinirli sanal musteri talebi; franchise magazalarinin pazari daha genis.
+   k:=least(18,greatest(1,round(
+ (case when exists(select 1 from oyun.eko_franchise where sube=a) then 14 else 12 end)
+ * power(9500/greatest(ia.perakende_fiyat,1),3)
+ / sqrt(greatest(1,(select count(*) from oyun.eko_isletmeler q
+            join oyun.sirketler sp on sp.id=q.sirket_id
+            where q.tur='magaza' and q.il_id=ia.il_id and sp.aktif))::numeric)
+ )::integer));
+   update oyun.eko_gunluk_satis set adet=adet+n where sirket_id=a
+     and gun=(t at time zone 'Europe/Istanbul')::date and adet+n<=k;
+   if not found then raise exception 'Bugunluk sanal musteri talebi doldu.';end if;
+   update oyun.eko_stok set adet=adet-n where sirket_id=a and urun=ur and adet>=n;
+   if not found then raise exception 'Stok yetersiz.';end if;
+   x:=round((case ur when 'gida' then 9500 when 'teknoloji' then 27000 else 16000 end)*ia.perakende_fiyat/9500)*n;z:=0;
+   select * into f from oyun.eko_franchise where sube=a;
+   if f.id is not null then z:=round(x*f.komisyon/100);end if;
+   y:=round(x-x/(1+(case ur when 'gida' then .10 else .20 end)));
+   update oyun.sirketler set kasa=kasa+x-z-y where id=a;
+   update oyun.ulke set hazine=hazine+y/1000000.0 where id=1;
+   if f.id is not null then update oyun.sirketler set kasa=kasa+z where id=f.marka;end if;
+   insert into oyun.eko_islem_kayit(sirket_id,diger_sirket,oyuncu,tur,tutar,aciklama)
+    values(a,f.marka,u,'perakende',x-z-y,format('%s adet %s sanal musteri satisi (KDV %s TL)',n,ur,y));
+   return jsonb_build_object('ciro',x,'franchise_payi',z,'kdv',y,'net',x-z-y);
+ elsif p_eylem='proje' then
+   if ia.tur<>'insaat' or n not between 1 and 8 then raise exception 'Insaat sirketi ve 1-8 konut sec.';end if;
+   tip:=p_veri->>'tip';il:=ia.il_id;
+   if tip not in ('daire','dukkan','villa') then raise exception 'Proje turu gecersiz.';end if;
+   x:=round(oyun.mulk_il_bedel(il,tip)*.74)*n;
+   y:=round(oyun.mulk_il_bedel(il,tip)*1.05);
+   update oyun.sirketler set kasa=kasa-x where id=a and kasa>=x;
+   if not found then raise exception 'Insaat maliyeti icin sirket kasasi yetersiz.';end if;
+   insert into oyun.eko_projeler(sirket_id,il_id,tip,toplam,kalan,maliyet,birim_fiyat,hazir)
+     values(a,il,tip,n,n,x,y,t+interval '24 hours') returning id into yeni;
+   insert into oyun.eko_islem_kayit(sirket_id,oyuncu,tur,tutar,aciklama)
+     values(a,u,'insaat',-x,format('%s adet %s projesi',n,tip));
+   return jsonb_build_object('id',yeni,'maliyet',x,'hazir',t+interval '24 hours');
+ elsif p_eylem='konut_al' then
+   select * into pr from oyun.eko_projeler where id=(p_veri->>'proje')::bigint for update;
+   if pr.id is null or pr.kalan<=0 or pr.hazir>t then raise exception 'Proje hazir degil veya stok bitti.';end if;
+   perform pg_advisory_xact_lock(90181,pr.il_id::integer);
+   if (select count(*) from oyun.yatirim_mulkleri where il_id=pr.il_id and tip=pr.tip)>=oyun.mulk_il_kota(pr.il_id,pr.tip)
+     then raise exception 'Bu ilde ilgili gayrimenkul kotasi doldu.';end if;
+   x:=round(pr.birim_fiyat*.02); -- Alici tapu harci.
+   perform oyun.para_islem(u,-pr.birim_fiyat-x,'emlak','Müteahhitten yeni konut + %2 tapu harci',t,x);
+   update oyun.sirketler set kasa=kasa+pr.birim_fiyat-x where id=pr.sirket_id and aktif;
+   if not found then raise exception 'Muteahhit sirket faal degil.';end if;
+   update oyun.ulke set hazine=hazine+(x*2)/1000000.0 where id=1;
+   insert into oyun.yatirim_mulkleri(user_id,il_id,tip,alis_bedeli,haftalik_kira,satin_alma,sonraki_kira,vergi_sonraki)
+    values(u,pr.il_id,pr.tip,pr.birim_fiyat,oyun.mulk_il_kira(pr.il_id,pr.tip),t,t+interval '7 days',oyun.mulk_vergi_ilk_vade(t));
+   update oyun.eko_projeler set kalan=kalan-1 where id=pr.id;
+   insert into oyun.eko_islem_kayit(sirket_id,oyuncu,tur,tutar,aciklama)
+     values(pr.sirket_id,u,'konut_satis',pr.birim_fiyat-x,format('%s ilinde %s satisi',pr.il_id,pr.tip));
+   return jsonb_build_object('satildi',true,'bedel',pr.birim_fiyat,'tapu_harci',x*2);
+ elsif p_eylem='sozlesme_teklif' then
+   if b=a or b is null or v<>round(v) or v<1000 or v>10000000
+      or length(btrim(coalesce(p_veri->>'konu',''))) not between 6 and 140
+      then raise exception 'Alici, konu veya tutar gecersiz.';end if;
+   if sa.sektor='banka' or not exists(select 1 from oyun.sirketler where id=b and aktif and sektor<>'banka') then raise exception 'Ticari sozlesmede faal banka disi sirket sec.';end if;
+   insert into oyun.eko_sozlesmeler(satici,alici,konu,bedel,vade)
+     values(a,b,btrim(p_veri->>'konu'),v,t+interval '3 days') returning id into yeni;
+   return jsonb_build_object('id',yeni,'durum','teklif');
+ elsif p_eylem in ('sozlesme_kabul','sozlesme_teslim','sozlesme_onay','sozlesme_iptal') then
+   select * into c from oyun.eko_sozlesmeler where id=(p_veri->>'id')::bigint for update;
+   if c.id is null then raise exception 'Sozlesme bulunamadi.';end if;
+   if p_eylem='sozlesme_kabul' then
+     if c.durum<>'teklif' or t>c.vade or not oyun.sirket_yonetici_mi(c.alici,u) then raise exception 'Onay hakkin yok.';end if;
+     update oyun.sirketler set kasa=kasa-c.bedel where id=c.alici and aktif and kasa>=c.bedel;
+     if not found then raise exception 'Alici sirket kasasi yetersiz.';end if;
+     update oyun.eko_sozlesmeler set durum='aktif',guncelleme=t where id=c.id;
+   elsif p_eylem='sozlesme_teslim' then
+     if c.durum<>'aktif' or t>c.vade or not oyun.sirket_yonetici_mi(c.satici,u) then raise exception 'Teslim hakkin veya suren yok.';end if;
+     update oyun.eko_sozlesmeler set durum='teslim',guncelleme=t where id=c.id;
+   elsif p_eylem='sozlesme_onay' then
+     if c.durum<>'teslim' or not oyun.sirket_yonetici_mi(c.alici,u) then raise exception 'Teslim alici tarafindan onaylanmali.';end if;
+     update oyun.sirketler set kasa=kasa+c.bedel where id=c.satici;
+     update oyun.eko_sozlesmeler set durum='tamam',guncelleme=t where id=c.id;
+     insert into oyun.eko_islem_kayit(sirket_id,diger_sirket,oyuncu,tur,tutar,aciklama)
+      values(c.satici,c.alici,u,'sozlesme',c.bedel,c.konu);
+   else
+     if c.durum='teklif' and oyun.sirket_yonetici_mi(c.satici,u) then
+       update oyun.eko_sozlesmeler set durum='iptal',guncelleme=t where id=c.id;
+     elsif c.durum='aktif' and t>c.vade and oyun.sirket_yonetici_mi(c.alici,u) then
+       update oyun.sirketler set kasa=kasa+c.bedel where id=c.alici;
+       update oyun.eko_sozlesmeler set durum='iptal',guncelleme=t where id=c.id;
+     else raise exception 'Sozlesme bu asamada iptal edilemez.';end if;
+   end if;
+   return jsonb_build_object('id',c.id,'tamam',true);
+ elsif p_eylem='marka_ac' then
+   if ia.tur<>'magaza' or v<>round(v) or v<1000 or v>1000000 or n not between 1 and 15 then raise exception 'Magaza, isim hakki ve ciro payi sec.';end if;
+   insert into oyun.eko_markalar(sirket_id,isim_hakki,komisyon)
+     values(a,v,n) on conflict(sirket_id) do update set isim_hakki=excluded.isim_hakki,komisyon=excluded.komisyon,guncelleme=t;
+   return jsonb_build_object('tamam',true);
+ elsif p_eylem='franchise_al' then
+   if ia.tur<>'magaza' or a=b or b is null then raise exception 'Sube veya marka gecersiz.';end if;
+   select * into m from oyun.eko_markalar where sirket_id=b;
+   if m.sirket_id is null or not exists(select 1 from oyun.sirketler where id=b and aktif) then raise exception 'Marka kullanilabilir degil.';end if;
+   if exists(select 1 from oyun.eko_franchise where sube=a) then raise exception 'Subenin zaten bir markasi var.';end if;
+   update oyun.sirketler set kasa=kasa-m.isim_hakki where id=a and kasa>=m.isim_hakki;
+   if not found then raise exception 'Isim hakki icin sirket kasasi yetersiz.';end if;
+   update oyun.sirketler set kasa=kasa+m.isim_hakki where id=b;
+   insert into oyun.eko_franchise(marka,sube,komisyon,isim_hakki) values(b,a,m.komisyon,m.isim_hakki);
+   insert into oyun.eko_islem_kayit(sirket_id,diger_sirket,oyuncu,tur,tutar,aciklama)
+    values(a,b,u,'franchise',-m.isim_hakki,'Marka isim hakki');
+   return jsonb_build_object('tamam',true);
+ elsif p_eylem='police_al' then
+   if v<>round(v) or v<5000 or v>500000 or b is null then raise exception 'Teminat 5.000-500.000 TL arasi olmali.';end if;
+   select * into sb from oyun.sirketler where id=b for update;
+   select * into ib from oyun.eko_isletmeler where sirket_id=b;
+   if ib.tur<>'sigorta' or not sb.aktif or oyun.sirket_yonetici_mi(b,u) then raise exception 'Kendi sigorta sirketinden police alamazsin.';end if;
+   if exists(select 1 from oyun.eko_policeler where musteri=u and durum='aktif' and bit>t) then raise exception 'Zaten aktif policen var.';end if;
+   x:=round(v*.12);
+   if sb.kasa < v*2 then raise exception 'Sigorta sirketinin odeme rezervi yetersiz.';end if;
+   perform oyun.para_islem(u,-x,'sigorta','Sigorta police primi',t);
+   update oyun.sirketler set kasa=kasa+x where id=b;
+   insert into oyun.eko_policeler(sirket_id,musteri,prim,teminat,bit)
+     values(b,u,x,v,t+interval '3 days') returning id into yeni;
+   return jsonb_build_object('id',yeni,'prim',x,'teminat',v);
+ elsif p_eylem='police_kontrol' then
+   select * into po from oyun.eko_policeler where id=(p_veri->>'id')::bigint for update;
+   if po.id is null or po.musteri<>u or po.durum<>'aktif' or po.bas+interval '48 hours'>t then raise exception 'Police henuz kontrol edilemez.';end if;
+   -- Hasar cekilisi bir kez yapilir, istemci hasar sonucunu belirleyemez.
+   if random()<.08 and exists(select 1 from oyun.sirketler where id=po.sirket_id and kasa>=po.teminat) then
+     update oyun.sirketler set kasa=kasa-po.teminat where id=po.sirket_id and kasa>=po.teminat;
+     if not found then raise exception 'Sigorta sirketi tazminati odeyemiyor.';end if;
+     perform oyun.para_islem(u,po.teminat,'sigorta','Sigorta hasar tazminati',t);
+     update oyun.eko_policeler set durum='hasar_odendi',odenen=po.teminat,kontrol=t where id=po.id;
+     return jsonb_build_object('durum','hasar_odendi','tutar',po.teminat);
+   end if;
+   update oyun.eko_policeler set durum='hasarsiz',kontrol=t where id=po.id;
+   return jsonb_build_object('durum','hasarsiz','tutar',0);
+ elsif p_eylem='birles' then
+   if b is null or a=b then raise exception 'Iki farkli sirket sec.';end if;
+   select * into sb from oyun.sirketler where id=b for update;
+   if sb.id is null or not sb.aktif or not sa.aktif or sa.sektor='banka' or sb.sektor='banka'
+   or sa.halka_acik or sb.halka_acik then raise exception 'Banka veya halka acik sirketler bu islemle birlesemez.';end if;
+   if coalesce((select pay from oyun.sirket_ortaklari where sirket_id=a and user_id=u),0)<>100
+     or coalesce((select pay from oyun.sirket_ortaklari where sirket_id=b and user_id=u),0)<>100
+     or exists(select 1 from oyun.eko_isletmeler where sirket_id=b)
+     or exists(select 1 from oyun.sirket_teklif where sirket_id=b and durum='bekliyor')
+     or exists(select 1 from oyun.sirket_hisse_ilanlari where sirket_id=b and durum='acik')
+     or sb.satilik is not null
+     or exists(select 1 from oyun.halka_arz where sirket_id=b and durum='acik')
+     or exists(select 1 from oyun.eko_sozlesmeler where (satici=b or alici=b) and durum in ('teklif','aktif','teslim'))
+     or exists(select 1 from oyun.eko_policeler where sirket_id=b and durum='aktif')
+     or exists(select 1 from oyun.eko_franchise where marka=b or sube=b)
+     or exists(select 1 from oyun.eko_markalar where sirket_id=b)
+     or exists(select 1 from oyun.eko_projeler where sirket_id=b and kalan>0)
+     or exists(select 1 from oyun.kamu_ihale where kazanan=b and durum not in ('tamam','iptal','bitti','teslim'))
+     then raise exception 'Birlesme icin iki sirket de %%100 sana ait olmali ve devrolan sirkette aktif taahhut bulunmamali.';end if;
+   update oyun.sirketler set kasa=kasa+sb.kasa,sermaye=sermaye+sb.sermaye where id=a;
+   update oyun.sirketler set kasa=0,aktif=false,satilik=null where id=b;
+   insert into oyun.eko_birlesme(alan,katilan,yonetici,aktaran) values(a,b,u,sb.kasa);
+   insert into oyun.eko_islem_kayit(sirket_id,diger_sirket,oyuncu,tur,tutar,aciklama)
+     values(a,b,u,'birlesme',sb.kasa,'Tam sahipli sirket devir yoluyla birlesti');
+   return jsonb_build_object('tamam',true,'aktarilan',sb.kasa);
+ else raise exception 'Taninmayan ekonomi islemi.';end if;
+end $function$;
+
