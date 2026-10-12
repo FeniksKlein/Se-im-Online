@@ -183,9 +183,11 @@ function panel(){
   for(const x of d.uretim||[])html+=card((item(x.urun)?.ad||x.urun)+" · "+x.adet+" adet",
    "Maliyet "+money(x.maliyet)+" · "+(x.tamam?"Stoklara aktarıldı":"Hazır olacağı zaman "+date(x.hazir)));
   html+=title("Üretilebilen ürünler",""+(d.urunler||[]).length+" çeşit");
+  html+='<details class="tc-products"><summary style="padding:14px;border-radius:12px;background:var(--panel);color:var(--txt);cursor:pointer">Tüm ürünleri göster / gizle</summary><div style="padding-top:10px">';
   for(const p of d.urunler||[])html+=card(p.ad,
     tm(p.grup)+" · Parti üst sınırı "+p.parti+" · "+p.dakika+" dakika · Birim maliyet "+money(p.maliyet)+
     " · Önerilen tüketici fiyatı "+money(p.satis));
+  html+='</div></details>';
  }
  if(TC.sekme==="magaza"){
   html+=card("Yapay müşteriye satış","Sanal müşteriler her saat şehrin gelişimi, ürün talebi, mağaza kategorisi, rekabet ve raf fiyatına göre alışveriş yapar. Stoklar gerçekten azalır; ciro, maliyet, personel gideri, vergi ve franchise payları rapora yansır.");
