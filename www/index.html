@@ -934,6 +934,41 @@ button.mt-tepki:active{transform:scale(.94)}
 .tg-dipnot{font-size:12px;line-height:1.6;color:var(--mut);margin-top:22px;padding-top:14px;border-top:1px solid var(--line2)}
 .tg-kart-kisa{border-top:4px solid var(--al)!important}
 .tg-kart-kisa h2{color:var(--txt)}
+
+/* Form alanları: koyu tema okunabilirlik düzeltmesi (2026-10-12) */
+/* Bazı ekrandaki textarea'lar yalnızca kalıtılan açık yazı rengini kullanıp
+   tarayıcının beyaz varsayılan zemininde kalıyordu. Tüm yazma alanlarında
+   zemin ve yazı rengini birlikte belirt. */
+input:not(:is([type="checkbox"],[type="radio"],[type="range"],[type="file"],[type="color"],[type="hidden"],[type="button"],[type="submit"],[type="reset"])),
+select,
+textarea {
+  box-sizing:border-box;
+  max-width:100%;
+  background-color:var(--bg);
+  color:var(--txt);
+  -webkit-text-fill-color:var(--txt);
+  caret-color:var(--txt);
+  color-scheme:dark;
+  border:1px solid var(--line2);
+  border-radius:10px;
+  font-family:inherit;
+  font-size:16px;
+  line-height:1.5;
+}
+input:not(:is([type="checkbox"],[type="radio"],[type="range"],[type="file"],[type="color"],[type="hidden"],[type="button"],[type="submit"],[type="reset"])),
+select { padding:10px 12px; }
+textarea { display:block; width:100%; min-height:110px; padding:12px 14px; resize:vertical; }
+.alan textarea { min-height:128px; }
+.yazbar textarea { width:auto; min-height:42px; }
+input::placeholder,textarea::placeholder {
+  color:var(--mut);
+  -webkit-text-fill-color:var(--mut);
+  opacity:1;
+}
+input:focus,select:focus,textarea:focus {
+  border-color:var(--ink2);
+  box-shadow:0 0 0 2px var(--inkbg);
+}
 </style>
 </head>
 <body>
