@@ -67,7 +67,7 @@ function idAltPanel(){
  }
  if(k==="birlesme"){
    out=idKutu("Şirket satın al ve birleştir","Mevcut hisse pazarı üzerinden şirket paylarını al. İki şirketin de %100 sahibiysen uygun koşullarda kasalarını ve sermayelerini tek şirket altında birleştirebilirsin. Halka açık şirketler ve bankalar korunur.","idBirlesmeModal()","İki şirketi birleştir");
-   out+='<div class="id-quick"><button onclick="ekranAc(sirketHissePazarEkrani)">📜 Hisse pazarı</button><button onclick="ekranAc(sirketPazarEkrani)">🏢 Satılık şirketler</button></div>';
+   out+='<div class="id-quick"><button onclick="ekranAc(sirketYonetimEkrani)">📜 Hisse pazarı</button><button onclick="ekranAc(sirketPazarEkrani)">🏢 Satılık şirketler</button></div>';
  }
  return out||bos("Bu bölümde henüz işlem bulunmuyor.");
 }
