@@ -106,11 +106,12 @@ function idEskiSirket(){
 }
 function idYeniIsletme(pref){
  const tur= pref||"fabrika",il=D.durum&&D.durum.profil?D.durum.profil.il_id:1;
+ const iller=Array.from({length:81},(_,i)=>i+1).map(i=>'<option value="'+i+'" '+(i===Number(il)?'selected':'')+'>'+String(i).padStart(2,"0")+' · '+idTxt(typeof ilAd==="function"?ilAd(i):"İl "+i)+'</option>').join("");
  const types=[["fabrika","🏭 Fabrika"],["magaza","🛍️ Mağaza"],["insaat","🏗️ Müteahhitlik"],["sigorta","🛡️ Sigorta"]];
  idModal("Yeni işletme kur",'<p class="alt">En az 100.000 TL sermaye kendi cüzdanından çıkar, şirketin kasasına aktarılır.</p>'+
  '<div class="alan"><label>Şirket adı</label><input id="idAd" maxlength="50" placeholder="Şirketin adı"></div>'+
  idSelect("idTur","Şirket türü",types.map(a=>'<option value="'+a[0]+'" '+(a[0]===tur?'selected':'')+'>'+a[1]+'</option>').join(""))+
- idInput("idIl","İl plaka kodu (1-81)",il,1,81)+
+ idSelect("idIl","İşletmenin faaliyet ili",iller)+
  idSelect("idUrun","Fabrika ürün türü",'<option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option><option value="malzeme">İnşaat malzemesi</option>')+
  idInput("idTutar","Kuruluş sermayesi ₺",200000,100000,100000000),"Şirketi kur",m=>idIslem("kur",{
  ad:idValue(m,"idAd").trim(),tur:idValue(m,"idTur"),il:Number(idValue(m,"idIl")),
