@@ -34,8 +34,8 @@ function idAltPanel(){
    out+='<div class="bolum-bas"><h2>Üreticiler</h2></div>'+(d.fabrikalar||[]).map(s=>sat(idTxt(s.ad)+" · "+idUrun(s.urun),idTL(s.fiyat)+" · "+s.stok+" adet")).join("")||bos("Henüz üretici yok.");
  }
  if(k==="magaza"){
-   out=idKutu("Mağaza işlet","Şirket kasandan toptan ürün satın al. Mağazan sınırlı günlük sanal müşteri talebine satış yapar; stok ve fiyat kârlılığı etkiler.","idYeniIsletme('magaza')","Mağaza aç");
-   for(const s of select("magaza"))out+=idKutu(idTxt(s.ad),"Kasa "+idTL(s.kasa)+" · Toplam stok "+s.stok+" · Perakende fiyatı "+idTL(s.perakende_fiyat),"idMagazaModal("+s.id+")","Stok ve satış yönetimi");
+   out=idKutu("Mağaza işlet","Şirket kasandan toptan ürün satın al. Mağazan sınırlı günlük sanal müşteri talebine satış yapar. Rakip sayısı ve yüksek fiyat satış limitini düşürür; ürün bazlı KDV satış sırasında tahsil edilir.","idYeniIsletme('magaza')","Mağaza aç");
+   for(const s of select("magaza"))out+=idKutu(idTxt(s.ad),"Kasa "+idTL(s.kasa)+" · Toplam stok "+s.stok+" · Baz satış fiyatı "+idTL(s.perakende_fiyat),"idMagazaModal("+s.id+")","Stok ve satış yönetimi");
  }
  if(k==="insaat"){
    out=idKutu("Müteahhitlik","Projeye harcanan para şirket kasandan çıkar. İnşaat 24 saatte tamamlanır, 81 ilde mevcut emlak kotasına ve tapu sistemine bağlı daire, dükkân veya villa satılır.","idYeniIsletme('insaat')","İnşaat şirketi kur");
@@ -134,7 +134,7 @@ function idMagazaModal(s){
   b.onclick=()=>idModal("Mağaza satış",ur+idInput("idAdet","Satış adedi (1-100)",5,1,100),"Satış yap",m=>idIslem("satis",{sirket:s,urun:idValue(m,"idUrun"),adet:Number(idValue(m,"idAdet"))},"Ürünler satıldı."));
   const p=document.createElement("button");p.className="btn ikinci";p.textContent="Perakende fiyatını değiştir";
   md.parentNode.insertBefore(p,md);
-  p.onclick=()=>idModal("Mağaza satış fiyatı",idInput("idTutar","Ürün birim fiyatı ₺",9500,1000,50000),"Fiyatı güncelle",m=>idIslem("fiyat",{sirket:s,tutar:Number(idValue(m,"idTutar"))},"Perakende fiyat güncellendi."));
+  p.onclick=()=>idModal("Mağaza satış fiyatı",'<p class="alt">Gıda için baz fiyat. Teknoloji ve malzeme fiyatları ürün maliyetine göre otomatik ayarlanır; aşırı fiyat müşteri talebini azaltır.</p>'+idInput("idTutar","Baz satış fiyatı ₺",9500,7000,14000),"Fiyatı güncelle",m=>idIslem("fiyat",{sirket:s,tutar:Number(idValue(m,"idTutar"))},"Perakende fiyat güncellendi."));
  }
 }
 function idProjeModal(s){
