@@ -284,7 +284,7 @@ begin
    select * into c from oyun.eko_sozlesmeler where id=(p_veri->>'id')::bigint for update;
    if c.id is null then raise exception 'Sozlesme bulunamadi.';end if;
    if p_eylem='sozlesme_kabul' then
-     if c.durum<>'teklif' or not oyun.sirket_yonetici_mi(c.alici,u) then raise exception 'Onay hakkin yok.';end if;
+     if c.durum<>'teklif' or t>c.vade or not oyun.sirket_yonetici_mi(c.alici,u) then raise exception 'Onay hakkin yok.';end if;
      update oyun.sirketler set kasa=kasa-c.bedel where id=c.alici and aktif and kasa>=c.bedel;
      if not found then raise exception 'Alici sirket kasasi yetersiz.';end if;
      update oyun.eko_sozlesmeler set durum='aktif',guncelleme=t where id=c.id;
@@ -360,6 +360,12 @@ begin
      or exists(select 1 from oyun.sirket_teklif where sirket_id=b and durum='bekliyor')
      or exists(select 1 from oyun.sirket_hisse_ilanlari where sirket_id=b and durum='acik')
      or exists(select 1 from oyun.halka_arz where sirket_id=b and durum='acik')
+     or exists(select 1 from oyun.eko_sozlesmeler where (satici=b or alici=b) and durum in ('teklif','aktif','teslim'))
+     or exists(select 1 from oyun.eko_policeler where sirket_id=b and durum='aktif')
+     or exists(select 1 from oyun.eko_franchise where marka=b or sube=b)
+     or exists(select 1 from oyun.eko_markalar where sirket_id=b)
+     or exists(select 1 from oyun.eko_projeler where sirket_id=b and kalan>0)
+     or exists(select 1 from oyun.kamu_ihale where kazanan=b and durum not in ('tamam','iptal','bitti','teslim'))
      then raise exception 'Birlesme icin iki sirket de %%100 sana ait olmali ve devrolan sirkette aktif taahhut bulunmamali.';end if;
    update oyun.sirketler set kasa=kasa+sb.kasa,sermaye=sermaye+sb.sermaye where id=a;
    update oyun.sirketler set kasa=0,aktif=false,satilik=null where id=b;
@@ -373,3 +379,57 @@ revoke all on function public.eko_panel() from public,anon;
 revoke all on function public.eko_islem(text,jsonb) from public,anon;
 grant execute on function public.eko_panel() to authenticated;
 grant execute on function public.eko_islem(text,jsonb) to authenticated;
+
+-- Yeni ticari isletmelerin ayni zamanda eski haftalik otomatik getiriyi almasini engelle.
+CREATE OR REPLACE FUNCTION oyun.sirket_hesapla(p_id bigint)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'oyun', 'public', 'pg_temp'
+AS $function$
+declare s oyun.sirketler;n int;i int;net numeric;income numeric;cost numeric;w numeric;t timestamptz:=oyun.simdi();x record;distributed numeric;rate numeric;v_taahhut numeric;v_mevduat numeric;distributable numeric;v_odeme numeric;
+begin
+ perform pg_advisory_xact_lock(98763,hashtext(p_id::text));
+ select * into s from oyun.sirketler where id=p_id for update;
+ if s.id is null or not s.aktif or s.sonraki_kazanc>t then return;end if;
+ -- Yeni Is Dunyasi isletmeleri yalniz stok/satis/sozlesme gelirlerinden kazanir.
+ if exists(select 1 from oyun.eko_isletmeler where sirket_id=p_id) then
+  update oyun.sirketler set sonraki_kazanc=greatest(sonraki_kazanc,t)+interval '7 days',son_islem=t where id=p_id;
+  return;
+ end if;
+ if exists(select 1 from oyun.pazar_sektor where kod=s.sektor) then perform oyun.pazar_hesapla(p_id); return; end if;
+ if s.sektor='ajans' then perform oyun.ajans_hesapla(p_id); return; end if;
+ n:=least(52,floor(extract(epoch from (t-s.sonraki_kazanc))/604800)::int+1);
+ w:=(select asgari from oyun.ulke where id=1);
+ rate:=case s.sektor when 'tarim' then .12 when 'sanayi' then .15 when 'teknoloji' then .20 when 'ticaret' then .14 when 'insaat' then .18 when 'medya' then .16 else .08 end;
+ for i in 1..n loop
+  income:=round(s.sermaye*rate*(0.6+random()::numeric*.8),2);
+  cost:=round(s.sermaye*(.025+random()::numeric*.055)+w*(.5+random()::numeric),2);
+  income:=round(income * oyun.kriz_sektor_carpani(s.sektor,s.sonraki_kazanc + (i-1) * interval '7 days')
+                       * oyun.sektor_pol_carpan(s.sektor,s.sonraki_kazanc + (i-1) * interval '7 days'),2); net:=income-cost;
+  distributed:=0;
+  if net<0 then
+   if s.sektor='banka' then
+     select coalesce(sum(round(m.anapara*(1+m.faiz/100),2)),0),coalesce(sum(m.anapara),0) into v_taahhut,v_mevduat from oyun.banka_mevduat m where m.banka_id=p_id and not m.kapandi;
+     net:=greatest(net,-greatest(0,(select kasa from oyun.sirketler where id=p_id)-v_taahhut-greatest(s.sermaye*0.10,v_mevduat*0.10)));
+   end if;
+   update oyun.sirketler set kasa=kasa+net where id=p_id;
+  else
+   distributable:=case when s.sektor='banka' then least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net-s.sermaye-coalesce((select sum(round(m.anapara*(1+m.faiz/100),2)) from oyun.banka_mevduat m where m.banka_id=p_id and not m.kapandi),0))) else least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net)) end;
+   for x in select * from oyun.sirket_ortaklari where sirket_id=p_id loop
+    if not x.kar_kasada then
+      v_odeme:=least(round(distributable*x.pay/100,2),greatest(0,distributable-distributed));
+      if v_odeme>0 then
+        perform oyun.para_islem(x.user_id,v_odeme,'sirket',format('Sirket #%s haftalik net kar payi',p_id),t);
+        distributed:=distributed+v_odeme;
+      end if;
+    end if;
+   end loop;
+   update oyun.sirketler set kasa=kasa+net-distributed where id=p_id;
+  end if;
+  insert into oyun.sirket_hareket(sirket_id,zaman,tutar,aciklama,faaliyet_gelir,faaliyet_gider,dagitilan_kar)
+ values(p_id,t,net,'7 günlük faaliyet: gelir - gider = net sonuç; gerçekleşen ortak ödemesi ayrıca kaydedildi',income,cost,distributed);
+ end loop;
+ update oyun.sirketler set sonraki_kazanc=sonraki_kazanc+n*interval '7 days',son_islem=t where id=p_id;
+end $function$
+
