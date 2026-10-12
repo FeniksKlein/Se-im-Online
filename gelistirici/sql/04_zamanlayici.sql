@@ -25,3 +25,6 @@ select oyun.tick();
 -- Belediye: bina inşaat/bakım (30 dk) ve kriz masası (saatte bir; açık krizlerin süresini de kapatır)
 select cron.schedule('belediye-sehir-bina-tick', '*/30 * * * *', 'select oyun.belediye_bina_tick()');
 select cron.schedule('belediye-kriz', '7 * * * *', 'select oyun.belediye_kriz_tick()');
+-- Ekonomi kurumları (Merkez Bankası, belediye tahvili, SPK, konkordato): 10 dakikada bir
+select cron.unschedule(jobid) from cron.job where jobname = 'ekonomi-2';
+select cron.schedule('ekonomi-2', '*/10 * * * *', 'select oyun.ekonomi2_tick()');

@@ -79,7 +79,7 @@ begin
     'gazete_abonelik', 'gazete_yazar_teklif', 'gazete_yazarlar', 'gazete_yayinlari', 'gazete_hareket',
     'parti_ad_gecmis', 'parti_tuzuk_teklifleri', 'parti_tuzuk_oylari', 'borc_aflari',
     'hukumetler', 'hukumet_partileri', 'hukumet_guven_oylari', 'gensorular', 'gensoru_oylari',
-    'erken_secim_teklifleri', 'erken_secim_oylari', 'banka_transfer'] loop
+    'erken_secim_teklifleri', 'erken_secim_oylari', 'banka_transfer', 'akis', 'akis_begeni', 'basarim'] loop
     if to_regclass('oyun.' || yeni_tablo) is null then continue; end if;
     execute format('select md5(coalesce(string_agg(to_jsonb(x)::text, '','' order by to_jsonb(x)::text), '''')) from oyun.%I x', yeni_tablo) into v;
     sonuc := sonuc || jsonb_build_object(yeni_tablo, v);
@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.10.10-23', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.10.13-1', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -584,19 +584,28 @@ $$;
 -- SONUÇLANDIRMA
 -- ---------------------------------------------------------------------
 
--- Vekil ön seçimi: her il + parti için oy sırasına göre liste
-create or replace function oyun._sonuc_mv_on(s oyun.secimler) returns jsonb language plpgsql as $$
+-- Vekil ön seçimi: her il + parti için oy sırasına göre liste.
+-- Sıfır oy alan aday adayları da elenmez; sıralamanın sonunda asıl aday olur.
+create or replace function oyun._sonuc_mv_on(s oyun.secimler) returns jsonb language plpgsql as $mv_on$
 begin
   perform oyun.aday_oylarini_say(s.id);
-  update oyun.adaylar a set sira = x.rn
-  from (select id, row_number() over (partition by il_id, parti_id order by oy desc, basvuru_at, id) rn
-        from oyun.adaylar where secim_id = s.id) x
+  with siralama as (
+    select a.id,
+      row_number() over (
+        partition by a.il_id, a.parti_id
+        order by coalesce(a.oy, 0) desc, a.basvuru_at asc nulls last, a.id asc
+      )::integer as liste_sirasi
+    from oyun.adaylar a
+    where a.secim_id = s.id -- oy > 0 filtresi yok: bütün aday adayları dahil
+  )
+  update oyun.adaylar a set sira = x.liste_sirasi
+  from siralama x
   where a.id = x.id;
   return jsonb_build_object(
     'katilim', (select count(*) from oyun.oylar where secim_id = s.id),
     'aday',    (select count(*) from oyun.adaylar where secim_id = s.id),
     'liste',   (select count(distinct (il_id, parti_id)) from oyun.adaylar where secim_id = s.id));
-end $$;
+end $mv_on$;
 
 -- Parti içi tek kazananlı ön seçimler (bel_on: il+parti başına, cb_on: parti başına)
 create or replace function oyun._sonuc_tek_kazanan_on(s oyun.secimler, p_hedef_tur text) returns jsonb language plpgsql as $$
@@ -1690,8 +1699,8 @@ begin
   end if;
 end $$;
 
--- Cumhurbaşkanı bir bakanlığa atama yapar. Atanan kişinin varsa vekilliği/belediye başkanlığı düşer
--- (vekilliğine listeden yedek gelir); bakanlıkta biri varsa görevden alınır.
+-- Cumhurbaşkanı bir bakanlığa atama yapar. Milletvekilliği bakanlıkla birlikte sürdürülebilir;
+-- belediye başkanlığı gibi uyumsuz görevler önce bırakılır. Eski bakan görevden alınır.
 create or replace function public.bakan_ata(p_bakanlik text, p_kad text) returns jsonb
 language plpgsql security definer set search_path = oyun, public, pg_temp as $$
 declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); h oyun.profiller; b oyun.bakanliklar; m record;
@@ -1705,7 +1714,7 @@ begin
   if exists (select 1 from oyun.makamlar where tur = 'bakan' and bakanlik = b.kod and bit is null and user_id = h.id) then
     raise exception '% zaten bu bakanlıkta.', h.kad;
   end if;
-  -- tek görev kuralı: başka görevi olan kişi bakan atanamaz; önce istifa etmelidir
+  -- Rol uyumluluğunu kontrol et: milletvekilliği bakanlıkla uyumludur.
   if oyun.rol_cakisma(h.id, 'bakan') is not null then
     raise exception '% şu anda % görevinde. Bakan atanabilmesi için önce o görevden ayrılması gerekir.', h.kad, oyun.rol_cakisma(h.id, 'bakan');
   end if;
@@ -25255,6 +25264,620 @@ revoke all on function public.halka_arz_hesapla(bigint, numeric, numeric), publi
 grant execute on function public.halka_arz_hesapla(bigint, numeric, numeric), public.halka_arz_baslat(bigint, numeric, numeric, numeric, int),
   public.halka_arz_talep(bigint, numeric), public.halka_arz_talep_geri(bigint), public.halka_arz_iptal(bigint),
   public.halka_arz_liste(), public.halka_arz_durum(bigint) to authenticated;
+-- 2026-10-10: Görev kataloğu ve doğrulanmış oyun para ödülleri
+-- Görevler yalnızca oyun sunucusundaki kayıtlarla tamamlanabilir.
+create table if not exists oyun.gorev_ayar(
+ id integer primary key check (id=1),
+ baslangic timestamptz not null default now()
+);
+insert into oyun.gorev_ayar(id) values(1) on conflict(id) do nothing;
+create table if not exists oyun.gorev_katalog(
+ id bigint generated always as identity primary key,
+ kod text not null unique,
+ kategori text not null,
+ baslik text not null,
+ aciklama text not null,
+ metrik text not null,
+ hedef integer not null check(hedef>0),
+ odul integer not null check(odul between 50 and 3000),
+ donem text not null check(donem in ('tek','gunluk','haftalik')),
+ seviye smallint not null default 0,
+ rota text not null,
+ aktif boolean not null default true
+);
+create table if not exists oyun.gorev_oduller(
+ id bigint generated always as identity primary key,
+ user_id uuid not null references oyun.profiller(id) on delete cascade,
+ gorev_id bigint not null references oyun.gorev_katalog(id),
+ donem_anahtari text not null,
+ odul integer not null check(odul>=0),
+ zaman timestamptz not null default now(),
+ unique(user_id,gorev_id,donem_anahtari)
+);
+create index if not exists gorev_oduller_user_zaman on oyun.gorev_oduller(user_id,zaman desc);
+do $$ declare n text;begin
+ foreach n in array array['gorev_ayar','gorev_katalog','gorev_oduller'] loop
+  execute format('alter table oyun.%I enable row level security',n);
+  execute format('revoke all on oyun.%I from public,anon,authenticated',n);
+ end loop;
+end $$;
+
+create or replace function oyun.gorev_istatistik(p_user uuid,p_bas timestamptz)
+returns jsonb language sql stable set search_path='' as $$
+ select jsonb_build_object(
+  'sohbet_gun', coalesce((select count(distinct (m.zaman at time zone 'Europe/Istanbul')::date) from oyun.mesajlar m where m.user_id=p_user and m.zaman>=p_bas and not m.gizli and m.kanal not like 'dernek:%' and m.kanal not like 'ozel:%' and char_length(m.metin)>=15),0),
+  'sohbet_mesaj', coalesce((select count(*) from oyun.mesajlar m where m.user_id=p_user and m.zaman>=p_bas and not m.gizli and m.kanal not like 'dernek:%' and m.kanal not like 'ozel:%' and char_length(m.metin)>=30),0),
+  'sohbet_kanal', coalesce((select count(distinct m.kanal) from oyun.mesajlar m where m.user_id=p_user and m.zaman>=p_bas and not m.gizli and m.kanal not like 'dernek:%' and m.kanal not like 'ozel:%' and char_length(m.metin)>=15),0),
+  'dernek_sohbet_gun', coalesce((select count(distinct (m.zaman at time zone 'Europe/Istanbul')::date) from oyun.mesajlar m where m.user_id=p_user and m.zaman>=p_bas and not m.gizli and m.kanal like 'dernek:%' and char_length(m.metin)>=15),0),
+  'dernek_sohbet_yazi', coalesce((select count(*) from oyun.mesajlar m where m.user_id=p_user and m.zaman>=p_bas and not m.gizli and m.kanal like 'dernek:%' and char_length(m.metin)>=30),0),
+  'secim_oy', coalesce((select count(*) from oyun.oylar o where o.secmen=p_user and o.zaman>=p_bas),0),
+  'secim_turleri', coalesce((select count(distinct s.tur) from oyun.oylar o join oyun.secimler s on s.id=o.secim_id where o.secmen=p_user and o.zaman>=p_bas),0),
+  'aday_ol', coalesce((select count(*) from oyun.adaylar a where a.user_id=p_user and a.basvuru_at>=p_bas),0),
+  'miting_katil', coalesce((select count(*) from oyun.miting_katilim x where x.user_id=p_user and x.zaman>=p_bas),0),
+  'miting_il', coalesce((select count(distinct m.il_id) from oyun.miting_katilim x join oyun.mitingler m on m.id=x.miting_id where x.user_id=p_user and x.zaman>=p_bas),0),
+  'miting_konus', coalesce((select count(*) from oyun.miting_konusma k where k.user_id=p_user and k.zaman>=p_bas and not k.silindi and char_length(k.metin)>=30),0),
+  'miting_konus_gun', coalesce((select count(distinct (k.zaman at time zone 'Europe/Istanbul')::date) from oyun.miting_konusma k where k.user_id=p_user and k.zaman>=p_bas and not k.silindi and char_length(k.metin)>=30),0),
+  'miting_duzen', coalesce((select count(*) from oyun.mitingler m where m.user_id=p_user and m.olusturma>=p_bas),0),
+  'gazete_haber', coalesce((select count(*) from oyun.gazete_yayinlari y where y.yazar=p_user and y.zaman>=p_bas and y.tur='haber' and char_length(y.metin)>=50),0),
+  'gazete_kose', coalesce((select count(*) from oyun.gazete_yayinlari y where y.yazar=p_user and y.zaman>=p_bas and y.tur='kose' and char_length(y.metin)>=50),0),
+  'gazete_yayin_gun', coalesce((select count(distinct (y.zaman at time zone 'Europe/Istanbul')::date) from oyun.gazete_yayinlari y where y.yazar=p_user and y.zaman>=p_bas and char_length(y.metin)>=50),0),
+  'gazete_yorum', coalesce((select count(distinct k.yayin_id) from oyun.gazete_kose_yorum k where k.user_id=p_user and k.zaman>=p_bas and not k.silindi and char_length(k.metin)>=15),0),
+  'gazeteler_yayin', coalesce((select count(distinct y.gazete_id) from oyun.gazete_yayinlari y where y.yazar=p_user and y.zaman>=p_bas and char_length(y.metin)>=50),0),
+  'roportaj_davet', coalesce((select count(*) from oyun.sos_roportaj r where r.gazeteci=p_user and r.acilis>=p_bas and r.konuk<>p_user),0),
+  'roportaj_yayin', coalesce((select count(*) from oyun.sos_roportaj r join oyun.gazete_yayinlari y on y.id=r.yayin_id where r.gazeteci=p_user and r.durum='yayinlandi' and y.zaman>=p_bas),0),
+  'roportaj_cevap', coalesce((select count(*) from oyun.sos_roportaj r where r.konuk=p_user and r.yanit_at>=p_bas and r.yanit is not null),0),
+  'haber_cevap', coalesce((select count(*) from oyun.sos_haber_cevap h where h.oyuncu_id=p_user and h.zaman>=p_bas and h.metin is not null),0),
+  'duello_davet', coalesce((select count(*) from oyun.sos_duello d where d.davet_eden=p_user and d.olusturma>=p_bas),0),
+  'duello_konus', coalesce((select count(*) from oyun.sos_duello_soz s where s.konusan=p_user and s.zaman>=p_bas and char_length(s.metin)>=20),0),
+  'duello_oy', coalesce((select count(*) from oyun.sos_duello_oy o where o.user_id=p_user and o.zaman>=p_bas),0),
+  'duello_tamam', coalesce((select count(*) from oyun.sos_duello d where (d.davet_eden=p_user or d.davet_edilen=p_user) and d.durum='bitti' and d.bitti_at>=p_bas),0),
+  'imza_baslat', coalesce((select count(*) from oyun.sos_imza_kamp c where c.acan=p_user and c.bas>=p_bas),0),
+  'imza_kat', coalesce((select count(*) from oyun.sos_imza i join oyun.sos_imza_kamp c on c.id=i.kampanya_id where i.user_id=p_user and c.acan<>p_user and i.zaman>=p_bas),0),
+  'imza_basari', coalesce((select count(*) from oyun.sos_imza_kamp c where c.acan=p_user and c.durum='basarili' and c.bas>=p_bas),0),
+  'dilekce_gonder', coalesce((select count(*) from oyun.sos_dilekce d where d.gonderen=p_user and d.olusturma>=p_bas and d.imza_kamp_id is null),0),
+  'dilekce_yanit', coalesce((select count(*) from oyun.sos_dilekce d where d.muhatap=p_user and d.cevap_at>=p_bas and d.cevap is not null),0),
+  'dernek_uye', coalesce((select count(distinct x.dernek_id) from oyun.dernek_uyeler x where x.user_id=p_user and x.katilim>=p_bas),0),
+  'dernek_eylem', coalesce((select count(*) from oyun.dernek_eylem x where x.yazan=p_user and x.zaman>=p_bas and not x.silindi),0),
+  'dernek_eylem_tur', coalesce((select count(distinct x.tur) from oyun.dernek_eylem x where x.yazan=p_user and x.zaman>=p_bas and not x.silindi),0),
+  'dernek_protesto_katil', coalesce((select count(*) from oyun.dernek_protesto_katilim x join oyun.dernek_eylem e on e.id=x.eylem_id where x.user_id=p_user and x.zaman>=p_bas and not e.silindi),0),
+  'dernek_sube', coalesce((select count(*) from oyun.dernek_sube x where x.kuran=p_user and x.kurulus>=p_bas),0),
+  'dernek_secim_oy', coalesce((select count(distinct x.secim_id) from oyun.sos_dernek_oy x join oyun.sos_dernek_secim s on s.id=x.secim_id where x.user_id=p_user and s.bas>=p_bas),0),
+  'parti_kurultay_imza', coalesce((select count(*) from oyun.sos_parti_imzaci x join oyun.sos_parti_imza k on k.id=x.kampanya_id where x.user_id=p_user and k.bas>=p_bas),0),
+  'sirket_kur', coalesce((select count(*) from oyun.sirketler s where s.kurucu=p_user and s.kurulus>=p_bas),0),
+  'sirket_ortak', coalesce((select count(*) from oyun.sirket_ortaklari x where x.user_id=p_user),0),
+  'emlak_sahip', coalesce((select count(*) from oyun.yatirim_mulkleri x where x.user_id=p_user),0),
+  'emlak_il', coalesce((select count(distinct x.il_id) from oyun.yatirim_mulkleri x where x.user_id=p_user),0),
+  'kanun_teklif', coalesce((select count(*) from oyun.kanunlar k where k.teklif_eden=p_user and k.teklif_at>=p_bas),0),
+  'kanun_oy', coalesce((select count(*) from oyun.kanun_oylari k where k.vekil=p_user and k.zaman>=p_bas),0),
+  'bakan_soru', coalesce((select count(*) from oyun.bakan_soru s where s.soran=p_user and s.zaman>=p_bas),0),
+  'bakan_yanit', coalesce((select count(*) from oyun.bakan_soru s where s.yanitlayan=p_user and s.yanit_at>=p_bas),0),
+  'anket_oy', coalesce((select count(*) from oyun.haftalik_anket_oy a where a.user_id=p_user and a.zaman>=p_bas),0),
+  'parti_tuzuk_oy', coalesce((select count(*) from oyun.parti_tuzuk_oylari v where v.user_id=p_user and v.zaman>=p_bas),0),
+  'yayin_yap', coalesce((select count(*) from oyun.yayinlar y where y.gonderen=p_user and y.zaman>=p_bas and not y.gizli and char_length(y.metin)>=30),0),
+  'gazete_kur', coalesce((select count(*) from oyun.oyuncu_gazeteleri g where g.sahip=p_user and g.kurulus>=p_bas),0)
+ );
+$$;
+revoke all on function oyun.gorev_istatistik(uuid,timestamptz) from public,anon,authenticated;
+
+create or replace function public.gorevlerim()
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); t timestamptz:=oyun.simdi();
+ bas timestamptz; d_bas timestamptz; w_bas timestamptz;
+ bir jsonb; gun jsonb; hafta jsonb;
+ gun_k text; hafta_k text; toplam numeric;
+begin
+ select baslangic into bas from oyun.gorev_ayar where id=1;
+ d_bas:=date_trunc('day',t at time zone 'Europe/Istanbul') at time zone 'Europe/Istanbul';
+ w_bas:=date_trunc('week',t at time zone 'Europe/Istanbul') at time zone 'Europe/Istanbul';
+ gun_k:=to_char(t at time zone 'Europe/Istanbul','YYYY-MM-DD');
+ hafta_k:=to_char(t at time zone 'Europe/Istanbul','IYYY-"W"IW');
+ bir:=oyun.gorev_istatistik(p.id,bas);
+ gun:=oyun.gorev_istatistik(p.id,greatest(d_bas,bas));
+ hafta:=oyun.gorev_istatistik(p.id,greatest(w_bas,bas));
+ select coalesce(sum(odul),0) into toplam from oyun.gorev_oduller where user_id=p.id and zaman>=d_bas;
+ return jsonb_build_object(
+  'gunluk_limit',10000,'bugun_kazanilan',toplam,
+  'baslangic',bas,
+  'gorevler',coalesce((
+  select jsonb_agg(jsonb_build_object(
+   'id',c.id,'kod',c.kod,'kategori',c.kategori,'baslik',c.baslik,'aciklama',c.aciklama,
+   'hedef',c.hedef,'ilerleme',least(c.hedef,greatest(0,coalesce((case c.donem when 'gunluk' then gun when 'haftalik' then hafta else bir end->>c.metrik)::int,0))),
+   'odul',c.odul,'donem',c.donem,'seviye',c.seviye,'rota',c.rota,
+   'alindi',exists(select 1 from oyun.gorev_oduller o where o.gorev_id=c.id and o.user_id=p.id and o.donem_anahtari=
+    case c.donem when 'gunluk' then gun_k when 'haftalik' then hafta_k else 'tek' end)
+  ) order by case c.donem when 'gunluk' then 0 when 'haftalik' then 1 else 2 end,c.kategori,c.seviye,c.id)
+  from oyun.gorev_katalog c where c.aktif),'[]'::jsonb)
+ );
+end $$;
+
+create or replace function public.gorev_odul_al(p_gorev bigint)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); t timestamptz:=oyun.simdi(); c oyun.gorev_katalog; v_bas timestamptz; p_bas timestamptz;
+ k text; done integer; toplam numeric; d_bas timestamptz;
+begin
+ -- Aynı oyuncunun eşzamanlı istekleri arasında çift ödül engeli.
+ perform pg_advisory_xact_lock(91720,hashtext(p.id::text));
+ select * into c from oyun.gorev_katalog where id=p_gorev and aktif;
+ if c.id is null then raise exception 'Görev bulunamadı.'; end if;
+ select baslangic into v_bas from oyun.gorev_ayar where id=1;
+ d_bas:=date_trunc('day',t at time zone 'Europe/Istanbul') at time zone 'Europe/Istanbul';
+ k:=case c.donem when 'gunluk' then to_char(t at time zone 'Europe/Istanbul','YYYY-MM-DD')
+ when 'haftalik' then to_char(t at time zone 'Europe/Istanbul','IYYY-"W"IW') else 'tek' end;
+ if exists(select 1 from oyun.gorev_oduller where user_id=p.id and gorev_id=c.id and donem_anahtari=k)
+ then raise exception 'Bu görevin ödülünü zaten aldın.'; end if;
+ p_bas:=case c.donem when 'gunluk' then greatest(d_bas,v_bas)
+ when 'haftalik' then greatest(date_trunc('week',t at time zone 'Europe/Istanbul') at time zone 'Europe/Istanbul',v_bas)
+ else v_bas end;
+ done:=coalesce((oyun.gorev_istatistik(p.id,p_bas)->>c.metrik)::int,0);
+ if done<c.hedef then raise exception 'Görev tamamlanmadı: % / % ilerleme.',done,c.hedef; end if;
+ select coalesce(sum(odul),0) into toplam from oyun.gorev_oduller where user_id=p.id and zaman>=d_bas;
+ if toplam+c.odul>10000 then raise exception 'Günlük görev ödülü limiti 10.000 TL. Yarın tekrar dene.'; end if;
+ insert into oyun.gorev_oduller(user_id,gorev_id,donem_anahtari,odul,zaman) values(p.id,c.id,k,c.odul,t);
+ perform oyun.para_islem(p.id,c.odul,'gorev',format('Görev ödülü: %s',c.baslik),t);
+ return jsonb_build_object('tamam',true,'odul',c.odul,'gorev',c.baslik,'bugun_kazanilan',toplam+c.odul);
+end $$;
+
+revoke all on function public.gorevlerim(),public.gorev_odul_al(bigint) from public,anon;
+grant execute on function public.gorevlerim(),public.gorev_odul_al(bigint) to authenticated;
+
+-- Aşağıdaki katalog yeni oyuncu verisi oluşturmaz; güncellemeler mevcut ödül geçmişini silmez.
+
+insert into oyun.gorev_katalog(kod,kategori,baslik,aciklama,metrik,hedef,odul,donem,seviye,rota,aktif) values
+('sohbet_gun_1','Toplum','Sohbette düzenli bulun I','Farklı günlerde genel sohbetlere anlamlı mesaj yaz. Hedef: 1.','sohbet_gun',1,300,'tek',1,'sohbet',true),
+('sohbet_gun_2','Toplum','Sohbette düzenli bulun II','Farklı günlerde genel sohbetlere anlamlı mesaj yaz. Hedef: 3.','sohbet_gun',3,550,'tek',2,'sohbet',true),
+('sohbet_gun_3','Toplum','Sohbette düzenli bulun III','Farklı günlerde genel sohbetlere anlamlı mesaj yaz. Hedef: 7.','sohbet_gun',7,850,'tek',3,'sohbet',true),
+('sohbet_gun_4','Toplum','Sohbette düzenli bulun IV','Farklı günlerde genel sohbetlere anlamlı mesaj yaz. Hedef: 14.','sohbet_gun',14,1400,'tek',4,'sohbet',true),
+('sohbet_gun_5','Toplum','Sohbette düzenli bulun V','Farklı günlerde genel sohbetlere anlamlı mesaj yaz. Hedef: 30.','sohbet_gun',30,2300,'tek',5,'sohbet',true),
+('sohbet_mesaj_1','Toplum','Kamusal sohbetlere katıl I','Genel sohbet kanallarında anlamlı mesajlar gönder. Hedef: 1.','sohbet_mesaj',1,300,'tek',1,'sohbet',true),
+('sohbet_mesaj_2','Toplum','Kamusal sohbetlere katıl II','Genel sohbet kanallarında anlamlı mesajlar gönder. Hedef: 3.','sohbet_mesaj',3,550,'tek',2,'sohbet',true),
+('sohbet_mesaj_3','Toplum','Kamusal sohbetlere katıl III','Genel sohbet kanallarında anlamlı mesajlar gönder. Hedef: 6.','sohbet_mesaj',6,850,'tek',3,'sohbet',true),
+('sohbet_mesaj_4','Toplum','Kamusal sohbetlere katıl IV','Genel sohbet kanallarında anlamlı mesajlar gönder. Hedef: 12.','sohbet_mesaj',12,1400,'tek',4,'sohbet',true),
+('sohbet_mesaj_5','Toplum','Kamusal sohbetlere katıl V','Genel sohbet kanallarında anlamlı mesajlar gönder. Hedef: 25.','sohbet_mesaj',25,2300,'tek',5,'sohbet',true),
+('sohbet_kanal_1','Toplum','Farklı sohbet kanallarını keşfet I','Farklı kamusal sohbet kanallarına katıl. Hedef: 1.','sohbet_kanal',1,400,'tek',1,'sohbet',true),
+('sohbet_kanal_2','Toplum','Farklı sohbet kanallarını keşfet II','Farklı kamusal sohbet kanallarına katıl. Hedef: 2.','sohbet_kanal',2,650,'tek',2,'sohbet',true),
+('sohbet_kanal_3','Toplum','Farklı sohbet kanallarını keşfet III','Farklı kamusal sohbet kanallarına katıl. Hedef: 3.','sohbet_kanal',3,950,'tek',3,'sohbet',true),
+('sohbet_kanal_4','Toplum','Farklı sohbet kanallarını keşfet IV','Farklı kamusal sohbet kanallarına katıl. Hedef: 5.','sohbet_kanal',5,1500,'tek',4,'sohbet',true),
+('sohbet_kanal_5','Toplum','Farklı sohbet kanallarını keşfet V','Farklı kamusal sohbet kanallarına katıl. Hedef: 8.','sohbet_kanal',8,2400,'tek',5,'sohbet',true),
+('dernek_sohbet_gun_1','Toplum','Dernek sohbetine uğra I','Dernek üyeleriyle farklı günlerde sohbet et. Hedef: 1.','dernek_sohbet_gun',1,300,'tek',1,'sohbet',true),
+('dernek_sohbet_gun_2','Toplum','Dernek sohbetine uğra II','Dernek üyeleriyle farklı günlerde sohbet et. Hedef: 3.','dernek_sohbet_gun',3,550,'tek',2,'sohbet',true),
+('dernek_sohbet_gun_3','Toplum','Dernek sohbetine uğra III','Dernek üyeleriyle farklı günlerde sohbet et. Hedef: 7.','dernek_sohbet_gun',7,850,'tek',3,'sohbet',true),
+('dernek_sohbet_gun_4','Toplum','Dernek sohbetine uğra IV','Dernek üyeleriyle farklı günlerde sohbet et. Hedef: 14.','dernek_sohbet_gun',14,1400,'tek',4,'sohbet',true),
+('dernek_sohbet_gun_5','Toplum','Dernek sohbetine uğra V','Dernek üyeleriyle farklı günlerde sohbet et. Hedef: 30.','dernek_sohbet_gun',30,2300,'tek',5,'sohbet',true),
+('dernek_sohbet_yazi_1','Toplum','Dernek içinde fikir paylaş I','Dernek sohbet kanallarında anlamlı mesajlar yaz. Hedef: 1.','dernek_sohbet_yazi',1,300,'tek',1,'sohbet',true),
+('dernek_sohbet_yazi_2','Toplum','Dernek içinde fikir paylaş II','Dernek sohbet kanallarında anlamlı mesajlar yaz. Hedef: 3.','dernek_sohbet_yazi',3,550,'tek',2,'sohbet',true),
+('dernek_sohbet_yazi_3','Toplum','Dernek içinde fikir paylaş III','Dernek sohbet kanallarında anlamlı mesajlar yaz. Hedef: 6.','dernek_sohbet_yazi',6,850,'tek',3,'sohbet',true),
+('dernek_sohbet_yazi_4','Toplum','Dernek içinde fikir paylaş IV','Dernek sohbet kanallarında anlamlı mesajlar yaz. Hedef: 12.','dernek_sohbet_yazi',12,1400,'tek',4,'sohbet',true),
+('dernek_sohbet_yazi_5','Toplum','Dernek içinde fikir paylaş V','Dernek sohbet kanallarında anlamlı mesajlar yaz. Hedef: 25.','dernek_sohbet_yazi',25,2300,'tek',5,'sohbet',true),
+('secim_oy_1','Seçimler','Sandığa git I','Oyundaki seçimlerde oy kullan; belirli bir parti veya aday şartı yok. Hedef: 1.','secim_oy',1,300,'tek',1,'parti',true),
+('secim_oy_2','Seçimler','Sandığa git II','Oyundaki seçimlerde oy kullan; belirli bir parti veya aday şartı yok. Hedef: 3.','secim_oy',3,550,'tek',2,'parti',true),
+('secim_oy_3','Seçimler','Sandığa git III','Oyundaki seçimlerde oy kullan; belirli bir parti veya aday şartı yok. Hedef: 6.','secim_oy',6,850,'tek',3,'parti',true),
+('secim_oy_4','Seçimler','Sandığa git IV','Oyundaki seçimlerde oy kullan; belirli bir parti veya aday şartı yok. Hedef: 12.','secim_oy',12,1400,'tek',4,'parti',true),
+('secim_oy_5','Seçimler','Sandığa git V','Oyundaki seçimlerde oy kullan; belirli bir parti veya aday şartı yok. Hedef: 25.','secim_oy',25,2300,'tek',5,'parti',true),
+('secim_turleri_1','Seçimler','Farklı seçimleri deneyimle I','Farklı türde seçimlerde oy kullan. Hedef: 1.','secim_turleri',1,400,'tek',1,'parti',true),
+('secim_turleri_2','Seçimler','Farklı seçimleri deneyimle II','Farklı türde seçimlerde oy kullan. Hedef: 2.','secim_turleri',2,650,'tek',2,'parti',true),
+('secim_turleri_3','Seçimler','Farklı seçimleri deneyimle III','Farklı türde seçimlerde oy kullan. Hedef: 3.','secim_turleri',3,950,'tek',3,'parti',true),
+('secim_turleri_4','Seçimler','Farklı seçimleri deneyimle IV','Farklı türde seçimlerde oy kullan. Hedef: 5.','secim_turleri',5,1500,'tek',4,'parti',true),
+('secim_turleri_5','Seçimler','Farklı seçimleri deneyimle V','Farklı türde seçimlerde oy kullan. Hedef: 8.','secim_turleri',8,2400,'tek',5,'parti',true),
+('aday_ol_1','Seçimler','Aday ol I','Seçimlerde geçerli adaylık başvurusu yap. Hedef: 1.','aday_ol',1,300,'tek',1,'parti',true),
+('aday_ol_2','Seçimler','Aday ol II','Seçimlerde geçerli adaylık başvurusu yap. Hedef: 3.','aday_ol',3,550,'tek',2,'parti',true),
+('aday_ol_3','Seçimler','Aday ol III','Seçimlerde geçerli adaylık başvurusu yap. Hedef: 6.','aday_ol',6,850,'tek',3,'parti',true),
+('aday_ol_4','Seçimler','Aday ol IV','Seçimlerde geçerli adaylık başvurusu yap. Hedef: 12.','aday_ol',12,1400,'tek',4,'parti',true),
+('aday_ol_5','Seçimler','Aday ol V','Seçimlerde geçerli adaylık başvurusu yap. Hedef: 25.','aday_ol',25,2300,'tek',5,'parti',true),
+('miting_katil_1','Seçimler','Mitinge katıl I','Farklı mitinglerde katılımını kaydettir. Hedef: 1.','miting_katil',1,300,'tek',1,'gundem',true),
+('miting_katil_2','Seçimler','Mitinge katıl II','Farklı mitinglerde katılımını kaydettir. Hedef: 3.','miting_katil',3,550,'tek',2,'gundem',true),
+('miting_katil_3','Seçimler','Mitinge katıl III','Farklı mitinglerde katılımını kaydettir. Hedef: 6.','miting_katil',6,850,'tek',3,'gundem',true),
+('miting_katil_4','Seçimler','Mitinge katıl IV','Farklı mitinglerde katılımını kaydettir. Hedef: 12.','miting_katil',12,1400,'tek',4,'gundem',true),
+('miting_katil_5','Seçimler','Mitinge katıl V','Farklı mitinglerde katılımını kaydettir. Hedef: 25.','miting_katil',25,2300,'tek',5,'gundem',true),
+('miting_il_1','Seçimler','Farklı illerde miting deneyimle I','Değişik illerdeki mitinglere katıl. Hedef: 1.','miting_il',1,400,'tek',1,'gundem',true),
+('miting_il_2','Seçimler','Farklı illerde miting deneyimle II','Değişik illerdeki mitinglere katıl. Hedef: 2.','miting_il',2,650,'tek',2,'gundem',true),
+('miting_il_3','Seçimler','Farklı illerde miting deneyimle III','Değişik illerdeki mitinglere katıl. Hedef: 3.','miting_il',3,950,'tek',3,'gundem',true),
+('miting_il_4','Seçimler','Farklı illerde miting deneyimle IV','Değişik illerdeki mitinglere katıl. Hedef: 5.','miting_il',5,1500,'tek',4,'gundem',true),
+('miting_il_5','Seçimler','Farklı illerde miting deneyimle V','Değişik illerdeki mitinglere katıl. Hedef: 8.','miting_il',8,2400,'tek',5,'gundem',true),
+('miting_konus_1','Seçimler','Miting kürsüsüne çık I','Mitinglerde konuşma yap. Hedef: 1.','miting_konus',1,300,'tek',1,'gundem',true),
+('miting_konus_2','Seçimler','Miting kürsüsüne çık II','Mitinglerde konuşma yap. Hedef: 3.','miting_konus',3,550,'tek',2,'gundem',true),
+('miting_konus_3','Seçimler','Miting kürsüsüne çık III','Mitinglerde konuşma yap. Hedef: 6.','miting_konus',6,850,'tek',3,'gundem',true),
+('miting_konus_4','Seçimler','Miting kürsüsüne çık IV','Mitinglerde konuşma yap. Hedef: 12.','miting_konus',12,1400,'tek',4,'gundem',true),
+('miting_konus_5','Seçimler','Miting kürsüsüne çık V','Mitinglerde konuşma yap. Hedef: 25.','miting_konus',25,2300,'tek',5,'gundem',true),
+('miting_konus_gun_1','Seçimler','Düzenli miting konuş I','Farklı günlerde miting kürsüsünden seslen. Hedef: 1.','miting_konus_gun',1,300,'tek',1,'gundem',true),
+('miting_konus_gun_2','Seçimler','Düzenli miting konuş II','Farklı günlerde miting kürsüsünden seslen. Hedef: 3.','miting_konus_gun',3,550,'tek',2,'gundem',true),
+('miting_konus_gun_3','Seçimler','Düzenli miting konuş III','Farklı günlerde miting kürsüsünden seslen. Hedef: 7.','miting_konus_gun',7,850,'tek',3,'gundem',true),
+('miting_konus_gun_4','Seçimler','Düzenli miting konuş IV','Farklı günlerde miting kürsüsünden seslen. Hedef: 14.','miting_konus_gun',14,1400,'tek',4,'gundem',true),
+('miting_konus_gun_5','Seçimler','Düzenli miting konuş V','Farklı günlerde miting kürsüsünden seslen. Hedef: 30.','miting_konus_gun',30,2300,'tek',5,'gundem',true),
+('miting_duzen_1','Seçimler','Miting organize et I','Oyunda miting düzenle. Hedef: 1.','miting_duzen',1,400,'tek',1,'parti',true),
+('miting_duzen_2','Seçimler','Miting organize et II','Oyunda miting düzenle. Hedef: 2.','miting_duzen',2,650,'tek',2,'parti',true),
+('miting_duzen_3','Seçimler','Miting organize et III','Oyunda miting düzenle. Hedef: 3.','miting_duzen',3,950,'tek',3,'parti',true),
+('miting_duzen_4','Seçimler','Miting organize et IV','Oyunda miting düzenle. Hedef: 5.','miting_duzen',5,1500,'tek',4,'parti',true),
+('miting_duzen_5','Seçimler','Miting organize et V','Oyunda miting düzenle. Hedef: 8.','miting_duzen',8,2400,'tek',5,'parti',true),
+('gazete_haber_1','Basın','Haber yayımla I','Oyuncu gazetesinde haber metinleri yayımla. Hedef: 1.','gazete_haber',1,300,'tek',1,'basin',true),
+('gazete_haber_2','Basın','Haber yayımla II','Oyuncu gazetesinde haber metinleri yayımla. Hedef: 3.','gazete_haber',3,550,'tek',2,'basin',true),
+('gazete_haber_3','Basın','Haber yayımla III','Oyuncu gazetesinde haber metinleri yayımla. Hedef: 6.','gazete_haber',6,850,'tek',3,'basin',true),
+('gazete_haber_4','Basın','Haber yayımla IV','Oyuncu gazetesinde haber metinleri yayımla. Hedef: 12.','gazete_haber',12,1400,'tek',4,'basin',true),
+('gazete_haber_5','Basın','Haber yayımla V','Oyuncu gazetesinde haber metinleri yayımla. Hedef: 25.','gazete_haber',25,2300,'tek',5,'basin',true),
+('gazete_kose_1','Basın','Köşe yazısı yaz I','Oyuncu gazetesinde köşe yazıları yayımla. Hedef: 1.','gazete_kose',1,300,'tek',1,'basin',true),
+('gazete_kose_2','Basın','Köşe yazısı yaz II','Oyuncu gazetesinde köşe yazıları yayımla. Hedef: 3.','gazete_kose',3,550,'tek',2,'basin',true),
+('gazete_kose_3','Basın','Köşe yazısı yaz III','Oyuncu gazetesinde köşe yazıları yayımla. Hedef: 6.','gazete_kose',6,850,'tek',3,'basin',true),
+('gazete_kose_4','Basın','Köşe yazısı yaz IV','Oyuncu gazetesinde köşe yazıları yayımla. Hedef: 12.','gazete_kose',12,1400,'tek',4,'basin',true),
+('gazete_kose_5','Basın','Köşe yazısı yaz V','Oyuncu gazetesinde köşe yazıları yayımla. Hedef: 25.','gazete_kose',25,2300,'tek',5,'basin',true),
+('gazete_yayin_gun_1','Basın','Düzenli gazetecilik yap I','Farklı günlerde gazete yayını yap. Hedef: 1.','gazete_yayin_gun',1,300,'tek',1,'basin',true),
+('gazete_yayin_gun_2','Basın','Düzenli gazetecilik yap II','Farklı günlerde gazete yayını yap. Hedef: 3.','gazete_yayin_gun',3,550,'tek',2,'basin',true),
+('gazete_yayin_gun_3','Basın','Düzenli gazetecilik yap III','Farklı günlerde gazete yayını yap. Hedef: 7.','gazete_yayin_gun',7,850,'tek',3,'basin',true),
+('gazete_yayin_gun_4','Basın','Düzenli gazetecilik yap IV','Farklı günlerde gazete yayını yap. Hedef: 14.','gazete_yayin_gun',14,1400,'tek',4,'basin',true),
+('gazete_yayin_gun_5','Basın','Düzenli gazetecilik yap V','Farklı günlerde gazete yayını yap. Hedef: 30.','gazete_yayin_gun',30,2300,'tek',5,'basin',true),
+('gazete_yorum_1','Basın','Haberlere yorum kat I','Farklı köşe yazılarına yorum yap. Hedef: 1.','gazete_yorum',1,300,'tek',1,'basin',true),
+('gazete_yorum_2','Basın','Haberlere yorum kat II','Farklı köşe yazılarına yorum yap. Hedef: 3.','gazete_yorum',3,550,'tek',2,'basin',true),
+('gazete_yorum_3','Basın','Haberlere yorum kat III','Farklı köşe yazılarına yorum yap. Hedef: 6.','gazete_yorum',6,850,'tek',3,'basin',true),
+('gazete_yorum_4','Basın','Haberlere yorum kat IV','Farklı köşe yazılarına yorum yap. Hedef: 12.','gazete_yorum',12,1400,'tek',4,'basin',true),
+('gazete_yorum_5','Basın','Haberlere yorum kat V','Farklı köşe yazılarına yorum yap. Hedef: 25.','gazete_yorum',25,2300,'tek',5,'basin',true),
+('gazeteler_yayin_1','Basın','Farklı gazetelerde yaz I','Birden çok oyuncu gazetesinde yazı yayımla. Hedef: 1.','gazeteler_yayin',1,400,'tek',1,'basin',true),
+('gazeteler_yayin_2','Basın','Farklı gazetelerde yaz II','Birden çok oyuncu gazetesinde yazı yayımla. Hedef: 2.','gazeteler_yayin',2,650,'tek',2,'basin',true),
+('gazeteler_yayin_3','Basın','Farklı gazetelerde yaz III','Birden çok oyuncu gazetesinde yazı yayımla. Hedef: 3.','gazeteler_yayin',3,950,'tek',3,'basin',true),
+('gazeteler_yayin_4','Basın','Farklı gazetelerde yaz IV','Birden çok oyuncu gazetesinde yazı yayımla. Hedef: 5.','gazeteler_yayin',5,1500,'tek',4,'basin',true),
+('gazeteler_yayin_5','Basın','Farklı gazetelerde yaz V','Birden çok oyuncu gazetesinde yazı yayımla. Hedef: 8.','gazeteler_yayin',8,2400,'tek',5,'basin',true),
+('roportaj_davet_1','Basın','Röportaj davetleri gönder I','Gazeteci olarak başka oyunculara röportaj daveti yönelt. Hedef: 1.','roportaj_davet',1,300,'tek',1,'basin',true),
+('roportaj_davet_2','Basın','Röportaj davetleri gönder II','Gazeteci olarak başka oyunculara röportaj daveti yönelt. Hedef: 3.','roportaj_davet',3,550,'tek',2,'basin',true),
+('roportaj_davet_3','Basın','Röportaj davetleri gönder III','Gazeteci olarak başka oyunculara röportaj daveti yönelt. Hedef: 6.','roportaj_davet',6,850,'tek',3,'basin',true),
+('roportaj_davet_4','Basın','Röportaj davetleri gönder IV','Gazeteci olarak başka oyunculara röportaj daveti yönelt. Hedef: 12.','roportaj_davet',12,1400,'tek',4,'basin',true),
+('roportaj_davet_5','Basın','Röportaj davetleri gönder V','Gazeteci olarak başka oyunculara röportaj daveti yönelt. Hedef: 25.','roportaj_davet',25,2300,'tek',5,'basin',true),
+('roportaj_yayin_1','Basın','Röportaj yayımla I','Oyuncularla yapılan röportajları gazetede yayımla. Hedef: 1.','roportaj_yayin',1,300,'tek',1,'basin',true),
+('roportaj_yayin_2','Basın','Röportaj yayımla II','Oyuncularla yapılan röportajları gazetede yayımla. Hedef: 3.','roportaj_yayin',3,550,'tek',2,'basin',true),
+('roportaj_yayin_3','Basın','Röportaj yayımla III','Oyuncularla yapılan röportajları gazetede yayımla. Hedef: 6.','roportaj_yayin',6,850,'tek',3,'basin',true),
+('roportaj_yayin_4','Basın','Röportaj yayımla IV','Oyuncularla yapılan röportajları gazetede yayımla. Hedef: 12.','roportaj_yayin',12,1400,'tek',4,'basin',true),
+('roportaj_yayin_5','Basın','Röportaj yayımla V','Oyuncularla yapılan röportajları gazetede yayımla. Hedef: 25.','roportaj_yayin',25,2300,'tek',5,'basin',true),
+('roportaj_cevap_1','Basın','Röportajlara cevap ver I','Sana gönderilen röportaj davetlerini yanıtla. Hedef: 1.','roportaj_cevap',1,300,'tek',1,'basin',true),
+('roportaj_cevap_2','Basın','Röportajlara cevap ver II','Sana gönderilen röportaj davetlerini yanıtla. Hedef: 3.','roportaj_cevap',3,550,'tek',2,'basin',true),
+('roportaj_cevap_3','Basın','Röportajlara cevap ver III','Sana gönderilen röportaj davetlerini yanıtla. Hedef: 6.','roportaj_cevap',6,850,'tek',3,'basin',true),
+('roportaj_cevap_4','Basın','Röportajlara cevap ver IV','Sana gönderilen röportaj davetlerini yanıtla. Hedef: 12.','roportaj_cevap',12,1400,'tek',4,'basin',true),
+('roportaj_cevap_5','Basın','Röportajlara cevap ver V','Sana gönderilen röportaj davetlerini yanıtla. Hedef: 25.','roportaj_cevap',25,2300,'tek',5,'basin',true),
+('haber_cevap_1','Basın','Basında cevap hakkı kullan I','Hakkında çıkan haberlerde resmî cevap yayımla. Hedef: 1.','haber_cevap',1,400,'tek',1,'basin',true),
+('haber_cevap_2','Basın','Basında cevap hakkı kullan II','Hakkında çıkan haberlerde resmî cevap yayımla. Hedef: 2.','haber_cevap',2,650,'tek',2,'basin',true),
+('haber_cevap_3','Basın','Basında cevap hakkı kullan III','Hakkında çıkan haberlerde resmî cevap yayımla. Hedef: 3.','haber_cevap',3,950,'tek',3,'basin',true),
+('haber_cevap_4','Basın','Basında cevap hakkı kullan IV','Hakkında çıkan haberlerde resmî cevap yayımla. Hedef: 5.','haber_cevap',5,1500,'tek',4,'basin',true),
+('haber_cevap_5','Basın','Basında cevap hakkı kullan V','Hakkında çıkan haberlerde resmî cevap yayımla. Hedef: 8.','haber_cevap',8,2400,'tek',5,'basin',true),
+('duello_davet_1','Siyasi tartışmalar','Tartışma daveti gönder I','Başka oyuncuları siyasi düelloya davet et. Hedef: 1.','duello_davet',1,300,'tek',1,'sivil',true),
+('duello_davet_2','Siyasi tartışmalar','Tartışma daveti gönder II','Başka oyuncuları siyasi düelloya davet et. Hedef: 3.','duello_davet',3,550,'tek',2,'sivil',true),
+('duello_davet_3','Siyasi tartışmalar','Tartışma daveti gönder III','Başka oyuncuları siyasi düelloya davet et. Hedef: 6.','duello_davet',6,850,'tek',3,'sivil',true),
+('duello_davet_4','Siyasi tartışmalar','Tartışma daveti gönder IV','Başka oyuncuları siyasi düelloya davet et. Hedef: 12.','duello_davet',12,1400,'tek',4,'sivil',true),
+('duello_davet_5','Siyasi tartışmalar','Tartışma daveti gönder V','Başka oyuncuları siyasi düelloya davet et. Hedef: 25.','duello_davet',25,2300,'tek',5,'sivil',true),
+('duello_konus_1','Siyasi tartışmalar','Siyasi tartışmada konuş I','Karşılıklı tartışmada söz al. Hedef: 1.','duello_konus',1,300,'tek',1,'sivil',true),
+('duello_konus_2','Siyasi tartışmalar','Siyasi tartışmada konuş II','Karşılıklı tartışmada söz al. Hedef: 3.','duello_konus',3,550,'tek',2,'sivil',true),
+('duello_konus_3','Siyasi tartışmalar','Siyasi tartışmada konuş III','Karşılıklı tartışmada söz al. Hedef: 6.','duello_konus',6,850,'tek',3,'sivil',true),
+('duello_konus_4','Siyasi tartışmalar','Siyasi tartışmada konuş IV','Karşılıklı tartışmada söz al. Hedef: 12.','duello_konus',12,1400,'tek',4,'sivil',true),
+('duello_konus_5','Siyasi tartışmalar','Siyasi tartışmada konuş V','Karşılıklı tartışmada söz al. Hedef: 25.','duello_konus',25,2300,'tek',5,'sivil',true),
+('duello_oy_1','Siyasi tartışmalar','Düello izleyicisi ol I','Farklı siyasi düellolarda oy kullan. Hedef: 1.','duello_oy',1,300,'tek',1,'sivil',true),
+('duello_oy_2','Siyasi tartışmalar','Düello izleyicisi ol II','Farklı siyasi düellolarda oy kullan. Hedef: 3.','duello_oy',3,550,'tek',2,'sivil',true),
+('duello_oy_3','Siyasi tartışmalar','Düello izleyicisi ol III','Farklı siyasi düellolarda oy kullan. Hedef: 6.','duello_oy',6,850,'tek',3,'sivil',true),
+('duello_oy_4','Siyasi tartışmalar','Düello izleyicisi ol IV','Farklı siyasi düellolarda oy kullan. Hedef: 12.','duello_oy',12,1400,'tek',4,'sivil',true),
+('duello_oy_5','Siyasi tartışmalar','Düello izleyicisi ol V','Farklı siyasi düellolarda oy kullan. Hedef: 25.','duello_oy',25,2300,'tek',5,'sivil',true),
+('duello_tamam_1','Siyasi tartışmalar','Tartışmaları tamamla I','Tarafı olduğun düelloların tamamlanmasını sağla. Hedef: 1.','duello_tamam',1,300,'tek',1,'sivil',true),
+('duello_tamam_2','Siyasi tartışmalar','Tartışmaları tamamla II','Tarafı olduğun düelloların tamamlanmasını sağla. Hedef: 3.','duello_tamam',3,550,'tek',2,'sivil',true),
+('duello_tamam_3','Siyasi tartışmalar','Tartışmaları tamamla III','Tarafı olduğun düelloların tamamlanmasını sağla. Hedef: 6.','duello_tamam',6,850,'tek',3,'sivil',true),
+('duello_tamam_4','Siyasi tartışmalar','Tartışmaları tamamla IV','Tarafı olduğun düelloların tamamlanmasını sağla. Hedef: 12.','duello_tamam',12,1400,'tek',4,'sivil',true),
+('duello_tamam_5','Siyasi tartışmalar','Tartışmaları tamamla V','Tarafı olduğun düelloların tamamlanmasını sağla. Hedef: 25.','duello_tamam',25,2300,'tek',5,'sivil',true),
+('imza_baslat_1','Vatandaşlık','İmza kampanyası başlat I','Kamusal bir talep için imza kampanyası aç. Hedef: 1.','imza_baslat',1,300,'tek',1,'sivil',true),
+('imza_baslat_2','Vatandaşlık','İmza kampanyası başlat II','Kamusal bir talep için imza kampanyası aç. Hedef: 3.','imza_baslat',3,550,'tek',2,'sivil',true),
+('imza_baslat_3','Vatandaşlık','İmza kampanyası başlat III','Kamusal bir talep için imza kampanyası aç. Hedef: 6.','imza_baslat',6,850,'tek',3,'sivil',true),
+('imza_baslat_4','Vatandaşlık','İmza kampanyası başlat IV','Kamusal bir talep için imza kampanyası aç. Hedef: 12.','imza_baslat',12,1400,'tek',4,'sivil',true),
+('imza_baslat_5','Vatandaşlık','İmza kampanyası başlat V','Kamusal bir talep için imza kampanyası aç. Hedef: 25.','imza_baslat',25,2300,'tek',5,'sivil',true),
+('imza_kat_1','Vatandaşlık','Toplumsal talepleri imzala I','Diğer oyuncuların imza kampanyalarına destek ver. Hedef: 1.','imza_kat',1,300,'tek',1,'sivil',true),
+('imza_kat_2','Vatandaşlık','Toplumsal talepleri imzala II','Diğer oyuncuların imza kampanyalarına destek ver. Hedef: 3.','imza_kat',3,550,'tek',2,'sivil',true),
+('imza_kat_3','Vatandaşlık','Toplumsal talepleri imzala III','Diğer oyuncuların imza kampanyalarına destek ver. Hedef: 6.','imza_kat',6,850,'tek',3,'sivil',true),
+('imza_kat_4','Vatandaşlık','Toplumsal talepleri imzala IV','Diğer oyuncuların imza kampanyalarına destek ver. Hedef: 12.','imza_kat',12,1400,'tek',4,'sivil',true),
+('imza_kat_5','Vatandaşlık','Toplumsal talepleri imzala V','Diğer oyuncuların imza kampanyalarına destek ver. Hedef: 25.','imza_kat',25,2300,'tek',5,'sivil',true),
+('imza_basari_1','Vatandaşlık','İmza hedefini tuttur I','Başlattığın kampanyaların yeterli imzaya ulaşmasını sağla. Hedef: 1.','imza_basari',1,400,'tek',1,'sivil',true),
+('imza_basari_2','Vatandaşlık','İmza hedefini tuttur II','Başlattığın kampanyaların yeterli imzaya ulaşmasını sağla. Hedef: 2.','imza_basari',2,650,'tek',2,'sivil',true),
+('imza_basari_3','Vatandaşlık','İmza hedefini tuttur III','Başlattığın kampanyaların yeterli imzaya ulaşmasını sağla. Hedef: 3.','imza_basari',3,950,'tek',3,'sivil',true),
+('imza_basari_4','Vatandaşlık','İmza hedefini tuttur IV','Başlattığın kampanyaların yeterli imzaya ulaşmasını sağla. Hedef: 5.','imza_basari',5,1500,'tek',4,'sivil',true),
+('imza_basari_5','Vatandaşlık','İmza hedefini tuttur V','Başlattığın kampanyaların yeterli imzaya ulaşmasını sağla. Hedef: 8.','imza_basari',8,2400,'tek',5,'sivil',true),
+('dilekce_gonder_1','Vatandaşlık','Resmî dilekçe gönder I','Devlet makamlarına talep ve öneri dilekçeleri gönder. Hedef: 1.','dilekce_gonder',1,300,'tek',1,'sivil',true),
+('dilekce_gonder_2','Vatandaşlık','Resmî dilekçe gönder II','Devlet makamlarına talep ve öneri dilekçeleri gönder. Hedef: 3.','dilekce_gonder',3,550,'tek',2,'sivil',true),
+('dilekce_gonder_3','Vatandaşlık','Resmî dilekçe gönder III','Devlet makamlarına talep ve öneri dilekçeleri gönder. Hedef: 6.','dilekce_gonder',6,850,'tek',3,'sivil',true),
+('dilekce_gonder_4','Vatandaşlık','Resmî dilekçe gönder IV','Devlet makamlarına talep ve öneri dilekçeleri gönder. Hedef: 12.','dilekce_gonder',12,1400,'tek',4,'sivil',true),
+('dilekce_gonder_5','Vatandaşlık','Resmî dilekçe gönder V','Devlet makamlarına talep ve öneri dilekçeleri gönder. Hedef: 25.','dilekce_gonder',25,2300,'tek',5,'sivil',true),
+('dilekce_yanit_1','Vatandaşlık','Halkın talebini yanıtla I','Makam sahibi olarak vatandaş dilekçelerine resmî yanıt yayımla. Hedef: 1.','dilekce_yanit',1,300,'tek',1,'devlet',true),
+('dilekce_yanit_2','Vatandaşlık','Halkın talebini yanıtla II','Makam sahibi olarak vatandaş dilekçelerine resmî yanıt yayımla. Hedef: 3.','dilekce_yanit',3,550,'tek',2,'devlet',true),
+('dilekce_yanit_3','Vatandaşlık','Halkın talebini yanıtla III','Makam sahibi olarak vatandaş dilekçelerine resmî yanıt yayımla. Hedef: 6.','dilekce_yanit',6,850,'tek',3,'devlet',true),
+('dilekce_yanit_4','Vatandaşlık','Halkın talebini yanıtla IV','Makam sahibi olarak vatandaş dilekçelerine resmî yanıt yayımla. Hedef: 12.','dilekce_yanit',12,1400,'tek',4,'devlet',true),
+('dilekce_yanit_5','Vatandaşlık','Halkın talebini yanıtla V','Makam sahibi olarak vatandaş dilekçelerine resmî yanıt yayımla. Hedef: 25.','dilekce_yanit',25,2300,'tek',5,'devlet',true),
+('dernek_uye_1','Dernekler','Derneklerde yer al I','Farklı sivil toplum kuruluşlarına üye ol. Hedef: 1.','dernek_uye',1,400,'tek',1,'dernek',true),
+('dernek_uye_2','Dernekler','Derneklerde yer al II','Farklı sivil toplum kuruluşlarına üye ol. Hedef: 2.','dernek_uye',2,650,'tek',2,'dernek',true),
+('dernek_uye_3','Dernekler','Derneklerde yer al III','Farklı sivil toplum kuruluşlarına üye ol. Hedef: 3.','dernek_uye',3,950,'tek',3,'dernek',true),
+('dernek_uye_4','Dernekler','Derneklerde yer al IV','Farklı sivil toplum kuruluşlarına üye ol. Hedef: 5.','dernek_uye',5,1500,'tek',4,'dernek',true),
+('dernek_uye_5','Dernekler','Derneklerde yer al V','Farklı sivil toplum kuruluşlarına üye ol. Hedef: 8.','dernek_uye',8,2400,'tek',5,'dernek',true),
+('dernek_eylem_1','Dernekler','Dernek çalışmasına katkı ver I','Dernek adına açıklama veya etkinlik düzenle. Hedef: 1.','dernek_eylem',1,300,'tek',1,'dernek',true),
+('dernek_eylem_2','Dernekler','Dernek çalışmasına katkı ver II','Dernek adına açıklama veya etkinlik düzenle. Hedef: 3.','dernek_eylem',3,550,'tek',2,'dernek',true),
+('dernek_eylem_3','Dernekler','Dernek çalışmasına katkı ver III','Dernek adına açıklama veya etkinlik düzenle. Hedef: 6.','dernek_eylem',6,850,'tek',3,'dernek',true),
+('dernek_eylem_4','Dernekler','Dernek çalışmasına katkı ver IV','Dernek adına açıklama veya etkinlik düzenle. Hedef: 12.','dernek_eylem',12,1400,'tek',4,'dernek',true),
+('dernek_eylem_5','Dernekler','Dernek çalışmasına katkı ver V','Dernek adına açıklama veya etkinlik düzenle. Hedef: 25.','dernek_eylem',25,2300,'tek',5,'dernek',true),
+('dernek_eylem_tur_1','Dernekler','Dernek faaliyetlerini çeşitlendir I','Dernek adına farklı türlerde etkinlikler yap. Hedef: 1.','dernek_eylem_tur',1,400,'tek',1,'dernek',true),
+('dernek_eylem_tur_2','Dernekler','Dernek faaliyetlerini çeşitlendir II','Dernek adına farklı türlerde etkinlikler yap. Hedef: 2.','dernek_eylem_tur',2,650,'tek',2,'dernek',true),
+('dernek_eylem_tur_3','Dernekler','Dernek faaliyetlerini çeşitlendir III','Dernek adına farklı türlerde etkinlikler yap. Hedef: 3.','dernek_eylem_tur',3,950,'tek',3,'dernek',true),
+('dernek_eylem_tur_4','Dernekler','Dernek faaliyetlerini çeşitlendir IV','Dernek adına farklı türlerde etkinlikler yap. Hedef: 5.','dernek_eylem_tur',5,1500,'tek',4,'dernek',true),
+('dernek_eylem_tur_5','Dernekler','Dernek faaliyetlerini çeşitlendir V','Dernek adına farklı türlerde etkinlikler yap. Hedef: 8.','dernek_eylem_tur',8,2400,'tek',5,'dernek',true),
+('dernek_protesto_katil_1','Dernekler','Sivil eyleme katıl I','Farklı dernek protestolarına katıl. Hedef: 1.','dernek_protesto_katil',1,300,'tek',1,'dernek',true),
+('dernek_protesto_katil_2','Dernekler','Sivil eyleme katıl II','Farklı dernek protestolarına katıl. Hedef: 3.','dernek_protesto_katil',3,550,'tek',2,'dernek',true),
+('dernek_protesto_katil_3','Dernekler','Sivil eyleme katıl III','Farklı dernek protestolarına katıl. Hedef: 6.','dernek_protesto_katil',6,850,'tek',3,'dernek',true),
+('dernek_protesto_katil_4','Dernekler','Sivil eyleme katıl IV','Farklı dernek protestolarına katıl. Hedef: 12.','dernek_protesto_katil',12,1400,'tek',4,'dernek',true),
+('dernek_protesto_katil_5','Dernekler','Sivil eyleme katıl V','Farklı dernek protestolarına katıl. Hedef: 25.','dernek_protesto_katil',25,2300,'tek',5,'dernek',true),
+('dernek_sube_1','Dernekler','Sivil toplum şubesi aç I','Dernek yönetiminde yeni il şubeleri aç. Hedef: 1.','dernek_sube',1,400,'tek',1,'dernek',true),
+('dernek_sube_2','Dernekler','Sivil toplum şubesi aç II','Dernek yönetiminde yeni il şubeleri aç. Hedef: 2.','dernek_sube',2,650,'tek',2,'dernek',true),
+('dernek_sube_3','Dernekler','Sivil toplum şubesi aç III','Dernek yönetiminde yeni il şubeleri aç. Hedef: 3.','dernek_sube',3,950,'tek',3,'dernek',true),
+('dernek_sube_4','Dernekler','Sivil toplum şubesi aç IV','Dernek yönetiminde yeni il şubeleri aç. Hedef: 5.','dernek_sube',5,1500,'tek',4,'dernek',true),
+('dernek_sube_5','Dernekler','Sivil toplum şubesi aç V','Dernek yönetiminde yeni il şubeleri aç. Hedef: 8.','dernek_sube',8,2400,'tek',5,'dernek',true),
+('dernek_secim_oy_1','Dernekler','Dernek genel kurulunda oy kullan I','Derneklerin yönetim seçimlerinde oy kullan. Hedef: 1.','dernek_secim_oy',1,400,'tek',1,'dernek',true),
+('dernek_secim_oy_2','Dernekler','Dernek genel kurulunda oy kullan II','Derneklerin yönetim seçimlerinde oy kullan. Hedef: 2.','dernek_secim_oy',2,650,'tek',2,'dernek',true),
+('dernek_secim_oy_3','Dernekler','Dernek genel kurulunda oy kullan III','Derneklerin yönetim seçimlerinde oy kullan. Hedef: 3.','dernek_secim_oy',3,950,'tek',3,'dernek',true),
+('dernek_secim_oy_4','Dernekler','Dernek genel kurulunda oy kullan IV','Derneklerin yönetim seçimlerinde oy kullan. Hedef: 5.','dernek_secim_oy',5,1500,'tek',4,'dernek',true),
+('dernek_secim_oy_5','Dernekler','Dernek genel kurulunda oy kullan V','Derneklerin yönetim seçimlerinde oy kullan. Hedef: 8.','dernek_secim_oy',8,2400,'tek',5,'dernek',true),
+('parti_kurultay_imza_1','Dernekler','Parti içi demokrasiyi destekle I','Parti üyelerinin olağanüstü kurultay taleplerini imzala. Hedef: 1.','parti_kurultay_imza',1,400,'tek',1,'parti',true),
+('parti_kurultay_imza_2','Dernekler','Parti içi demokrasiyi destekle II','Parti üyelerinin olağanüstü kurultay taleplerini imzala. Hedef: 2.','parti_kurultay_imza',2,650,'tek',2,'parti',true),
+('parti_kurultay_imza_3','Dernekler','Parti içi demokrasiyi destekle III','Parti üyelerinin olağanüstü kurultay taleplerini imzala. Hedef: 3.','parti_kurultay_imza',3,950,'tek',3,'parti',true),
+('parti_kurultay_imza_4','Dernekler','Parti içi demokrasiyi destekle IV','Parti üyelerinin olağanüstü kurultay taleplerini imzala. Hedef: 5.','parti_kurultay_imza',5,1500,'tek',4,'parti',true),
+('parti_kurultay_imza_5','Dernekler','Parti içi demokrasiyi destekle V','Parti üyelerinin olağanüstü kurultay taleplerini imzala. Hedef: 8.','parti_kurultay_imza',8,2400,'tek',5,'parti',true),
+('sirket_kur_1','Ticaret','İşletme kur I','Yeni şirketler kurarak ekonomik faaliyete başla. Hedef: 1.','sirket_kur',1,400,'tek',1,'sirket',true),
+('sirket_kur_2','Ticaret','İşletme kur II','Yeni şirketler kurarak ekonomik faaliyete başla. Hedef: 2.','sirket_kur',2,650,'tek',2,'sirket',true),
+('sirket_kur_3','Ticaret','İşletme kur III','Yeni şirketler kurarak ekonomik faaliyete başla. Hedef: 3.','sirket_kur',3,950,'tek',3,'sirket',true),
+('sirket_kur_4','Ticaret','İşletme kur IV','Yeni şirketler kurarak ekonomik faaliyete başla. Hedef: 5.','sirket_kur',5,1500,'tek',4,'sirket',true),
+('sirket_kur_5','Ticaret','İşletme kur V','Yeni şirketler kurarak ekonomik faaliyete başla. Hedef: 8.','sirket_kur',8,2400,'tek',5,'sirket',true),
+('sirket_ortak_1','Ticaret','Şirket ortaklığı edin I','Farklı şirketlerde ortak ol. Hedef: 1.','sirket_ortak',1,400,'tek',1,'sirket',true),
+('sirket_ortak_2','Ticaret','Şirket ortaklığı edin II','Farklı şirketlerde ortak ol. Hedef: 2.','sirket_ortak',2,650,'tek',2,'sirket',true),
+('sirket_ortak_3','Ticaret','Şirket ortaklığı edin III','Farklı şirketlerde ortak ol. Hedef: 3.','sirket_ortak',3,950,'tek',3,'sirket',true),
+('sirket_ortak_4','Ticaret','Şirket ortaklığı edin IV','Farklı şirketlerde ortak ol. Hedef: 5.','sirket_ortak',5,1500,'tek',4,'sirket',true),
+('sirket_ortak_5','Ticaret','Şirket ortaklığı edin V','Farklı şirketlerde ortak ol. Hedef: 8.','sirket_ortak',8,2400,'tek',5,'sirket',true),
+('emlak_sahip_1','Ticaret','Mülk edin I','Satın aldığın yatırım mülkleriyle portföy oluştur. Hedef: 1.','emlak_sahip',1,400,'tek',1,'emlak',true),
+('emlak_sahip_2','Ticaret','Mülk edin II','Satın aldığın yatırım mülkleriyle portföy oluştur. Hedef: 2.','emlak_sahip',2,650,'tek',2,'emlak',true),
+('emlak_sahip_3','Ticaret','Mülk edin III','Satın aldığın yatırım mülkleriyle portföy oluştur. Hedef: 3.','emlak_sahip',3,950,'tek',3,'emlak',true),
+('emlak_sahip_4','Ticaret','Mülk edin IV','Satın aldığın yatırım mülkleriyle portföy oluştur. Hedef: 5.','emlak_sahip',5,1500,'tek',4,'emlak',true),
+('emlak_sahip_5','Ticaret','Mülk edin V','Satın aldığın yatırım mülkleriyle portföy oluştur. Hedef: 8.','emlak_sahip',8,2400,'tek',5,'emlak',true),
+('emlak_il_1','Ticaret','Farklı illerde mülk edin I','Farklı illerde yatırım mülkü bulundur. Hedef: 1.','emlak_il',1,400,'tek',1,'emlak',true),
+('emlak_il_2','Ticaret','Farklı illerde mülk edin II','Farklı illerde yatırım mülkü bulundur. Hedef: 2.','emlak_il',2,650,'tek',2,'emlak',true),
+('emlak_il_3','Ticaret','Farklı illerde mülk edin III','Farklı illerde yatırım mülkü bulundur. Hedef: 3.','emlak_il',3,950,'tek',3,'emlak',true),
+('emlak_il_4','Ticaret','Farklı illerde mülk edin IV','Farklı illerde yatırım mülkü bulundur. Hedef: 5.','emlak_il',5,1500,'tek',4,'emlak',true),
+('emlak_il_5','Ticaret','Farklı illerde mülk edin V','Farklı illerde yatırım mülkü bulundur. Hedef: 8.','emlak_il',8,2400,'tek',5,'emlak',true),
+('kanun_teklif_1','Meclis','Kanun öner I','Milletvekili olarak kanun teklifleri hazırla. Hedef: 1.','kanun_teklif',1,400,'tek',1,'devlet',true),
+('kanun_teklif_2','Meclis','Kanun öner II','Milletvekili olarak kanun teklifleri hazırla. Hedef: 2.','kanun_teklif',2,650,'tek',2,'devlet',true),
+('kanun_teklif_3','Meclis','Kanun öner III','Milletvekili olarak kanun teklifleri hazırla. Hedef: 3.','kanun_teklif',3,950,'tek',3,'devlet',true),
+('kanun_teklif_4','Meclis','Kanun öner IV','Milletvekili olarak kanun teklifleri hazırla. Hedef: 5.','kanun_teklif',5,1500,'tek',4,'devlet',true),
+('kanun_teklif_5','Meclis','Kanun öner V','Milletvekili olarak kanun teklifleri hazırla. Hedef: 8.','kanun_teklif',8,2400,'tek',5,'devlet',true),
+('kanun_oy_1','Meclis','Mecliste oy kullan I','Kanun tekliflerinin oylamalarında görev al. Hedef: 1.','kanun_oy',1,300,'tek',1,'devlet',true),
+('kanun_oy_2','Meclis','Mecliste oy kullan II','Kanun tekliflerinin oylamalarında görev al. Hedef: 3.','kanun_oy',3,550,'tek',2,'devlet',true),
+('kanun_oy_3','Meclis','Mecliste oy kullan III','Kanun tekliflerinin oylamalarında görev al. Hedef: 6.','kanun_oy',6,850,'tek',3,'devlet',true),
+('kanun_oy_4','Meclis','Mecliste oy kullan IV','Kanun tekliflerinin oylamalarında görev al. Hedef: 12.','kanun_oy',12,1400,'tek',4,'devlet',true),
+('kanun_oy_5','Meclis','Mecliste oy kullan V','Kanun tekliflerinin oylamalarında görev al. Hedef: 25.','kanun_oy',25,2300,'tek',5,'devlet',true),
+('bakan_soru_1','Meclis','Yazılı soru önergesi ver I','Bakanlıklara yazılı soru önergesi gönder. Hedef: 1.','bakan_soru',1,300,'tek',1,'devlet',true),
+('bakan_soru_2','Meclis','Yazılı soru önergesi ver II','Bakanlıklara yazılı soru önergesi gönder. Hedef: 3.','bakan_soru',3,550,'tek',2,'devlet',true),
+('bakan_soru_3','Meclis','Yazılı soru önergesi ver III','Bakanlıklara yazılı soru önergesi gönder. Hedef: 6.','bakan_soru',6,850,'tek',3,'devlet',true),
+('bakan_soru_4','Meclis','Yazılı soru önergesi ver IV','Bakanlıklara yazılı soru önergesi gönder. Hedef: 12.','bakan_soru',12,1400,'tek',4,'devlet',true),
+('bakan_soru_5','Meclis','Yazılı soru önergesi ver V','Bakanlıklara yazılı soru önergesi gönder. Hedef: 25.','bakan_soru',25,2300,'tek',5,'devlet',true),
+('bakan_yanit_1','Meclis','Bakanlık sorularını yanıtla I','Bakan olarak milletvekillerinin sorularını cevapla. Hedef: 1.','bakan_yanit',1,300,'tek',1,'devlet',true),
+('bakan_yanit_2','Meclis','Bakanlık sorularını yanıtla II','Bakan olarak milletvekillerinin sorularını cevapla. Hedef: 3.','bakan_yanit',3,550,'tek',2,'devlet',true),
+('bakan_yanit_3','Meclis','Bakanlık sorularını yanıtla III','Bakan olarak milletvekillerinin sorularını cevapla. Hedef: 6.','bakan_yanit',6,850,'tek',3,'devlet',true),
+('bakan_yanit_4','Meclis','Bakanlık sorularını yanıtla IV','Bakan olarak milletvekillerinin sorularını cevapla. Hedef: 12.','bakan_yanit',12,1400,'tek',4,'devlet',true),
+('bakan_yanit_5','Meclis','Bakanlık sorularını yanıtla V','Bakan olarak milletvekillerinin sorularını cevapla. Hedef: 25.','bakan_yanit',25,2300,'tek',5,'devlet',true),
+('anket_oy_1','Seçimler','Haftalık ankete katıl I','Haftalık siyasi anketlerde görüş bildir. Hedef: 1.','anket_oy',1,300,'tek',1,'parti',true),
+('anket_oy_2','Seçimler','Haftalık ankete katıl II','Haftalık siyasi anketlerde görüş bildir. Hedef: 3.','anket_oy',3,550,'tek',2,'parti',true),
+('anket_oy_3','Seçimler','Haftalık ankete katıl III','Haftalık siyasi anketlerde görüş bildir. Hedef: 7.','anket_oy',7,850,'tek',3,'parti',true),
+('anket_oy_4','Seçimler','Haftalık ankete katıl IV','Haftalık siyasi anketlerde görüş bildir. Hedef: 14.','anket_oy',14,1400,'tek',4,'parti',true),
+('anket_oy_5','Seçimler','Haftalık ankete katıl V','Haftalık siyasi anketlerde görüş bildir. Hedef: 30.','anket_oy',30,2300,'tek',5,'parti',true),
+('parti_tuzuk_oy_1','Meclis','Parti içi oylamaya katıl I','Parti tüzük oylamalarında oy kullan. Hedef: 1.','parti_tuzuk_oy',1,400,'tek',1,'parti',true),
+('parti_tuzuk_oy_2','Meclis','Parti içi oylamaya katıl II','Parti tüzük oylamalarında oy kullan. Hedef: 2.','parti_tuzuk_oy',2,650,'tek',2,'parti',true),
+('parti_tuzuk_oy_3','Meclis','Parti içi oylamaya katıl III','Parti tüzük oylamalarında oy kullan. Hedef: 3.','parti_tuzuk_oy',3,950,'tek',3,'parti',true),
+('parti_tuzuk_oy_4','Meclis','Parti içi oylamaya katıl IV','Parti tüzük oylamalarında oy kullan. Hedef: 5.','parti_tuzuk_oy',5,1500,'tek',4,'parti',true),
+('parti_tuzuk_oy_5','Meclis','Parti içi oylamaya katıl V','Parti tüzük oylamalarında oy kullan. Hedef: 8.','parti_tuzuk_oy',8,2400,'tek',5,'parti',true),
+('yayin_yap_1','Siyasi tartışmalar','Kamuoyuna açıklama yap I','Oyun içindeki resmî ve siyasi yayınlardan gönder. Hedef: 1.','yayin_yap',1,300,'tek',1,'parti',true),
+('yayin_yap_2','Siyasi tartışmalar','Kamuoyuna açıklama yap II','Oyun içindeki resmî ve siyasi yayınlardan gönder. Hedef: 3.','yayin_yap',3,550,'tek',2,'parti',true),
+('yayin_yap_3','Siyasi tartışmalar','Kamuoyuna açıklama yap III','Oyun içindeki resmî ve siyasi yayınlardan gönder. Hedef: 6.','yayin_yap',6,850,'tek',3,'parti',true),
+('yayin_yap_4','Siyasi tartışmalar','Kamuoyuna açıklama yap IV','Oyun içindeki resmî ve siyasi yayınlardan gönder. Hedef: 12.','yayin_yap',12,1400,'tek',4,'parti',true),
+('yayin_yap_5','Siyasi tartışmalar','Kamuoyuna açıklama yap V','Oyun içindeki resmî ve siyasi yayınlardan gönder. Hedef: 25.','yayin_yap',25,2300,'tek',5,'parti',true),
+('gazete_kur_1','Basın','Gazete kur I','Oyuncu gazetesi kur. Hedef: 1.','gazete_kur',1,400,'tek',1,'basin',true),
+('gazete_kur_2','Basın','Gazete kur II','Oyuncu gazetesi kur. Hedef: 2.','gazete_kur',2,650,'tek',2,'basin',true),
+('gazete_kur_3','Basın','Gazete kur III','Oyuncu gazetesi kur. Hedef: 3.','gazete_kur',3,950,'tek',3,'basin',true),
+('gazete_kur_4','Basın','Gazete kur IV','Oyuncu gazetesi kur. Hedef: 5.','gazete_kur',5,1500,'tek',4,'basin',true),
+('gazete_kur_5','Basın','Gazete kur V','Oyuncu gazetesi kur. Hedef: 8.','gazete_kur',8,2400,'tek',5,'basin',true),
+('gunluk_sohbet_mesaj','Toplum','Günlük: Kamusal sohbetlere katıl','Genel sohbet kanallarında anlamlı mesajlar gönder. Hedef: 1.','sohbet_mesaj',1,280,'gunluk',0,'sohbet',true),
+('gunluk_sohbet_gun','Toplum','Günlük: Sohbette düzenli bulun','Farklı günlerde genel sohbetlere anlamlı mesaj yaz. Hedef: 1.','sohbet_gun',1,180,'gunluk',0,'sohbet',true),
+('gunluk_dernek_sohbet_yazi','Toplum','Günlük: Dernek içinde fikir paylaş','Dernek sohbet kanallarında anlamlı mesajlar yaz. Hedef: 1.','dernek_sohbet_yazi',1,250,'gunluk',0,'sohbet',true),
+('gunluk_gazete_yorum','Basın','Günlük: Haberlere yorum kat','Farklı köşe yazılarına yorum yap. Hedef: 1.','gazete_yorum',1,260,'gunluk',0,'basin',true),
+('gunluk_miting_konus','Seçimler','Günlük: Miting kürsüsüne çık','Mitinglerde konuşma yap. Hedef: 1.','miting_konus',1,350,'gunluk',0,'gundem',true),
+('gunluk_duello_konus','Siyasi tartışmalar','Günlük: Siyasi tartışmada konuş','Karşılıklı tartışmada söz al. Hedef: 1.','duello_konus',1,350,'gunluk',0,'sivil',true),
+('gunluk_imza_kat','Vatandaşlık','Günlük: Toplumsal talepleri imzala','Diğer oyuncuların imza kampanyalarına destek ver. Hedef: 1.','imza_kat',1,300,'gunluk',0,'sivil',true),
+('gunluk_gazete_haber','Basın','Günlük: Haber yayımla','Oyuncu gazetesinde haber metinleri yayımla. Hedef: 1.','gazete_haber',1,400,'gunluk',0,'basin',true),
+('gunluk_dernek_eylem','Dernekler','Günlük: Dernek çalışmasına katkı ver','Dernek adına açıklama veya etkinlik düzenle. Hedef: 1.','dernek_eylem',1,350,'gunluk',0,'dernek',true),
+('gunluk_dilekce_gonder','Vatandaşlık','Günlük: Resmî dilekçe gönder','Devlet makamlarına talep ve öneri dilekçeleri gönder. Hedef: 1.','dilekce_gonder',1,330,'gunluk',0,'sivil',true),
+('haftalik_secim_oy','Seçimler','Haftalık: Sandığa git','Oyundaki seçimlerde oy kullan; belirli bir parti veya aday şartı yok. Hedef: 1.','secim_oy',1,700,'haftalik',0,'parti',true),
+('haftalik_miting_katil','Seçimler','Haftalık: Mitinge katıl','Farklı mitinglerde katılımını kaydettir. Hedef: 1.','miting_katil',1,600,'haftalik',0,'gundem',true),
+('haftalik_anket_oy','Seçimler','Haftalık: Haftalık ankete katıl','Haftalık siyasi anketlerde görüş bildir. Hedef: 1.','anket_oy',1,600,'haftalik',0,'parti',true),
+('haftalik_gazete_kose','Basın','Haftalık: Köşe yazısı yaz','Oyuncu gazetesinde köşe yazıları yayımla. Hedef: 2.','gazete_kose',2,900,'haftalik',0,'basin',true),
+('haftalik_gazete_yayin_gun','Basın','Haftalık: Düzenli gazetecilik yap','Farklı günlerde gazete yayını yap. Hedef: 2.','gazete_yayin_gun',2,700,'haftalik',0,'basin',true),
+('haftalik_sohbet_gun','Toplum','Haftalık: Sohbette düzenli bulun','Farklı günlerde genel sohbetlere anlamlı mesaj yaz. Hedef: 3.','sohbet_gun',3,700,'haftalik',0,'sohbet',true),
+('haftalik_dernek_sohbet_gun','Toplum','Haftalık: Dernek sohbetine uğra','Dernek üyeleriyle farklı günlerde sohbet et. Hedef: 2.','dernek_sohbet_gun',2,600,'haftalik',0,'sohbet',true),
+('haftalik_imza_kat','Vatandaşlık','Haftalık: Toplumsal talepleri imzala','Diğer oyuncuların imza kampanyalarına destek ver. Hedef: 2.','imza_kat',2,800,'haftalik',0,'sivil',true),
+('haftalik_kanun_oy','Meclis','Haftalık: Mecliste oy kullan','Kanun tekliflerinin oylamalarında görev al. Hedef: 2.','kanun_oy',2,850,'haftalik',0,'devlet',true),
+('haftalik_duello_oy','Siyasi tartışmalar','Haftalık: Düello izleyicisi ol','Farklı siyasi düellolarda oy kullan. Hedef: 1.','duello_oy',1,600,'haftalik',0,'sivil',true)
+on conflict(kod) do update set kategori=excluded.kategori,baslik=excluded.baslik,aciklama=excluded.aciklama,metrik=excluded.metrik,hedef=excluded.hedef,odul=excluded.odul,donem=excluded.donem,seviye=excluded.seviye,rota=excluded.rota,aktif=excluded.aktif;
+-- Genel baskan milletvekili adayi olabilir; ayni donemde kesin CB adayi olamaz.
+-- Basvuru takvimi, uyelik ve diger vatandaslik sartlari aynen korunur.
+create or replace function oyun.gb_mv_cb_adaylik_kontrol()
+returns trigger language plpgsql security invoker
+set search_path = '' as $$
+declare
+  v_tur text;
+  v_donem text;
+begin
+  select s.tur, s.donem into v_tur, v_donem
+  from oyun.secimler s where s.id = new.secim_id;
+  if v_tur not in ('mv_on','mv','cb','cb2') then
+    return new;
+  end if;
+  if not exists (select 1 from oyun.partiler p where p.gb = new.user_id) then
+    return new;
+  end if;
+
+  -- Eszamanli iki basvuru birbirini gormeden gecmesin.
+  perform 1 from oyun.profiller pr where pr.id = new.user_id for update;
+
+  if v_tur in ('mv_on','mv') and exists (
+    select 1 from oyun.adaylar a
+    join oyun.secimler s on s.id=a.secim_id
+    where a.user_id=new.user_id and s.donem=v_donem
+      and s.tur in ('cb','cb2')
+      and (tg_op='INSERT' or a.id<>new.id)
+  ) then
+    raise exception 'Cumhurbaskani adayi olan genel baskan ayni secim doneminde milletvekili adayi olamaz.';
+  end if;
+
+  if v_tur in ('cb','cb2') and exists (
+    select 1 from oyun.adaylar a
+    join oyun.secimler s on s.id=a.secim_id
+    where a.user_id=new.user_id and s.donem=v_donem
+      and s.tur in ('mv_on','mv')
+      and (tg_op='INSERT' or a.id<>new.id)
+  ) then
+    raise exception 'Milletvekili adayligi bulunan genel baskan ayni donemde cumhurbaskani adayi olamaz. Once milletvekili adayligini geri cekmelisin.';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists gb_mv_cb_adaylik_kontrol_tg on oyun.adaylar;
+create trigger gb_mv_cb_adaylik_kontrol_tg
+before insert or update of secim_id,user_id on oyun.adaylar
+for each row execute function oyun.gb_mv_cb_adaylik_kontrol();
+
+-- Önceden kayitli, kesin CB adayi olan genel baskanlarin acik MV basvurularini
+-- oy ve oyuncu verilerini degistirmeden geri alinabilir sekilde arsivle.
+create table if not exists oyun.gb_mv_cb_iptal_arsivi (
+  aday_id bigint primary key,
+  user_id uuid not null,
+  secim_id bigint not null,
+  aday_json jsonb not null,
+  tanitim_json jsonb not null default '[]'::jsonb,
+  sebep text not null,
+  iptal_zamani timestamptz not null default now()
+);
+alter table oyun.gb_mv_cb_iptal_arsivi enable row level security;
+revoke all on oyun.gb_mv_cb_iptal_arsivi from public, anon, authenticated;
+
+insert into oyun.gb_mv_cb_iptal_arsivi(aday_id,user_id,secim_id,aday_json,tanitim_json,sebep)
+select a.id, a.user_id, a.secim_id, to_jsonb(a),
+       coalesce((select jsonb_agg(to_jsonb(x)) from oyun.parti_aday_tanitim x where x.aday_id=a.id),'[]'::jsonb),
+       'Ayni donemde kesin cumhurbaskani adayligi bulunduğu icin'
+from oyun.adaylar a
+join oyun.secimler s on s.id=a.secim_id
+join oyun.partiler p on p.gb=a.user_id
+where s.tur in ('mv_on','mv')
+  and s.durum = 'bekliyor'
+  and not exists (select 1 from oyun.oylar o where o.secim_id=s.id)
+  and exists (
+    select 1 from oyun.adaylar b join oyun.secimler sb on sb.id=b.secim_id
+    where b.user_id=a.user_id and sb.donem=s.donem and sb.tur in ('cb','cb2')
+  )
+on conflict (aday_id) do nothing;
+
+do $$
+declare r record;
+begin
+  for r in
+    select a.id,a.user_id
+    from oyun.adaylar a
+    join oyun.gb_mv_cb_iptal_arsivi ar on ar.aday_id=a.id
+    join oyun.secimler s on s.id=a.secim_id
+    where s.durum='bekliyor'
+      and not exists(select 1 from oyun.oylar o where o.secim_id=s.id)
+  loop
+    delete from oyun.adaylar where id=r.id;
+    perform oyun.bildir(r.user_id,
+      'Kesin cumhurbaskani adayligin oldugu icin ayni donemdeki milletvekili adayligin iptal edildi. Genel baskanligin ve diger haklarin devam ediyor.',
+      oyun.simdi());
+  end loop;
+end $$;
+-- Halka arz tamamlayicisi: her ortak kendi haftalik karini ister cebine alir ister sirket kasasinda biriktirir.
+-- Varsayilan eski davranis korunur: mevcut ve yeni ortaklarin kari cebine aktarilir.
+alter table oyun.sirket_ortaklari add column if not exists kar_kasada boolean not null default false;
+create or replace function oyun.sirket_hesapla(p_id bigint)
+returns void language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $function$
+declare s oyun.sirketler;n int;i int;net numeric;income numeric;cost numeric;w numeric;t timestamptz:=oyun.simdi();x record;distributed numeric;rate numeric;v_taahhut numeric;v_mevduat numeric;distributable numeric;v_odeme numeric;
+begin
+ perform pg_advisory_xact_lock(98763,hashtext(p_id::text));
+ select * into s from oyun.sirketler where id=p_id for update;
+ if s.id is null or not s.aktif or s.sonraki_kazanc>t then return;end if;
+ n:=least(52,floor(extract(epoch from (t-s.sonraki_kazanc))/604800)::int+1);
+ w:=(select asgari from oyun.ulke where id=1);
+ rate:=case s.sektor when 'tarim' then .12 when 'sanayi' then .15 when 'teknoloji' then .20 when 'ticaret' then .14 when 'insaat' then .18 when 'medya' then .16 else .08 end;
+ for i in 1..n loop
+  income:=round(s.sermaye*rate*(0.6+random()::numeric*.8),2);
+  cost:=round(s.sermaye*(.025+random()::numeric*.055)+w*(.5+random()::numeric),2);
+  net:=income-cost;
+  distributed:=0;
+  -- Zararda sirket kasasi erir. Karda dagitilabilir para ortaklara aktarilir.
+  if net<0 then
+   if s.sektor='banka' then
+     select coalesce(sum(round(m.anapara*(1+m.faiz/100),2)),0),coalesce(sum(m.anapara),0) into v_taahhut,v_mevduat from oyun.banka_mevduat m where m.banka_id=p_id and not m.kapandi;
+     net:=greatest(net,-greatest(0,(select kasa from oyun.sirketler where id=p_id)-v_taahhut-greatest(s.sermaye*0.10,v_mevduat*0.10)));
+   end if;
+   update oyun.sirketler set kasa=kasa+net where id=p_id;
+  else
+   distributable:=case when s.sektor='banka' then least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net-s.sermaye-coalesce((select sum(round(m.anapara*(1+m.faiz/100),2)) from oyun.banka_mevduat m where m.banka_id=p_id and not m.kapandi),0))) else least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net)) end;
+   for x in select * from oyun.sirket_ortaklari where sirket_id=p_id loop
+    if not x.kar_kasada then
+      v_odeme:=least(round(distributable*x.pay/100,2),greatest(0,distributable-distributed));
+      if v_odeme>0 then
+        perform oyun.para_islem(x.user_id,v_odeme,'sirket',format('Sirket #%s haftalik net kar payi',p_id),t);
+        distributed:=distributed+v_odeme;
+      end if;
+    end if;
+   end loop;
+   update oyun.sirketler set kasa=kasa+net-distributed where id=p_id;
+  end if;
+  insert into oyun.sirket_hareket(sirket_id,zaman,tutar,aciklama,faaliyet_gelir,faaliyet_gider,dagitilan_kar)
+ values(p_id,t,net,'7 günlük faaliyet: gelir - gider = net sonuç; gerçekleşen ortak ödemesi ayrıca kaydedildi',income,cost,distributed);
+ end loop;
+ update oyun.sirketler set sonraki_kazanc=sonraki_kazanc+n*interval '7 days',son_islem=t where id=p_id;
+end $function$;
+create or replace function public.sirket_kar_birikim_ayarla(p_sirket bigint, p_kasada boolean)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare u uuid := auth.uid(); v_pay numeric;
+begin
+ if u is null or not exists (select 1 from oyun.profiller where id=u and not yasakli) then raise exception 'Aktif oyuncu hesabi gerekli'; end if;
+ if p_kasada is null then raise exception 'Tercih secilmeli'; end if;
+ if not exists(select 1 from oyun.sirket_ortaklari where sirket_id=p_sirket and user_id=u) then raise exception 'Bu sirketin ortagi degilsin'; end if;
+ -- Once eski tercihe ait gecikmis haftalik tahakkuklari bitir. Sonraki hafta yeni secime uyacak.
+ perform oyun.sirket_hesapla(p_sirket);
+ update oyun.sirket_ortaklari set kar_kasada=p_kasada where sirket_id=p_sirket and user_id=u returning pay into v_pay;
+ return jsonb_build_object('sirket_id',p_sirket,'kar_kasada',p_kasada,'payim',v_pay);
+end $$;
+create or replace function public.halka_arz_durum(p_sirket bigint)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare u uuid := auth.uid(); s oyun.sirketler; d record;
+begin
+  if u is null then raise exception 'Oturum açmalısın'; end if;
+  perform oyun.halka_arz_tick();
+  select * into s from oyun.sirketler where id = p_sirket and aktif;
+  if s.id is null then raise exception 'Şirket bulunamadı'; end if;
+  select * into d from oyun.halka_arz_deger_sinir(s.sermaye, s.sektor);
+  return jsonb_build_object(
+    'id', s.id, 'ad', s.ad, 'sektor', s.sektor, 'sermaye', s.sermaye, 'kasa', s.kasa, 'halka_acik', s.halka_acik,
+    'payim', coalesce((select pay from oyun.sirket_ortaklari where sirket_id = s.id and user_id = u), 0),
+    'kar_kasada', coalesce((select kar_kasada from oyun.sirket_ortaklari where sirket_id = s.id and user_id = u), false),
+    'asgari_ucret', (select asgari from oyun.ulke where id = 1),
+    'ort_net', oyun.sirket_ort_net(s.sermaye, s.sektor),
+    'deger_en_az', d.en_az, 'deger_en_cok', d.en_cok, 'deger_onerilen', d.onerilen,
+    'en_fazla_tutar', least(100000000 - s.sermaye, floor(d.en_cok * 49 / 51)),
+    'acik', (select oyun.halka_arz_json(a, u) from oyun.halka_arz a where a.sirket_id = s.id and a.durum = 'acik'),
+    'gecmis', coalesce((select jsonb_agg(oyun.halka_arz_json(a, u) order by a.bas desc)
+                        from (select * from oyun.halka_arz where sirket_id = s.id and durum <> 'acik' order by bas desc limit 5) a), '[]'::jsonb));
+end $$;
+revoke all on function public.sirket_kar_birikim_ayarla(bigint,boolean) from public,anon;
+grant execute on function public.sirket_kar_birikim_ayarla(bigint,boolean) to authenticated;
+-- Milletvekili, bakan olarak atandiginda vekilligi sona ermez.
+-- Sadece mv/bakan rol eslesmesi acilir; diger gorev uyumsuzluklari korunur.
+create or replace function oyun.rol_uyumlu(a text, b text)
+returns boolean language sql immutable as $$
+  select (a=b and a in ('gb','gby')) or (a,b) in
+  (('mv','gby'),('gby','mv'),('gb','mv'),('mv','gb'),
+   ('gb','cb'),('cb','gb'),('mv','tbmm'),('tbmm','mv'),
+   ('mv','bskv'),('bskv','mv'),('mv','grup_bskv'),('grup_bskv','mv'),
+   ('gby','grup_bskv'),('grup_bskv','gby'),
+   ('mv','bakan'),('bakan','mv'))
+$$;
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 6) YETKİLER
 --  Yalnızca giriş yapmış oyuncular bu fonksiyonları çağırabilir.
@@ -25297,6 +25920,1124 @@ begin
     execute format('grant execute on function public.%s to authenticated', f);
   end loop;
 end $$;
+-- Bildirimlerde kaynağa tek dokunuşla ulaşma.
+-- Mevcut bildirim metinlerini veya oyuncu kayıtlarını değiştirmez.
+-- Kimliği doğrulanan oyuncu yalnız kendi bildirimlerinin bağlantısını alır.
+
+create or replace function public.bildirim_hedefleri(p_idler bigint[])
+returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select coalesce(jsonb_object_agg(es.bildirim_id::text,
+      jsonb_build_object('tur', 'dernek_eylem', 'id', es.eylem_id)), '{}'::jsonb)
+  from (
+    select b.id as bildirim_id, bag.id as eylem_id
+    from oyun.bildirimler b
+    join lateral (
+      select x.id
+      from oyun.dernek_eylem x
+      join oyun.dernekler d on d.id = x.dernek_id
+      where not x.silindi
+        and (
+          x.zaman = b.zaman
+          or (x.tur = 'protesto' and b.zaman >= x.bas and b.zaman <= x.bit)
+        )
+        and left(b.metin, char_length(d.ad)) = d.ad
+        and strpos(b.metin, '“' || x.baslik || '”') > 0
+      order by x.id desc
+      limit 1
+    ) bag on true
+    where b.user_id = auth.uid()
+      and b.id = any(coalesce(p_idler, array[]::bigint[]))
+      and cardinality(p_idler) between 1 and 100
+  ) es;
+$$;
+
+create or replace function public.dernek_eylem_oku(p_eylem bigint)
+returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select oyun.dernek_eylem_json(e, auth.uid(), oyun.simdi())
+  from oyun.dernek_eylem e
+  where e.id = p_eylem and not e.silindi and auth.uid() is not null;
+$$;
+
+revoke all on function public.bildirim_hedefleri(bigint[]) from public, anon;
+revoke all on function public.dernek_eylem_oku(bigint) from public, anon;
+grant execute on function public.bildirim_hedefleri(bigint[]) to authenticated;
+grant execute on function public.dernek_eylem_oku(bigint) to authenticated;
+-- ADLİYE / YÜKSEK YARGIÇ / PARTİ SÖZCÜSÜ / AF (10.10.2026)
+-- Yalnızca eklemeli değişiklik. Oyuncu verileri ve mevcut makamlar korunur.
+create table if not exists oyun.adliye_makam (
+ id int primary key check(id=1), hakim uuid references oyun.profiller(id),
+ atayan uuid references oyun.profiller(id), atama_at timestamptz, degistirme_at timestamptz default now()
+);
+insert into oyun.adliye_makam(id) values(1) on conflict do nothing;
+create table if not exists oyun.adliye_atama_kayit (
+ id bigserial primary key, yapan uuid not null references oyun.profiller(id),
+ eski uuid references oyun.profiller(id), yeni uuid references oyun.profiller(id),
+ gerekce text, zaman timestamptz not null default now()
+);
+create table if not exists oyun.parti_sozcu (
+ parti_id bigint primary key references oyun.partiler(id), user_id uuid references oyun.profiller(id),
+ atayan uuid references oyun.profiller(id), zaman timestamptz default now()
+);
+create table if not exists oyun.parti_sozcu_kayit (
+ id bigserial primary key, parti_id bigint not null references oyun.partiler(id),
+ yapan uuid not null references oyun.profiller(id),
+ eski uuid references oyun.profiller(id), yeni uuid references oyun.profiller(id),
+ zaman timestamptz not null default now()
+);
+create table if not exists oyun.adliye_davalar (
+ id bigserial primary key, davaci uuid not null references oyun.profiller(id),
+ davaci_parti bigint references oyun.partiler(id),
+ davali uuid references oyun.profiller(id),
+ davali_parti bigint references oyun.partiler(id),
+ tur text not null check(tur in('hakaret','iftira','rusvet','yolsuzluk','usulsuzluk','dolandiricilik','diger')),
+ iddia text not null check(char_length(iddia) between 20 and 1600),
+ delil text not null default '',
+ acilis timestamptz not null default now(), savunma_son timestamptz not null,
+ savunma_geldi boolean not null default false,
+ durum text not null default 'acik' check(durum in('acik','karar')),
+ hakim uuid references oyun.profiller(id), karar text check(karar in('beraat','uyari','sustur_1s','sustur_1g','sustur_1h','vekillik_dusur')),
+ gerekce text, karar_at timestamptz, ceza_bitis timestamptz, mv_makam_id bigint,
+ af_at timestamptz, af_veren uuid references oyun.profiller(id), af_gerekce text,
+ constraint adliye_tek_davali check((davali is not null)::int+(davali_parti is not null)::int=1),
+ constraint adliye_taraf_farki check(davali is null or davali<>davaci)
+);
+create index if not exists adliye_davalar_son on oyun.adliye_davalar(id desc);
+create index if not exists adliye_davalar_oyuncu on oyun.adliye_davalar(davali,id desc);
+create table if not exists oyun.adliye_temsil (
+ dava_id bigint not null references oyun.adliye_davalar(id),
+ yetki_veren uuid not null references oyun.profiller(id),
+ yetki_verildi timestamptz not null default now(), aktif boolean not null default true,
+ primary key(dava_id,yetki_veren)
+);
+create table if not exists oyun.adliye_beyan (
+ id bigserial primary key, dava_id bigint not null references oyun.adliye_davalar(id),
+ yazar uuid not null references oyun.profiller(id), rol text not null check(rol in('davaci','davali','sozcu')),
+ metin text not null check(char_length(metin) between 10 and 2500),
+ zaman timestamptz not null default now()
+);
+create index if not exists adliye_beyan_dava on oyun.adliye_beyan(dava_id,id);
+create table if not exists oyun.adliye_yorum (
+ id bigserial primary key, dava_id bigint not null references oyun.adliye_davalar(id),
+ yazar uuid not null references oyun.profiller(id),
+ metin text not null check(char_length(metin) between 3 and 500),
+ zaman timestamptz not null default now()
+);
+create index if not exists adliye_yorum_dava on oyun.adliye_yorum(dava_id,id);
+create table if not exists oyun.adliye_aflar (
+ id bigserial primary key, cb uuid not null references oyun.profiller(id),
+ dava_id bigint references oyun.adliye_davalar(id), tur text not null check(tur in('bireysel','genel')),
+ gerekce text not null, affedilen int not null, zaman timestamptz not null default now()
+);
+alter table oyun.profiller add column if not exists adliye_susturma_bitis timestamptz;
+alter table oyun.adliye_makam enable row level security;
+alter table oyun.adliye_atama_kayit enable row level security;
+alter table oyun.parti_sozcu enable row level security;
+alter table oyun.parti_sozcu_kayit enable row level security;
+alter table oyun.adliye_davalar enable row level security;
+alter table oyun.adliye_temsil enable row level security;
+alter table oyun.adliye_beyan enable row level security;
+alter table oyun.adliye_yorum enable row level security;
+alter table oyun.adliye_aflar enable row level security;
+revoke all on oyun.adliye_makam,oyun.adliye_atama_kayit,oyun.parti_sozcu,oyun.parti_sozcu_kayit,oyun.adliye_davalar,oyun.adliye_temsil,oyun.adliye_beyan,oyun.adliye_yorum,oyun.adliye_aflar from public,anon,authenticated;
+
+-- Önceden var olan moderasyon susturmasını değiştirmeden mahkeme cezasını ek denetle.
+create or replace function oyun.yazabilir_mi(p oyun.profiller,t timestamptz) returns void language plpgsql as $$
+begin
+ if p.susturma_bitis is not null and p.susturma_bitis>t then
+  raise exception 'Hesabın % tarihine kadar mesaj gönderemez (kural ihlali).',to_char(p.susturma_bitis at time zone 'Europe/Istanbul','DD.MM.YYYY HH24:MI');
+ end if;
+ if p.adliye_susturma_bitis is not null and p.adliye_susturma_bitis>t then
+  raise exception 'Mahkeme kararıyla % tarihine kadar sohbetten susturuldunuz.',to_char(p.adliye_susturma_bitis at time zone 'Europe/Istanbul','DD.MM.YYYY HH24:MI');
+ end if;
+ if p.son_mesaj is not null and p.son_mesaj>t-interval '3 seconds' then
+  raise exception 'Çok hızlı yazıyorsun, birkaç saniye bekle.';
+ end if;
+ if (select count(*) from oyun.mesajlar where user_id=p.id and zaman>t-interval '1 minute')
+  +(select count(*) from oyun.ozel where gonderen=p.id and zaman>t-interval '1 minute')>=12 then
+  raise exception 'Bir dakikada çok fazla mesaj gönderdin, biraz bekle.';
+ end if;
+end $$;
+
+create or replace function public.adliye_durum() returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim();
+begin
+ return jsonb_build_object(
+ 'ben',p.kad,'parti_id',p.parti_id,
+ 'cb_miyim',exists(select 1 from oyun.makamlar where user_id=p.id and tur='cb' and bit is null),
+ 'hakim',(select oyun.kad(hakim) from oyun.adliye_makam where id=1),
+ 'hakim_miyim',exists(select 1 from oyun.adliye_makam where id=1 and hakim=p.id),
+ 'partiler',coalesce((select jsonb_agg(jsonb_build_object('id',pa.id,'ad',pa.ad,'kisa',pa.kisa,'gb',oyun.kad(pa.gb),'sozcu',oyun.kad(s.user_id),
+ 'gb_miyim',pa.gb=p.id,'sozcu_muyum',s.user_id=p.id) order by pa.ad)
+ from oyun.partiler pa left join oyun.parti_sozcu s on s.parti_id=pa.id where not pa.kapali),'[]'::jsonb),
+ 'davalar',coalesce((select jsonb_agg(jsonb_build_object(
+ 'id',d.id,'davaci',oyun.kad(d.davaci),'davaci_parti',dp.ad,'davali',oyun.kad(d.davali),'davali_parti',hp.ad,
+ 'tur',d.tur,'iddia',d.iddia,'delil',d.delil,'acilis',d.acilis,'savunma_son',d.savunma_son,
+ 'savunma_geldi',d.savunma_geldi,'durum',d.durum,'hakim',oyun.kad(d.hakim),
+ 'karar',d.karar,'gerekce',d.gerekce,'karar_at',d.karar_at,'ceza_bitis',d.ceza_bitis,
+ 'af_at',d.af_at,'af_veren',oyun.kad(d.af_veren),'af_gerekce',d.af_gerekce,
+ 'davalimiyim',d.davali=p.id,'davacimiyim',d.davaci=p.id,'temsil_iznim',exists(select 1 from oyun.adliye_temsil a where a.dava_id=d.id and a.yetki_veren=p.id and a.aktif),
+ 'sozcu_savunabilir',(
+  (d.davali_parti is not null and exists(select 1 from oyun.parti_sozcu s join oyun.profiller pr on pr.id=p.id and pr.parti_id=s.parti_id where s.parti_id=d.davali_parti and s.user_id=p.id))
+  or (d.davali is not null and exists(select 1 from oyun.adliye_temsil t join oyun.parti_sozcu s on s.user_id=p.id join oyun.profiller pr on pr.id=d.davali and pr.parti_id=s.parti_id where t.dava_id=d.id and t.aktif and t.yetki_veren=d.davali))
+ )
+ ) order by d.id desc)
+ from (select * from oyun.adliye_davalar order by id desc limit 100) d
+ left join oyun.partiler dp on dp.id=d.davaci_parti
+ left join oyun.partiler hp on hp.id=d.davali_parti),'[]'::jsonb),
+ 'aflar',coalesce((select jsonb_agg(jsonb_build_object('id',a.id,'cb',oyun.kad(a.cb),'tur',a.tur,'dava_id',a.dava_id,'gerekce',a.gerekce,'affedilen',a.affedilen,'zaman',a.zaman) order by a.id desc)
+ from (select * from oyun.adliye_aflar order by id desc limit 20) a),'[]'::jsonb),
+ 'atamalar',coalesce((select jsonb_agg(jsonb_build_object('yapan',oyun.kad(a.yapan),'eski',oyun.kad(a.eski),'yeni',oyun.kad(a.yeni),'gerekce',a.gerekce,'zaman',a.zaman) order by a.id desc)
+ from (select * from oyun.adliye_atama_kayit order by id desc limit 15) a),'[]'::jsonb)
+ );
+end $$;
+
+create or replace function public.adliye_detay(p_dava bigint) returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim();
+begin
+ if not exists(select 1 from oyun.adliye_davalar where id=p_dava) then raise exception 'Dava bulunamadı.'; end if;
+ return jsonb_build_object(
+ 'beyanlar',coalesce((select jsonb_agg(jsonb_build_object('id',b.id,'yazar',oyun.kad(b.yazar),'rol',b.rol,'metin',b.metin,'zaman',b.zaman) order by b.id)
+ from oyun.adliye_beyan b where b.dava_id=p_dava),'[]'::jsonb),
+ 'yorumlar',coalesce((select jsonb_agg(jsonb_build_object('id',y.id,'yazar',oyun.kad(y.yazar),'metin',y.metin,'zaman',y.zaman) order by y.id)
+ from (select * from oyun.adliye_yorum where dava_id=p_dava order by id desc limit 80) y),'[]'::jsonb)
+ );
+end $$;
+
+create or replace function public.adliye_hakim_ata(p_kad text) returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); u oyun.profiller; eski uuid; t timestamptz:=oyun.simdi();
+begin
+ if not exists(select 1 from oyun.makamlar where user_id=p.id and tur='cb' and bit is null) then raise exception 'Yüksek Yargıcı yalnız Cumhurbaşkanı atayabilir.'; end if;
+ select * into u from oyun.profiller where lower(kad)=lower(trim(p_kad)) and not yasakli;
+ if u.id is null then raise exception 'Kullanıcı bulunamadı.'; end if;
+ if u.id=p.id then raise exception 'Cumhurbaşkanı kendisini atayamaz.'; end if;
+ select hakim into eski from oyun.adliye_makam where id=1 for update;
+ if eski=u.id then raise exception 'Bu oyuncu zaten Yüksek Yargıç.'; end if;
+ update oyun.adliye_makam set hakim=u.id,atayan=p.id,atama_at=t,degistirme_at=t where id=1;
+ insert into oyun.adliye_atama_kayit(yapan,eski,yeni,gerekce,zaman) values(p.id,eski,u.id,'Cumhurbaşkanı ataması',t);
+ insert into oyun.bildirimler(user_id,zaman,metin) values(u.id,t,'Cumhurbaşkanı sizi Yüksek Yargıç olarak atadı.');
+ return jsonb_build_object('tamam',true);
+end $$;
+
+create or replace function public.adliye_hakim_al(p_gerekce text) returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); eski uuid; t timestamptz:=oyun.simdi();
+begin
+ if not exists(select 1 from oyun.makamlar where user_id=p.id and tur='cb' and bit is null) then raise exception 'Yalnız Cumhurbaşkanı Yüksek Yargıcı görevden alabilir.'; end if;
+ if char_length(trim(coalesce(p_gerekce,''))) not between 10 and 500 then raise exception 'Gerekçe 10–500 karakter olmalı.'; end if;
+ select hakim into eski from oyun.adliye_makam where id=1 for update;
+ if eski is null then raise exception 'Görevde Yüksek Yargıç yok.'; end if;
+ update oyun.adliye_makam set hakim=null,atayan=p.id,atama_at=null,degistirme_at=t where id=1;
+ insert into oyun.adliye_atama_kayit(yapan,eski,yeni,gerekce,zaman) values(p.id,eski,null,trim(p_gerekce),t);
+ insert into oyun.bildirimler(user_id,zaman,metin) values(eski,t,'Cumhurbaşkanı Yüksek Yargıç görevinizi sonlandırdı. Gerekçe: '||left(trim(p_gerekce),200));
+ return jsonb_build_object('tamam',true);
+end $$;
+
+create or replace function public.adliye_sozcu_ata(p_parti bigint,p_kad text default null) returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); u oyun.profiller; eski uuid; t timestamptz:=oyun.simdi();
+begin
+ if not exists(select 1 from oyun.partiler where id=p_parti and gb=p.id and not kapali) then raise exception 'Parti sözcüsünü yalnız partinin genel başkanı belirleyebilir.'; end if;
+ if p_kad is not null and trim(p_kad)<>'' then
+  select * into u from oyun.profiller where lower(kad)=lower(trim(p_kad)) and parti_id=p_parti and not yasakli;
+  if u.id is null then raise exception 'Bu partide böyle bir üye bulunamadı.'; end if;
+ end if;
+ select user_id into eski from oyun.parti_sozcu where parti_id=p_parti for update;
+ insert into oyun.parti_sozcu(parti_id,user_id,atayan,zaman) values(p_parti,u.id,p.id,t)
+ on conflict (parti_id) do update set user_id=excluded.user_id,atayan=excluded.atayan,zaman=excluded.zaman;
+ insert into oyun.parti_sozcu_kayit(parti_id,yapan,eski,yeni,zaman) values(p_parti,p.id,eski,u.id,t);
+ if eski is not null and eski is distinct from u.id then
+  insert into oyun.bildirimler(user_id,zaman,metin) values(eski,t,'Parti sözcülüğü göreviniz sona erdi. Yeni davalarda parti adına temsil yetkiniz bulunmuyor.');
+ end if;
+ if u.id is not null then
+  insert into oyun.bildirimler(user_id,zaman,metin) values(u.id,t,'Parti genel başkanınız sizi Parti Sözcüsü olarak atadı. Adliye davalarında partinizi savunabilirsiniz.');
+  insert into oyun.bildirimler(user_id,zaman,metin)
+  select u.id,t,'Adliye dava #'||d.id||': Partiniz hakkındaki açık davada sözcü olarak savunma yapabilirsiniz.'
+  from oyun.adliye_davalar d where d.davali_parti=p_parti and d.durum='acik'
+  order by d.id desc limit 20;
+  insert into oyun.bildirimler(user_id,zaman,metin)
+  select u.id,t,'Adliye dava #'||d.id||': Parti üyenizin size verdiği temsil yetkisiyle kişisel davasında savunma yapabilirsiniz.'
+  from oyun.adliye_davalar d
+  join oyun.adliye_temsil y on y.dava_id=d.id and y.aktif and y.yetki_veren=d.davali
+  join oyun.profiller dav on dav.id=d.davali and dav.parti_id=p_parti
+  where d.durum='acik' order by d.id desc limit 20;
+ end if;
+ return jsonb_build_object('tamam',true);
+end $$;
+
+create or replace function public.adliye_dava_ac(p_hedef_tur text,p_hedef text,p_tur text,p_iddia text,p_delil text default '',p_davaci_parti bigint default null)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); u oyun.profiller; hedef_parti bigint; t timestamptz:=oyun.simdi(); yeni bigint;
+begin
+ if p_tur not in('hakaret','iftira','rusvet','yolsuzluk','usulsuzluk','dolandiricilik','diger') then raise exception 'Dava türü geçersiz.'; end if;
+ if char_length(trim(coalesce(p_iddia,''))) not between 20 and 1600 then raise exception 'Dava açıklaması 20–1600 karakter olmalı.'; end if;
+ if char_length(coalesce(p_delil,''))>1600 then raise exception 'Delil açıklaması 1600 karakteri aşamaz.'; end if;
+ if p_hedef_tur='oyuncu' then
+  select * into u from oyun.profiller where lower(kad)=lower(trim(p_hedef)) and not yasakli;
+  if u.id is null then raise exception 'Davalı oyuncu bulunamadı.'; end if;
+  if u.id=p.id then raise exception 'Kendinize dava açamazsınız.'; end if;
+ elsif p_hedef_tur='parti' then
+  begin hedef_parti:=p_hedef::bigint; exception when invalid_text_representation then raise exception 'Geçersiz parti.'; end;
+  if not exists(select 1 from oyun.partiler where id=hedef_parti and not kapali) then raise exception 'Parti bulunamadı.'; end if;
+ else raise exception 'Davalı türü geçersiz.'; end if;
+ if p_davaci_parti is not null and not exists(
+  select 1 from oyun.partiler pa left join oyun.parti_sozcu s on s.parti_id=pa.id
+  where pa.id=p_davaci_parti and not pa.kapali and (pa.gb=p.id or (s.user_id=p.id and p.parti_id=pa.id))
+ ) then raise exception 'Parti adına dava açmak için genel başkan veya sözcü olmalısınız.'; end if;
+ if hedef_parti is not null and hedef_parti=p_davaci_parti then raise exception 'Bir parti kendisine dava açamaz.'; end if;
+ if (select count(*) from oyun.adliye_davalar where davaci=p.id and durum='acik')>=3 then raise exception 'En fazla üç açık davanız olabilir.'; end if;
+ if exists(select 1 from oyun.adliye_davalar where davaci=p.id and acilis>t-interval '10 minutes') then raise exception 'Yeni dava için 10 dakika bekleyin.'; end if;
+ insert into oyun.adliye_davalar(davaci,davaci_parti,davali,davali_parti,tur,iddia,delil,acilis,savunma_son)
+ values(p.id,p_davaci_parti,u.id,hedef_parti,p_tur,trim(p_iddia),coalesce(p_delil,''),t,t+interval '6 hours') returning id into yeni;
+ if u.id is not null then insert into oyun.bildirimler(user_id,zaman,metin) values(u.id,t,'#'||yeni||' numaralı davada hakkınızda iddia var. Adliye''den 6 saat içinde savunma yapın.'); end if;
+ if hedef_parti is not null then
+  insert into oyun.bildirimler(user_id,zaman,metin)
+  select distinct z.id,t,'#'||yeni||' numaralı davada partiniz davalıdır. Savunma Adliye''de.'
+  from (select gb as id from oyun.partiler where id=hedef_parti union select user_id from oyun.parti_sozcu where parti_id=hedef_parti) z
+  where z.id is not null;
+ end if;
+ return jsonb_build_object('tamam',true,'id',yeni);
+end $$;
+
+create or replace function public.adliye_temsil_yetkisi(p_dava bigint,p_izin boolean) returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); d oyun.adliye_davalar; sozcu uuid; t timestamptz:=oyun.simdi();
+begin
+ select * into d from oyun.adliye_davalar where id=p_dava for update;
+ if d.id is null or d.davali<>p.id or d.durum<>'acik' then raise exception 'Bu davada temsil yetkisi veremezsiniz.'; end if;
+ if p_izin is null then raise exception 'Temsil izni seçimi geçersiz.'; end if;
+ select s.user_id into sozcu from oyun.parti_sozcu s
+ join oyun.profiller pr on pr.id=s.user_id and pr.parti_id=s.parti_id and not pr.yasakli
+ where s.parti_id=p.parti_id;
+ if p_izin and sozcu is null then raise exception 'Partinizde görevli bir sözcü bulunmuyor.'; end if;
+ insert into oyun.adliye_temsil(dava_id,yetki_veren,aktif) values(d.id,p.id,p_izin)
+ on conflict(dava_id,yetki_veren) do update set aktif=excluded.aktif,yetki_verildi=t;
+ if sozcu is not null then
+  insert into oyun.bildirimler(user_id,zaman,metin)
+  values(sozcu,t,'Adliye dava #'||d.id||': '||p.kad||case when p_izin then ' kişisel davasında size savunma ve beyan yetkisi verdi. Adliye bölümündeki dosyaya girin.' else ' kişisel davasında temsil yetkinizi geri aldı.' end);
+ end if;
+ return jsonb_build_object('tamam',true);
+end $$;
+
+create or replace function public.adliye_beyan_ver(p_dava bigint,p_metin text) returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); d oyun.adliye_davalar; rol text; t timestamptz:=oyun.simdi();
+begin
+ select * into d from oyun.adliye_davalar where id=p_dava for update;
+ if d.id is null or d.durum<>'acik' then raise exception 'Dava savunmaya açık değil.'; end if;
+ if char_length(trim(coalesce(p_metin,''))) not between 10 and 2500 then raise exception 'Beyan 10–2500 karakter olmalı.'; end if;
+ if d.davali=p.id then rol:='davali';
+ elsif d.davali_parti is not null and exists(select 1 from oyun.partiler pa left join oyun.parti_sozcu s on s.parti_id=pa.id where pa.id=d.davali_parti
+ and (pa.gb=p.id or (s.user_id=p.id and p.parti_id=pa.id))) then rol:='sozcu';
+ elsif d.davali is not null and exists(
+ select 1 from oyun.adliye_temsil y join oyun.profiller q on q.id=d.davali
+ join oyun.parti_sozcu s on s.parti_id=q.parti_id and s.user_id=p.id
+ where y.dava_id=d.id and y.yetki_veren=d.davali and y.aktif and p.parti_id=q.parti_id) then rol:='sozcu';
+ elsif d.davaci=p.id then rol:='davaci';
+ elsif d.davaci_parti is not null and exists(select 1 from oyun.partiler pa left join oyun.parti_sozcu s on s.parti_id=pa.id where pa.id=d.davaci_parti
+ and (pa.gb=p.id or (s.user_id=p.id and p.parti_id=pa.id))) then rol:='davaci';
+ else raise exception 'Bu davada konuşma yetkiniz yok.'; end if;
+ if exists(select 1 from oyun.adliye_beyan where dava_id=d.id and yazar=p.id and zaman>t-interval '30 seconds') then raise exception 'Yeni beyan için 30 saniye bekleyin.'; end if;
+ insert into oyun.adliye_beyan(dava_id,yazar,rol,metin,zaman) values(d.id,p.id,rol,trim(p_metin),t);
+ if rol in ('davali','sozcu') then update oyun.adliye_davalar set savunma_geldi=true where id=d.id; end if;
+ return jsonb_build_object('tamam',true);
+end $$;
+
+create or replace function public.adliye_yorum_yaz(p_dava bigint,p_metin text) returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); t timestamptz:=oyun.simdi();
+begin
+ if not exists(select 1 from oyun.adliye_davalar where id=p_dava) then raise exception 'Dava bulunamadı.'; end if;
+ if (p.susturma_bitis is not null and p.susturma_bitis>t) or (p.adliye_susturma_bitis is not null and p.adliye_susturma_bitis>t) then raise exception 'Susturma cezanız devam ediyor.'; end if;
+ if char_length(trim(coalesce(p_metin,''))) not between 3 and 500 then raise exception 'Yorum 3–500 karakter olmalı.'; end if;
+ if exists(select 1 from oyun.adliye_yorum where yazar=p.id and zaman>t-interval '30 seconds') then raise exception 'Yeni yorum için 30 saniye bekleyin.'; end if;
+ insert into oyun.adliye_yorum(dava_id,yazar,metin,zaman) values(p_dava,p.id,trim(p_metin),t);
+ return jsonb_build_object('tamam',true);
+end $$;
+
+create or replace function public.adliye_karar_ver(p_dava bigint,p_karar text,p_gerekce text) returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); d oyun.adliye_davalar; t timestamptz:=oyun.simdi(); bitis timestamptz; mv bigint;
+begin
+ if not exists(select 1 from oyun.adliye_makam where id=1 and hakim=p.id) then raise exception 'Yalnız görevdeki Yüksek Yargıç karar verebilir.'; end if;
+ select * into d from oyun.adliye_davalar where id=p_dava for update;
+ if d.id is null or d.durum<>'acik' then raise exception 'Açık bir dava bulunamadı.'; end if;
+ if d.davaci=p.id or d.davali=p.id then raise exception 'Yargıç kendi davasını karara bağlayamaz.'; end if;
+ if not d.savunma_geldi and t<d.savunma_son then raise exception 'Savunma süresinin dolmasını bekleyin.'; end if;
+ if p_karar not in('beraat','uyari','sustur_1s','sustur_1g','sustur_1h','vekillik_dusur') then raise exception 'Geçersiz karar.'; end if;
+ if char_length(trim(coalesce(p_gerekce,''))) not between 20 and 2000 then raise exception 'Gerekçeli karar 20–2000 karakter olmalı.'; end if;
+ if d.davali is null and p_karar not in('beraat','uyari') then raise exception 'Partiye yalnız uyarı veya beraat kararı verilebilir.'; end if;
+ if p_karar='vekillik_dusur' then
+  select id into mv from oyun.makamlar where user_id=d.davali and tur='mv' and bit is null order by bas desc limit 1 for update;
+  if mv is null then raise exception 'Davalının aktif milletvekilliği yok.'; end if;
+ end if;
+ if p_karar in('sustur_1s','sustur_1g','sustur_1h') then
+  bitis:=t+case p_karar when 'sustur_1s' then interval '1 hour' when 'sustur_1g' then interval '1 day' else interval '7 days' end;
+  update oyun.profiller set adliye_susturma_bitis=greatest(coalesce(adliye_susturma_bitis,t),bitis) where id=d.davali;
+ end if;
+ if p_karar='vekillik_dusur' then
+  update oyun.makamlar set bit=t,bitis_neden='Adliye #'||d.id||' kararı'
+  where user_id=d.davali and bit is null and tur in('mv','tbmm','bskv','grup_bskv');
+ end if;
+ update oyun.adliye_davalar set durum='karar',hakim=p.id,karar=p_karar,gerekce=trim(p_gerekce),
+ karar_at=t,ceza_bitis=bitis,mv_makam_id=mv where id=d.id;
+ insert into oyun.bildirimler(user_id,zaman,metin)
+ select x.id,t,'Adliye #'||d.id||' kararı: '||p_karar||'. Kamuya açık gerekçe için Adliye bölümüne girin.'
+ from (select d.davaci as id union select d.davali where d.davali is not null) x;
+ return jsonb_build_object('tamam',true);
+end $$;
+
+create or replace function public.adliye_af_cikar(p_dava bigint,p_gerekce text) returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); t timestamptz:=oyun.simdi(); d oyun.adliye_davalar; adet int:=0; kalan timestamptz; eski oyun.makamlar;
+begin
+ if not exists(select 1 from oyun.makamlar where user_id=p.id and tur='cb' and bit is null) then raise exception 'Yalnız Cumhurbaşkanı af çıkarabilir.'; end if;
+ if char_length(trim(coalesce(p_gerekce,''))) not between 10 and 1000 then raise exception 'Af gerekçesi 10–1000 karakter olmalı.'; end if;
+ for d in select * from oyun.adliye_davalar
+  where durum='karar' and af_at is null and karar not in('beraat')
+    and (p_dava is null or id=p_dava) order by id for update
+ loop
+  update oyun.adliye_davalar set af_at=t,af_veren=p.id,af_gerekce=trim(p_gerekce) where id=d.id;
+  adet:=adet+1;
+  if d.davali is not null and d.karar in('sustur_1s','sustur_1g','sustur_1h') then
+   -- Yalnızca mahkeme susturmasını kaldır, yönetici susturmalarını değiştirme.
+   select max(ceza_bitis) into kalan from oyun.adliye_davalar
+   where davali=d.davali and durum='karar' and af_at is null and karar in('sustur_1s','sustur_1g','sustur_1h') and ceza_bitis>t;
+   update oyun.profiller set adliye_susturma_bitis=kalan where id=d.davali;
+  end if;
+  if d.karar='vekillik_dusur' and d.mv_makam_id is not null then
+    select * into eski from oyun.makamlar where id=d.mv_makam_id for update;
+    if eski.id is not null and eski.bit is not null and eski.bitis_neden='Adliye #'||d.id||' kararı'
+      and not exists(select 1 from oyun.makamlar where user_id=eski.user_id and tur='mv' and bit is null)
+      and not exists(select 1 from oyun.secimler where tur='mv' and goreve_bas>d.karar_at and goreve_bas<=t)
+      and (select count(*) from oyun.makamlar where tur='mv' and bit is null)<600 then
+      update oyun.makamlar set bit=null,bitis_neden=null where id=eski.id;
+    end if;
+  end if;
+  if d.davali is not null then
+   insert into oyun.bildirimler(user_id,zaman,metin) values(d.davali,t,'Cumhurbaşkanı Adliye #'||d.id||' cezanızı affetti. Detaylar Adliye''de.');
+  end if;
+ end loop;
+ if adet=0 then raise exception 'Affedilebilecek kesinleşmiş ceza bulunamadı.'; end if;
+ insert into oyun.adliye_aflar(cb,dava_id,tur,gerekce,affedilen,zaman)
+ values(p.id,p_dava,case when p_dava is null then 'genel' else 'bireysel' end,trim(p_gerekce),adet,t);
+ return jsonb_build_object('tamam',true,'affedilen',adet);
+end $$;
+
+revoke all on function public.adliye_durum() from public,anon;
+revoke all on function public.adliye_detay(bigint) from public,anon;
+revoke all on function public.adliye_hakim_ata(text) from public,anon;
+revoke all on function public.adliye_hakim_al(text) from public,anon;
+revoke all on function public.adliye_sozcu_ata(bigint,text) from public,anon;
+revoke all on function public.adliye_dava_ac(text,text,text,text,text,bigint) from public,anon;
+revoke all on function public.adliye_temsil_yetkisi(bigint,boolean) from public,anon;
+revoke all on function public.adliye_beyan_ver(bigint,text) from public,anon;
+revoke all on function public.adliye_yorum_yaz(bigint,text) from public,anon;
+revoke all on function public.adliye_karar_ver(bigint,text,text) from public,anon;
+revoke all on function public.adliye_af_cikar(bigint,text) from public,anon;
+grant execute on function public.adliye_durum() to authenticated;
+grant execute on function public.adliye_detay(bigint) to authenticated;
+grant execute on function public.adliye_hakim_ata(text) to authenticated;
+grant execute on function public.adliye_hakim_al(text) to authenticated;
+grant execute on function public.adliye_sozcu_ata(bigint,text) to authenticated;
+grant execute on function public.adliye_dava_ac(text,text,text,text,text,bigint) to authenticated;
+grant execute on function public.adliye_temsil_yetkisi(bigint,boolean) to authenticated;
+grant execute on function public.adliye_beyan_ver(bigint,text) to authenticated;
+grant execute on function public.adliye_yorum_yaz(bigint,text) to authenticated;
+grant execute on function public.adliye_karar_ver(bigint,text,text) to authenticated;
+grant execute on function public.adliye_af_cikar(bigint,text) to authenticated;
+-- Parti sözcüsü herkesin görebildiği parti makamı; atamayı yalnız genel başkan yapar.
+create or replace function public.parti_sozcu_bilgi(p_parti bigint)
+returns jsonb language sql stable security definer set search_path='' as $$
+ select jsonb_build_object(
+  'parti_id',pa.id,'sozcu',oyun.kad(s.user_id),
+  'gb_miyim',pa.gb=auth.uid(),'genel_baskan',oyun.kad(pa.gb))
+ from oyun.partiler pa left join oyun.parti_sozcu s on s.parti_id=pa.id
+ where pa.id=p_parti and not pa.kapali and auth.uid() is not null;
+$$;
+revoke all on function public.parti_sozcu_bilgi(bigint) from public,anon;
+grant execute on function public.parti_sozcu_bilgi(bigint) to authenticated;
+-- Eklemeli: Yüksek Yargıç istifa, siyasi aday önerisi ve seçim sonucu itirazı
+ALTER TABLE oyun.adliye_makam ADD COLUMN IF NOT EXISTS oneri_donemi integer NOT NULL DEFAULT 1;
+CREATE TABLE IF NOT EXISTS oyun.adliye_yargic_onerileri (
+ id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ parti_id bigint NOT NULL REFERENCES oyun.partiler(id),
+ oneri_donemi integer NOT NULL,
+ aday uuid NOT NULL REFERENCES oyun.profiller(id),
+ yapan uuid NOT NULL REFERENCES oyun.profiller(id),
+ aciklama text NOT NULL DEFAULT '',
+ zaman timestamptz NOT NULL DEFAULT now(),
+ UNIQUE(parti_id,oneri_donemi)
+);
+CREATE TABLE IF NOT EXISTS oyun.adliye_secim_itirazlari (
+ id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ secim_id bigint NOT NULL REFERENCES oyun.secimler(id),
+ parti_id bigint NOT NULL REFERENCES oyun.partiler(id),
+ yapan uuid NOT NULL REFERENCES oyun.profiller(id),
+ gerekce text NOT NULL,
+ deliller text NOT NULL DEFAULT '',
+ zaman timestamptz NOT NULL DEFAULT now(),
+ durum text NOT NULL DEFAULT 'bekliyor' CHECK (durum IN ('bekliyor','kabul','ret')),
+ karar_veren uuid REFERENCES oyun.profiller(id),
+ karar_gerekce text,
+ karar_at timestamptz,
+ UNIQUE(secim_id,parti_id)
+);
+CREATE INDEX IF NOT EXISTS adliye_itiraz_secim_idx ON oyun.adliye_secim_itirazlari(secim_id);
+
+CREATE OR REPLACE FUNCTION public.adliye_hakim_istifa()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare p oyun.profiller:=oyun.profilim(); eski uuid; t timestamptz:=oyun.simdi();
+begin
+ select hakim into eski from oyun.adliye_makam where id=1 for update;
+ if eski is null or eski<>p.id then raise exception 'Yalnız görevdeki Yüksek Yargıç istifa edebilir.'; end if;
+ update oyun.adliye_makam set hakim=null,atama_at=null,degistirme_at=t where id=1;
+ insert into oyun.adliye_atama_kayit(yapan,eski,yeni,gerekce,zaman)
+ values(p.id,p.id,null,'Yüksek Yargıç kendi isteğiyle istifa etti.',t);
+ insert into oyun.bildirimler(user_id,zaman,metin)
+ select distinct m.user_id,t,'Yüksek Yargıç istifa etti. Partiler yeni yargıç adaylarını önerebilir; son atama Cumhurbaşkanına aittir.'
+ from oyun.makamlar m where m.tur='cb' and m.bit is null;
+ return jsonb_build_object('tamam',true);
+end; $function$;
+
+CREATE OR REPLACE FUNCTION public.adliye_secim_itiraz_ac(p_secim bigint, p_parti bigint, p_gerekce text, p_deliller text DEFAULT ''::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare p oyun.profiller:=oyun.profilim(); s oyun.secimler; t timestamptz:=oyun.simdi(); yeni_id bigint;
+begin
+ if not exists(select 1 from oyun.partiler pa
+ left join oyun.parti_sozcu ps on ps.parti_id=pa.id
+ where pa.id=p_parti and not pa.kapali and (pa.gb=p.id or ps.user_id=p.id))
+ then raise exception 'Partinin genel başkanı veya sözcüsü itiraz edebilir.'; end if;
+ select * into s from oyun.secimler where id=p_secim;
+ if s.id is null then raise exception 'Seçim bulunamadı.'; end if;
+ if s.sonuc is null or s.sonuc_at is null or t<s.sonuc_at then
+ raise exception 'Yalnız sonuçlanmış seçimlere itiraz edilebilir.'; end if;
+ if t>s.sonuc_at+interval '48 hours' then raise exception '48 saatlik itiraz süresi doldu.'; end if;
+ if char_length(trim(coalesce(p_gerekce,''))) not between 30 and 1600
+ then raise exception 'İtiraz gerekçesi 30-1600 karakter olmalı.'; end if;
+ if char_length(coalesce(p_deliller,''))>3000 then raise exception 'Deliller en fazla 3000 karakter olabilir.'; end if;
+ insert into oyun.adliye_secim_itirazlari(secim_id,parti_id,yapan,gerekce,deliller,zaman)
+ values(s.id,p_parti,p.id,trim(p_gerekce),trim(coalesce(p_deliller,'')),t) returning id into yeni_id;
+ return jsonb_build_object('tamam',true,'id',yeni_id);
+end; $function$;
+
+CREATE OR REPLACE FUNCTION public.adliye_secim_itiraz_karar(p_itiraz bigint, p_karar text, p_gerekce text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare p oyun.profiller:=oyun.profilim(); it oyun.adliye_secim_itirazlari; t timestamptz:=oyun.simdi(); gb uuid;
+begin
+ if not exists(select 1 from oyun.adliye_makam where id=1 and hakim=p.id)
+ then raise exception 'İtiraza yalnız Yüksek Yargıç karar verebilir.'; end if;
+ if p_karar not in ('kabul','ret') then raise exception 'Geçersiz itiraz kararı.'; end if;
+ if char_length(trim(coalesce(p_gerekce,''))) not between 25 and 1600
+ then raise exception 'Karar gerekçesi 25-1600 karakter olmalı.'; end if;
+ select * into it from oyun.adliye_secim_itirazlari where id=p_itiraz for update;
+ if it.id is null or it.durum<>'bekliyor' then raise exception 'Bekleyen itiraz bulunamadı.'; end if;
+ if exists(select 1 from oyun.profiller where id=p.id and parti_id=it.parti_id)
+ then raise exception 'Yargıç kendi partisinin itirazını inceleyemez.'; end if;
+ update oyun.adliye_secim_itirazlari
+ set durum=p_karar,karar_veren=p.id,karar_gerekce=trim(p_gerekce),karar_at=t where id=it.id;
+ select gb into gb from oyun.partiler where id=it.parti_id;
+ if gb is not null then insert into oyun.bildirimler(user_id,zaman,metin)
+ values(gb,t,'Adliye seçim itirazı #'||it.id||': '||case when p_karar='kabul' then 'İnceleme talebi kabul edildi.' else 'İtiraz reddedildi.' end); end if;
+ return jsonb_build_object('tamam',true,'uyari','İtiraz kararı seçimin açıklanan sonuçlarını veya makamları kendiliğinden değiştirmez.');
+end; $function$;
+
+CREATE OR REPLACE FUNCTION public.adliye_siyasi_bilgi()
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+ select jsonb_build_object(
+ 'oneri_donemi',(select oneri_donemi from oyun.adliye_makam where id=1),
+ 'oneriler',coalesce((select jsonb_agg(jsonb_build_object(
+ 'parti_id',o.parti_id,'parti',pa.ad,'aday',oyun.kad(o.aday),'aciklama',o.aciklama,'zaman',o.zaman)
+ order by pa.ad)
+ from oyun.adliye_yargic_onerileri o join oyun.partiler pa on pa.id=o.parti_id
+ where o.oneri_donemi=(select oneri_donemi from oyun.adliye_makam where id=1)),'[]'::jsonb),
+ 'secimler',coalesce((select jsonb_agg(jsonb_build_object('id',s.id,'tur',s.tur,'donem',s.donem,
+ 'sonuc_at',s.sonuc_at,'itiraz_son',s.sonuc_at+interval '48 hours') order by s.sonuc_at desc)
+ from (select * from oyun.secimler
+ where sonuc is not null and sonuc_at <= oyun.simdi()
+ and sonuc_at+interval '48 hours'>oyun.simdi() order by sonuc_at desc limit 20) s),'[]'::jsonb),
+ 'itirazlar',coalesce((select jsonb_agg(jsonb_build_object(
+ 'id',i.id,'secim_id',i.secim_id,'secim_tur',s.tur,'secim_donem',s.donem,
+ 'parti_id',i.parti_id,'parti',pa.ad,'basvuran',oyun.kad(i.yapan),
+ 'gerekce',i.gerekce,'deliller',i.deliller,'basvuru_at',i.zaman,
+ 'durum',i.durum,'karar_veren',oyun.kad(i.karar_veren),'karar_gerekce',i.karar_gerekce,'karar_at',i.karar_at)
+ order by i.id desc)
+ from (select * from oyun.adliye_secim_itirazlari order by id desc limit 100) i
+ join oyun.partiler pa on pa.id=i.parti_id join oyun.secimler s on s.id=i.secim_id),'[]'::jsonb)
+ );
+$function$;
+
+CREATE OR REPLACE FUNCTION public.adliye_yargic_oner(p_parti bigint, p_kad text, p_aciklama text DEFAULT ''::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare p oyun.profiller:=oyun.profilim(); u oyun.profiller; d integer; t timestamptz:=oyun.simdi();
+begin
+ if not exists(select 1 from oyun.partiler where id=p_parti and gb=p.id and not kapali)
+ then raise exception 'Yargıç adayını parti adına yalnız genel başkan önerebilir.'; end if;
+ select * into u from oyun.profiller where lower(kad)=lower(trim(coalesce(p_kad,''))) and not yasakli;
+ if u.id is null then raise exception 'Önerilen oyuncu bulunamadı.'; end if;
+ if char_length(trim(coalesce(p_aciklama,'')))>450 then raise exception 'Açıklama en fazla 450 karakter olmalı.'; end if;
+ select oneri_donemi into d from oyun.adliye_makam where id=1 for share;
+ if exists(select 1 from oyun.adliye_makam where id=1 and hakim=u.id)
+ then raise exception 'Görevdeki yargıç kendisi için önerilemez.'; end if;
+ insert into oyun.adliye_yargic_onerileri(parti_id,oneri_donemi,aday,yapan,aciklama,zaman)
+ values(p_parti,d,u.id,p.id,trim(coalesce(p_aciklama,'')),t)
+ on conflict(parti_id,oneri_donemi) do update
+ set aday=excluded.aday,yapan=excluded.yapan,aciklama=excluded.aciklama,zaman=excluded.zaman;
+ return jsonb_build_object('tamam',true,'aday',u.kad,'oneri_donemi',d);
+end; $function$;
+
+CREATE OR REPLACE FUNCTION oyun.adliye_yeni_donem()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
+begin
+ if new.hakim is distinct from old.hakim then
+    new.oneri_donemi := old.oneri_donemi + 1;
+ end if;
+ return new;
+end; $function$;
+DROP TRIGGER IF EXISTS adliye_oneri_turu_tr ON oyun.adliye_makam;
+CREATE TRIGGER adliye_oneri_turu_tr BEFORE UPDATE OF hakim ON oyun.adliye_makam
+ FOR EACH ROW EXECUTE FUNCTION oyun.adliye_yeni_donem();
+REVOKE ALL ON FUNCTION public.adliye_hakim_istifa() FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.adliye_yargic_oner(bigint,text,text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.adliye_secim_itiraz_ac(bigint,bigint,text,text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.adliye_secim_itiraz_karar(bigint,text,text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.adliye_siyasi_bilgi() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.adliye_hakim_istifa() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.adliye_yargic_oner(bigint,text,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.adliye_secim_itiraz_ac(bigint,bigint,text,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.adliye_secim_itiraz_karar(bigint,text,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.adliye_siyasi_bilgi() TO authenticated;
+
+-- Parti birleşmesi ve il bazında ortak MV listesi. Oyun verilerine dokunulmaz.
+create table if not exists oyun.parti_birlesmeler(
+ id bigint generated always as identity primary key,
+ kaynak_parti bigint not null references oyun.partiler(id),
+ hedef_parti bigint not null references oyun.partiler(id),
+ teklif_eden uuid not null references oyun.profiller(id),
+ durum text not null default 'bekliyor' check(durum in ('bekliyor','kabul','ret','iptal')),
+ teklif_at timestamptz not null default now(),
+ karar_at timestamptz,
+ tasinan_kasa numeric not null default 0,
+ tasinan_uye int not null default 0,
+ check(kaynak_parti<>hedef_parti)
+);
+create index if not exists parti_birlesme_aktif_idx on oyun.parti_birlesmeler(kaynak_parti,hedef_parti,durum);
+create table if not exists oyun.parti_birlesme_uyeleri(
+ birlesme_id bigint not null references oyun.parti_birlesmeler(id),
+ user_id uuid not null references oyun.profiller(id),
+ eski_parti bigint not null references oyun.partiler(id),
+ yeni_parti bigint not null references oyun.partiler(id),
+ birlesme_at timestamptz not null default now(),
+ primary key(birlesme_id,user_id)
+);
+create table if not exists oyun.mv_ortak_listeler(
+ id bigint generated always as identity primary key,
+ secim_id bigint not null references oyun.secimler(id),
+ il_id smallint not null references oyun.iller(id),
+ teklif_eden_parti bigint not null references oyun.partiler(id),
+ ortak_parti bigint not null references oyun.partiler(id),
+ lider_parti bigint not null references oyun.partiler(id),
+ durum text not null default 'bekliyor' check(durum in ('bekliyor','kabul','ret','iptal')),
+ teklif_at timestamptz not null default now(),
+ karar_at timestamptz,
+ check(teklif_eden_parti<>ortak_parti),
+ check(lider_parti in (teklif_eden_parti,ortak_parti))
+);
+create index if not exists mv_ortak_listeler_lookup on oyun.mv_ortak_listeler(secim_id,il_id,durum);
+do $body$
+declare n text;
+begin
+ foreach n in array array['parti_birlesmeler','parti_birlesme_uyeleri','mv_ortak_listeler'] loop
+  execute format('alter table oyun.%I enable row level security',n);
+  execute format('revoke all on oyun.%I from public,anon,authenticated',n);
+  if to_regprocedure('oyun.bosaltma_korumasi()') is not null then
+   execute format('drop trigger if exists bosaltma_korumasi on oyun.%I',n);
+   execute format('create trigger bosaltma_korumasi before truncate on oyun.%I for each statement execute function oyun.bosaltma_korumasi()',n);
+  end if;
+ end loop;
+end $body$;
+-- Birleşme, adaylıklar açıkken ve sandık sürecinde yapılamaz.
+create or replace function oyun.parti_birlesme_kilit(t timestamptz) returns text
+language sql stable set search_path='' as $body$
+ select 'Adaylık, önseçim veya oy verme süreci devam ederken parti birleşmesi yapılamaz.'
+ where exists(select 1 from oyun.secimler s
+  where s.durum='bekliyor' and s.tur in ('mv','mv_on','bel','bel_on','cb')
+   and t>=coalesce(s.basvuru_bas,s.oy_bas) and t<s.sonuc_at)
+$body$;
+create or replace function oyun.mv_ortak_liste_partisi(p_secim bigint,p_il smallint,p_parti bigint) returns bigint
+language sql stable set search_path='' as $body$
+ select coalesce((select m.lider_parti from oyun.mv_ortak_listeler m
+   where m.secim_id=p_secim and m.il_id=p_il and m.durum='kabul'
+    and p_parti in(m.teklif_eden_parti,m.ortak_parti)
+   order by m.id desc limit 1),p_parti)
+$body$;
+create or replace function public.parti_isbirligi_durum(p_parti bigint) returns jsonb
+language plpgsql security definer set search_path='' as $body$
+declare p oyun.profiller:=oyun.profilim(); t timestamptz:=oyun.simdi();
+begin
+ return jsonb_build_object(
+  'gb_miyim',exists(select 1 from oyun.partiler where id=p_parti and gb=p.id and not kapali),
+  'birlesme_kilit',oyun.parti_birlesme_kilit(t),
+  'birlesmeler',coalesce((select jsonb_agg(jsonb_build_object(
+   'id',b.id,'kaynak',oyun.parti_json(b.kaynak_parti),'hedef',oyun.parti_json(b.hedef_parti),
+   'durum',b.durum,'teklif_at',b.teklif_at,'tasınan_uye',b.tasinan_uye,
+   'tasinan_kasa',b.tasinan_kasa,'yanitlayabilirim',b.durum='bekliyor' and p.parti_id=b.hedef_parti
+      and exists(select 1 from oyun.partiler where id=b.hedef_parti and gb=p.id),
+   'iptal_edebilirim',b.durum='bekliyor' and b.teklif_eden=p.id) order by b.id desc)
+   from (select * from oyun.parti_birlesmeler where kaynak_parti=p_parti or hedef_parti=p_parti order by id desc limit 20) b),'[]'::jsonb),
+  'mv_secim', (select jsonb_build_object('id',s.id,'donem',s.donem,'oy_bas',s.oy_bas)
+                from oyun.secimler s where s.tur='mv' and s.durum='bekliyor' and s.oy_bas>t
+                order by s.oy_bas limit 1),
+  'ortak_listeler',coalesce((select jsonb_agg(jsonb_build_object(
+   'id',x.id,'secim_id',x.secim_id,'il_id',x.il_id,'il',(select ad from oyun.iller where id=x.il_id),
+   'teklif_eden',oyun.parti_json(x.teklif_eden_parti),'ortak',oyun.parti_json(x.ortak_parti),
+   'lider',oyun.parti_json(x.lider_parti),'durum',x.durum,'teklif_at',x.teklif_at,
+   'yanitlayabilirim',x.durum='bekliyor' and p.parti_id=x.ortak_parti and exists(select 1 from oyun.partiler where id=x.ortak_parti and gb=p.id),
+   'iptal_edebilirim',x.durum='bekliyor' and exists(select 1 from oyun.partiler where id=x.teklif_eden_parti and gb=p.id)
+   ) order by x.il_id,x.id desc)
+   from oyun.mv_ortak_listeler x
+   where (x.teklif_eden_parti=p_parti or x.ortak_parti=p_parti)
+    and (x.durum='bekliyor' or (x.durum='kabul' and exists(select 1 from oyun.secimler s where s.id=x.secim_id and s.sonuc_at>t)) or x.karar_at>t-interval '7 days')),'[]'::jsonb)
+ );
+end $body$;
+create or replace function public.parti_birlesme_teklif(p_hedef bigint) returns jsonb
+language plpgsql security definer set search_path='' as $body$
+declare p oyun.profiller:=oyun.profilim(); t timestamptz:=oyun.simdi(); kaynak oyun.partiler; hedef oyun.partiler; kilit text;
+begin
+ kaynak:=oyun.gb_partim(p); 
+ kilit:=oyun.parti_birlesme_kilit(t); if kilit is not null then raise exception '%',kilit; end if;
+ select * into hedef from oyun.partiler where id=p_hedef and not kapali and gb is not null;
+ if hedef.id is null or hedef.id=kaynak.id then raise exception 'Birleşilecek partinin aktif bir genel başkanı bulunmalı.'; end if;
+ if kaynak.kurulus_bit is not null or hedef.kurulus_bit is not null then raise exception 'Kuruluşu tamamlanmamış partiler birleşemez.'; end if;
+ if exists(select 1 from oyun.parti_birlesmeler b where b.durum='bekliyor' and 
+ (kaynak.id in(b.kaynak_parti,b.hedef_parti) or hedef.id in(b.kaynak_parti,b.hedef_parti))) then
+  raise exception 'Taraflardan birinin bekleyen birleşme teklifi var.'; end if;
+ insert into oyun.parti_birlesmeler(kaynak_parti,hedef_parti,teklif_eden,teklif_at)
+ values(kaynak.id,hedef.id,p.id,t);
+ perform oyun.bildir(hedef.gb,format('%s partisi senin partine katılarak birleşmek istiyor. Parti sayfandan kabul et / reddet.',kaynak.kisa),t);
+ perform oyun.olay('parti',format('%s, %s ile birleşme görüşmelerini başlattı.',kaynak.kisa,hedef.kisa),null,kaynak.id,t);
+ return public.parti_isbirligi_durum(kaynak.id);
+end $body$;
+create or replace function public.parti_birlesme_iptal(p_id bigint) returns jsonb
+language plpgsql security definer set search_path='' as $body$
+declare p oyun.profiller:=oyun.profilim(); b oyun.parti_birlesmeler;
+begin
+ select * into b from oyun.parti_birlesmeler where id=p_id for update;
+ if b.id is null or b.durum<>'bekliyor' or b.teklif_eden<>p.id
+   or not exists(select 1 from oyun.partiler where id=b.kaynak_parti and gb=p.id and not kapali) then
+  raise exception 'Bu birleşme teklifini iptal edemezsin.'; end if;
+ update oyun.parti_birlesmeler set durum='iptal',karar_at=oyun.simdi() where id=p_id;
+ return public.parti_isbirligi_durum(b.kaynak_parti);
+end $body$;
+create or replace function public.parti_birlesme_yanit(p_id bigint,p_kabul boolean) returns jsonb
+language plpgsql security definer set search_path='' as $body$
+declare p oyun.profiller:=oyun.profilim(); t timestamptz:=oyun.simdi(); b oyun.parti_birlesmeler;
+ k oyun.partiler; h oyun.partiler; kilit text; n int; para numeric;
+begin
+ select * into b from oyun.parti_birlesmeler where id=p_id for update;
+ if b.id is null or b.durum<>'bekliyor' then raise exception 'Yanıt bekleyen birleşme teklifi yok.'; end if;
+ if not exists(select 1 from oyun.partiler where id=b.hedef_parti and gb=p.id and not kapali) then
+  raise exception 'Birleşmeyi yalnız hedef partinin genel başkanı kabul edebilir.'; end if;
+ if not p_kabul then
+   update oyun.parti_birlesmeler set durum='ret',karar_at=t where id=b.id;
+   perform oyun.bildir(b.teklif_eden,'Parti birleşmesi teklifin reddedildi.',t);
+   return public.parti_isbirligi_durum(b.hedef_parti);
+ end if;
+ kilit:=oyun.parti_birlesme_kilit(t); if kilit is not null then raise exception '%',kilit; end if;
+ -- Eş zamanlı kabul/teklif işlemlerini parti satırlarını sırayla kilitleyerek koru.
+ perform id from oyun.partiler where id in(b.kaynak_parti,b.hedef_parti) order by id for update;
+ select * into k from oyun.partiler where id=b.kaynak_parti;
+ select * into h from oyun.partiler where id=b.hedef_parti;
+ if k.kapali or h.kapali or k.gb<>b.teklif_eden or h.gb<>p.id then
+  raise exception 'Birleşme teklifi hazırlanırken parti başkanları veya durumları değişmiş.'; end if;
+ if k.kurulus_bit is not null or h.kurulus_bit is not null then raise exception 'Kuruluş aşamasındaki parti birleşemez.'; end if;
+ para:=k.kasa;
+ insert into oyun.parti_birlesme_uyeleri(birlesme_id,user_id,eski_parti,yeni_parti,birlesme_at)
+ select b.id,id,k.id,h.id,t from oyun.profiller where parti_id=k.id;
+ get diagnostics n=row_count;
+ update oyun.profiller set parti_id=h.id where parti_id=k.id;
+ -- Geçmiş seçim sonuçları değişmez; halen devam eden milletvekilliği gibi makamlar yeni partiye geçer.
+ update oyun.makamlar set parti_id=h.id where parti_id=k.id and bit is null;
+ update oyun.partiler set kasa=kasa+para where id=h.id;
+ insert into oyun.parti_hareket(parti_id,zaman,tutar,aciklama,tur)
+ values(h.id,t,para,format('%s ile birleşmeden devralınan kasa',k.kisa),'birlesme');
+ update oyun.partiler set kasa=0,kapali=true,gb=null where id=k.id;
+ perform oyun.ittifak_temizle();
+ update oyun.parti_birlesmeler set durum='iptal',karar_at=t
+   where durum='bekliyor' and id<>b.id
+    and (kaynak_parti in(k.id,h.id) or hedef_parti in(k.id,h.id));
+ update oyun.parti_birlesmeler set durum='kabul',karar_at=t,tasinan_kasa=para,tasinan_uye=n where id=b.id;
+ insert into oyun.bildirimler(user_id,zaman,metin)
+ select id,t,format('%s partisi %s ile birleşti. Parti üyeliğin, makamın ve oyun paran korunuyor.',k.kisa,h.kisa)
+ from oyun.profiller where parti_id=h.id;
+ perform oyun.olay('parti',format('%s partisi %s çatısı altında birleşti: %s üye ve %s TL parti kasası aktarıldı.',k.kisa,h.kisa,n,para),null,h.id,t);
+ return public.parti_isbirligi_durum(h.id);
+end $body$;
+create or replace function public.mv_ortak_liste_teklif(p_ortak bigint,p_lider bigint,p_il int) returns jsonb
+language plpgsql security definer set search_path='' as $body$
+declare p oyun.profiller:=oyun.profilim(); t timestamptz:=oyun.simdi(); pa oyun.partiler;
+ b oyun.partiler; s oyun.secimler; ilan text;
+begin
+ pa:=oyun.gb_partim(p);
+ select * into b from oyun.partiler where id=p_ortak and not kapali and gb is not null;
+ if b.id is null or b.id=pa.id then raise exception 'Ortak liste için başka bir aktif parti seç.'; end if;
+ if p_lider not in(pa.id,b.id) then raise exception 'Liste sahibi iki partiden biri olmalı.'; end if;
+ if not exists(select 1 from oyun.iller where id=p_il) then raise exception 'İl seçimi geçersiz.'; end if;
+ if not exists(select 1 from oyun.ittifak_uyeler a join oyun.ittifak_uyeler u on u.ittifak_id=a.ittifak_id
+                where a.parti_id=pa.id and u.parti_id=b.id) then
+  raise exception 'Ortak liste için partilerin aynı ittifakta olması gerekir.'; end if;
+ select * into s from oyun.secimler where tur='mv' and durum='bekliyor' and oy_bas>t order by oy_bas limit 1;
+ if s.id is null then raise exception 'Henüz ortak liste kurulabilecek yaklaşan genel seçim yok.'; end if;
+ if exists(select 1 from oyun.mv_ortak_listeler x where x.secim_id=s.id and x.il_id=p_il
+   and x.durum in('bekliyor','kabul') and
+   (pa.id in(x.teklif_eden_parti,x.ortak_parti) or b.id in(x.teklif_eden_parti,x.ortak_parti))) then
+  raise exception 'Bu ilde taraflardan birinin bekleyen veya kabul edilmiş ortak listesi var.'; end if;
+ insert into oyun.mv_ortak_listeler(secim_id,il_id,teklif_eden_parti,ortak_parti,lider_parti,teklif_at)
+ values(s.id,p_il,pa.id,b.id,p_lider,t);
+ select ad into ilan from oyun.iller where id=p_il;
+ perform oyun.bildir(b.gb,format('%s, %s ili için ortak MV listesi teklif etti. Liste sahibi: %s. Parti sayfandan yanıtla.',
+ pa.kisa,ilan,(select kisa from oyun.partiler where id=p_lider)),t);
+ perform oyun.olay('ittifak',format('%s ve %s arasında %s ili ortak liste görüşmesi başladı.',pa.kisa,b.kisa,ilan),p_il,pa.id,t);
+ return public.parti_isbirligi_durum(pa.id);
+end $body$;
+create or replace function public.mv_ortak_liste_yanit(p_id bigint,p_kabul boolean) returns jsonb
+language plpgsql security definer set search_path='' as $body$
+declare p oyun.profiller:=oyun.profilim(); t timestamptz:=oyun.simdi(); x oyun.mv_ortak_listeler;
+ s oyun.secimler; gb uuid;
+begin
+ select * into x from oyun.mv_ortak_listeler where id=p_id for update;
+ if x.id is null or x.durum<>'bekliyor' then raise exception 'Yanıtlanacak liste teklifi bulunamadı.'; end if;
+ if not exists(select 1 from oyun.partiler where id=x.ortak_parti and gb=p.id and not kapali) then
+  raise exception 'Teklife yalnız davet edilen partinin genel başkanı cevap verebilir.'; end if;
+ if p_kabul then
+  select * into s from oyun.secimler where id=x.secim_id and durum='bekliyor' and oy_bas>t;
+  if s.id is null then raise exception 'Genel seçim oylaması başladı; ortak listeyi artık değiştiremezsin.'; end if;
+  if not exists(select 1 from oyun.ittifak_uyeler a join oyun.ittifak_uyeler b on b.ittifak_id=a.ittifak_id
+                where a.parti_id=x.teklif_eden_parti and b.parti_id=x.ortak_parti) then
+   raise exception 'Partiler artık aynı ittifakta değil.'; end if;
+  if exists(select 1 from oyun.mv_ortak_listeler m where m.id<>x.id and m.durum='kabul'
+    and m.secim_id=x.secim_id and m.il_id=x.il_id
+    and (m.teklif_eden_parti in(x.teklif_eden_parti,x.ortak_parti)
+     or m.ortak_parti in(x.teklif_eden_parti,x.ortak_parti))) then
+    raise exception 'Bu ilde başka bir kabul edilmiş ortak liste var.'; end if;
+ end if;
+ update oyun.mv_ortak_listeler set durum=case when p_kabul then 'kabul' else 'ret' end,karar_at=t where id=x.id;
+ select gb into gb from oyun.partiler where id=x.teklif_eden_parti;
+ if gb is not null then perform oyun.bildir(gb,format('Ortak MV listesi teklifin %s.',case when p_kabul then 'kabul edildi' else 'reddedildi' end),t); end if;
+ if p_kabul then
+  perform oyun.olay('ittifak',format('%s ve %s, %s ilinde %s partisi listesinde ortak seçime giriyor.',
+   (select kisa from oyun.partiler where id=x.teklif_eden_parti),
+   (select kisa from oyun.partiler where id=x.ortak_parti),
+   (select ad from oyun.iller where id=x.il_id),
+   (select kisa from oyun.partiler where id=x.lider_parti)),x.il_id,x.lider_parti,t);
+ end if;
+ return public.parti_isbirligi_durum(x.ortak_parti);
+end $body$;
+create or replace function public.mv_ortak_liste_iptal(p_id bigint) returns jsonb
+language plpgsql security definer set search_path='' as $body$
+declare p oyun.profiller:=oyun.profilim(); x oyun.mv_ortak_listeler;
+begin
+ select * into x from oyun.mv_ortak_listeler where id=p_id for update;
+ if x.id is null or x.durum<>'bekliyor' or not exists(select 1 from oyun.partiler where id=x.teklif_eden_parti and gb=p.id and not kapali)
+ then raise exception 'Bu bekleyen teklifi geri çekemezsin.'; end if;
+ update oyun.mv_ortak_listeler set durum='iptal',karar_at=oyun.simdi() where id=x.id;
+ return public.parti_isbirligi_durum(x.teklif_eden_parti);
+end $body$;
+revoke all on function oyun.mv_ortak_liste_partisi(bigint,smallint,bigint),
+ oyun.parti_birlesme_kilit(timestamptz) from public,anon,authenticated;
+revoke all on function public.parti_isbirligi_durum(bigint),
+ public.parti_birlesme_teklif(bigint),public.parti_birlesme_iptal(bigint),public.parti_birlesme_yanit(bigint,boolean),
+ public.mv_ortak_liste_teklif(bigint,bigint,int),public.mv_ortak_liste_yanit(bigint,boolean),
+ public.mv_ortak_liste_iptal(bigint) from public,anon;
+grant execute on function public.parti_isbirligi_durum(bigint),
+ public.parti_birlesme_teklif(bigint),public.parti_birlesme_iptal(bigint),public.parti_birlesme_yanit(bigint,boolean),
+ public.mv_ortak_liste_teklif(bigint,bigint,int),public.mv_ortak_liste_yanit(bigint,boolean),
+ public.mv_ortak_liste_iptal(bigint) to authenticated;
+
+-- Normal (test disi) milletvekili sayim motoru: il bazli ortak liste destegi.
+CREATE OR REPLACE FUNCTION oyun._sonuc_mv(s oyun.secimler)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
+declare
+  baraj numeric:=(select baraj from oyun.ayarlar where id=1);
+  onsecim oyun.secimler;
+  toplam bigint;
+  il record;
+  l record;
+  k int;
+  ana bigint;
+  iller_j jsonb:='{}'::jsonb;
+  ilj jsonb;
+  bos int:=0;
+  dolu int:=0;
+  sandalye_top int;
+  bag_oy bigint;
+  bag_sandalye int;
+begin
+  -- Geçici düşük oyuncu sayısı test modu: her kesinleşmiş aday seçilir.
+  if exists (select 1 from oyun.mv_secim_modu where id = 1 and her_aday_vekil) then
+    return oyun._sonuc_mv_test(s);
+  end if;
+  select * into onsecim from oyun.secimler where tur='mv_on' and donem=s.donem;
+  select count(*) into toplam from oyun.oylar where secim_id=s.id;
+  sandalye_top:=coalesce((select sum(mv_secim) from oyun.iller),600);
+
+  create temp table if not exists _b23_ulusal(
+    parti_id bigint primary key,
+    oy bigint,
+    yuzde numeric,
+    gecti boolean,
+    sandalye int default 0
+  ) on commit drop;
+  delete from _b23_ulusal;
+
+  insert into _b23_ulusal(parti_id,oy)
+  select parti_id,count(*)
+  from oyun.oylar
+  where secim_id=s.id and parti_id is not null
+  group by parti_id;
+
+  update _b23_ulusal
+  set yuzde=case when toplam>0 then round(oy*100.0/toplam,2) else 0 end;
+
+  update _b23_ulusal u
+  set gecti=(coalesce(u.oy*100.0/nullif(toplam,0),0)>=baraj) or coalesce((
+    select sum(u2.oy)*100.0/nullif(toplam,0)>=baraj
+    from oyun.ittifak_uyeler iu
+    join oyun.ittifak_uyeler iu2 on iu2.ittifak_id=iu.ittifak_id
+    join _b23_ulusal u2 on u2.parti_id=iu2.parti_id
+    where iu.parti_id=u.parti_id
+  ),false);
+
+  create temp table if not exists _b23_kaz(
+    user_id uuid,
+    il_id smallint,
+    parti_id bigint,
+    aday_id bigint
+  ) on commit drop;
+  delete from _b23_kaz;
+
+  create temp table if not exists _b23_liste(
+    anahtar bigint primary key,
+    parti_id bigint,
+    aday_id bigint,
+    oy bigint,
+    lim int,
+    kaz int default 0
+  ) on commit drop;
+
+  for il in select * from oyun.iller order by id loop
+    delete from _b23_liste;
+
+    insert into _b23_liste(anahtar,parti_id,aday_id,oy,lim)
+    select x.parti_id,x.parti_id,null,x.oy,x.lim
+    from (
+      select v.lider as parti_id,
+             count(*)::bigint oy,
+             (select count(*)
+              from oyun.adaylar a
+              where a.secim_id=onsecim.id
+                and a.il_id=il.id
+                and a.parti_id is not null
+                and oyun.mv_ortak_liste_partisi(s.id,il.id,a.parti_id)=v.lider
+                and a.sira is not null)::int lim
+      from (
+        select oyun.mv_ortak_liste_partisi(s.id,il.id,o.parti_id) as lider
+        from oyun.oylar o
+        join _b23_ulusal u on u.parti_id=o.parti_id and u.gecti
+        where o.secim_id=s.id and o.il_id=il.id and o.parti_id is not null
+      ) v
+      group by v.lider
+    ) x
+    where x.lim>0 and x.oy>0;
+
+    insert into _b23_liste(anahtar,parti_id,aday_id,oy,lim)
+    select -a.id,null,a.id,count(o.*)::bigint,1
+    from oyun.adaylar a
+    join oyun.oylar o
+      on o.secim_id=s.id and o.aday_id=a.id
+    where a.secim_id=s.id
+      and a.parti_id is null
+      and a.il_id=il.id
+    group by a.id
+    having count(o.*)>0;
+
+    for k in 1..coalesce(il.mv_secim,il.mv) loop
+      ana:=null;
+      select anahtar into ana
+      from _b23_liste
+      where kaz<lim and oy>0
+      order by oy::numeric/(kaz+1) desc,oy desc,anahtar
+      limit 1;
+      exit when ana is null;
+      update _b23_liste set kaz=kaz+1 where anahtar=ana;
+    end loop;
+
+    for l in select * from _b23_liste where parti_id is not null and kaz>0 loop
+      insert into _b23_kaz(user_id,il_id,parti_id,aday_id)
+      select a.user_id,il.id,a.parti_id,a.id
+      from oyun.adaylar a
+      where a.secim_id=onsecim.id
+        and a.il_id=il.id
+        and a.parti_id is not null
+        and oyun.mv_ortak_liste_partisi(s.id,il.id,a.parti_id)=l.parti_id
+        and a.sira is not null
+      order by a.sira, case when a.parti_id=l.parti_id then 0 else 1 end, a.id
+      limit l.kaz;
+    end loop;
+
+    insert into _b23_kaz(user_id,il_id,parti_id,aday_id)
+    select a.user_id,il.id,null,a.id
+    from _b23_liste l
+    join oyun.adaylar a on a.id=l.aday_id
+    where l.parti_id is null and l.kaz>0;
+
+    select jsonb_build_object(
+      'gecerli',(select count(*) from oyun.oylar where secim_id=s.id and il_id=il.id),
+      'partiler',coalesce((
+        select jsonb_object_agg(o.parti_id::text,jsonb_build_object(
+          'oy',o.n,
+          'sandalye',(select count(*) from _b23_kaz z where z.il_id=il.id and z.parti_id=o.parti_id)
+        ))
+        from (
+          select parti_id,count(*) n
+          from oyun.oylar
+          where secim_id=s.id and il_id=il.id and parti_id is not null
+          group by parti_id
+        ) o
+      ),'{}'::jsonb),
+      'bagimsizlar',coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'aday_id',a.id,
+          'kad',pr.kad,
+          'oy',(select count(*) from oyun.oylar o where o.secim_id=s.id and o.aday_id=a.id),
+          'sandalye',case when exists(select 1 from _b23_kaz z where z.aday_id=a.id) then 1 else 0 end
+        ) order by (select count(*) from oyun.oylar o where o.secim_id=s.id and o.aday_id=a.id) desc,a.id)
+        from oyun.adaylar a
+        join oyun.profiller pr on pr.id=a.user_id
+        where a.secim_id=s.id and a.parti_id is null and a.il_id=il.id
+      ),'[]'::jsonb),
+      'secilen',coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'kad',pr.kad,
+          'parti_id',z.parti_id,
+          'bagimsiz',z.parti_id is null
+        ) order by z.parti_id nulls last,pr.kad)
+        from _b23_kaz z
+        join oyun.profiller pr on pr.id=z.user_id
+        where z.il_id=il.id
+      ),'[]'::jsonb),
+      'mv',coalesce(il.mv_secim,il.mv)
+    ) into ilj;
+
+    if (ilj->>'gecerli')::int>0 or jsonb_array_length(ilj->'secilen')>0 then
+      iller_j:=iller_j||jsonb_build_object(il.id::text,ilj);
+    end if;
+  end loop;
+
+  -- Sandalyeler liste sahibine değil, seçilen adayların kendi partilerine yazılır.
+  update _b23_ulusal u set sandalye=(select count(*) from _b23_kaz z where z.parti_id=u.parti_id);
+
+  insert into oyun.kazananlar(secim_id,user_id,il_id,parti_id)
+  select s.id,user_id,il_id,parti_id from _b23_kaz
+  on conflict do nothing;
+
+  select count(*) into dolu from _b23_kaz;
+  bos:=sandalye_top-dolu;
+  select count(*) into bag_oy
+  from oyun.oylar where secim_id=s.id and parti_id is null and aday_id is not null;
+  select count(*) into bag_sandalye
+  from _b23_kaz where parti_id is null;
+
+  perform oyun.olay(
+    'secim',
+    format('Genel seçim sonuçlandı: %s oy kullanıldı, %s sandalye doldu, %s sandalye boş kaldı.',toplam,dolu,bos),
+    null,null,s.sonuc_at
+  );
+
+  return jsonb_build_object(
+    'toplam',toplam,
+    'baraj',baraj,
+    'sandalye_toplam',sandalye_top,
+    'dolu',dolu,
+    'bos',bos,
+    'bagimsiz_oy',bag_oy,
+    'bagimsiz_sandalye',bag_sandalye,
+    'bagimsizlar',coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'aday_id',a.id,
+        'kad',pr.kad,
+        'il_id',a.il_id,
+        'oy',(select count(*) from oyun.oylar o where o.secim_id=s.id and o.aday_id=a.id),
+        'sandalye',case when exists(select 1 from _b23_kaz z where z.aday_id=a.id) then 1 else 0 end
+      ) order by (select count(*) from oyun.oylar o where o.secim_id=s.id and o.aday_id=a.id) desc,a.id)
+      from oyun.adaylar a
+      join oyun.profiller pr on pr.id=a.user_id
+      where a.secim_id=s.id and a.parti_id is null
+    ),'[]'::jsonb),
+    'ulusal',coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'parti_id',u.parti_id,
+        'kisa',p.kisa,
+        'ad',p.ad,
+        'renk',p.renk,
+        'oy',u.oy,
+        'yuzde',u.yuzde,
+        'gecti',u.gecti,
+        'sandalye',u.sandalye
+      ) order by u.oy desc)
+      from _b23_ulusal u
+      join oyun.partiler p on p.id=u.parti_id
+    ),'[]'::jsonb),
+    'iller',iller_j
+  );
+end $function$
+;
+-- Ortak MV listesi: sandık görünürlüğü ve ittifaktan ayrılınca geçersiz kılma.
+create or replace function public.mv_ortak_liste_gorunum(p_secim bigint,p_il int)
+returns jsonb language sql stable security definer set search_path='' as $$
+ select coalesce(jsonb_agg(jsonb_build_object(
+  'id',x.id,'lider_parti',x.lider_parti,'parti1',x.teklif_eden_parti,'parti2',x.ortak_parti,
+  'lider', (select kisa from oyun.partiler where id=x.lider_parti),
+  'ortaklar', (select string_agg(kisa,' + ' order by id) from oyun.partiler where id in(x.teklif_eden_parti,x.ortak_parti))
+ ) order by x.id), '[]'::jsonb)
+ from oyun.mv_ortak_listeler x
+ where x.secim_id=p_secim and x.il_id=p_il and x.durum='kabul'
+$$;
+create or replace function oyun.mv_ortak_liste_ittifak_temizle()
+returns trigger language plpgsql set search_path='' as $$
+begin
+ update oyun.mv_ortak_listeler x set durum='iptal',karar_at=oyun.simdi()
+ where x.durum in('bekliyor','kabul')
+  and old.parti_id in(x.teklif_eden_parti,x.ortak_parti)
+  and exists(select 1 from oyun.secimler s where s.id=x.secim_id and s.durum='bekliyor' and s.oy_bas>oyun.simdi());
+ return old;
+end $$;
+drop trigger if exists mv_ortak_liste_ittifak_temizle on oyun.ittifak_uyeler;
+create trigger mv_ortak_liste_ittifak_temizle after delete on oyun.ittifak_uyeler
+for each row execute function oyun.mv_ortak_liste_ittifak_temizle();
+revoke all on function public.mv_ortak_liste_gorunum(bigint,int) from public,anon;
+grant execute on function public.mv_ortak_liste_gorunum(bigint,int) to authenticated;
+revoke all on function oyun.mv_ortak_liste_ittifak_temizle() from public,anon,authenticated;
 -- =====================================================================
 --  74 · MECLİS REHBERİ (yalnız okuma)
 --
@@ -25394,6 +27135,6814 @@ $$;
 
 revoke all on function public.meclis_rehber() from public, anon;
 grant execute on function public.meclis_rehber() to authenticated;
+-- =====================================================================
+--  75 · KADEMELİ SEÇİM GECESİ
+--
+--  Genel seçim (mv), cumhurbaşkanlığı (cb) ve 2. tur (cb2) sonuçları sayım
+--  saatinde (22:30) hesaplanır ama oyunculara ANINDA değil, il il, yaklaşık
+--  12 dakikada açılır. Küçük iller önce, büyükler sonra; her an yalnızca
+--  açılmış illerin oyları toplanır ("ilk sonuçlar"). Süre değişebilir:
+--     update oyun.secim_gecesi_ayar set sure_sn = 600;   -- 10 dakika (60-1800)
+--
+--  Güvenlik ilkesi: motor (oyun.tick, oyun.sonuclandir) ve oy sayımı DEĞİŞMEZ.
+--  Gerçek sonuç yine 22:30'da yazılır; bu modül yalnızca oyunculara ne
+--  gösterileceğini sınırlar:
+--   • public.secim_detay sarmalanır (asıl fonksiyon oyun._secim_detay_ham
+--     adıyla korunur); sonuç alanı açılmış illere göre süzülür.
+--   • "Genel seçim sonuçlandı / Cumhurbaşkanı seçildi" Gündem satırı sayım
+--     bitene kadar ileri tarihlenir (zaman <= şimdi süzgeci gizler).
+--   • Sayımın %25-50-75'inde ve bitişinde herkese bildirim gider.
+--  Zamanlayıcı (pg_cron) yoksa hiçbir şey gizlenmez; oyun eskisi gibi çalışır.
+-- =====================================================================
+
+create table if not exists oyun.secim_gecesi_ayar(
+  id     boolean primary key default true check (id),
+  sure_sn int not null default 720 check (sure_sn between 60 and 1800)
+);
+insert into oyun.secim_gecesi_ayar(id) values (true) on conflict (id) do nothing;
+
+create table if not exists oyun.secim_gecesi(
+  secim_id   bigint primary key references oyun.secimler(id) on delete cascade,
+  baslangic  timestamptz not null,
+  sure_sn    int not null,
+  plan       jsonb not null,           -- [{"il":12,"oy":40,"sn":35}, ...] açılış sırasıyla
+  toplam_oy  bigint not null default 0,
+  asama      smallint not null default -1,   -- gönderilen son bildirim eşiği (0..4)
+  olusturma  timestamptz not null default now()
+);
+
+do $$ declare n text; begin
+  foreach n in array array['secim_gecesi_ayar','secim_gecesi'] loop
+    execute format('alter table oyun.%I enable row level security', n);
+    execute format('revoke all on oyun.%I from public, anon, authenticated', n);
+  end loop;
+end $$;
+
+create or replace function oyun.secim_gecesi_sure() returns int
+language sql stable set search_path = '' as $$
+  select coalesce((select sure_sn from oyun.secim_gecesi_ayar where id), 720)
+$$;
+
+-- Sayım başlangıcından bu yana geçen saniye (kayıt yoksa null)
+create or replace function oyun.secim_gecesi_gecen(p_secim bigint) returns numeric
+language sql stable set search_path = '' as $$
+  select extract(epoch from (oyun.simdi() - g.baslangic))::numeric
+  from oyun.secim_gecesi g where g.secim_id = p_secim
+$$;
+
+-- Sayım hâlâ sürüyor mu? (başladı ve süre dolmadı)
+create or replace function oyun.secim_gecesi_aktif_mi(p_secim bigint) returns boolean
+language sql stable set search_path = '' as $$
+  select coalesce((select oyun.secim_gecesi_gecen(g.secim_id) >= 0
+                   and oyun.secim_gecesi_gecen(g.secim_id) < g.sure_sn
+                   from oyun.secim_gecesi g where g.secim_id = p_secim), false)
+$$;
+
+-- Şu ana kadar açılmış il numaraları
+create or replace function oyun.secim_gecesi_acik_iller(p_secim bigint) returns int[]
+language sql stable set search_path = '' as $$
+  select coalesce(array_agg((e->>'il')::int), '{}'::int[])
+  from oyun.secim_gecesi g, jsonb_array_elements(g.plan) e
+  where g.secim_id = p_secim and (e->>'sn')::numeric <= oyun.secim_gecesi_gecen(p_secim)
+$$;
+
+-- Sayım planı: küçük iller önce; ilin açılış zamanı, o ile kadar sayılmış oyların
+-- toplam içindeki payıyla orantılı. Oylar kesinleştikten (sandık kapandıktan) sonra çağrılır.
+create or replace function oyun.secim_gecesi_hazirla(p_secim bigint) returns boolean
+language plpgsql security definer set search_path = '' as $$
+declare s oyun.secimler; sure int := oyun.secim_gecesi_sure(); top bigint; p jsonb;
+begin
+  select * into s from oyun.secimler where id = p_secim;
+  if s.id is null or s.tur not in ('mv','cb','cb2') then return false; end if;
+  if exists (select 1 from oyun.secim_gecesi where secim_id = s.id) then return true; end if;
+  select count(*) into top from oyun.oylar where secim_id = s.id and il_id is not null;
+  if top = 0 then return false; end if;
+  select jsonb_agg(jsonb_build_object('il', il_id, 'oy', oy,
+           'sn', least(sure, greatest(15, ceil(sure * kum::numeric / top)::int))) order by kum, il_id)
+    into p
+  from (select il_id, oy, sum(oy) over (order by oy, il_id) kum
+        from (select il_id, count(*) oy from oyun.oylar
+              where secim_id = s.id and il_id is not null group by il_id) x) y;
+  insert into oyun.secim_gecesi(secim_id, baslangic, sure_sn, plan, toplam_oy)
+  values (s.id, s.sonuc_at, sure, p, top) on conflict (secim_id) do nothing;
+  -- Genel "Sonuçlar açıklandı" bildirimi yerine kademeli bildirimler gider
+  update oyun.secimler set hatirlatma = hatirlatma || '{"sonuc":true}'::jsonb where id = s.id;
+  return true;
+end $$;
+
+-- Açılmış illerdeki oyların özeti: toplam, il sayısı, önde olan
+create or replace function oyun.secim_gecesi_ozet(p_secim bigint) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare s oyun.secimler; g oyun.secim_gecesi; acik int[]; acilan_oy bigint; onde text; n int;
+begin
+  select * into s from oyun.secimler where id = p_secim;
+  select * into g from oyun.secim_gecesi where secim_id = p_secim;
+  if g.secim_id is null then return null; end if;
+  acik := oyun.secim_gecesi_acik_iller(p_secim);
+  select count(*), coalesce(sum((e->>'oy')::bigint), 0) into n, acilan_oy
+  from jsonb_array_elements(g.plan) e where (e->>'il')::int = any(acik);
+  if acilan_oy > 0 then
+    if s.tur = 'mv' then
+      select pa.kisa || ' %' || replace(round(c * 100.0 / acilan_oy, 1)::text, '.', ',') into onde
+      from (select parti_id, count(*) c from oyun.oylar
+            where secim_id = p_secim and il_id = any(acik) and parti_id is not null
+            group by parti_id order by count(*) desc, parti_id limit 1) t
+      join oyun.partiler pa on pa.id = t.parti_id;
+    else
+      select pr.kad || ' %' || replace(round(c * 100.0 / acilan_oy, 1)::text, '.', ',') into onde
+      from (select aday_id, count(*) c from oyun.oylar
+            where secim_id = p_secim and il_id = any(acik) and aday_id is not null
+            group by aday_id order by count(*) desc, aday_id limit 1) t
+      join oyun.adaylar a on a.id = t.aday_id
+      join oyun.profiller pr on pr.id = a.user_id;
+    end if;
+  end if;
+  return jsonb_build_object('acilan_il', n, 'toplam_il', jsonb_array_length(g.plan),
+    'acilan_oy', acilan_oy, 'toplam_oy', g.toplam_oy,
+    'yuzde', case when g.toplam_oy > 0 then round(acilan_oy * 100.0 / g.toplam_oy, 1) else 0 end,
+    'onde', onde);
+end $$;
+
+-- Süzülmüş sonuç: yalnızca açılmış illerin oyları ve sandalyeleri
+create or replace function oyun.secim_gecesi_filtre(s oyun.secimler, ham jsonb) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare acik int[]; iller_f jsonb; toplam bigint; dolu int; mvtop int; bag_s int; bag_oy bigint;
+        ulusal_f jsonb; baraj numeric; bag_f jsonb; cb_top bigint; adaylar_f jsonb;
+begin
+  if ham is null or not oyun.secim_gecesi_aktif_mi(s.id) then return ham; end if;
+  acik := oyun.secim_gecesi_acik_iller(s.id);
+  if s.tur = 'mv' then
+    baraj := coalesce((ham->>'baraj')::numeric, 0);
+    select coalesce(jsonb_object_agg(k, v), '{}'::jsonb) into iller_f
+      from jsonb_each(coalesce(ham->'iller', '{}'::jsonb)) e(k, v) where k::int = any(acik);
+    select coalesce(sum((v->>'gecerli')::bigint), 0), coalesce(sum((v->>'mv')::int), 0)
+      into toplam, mvtop from jsonb_each(iller_f) e(k, v);
+    select coalesce(jsonb_agg(b), '[]'::jsonb), coalesce(sum((b->>'oy')::bigint), 0),
+           coalesce(sum((b->>'sandalye')::int), 0)
+      into bag_f, bag_oy, bag_s
+      from jsonb_array_elements(coalesce(ham->'bagimsizlar', '[]'::jsonb)) b
+      where (b->>'il_id')::int = any(acik);
+    select coalesce(jsonb_agg(jsonb_build_object(
+             'parti_id', u->'parti_id', 'kisa', u->'kisa', 'ad', u->'ad', 'renk', u->'renk',
+             'oy', t.oy, 'yuzde', case when toplam > 0 then round(t.oy * 100.0 / toplam, 2) else 0 end,
+             'gecti', case when toplam > 0 then t.oy * 100.0 / toplam >= baraj else false end,
+             'sandalye', t.sandalye) order by t.oy desc), '[]'::jsonb)
+      into ulusal_f
+      from jsonb_array_elements(coalesce(ham->'ulusal', '[]'::jsonb)) u
+      cross join lateral (
+        select coalesce(sum((v->'partiler'->((u->>'parti_id'))->>'oy')::bigint), 0) oy,
+               coalesce(sum((v->'partiler'->((u->>'parti_id'))->>'sandalye')::int), 0) sandalye
+        from jsonb_each(iller_f) e(k, v)) t;
+    select coalesce(sum((x->>'sandalye')::int), 0) into dolu from jsonb_array_elements(ulusal_f) x;
+    dolu := dolu + bag_s;
+    return jsonb_build_object('toplam', toplam, 'baraj', baraj, 'sandalye_toplam', mvtop,
+      'dolu', dolu, 'bos', greatest(0, mvtop - dolu), 'bagimsiz_oy', bag_oy, 'bagimsiz_sandalye', bag_s,
+      'bagimsizlar', bag_f, 'ulusal', ulusal_f, 'iller', iller_f, 'gece', true);
+  elsif s.tur in ('cb','cb2') then
+    select count(*) into cb_top from oyun.oylar where secim_id = s.id and il_id = any(acik);
+    select coalesce(jsonb_agg(jsonb_set(a, '{oy}', to_jsonb((
+             select count(*) from oyun.oylar o
+             where o.secim_id = s.id and o.aday_id = (a->>'aday_id')::bigint and o.il_id = any(acik))))
+           order by (select count(*) from oyun.oylar o
+             where o.secim_id = s.id and o.aday_id = (a->>'aday_id')::bigint and o.il_id = any(acik)) desc), '[]'::jsonb)
+      into adaylar_f
+      from jsonb_array_elements(coalesce(ham->'adaylar', '[]'::jsonb)) a;
+    return jsonb_build_object('toplam', cb_top, 'adaylar', adaylar_f, 'ikinci_tur', false, 'gece', true);
+  end if;
+  return ham;
+end $$;
+
+-- Arayüzün her birkaç saniyede yoklayacağı canlı sayım durumu
+create or replace function public.secim_gecesi(p_secim bigint) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare g oyun.secim_gecesi; s oyun.secimler; gecen numeric; acik int[]; oz jsonb; son jsonb;
+begin
+  select * into g from oyun.secim_gecesi where secim_id = p_secim;
+  select * into s from oyun.secimler where id = p_secim;
+  if g.secim_id is null then return jsonb_build_object('aktif', false, 'var', false); end if;
+  gecen := oyun.secim_gecesi_gecen(p_secim);
+  if gecen < 0 then
+    return jsonb_build_object('aktif', false, 'var', true, 'basliyor', true, 'baslangic', g.baslangic,
+                              'saniye_kaldi', ceil(-gecen)::int);
+  end if;
+  acik := oyun.secim_gecesi_acik_iller(p_secim);
+  oz := oyun.secim_gecesi_ozet(p_secim);
+  -- son açılan beş il ve ilde önde olan
+  select coalesce(jsonb_agg(x order by (x->>'sn')::int desc), '[]'::jsonb) into son from (
+    select jsonb_build_object('il_id', (e->>'il')::int, 'ad', i.ad, 'sn', (e->>'sn')::int,
+      'onde', case when s.tur = 'mv' then
+          (select pa.kisa from oyun.oylar o join oyun.partiler pa on pa.id = o.parti_id
+           where o.secim_id = p_secim and o.il_id = (e->>'il')::int and o.parti_id is not null
+           group by pa.kisa order by count(*) desc, pa.kisa limit 1)
+        else
+          (select pr.kad from oyun.oylar o join oyun.adaylar a on a.id = o.aday_id
+           join oyun.profiller pr on pr.id = a.user_id
+           where o.secim_id = p_secim and o.il_id = (e->>'il')::int
+           group by pr.kad order by count(*) desc, pr.kad limit 1) end) x
+    from jsonb_array_elements(g.plan) e join oyun.iller i on i.id = (e->>'il')::int
+    where (e->>'il')::int = any(acik)
+    order by (e->>'sn')::int desc, (e->>'il')::int limit 5) t;
+  return oz || jsonb_build_object('aktif', gecen < g.sure_sn, 'var', true, 'tur', s.tur,
+    'baslangic', g.baslangic, 'bitis', g.baslangic + make_interval(secs => g.sure_sn),
+    'sure_sn', g.sure_sn, 'gecen_sn', least(gecen, g.sure_sn)::int,
+    'saniye_kaldi', greatest(0, ceil(g.sure_sn - gecen))::int, 'son_acilan', son);
+end $$;
+
+-- Gündem için: şu an sayımı süren seçimler
+create or replace function public.secim_gecesi_aktif() returns jsonb
+language sql stable security definer set search_path = '' as $$
+  select coalesce(jsonb_agg(jsonb_build_object('secim_id', g.secim_id, 'tur', s.tur,
+           'bitis', g.baslangic + make_interval(secs => g.sure_sn),
+           'yuzde', (oyun.secim_gecesi_ozet(g.secim_id))->'yuzde') order by g.secim_id), '[]'::jsonb)
+  from oyun.secim_gecesi g join oyun.secimler s on s.id = g.secim_id
+  where oyun.secim_gecesi_aktif_mi(g.secim_id)
+$$;
+
+-- Asıl secim_detay'i koru ve yerine süzgeçli sarmalayıcıyı koy. Canlıda fonksiyon
+-- kaynaktan farklı olsa da çalışır: mevcut tanım olduğu gibi _secim_detay_ham olur.
+do $$ begin
+  if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+             where n.nspname = 'public' and p.proname = 'secim_detay'
+               and pg_get_functiondef(p.oid) not like '%secim_gecesi_filtre%') then
+    drop function if exists oyun._secim_detay_ham(bigint);
+    alter function public.secim_detay(bigint) set schema oyun;
+    alter function oyun.secim_detay(bigint) rename to _secim_detay_ham;
+  end if;
+end $$;
+
+create or replace function public.secim_detay(p_secim bigint) returns jsonb
+language plpgsql security definer set search_path = 'oyun', 'public', 'pg_temp' as $$
+declare r jsonb; s oyun.secimler;
+begin
+  r := oyun._secim_detay_ham(p_secim);
+  select * into s from oyun.secimler where id = p_secim;
+  if s.id is not null and s.tur in ('mv','cb','cb2') and oyun.secim_gecesi_aktif_mi(p_secim) then
+    r := jsonb_set(r, '{sonuc}', coalesce(oyun.secim_gecesi_filtre(s, r->'sonuc'), 'null'::jsonb))
+         || jsonb_build_object('gece', public.secim_gecesi(p_secim));
+  end if;
+  return r;
+end $$;
+
+-- Sayım bitene kadar sonuç manşetini gizle (Gündem yalnızca zaman <= şimdi olanı gösterir)
+create or replace function oyun.tg_olay_gece_gizle() returns trigger
+language plpgsql set search_path = '' as $$
+declare bit timestamptz;
+begin
+  if new.tur = 'secim' and new.metin ~ '^(Genel seçim sonuçlandı|Cumhurbaşkanı|Cumhurbaşkanlığı seçimi)' then
+    select g.baslangic + make_interval(secs => g.sure_sn) into bit
+    from oyun.secim_gecesi g where g.baslangic = new.zaman order by g.secim_id limit 1;
+    if bit is not null then new.zaman := bit; end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists olay_gece_gizle on oyun.olaylar;
+create trigger olay_gece_gizle before insert on oyun.olaylar
+  for each row execute function oyun.tg_olay_gece_gizle();
+
+-- Her dakika: planı hazırla, eşiklerde bildirim gönder
+create or replace function oyun.secim_gecesi_tick() returns int
+language plpgsql security definer set search_path = '' as $$
+declare t timestamptz := oyun.simdi(); s oyun.secimler; g oyun.secim_gecesi; n int := 0;
+        gecen numeric; hedef int; oz jsonb; baslik text; govde text; kisa text;
+begin
+  for s in select * from oyun.secimler
+           where tur in ('mv','cb','cb2') and t >= oy_bit and t < sonuc_at + interval '2 hours' loop
+    perform oyun.secim_gecesi_hazirla(s.id);
+  end loop;
+  for g in select * from oyun.secim_gecesi
+           where oyun.secim_gecesi_gecen(secim_id) >= 0
+             and oyun.secim_gecesi_gecen(secim_id) < sure_sn + 300 and asama < 4 loop
+    select * into s from oyun.secimler where id = g.secim_id;
+    continue when s.durum = 'bekliyor';          -- sonuç henüz yazılmadıysa bekle
+    gecen := oyun.secim_gecesi_gecen(g.secim_id);
+    hedef := case when gecen >= g.sure_sn then 4 when gecen >= g.sure_sn * .75 then 3
+                  when gecen >= g.sure_sn * .5 then 2 when gecen >= g.sure_sn * .25 then 1 else 0 end;
+    continue when hedef <= g.asama;
+    oz := oyun.secim_gecesi_ozet(g.secim_id);
+    kisa := case s.tur when 'mv' then 'Genel seçim' when 'cb2' then 'Cumhurbaşkanlığı 2. tur' else 'Cumhurbaşkanlığı' end;
+    baslik := case hedef when 0 then kisa || ': sayım başladı'
+                         when 4 then kisa || ': sayım tamamlandı'
+                         else kisa || ': sayımın %' || (hedef * 25) || '''i tamam' end;
+    govde := case hedef when 0 then 'Sandıklar il il açılıyor. Canlı sonuçları izlemek için dokun.'
+                        else (oz->>'acilan_il') || '/' || (oz->>'toplam_il') || ' il açıldı'
+                             || coalesce('. Önde: ' || (oz->>'onde'), '') || '.' end;
+    if s.tur in ('mv','cb2') then
+      perform oyun.push_konuya('s_tum', null, baslik, govde,
+                               jsonb_build_object('ekran', 'secim', 'id', s.id));
+    end if;
+    if hedef between 1 and 3 and s.tur in ('mv','cb2') then
+      perform oyun.olay('secim', 'Seçim gecesi · ' || baslik || ' · ' || govde);
+    end if;
+    update oyun.secim_gecesi set asama = hedef where secim_id = g.secim_id;
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+
+revoke all on function public.secim_gecesi(bigint), public.secim_gecesi_aktif(), public.secim_detay(bigint)
+  from public, anon;
+grant execute on function public.secim_gecesi(bigint), public.secim_gecesi_aktif(), public.secim_detay(bigint)
+  to authenticated;
+
+-- Sayım zamanlayıcısı (yalnız pg_cron olan Supabase'de)
+do $$ begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.unschedule(jobid) from cron.job where jobname = 'secim-gecesi';
+    perform cron.schedule('secim-gecesi', '* * * * *', 'select oyun.secim_gecesi_tick()');
+  end if;
+end $$;
+-- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 77) BOŞ MAKAM FIRSAT BİLDİRİMİ
+--  Boş bir belediye, milletvekili sandalyesi, genel başkanlık ya da genel başkan yardımcılığı
+--  varsa ve oyuncu o işe bugün gerçekten talip olabiliyorsa, ona bildirim gider.
+--   • Yalnız GERÇEK bir fırsatta: aday adaylığı açıkken ya da hemen üstlenilebilen genel başkanlıkta.
+--   • Sınır: oyuncuya günde en fazla 1 fırsat bildirimi, aynı fırsat 3 günde bir, bir taramada en çok 300 kişi.
+--   • Tarama 3 saatte bir, yalnız 09:00–21:59 arası (gece telefonu çalmaz).
+--   • Bildirim oyuncunun "kişisel" bildirim tercihine uyar (oyun.bildir → push).
+--  Gündem'deki "Fırsatlar" kartı aynı kaynaktan okur: public.bos_makam_firsatlari().
+--  Yalnız yeni tablo ve işlev ekler; mevcut hiçbir şeyi değiştirmez.
+-- =====================================================================
+
+create table if not exists oyun.firsat_bildirim(
+  user_id  uuid not null,
+  tur      text not null,
+  anahtar  text not null,
+  zaman    timestamptz not null default now(),
+  primary key (user_id, tur, anahtar)
+);
+create index if not exists firsat_bildirim_zaman on oyun.firsat_bildirim(user_id, zaman desc);
+alter table oyun.firsat_bildirim enable row level security;
+revoke all on oyun.firsat_bildirim from public, anon, authenticated;
+
+create table if not exists oyun.firsat_durum(
+  id boolean primary key default true check (id),
+  son timestamptz
+);
+insert into oyun.firsat_durum(id, son) values (true, null) on conflict do nothing;
+alter table oyun.firsat_durum enable row level security;
+revoke all on oyun.firsat_durum from public, anon, authenticated;
+
+-- Fırsat adayları: (oyuncu, tür, anahtar, metin, ekran). p_user doluysa yalnız o oyuncu için.
+create or replace function oyun.firsat_adaylari(p_user uuid default null)
+returns table(user_id uuid, tur text, anahtar text, metin text, ekran text)
+language plpgsql stable as $$
+declare t timestamptz := oyun.simdi(); bel oyun.secimler; mv oyun.secimler;
+begin
+  select * into bel from oyun.secimler s
+   where s.tur = 'bel_on' and s.durum = 'bekliyor' and s.basvuru_bas <= t and s.basvuru_bit > t
+   order by s.basvuru_bit limit 1;
+  select * into mv from oyun.secimler s
+   where s.tur = 'mv_on' and s.durum = 'bekliyor' and s.basvuru_bas <= t and s.basvuru_bit > t
+   order by s.basvuru_bit limit 1;
+
+  -- 1) Belediye başkanlığı boş ve aday adaylığı açık
+  if bel.id is not null then
+    return query
+    select pr.id, 'belediye'::text, 'bel:' || il.id, format('%s belediye başkanlığı boş. Aday adaylığı %s tarihine kadar açık.',
+             il.ad, to_char(bel.basvuru_bit at time zone 'Europe/Istanbul', 'DD.MM HH24:MI')), 'gundem'::text
+      from oyun.profiller pr join oyun.iller il on il.id = pr.il_id
+     where (p_user is null or pr.id = p_user) and not pr.yasakli
+       and not exists (select 1 from oyun.makamlar m where m.tur = 'bel' and m.il_id = il.id and m.bit is null)
+       and not exists (select 1 from oyun.makamlar m where m.user_id = pr.id and m.bit is null and m.tur in ('mv','bel','cb'))
+       and not exists (select 1 from oyun.adaylar a where a.secim_id = bel.id and a.user_id = pr.id);
+  end if;
+
+  -- 2) Milletvekili sandalyesi boş ve aday adaylığı açık
+  if mv.id is not null then
+    return query
+    select pr.id, 'vekil'::text, 'mv:' || il.id, format('%s için %s milletvekili sandalyesi boş. Aday adaylığı %s tarihine kadar açık.',
+             il.ad, il.mv_secim - c.n, to_char(mv.basvuru_bit at time zone 'Europe/Istanbul', 'DD.MM HH24:MI')), 'gundem'::text
+      from oyun.profiller pr join oyun.iller il on il.id = pr.il_id
+      cross join lateral (select count(*)::int n from oyun.makamlar m where m.tur = 'mv' and m.il_id = il.id and m.bit is null) c
+     where (p_user is null or pr.id = p_user) and not pr.yasakli and il.mv_secim > c.n
+       and not exists (select 1 from oyun.makamlar m where m.user_id = pr.id and m.bit is null and m.tur in ('mv','bel','cb'))
+       and not exists (select 1 from oyun.adaylar a where a.secim_id = mv.id and a.user_id = pr.id);
+  end if;
+
+  -- 3) Genel başkansız parti: üyeler hemen üstlenebilir
+  return query
+  select pr.id, 'genel_baskan'::text, 'gb:' || pa.id, format('%s genel başkansız. Genel başkanlığı hemen üstlenebilirsin.', pa.ad), 'parti'::text
+    from oyun.profiller pr join oyun.partiler pa on pa.id = pr.parti_id
+   where (p_user is null or pr.id = p_user) and not pr.yasakli and not pa.kapali and pa.gb is null
+     and not exists (select 1 from oyun.makamlar m where m.user_id = pr.id and m.bit is null and m.tur = 'cb');
+
+  -- 4) Genel başkan yardımcısı kadrosu eksik: yalnız genel başkana
+  return query
+  select pa.gb, 'yardimci'::text, 'gby:' || pa.id, format('%s genel başkan yardımcısı kadrosunda %s yer boş. Üyelerinden atayabilirsin.', pa.ad, 6 - c.n), 'parti'::text
+    from oyun.partiler pa
+    cross join lateral (select count(*)::int n from oyun.parti_gby g where g.parti_id = pa.id) c
+   where pa.gb is not null and not pa.kapali and c.n < 6 and (p_user is null or pa.gb = p_user)
+     and (select count(*) from oyun.profiller x where x.parti_id = pa.id and x.id <> pa.gb and not x.yasakli) > c.n;
+end $$;
+revoke all on function oyun.firsat_adaylari(uuid) from public, anon, authenticated;
+
+-- Tarama: kuyruğa bildirim bırakır
+create or replace function oyun.bos_makam_firsat_tick() returns integer
+language plpgsql set search_path = oyun, public, pg_temp as $$
+declare t timestamptz := oyun.simdi(); saat int := extract(hour from t at time zone 'Europe/Istanbul')::int; r record; n int := 0;
+begin
+  if saat < 9 or saat >= 22 then return 0; end if;
+  if not pg_try_advisory_xact_lock(424243) then return 0; end if;
+  if (select son from oyun.firsat_durum where id) > t - interval '3 hours' then return 0; end if;
+  update oyun.firsat_durum set son = t where id;
+  delete from oyun.firsat_bildirim where zaman < t - interval '14 days';
+  for r in select * from oyun.firsat_adaylari(null) f order by random() loop
+    continue when exists (select 1 from oyun.firsat_bildirim b where b.user_id = r.user_id and (b.zaman > t - interval '20 hours'
+                  or (b.tur = r.tur and b.anahtar = r.anahtar and b.zaman > t - interval '3 days')));
+    insert into oyun.firsat_bildirim(user_id, tur, anahtar, zaman) values (r.user_id, r.tur, r.anahtar, t)
+      on conflict (user_id, tur, anahtar) do update set zaman = excluded.zaman;
+    perform oyun.bildir(r.user_id, r.metin, t);
+    n := n + 1; exit when n >= 300;
+  end loop;
+  return n;
+end $$;
+revoke all on function oyun.bos_makam_firsat_tick() from public, anon, authenticated;
+
+-- Gündem kartı
+create or replace function public.bos_makam_firsatlari() returns jsonb
+language sql stable security definer set search_path = oyun, public, pg_temp as $$
+  select coalesce(jsonb_agg(jsonb_build_object('tur', f.tur, 'anahtar', f.anahtar, 'metin', f.metin, 'ekran', f.ekran) order by f.tur, f.anahtar), '[]'::jsonb)
+    from oyun.firsat_adaylari(oyun.ben()) f
+$$;
+revoke all on function public.bos_makam_firsatlari() from public, anon;
+grant execute on function public.bos_makam_firsatlari() to authenticated;
+
+do $$ begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.unschedule(jobid) from cron.job where jobname = 'bos-makam-firsat';
+    perform cron.schedule('bos-makam-firsat', '*/30 * * * *', 'select oyun.bos_makam_firsat_tick()');
+  end if;
+end $$;
+-- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 78) KISA PAYLAŞIM AKIŞI VE GÜNDEM ETİKETLERİ
+--  Oyuncular en çok 280 karakterlik kısa paylaşım yapar, #etiket kullanır; "Gündemdeki etiketler"
+--  son 24 saatte en çok kişinin kullandığı etiketleri gösterir. Mevcut sohbet/propaganda sistemine dokunmaz.
+--  Güvenlik (mağaza kuralları gereği): şikâyet et, kullanıcıyı engelle (mevcut engel listesi geçerli),
+--  3 ayrı şikâyette gönderi otomatik gizlenir, moderatör "şikâyet" yetkisiyle karar verir,
+--  küfür süzgeci + bağlantı yasağı + susturma + hız sınırı (20 sn arayla, günde 30 paylaşım).
+-- =====================================================================
+
+create table if not exists oyun.akis(
+  id       bigserial primary key,
+  user_id  uuid not null,
+  metin    text not null check (length(metin) between 1 and 280),
+  zaman    timestamptz not null default now(),
+  il_id    smallint,
+  parti_id bigint,
+  gizli    boolean not null default false
+);
+create index if not exists akis_zaman on oyun.akis(id desc) where not gizli;
+create index if not exists akis_kullanici on oyun.akis(user_id, zaman desc);
+
+create table if not exists oyun.akis_etiket(
+  akis_id bigint not null references oyun.akis(id) on delete cascade,
+  etiket  text not null,
+  zaman   timestamptz not null default now(),
+  user_id uuid not null,
+  primary key (akis_id, etiket)
+);
+create index if not exists akis_etiket_ara on oyun.akis_etiket(etiket, akis_id desc);
+create index if not exists akis_etiket_zaman on oyun.akis_etiket(zaman);
+
+create table if not exists oyun.akis_begeni(
+  akis_id bigint not null references oyun.akis(id) on delete cascade,
+  user_id uuid not null,
+  zaman   timestamptz not null default now(),
+  primary key (akis_id, user_id)
+);
+
+create table if not exists oyun.akis_sikayet(
+  akis_id   bigint not null references oyun.akis(id) on delete cascade,
+  sikayetci uuid not null,
+  neden     text not null,
+  zaman     timestamptz not null default now(),
+  durum     text not null default 'yeni' check (durum in ('yeni','incelendi')),
+  primary key (akis_id, sikayetci)
+);
+
+alter table oyun.akis enable row level security;
+alter table oyun.akis_etiket enable row level security;
+alter table oyun.akis_begeni enable row level security;
+alter table oyun.akis_sikayet enable row level security;
+revoke all on oyun.akis, oyun.akis_etiket, oyun.akis_begeni, oyun.akis_sikayet from public, anon, authenticated;
+revoke all on sequence oyun.akis_id_seq from public, anon, authenticated;
+
+-- Metindeki etiketler (küçük harf, en çok 5)
+create or replace function oyun.akis_etiketleri(m text) returns text[]
+language sql immutable as $$
+  select coalesce((select array_agg(e order by ilk) from (
+           select lower(x[1]) e, min(ord) ilk
+             from regexp_matches(m, '#([[:alnum:]_]{2,30})', 'g') with ordinality as r(x, ord)
+            group by lower(x[1]) order by min(ord) limit 5) q), '{}'::text[])
+$$;
+
+create or replace function oyun.akis_json(a oyun.akis, ben uuid) returns jsonb
+language sql stable as $$
+  select jsonb_build_object('id', a.id, 'kad', pr.kad, 'unvan', oyun.unvan(a.user_id), 'parti', oyun.parti_json(a.parti_id),
+           'il', (select ad from oyun.iller where id = a.il_id), 'metin', a.metin, 'zaman', a.zaman,
+           'begeni', (select count(*) from oyun.akis_begeni b where b.akis_id = a.id),
+           'begendim', exists (select 1 from oyun.akis_begeni b where b.akis_id = a.id and b.user_id = ben),
+           'benim', a.user_id = ben)
+  from oyun.profiller pr where pr.id = a.user_id
+$$;
+
+create or replace function public.akis_yaz(p_metin text) returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); m text; id0 bigint; e text;
+begin
+  perform oyun.yazabilir_mi(p, t);
+  m := oyun.metin_temizle(p_metin, 280);
+  if m ~* '(https?://|www\.|\.com\b|\.net\b|\.org\b|t\.me/)' then raise exception 'Paylaşımlarda bağlantı kullanılamaz.'; end if;
+  if exists (select 1 from oyun.akis where user_id = p.id and zaman > t - interval '20 seconds') then
+    raise exception 'Çok sık paylaşıyorsun, biraz bekle.';
+  end if;
+  if (select count(*) from oyun.akis where user_id = p.id and zaman > t - interval '24 hours') >= 30 then
+    raise exception 'Bugünlük paylaşım hakkın doldu; yarın yine yazabilirsin.';
+  end if;
+  if exists (select 1 from oyun.akis where user_id = p.id and zaman > t - interval '1 day' and lower(metin) = lower(m)) then
+    raise exception 'Aynı paylaşımı tekrar yapamazsın.';
+  end if;
+  insert into oyun.akis(user_id, metin, zaman, il_id, parti_id) values (p.id, m, t, p.il_id, p.parti_id) returning id into id0;
+  foreach e in array oyun.akis_etiketleri(m) loop
+    insert into oyun.akis_etiket(akis_id, etiket, zaman, user_id) values (id0, e, t, p.id) on conflict do nothing;
+  end loop;
+  update oyun.profiller set son_mesaj = t where id = p.id;
+  return jsonb_build_object('tamam', true, 'id', id0);
+end $$;
+
+create or replace function public.akis_liste(p_kapsam text default 'herkes', p_etiket text default null, p_onceki bigint default null, p_limit int default 20)
+returns jsonb language plpgsql stable security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); et text := nullif(lower(regexp_replace(coalesce(p_etiket, ''), '^#', '')), '');
+begin
+  if p_kapsam not in ('herkes', 'il', 'parti') then raise exception 'Geçersiz kapsam.'; end if;
+  return coalesce((select jsonb_agg(oyun.akis_json(a, p.id) order by a.id desc) from (
+    select * from oyun.akis a
+     where not a.gizli and (p_onceki is null or a.id < p_onceki)
+       and (p_kapsam <> 'il' or a.il_id = p.il_id) and (p_kapsam <> 'parti' or (p.parti_id is not null and a.parti_id = p.parti_id))
+       and (et is null or exists (select 1 from oyun.akis_etiket e where e.akis_id = a.id and e.etiket = et))
+       and not exists (select 1 from oyun.engellemeler g where (g.engelleyen = p.id and g.engellenen = a.user_id) or (g.engelleyen = a.user_id and g.engellenen = p.id))
+     order by a.id desc limit least(greatest(coalesce(p_limit, 20), 1), 40)) a), '[]'::jsonb);
+end $$;
+
+-- Gündemdeki etiketler: son 24 saat, en az 2 farklı kişi
+create or replace function public.akis_gundem() returns jsonb
+language sql stable security definer set search_path = oyun, public, pg_temp as $$
+  select coalesce(jsonb_agg(jsonb_build_object('etiket', x.etiket, 'kisi', x.kisi, 'paylasim', x.n) order by x.kisi desc, x.n desc, x.etiket), '[]'::jsonb)
+  from (select e.etiket, count(distinct e.user_id) kisi, count(*) n
+          from oyun.akis_etiket e join oyun.akis a on a.id = e.akis_id and not a.gizli
+         where e.zaman > oyun.simdi() - interval '24 hours'
+         group by e.etiket having count(distinct e.user_id) >= 2
+         order by count(distinct e.user_id) desc, count(*) desc, e.etiket limit 8) x
+$$;
+
+create or replace function public.akis_begen(p_id bigint) returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); n int;
+begin
+  if not exists (select 1 from oyun.akis where id = p_id and not gizli) then raise exception 'Paylaşım bulunamadı.'; end if;
+  if exists (select 1 from oyun.akis_begeni where akis_id = p_id and user_id = p.id) then
+    delete from oyun.akis_begeni where akis_id = p_id and user_id = p.id;
+  else
+    if (select count(*) from oyun.akis_begeni where user_id = p.id and zaman > t - interval '1 minute') >= 20 then
+      raise exception 'Çok hızlı beğeniyorsun, biraz bekle.';
+    end if;
+    insert into oyun.akis_begeni(akis_id, user_id, zaman) values (p_id, p.id, t);
+  end if;
+  select count(*) into n from oyun.akis_begeni where akis_id = p_id;
+  return jsonb_build_object('begeni', n, 'begendim', exists (select 1 from oyun.akis_begeni where akis_id = p_id and user_id = p.id));
+end $$;
+
+create or replace function public.akis_sil(p_id bigint) returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim();
+begin
+  delete from oyun.akis where id = p_id and user_id = p.id;
+  return jsonb_build_object('tamam', true);
+end $$;
+
+create or replace function public.akis_sikayet_et(p_id bigint, p_neden text) returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); hedef uuid; n int;
+begin
+  if p_neden not in ('hakaret','nefret','spam','taciz','uygunsuz','diger') then raise exception 'Geçersiz şikâyet nedeni.'; end if;
+  select user_id into hedef from oyun.akis where id = p_id;
+  if hedef is null then raise exception 'Paylaşım bulunamadı.'; end if;
+  if hedef = p.id then raise exception 'Kendi paylaşımını şikâyet edemezsin.'; end if;
+  insert into oyun.akis_sikayet(akis_id, sikayetci, neden, zaman) values (p_id, p.id, p_neden, t) on conflict do nothing;
+  select count(distinct sikayetci) into n from oyun.akis_sikayet where akis_id = p_id;
+  if n >= 3 then update oyun.akis set gizli = true where id = p_id; end if;
+  select count(distinct s.sikayetci) into n from oyun.akis_sikayet s join oyun.akis a on a.id = s.akis_id
+   where a.user_id = hedef and s.zaman > t - interval '24 hours';
+  if n >= 8 then
+    update oyun.profiller set susturma_bitis = greatest(coalesce(susturma_bitis, t), t + interval '24 hours') where id = hedef;
+  end if;
+  return jsonb_build_object('tamam', true);
+end $$;
+
+-- Moderatör: şikâyet edilen paylaşımlar
+create or replace function public.admin_akis_sikayetleri() returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.yetki_zorunlu('sikayet');
+begin
+  return coalesce((select jsonb_agg(x order by x->>'ilk' desc) from (
+    select jsonb_build_object('id', a.id, 'kad', pr.kad, 'metin', a.metin, 'gizli', a.gizli, 'sayi', count(distinct s.sikayetci),
+             'nedenler', jsonb_agg(distinct s.neden), 'ilk', min(s.zaman)) x
+      from oyun.akis_sikayet s join oyun.akis a on a.id = s.akis_id join oyun.profiller pr on pr.id = a.user_id
+     where s.durum = 'yeni' group by a.id, pr.kad, a.metin, a.gizli limit 100) q), '[]'::jsonb);
+end $$;
+
+create or replace function public.admin_akis_karar(p_id bigint, p_islem text) returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.yetki_zorunlu('sikayet'); h oyun.profiller; a oyun.akis;
+begin
+  if p_islem not in ('yok_say', 'gizle', 'gizle_sustur1') then raise exception 'Geçersiz işlem.'; end if;
+  select * into a from oyun.akis where id = p_id;
+  if a.id is null then raise exception 'Paylaşım bulunamadı.'; end if;
+  select * into h from oyun.profiller where id = a.user_id;
+  if p_islem <> 'yok_say' then perform oyun.korunan_hedef(p, h.id); end if;
+  perform oyun.mod_log(p, 'akis_' || p_islem, h.kad, a.metin);
+  if p_islem = 'yok_say' then update oyun.akis set gizli = false where id = p_id; else update oyun.akis set gizli = true where id = p_id; end if;
+  if p_islem = 'gizle_sustur1' then
+    if not oyun.yetkili(p.id, 'sustur') then raise exception 'Susturma yetkin yok; yalnızca "Gizle" diyebilirsin.'; end if;
+    update oyun.profiller set susturma_bitis = oyun.simdi() + interval '1 day' where id = h.id;
+    perform oyun.bildir(h.id, 'Topluluk kurallarını ihlal eden bir paylaşımın kaldırıldı ve hesabın bir süre mesaj gönderemeyecek.');
+  end if;
+  update oyun.akis_sikayet set durum = 'incelendi' where akis_id = p_id;
+  return public.admin_akis_sikayetleri();
+end $$;
+
+-- Eski paylaşımları temizle (30 gün); günlük özet işi (79) çağırır
+create or replace function oyun.akis_temizle() returns void language sql as $$
+  delete from oyun.akis where zaman < oyun.simdi() - interval '30 days'
+$$;
+revoke all on function oyun.akis_temizle() from public, anon, authenticated;
+
+revoke all on function public.akis_yaz(text), public.akis_liste(text, text, bigint, int), public.akis_gundem(), public.akis_begen(bigint),
+  public.akis_sil(bigint), public.akis_sikayet_et(bigint, text), public.admin_akis_sikayetleri(), public.admin_akis_karar(bigint, text)
+  from public, anon;
+grant execute on function public.akis_yaz(text), public.akis_liste(text, text, bigint, int), public.akis_gundem(), public.akis_begen(bigint),
+  public.akis_sil(bigint), public.akis_sikayet_et(bigint, text), public.admin_akis_sikayetleri(), public.admin_akis_karar(bigint, text)
+  to authenticated;
+-- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 79) BAŞARIMLAR, AY SONU RAPOR KARTI, GÜN SONU ÖZETİ
+--  • Başarımlar: oyuncunun zaten yaptığı şeylerden (makam, parti, paylaşım, kıdem) türetilir; yeni kural koymaz.
+--  • Ay sonu raporu: o ayın kısa dökümü + paylaşılabilir metin; ayın son günü 20:00'de bildirim gider.
+--  • Gün sonu özeti: her akşam 21:00'de "Bugün Türkiye'de" bildirimi (en önemli 3 gelişme).
+--  Yalnız yeni tablo ve işlev ekler.
+-- =====================================================================
+
+create table if not exists oyun.basarim(
+  user_id uuid not null,
+  kod     text not null,
+  zaman   timestamptz not null default now(),
+  bildirildi boolean not null default false,
+  primary key (user_id, kod)
+);
+create table if not exists oyun.rapor_bildirim(
+  user_id uuid not null,
+  ay      date not null,
+  primary key (user_id, ay)
+);
+create table if not exists oyun.gun_ozeti_gonderim(
+  gun date primary key,
+  zaman timestamptz not null default now(),
+  metin text
+);
+alter table oyun.basarim enable row level security;
+alter table oyun.rapor_bildirim enable row level security;
+alter table oyun.gun_ozeti_gonderim enable row level security;
+revoke all on oyun.basarim, oyun.rapor_bildirim, oyun.gun_ozeti_gonderim from public, anon, authenticated;
+
+-- Başarım tanımları ve oyuncunun durumu
+create or replace function oyun.basarim_durum(u uuid)
+returns table(kod text, ad text, aciklama text, sinif text, sira int, kazandi boolean)
+language plpgsql stable as $$
+declare t timestamptz := oyun.simdi(); hesap timestamptz; n_akis int; n_begeni int; mv_gun numeric;
+begin
+  select pr.olusturma into hesap from oyun.profiller pr where pr.id = u;
+  select count(*) into n_akis from oyun.akis where user_id = u;
+  select count(*) into n_begeni from oyun.akis_begeni b join oyun.akis a on a.id = b.akis_id where a.user_id = u and b.user_id <> u;
+  select coalesce(sum(extract(epoch from coalesce(m.bit, t) - m.bas) / 86400), 0) into mv_gun from oyun.makamlar m where m.user_id = u and m.tur = 'mv';
+  return query select * from (values
+    ('yerlesik',   'Yerleşik Vatandaş',  'Hesabın 7 günü geçti.',                                'bronz', 1, hesap is not null and hesap <= t - interval '7 days'),
+    ('koklu',      'Köklü Vatandaş',     'Hesabın 30 günü geçti.',                               'gumus', 2, hesap is not null and hesap <= t - interval '30 days'),
+    ('ilk_soz',    'İlk Söz',            'İlk kısa paylaşımını yaptın.',                         'bronz', 3, n_akis >= 1),
+    ('gundem',     'Gündem Belirleyici', '25 paylaşıma ulaştın.',                                'gumus', 4, n_akis >= 25),
+    ('sesini',     'Sesini Duyuran',     'Paylaşımların 50 beğeni topladı.',                     'gumus', 5, n_begeni >= 50),
+    ('kurucu',     'Parti Kurucusu',     'Bir parti kurdun.',                                    'gumus', 6, exists (select 1 from oyun.partiler pa where pa.kurucu = u)),
+    ('genel_baskan','Genel Başkan',      'Bir partinin genel başkanısın.',                       'gumus', 7, exists (select 1 from oyun.partiler pa where pa.gb = u and not pa.kapali)),
+    ('vekil',      'Meclis Kürsüsü',     'Milletvekili seçildin.',                               'gumus', 8, exists (select 1 from oyun.makamlar m where m.user_id = u and m.tur = 'mv')),
+    ('belediye',   'Şehrin Başkanı',     'Belediye başkanı seçildin.',                           'gumus', 9, exists (select 1 from oyun.makamlar m where m.user_id = u and m.tur = 'bel')),
+    ('bakan',      'Kabine Üyesi',       'Bakan oldun.',                                         'altin', 10, exists (select 1 from oyun.makamlar m where m.user_id = u and m.tur = 'bakan')),
+    ('kidemli',    'Kıdemli Vekil',      'Meclis''te toplam 30 gün görev yaptın.',               'altin', 11, mv_gun >= 30),
+    ('cumhurbaskani','Çankaya',          'Cumhurbaşkanı seçildin.',                              'altin', 12, exists (select 1 from oyun.makamlar m where m.user_id = u and m.tur = 'cb'))
+  ) v(kod, ad, aciklama, sinif, sira, kazandi);
+end $$;
+revoke all on function oyun.basarim_durum(uuid) from public, anon, authenticated;
+
+-- Kazanılanları kaydeder; yeni kazanılanların kodlarını döndürür
+create or replace function oyun.basarim_tara(u uuid) returns text[]
+language plpgsql as $$
+declare yeni text[];
+begin
+  with e as (
+    insert into oyun.basarim(user_id, kod, zaman)
+    select u, d.kod, oyun.simdi() from oyun.basarim_durum(u) d where d.kazandi
+    on conflict do nothing returning kod)
+  select coalesce(array_agg(kod), '{}') into yeni from e;
+  return yeni;
+end $$;
+revoke all on function oyun.basarim_tara(uuid) from public, anon, authenticated;
+
+create or replace function public.basarimlar() returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim();
+begin
+  perform oyun.basarim_tara(p.id);
+  return coalesce((select jsonb_agg(jsonb_build_object('kod', d.kod, 'ad', d.ad, 'aciklama', d.aciklama, 'sinif', d.sinif,
+           'kazandi', b.user_id is not null, 'zaman', b.zaman) order by d.sira)
+     from oyun.basarim_durum(p.id) d left join oyun.basarim b on b.user_id = p.id and b.kod = d.kod), '[]'::jsonb);
+end $$;
+
+-- Ay raporu (p_ay verilmezse içinde bulunulan ay)
+create or replace function public.ay_raporu(p_ay date default null) returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi();
+  ay0 date := date_trunc('month', coalesce(p_ay, (t at time zone 'Europe/Istanbul')::date))::date;
+  b timestamptz; s timestamptz; paylasim int; begeni int; gun numeric; yeni jsonb; makamlar jsonb; vekil int; sira int; unv text; basarim_n int;
+  adlar text[] := array['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  metin text;
+begin
+  b := (ay0::timestamp) at time zone 'Europe/Istanbul'; s := ((ay0 + interval '1 month')::timestamp) at time zone 'Europe/Istanbul';
+  perform oyun.basarim_tara(p.id);
+  select count(*) into paylasim from oyun.akis where user_id = p.id and zaman >= b and zaman < s;
+  select count(*) into begeni from oyun.akis_begeni x join oyun.akis a on a.id = x.akis_id
+   where a.user_id = p.id and x.user_id <> p.id and x.zaman >= b and x.zaman < s;
+  select coalesce(sum(extract(epoch from least(coalesce(m.bit, s), s) - greatest(m.bas, b)) / 86400), 0) into gun
+    from oyun.makamlar m where m.user_id = p.id and m.bas < s and coalesce(m.bit, s) > b;
+  select coalesce(jsonb_agg(jsonb_build_object('tur', m.tur, 'il', (select ad from oyun.iller where id = m.il_id), 'bas', m.bas) order by m.bas), '[]'::jsonb)
+    into makamlar from oyun.makamlar m where m.user_id = p.id and m.bas >= b and m.bas < s;
+  select coalesce(jsonb_agg(jsonb_build_object('kod', d.kod, 'ad', d.ad, 'sinif', d.sinif) order by d.sira), '[]'::jsonb) into yeni
+    from oyun.basarim x join oyun.basarim_durum(p.id) d on d.kod = x.kod where x.user_id = p.id and x.zaman >= b and x.zaman < s;
+  select count(*) into basarim_n from oyun.basarim where user_id = p.id;
+  if p.parti_id is not null then
+    select count(*) into vekil from oyun.makamlar m where m.tur = 'mv' and m.bit is null and m.parti_id = p.parti_id;
+    select r into sira from (select pa.id, row_number() over (order by (select count(*) from oyun.makamlar m where m.tur = 'mv' and m.bit is null and m.parti_id = pa.id) desc, pa.id) r
+                               from oyun.partiler pa where not pa.kapali) q where q.id = p.parti_id;
+  end if;
+  unv := oyun.unvan(p.id);
+  metin := format('%s %s raporum: %s%s%s paylaşım, %s beğeni, %s başarım. Seçim Simülasyonu Online',
+     adlar[extract(month from ay0)::int], extract(year from ay0)::int,
+     case when unv is not null then unv || ' · ' else '' end,
+     case when p.parti_id is not null then (select kisa from oyun.partiler where id = p.parti_id) || ' · ' else '' end,
+     paylasim, begeni, basarim_n);
+  return jsonb_build_object('ay', to_char(ay0, 'YYYY-MM'), 'ay_ad', adlar[extract(month from ay0)::int] || ' ' || extract(year from ay0)::int,
+    'kad', p.kad, 'unvan', unv, 'il', (select ad from oyun.iller where id = p.il_id), 'parti', oyun.parti_json(p.parti_id),
+    'parti_vekil', vekil, 'parti_sira', sira, 'paylasim', paylasim, 'begeni', begeni, 'makam_gun', round(gun, 1),
+    'yeni_makamlar', makamlar, 'yeni_basarimlar', yeni, 'basarim_toplam', basarim_n, 'paylasim_metni', metin,
+    'son_gun', ((s - interval '1 second') at time zone 'Europe/Istanbul')::date);
+end $$;
+
+-- "Bugün Türkiye'de": bugünün en önemli gelişmeleri (Gündem kartı + akşam bildirimi)
+create or replace function oyun.gun_ozeti_liste(p_gun date) returns jsonb
+language sql stable as $$
+  select coalesce(jsonb_agg(jsonb_build_object('tur', x.tur, 'metin', x.metin, 'zaman', x.zaman) order by x.oncelik, x.zaman desc), '[]'::jsonb)
+  from (select o.tur, o.metin, o.zaman,
+               case o.tur when 'secim' then 1 when 'hukumet' then 2 when 'anayasa' then 2 when 'referandum' then 2 when 'meclis' then 3 when 'makam' then 3
+                          when 'kararname' then 4 when 'parti' then 5 when 'ittifak' then 5 when 'belediye' then 6 when 'siyaset' then 6 else 8 end oncelik
+          from oyun.olaylar o
+         where o.zaman >= (p_gun::timestamp) at time zone 'Europe/Istanbul' and o.zaman < ((p_gun + 1)::timestamp) at time zone 'Europe/Istanbul'
+           and o.zaman <= oyun.simdi() and o.metin not like 'Seçim gecesi ·%'
+         order by 4, o.zaman desc limit 6) x
+$$;
+
+create or replace function public.gun_ozeti() returns jsonb
+language sql stable security definer set search_path = oyun, public, pg_temp as $$
+  select jsonb_build_object('gun', (oyun.simdi() at time zone 'Europe/Istanbul')::date,
+    'gelismeler', oyun.gun_ozeti_liste((oyun.simdi() at time zone 'Europe/Istanbul')::date),
+    'etiketler', (select coalesce(jsonb_agg(e->>'etiket'), '[]'::jsonb) from jsonb_array_elements(public.akis_gundem()) e))
+$$;
+
+-- Günlük iş: 21:00'den sonra bir kez özet bildirimi; ayın son günü 20:00'den sonra rapor bildirimi; başarım taraması
+create or replace function oyun.gun_sonu_tick() returns integer
+language plpgsql set search_path = oyun, public, pg_temp as $$
+declare t timestamptz := oyun.simdi(); yerel timestamp := t at time zone 'Europe/Istanbul'; bugun date := yerel::date; saat int := extract(hour from yerel)::int;
+  liste jsonb; govde text; n int := 0; u record; yeni text[]; ay0 date;
+begin
+  if not pg_try_advisory_xact_lock(424244) then return 0; end if;
+
+  -- 1) gün sonu özeti
+  if saat >= 21 and not exists (select 1 from oyun.gun_ozeti_gonderim where gun = bugun) then
+    liste := oyun.gun_ozeti_liste(bugun);
+    insert into oyun.gun_ozeti_gonderim(gun, zaman) values (bugun, t) on conflict do nothing;
+    if jsonb_array_length(liste) > 0 then
+      govde := (select string_agg(left(x->>'metin', 90), ' · ') from (select x from jsonb_array_elements(liste) x limit 3) q);
+      update oyun.gun_ozeti_gonderim set metin = govde where gun_ozeti_gonderim.gun = bugun;
+      perform oyun.push_konuya('s_tum', null, 'Bugün Türkiye''de', govde, '{"ekran":"gundem"}');
+      n := n + 1;
+    end if;
+    perform oyun.akis_temizle();
+  end if;
+
+  -- 2) ay raporu bildirimi (ayın son günü 20:00'den sonra, son 14 günde görülmüş oyunculara)
+  ay0 := date_trunc('month', yerel)::date;
+  if saat >= 20 and bugun = (ay0 + interval '1 month' - interval '1 day')::date then
+    for u in select pr.id from oyun.profiller pr
+              where not pr.yasakli and pr.son_gorulme > t - interval '14 days'
+                and not exists (select 1 from oyun.rapor_bildirim r where r.user_id = pr.id and r.ay = ay0) limit 2000 loop
+      insert into oyun.rapor_bildirim(user_id, ay) values (u.id, ay0) on conflict do nothing;
+      perform oyun.push_kisiye(u.id, 'kisisel', 'Ay raporun hazır', 'Bu ayın özeti ve başarımların seni bekliyor.', '{"ekran":"rapor"}');
+      n := n + 1;
+    end loop;
+  end if;
+
+  -- 3) başarım taraması (günde bir kez, 03:00 sonrası) — yeni kazanılanlar tek bildirimle haber verilir
+  if saat >= 3 and not exists (select 1 from oyun.basarim_tarama where gun = bugun) then
+    insert into oyun.basarim_tarama(gun) values (bugun) on conflict do nothing;
+    for u in select pr.id from oyun.profiller pr where not pr.yasakli and pr.son_gorulme > t - interval '30 days' loop
+      yeni := oyun.basarim_tara(u.id);
+      if array_length(yeni, 1) > 0 then
+        update oyun.basarim set bildirildi = true where user_id = u.id and kod = any(yeni);
+        perform oyun.bildir(u.id, 'Yeni başarım kazandın: ' || (select string_agg(d.ad, ', ') from oyun.basarim_durum(u.id) d where d.kod = any(yeni)));
+        n := n + 1;
+      end if;
+    end loop;
+  end if;
+  return n;
+end $$;
+revoke all on function oyun.gun_sonu_tick() from public, anon, authenticated;
+
+create table if not exists oyun.basarim_tarama(gun date primary key);
+alter table oyun.basarim_tarama enable row level security;
+revoke all on oyun.basarim_tarama from public, anon, authenticated;
+
+revoke all on function public.basarimlar(), public.ay_raporu(date), public.gun_ozeti() from public, anon;
+grant execute on function public.basarimlar(), public.ay_raporu(date), public.gun_ozeti() to authenticated;
+
+do $$ begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.unschedule(jobid) from cron.job where jobname = 'gun-sonu';
+    perform cron.schedule('gun-sonu', '*/15 * * * *', 'select oyun.gun_sonu_tick()');
+  end if;
+end $$;
+-- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 80) ERKEN SEÇİM TAKVİM KORUMASI
+--  Hata (11.10.2026): TBMM erken seçim kararı, iki gün sonra yapılacak olağan genel seçimi
+--  iptal edip yerine bir gün SONRA yeni seçim kuruyordu; verilmiş aday adaylığı ve CB adaylığı
+--  başvuruları boşa gidiyor, ekranda olmamış seçimler "Sonuçlandı" görünüyordu.
+--  Kural: olağan genel seçim, erken seçimin yapılacağı günden en geç 7 gün sonra ise takvim
+--  değişmez; karar alınır ama mevcut seçim aynen yapılır (başvurular korunur). Erken seçim hiçbir
+--  zaman seçimi ileri atmaz.
+-- =====================================================================
+create or replace function oyun.erken_genel_secim_olustur(t timestamptz, p_teklif bigint) returns text
+language plpgsql set search_path to '' as $$
+declare ilk date; ongun date; secgun date; dm text; eski text; eski_oy timestamptz;
+begin
+  ilk:=(t at time zone 'Europe/Istanbul')::date;
+  if oyun.tr_an(ilk,8)<t+interval '8 hours' then ilk:=ilk+1; end if;
+  ongun:=ilk; secgun:=ilk+1;
+  dm:='erken-genel-'||p_teklif||'-'||to_char(t at time zone 'Europe/Istanbul','YYYYMMDDHH24MISS');
+  select donem, oy_bas into eski, eski_oy from oyun.secimler
+   where tur='mv' and not ara and durum='bekliyor' and oy_bas>t order by oy_bas limit 1;
+  -- Olağan seçim zaten yakın: takvimi bozma
+  if eski is not null and eski_oy <= oyun.tr_an(secgun,8) + interval '7 days' then
+    perform oyun.olay('secim',format('TBMM erken seçim kararı aldı. Genel seçim zaten %s günü yapılacağı için takvim değişmedi; başvurular geçerli.',
+                      to_char(eski_oy at time zone 'Europe/Istanbul','DD.MM.YYYY')),null,null,t);
+    return eski;
+  end if;
+  if eski is not null then
+    update oyun.secimler set durum='tamam',sonuc=coalesce(sonuc,'{}'::jsonb)||jsonb_build_object('iptal','erken_secim')
+    where donem=eski and durum='bekliyor' and tur in ('mv_on','mv','cb_on','cb','cb2');
+  end if;
+  insert into oyun.secimler(tur,donem,basvuru_bas,basvuru_bit,oy_bas,oy_bit,sonuc_at,goreve_bas,ara,ara_neden) values
+   ('mv_on',dm,t,oyun.tr_an(ongun,8),oyun.tr_an(ongun,8),oyun.tr_an(ongun,22),oyun.tr_an(ongun,22,30),null,true,'erken_secim'),
+   ('mv',dm,null,null,oyun.tr_an(secgun,8),oyun.tr_an(secgun,22),oyun.tr_an(secgun,22,30),oyun.tr_an(secgun+1,0),true,'erken_secim');
+  if oyun.hukumet_sistemi()=0 then
+    insert into oyun.secimler(tur,donem,basvuru_bas,basvuru_bit,oy_bas,oy_bit,sonuc_at,goreve_bas,ara,ara_neden) values
+     ('cb_on',dm,t,oyun.tr_an(ongun,8),oyun.tr_an(ongun,8),oyun.tr_an(ongun,22),oyun.tr_an(ongun,22,30),null,true,'erken_secim'),
+     ('cb',dm,t,oyun.tr_an(ongun,8),oyun.tr_an(secgun,8),oyun.tr_an(secgun,22),oyun.tr_an(secgun,22,30),oyun.tr_an(secgun+1,0),true,'erken_secim');
+  end if;
+  perform oyun.olay('secim',format('TBMM erken seçim kararı aldı. Erken genel seçim %s günü yapılacak.',to_char(secgun,'DD.MM.YYYY')),null,null,t);
+  return dm;
+end $$;
+-- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 81) CİMER (dilekçenin yerine)
+--  Vatandaş CİMER'e girer; Cumhurbaşkanlığı'nı, bir bakanlığı ya da bir il belediyesini seçer,
+--  başvuru türünü (şikâyet / talep / öneri / bilgi edinme) seçip yazar. Başvuru KİŞİYE değil MAKAMA
+--  gider: o makamda bugün kim oturuyorsa o görür ve yanıtlar (makam el değiştirse de bekleyen
+--  başvurular yeni sahibine geçer). Bakanlık boşsa Cumhurbaşkanı vekâleten görür (11 numaralı kural).
+--  • Başvurular gizlidir: yalnız gönderen ve muhatap makam görür.
+--  • Herkesin gördüğü "Kurum karnesi": son 30 günde başvuru, yanıt oranı, ortalama yanıt süresi,
+--    memnuniyet. Yanıt süresi 72 saat; geçen başvurular karnede "süresinde yanıtlanmadı" sayılır.
+--  • Sınır: 24 saatte 3 başvuru, aynı kuruma 6 saatte 1; küfür süzgeci; susturulan yazamaz.
+--  • Eski dilekçe gönderimi kapatılır (veri silinmez); imza kampanyası hedefe ulaşınca oluşan
+--    dilekçe ayrıca CİMER'e "toplu başvuru" olarak düşer. Hayat görevlerindeki dilekçe görevleri
+--    CİMER başvurularını sayar.
+--  Yalnız ekler; oyuncu verisi silinmez.
+-- =====================================================================
+
+create table if not exists oyun.cimer_basvuru(
+  id          bigserial primary key,
+  gonderen    uuid not null references oyun.profiller(id),
+  hedef       text not null check (hedef in ('cb','bakanlik','belediye','mv')),
+  bakanlik    text,
+  il_id       smallint references oyun.iller(id),
+  mv_user     uuid,                         -- yalnız imza kampanyasından gelen toplu başvurularda
+  kategori    text not null check (kategori in ('sikayet','talep','oneri','bilgi')),
+  konu        text not null check (char_length(konu) between 5 and 100),
+  metin       text not null check (char_length(metin) between 20 and 2000),
+  imza_sayisi int,                          -- toplu başvuru (imza kampanyası)
+  zaman       timestamptz not null default now(),
+  durum       text not null default 'bekliyor' check (durum in ('bekliyor','inceleniyor','sonuclandi')),
+  sonuc       text check (sonuc in ('olumlu','olumsuz','bilgi')),
+  cevap       text,
+  cevaplayan  uuid,
+  cevap_at    timestamptz,
+  okundu_at   timestamptz,
+  memnun      boolean,
+  constraint cimer_hedef_ok check (
+    (hedef = 'cb' and bakanlik is null and il_id is null) or
+    (hedef = 'bakanlik' and bakanlik is not null and il_id is null) or
+    (hedef = 'belediye' and il_id is not null and bakanlik is null) or
+    (hedef = 'mv' and mv_user is not null))
+);
+create index if not exists cimer_gonderen on oyun.cimer_basvuru(gonderen, id desc);
+create index if not exists cimer_kurum on oyun.cimer_basvuru(hedef, bakanlik, il_id, id desc);
+alter table oyun.cimer_basvuru enable row level security;
+revoke all on oyun.cimer_basvuru from public, anon, authenticated;
+revoke all on sequence oyun.cimer_basvuru_id_seq from public, anon, authenticated;
+
+-- Kurumun adı
+create or replace function oyun.cimer_kurum_ad(b oyun.cimer_basvuru) returns text language sql stable set search_path = '' as $$
+  select case b.hedef
+    when 'cb' then 'Cumhurbaşkanlığı'
+    when 'bakanlik' then coalesce((select ad from oyun.bakanliklar where kod = b.bakanlik), b.bakanlik)
+    when 'belediye' then coalesce((select ad from oyun.iller where id = b.il_id), '') || ' Belediyesi'
+    else coalesce(oyun.kad(b.mv_user), '') || ' (Milletvekili)' end
+$$;
+
+-- Bir başvuruyu bugün kim yanıtlayabilir?
+create or replace function oyun.cimer_muhatap(b oyun.cimer_basvuru) returns uuid language sql stable set search_path = '' as $$
+  select case b.hedef
+    when 'cb' then (select user_id from oyun.makamlar where tur = 'cb' and bit is null order by bas desc limit 1)
+    when 'bakanlik' then coalesce(
+        (select user_id from oyun.makamlar where tur = 'bakan' and bakanlik = b.bakanlik and bit is null order by bas desc limit 1),
+        (select user_id from oyun.makamlar where tur = 'cb' and bit is null order by bas desc limit 1))   -- boş bakanlığa CB vekâlet eder
+    when 'belediye' then (select user_id from oyun.makamlar where tur = 'bel' and il_id = b.il_id and bit is null order by bas desc limit 1)
+    else (select b.mv_user where exists (select 1 from oyun.makamlar where tur = 'mv' and user_id = b.mv_user and bit is null)) end
+$$;
+
+create or replace function oyun.cimer_json(b oyun.cimer_basvuru, ben uuid) returns jsonb language sql stable set search_path = '' as $$
+  select jsonb_build_object('id', b.id, 'kurum', oyun.cimer_kurum_ad(b), 'hedef', b.hedef, 'bakanlik', b.bakanlik, 'il_id', b.il_id,
+    'kategori', b.kategori, 'konu', b.konu, 'metin', b.metin, 'imza_sayisi', b.imza_sayisi, 'zaman', b.zaman,
+    'durum', b.durum, 'sonuc', b.sonuc, 'cevap', b.cevap, 'cevaplayan', oyun.kad(b.cevaplayan), 'cevaplayan_unvan', oyun.unvan(b.cevaplayan),
+    'cevap_at', b.cevap_at, 'memnun', b.memnun,
+    'gonderen', oyun.kad(b.gonderen), 'gonderen_il', (select i.ad from oyun.profiller p join oyun.iller i on i.id = p.il_id where p.id = b.gonderen),
+    'benim', b.gonderen = ben, 'suresi_gecti', b.durum <> 'sonuclandi' and b.zaman < oyun.simdi() - interval '72 hours',
+    'yanitlayabilirim', b.durum <> 'sonuclandi' and oyun.cimer_muhatap(b) = ben)
+$$;
+
+-- Başvuru yap
+create or replace function public.cimer_basvur(p_hedef text, p_bakanlik text, p_il int, p_kategori text, p_konu text, p_metin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); b oyun.cimer_basvuru; k text; m text; muh uuid;
+begin
+  if p.susturma_bitis is not null and p.susturma_bitis > t then raise exception 'Hesabın şu anda yazamaz (kural ihlali).'; end if;
+  if p_hedef not in ('cb', 'bakanlik', 'belediye') then raise exception 'Kurum seç: Cumhurbaşkanlığı, bir bakanlık ya da bir belediye.'; end if;
+  if p_hedef = 'bakanlik' and not exists (select 1 from oyun.bakanliklar where kod = p_bakanlik) then raise exception 'Bakanlık seç.'; end if;
+  if p_hedef = 'belediye' and not exists (select 1 from oyun.iller where id = p_il) then raise exception 'Belediye için il seç.'; end if;
+  if p_kategori not in ('sikayet', 'talep', 'oneri', 'bilgi') then raise exception 'Başvuru türü seç.'; end if;
+  k := btrim(coalesce(p_konu, '')); m := btrim(coalesce(p_metin, ''));
+  if char_length(k) not between 5 and 100 then raise exception 'Konu 5–100 karakter olmalı.'; end if;
+  if char_length(m) not between 20 and 2000 then raise exception 'Başvuru metni 20–2000 karakter olmalı.'; end if;
+  if oyun.kufurlu(k || ' ' || m) then raise exception 'Başvurunda uygunsuz bir ifade var. Hakaret ve küfür yasaktır.'; end if;
+  if (select count(*) from oyun.cimer_basvuru where gonderen = p.id and imza_sayisi is null and zaman > t - interval '24 hours') >= 3 then
+    raise exception 'CİMER''e 24 saatte en fazla 3 başvuru yapabilirsin.';
+  end if;
+  if exists (select 1 from oyun.cimer_basvuru where gonderen = p.id and hedef = p_hedef and imza_sayisi is null
+               and bakanlik is not distinct from case when p_hedef = 'bakanlik' then p_bakanlik end
+               and il_id is not distinct from case when p_hedef = 'belediye' then p_il::smallint end
+               and zaman > t - interval '6 hours') then
+    raise exception 'Aynı kuruma 6 saatte bir başvurabilirsin.';
+  end if;
+  insert into oyun.cimer_basvuru(gonderen, hedef, bakanlik, il_id, kategori, konu, metin, zaman)
+  values (p.id, p_hedef, case when p_hedef = 'bakanlik' then p_bakanlik end, case when p_hedef = 'belediye' then p_il end, p_kategori, k, m, t)
+  returning * into b;
+  muh := oyun.cimer_muhatap(b);
+  if muh is not null and muh <> p.id then
+    perform oyun.bildir(muh, format('CİMER: %s kurumuna yeni %s başvurusu var — %s', oyun.cimer_kurum_ad(b),
+      case p_kategori when 'sikayet' then 'şikâyet' when 'talep' then 'talep' when 'oneri' then 'öneri' else 'bilgi edinme' end, k), t);
+  end if;
+  return jsonb_build_object('tamam', true, 'id', b.id, 'muhatap_var', muh is not null);
+end $$;
+
+-- Benim başvurularım + bana (makamıma) gelenler + kurum listesi
+create or replace function public.cimer() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi();
+begin
+  return jsonb_build_object(
+    'basvurularim', coalesce((select jsonb_agg(oyun.cimer_json(b, p.id) order by b.id desc)
+        from (select * from oyun.cimer_basvuru where gonderen = p.id order by id desc limit 50) b), '[]'::jsonb),
+    'gelen', coalesce((select jsonb_agg(oyun.cimer_json(b, p.id) order by (b.durum = 'sonuclandi'), b.id desc)
+        from (select * from oyun.cimer_basvuru b0 where oyun.cimer_muhatap(b0) = p.id
+                and (b0.durum <> 'sonuclandi' or b0.cevap_at > t - interval '7 days') order by id desc limit 100) b), '[]'::jsonb),
+    'kurumlar', jsonb_build_object(
+       'cb', (select oyun.kad(user_id) from oyun.makamlar where tur = 'cb' and bit is null limit 1),
+       'bakanliklar', coalesce((select jsonb_agg(jsonb_build_object('kod', bk.kod, 'ad', bk.ad,
+            'bakan', (select oyun.kad(m.user_id) from oyun.makamlar m where m.tur = 'bakan' and m.bakanlik = bk.kod and m.bit is null limit 1)) order by bk.sira)
+          from oyun.bakanliklar bk), '[]'::jsonb),
+       'belediye_baskani', (select oyun.kad(m.user_id) from oyun.makamlar m where m.tur = 'bel' and m.il_id = p.il_id and m.bit is null limit 1),
+       'il_id', p.il_id),
+    'bugun_kalan', greatest(0, 3 - (select count(*) from oyun.cimer_basvuru where gonderen = p.id and imza_sayisi is null and zaman > t - interval '24 hours'))
+  );
+end $$;
+
+-- Makam sahibi yanıtlar
+create or replace function public.cimer_yanitla(p_id bigint, p_durum text, p_sonuc text, p_cevap text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); b oyun.cimer_basvuru; c text := btrim(coalesce(p_cevap, ''));
+begin
+  select * into b from oyun.cimer_basvuru where id = p_id for update;
+  if b.id is null then raise exception 'Başvuru bulunamadı.'; end if;
+  if oyun.cimer_muhatap(b) is distinct from p.id then raise exception 'Bu başvuruyu yanıtlama yetkin yok.'; end if;
+  if b.durum = 'sonuclandi' then raise exception 'Bu başvuru zaten sonuçlandırıldı.'; end if;
+  if p_durum = 'inceleniyor' then
+    update oyun.cimer_basvuru set durum = 'inceleniyor', okundu_at = coalesce(okundu_at, t) where id = b.id;
+    perform oyun.bildir(b.gonderen, format('CİMER: “%s” başvurun %s tarafından incelemeye alındı.', b.konu, oyun.cimer_kurum_ad(b)), t);
+    return jsonb_build_object('tamam', true);
+  end if;
+  if p_durum <> 'sonuclandi' or p_sonuc not in ('olumlu', 'olumsuz', 'bilgi') then raise exception 'Sonuç seç: olumlu, olumsuz ya da bilgi verildi.'; end if;
+  if char_length(c) not between 10 and 2000 then raise exception 'Resmî yanıt 10–2000 karakter olmalı.'; end if;
+  if oyun.kufurlu(c) then raise exception 'Yanıtında uygunsuz bir ifade var.'; end if;
+  update oyun.cimer_basvuru set durum = 'sonuclandi', sonuc = p_sonuc, cevap = c, cevaplayan = p.id, cevap_at = t, okundu_at = coalesce(okundu_at, t) where id = b.id;
+  perform oyun.bildir(b.gonderen, format('CİMER: “%s” başvurun %s tarafından yanıtlandı (%s).', b.konu, oyun.cimer_kurum_ad(b),
+    case p_sonuc when 'olumlu' then 'olumlu' when 'olumsuz' then 'olumsuz' else 'bilgi verildi' end), t);
+  return jsonb_build_object('tamam', true);
+end $$;
+
+-- Gönderen yanıttan memnun mu?
+create or replace function public.cimer_degerlendir(p_id bigint, p_memnun boolean) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim();
+begin
+  update oyun.cimer_basvuru set memnun = p_memnun where id = p_id and gonderen = p.id and durum = 'sonuclandi' and memnun is null;
+  if not found then raise exception 'Bu başvuruyu değerlendiremezsin.'; end if;
+  return jsonb_build_object('tamam', true);
+end $$;
+
+-- Kurum karnesi (herkese açık, kimlik yok): son 30 gün
+create or replace function public.cimer_karne() returns jsonb
+language sql stable security definer set search_path = '' as $$
+  with b as (select * from oyun.cimer_basvuru where zaman > oyun.simdi() - interval '30 days' and hedef <> 'mv'),
+  g as (select oyun.cimer_kurum_ad(b) kurum, b.hedef,
+          count(*) n, count(*) filter (where durum = 'sonuclandi') yanit,
+          count(*) filter (where durum <> 'sonuclandi' and zaman < oyun.simdi() - interval '72 hours') geciken,
+          round(avg(extract(epoch from cevap_at - zaman) / 3600) filter (where durum = 'sonuclandi'), 1) ort_saat,
+          count(*) filter (where memnun) memnun, count(*) filter (where memnun is not null) degerlendirme
+        from b group by 1, 2)
+  select coalesce(jsonb_agg(jsonb_build_object('kurum', kurum, 'hedef', hedef, 'basvuru', n, 'yanit', yanit, 'geciken', geciken,
+           'ort_saat', ort_saat, 'memnuniyet', case when degerlendirme > 0 then round(memnun * 100.0 / degerlendirme) end)
+         order by n desc, kurum), '[]'::jsonb) from g
+$$;
+
+-- Eski dilekçe gönderimi kapandı
+create or replace function public.sos_dilekce_gonder(p_makam text, p_kad text, p_il int, p_baslik text, p_metin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+begin
+  raise exception 'Dilekçe sistemi kaldırıldı. Şikâyet ve taleplerini CİMER üzerinden ilgili bakanlığa ya da belediyeye ilet.';
+end $$;
+
+-- İmza kampanyası hedefe ulaşınca oluşan dilekçe CİMER'e toplu başvuru olarak düşer
+create or replace function oyun.tg_dilekce_cimer() returns trigger language plpgsql set search_path = '' as $$
+begin
+  if new.imza_kamp_id is null then return null; end if;
+  insert into oyun.cimer_basvuru(gonderen, hedef, il_id, mv_user, kategori, konu, metin, imza_sayisi, zaman)
+  values (new.gonderen,
+          case new.makam when 'cb' then 'cb' when 'bel' then 'belediye' else 'mv' end,
+          case when new.makam = 'bel' then new.il_id end,
+          case when new.makam = 'mv' then new.muhatap end,
+          'talep', left(new.baslik, 100), left(rpad(new.metin, 20, '.'), 2000),
+          (select count(*) from oyun.sos_imza where kampanya_id = new.imza_kamp_id), new.olusturma);
+  return null;
+end $$;
+do $$ begin
+  if to_regclass('oyun.sos_dilekce') is not null then
+    drop trigger if exists dilekce_cimer on oyun.sos_dilekce;
+    create trigger dilekce_cimer after insert on oyun.sos_dilekce for each row execute function oyun.tg_dilekce_cimer();
+  end if;
+end $$;
+
+-- Hayat görevleri: dilekçe görevleri artık CİMER başvurularını sayar (sarmalayıcı; canlıdaki sürüm korunur)
+do $$ begin
+  if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+             where n.nspname = 'oyun' and p.proname = 'gorev_istatistik'
+               and pg_get_functiondef(p.oid) not like '%cimer_gorev_sarmal%') then
+    drop function if exists oyun._gorev_istatistik_ham(uuid, timestamptz);
+    alter function oyun.gorev_istatistik(uuid, timestamptz) rename to _gorev_istatistik_ham;
+  end if;
+end $$;
+do $do$ begin
+  if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'oyun' and p.proname = '_gorev_istatistik_ham') then
+    execute $w$
+create or replace function oyun.gorev_istatistik(p_user uuid, p_bas timestamptz) returns jsonb
+language sql stable set search_path = '' as $f$
+  -- cimer_gorev_sarmal
+  select h || jsonb_build_object(
+    'dilekce_gonder', coalesce((h->>'dilekce_gonder')::int, 0)
+        + (select count(*) from oyun.cimer_basvuru c where c.gonderen = p_user and c.zaman >= p_bas and c.imza_sayisi is null),
+    'dilekce_yanit', coalesce((h->>'dilekce_yanit')::int, 0)
+        + (select count(*) from oyun.cimer_basvuru c where c.cevaplayan = p_user and c.cevap_at >= p_bas))
+  from (select oyun._gorev_istatistik_ham(p_user, p_bas) h) x
+$f$;
+    $w$;
+  end if;
+end $do$;
+do $$ begin
+  if to_regclass('oyun.gorev_katalog') is not null then
+update oyun.gorev_katalog set
+  baslik = replace(replace(baslik, 'Resmî dilekçe gönder', 'CİMER''e başvur'), 'Halkın talebini yanıtla', 'CİMER başvurularını yanıtla'),
+  aciklama = case when metrik = 'dilekce_gonder' then 'CİMER üzerinden bakanlıklara, belediyelere ya da Cumhurbaşkanlığına başvuru yap. Hedef: ' || hedef || '.'
+                  else 'Makam sahibi olarak CİMER başvurularına resmî yanıt ver. Hedef: ' || hedef || '.' end
+where metrik in ('dilekce_gonder', 'dilekce_yanit');
+  end if;
+end $$;
+
+revoke all on function public.cimer_basvur(text, text, int, text, text, text), public.cimer(), public.cimer_yanitla(bigint, text, text, text),
+  public.cimer_degerlendir(bigint, boolean), public.cimer_karne() from public, anon;
+grant execute on function public.cimer_basvur(text, text, int, text, text, text), public.cimer(), public.cimer_yanitla(bigint, text, text, text),
+  public.cimer_degerlendir(bigint, boolean), public.cimer_karne() to authenticated;
+revoke all on function oyun.cimer_kurum_ad(oyun.cimer_basvuru), oyun.cimer_muhatap(oyun.cimer_basvuru), oyun.cimer_json(oyun.cimer_basvuru, uuid),
+  oyun.tg_dilekce_cimer() from public, anon, authenticated;
+-- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 82) AKIŞ: SOSYAL PLATFORM (beğen / beğenme, yanıtlar)
+--  • Her paylaşımın altında Beğen ve Beğenme var. Yalnız SAYILAR görünür; kimin beğendiği ya da
+--    beğenmediği hiçbir işlevde döndürülmez (oyuncu yalnız kendi tepkisini görür).
+--  • Bir kişinin tek tepkisi olur: beğenirse beğenmemesi kalkar, tersi de.
+--  • Paylaşımların altına yanıt yazılabilir (yanıtlar akışta ayrıca görünmez, paylaşımın altında açılır).
+--  78 numaralı modülün üstüne eklenir; mevcut paylaşımlar ve beğeniler korunur.
+-- =====================================================================
+
+alter table oyun.akis add column if not exists yanit_id bigint references oyun.akis(id) on delete cascade;
+create index if not exists akis_yanitlar on oyun.akis(yanit_id, id) where yanit_id is not null;
+
+create table if not exists oyun.akis_begenmeme(
+  akis_id bigint not null references oyun.akis(id) on delete cascade,
+  user_id uuid not null,
+  zaman   timestamptz not null default now(),
+  primary key (akis_id, user_id)
+);
+alter table oyun.akis_begenmeme enable row level security;
+revoke all on oyun.akis_begenmeme from public, anon, authenticated;
+
+create or replace function oyun.akis_json(a oyun.akis, ben uuid) returns jsonb
+language sql stable as $$
+  select jsonb_build_object('id', a.id, 'kad', pr.kad, 'unvan', oyun.unvan(a.user_id), 'parti', oyun.parti_json(a.parti_id),
+           'il', (select ad from oyun.iller where id = a.il_id), 'metin', a.metin, 'zaman', a.zaman, 'yanit_id', a.yanit_id,
+           'begeni', (select count(*) from oyun.akis_begeni b where b.akis_id = a.id),
+           'begenmeme', (select count(*) from oyun.akis_begenmeme b where b.akis_id = a.id),
+           'yanit', (select count(*) from oyun.akis y where y.yanit_id = a.id and not y.gizli),
+           'begendim', exists (select 1 from oyun.akis_begeni b where b.akis_id = a.id and b.user_id = ben),
+           'begenmedim', exists (select 1 from oyun.akis_begenmeme b where b.akis_id = a.id and b.user_id = ben),
+           'benim', a.user_id = ben)
+  from oyun.profiller pr where pr.id = a.user_id
+$$;
+
+-- Tepki: p_tepki = 'begen' | 'begenme' | null (kaldır). Aynı tepkiye tekrar basmak kaldırır.
+create or replace function public.akis_tepki(p_id bigint, p_tepki text) returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); onceki text;
+begin
+  if p_tepki is not null and p_tepki not in ('begen', 'begenme') then raise exception 'Geçersiz tepki.'; end if;
+  if not exists (select 1 from oyun.akis where id = p_id and not gizli) then raise exception 'Paylaşım bulunamadı.'; end if;
+  onceki := case when exists (select 1 from oyun.akis_begeni where akis_id = p_id and user_id = p.id) then 'begen'
+                 when exists (select 1 from oyun.akis_begenmeme where akis_id = p_id and user_id = p.id) then 'begenme' end;
+  if p_tepki is not null and p_tepki is distinct from onceki
+     and (select count(*) from oyun.akis_begeni where user_id = p.id and zaman > t - interval '1 minute')
+       + (select count(*) from oyun.akis_begenmeme where user_id = p.id and zaman > t - interval '1 minute') >= 30 then
+    raise exception 'Çok hızlı tepki veriyorsun, biraz bekle.';
+  end if;
+  delete from oyun.akis_begeni where akis_id = p_id and user_id = p.id;
+  delete from oyun.akis_begenmeme where akis_id = p_id and user_id = p.id;
+  if p_tepki = 'begen' and onceki is distinct from 'begen' then
+    insert into oyun.akis_begeni(akis_id, user_id, zaman) values (p_id, p.id, t);
+  elsif p_tepki = 'begenme' and onceki is distinct from 'begenme' then
+    insert into oyun.akis_begenmeme(akis_id, user_id, zaman) values (p_id, p.id, t);
+  end if;
+  return jsonb_build_object(
+    'begeni', (select count(*) from oyun.akis_begeni where akis_id = p_id),
+    'begenmeme', (select count(*) from oyun.akis_begenmeme where akis_id = p_id),
+    'begendim', exists (select 1 from oyun.akis_begeni where akis_id = p_id and user_id = p.id),
+    'begenmedim', exists (select 1 from oyun.akis_begenmeme where akis_id = p_id and user_id = p.id));
+end $$;
+
+-- Eski "beğen" düğmesi de tek tepki kuralına uysun
+create or replace function public.akis_begen(p_id bigint) returns jsonb
+language sql security definer set search_path = oyun, public, pg_temp as $$
+  select public.akis_tepki(p_id, 'begen')
+$$;
+
+-- Yanıt yaz (aynı hız sınırları ve süzgeçler; yanıt sayısı akis_yaz'ın günlük sınırına dahildir)
+create or replace function public.akis_yanit_yaz(p_id bigint, p_metin text) returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); ana oyun.akis; r jsonb; yeni bigint;
+begin
+  select * into ana from oyun.akis where id = p_id and not gizli;
+  if ana.id is null then raise exception 'Paylaşım bulunamadı.'; end if;
+  if ana.yanit_id is not null then select * into ana from oyun.akis where id = ana.yanit_id; end if;   -- yanıta yanıt: ana paylaşıma bağla
+  if exists (select 1 from oyun.engellemeler g where (g.engelleyen = ana.user_id and g.engellenen = p.id) or (g.engelleyen = p.id and g.engellenen = ana.user_id)) then
+    raise exception 'Bu kullanıcıyla engelleme olduğu için yanıt yazamazsın.';
+  end if;
+  r := public.akis_yaz(p_metin);
+  yeni := (r->>'id')::bigint;
+  update oyun.akis set yanit_id = ana.id where id = yeni;
+  if ana.user_id <> p.id then
+    perform oyun.bildir(ana.user_id, format('%s paylaşımına yanıt verdi: %s', p.kad, left(btrim(p_metin), 80)));
+  end if;
+  return jsonb_build_object('tamam', true, 'id', yeni);
+end $$;
+
+-- Bir paylaşım ve yanıtları
+create or replace function public.akis_konu(p_id bigint) returns jsonb
+language plpgsql stable security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); a oyun.akis;
+begin
+  select * into a from oyun.akis where id = p_id and not gizli;
+  if a.id is null then raise exception 'Paylaşım bulunamadı.'; end if;
+  if a.yanit_id is not null then select * into a from oyun.akis where id = a.yanit_id and not gizli; end if;
+  if a.id is null then raise exception 'Paylaşım bulunamadı.'; end if;
+  return jsonb_build_object('ana', oyun.akis_json(a, p.id),
+    'yanitlar', coalesce((select jsonb_agg(oyun.akis_json(y, p.id) order by y.id) from oyun.akis y
+        where y.yanit_id = a.id and not y.gizli
+          and not exists (select 1 from oyun.engellemeler g where (g.engelleyen = p.id and g.engellenen = y.user_id) or (g.engelleyen = y.user_id and g.engellenen = p.id))), '[]'::jsonb));
+end $$;
+
+-- Akış listesi: yanıtlar ana akışta görünmez
+create or replace function public.akis_liste(p_kapsam text default 'herkes', p_etiket text default null, p_onceki bigint default null, p_limit int default 20)
+returns jsonb language plpgsql stable security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.profilim(); et text := nullif(lower(regexp_replace(coalesce(p_etiket, ''), '^#', '')), '');
+begin
+  if p_kapsam not in ('herkes', 'il', 'parti') then raise exception 'Geçersiz kapsam.'; end if;
+  return coalesce((select jsonb_agg(oyun.akis_json(a, p.id) order by a.id desc) from (
+    select * from oyun.akis a
+     where not a.gizli and a.yanit_id is null and (p_onceki is null or a.id < p_onceki)
+       and (p_kapsam <> 'il' or a.il_id = p.il_id) and (p_kapsam <> 'parti' or (p.parti_id is not null and a.parti_id = p.parti_id))
+       and (et is null or exists (select 1 from oyun.akis_etiket e where e.akis_id = a.id and e.etiket = et))
+       and not exists (select 1 from oyun.engellemeler g where (g.engelleyen = p.id and g.engellenen = a.user_id) or (g.engelleyen = a.user_id and g.engellenen = p.id))
+     order by a.id desc limit least(greatest(coalesce(p_limit, 20), 1), 40)) a), '[]'::jsonb);
+end $$;
+
+revoke all on function public.akis_tepki(bigint, text), public.akis_yanit_yaz(bigint, text), public.akis_konu(bigint) from public, anon;
+grant execute on function public.akis_tepki(bigint, text), public.akis_yanit_yaz(bigint, text), public.akis_konu(bigint) to authenticated;
+revoke all on function public.akis_begen(bigint) from public, anon;
+grant execute on function public.akis_begen(bigint) to authenticated;
+-- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 83) YARGI REFORMU
+--  1. Yüksek Mahkeme 3 üyelidir: 1. üye (mahkeme başkanı) Cumhurbaşkanınca atanır, 2. ve 3. üyeyi Meclis seçer.
+--     Kararlar oy çokluğuyla (3 üyede 2 oy) verilir. Koltuk dolu değilse görevdeki üyelerin çoğunluğu yeter.
+--  2. Bağımsızlık: yargıç partisiz olmalı, seçilmiş/atanmış makamı olmamalı; görev süresi 30 gün, bu sürede
+--     yalnız Meclis'in 3/5 oyuyla görevden alınır. Görevdeyken partiye giremez, aday olamaz, makam alamaz.
+--  3. Süre: savunma süresi bitince mahkemenin 72 saati vardır; karar çıkmazsa dava düşer (harç iade).
+--  4. İstinaf: kaybeden taraf 24 saat içinde bir kez itiraz eder; davayla ilgisi olmayan partilerden kurayla
+--     seçilen 3 milletvekili (yetmezse aktif oyuncu) 48 saatte "onayla / boz" der.
+--     Ağır cezalar (para, adaylık yasağı, vekilliğin düşmesi, parti cezası) karar KESİNLEŞİNCE uygulanır.
+--  5. Dava harcı: davacı peşin öder; kazanırsa geri alır ve harcı davalı öder; kaybederse harç hazineye kalır.
+--  6. Kararlar Akış'a #Adliye etiketiyle düşer (beğen/beğenme ile tartışılır) ve Gündem'e yazılır.
+--  7. Yeni cezalar: 10.000 / 50.000 ₺ para cezası, 30 gün adaylık yasağı; partiye 25.000 ₺ hazine yardımı kesintisi.
+--  8. Anayasa Mahkemesi: Meclis'te grubu (vekili) olan bir partinin genel başkanı, son 10 günde yürürlüğe giren
+--     bir kanunu iptal için başvurabilir; mahkeme iptal ederse kanunun etkisi geri alınır.
+--  Yalnız ekler; eski kararlar kesinleşmiş sayılır.
+-- =====================================================================
+
+-- ---------- Ayarlar ----------
+create table if not exists oyun.mahkeme_ayar(
+  id boolean primary key default true check (id),
+  gorev_gun int not null default 30,
+  karar_saat int not null default 72,
+  istinaf_saat int not null default 24,
+  juri_saat int not null default 48,
+  harc numeric not null default 5000,
+  aym_gun int not null default 10
+);
+insert into oyun.mahkeme_ayar(id) values (true) on conflict do nothing;
+
+-- ---------- Üyeler ----------
+create table if not exists oyun.mahkeme_uye(
+  sira      smallint primary key check (sira between 1 and 3),
+  user_id   uuid references oyun.profiller(id),
+  kaynak    text not null check (kaynak in ('cb','meclis')),
+  atayan    uuid,
+  bas       timestamptz,
+  gorev_bit timestamptz,
+  bos_since timestamptz default now()
+);
+insert into oyun.mahkeme_uye(sira, kaynak) values (1,'cb'),(2,'meclis'),(3,'meclis') on conflict do nothing;
+-- Görevdeki eski Yüksek Yargıç 1. üye (mahkeme başkanı) olur
+update oyun.mahkeme_uye u set user_id = m.hakim, atayan = m.atayan, bas = coalesce(m.atama_at, now()),
+       gorev_bit = coalesce(m.atama_at, now()) + make_interval(days => (select gorev_gun from oyun.mahkeme_ayar)), bos_since = null
+  from oyun.adliye_makam m where u.sira = 1 and u.user_id is null and m.id = 1 and m.hakim is not null;
+
+create table if not exists oyun.mahkeme_meclis_oy(
+  sira  smallint not null check (sira in (2,3)),
+  vekil uuid not null,
+  aday  uuid not null,
+  zaman timestamptz not null default now(),
+  primary key (sira, vekil)
+);
+create table if not exists oyun.mahkeme_azil(
+  id          bigserial primary key,
+  sira        smallint not null,
+  uye         uuid not null,
+  teklif_eden uuid not null,
+  gerekce     text not null check (char_length(gerekce) between 20 and 1000),
+  bas         timestamptz not null,
+  bit         timestamptz not null,
+  durum       text not null default 'acik' check (durum in ('acik','kabul','ret'))
+);
+create unique index if not exists mahkeme_azil_tek on oyun.mahkeme_azil(uye) where durum = 'acik';
+create table if not exists oyun.mahkeme_azil_oy(
+  azil_id bigint not null references oyun.mahkeme_azil(id) on delete cascade,
+  vekil   uuid not null,
+  oy      text not null check (oy in ('kabul','ret')),
+  zaman   timestamptz not null default now(),
+  primary key (azil_id, vekil)
+);
+
+-- ---------- Davalar: yeni alanlar ----------
+alter table oyun.adliye_davalar add column if not exists kesin boolean not null default true;
+alter table oyun.adliye_davalar add column if not exists karar_son timestamptz;
+alter table oyun.adliye_davalar add column if not exists istinaf_son timestamptz;
+alter table oyun.adliye_davalar add column if not exists harc numeric not null default 0;
+alter table oyun.adliye_davalar add column if not exists harc_durum text;
+alter table oyun.adliye_davalar add column if not exists ceza_uygulandi boolean not null default false;
+alter table oyun.adliye_davalar add column if not exists ilk_karar text;
+alter table oyun.adliye_davalar drop constraint if exists adliye_davalar_karar_check;
+alter table oyun.adliye_davalar add constraint adliye_davalar_karar_check check (karar in
+  ('beraat','uyari','sustur_1s','sustur_1g','sustur_1h','vekillik_dusur','para_10b','para_50b','aday_yasagi','parti_para','dusme'));
+alter table oyun.profiller add column if not exists adaylik_yasagi_bitis timestamptz;
+
+create table if not exists oyun.adliye_karar_oy(
+  dava_id bigint not null references oyun.adliye_davalar(id) on delete cascade,
+  uye     uuid not null,
+  karar   text not null,
+  gerekce text not null,
+  zaman   timestamptz not null default now(),
+  primary key (dava_id, uye)
+);
+create table if not exists oyun.adliye_istinaf(
+  dava_id   bigint primary key references oyun.adliye_davalar(id) on delete cascade,
+  basvuran  uuid not null,
+  gerekce   text not null check (char_length(gerekce) between 20 and 1500),
+  bas       timestamptz not null,
+  bit       timestamptz not null,
+  durum     text not null default 'acik' check (durum in ('acik','onaylandi','bozuldu'))
+);
+create table if not exists oyun.adliye_juri(
+  dava_id bigint not null references oyun.adliye_istinaf(dava_id) on delete cascade,
+  user_id uuid not null,
+  oy      text check (oy in ('onay','boz')),
+  gerekce text,
+  zaman   timestamptz,
+  primary key (dava_id, user_id)
+);
+
+-- ---------- Anayasa Mahkemesi ----------
+alter table oyun.kanunlar drop constraint if exists kanunlar_durum_check;
+alter table oyun.kanunlar add constraint kanunlar_durum_check
+  check (durum in ('gorusmede','oylamada','cb_onayinda','israr','yururlukte','ret','dustu','kaduk','geri_cekildi','halkoylamasinda','aym_iptal'));
+create table if not exists oyun.aym_basvuru(
+  id        bigserial primary key,
+  kanun_id  bigint not null references oyun.kanunlar(id),
+  parti_id  bigint not null references oyun.partiler(id),
+  basvuran  uuid not null,
+  gerekce   text not null check (char_length(gerekce) between 30 and 2000),
+  gorus     text,
+  gorus_veren uuid,
+  bas       timestamptz not null,
+  karar_son timestamptz not null,
+  durum     text not null default 'acik' check (durum in ('acik','iptal','ret','dustu')),
+  karar_gerekce text,
+  karar_at  timestamptz,
+  hakim     uuid
+);
+create unique index if not exists aym_tek_acik on oyun.aym_basvuru(kanun_id) where durum = 'acik';
+create table if not exists oyun.aym_oy(
+  basvuru_id bigint not null references oyun.aym_basvuru(id) on delete cascade,
+  uye     uuid not null,
+  karar   text not null check (karar in ('iptal','ret')),
+  gerekce text not null,
+  zaman   timestamptz not null default now(),
+  primary key (basvuru_id, uye)
+);
+
+do $$ declare t text; begin
+  foreach t in array array['mahkeme_ayar','mahkeme_uye','mahkeme_meclis_oy','mahkeme_azil','mahkeme_azil_oy','adliye_karar_oy','adliye_istinaf','adliye_juri','aym_basvuru','aym_oy'] loop
+    execute format('alter table oyun.%I enable row level security', t);
+    execute format('revoke all on oyun.%I from public, anon, authenticated', t);
+  end loop;
+end $$;
+
+-- =====================================================================
+--  Yardımcılar
+-- =====================================================================
+create or replace function oyun.mahkeme_uyesi_mi(u uuid) returns boolean language sql stable set search_path = '' as $$
+  select exists (select 1 from oyun.mahkeme_uye where user_id = u)
+$$;
+create or replace function oyun.mahkeme_uyeleri() returns uuid[] language sql stable set search_path = '' as $$
+  select coalesce(array_agg(user_id order by sira), '{}') from oyun.mahkeme_uye where user_id is not null
+$$;
+-- Bir davada oy verebilecek üyeler (taraf olanlar hariç)
+create or replace function oyun.dava_heyeti(d oyun.adliye_davalar) returns uuid[] language sql stable set search_path = '' as $$
+  select coalesce(array_agg(user_id order by sira), '{}') from oyun.mahkeme_uye
+   where user_id is not null and user_id is distinct from d.davaci and user_id is distinct from d.davali
+$$;
+create or replace function oyun.cogunluk(n int) returns int language sql immutable as $$ select greatest(1, n / 2 + 1) $$;
+
+-- Yargıç adayı uygun mu?
+create or replace function oyun.yargic_uygunluk(u uuid) returns text language sql stable set search_path = '' as $$
+  select case
+    when not exists (select 1 from oyun.profiller where id = u and not yasakli) then 'Oyuncu bulunamadı.'
+    when exists (select 1 from oyun.profiller where id = u and parti_id is not null) then 'Yargıç adayı bir partiye üye olmamalı; önce partisinden ayrılmalı.'
+    when exists (select 1 from oyun.makamlar where user_id = u and bit is null) then 'Yargıç adayı başka bir makamda görevli olmamalı.'
+    when exists (select 1 from oyun.mahkeme_uye where user_id = u) then 'Bu oyuncu zaten Yüksek Mahkeme üyesi.'
+    else null end
+$$;
+
+-- Üyeyi koltuğa oturt / koltuktan indir (eski adliye_makam.hakim alanı 1. üyeyi gösterir)
+create or replace function oyun.mahkeme_oturt(p_sira smallint, u uuid, p_atayan uuid, t timestamptz) returns void language plpgsql set search_path = '' as $$
+begin
+  update oyun.mahkeme_uye set user_id = u, atayan = p_atayan, bas = t,
+         gorev_bit = t + make_interval(days => (select gorev_gun from oyun.mahkeme_ayar)), bos_since = null where sira = p_sira;
+  if p_sira = 1 then update oyun.adliye_makam set hakim = u, atayan = p_atayan, atama_at = t, degistirme_at = t where id = 1; end if;
+  delete from oyun.mahkeme_meclis_oy where sira = p_sira;
+  insert into oyun.adliye_atama_kayit(yapan, eski, yeni, gerekce, zaman)
+  values (coalesce(p_atayan, u), null, u, case when p_sira = 1 then 'Cumhurbaşkanı ataması (mahkeme başkanı)' else 'Meclis seçimi (' || p_sira || '. üye)' end, t);
+  perform oyun.bildir(u, format('Yüksek Mahkeme %s. üyesi oldun. Görev süren %s gün; bu sürede partiye giremez, aday olamaz, başka makam alamazsın.',
+                                 p_sira, (select gorev_gun from oyun.mahkeme_ayar)), t);
+  perform oyun.olay('adliye', format('%s Yüksek Mahkeme %s. üyesi oldu (%s).', oyun.kad(u), p_sira,
+                                      case when p_sira = 1 then 'Cumhurbaşkanı ataması' else 'Meclis seçimi' end), null, null, t);
+end $$;
+create or replace function oyun.mahkeme_indir(p_sira smallint, p_yapan uuid, p_gerekce text, t timestamptz) returns void language plpgsql set search_path = '' as $$
+declare u uuid;
+begin
+  select user_id into u from oyun.mahkeme_uye where sira = p_sira for update;
+  if u is null then return; end if;
+  update oyun.mahkeme_uye set user_id = null, atayan = null, bas = null, gorev_bit = null, bos_since = t where sira = p_sira;
+  if p_sira = 1 then update oyun.adliye_makam set hakim = null, atama_at = null, degistirme_at = t where id = 1; end if;
+  update oyun.mahkeme_azil set durum = 'ret' where uye = u and durum = 'acik' and p_gerekce not like 'Meclis%';
+  insert into oyun.adliye_atama_kayit(yapan, eski, yeni, gerekce, zaman) values (coalesce(p_yapan, u), u, null, p_gerekce, t);
+  perform oyun.bildir(u, 'Yüksek Mahkeme üyeliğin sona erdi: ' || p_gerekce, t);
+  perform oyun.olay('adliye', format('%s Yüksek Mahkeme üyeliğinden ayrıldı: %s', oyun.kad(u), p_gerekce), null, null, t);
+end $$;
+
+-- Bağımsızlık tetikleyicileri
+create or replace function oyun.tg_yargic_parti() returns trigger language plpgsql set search_path = '' as $$
+begin
+  if new.parti_id is not null and new.parti_id is distinct from old.parti_id and oyun.mahkeme_uyesi_mi(new.id) then
+    raise exception 'Yüksek Mahkeme üyeleri görev süresince bir partiye üye olamaz.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists yargic_parti on oyun.profiller;
+create trigger yargic_parti before update of parti_id on oyun.profiller for each row execute function oyun.tg_yargic_parti();
+
+create or replace function oyun.tg_yargic_makam() returns trigger language plpgsql set search_path = '' as $$
+begin
+  if new.bit is null and oyun.mahkeme_uyesi_mi(new.user_id) then
+    raise exception 'Yüksek Mahkeme üyeleri görev süresince başka bir makamda görev alamaz.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists yargic_makam on oyun.makamlar;
+create trigger yargic_makam before insert on oyun.makamlar for each row execute function oyun.tg_yargic_makam();
+
+create or replace function oyun.tg_aday_yasak() returns trigger language plpgsql set search_path = '' as $$
+declare b timestamptz;
+begin
+  if oyun.mahkeme_uyesi_mi(new.user_id) then raise exception 'Yüksek Mahkeme üyeleri görev süresince aday olamaz.'; end if;
+  select adaylik_yasagi_bitis into b from oyun.profiller where id = new.user_id;
+  if b is not null and b > oyun.simdi() then
+    raise exception 'Mahkeme kararıyla % tarihine kadar aday olamazsın.', to_char(b at time zone 'Europe/Istanbul', 'DD.MM.YYYY HH24:MI');
+  end if;
+  return new;
+end $$;
+drop trigger if exists aday_yasak on oyun.adaylar;
+create trigger aday_yasak before insert on oyun.adaylar for each row execute function oyun.tg_aday_yasak();
+
+-- Akış'a ve Gündem'e yaz
+create or replace function oyun.adliye_duyur(u uuid, p_metin text, p_etiketler text[], t timestamptz) returns void language plpgsql set search_path = '' as $$
+declare yid bigint; e text; m text := left(p_metin, 280);
+begin
+  perform oyun.olay('adliye', p_metin, null, null, t);
+  if to_regclass('oyun.akis') is null or u is null then return; end if;
+  insert into oyun.akis(user_id, metin, zaman, il_id, parti_id)
+  select u, m, t, p.il_id, p.parti_id from oyun.profiller p where p.id = u returning id into yid;
+  if yid is null then return; end if;
+  foreach e in array p_etiketler loop
+    insert into oyun.akis_etiket(akis_id, etiket, zaman, user_id) values (yid, e, t, u) on conflict do nothing;
+  end loop;
+end $$;
+
+-- Para cezası / harç tahsili: elde olan kadar alınır
+create or replace function oyun.adliye_tahsil(u uuid, p_tutar numeric, p_aciklama text, t timestamptz) returns numeric language plpgsql set search_path = '' as $$
+declare var numeric; al numeric;
+begin
+  if u is null or p_tutar <= 0 then return 0; end if;
+  perform oyun.cuzdanim(u);
+  select para into var from oyun.cuzdan where user_id = u for update;
+  al := least(coalesce(var, 0), p_tutar);
+  if al > 0 then perform oyun.para_islem(u, -al, 'adliye', p_aciklama, t); end if;
+  return al;
+end $$;
+
+-- Hafif cezalar ilk kararda, ağır cezalar kesinleşince uygulanır
+create or replace function oyun.adliye_hafif_ceza(d oyun.adliye_davalar, t timestamptz) returns timestamptz language plpgsql set search_path = '' as $$
+declare bitis timestamptz;
+begin
+  if d.karar in ('sustur_1s','sustur_1g','sustur_1h') and d.davali is not null then
+    bitis := t + case d.karar when 'sustur_1s' then interval '1 hour' when 'sustur_1g' then interval '1 day' else interval '7 days' end;
+    update oyun.profiller set adliye_susturma_bitis = greatest(coalesce(adliye_susturma_bitis, t), bitis) where id = d.davali;
+  end if;
+  return bitis;
+end $$;
+create or replace function oyun.adliye_susturma_yenile(u uuid, t timestamptz) returns void language sql set search_path = '' as $$
+  update oyun.profiller set adliye_susturma_bitis = (select max(ceza_bitis) from oyun.adliye_davalar
+     where davali = u and durum = 'karar' and af_at is null and karar in ('sustur_1s','sustur_1g','sustur_1h') and ceza_bitis > t)
+  where id = u
+$$;
+
+-- Karar kesinleşir: ağır ceza + harç hesabı
+create or replace function oyun.adliye_kesinlestir(p_dava bigint, t timestamptz) returns void language plpgsql set search_path = '' as $$
+declare d oyun.adliye_davalar; mv bigint; alinan numeric; gb uuid; davaci_kazandi boolean;
+begin
+  select * into d from oyun.adliye_davalar where id = p_dava for update;
+  if d.id is null or d.kesin then return; end if;
+  if not d.ceza_uygulandi and d.af_at is null then
+    if d.karar = 'vekillik_dusur' and d.davali is not null then
+      select id into mv from oyun.makamlar where user_id = d.davali and tur = 'mv' and bit is null order by bas desc limit 1;
+      if mv is not null then
+        update oyun.makamlar set bit = t, bitis_neden = 'Adliye #' || d.id || ' kararı' where user_id = d.davali and bit is null and tur in ('mv','tbmm','bskv','grup_bskv');
+      end if;
+    elsif d.karar in ('para_10b','para_50b') then
+      alinan := oyun.adliye_tahsil(d.davali, case d.karar when 'para_10b' then 10000 else 50000 end, 'Adliye #' || d.id || ' para cezası', t);
+    elsif d.karar = 'aday_yasagi' then
+      update oyun.profiller set adaylik_yasagi_bitis = greatest(coalesce(adaylik_yasagi_bitis, t), t + interval '30 days') where id = d.davali;
+    elsif d.karar = 'parti_para' and d.davali_parti is not null then
+      update oyun.partiler set kasa = kasa - least(kasa, 25000) where id = d.davali_parti;
+    end if;
+  end if;
+  -- harç: davacı kazandıysa iade + davalıdan tahsil; kaybettiyse hazineye kalır; düşmede iade
+  davaci_kazandi := d.karar not in ('beraat','dusme');
+  if d.harc > 0 and d.harc_durum = 'yatirildi' then
+    if d.karar = 'dusme' or davaci_kazandi then
+      perform oyun.para_islem(d.davaci, d.harc, 'adliye', 'Adliye #' || d.id || ' harç iadesi', t);
+    end if;
+    if davaci_kazandi then
+      if d.davali is not null then perform oyun.adliye_tahsil(d.davali, d.harc, 'Adliye #' || d.id || ' yargılama harcı', t);
+      elsif d.davali_parti is not null then update oyun.partiler set kasa = kasa - least(kasa, d.harc) where id = d.davali_parti; end if;
+    end if;
+  end if;
+  update oyun.adliye_davalar set kesin = true, ceza_uygulandi = true, mv_makam_id = coalesce(mv, mv_makam_id),
+         harc_durum = case when harc > 0 then case when karar = 'dusme' or davaci_kazandi then 'iade' else 'hazine' end end
+   where id = d.id;
+  perform oyun.bildir(x.id, format('Adliye #%s kararı kesinleşti: %s.', d.id, d.karar), t)
+    from (select d.davaci id union select d.davali where d.davali is not null) x;
+end $$;
+
+-- Heyet oylarını say; çoğunluk varsa ilk derece kararı ver
+create or replace function oyun.adliye_oy_say(p_dava bigint, t timestamptz) returns boolean language plpgsql set search_path = '' as $$
+declare d oyun.adliye_davalar; heyet uuid[]; r record; bitis timestamptz; v_hakim uuid; v_ger text;
+begin
+  select * into d from oyun.adliye_davalar where id = p_dava for update;
+  if d.durum <> 'acik' then return false; end if;
+  heyet := oyun.dava_heyeti(d);
+  if cardinality(heyet) = 0 then return false; end if;
+  select o.karar, count(*) n, min(o.zaman) ilk into r from oyun.adliye_karar_oy o
+   where o.dava_id = d.id and o.uye = any(heyet) group by o.karar order by count(*) desc, min(o.zaman) limit 1;
+  if r.karar is null or r.n < oyun.cogunluk(cardinality(heyet)) then return false; end if;
+  select o.uye, o.gerekce into v_hakim, v_ger from oyun.adliye_karar_oy o where o.dava_id = d.id and o.karar = r.karar and o.uye = any(heyet) order by o.zaman limit 1;
+  update oyun.adliye_davalar set durum = 'karar', karar = r.karar, ilk_karar = r.karar, gerekce = v_ger, hakim = v_hakim, karar_at = t,
+         kesin = false, istinaf_son = t + make_interval(hours => (select istinaf_saat from oyun.mahkeme_ayar))
+   where id = d.id returning * into d;
+  bitis := oyun.adliye_hafif_ceza(d, t);
+  update oyun.adliye_davalar set ceza_bitis = bitis where id = d.id;
+  perform oyun.bildir(x.id, format('Adliye #%s: mahkeme kararını verdi (%s). %s saat içinde istinafa başvurabilirsin.', d.id, r.karar,
+                                   (select istinaf_saat from oyun.mahkeme_ayar)), t)
+    from (select d.davaci id union select d.davali where d.davali is not null) x;
+  perform oyun.adliye_duyur(v_hakim, format('Yüksek Mahkeme kararı #%s: %s → %s davasında karar "%s" (%s/%s oy). İstinaf yolu açık. #Adliye',
+     d.id, coalesce((select kisa from oyun.partiler where id = d.davaci_parti), oyun.kad(d.davaci)),
+     coalesce(oyun.kad(d.davali), (select kisa from oyun.partiler where id = d.davali_parti)), r.karar, r.n, cardinality(heyet)), array['adliye'], t);
+  return true;
+end $$;
+
+-- =====================================================================
+--  Davalar: açma (harçlı), heyet oyu (eski karar_ver bunu kullanır), istinaf, jüri
+-- =====================================================================
+create or replace function public.adliye_dava_ac(p_hedef_tur text,p_hedef text,p_tur text,p_iddia text,p_delil text default '',p_davaci_parti bigint default null)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); u oyun.profiller; hedef_parti bigint; t timestamptz:=oyun.simdi(); yeni bigint; h numeric := (select harc from oyun.mahkeme_ayar);
+begin
+ if p_tur not in('hakaret','iftira','rusvet','yolsuzluk','usulsuzluk','dolandiricilik','diger') then raise exception 'Dava türü geçersiz.'; end if;
+ if char_length(trim(coalesce(p_iddia,''))) not between 20 and 1600 then raise exception 'Dava açıklaması 20–1600 karakter olmalı.'; end if;
+ if char_length(coalesce(p_delil,''))>1600 then raise exception 'Delil açıklaması 1600 karakteri aşamaz.'; end if;
+ if p_hedef_tur='oyuncu' then
+  select * into u from oyun.profiller where lower(kad)=lower(trim(p_hedef)) and not yasakli;
+  if u.id is null then raise exception 'Davalı oyuncu bulunamadı.'; end if;
+  if u.id=p.id then raise exception 'Kendinize dava açamazsınız.'; end if;
+ elsif p_hedef_tur='parti' then
+  begin hedef_parti:=p_hedef::bigint; exception when invalid_text_representation then raise exception 'Geçersiz parti.'; end;
+  if not exists(select 1 from oyun.partiler where id=hedef_parti and not kapali) then raise exception 'Parti bulunamadı.'; end if;
+ else raise exception 'Davalı türü geçersiz.'; end if;
+ if p_davaci_parti is not null and not exists(
+  select 1 from oyun.partiler pa left join oyun.parti_sozcu s on s.parti_id=pa.id
+  where pa.id=p_davaci_parti and not pa.kapali and (pa.gb=p.id or (s.user_id=p.id and p.parti_id=pa.id))
+ ) then raise exception 'Parti adına dava açmak için genel başkan veya sözcü olmalısınız.'; end if;
+ if hedef_parti is not null and hedef_parti=p_davaci_parti then raise exception 'Bir parti kendisine dava açamaz.'; end if;
+ if (select count(*) from oyun.adliye_davalar where davaci=p.id and durum='acik')>=3 then raise exception 'En fazla üç açık davanız olabilir.'; end if;
+ if exists(select 1 from oyun.adliye_davalar where davaci=p.id and acilis>t-interval '10 minutes') then raise exception 'Yeni dava için 10 dakika bekleyin.'; end if;
+ if h > 0 then perform oyun.para_islem(p.id, -h, 'adliye', 'Dava harcı', t); end if;
+ insert into oyun.adliye_davalar(davaci,davaci_parti,davali,davali_parti,tur,iddia,delil,acilis,savunma_son,karar_son,harc,harc_durum,kesin)
+ values(p.id,p_davaci_parti,u.id,hedef_parti,p_tur,trim(p_iddia),coalesce(p_delil,''),t,t+interval '6 hours',
+        t+interval '6 hours'+make_interval(hours=>(select karar_saat from oyun.mahkeme_ayar)),h,case when h>0 then 'yatirildi' end,false) returning id into yeni;
+ if u.id is not null then insert into oyun.bildirimler(user_id,zaman,metin) values(u.id,t,'#'||yeni||' numaralı davada hakkınızda iddia var. Adliye''den 6 saat içinde savunma yapın.'); end if;
+ if hedef_parti is not null then
+  insert into oyun.bildirimler(user_id,zaman,metin)
+  select distinct z.id,t,'#'||yeni||' numaralı davada partiniz davalıdır. Savunma Adliye''de.'
+  from (select gb as id from oyun.partiler where id=hedef_parti union select user_id from oyun.parti_sozcu where parti_id=hedef_parti) z
+  where z.id is not null;
+ end if;
+ insert into oyun.bildirimler(user_id,zaman,metin)
+ select m.user_id,t,'Yüksek Mahkeme: #'||yeni||' numaralı yeni dava dosyası açıldı.' from oyun.mahkeme_uye m where m.user_id is not null and m.user_id<>p.id and m.user_id is distinct from u.id;
+ return jsonb_build_object('tamam',true,'id',yeni,'harc',h);
+end $$;
+
+create or replace function public.adliye_oy_ver(p_dava bigint, p_karar text, p_gerekce text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); d oyun.adliye_davalar; t timestamptz := oyun.simdi(); karar_cikti boolean;
+begin
+  if not oyun.mahkeme_uyesi_mi(p.id) then raise exception 'Yalnız Yüksek Mahkeme üyeleri oy verebilir.'; end if;
+  select * into d from oyun.adliye_davalar where id = p_dava;
+  if d.id is null or d.durum <> 'acik' then raise exception 'Açık bir dava bulunamadı.'; end if;
+  if d.davaci = p.id or d.davali = p.id then raise exception 'Yargıç kendi davasında oy kullanamaz.'; end if;
+  if not d.savunma_geldi and t < d.savunma_son then raise exception 'Savunma süresinin dolmasını bekleyin.'; end if;
+  if p_karar not in ('beraat','uyari','sustur_1s','sustur_1g','sustur_1h','vekillik_dusur','para_10b','para_50b','aday_yasagi','parti_para') then raise exception 'Geçersiz karar.'; end if;
+  if d.davali is null and p_karar not in ('beraat','uyari','parti_para') then raise exception 'Partiye yalnız beraat, uyarı veya hazine yardımı kesintisi verilebilir.'; end if;
+  if d.davali is not null and p_karar = 'parti_para' then raise exception 'Hazine yardımı kesintisi yalnız partilere verilir.'; end if;
+  if p_karar = 'vekillik_dusur' and not exists (select 1 from oyun.makamlar where user_id = d.davali and tur = 'mv' and bit is null) then
+    raise exception 'Davalının aktif milletvekilliği yok.';
+  end if;
+  if char_length(trim(coalesce(p_gerekce, ''))) not between 20 and 2000 then raise exception 'Gerekçeli oy 20–2000 karakter olmalı.'; end if;
+  insert into oyun.adliye_karar_oy(dava_id, uye, karar, gerekce, zaman) values (d.id, p.id, p_karar, trim(p_gerekce), t)
+  on conflict (dava_id, uye) do update set karar = excluded.karar, gerekce = excluded.gerekce, zaman = excluded.zaman;
+  karar_cikti := oyun.adliye_oy_say(d.id, t);
+  return jsonb_build_object('tamam', true, 'karar_cikti', karar_cikti);
+end $$;
+
+-- Eski "karar ver" düğmesi artık heyet oyu verir
+create or replace function public.adliye_karar_ver(p_dava bigint, p_karar text, p_gerekce text) returns jsonb
+language sql security definer set search_path = '' as $$ select public.adliye_oy_ver(p_dava, p_karar, p_gerekce) $$;
+
+-- İstinaf: kaybeden taraf
+create or replace function public.adliye_istinaf(p_dava bigint, p_gerekce text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); d oyun.adliye_davalar; t timestamptz := oyun.simdi(); yetkili boolean; r record; n int := 0; juri_bit timestamptz;
+begin
+  select * into d from oyun.adliye_davalar where id = p_dava for update;
+  if d.id is null or d.durum <> 'karar' or d.kesin then raise exception 'Bu karar istinafa açık değil.'; end if;
+  if t > d.istinaf_son then raise exception 'İstinaf süresi doldu.'; end if;
+  if exists (select 1 from oyun.adliye_istinaf where dava_id = d.id) then raise exception 'Bu karara zaten istinaf başvurusu yapıldı.'; end if;
+  if d.karar = 'beraat' then
+    yetkili := d.davaci = p.id or (d.davaci_parti is not null and exists (select 1 from oyun.partiler pa left join oyun.parti_sozcu s on s.parti_id = pa.id
+                 where pa.id = d.davaci_parti and (pa.gb = p.id or s.user_id = p.id)));
+  else
+    yetkili := d.davali = p.id or (d.davali_parti is not null and exists (select 1 from oyun.partiler pa left join oyun.parti_sozcu s on s.parti_id = pa.id
+                 where pa.id = d.davali_parti and (pa.gb = p.id or s.user_id = p.id)));
+  end if;
+  if not yetkili then raise exception 'İstinafa yalnız kararı kaybeden taraf başvurabilir.'; end if;
+  if char_length(trim(coalesce(p_gerekce, ''))) not between 20 and 1500 then raise exception 'İstinaf gerekçesi 20–1500 karakter olmalı.'; end if;
+  juri_bit := t + make_interval(hours => (select juri_saat from oyun.mahkeme_ayar));
+  insert into oyun.adliye_istinaf(dava_id, basvuran, gerekce, bas, bit) values (d.id, p.id, trim(p_gerekce), t, juri_bit);
+  -- Kura: davayla ilgisi olmayan partilerin aktif vekilleri; yetmezse son 7 günde görülen tarafsız oyuncular
+  for r in
+    select x.id from (
+      select pr.id, 0 o, random() rnd from oyun.makamlar m join oyun.profiller pr on pr.id = m.user_id
+       where m.tur = 'mv' and m.bit is null and not pr.yasakli
+      union all
+      select pr.id, 1, random() from oyun.profiller pr where not pr.yasakli and pr.son_gorulme > t - interval '7 days') x
+    join oyun.profiller q on q.id = x.id
+    where x.id is distinct from d.davaci and x.id is distinct from d.davali and not oyun.mahkeme_uyesi_mi(x.id)
+      and not exists (select 1 from oyun.makamlar cbm where cbm.user_id = x.id and cbm.tur = 'cb' and cbm.bit is null)
+      and (q.parti_id is null or (q.parti_id is distinct from d.davaci_parti and q.parti_id is distinct from d.davali_parti
+           and q.parti_id is distinct from (select parti_id from oyun.profiller where id = d.davaci)
+           and q.parti_id is distinct from (select parti_id from oyun.profiller where id = d.davali)))
+    group by x.id order by min(x.o), min(x.rnd) limit 3
+  loop
+    insert into oyun.adliye_juri(dava_id, user_id) values (d.id, r.id) on conflict do nothing;
+    perform oyun.bildir(r.id, format('Kura ile Adliye #%s istinaf jürisine seçildin. %s saat içinde kararı onayla ya da boz.', d.id,
+                                     (select juri_saat from oyun.mahkeme_ayar)), t);
+    n := n + 1;
+  end loop;
+  if n = 0 then
+    delete from oyun.adliye_istinaf where dava_id = d.id;
+    raise exception 'Şu anda tarafsız jüri oluşturulamadı; daha sonra tekrar dene.';
+  end if;
+  update oyun.adliye_davalar set istinaf_son = juri_bit where id = d.id;
+  perform oyun.olay('adliye', format('Adliye #%s kararı istinafa taşındı; %s kişilik jüri kurayla belirlendi.', d.id, n), null, null, t);
+  return jsonb_build_object('tamam', true, 'juri', n);
+end $$;
+
+create or replace function oyun.adliye_istinaf_sonuc(p_dava bigint, t timestamptz) returns void language plpgsql set search_path = '' as $$
+declare i oyun.adliye_istinaf; onay int; boz int; toplam int; d oyun.adliye_davalar;
+begin
+  select * into i from oyun.adliye_istinaf where dava_id = p_dava for update;
+  if i.dava_id is null or i.durum <> 'acik' then return; end if;
+  select count(*) filter (where oy = 'onay'), count(*) filter (where oy = 'boz'), count(*) into onay, boz, toplam from oyun.adliye_juri where dava_id = p_dava;
+  -- erken bitiş: çoğunluk belli olduysa; yoksa süre bitince
+  if not (onay >= oyun.cogunluk(toplam) or boz >= oyun.cogunluk(toplam) or t >= i.bit) then return; end if;
+  select * into d from oyun.adliye_davalar where id = p_dava for update;
+  if boz > onay then
+    update oyun.adliye_istinaf set durum = 'bozuldu' where dava_id = p_dava;
+    -- bozma: beraat bozulursa davalı uyarı alır (davacı kazanır); ceza bozulursa beraat
+    update oyun.adliye_davalar set karar = case when d.karar = 'beraat' then 'uyari' else 'beraat' end, ceza_bitis = null where id = p_dava;
+    if d.davali is not null then perform oyun.adliye_susturma_yenile(d.davali, t); end if;
+    perform oyun.adliye_duyur((select user_id from oyun.adliye_juri where dava_id = p_dava and oy = 'boz' order by zaman limit 1),
+      format('İstinaf jürisi Adliye #%s kararını BOZDU (%s boz / %s onay). #Adliye', p_dava, boz, onay), array['adliye'], t);
+  else
+    update oyun.adliye_istinaf set durum = 'onaylandi' where dava_id = p_dava;
+    perform oyun.olay('adliye', format('İstinaf jürisi Adliye #%s kararını onayladı (%s onay / %s boz).', p_dava, onay, boz), null, null, t);
+  end if;
+  perform oyun.adliye_kesinlestir(p_dava, t);
+end $$;
+
+create or replace function public.adliye_juri_oy(p_dava bigint, p_oy text, p_gerekce text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); i oyun.adliye_istinaf;
+begin
+  if p_oy not in ('onay','boz') then raise exception 'Onayla ya da boz.'; end if;
+  select * into i from oyun.adliye_istinaf where dava_id = p_dava;
+  if i.dava_id is null or i.durum <> 'acik' or t >= i.bit then raise exception 'Bu istinaf oylaması açık değil.'; end if;
+  update oyun.adliye_juri set oy = p_oy, gerekce = nullif(left(trim(coalesce(p_gerekce, '')), 800), ''), zaman = t
+   where dava_id = p_dava and user_id = p.id and oy is null;
+  if not found then raise exception 'Bu davanın jürisinde değilsin ya da oyunu zaten verdin.'; end if;
+  perform oyun.adliye_istinaf_sonuc(p_dava, t);
+  return jsonb_build_object('tamam', true);
+end $$;
+
+-- =====================================================================
+--  Üyelik: CB ataması (1. üye), Meclis seçimi (2–3), görevden alma (Meclis 3/5), istifa
+-- =====================================================================
+create or replace function public.adliye_hakim_ata(p_kad text) returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); u oyun.profiller; t timestamptz:=oyun.simdi(); engel text;
+begin
+ if not exists(select 1 from oyun.makamlar where user_id=p.id and tur='cb' and bit is null) then raise exception 'Mahkeme başkanını yalnız Cumhurbaşkanı atayabilir.'; end if;
+ if exists(select 1 from oyun.mahkeme_uye where sira=1 and user_id is not null) then
+   raise exception 'Mahkeme başkanının görev süresi dolmadan yeni atama yapılamaz. Görevden alma yalnız Meclis''in 3/5 oyuyla olur.'; end if;
+ select * into u from oyun.profiller where lower(kad)=lower(trim(p_kad)) and not yasakli;
+ if u.id is null then raise exception 'Kullanıcı bulunamadı.'; end if;
+ if u.id=p.id then raise exception 'Cumhurbaşkanı kendisini atayamaz.'; end if;
+ engel := oyun.yargic_uygunluk(u.id);
+ if engel is not null then raise exception '%', engel; end if;
+ perform oyun.mahkeme_oturt(1::smallint, u.id, p.id, t);
+ return jsonb_build_object('tamam',true);
+end $$;
+
+create or replace function public.adliye_hakim_al(p_gerekce text) returns jsonb language plpgsql security definer set search_path='' as $$
+begin
+ raise exception 'Yargı bağımsızlığı: Cumhurbaşkanı yargıcı görevden alamaz. Görevden alma, Meclis''te 3/5 oyla olur (Adliye > Yüksek Mahkeme > Görevden alma teklifi).';
+end $$;
+
+create or replace function public.adliye_hakim_istifa() returns jsonb language plpgsql security definer set search_path='' as $$
+declare p oyun.profiller:=oyun.profilim(); s smallint; t timestamptz:=oyun.simdi();
+begin
+ select sira into s from oyun.mahkeme_uye where user_id=p.id;
+ if s is null then raise exception 'Yalnız görevdeki Yüksek Mahkeme üyeleri istifa edebilir.'; end if;
+ perform oyun.mahkeme_indir(s, p.id, 'Kendi isteğiyle istifa etti.', t);
+ return jsonb_build_object('tamam',true);
+end $$;
+
+create or replace function public.mahkeme_meclis_oy(p_sira int, p_kad text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); u oyun.profiller; engel text; n int;
+begin
+  if p_sira not in (2,3) then raise exception 'Meclis yalnız 2. ve 3. üyeyi seçer.'; end if;
+  if not exists (select 1 from oyun.makamlar where user_id = p.id and tur = 'mv' and bit is null) then raise exception 'Yalnız milletvekilleri oy verebilir.'; end if;
+  if exists (select 1 from oyun.mahkeme_uye where sira = p_sira and user_id is not null) then raise exception 'Bu koltuk dolu.'; end if;
+  select * into u from oyun.profiller where lower(kad) = lower(trim(coalesce(p_kad, ''))) and not yasakli;
+  if u.id is null then raise exception 'Aday bulunamadı.'; end if;
+  engel := oyun.yargic_uygunluk(u.id);
+  if engel is not null then raise exception '%', engel; end if;
+  insert into oyun.mahkeme_meclis_oy(sira, vekil, aday, zaman) values (p_sira, p.id, u.id, t)
+  on conflict (sira, vekil) do update set aday = excluded.aday, zaman = excluded.zaman;
+  select count(*) into n from oyun.mahkeme_meclis_oy where sira = p_sira and aday = u.id
+     and exists (select 1 from oyun.makamlar m where m.user_id = vekil and m.tur = 'mv' and m.bit is null);
+  if n >= oyun.salt_cogunluk() then perform oyun.mahkeme_oturt(p_sira::smallint, u.id, null, t); end if;
+  return jsonb_build_object('tamam', true, 'oy', n, 'gerekli', oyun.salt_cogunluk(), 'secildi', n >= oyun.salt_cogunluk());
+end $$;
+
+create or replace function public.mahkeme_azil_teklif(p_sira int, p_gerekce text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); u uuid; yeni bigint;
+begin
+  if not exists (select 1 from oyun.makamlar where user_id = p.id and tur = 'mv' and bit is null) then raise exception 'Görevden alma teklifini yalnız milletvekilleri verebilir.'; end if;
+  select user_id into u from oyun.mahkeme_uye where sira = p_sira;
+  if u is null then raise exception 'Bu koltukta üye yok.'; end if;
+  if exists (select 1 from oyun.mahkeme_azil where uye = u and durum = 'acik') then raise exception 'Bu üye için zaten açık bir teklif var.'; end if;
+  if exists (select 1 from oyun.mahkeme_azil where teklif_eden = p.id and bas > t - interval '24 hours') then raise exception 'Günde bir görevden alma teklifi verebilirsin.'; end if;
+  if char_length(trim(coalesce(p_gerekce, ''))) not between 20 and 1000 then raise exception 'Gerekçe 20–1000 karakter olmalı.'; end if;
+  insert into oyun.mahkeme_azil(sira, uye, teklif_eden, gerekce, bas, bit) values (p_sira, u, p.id, trim(p_gerekce), t, t + interval '48 hours') returning id into yeni;
+  insert into oyun.mahkeme_azil_oy(azil_id, vekil, oy, zaman) values (yeni, p.id, 'kabul', t);
+  perform oyun.bildir(u, 'Meclis''te Yüksek Mahkeme üyeliğinden görevden alınman için teklif verildi. 3/5 oy gerekir.', t);
+  perform oyun.olay('meclis', format('%s, Yüksek Mahkeme üyesi %s için görevden alma teklifi verdi (3/5 oy gerekli).', p.kad, oyun.kad(u)), null, null, t);
+  return jsonb_build_object('tamam', true, 'id', yeni);
+end $$;
+
+create or replace function oyun.mahkeme_azil_gerekli() returns int language sql stable set search_path = '' as $$
+  select greatest(1, ceil(oyun.aktif_vekil_sayi() * 3 / 5.0)::int)
+$$;
+create or replace function oyun.mahkeme_azil_say(p_id bigint, t timestamptz) returns void language plpgsql set search_path = '' as $$
+declare a oyun.mahkeme_azil; kabul int; ret int; aktif int := oyun.aktif_vekil_sayi(); gerek int := oyun.mahkeme_azil_gerekli();
+begin
+  select * into a from oyun.mahkeme_azil where id = p_id for update;
+  if a.id is null or a.durum <> 'acik' then return; end if;
+  select count(*) filter (where o.oy = 'kabul'), count(*) filter (where o.oy = 'ret') into kabul, ret
+    from oyun.mahkeme_azil_oy o join oyun.makamlar m on m.user_id = o.vekil and m.tur = 'mv' and m.bit is null where o.azil_id = p_id;
+  if kabul >= gerek then
+    update oyun.mahkeme_azil set durum = 'kabul' where id = p_id;
+    if exists (select 1 from oyun.mahkeme_uye where sira = a.sira and user_id = a.uye) then
+      perform oyun.mahkeme_indir(a.sira, a.teklif_eden, format('Meclis 3/5 oyla görevden aldı (%s kabul).', kabul), t);
+    end if;
+  elsif t >= a.bit or ret > aktif - gerek then
+    update oyun.mahkeme_azil set durum = 'ret' where id = p_id;
+    perform oyun.olay('meclis', format('Yüksek Mahkeme üyesi %s hakkındaki görevden alma teklifi reddedildi (%s kabul, %s gerekli).', oyun.kad(a.uye), kabul, gerek), null, null, t);
+  end if;
+end $$;
+create or replace function public.mahkeme_azil_oy(p_id bigint, p_oy text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi();
+begin
+  if p_oy not in ('kabul','ret') then raise exception 'Kabul ya da ret.'; end if;
+  if not exists (select 1 from oyun.makamlar where user_id = p.id and tur = 'mv' and bit is null) then raise exception 'Yalnız milletvekilleri oy verebilir.'; end if;
+  if not exists (select 1 from oyun.mahkeme_azil where id = p_id and durum = 'acik' and bit > t) then raise exception 'Oylama açık değil.'; end if;
+  insert into oyun.mahkeme_azil_oy(azil_id, vekil, oy, zaman) values (p_id, p.id, p_oy, t)
+  on conflict (azil_id, vekil) do update set oy = excluded.oy, zaman = excluded.zaman;
+  perform oyun.mahkeme_azil_say(p_id, t);
+  return jsonb_build_object('tamam', true);
+end $$;
+
+-- =====================================================================
+--  Anayasa Mahkemesi
+-- =====================================================================
+create or replace function oyun.kanun_iptal_et(p_kanun bigint, t timestamptz) returns text language plpgsql set search_path = '' as $$
+declare k oyun.kanunlar; yeni_var boolean; onceki numeric; val numeric; kod text; geri text := 'Kanun yürürlükten kalktı.';
+begin
+  select * into k from oyun.kanunlar where id = p_kanun for update;
+  if k.id is null or k.durum <> 'yururlukte' then return null; end if;
+  if k.tur = 'butce' and k.veri ? 'onceki' then
+    select exists (select 1 from oyun.kanunlar x where x.tur = 'butce' and x.durum = 'yururlukte' and x.sonuc_at > k.sonuc_at) into yeni_var;
+    if not yeni_var then
+      update oyun.ulke set vergi_alt = (k.veri->'onceki'->>'vergi_alt')::numeric, vergi_ust = (k.veri->'onceki'->>'vergi_ust')::numeric,
+             belediye_payi = (k.veri->'onceki'->>'belediye_payi')::numeric, parti_yardim = (k.veri->'onceki'->>'parti_yardim')::numeric,
+             vergi = (k.veri->'onceki'->>'vergi')::numeric where id = 1;
+      geri := 'Bütçe kanunundan önceki vergi, belediye payı ve parti yardımı geri geldi.';
+    end if;
+  elsif k.tur = 'secim' then
+    select exists (select 1 from oyun.kanunlar x where x.tur = 'secim' and x.durum = 'yururlukte' and x.sonuc_at > k.sonuc_at) into yeni_var;
+    if not yeni_var then
+      select (x.veri->>'baraj')::numeric into onceki from oyun.kanunlar x
+       where x.tur = 'secim' and x.durum = 'yururlukte' and x.id <> k.id and x.sonuc_at < k.sonuc_at order by x.sonuc_at desc limit 1;
+      update oyun.ayarlar set baraj = coalesce(onceki, 7) where id = 1;
+      update oyun.ulke set bekleyen_baraj = null where id = 1 and bekleyen_baraj = (k.veri->>'baraj')::numeric;
+      geri := format('Seçim barajı %%%s olarak geri döndü.', coalesce(onceki, 7));
+    end if;
+  elsif k.tur = 'duzenleme' then
+    if exists (select 1 from oyun.duzenlemeler where kaynak = 'kanun' and ref_id = k.id) then
+      delete from oyun.duzenlemeler where kaynak = 'kanun' and ref_id = k.id;
+      geri := 'Kanunun koyduğu kural kaldırıldı; varsayılan kural geçerli.';
+    end if;
+  elsif k.veri ? 'ekonomi_yasa' and k.veri ? 'onceki_deger' then
+    kod := k.veri->>'ekonomi_yasa'; onceki := (k.veri->>'onceki_deger')::numeric; val := (k.veri->>'deger')::numeric;
+    select exists (select 1 from oyun.kanunlar x where x.durum = 'yururlukte' and x.veri->>'ekonomi_yasa' = kod and x.sonuc_at > k.sonuc_at) into yeni_var;
+    if not yeni_var and to_regclass('oyun.yasa_ekonomi_ayar') is not null then
+      execute 'update oyun.yasa_ekonomi_ayar set deger = $1, guncelleme = $2 where kod = $3' using onceki, t, kod;
+      if kod = 'belediye_payi' then update oyun.ulke set belediye_payi = onceki where id = 1;
+      elsif kod = 'parti_yardim_carpan' then update oyun.ulke set parti_yardim = round(parti_yardim * onceki / greatest(val, 1)) where id = 1; end if;
+      geri := format('Ekonomi yasası öncesindeki değer (%s) geri geldi.', onceki);
+    end if;
+  end if;
+  update oyun.kanunlar set durum = 'aym_iptal', sonuc_metin = coalesce(sonuc_metin, '') || ' · Anayasa Mahkemesi iptal etti.' where id = k.id;
+  return geri;
+end $$;
+
+create or replace function public.aym_basvur(p_kanun bigint, p_gerekce text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); k oyun.kanunlar; pid bigint; yeni bigint;
+begin
+  select id into pid from oyun.partiler where gb = p.id and not kapali;
+  if pid is null then raise exception 'Anayasa Mahkemesine yalnız parti genel başkanları başvurabilir.'; end if;
+  if not exists (select 1 from oyun.makamlar where tur = 'mv' and bit is null and parti_id = pid) then raise exception 'Başvuru için partinin Meclis''te en az bir milletvekili olmalı.'; end if;
+  select * into k from oyun.kanunlar where id = p_kanun;
+  if k.id is null or k.durum <> 'yururlukte' then raise exception 'Yalnız yürürlükteki kanunlar için başvurulabilir.'; end if;
+  if k.tur in ('anayasa','iptal') then raise exception 'Anayasa değişiklikleri ve kararname iptal kanunları Anayasa Mahkemesine götürülemez.'; end if;
+  if k.sonuc_at < t - make_interval(days => (select aym_gun from oyun.mahkeme_ayar)) then raise exception 'Başvuru süresi (yürürlükten sonra % gün) doldu.', (select aym_gun from oyun.mahkeme_ayar); end if;
+  if k.teklif_parti = pid then raise exception 'Kendi partinizin teklif ettiği kanuna başvuramazsınız.'; end if;
+  if exists (select 1 from oyun.aym_basvuru where kanun_id = k.id and durum = 'acik') then raise exception 'Bu kanun için zaten açık bir başvuru var.'; end if;
+  if exists (select 1 from oyun.aym_basvuru where kanun_id = k.id and parti_id = pid) then raise exception 'Partiniz bu kanun için zaten başvurdu.'; end if;
+  if char_length(trim(coalesce(p_gerekce, ''))) not between 30 and 2000 then raise exception 'Başvuru gerekçesi 30–2000 karakter olmalı.'; end if;
+  insert into oyun.aym_basvuru(kanun_id, parti_id, basvuran, gerekce, bas, karar_son)
+  values (k.id, pid, p.id, trim(p_gerekce), t, t + make_interval(hours => 6 + (select karar_saat from oyun.mahkeme_ayar))) returning id into yeni;
+  perform oyun.bildir(k.teklif_eden, format('"%s" kanunun için Anayasa Mahkemesine iptal başvurusu yapıldı. 6 saat içinde görüş bildirebilirsin.', k.baslik), t);
+  perform oyun.bildir(m.user_id, format('Anayasa Mahkemesi: "%s" kanunu için iptal başvurusu var.', k.baslik), t) from oyun.mahkeme_uye m where m.user_id is not null;
+  perform oyun.adliye_duyur(p.id, format('%s, "%s" kanununun iptali için Anayasa Mahkemesine başvurdu. #AnayasaMahkemesi #Adliye',
+                                         (select kisa from oyun.partiler where id = pid), left(k.baslik, 120)), array['anayasamahkemesi','adliye'], t);
+  return jsonb_build_object('tamam', true, 'id', yeni);
+end $$;
+
+create or replace function public.aym_gorus(p_id bigint, p_metin text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); b oyun.aym_basvuru; k oyun.kanunlar;
+begin
+  select * into b from oyun.aym_basvuru where id = p_id for update;
+  if b.id is null or b.durum <> 'acik' then raise exception 'Başvuru açık değil.'; end if;
+  select * into k from oyun.kanunlar where id = b.kanun_id;
+  if not (k.teklif_eden = p.id or exists (select 1 from oyun.partiler where id = k.teklif_parti and gb = p.id)) then
+    raise exception 'Görüşü kanunu teklif eden ya da partisinin genel başkanı bildirir.';
+  end if;
+  if char_length(trim(coalesce(p_metin, ''))) not between 20 and 2000 then raise exception 'Görüş 20–2000 karakter olmalı.'; end if;
+  update oyun.aym_basvuru set gorus = trim(p_metin), gorus_veren = p.id where id = b.id;
+  return jsonb_build_object('tamam', true);
+end $$;
+
+create or replace function oyun.aym_oy_say(p_id bigint, t timestamptz) returns boolean language plpgsql set search_path = '' as $$
+declare b oyun.aym_basvuru; heyet uuid[] := oyun.mahkeme_uyeleri(); r record; v_hakim uuid; v_ger text; sonuc text; k oyun.kanunlar;
+begin
+  select * into b from oyun.aym_basvuru where id = p_id for update;
+  if b.durum <> 'acik' or cardinality(heyet) = 0 then return false; end if;
+  select o.karar, count(*) n into r from oyun.aym_oy o where o.basvuru_id = p_id and o.uye = any(heyet) group by o.karar order by count(*) desc, min(o.zaman) limit 1;
+  if r.karar is null or r.n < oyun.cogunluk(cardinality(heyet)) then return false; end if;
+  select o.uye, o.gerekce into v_hakim, v_ger from oyun.aym_oy o where o.basvuru_id = p_id and o.karar = r.karar order by o.zaman limit 1;
+  select * into k from oyun.kanunlar where id = b.kanun_id;
+  if r.karar = 'iptal' then sonuc := oyun.kanun_iptal_et(b.kanun_id, t); end if;
+  update oyun.aym_basvuru set durum = r.karar, karar_gerekce = v_ger, karar_at = t, hakim = v_hakim where id = p_id;
+  perform oyun.adliye_duyur(v_hakim, format('Anayasa Mahkemesi "%s" kanunu hakkındaki başvuruyu %s (%s/%s oy). %s #AnayasaMahkemesi',
+     left(k.baslik, 100), case when r.karar = 'iptal' then 'kabul etti, kanunu İPTAL etti' else 'reddetti' end, r.n, cardinality(heyet), coalesce(sonuc, '')),
+     array['anayasamahkemesi','adliye'], t);
+  perform oyun.bildir(x, format('Anayasa Mahkemesi "%s" başvurusunu %s.', k.baslik, case when r.karar = 'iptal' then 'kabul etti; kanun iptal edildi' else 'reddetti' end), t)
+    from unnest(array[b.basvuran, k.teklif_eden]) x;
+  return true;
+end $$;
+
+create or replace function public.aym_oy_ver(p_id bigint, p_karar text, p_gerekce text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); b oyun.aym_basvuru;
+begin
+  if not oyun.mahkeme_uyesi_mi(p.id) then raise exception 'Yalnız Yüksek Mahkeme üyeleri oy verebilir.'; end if;
+  if p_karar not in ('iptal','ret') then raise exception 'İptal ya da ret.'; end if;
+  select * into b from oyun.aym_basvuru where id = p_id;
+  if b.id is null or b.durum <> 'acik' then raise exception 'Başvuru açık değil.'; end if;
+  if b.gorus is null and t < b.bas + interval '6 hours' then raise exception 'Kanun sahibinin görüş süresi (6 saat) dolmadan oy verilemez.'; end if;
+  if char_length(trim(coalesce(p_gerekce, ''))) not between 20 and 2000 then raise exception 'Gerekçeli oy 20–2000 karakter olmalı.'; end if;
+  insert into oyun.aym_oy(basvuru_id, uye, karar, gerekce, zaman) values (p_id, p.id, p_karar, trim(p_gerekce), t)
+  on conflict (basvuru_id, uye) do update set karar = excluded.karar, gerekce = excluded.gerekce, zaman = excluded.zaman;
+  return jsonb_build_object('tamam', true, 'karar_cikti', oyun.aym_oy_say(p_id, t));
+end $$;
+
+-- =====================================================================
+--  Zamanlayıcı: görev süreleri, Meclis koltukları, karar süresi, istinaf, kesinleşme, azil, AYM
+-- =====================================================================
+create or replace function oyun.mahkeme_tick() returns integer language plpgsql set search_path = '' as $$
+declare t timestamptz := oyun.simdi(); r record; n int := 0; a oyun.mahkeme_ayar;
+begin
+  if not pg_try_advisory_xact_lock(424245) then return 0; end if;
+  select * into a from oyun.mahkeme_ayar;
+  -- 1) görev süresi dolan üyeler
+  for r in select * from oyun.mahkeme_uye where user_id is not null and gorev_bit <= t loop
+    perform oyun.mahkeme_indir(r.sira, null, 'Görev süresi doldu.', t); n := n + 1;
+  end loop;
+  -- 2) Meclis koltuğu 72 saattir boşsa en çok oy alan (en az 3 vekil) seçilir
+  for r in
+    select u.sira, o.aday, count(*) c from oyun.mahkeme_uye u join oyun.mahkeme_meclis_oy o on o.sira = u.sira
+     join oyun.makamlar m on m.user_id = o.vekil and m.tur = 'mv' and m.bit is null
+     where u.user_id is null and u.kaynak = 'meclis' and u.bos_since <= t - interval '72 hours'
+     group by u.sira, o.aday having count(*) >= 3 order by u.sira, count(*) desc, min(o.zaman)
+  loop
+    if exists (select 1 from oyun.mahkeme_uye where sira = r.sira and user_id is null) and oyun.yargic_uygunluk(r.aday) is null then
+      perform oyun.mahkeme_oturt(r.sira, r.aday, null, t); n := n + 1;
+    end if;
+  end loop;
+  -- 3) karar süresi: hiç üye yoksa süre işlemez; varsa süresi dolan dava düşer
+  for r in select id from oyun.adliye_davalar where durum = 'acik' and karar_son is not null and karar_son <= t loop
+    if cardinality(oyun.mahkeme_uyeleri()) = 0 then
+      update oyun.adliye_davalar set karar_son = t + make_interval(hours => a.karar_saat) where id = r.id;
+    else
+      update oyun.adliye_davalar set durum = 'karar', karar = 'dusme', ilk_karar = 'dusme', karar_at = t, kesin = false,
+             gerekce = 'Mahkeme süresi içinde karar veremediği için dava zamanaşımından düştü; harç iade edildi.' where id = r.id;
+      perform oyun.adliye_kesinlestir(r.id, t);
+      perform oyun.olay('adliye', format('Adliye #%s süresinde karara bağlanmadığı için düştü.', r.id), null, null, t);
+      n := n + 1;
+    end if;
+  end loop;
+  -- 4) istinaf jürisi süresi
+  for r in select dava_id from oyun.adliye_istinaf where durum = 'acik' and bit <= t loop
+    perform oyun.adliye_istinaf_sonuc(r.dava_id, t); n := n + 1;
+  end loop;
+  -- 5) istinafa gidilmeyen kararlar kesinleşir
+  for r in select d.id from oyun.adliye_davalar d where d.durum = 'karar' and not d.kesin and d.istinaf_son <= t
+              and not exists (select 1 from oyun.adliye_istinaf i where i.dava_id = d.id) loop
+    perform oyun.adliye_kesinlestir(r.id, t); n := n + 1;
+  end loop;
+  -- 6) görevden alma oylamaları
+  for r in select id from oyun.mahkeme_azil where durum = 'acik' and bit <= t loop perform oyun.mahkeme_azil_say(r.id, t); end loop;
+  -- 7) AYM: süresinde karar çıkmazsa başvuru düşer (kanun yürürlükte kalır)
+  for r in select id from oyun.aym_basvuru where durum = 'acik' and karar_son <= t loop
+    if cardinality(oyun.mahkeme_uyeleri()) = 0 then
+      update oyun.aym_basvuru set karar_son = t + make_interval(hours => a.karar_saat) where id = r.id;
+    else
+      update oyun.aym_basvuru set durum = 'dustu', karar_at = t, karar_gerekce = 'Süresinde karar çıkmadığı için başvuru düştü; kanun yürürlükte.' where id = r.id;
+    end if;
+  end loop;
+  return n;
+end $$;
+
+-- Mevcut açık davalar yeni düzene alınır
+update oyun.adliye_davalar set karar_son = coalesce(karar_son, greatest(savunma_son, now()) + interval '72 hours'), kesin = false where durum = 'acik' and karar_son is null;
+
+-- =====================================================================
+--  Okuma: Yüksek Mahkeme durumu ve dava ayrıntıları
+-- =====================================================================
+create or replace function public.adliye_mahkeme() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); vekil boolean;
+begin
+  vekil := exists (select 1 from oyun.makamlar where user_id = p.id and tur = 'mv' and bit is null);
+  return jsonb_build_object(
+    'ayar', (select to_jsonb(a) - 'id' from oyun.mahkeme_ayar a),
+    'uyeler', (select jsonb_agg(jsonb_build_object('sira', u.sira, 'kaynak', u.kaynak, 'kad', oyun.kad(u.user_id), 'bas', u.bas, 'gorev_bit', u.gorev_bit,
+         'bos_since', u.bos_since, 'benim', u.user_id = p.id,
+         'adaylar', case when u.user_id is null and u.kaynak = 'meclis' then coalesce((select jsonb_agg(jsonb_build_object('kad', oyun.kad(x.aday), 'oy', x.n) order by x.n desc)
+              from (select o.aday, count(*) n from oyun.mahkeme_meclis_oy o join oyun.makamlar m on m.user_id = o.vekil and m.tur = 'mv' and m.bit is null
+                    where o.sira = u.sira group by o.aday) x), '[]'::jsonb) end,
+         'oyum', (select oyun.kad(o.aday) from oyun.mahkeme_meclis_oy o where o.sira = u.sira and o.vekil = p.id),
+         'azil', (select jsonb_build_object('id', z.id, 'teklif_eden', oyun.kad(z.teklif_eden), 'gerekce', z.gerekce, 'bit', z.bit,
+                    'kabul', (select count(*) from oyun.mahkeme_azil_oy o where o.azil_id = z.id and o.oy = 'kabul'),
+                    'ret', (select count(*) from oyun.mahkeme_azil_oy o where o.azil_id = z.id and o.oy = 'ret'),
+                    'oyum', (select o.oy from oyun.mahkeme_azil_oy o where o.azil_id = z.id and o.vekil = p.id))
+                  from oyun.mahkeme_azil z where z.uye = u.user_id and z.durum = 'acik' limit 1)) order by u.sira) from oyun.mahkeme_uye u),
+    'salt_cogunluk', oyun.salt_cogunluk(), 'azil_gerekli', oyun.mahkeme_azil_gerekli(),
+    'vekil_miyim', vekil, 'uye_miyim', oyun.mahkeme_uyesi_mi(p.id),
+    'cb_miyim', exists (select 1 from oyun.makamlar where user_id = p.id and tur = 'cb' and bit is null),
+    'yargic_olabilir', oyun.yargic_uygunluk(p.id) is null,
+    'juri_gorevlerim', coalesce((select jsonb_agg(jsonb_build_object('dava_id', j.dava_id, 'bit', i.bit, 'oyum', j.oy)) from oyun.adliye_juri j
+        join oyun.adliye_istinaf i on i.dava_id = j.dava_id where j.user_id = p.id and i.durum = 'acik'), '[]'::jsonb),
+    'aym', coalesce((select jsonb_agg(jsonb_build_object('id', b.id, 'kanun_id', b.kanun_id, 'kanun', k.baslik, 'kanun_no', k.no, 'kanun_tur', k.tur,
+        'parti', (select kisa from oyun.partiler where id = b.parti_id), 'basvuran', oyun.kad(b.basvuran), 'gerekce', b.gerekce,
+        'gorus', b.gorus, 'gorus_veren', oyun.kad(b.gorus_veren), 'bas', b.bas, 'karar_son', b.karar_son, 'durum', b.durum,
+        'karar_gerekce', b.karar_gerekce, 'karar_at', b.karar_at, 'hakim', oyun.kad(b.hakim),
+        'oy_sayi', (select count(*) from oyun.aym_oy o where o.basvuru_id = b.id),
+        'oyum', (select o.karar from oyun.aym_oy o where o.basvuru_id = b.id and o.uye = p.id),
+        'gorus_verebilirim', b.durum = 'acik' and (k.teklif_eden = p.id or exists (select 1 from oyun.partiler where id = k.teklif_parti and gb = p.id)),
+        'oylar', case when b.durum <> 'acik' then (select jsonb_agg(jsonb_build_object('uye', oyun.kad(o.uye), 'karar', o.karar, 'gerekce', o.gerekce) order by o.zaman)
+                  from oyun.aym_oy o where o.basvuru_id = b.id) end) order by b.id desc)
+        from (select * from oyun.aym_basvuru order by id desc limit 30) b join oyun.kanunlar k on k.id = b.kanun_id), '[]'::jsonb),
+    'aym_kanunlar', case when exists (select 1 from oyun.partiler pa where pa.gb = p.id and not pa.kapali
+                                        and exists (select 1 from oyun.makamlar m where m.tur = 'mv' and m.bit is null and m.parti_id = pa.id))
+      then coalesce((select jsonb_agg(jsonb_build_object('id', k.id, 'no', k.no, 'baslik', k.baslik, 'tur', k.tur, 'sonuc_at', k.sonuc_at) order by k.sonuc_at desc)
+        from oyun.kanunlar k where k.durum = 'yururlukte' and k.tur not in ('anayasa','iptal')
+          and k.sonuc_at >= t - make_interval(days => (select aym_gun from oyun.mahkeme_ayar))
+          and k.teklif_parti is distinct from (select id from oyun.partiler where gb = p.id and not kapali limit 1)
+          and not exists (select 1 from oyun.aym_basvuru b where b.kanun_id = k.id and b.durum = 'acik')), '[]'::jsonb) end
+  );
+end $$;
+
+create or replace function public.adliye_dava_ek(p_dava bigint) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); d oyun.adliye_davalar; i oyun.adliye_istinaf; heyet uuid[];
+begin
+  select * into d from oyun.adliye_davalar where id = p_dava;
+  if d.id is null then raise exception 'Dava bulunamadı.'; end if;
+  select * into i from oyun.adliye_istinaf where dava_id = p_dava;
+  heyet := oyun.dava_heyeti(d);
+  return jsonb_build_object(
+    'kesin', d.kesin, 'karar_son', d.karar_son, 'istinaf_son', d.istinaf_son, 'harc', d.harc, 'harc_durum', d.harc_durum, 'ilk_karar', d.ilk_karar,
+    'heyet_sayi', cardinality(heyet), 'gerekli', oyun.cogunluk(cardinality(heyet)),
+    'oy_sayi', (select count(*) from oyun.adliye_karar_oy o where o.dava_id = d.id and o.uye = any(heyet)),
+    'oyum', (select jsonb_build_object('karar', o.karar, 'gerekce', o.gerekce) from oyun.adliye_karar_oy o where o.dava_id = d.id and o.uye = p.id),
+    'oy_verebilirim', d.durum = 'acik' and p.id = any(heyet),
+    -- oylar karar çıkana kadar gizli; sonra herkes görür (karşı oy dahil)
+    'oylar', case when d.durum = 'karar' then (select jsonb_agg(jsonb_build_object('uye', oyun.kad(o.uye), 'karar', o.karar, 'gerekce', o.gerekce) order by o.zaman)
+               from oyun.adliye_karar_oy o where o.dava_id = d.id) end,
+    'istinaf', case when i.dava_id is not null then jsonb_build_object('basvuran', oyun.kad(i.basvuran), 'gerekce', i.gerekce, 'bas', i.bas, 'bit', i.bit, 'durum', i.durum,
+        'onay', (select count(*) from oyun.adliye_juri j where j.dava_id = d.id and j.oy = 'onay'),
+        'boz', (select count(*) from oyun.adliye_juri j where j.dava_id = d.id and j.oy = 'boz'),
+        'juri_sayi', (select count(*) from oyun.adliye_juri j where j.dava_id = d.id),
+        'juri', case when i.durum <> 'acik' then (select jsonb_agg(jsonb_build_object('kad', oyun.kad(j.user_id), 'oy', j.oy, 'gerekce', j.gerekce)) from oyun.adliye_juri j where j.dava_id = d.id) end,
+        'juri_miyim', exists (select 1 from oyun.adliye_juri j where j.dava_id = d.id and j.user_id = p.id),
+        'juri_oyum', (select j.oy from oyun.adliye_juri j where j.dava_id = d.id and j.user_id = p.id)) end,
+    'istinaf_hakkim', d.durum = 'karar' and not d.kesin and i.dava_id is null and oyun.simdi() < d.istinaf_son and (
+        (d.karar = 'beraat' and (d.davaci = p.id or exists (select 1 from oyun.partiler pa left join oyun.parti_sozcu s on s.parti_id = pa.id where pa.id = d.davaci_parti and (pa.gb = p.id or s.user_id = p.id))))
+     or (d.karar not in ('beraat','dusme') and (d.davali = p.id or exists (select 1 from oyun.partiler pa left join oyun.parti_sozcu s on s.parti_id = pa.id where pa.id = d.davali_parti and (pa.gb = p.id or s.user_id = p.id))))));
+end $$;
+
+-- =====================================================================
+--  Yetkiler ve zamanlayıcı
+-- =====================================================================
+do $$ declare f text; begin
+  foreach f in array array['adliye_oy_ver(bigint,text,text)','adliye_istinaf(bigint,text)','adliye_juri_oy(bigint,text,text)',
+    'mahkeme_meclis_oy(integer,text)','mahkeme_azil_teklif(integer,text)','mahkeme_azil_oy(bigint,text)',
+    'aym_basvur(bigint,text)','aym_gorus(bigint,text)','aym_oy_ver(bigint,text,text)','adliye_mahkeme()','adliye_dava_ek(bigint)',
+    'adliye_karar_ver(bigint,text,text)','adliye_hakim_ata(text)','adliye_hakim_al(text)','adliye_hakim_istifa()',
+    'adliye_dava_ac(text,text,text,text,text,bigint)'] loop
+    execute format('revoke all on function public.%s from public, anon', f);
+    execute format('grant execute on function public.%s to authenticated', f);
+  end loop;
+end $$;
+revoke all on function oyun.mahkeme_tick(), oyun.adliye_kesinlestir(bigint, timestamptz), oyun.adliye_oy_say(bigint, timestamptz),
+  oyun.adliye_istinaf_sonuc(bigint, timestamptz), oyun.kanun_iptal_et(bigint, timestamptz), oyun.aym_oy_say(bigint, timestamptz),
+  oyun.mahkeme_oturt(smallint, uuid, uuid, timestamptz), oyun.mahkeme_indir(smallint, uuid, text, timestamptz),
+  oyun.adliye_tahsil(uuid, numeric, text, timestamptz), oyun.adliye_duyur(uuid, text, text[], timestamptz) from public, anon, authenticated;
+
+do $$ begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.unschedule(jobid) from cron.job where jobname = 'yuksek-mahkeme';
+    perform cron.schedule('yuksek-mahkeme', '*/5 * * * *', 'select oyun.mahkeme_tick()');
+  end if;
+end $$;
+-- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 84) Rekabetçi şirketler, kamu ihaleleri, sektör politikası
+--
+--  Sorun: eski şirketlerin kazancı yalnız "sermaye × sektör oranı × zar" idi. Sahibin kararı,
+--  oyuncular arası rekabet ve siyasetin etkisi yoktu.
+--
+--  1) REKABETÇİ ŞİRKETLER (5 yeni tür): Özel Okul, Özel Hastane, Market Zinciri, Ulaşım Firması,
+--     Enerji Santrali. Şirket bir ilde faaliyet gösterir. Sahibi fiyat (ucuz/orta/premium) ve
+--     kalite bütçesi (0-3) seçer; enerjide kaynak (kömür/doğalgaz/yenilenebilir) seçer.
+--     O ilin haftalık pazarı aynı türdeki oyuncu şirketleri arasında çekiciliğe göre paylaşılır:
+--       pazar  = sektör tabanı × il ağırlığı (vekil sayısı + gelişmişlik) × ekonomi × sektör politikası
+--       çekicilik = (1 + 0,35×kalite + marka/100) / fiyat^esneklik
+--       pay    = çekicilik / (kamu seçeneği + Σ çekicilik)
+--     Tek başına bir ilde ~%7-10/hafta kazanır, iki rakip ~%1, kalabalık ilde zarar eder.
+--     Kamu seçeneği ilgili bakanlığın kasasıyla büyür (güçlü devlet okulu → özel okula talep az).
+--     Gelir sermayenin kapasitesiyle sınırlıdır (İstanbul pazarı büyük sermaye ister).
+--     Giderler: sabit gider + kalite bütçesi + personel (asgari ücrete bağlı) + kaynak maliyeti.
+--     Kâr vergisi (kurumlar vergisi %20) hazineye, belediye ruhsat harcı il kasasına gider.
+--     Kasası sıfırlanan şirket iflas eder. Her faaliyet ilin gelişmişliğine küçük katkı yapar.
+--
+--  2) KAMU İHALELERİ: Belediye başkanı belediye kasasından, bakan bakanlık kasasından ihale açar
+--     (yol, park, metro, şehir hastanesi, okul, OSB…). Bütçe açılışta kasadan ayrılır.
+--     İnşaat şirketleri kapalı zarfla teklif verir; en düşük geçerli teklif kazanır, artan para
+--     kamu kasasına döner. Kazanan yapım yöntemini seçer:
+--       standart (maliyet %70) · kaliteli (%85, etki ×1,35) · tasarruflu (%55, etki ×0,6, denetim riski)
+--     Tasarruflu iş denetimde yakalanırsa: hakedişin yarısı ödenmez, %20 ceza, 14 gün ihale yasağı,
+--     gazete manşeti. İhaleyi açan, ortağı olduğu şirkete ihale veremez (çıkar çatışması).
+--     Teslim edilen iş ile şirket "iş deneyimi" kazanır; metro gibi büyük işler deneyim ister.
+--
+--  3) SEKTÖR POLİTİKASI: İlgili bakan kendi sektörüne 7 günlük teşvik (pazar ×1,15; bakanlık
+--     kasasından 2 milyar ₺) ya da sıkı denetim (pazar ×0,92; kalitesiz ve kömürlü şirkete ceza)
+--     uygular. Eski şirket türlerine de işler (Tarım Bakanı → tarım şirketleri vb.).
+--     Belediye başkanı ilindeki rekabetçi şirketlere %0-8 ruhsat harcı koyar.
+--
+--  Para ölçeği: devlet kasaları milyar ₺ (16 milyonluk ülke), oyuncu parası ₺. Dönüşüm
+--  oyun.pazar_ayar.tl_milyar (1 milyar kamu ₺ = 150.000 oyuncu ₺ × fiyat düzeyi).
+--  Yalnız ekler; eski şirketler, eski RPC'ler ve oyuncu verisi aynen kalır.
+-- =====================================================================
+
+-- Yerel testte kriz modülü yoksa nötr çarpan (canlıda gerçeği var, ona dokunulmaz)
+do $$ begin
+  if to_regprocedure('oyun.kriz_sektor_carpani(text,timestamptz)') is null then
+    execute $f$create function oyun.kriz_sektor_carpani(p_sektor text, p_tarih timestamptz) returns numeric
+      language sql stable as 'select 1::numeric'$f$;
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------- ayarlar ve kataloglar
+create table if not exists oyun.pazar_ayar(
+  id           int primary key default 1 check (id = 1),
+  tl_milyar    numeric not null default 150000, -- 1 milyar kamu ₺ = bu kadar oyuncu ₺ (fiyat düzeyiyle çarpılır)
+  kurumlar     numeric not null default 20,     -- kurumlar vergisi %
+  tesvik_bedel numeric not null default 2,      -- teşvikin bakanlık kasasına maliyeti (milyar ₺)
+  politika_gun int not null default 7
+);
+insert into oyun.pazar_ayar(id) values (1) on conflict do nothing;
+
+create table if not exists oyun.pazar_sektor(
+  kod         text primary key,
+  ad          text not null,
+  bakanlik    text not null,
+  taban       numeric not null,   -- il ağırlığı 1 iken haftalık toplam harcama (₺)
+  esneklik    numeric not null,   -- fiyat duyarlılığı
+  dis         numeric not null,   -- kamu / dış seçenek gücü
+  sabit       numeric not null,   -- haftalık sabit gider (sermaye oranı)
+  kapasite    numeric not null,   -- haftalık azami gelir (sermaye oranı)
+  personel    numeric not null,   -- personel gideri (asgari ücret katı, 400 bin sermayede)
+  min_sermaye numeric not null default 200000,
+  sira        int not null,
+  aciklama    text not null
+);
+insert into oyun.pazar_sektor values
+ ('ozel_okul',    'Özel Okul',       'egitim',    150000, 0.7, 1.2, 0.045, 0.25, 1.0, 200000, 1,
+  'Veliler kaliteye fiyattan çok bakar; premium ve kaliteli okul iyi kazanır. Devlet okulları güçlüyse (Millî Eğitim kasası dolu) talep azalır.'),
+ ('ozel_hastane', 'Özel Hastane',    'saglik',    175000, 0.9, 1.0, 0.050, 0.25, 1.3, 250000, 2,
+  'Hasta kalite ve markaya güvenir. Personel gideri yüksektir. Kamu hastaneleri güçlüyse talep azalır.'),
+ ('market',       'Market Zinciri',  'ticaret',   140000, 2.2, 0.6, 0.040, 0.30, 1.1, 200000, 3,
+  'Müşteri fiyata çok duyarlıdır; ucuz market rakibin müşterisini çeker. Fiyat savaşı herkesi zarara sokabilir.'),
+ ('ulasim',       'Ulaşım Firması',  'ulastirma', 140000, 1.6, 0.9, 0.050, 0.25, 0.9, 200000, 4,
+  'Otobüs ve şehirlerarası taşımacılık. Fiyat ve konfor birlikte önemlidir.'),
+ ('enerji',       'Enerji Santrali', 'sanayi',    125000, 2.6, 0.6, 0.050, 0.30, 0.7, 300000, 5,
+  'Elektrik herkes için aynıdır; fiyat belirleyicidir. Kaynak seçimi gideri ve ili etkiler: kömür ucuz ama kirletir, doğalgaz dolara bağlı, yenilenebilir pahalı ama ili geliştirir. Talep ekonomik büyümeyle artar.')
+on conflict (kod) do update set ad = excluded.ad, bakanlik = excluded.bakanlik, taban = excluded.taban, esneklik = excluded.esneklik,
+  dis = excluded.dis, sabit = excluded.sabit, kapasite = excluded.kapasite, personel = excluded.personel,
+  min_sermaye = excluded.min_sermaye, sira = excluded.sira, aciklama = excluded.aciklama;
+
+-- Hangi bakan hangi sektörün politikasını belirler (eski türler dahil)
+create table if not exists oyun.sektor_yetki(
+  sektor   text primary key,
+  bakanlik text not null,
+  ad       text not null
+);
+insert into oyun.sektor_yetki values
+ ('tarim','tarim','Tarım'), ('sanayi','sanayi','Sanayi'), ('teknoloji','sanayi','Teknoloji'), ('ticaret','ticaret','Ticaret'),
+ ('insaat','ulastirma','İnşaat'), ('ozel_okul','egitim','Özel Okul'), ('ozel_hastane','saglik','Özel Hastane'),
+ ('market','ticaret','Market Zinciri'), ('ulasim','ulastirma','Ulaşım Firması'), ('enerji','sanayi','Enerji Santrali')
+on conflict (sektor) do update set bakanlik = excluded.bakanlik, ad = excluded.ad;
+
+-- Şirket türü listesi yalnız genişler (eskiler aynen kalır)
+alter table oyun.sirketler drop constraint if exists sirketler_sektor_check;
+alter table oyun.sirketler add constraint sirketler_sektor_check check (sektor in
+  ('tarim','sanayi','teknoloji','ticaret','insaat','medya','banka','ozel_okul','ozel_hastane','market','ulasim','enerji'));
+
+-- ---------------------------------------------------------------- rekabetçi şirket tabloları
+create table if not exists oyun.pazar_sirket(
+  sirket_id   bigint primary key references oyun.sirketler(id),
+  il_id       smallint not null references oyun.iller(id),
+  fiyat       smallint not null default 2 check (fiyat between 1 and 3),
+  kalite      smallint not null default 1 check (kalite between 0 and 3),
+  kaynak      text check (kaynak in ('komur','dogalgaz','yenilenebilir')),
+  marka       numeric not null default 10,
+  son_ayar    timestamptz,
+  son_tasima  timestamptz,
+  son_uyari   timestamptz,
+  hafta       int not null default 0
+);
+create index if not exists pazar_sirket_il on oyun.pazar_sirket(il_id);
+
+create table if not exists oyun.pazar_rapor(
+  id         bigserial primary key,
+  sirket_id  bigint not null references oyun.sirketler(id),
+  zaman      timestamptz not null,
+  il_id      smallint not null,
+  pazar      numeric not null,
+  pay        numeric not null,
+  rakip      int not null,
+  gelir      numeric not null,
+  gider      numeric not null,
+  ruhsat     numeric not null,
+  vergi      numeric not null,
+  ceza       numeric not null default 0,
+  net        numeric not null,
+  fiyat      smallint, kalite smallint, kaynak text
+);
+create index if not exists pazar_rapor_sirket on oyun.pazar_rapor(sirket_id, zaman desc);
+
+create table if not exists oyun.sektor_politika(
+  sektor       text primary key,
+  durum        text not null default 'normal' check (durum in ('normal','tesvik','denetim')),
+  belirleyen   uuid,
+  bas          timestamptz,
+  bit          timestamptz,
+  son_degisim  timestamptz
+);
+
+create table if not exists oyun.il_ruhsat(
+  il_id       smallint primary key references oyun.iller(id),
+  oran        numeric not null default 0 check (oran between 0 and 8),
+  belirleyen  uuid,
+  son_degisim timestamptz,
+  toplam      numeric not null default 0     -- bugüne kadar kasaya giren (oyuncu ₺)
+);
+
+-- ---------------------------------------------------------------- kamu ihalesi tabloları
+create table if not exists oyun.kamu_ihale_proje(
+  kod        text primary key,
+  ad         text not null,
+  kurum      text not null check (kurum in ('belediye','bakanlik')),
+  bakanlik   text,
+  carpan     numeric not null,   -- belediye: il günlük geliri katı · bakanlık: milyar ₺
+  sure_gun   int not null,
+  gelisim    numeric not null default 0,
+  memnuniyet numeric not null default 0,
+  deneyim    int not null default 0,   -- kazanan şirketin en az iş deneyimi
+  aciklama   text not null,
+  sira       int not null
+);
+insert into oyun.kamu_ihale_proje values
+ ('park',      'Park ve yeşil alan',            'belediye', null,        3, 2, 0,   3, 0, 'Mahalle parkı, çocuk oyun alanı, yürüyüş yolu.', 1),
+ ('kres',      'Kreş ve sosyal tesis',          'belediye', null,        4, 3, 0.5, 2, 0, 'Çalışan ebeveynlere kreş, yaşlılara gündüz bakım evi.', 2),
+ ('yol',       'Yol ve asfalt yenileme',        'belediye', null,        5, 3, 1,   2, 0, 'Bozuk yollar, kaldırımlar ve kavşaklar yenilenir.', 3),
+ ('metro',     'Raylı sistem / metro hattı',    'belediye', null,       12, 5, 3,   3, 1, 'Büyük ulaşım yatırımı; en az bir işi teslim etmiş şirket girebilir.', 4),
+ ('otoyol',    'Otoyol ve bölünmüş yol',        'bakanlik', 'ulastirma', 5, 4, 3,   1, 0, 'İli ülkeye bağlayan yol yatırımı.', 10),
+ ('hastane',   'Şehir hastanesi',               'bakanlik', 'saglik',    6, 4, 1,   4, 0, 'Büyük kamu hastanesi.', 11),
+ ('okul',      'Okul ve derslik yapımı',        'bakanlik', 'egitim',    4, 3, 2,   1, 0, 'Yeni okul binaları ve derslikler.', 12),
+ ('osb',       'Organize sanayi bölgesi',       'bakanlik', 'sanayi',    5, 4, 3,   0, 0, 'Fabrikalar için altyapı; il hızla gelişir.', 13),
+ ('sulama',    'Baraj ve sulama kanalı',        'bakanlik', 'tarim',     4, 4, 2,   1, 0, 'Çiftçiye su; tarım bölgesi gelişir.', 14),
+ ('emniyet',   'Emniyet ve jandarma binası',    'bakanlik', 'icisleri',  3, 3, 0,   2, 0, 'Asayiş hizmet binası.', 15),
+ ('adliye',    'Adliye sarayı',                 'bakanlik', 'adalet',    3, 3, 0.5, 1, 0, 'Mahkemeler için yeni bina.', 16),
+ ('meslek',    'Meslek eğitim merkezi',         'bakanlik', 'calisma',   3, 3, 1,   1, 0, 'İşsizlere meslek kursları.', 17),
+ ('liman',     'Lojistik merkezi ve gümrük',    'bakanlik', 'ticaret',   4, 4, 2,   1, 0, 'Ticaret ve ihracat altyapısı.', 18),
+ ('kisla',     'Askerî tesis yenileme',         'bakanlik', 'savunma',   4, 3, 1,   0, 0, 'Garnizon ve lojman yenileme.', 19),
+ ('konsolos',  'Uluslararası kongre merkezi',   'bakanlik', 'disisleri', 3, 3, 1,   1, 0, 'Zirve ve fuarlara ev sahipliği.', 20),
+ ('vergi_bina','Vergi dairesi ve defterdarlık', 'bakanlik', 'maliye',    3, 3, 0.5, 1, 0, 'Maliye hizmet binası.', 21)
+on conflict (kod) do update set ad = excluded.ad, kurum = excluded.kurum, bakanlik = excluded.bakanlik, carpan = excluded.carpan,
+  sure_gun = excluded.sure_gun, gelisim = excluded.gelisim, memnuniyet = excluded.memnuniyet, deneyim = excluded.deneyim,
+  aciklama = excluded.aciklama, sira = excluded.sira;
+
+create table if not exists oyun.kamu_ihale(
+  id          bigserial primary key,
+  proje       text not null references oyun.kamu_ihale_proje(kod),
+  kurum       text not null check (kurum in ('belediye','bakanlik')),
+  il_id       smallint not null references oyun.iller(id),
+  bakanlik    text,
+  acan        uuid not null,
+  butce       numeric not null,          -- milyar ₺ (kamu kasasından ayrıldı)
+  tavan       numeric not null,          -- en yüksek teklif (oyuncu ₺)
+  bas         timestamptz not null,
+  bit         timestamptz not null,      -- teklif son anı
+  durum       text not null default 'acik' check (durum in ('acik','yapim','tamam','teklifsiz','iptal')),
+  kazanan     bigint references oyun.sirketler(id),
+  bedel       numeric,
+  maliyet     numeric,
+  yontem      text not null default 'standart' check (yontem in ('standart','kaliteli','tasarruflu')),
+  teslim_at   timestamptz,
+  sonuc       text,                      -- 'teslim', 'yakalandi'
+  teklif_say  int not null default 0
+);
+create index if not exists kamu_ihale_durum on oyun.kamu_ihale(durum, bit);
+
+create table if not exists oyun.kamu_ihale_teklif(
+  ihale_id  bigint not null references oyun.kamu_ihale(id),
+  sirket_id bigint not null references oyun.sirketler(id),
+  veren     uuid not null,
+  tutar     numeric not null,
+  zaman     timestamptz not null,
+  primary key (ihale_id, sirket_id)
+);
+
+create table if not exists oyun.sirket_deneyim(
+  sirket_id  bigint primary key references oyun.sirketler(id),
+  is_sayisi  int not null default 0,
+  puan       int not null default 0,
+  yasak_bit  timestamptz
+);
+
+do $$ declare t text; begin
+  foreach t in array array['pazar_ayar','pazar_sektor','sektor_yetki','pazar_sirket','pazar_rapor','sektor_politika','il_ruhsat',
+                           'kamu_ihale_proje','kamu_ihale','kamu_ihale_teklif','sirket_deneyim'] loop
+    execute format('alter table oyun.%I enable row level security', t);
+    execute format('revoke all on oyun.%I from public, anon, authenticated', t);
+  end loop;
+  revoke all on sequence oyun.pazar_rapor_id_seq, oyun.kamu_ihale_id_seq from public, anon, authenticated;
+end $$;
+
+-- ---------------------------------------------------------------- yardımcılar
+create or replace function oyun.pazar_tl_milyar() returns numeric language sql stable set search_path = '' as $$
+  select a.tl_milyar * coalesce(u.endeks, 1) from oyun.pazar_ayar a, oyun.ulke u where a.id = 1 and u.id = 1
+$$;
+
+-- İl ağırlığı: vekil sayısı (nüfus) ve gelişmişlik
+create or replace function oyun.pazar_il_agirlik(p_il smallint) returns numeric language sql stable set search_path = '' as $$
+  select (0.4 + i.mv / 24.0) * (0.6 + coalesce(d.gelisim, 50) / 125.0)
+  from oyun.iller i left join oyun.il_durum d on d.il_id = i.id where i.id = p_il
+$$;
+
+-- Sektör politikası çarpanı (süresi dolan politika normal sayılır)
+create or replace function oyun.sektor_pol_durum(p_sektor text, t timestamptz) returns text language sql stable set search_path = '' as $$
+  select coalesce((select durum from oyun.sektor_politika where sektor = p_sektor and bit > t), 'normal')
+$$;
+create or replace function oyun.sektor_pol_carpan(p_sektor text, t timestamptz) returns numeric language sql stable set search_path = '' as $$
+  select case oyun.sektor_pol_durum(p_sektor, t) when 'tesvik' then 1.15 when 'denetim' then 0.92 else 1 end
+$$;
+
+create or replace function oyun.pazar_fiyat_katsayi(f smallint) returns numeric language sql immutable set search_path = '' as $$
+  select case f when 1 then 0.8 when 3 then 1.3 else 1.0 end
+$$;
+
+-- Bir şirketin haftalık sonucunu (gürültüsüz) hesaplar. Ayar denemesi için fiyat/kalite/kaynak
+-- geçici olarak değiştirilebilir (null = mevcut). Hiçbir şey yazmaz.
+create or replace function oyun.pazar_tahmin(p_sirket bigint, p_fiyat smallint default null, p_kalite smallint default null,
+  p_kaynak text default null, t timestamptz default null) returns jsonb
+language plpgsql stable set search_path = '' as $$
+declare s oyun.sirketler; ps oyun.pazar_sirket; k oyun.pazar_sektor; u oyun.ulke; zt timestamptz := coalesce(t, oyun.simdi());
+  v_f smallint; v_k smallint; v_kay text; w numeric; makro numeric; pol numeric; pazar numeric; dis numeric; kamu numeric;
+  ben numeric; toplam numeric; pay numeric; gelir numeric; kap numeric; gider numeric; personel numeric; ruh numeric; ruhsat numeric;
+  vergi numeric; net numeric; ceza numeric := 0; kalite_gid numeric; kaynak_gid numeric := 0; rakip int; usd numeric; pold text;
+begin
+  select * into s from oyun.sirketler where id = p_sirket;
+  select * into ps from oyun.pazar_sirket where sirket_id = p_sirket;
+  select * into k from oyun.pazar_sektor where kod = s.sektor;
+  if s.id is null or ps.sirket_id is null or k.kod is null then return null; end if;
+  select * into u from oyun.ulke where id = 1;
+  v_f := coalesce(p_fiyat, ps.fiyat); v_k := coalesce(p_kalite, ps.kalite);
+  v_kay := case when s.sektor = 'enerji' then coalesce(p_kaynak, ps.kaynak, 'dogalgaz') else null end;
+
+  w := oyun.pazar_il_agirlik(ps.il_id);
+  makro := case when s.sektor = 'enerji' then oyun.sinir(1 + (coalesce(u.buyume, 3) - 3) * 0.06, 0.7, 1.4)
+                else oyun.sinir(1 + (coalesce(u.buyume, 3) - 3) * 0.03 + (coalesce(u.memnuniyet, 50) - 50) * 0.004, 0.8, 1.25) end;
+  pold := oyun.sektor_pol_durum(s.sektor, zt);
+  pol := case pold when 'tesvik' then 1.15 when 'denetim' then 0.92 else 1 end;
+  pazar := k.taban * w * makro * pol * oyun.kriz_sektor_carpani(s.sektor, zt);
+
+  -- kamu seçeneği: ilgili bakanlığın kasası doluysa devlet hizmeti güçlü
+  kamu := coalesce((select kasa from oyun.bakanlik_kasa where kod = k.bakanlik), 20);
+  dis := k.dis * (0.85 + least(greatest(kamu, 0), 60) / 100.0);
+
+  ben := (1 + 0.35 * v_k + ps.marka / 100.0) / power(oyun.pazar_fiyat_katsayi(v_f), k.esneklik);
+  select coalesce(sum((1 + 0.35 * p2.kalite + p2.marka / 100.0) / power(oyun.pazar_fiyat_katsayi(p2.fiyat), k.esneklik)), 0), count(*)
+    into toplam, rakip
+  from oyun.pazar_sirket p2 join oyun.sirketler s2 on s2.id = p2.sirket_id
+  where p2.il_id = ps.il_id and s2.sektor = s.sektor and s2.aktif and p2.sirket_id <> s.id;
+  pay := ben / (dis + toplam + ben);
+  kap := s.sermaye * k.kapasite;
+  gelir := least(pazar * pay * oyun.pazar_fiyat_katsayi(v_f), kap);
+
+  personel := coalesce(u.asgari, 30000) * k.personel * power(greatest(0.5, s.sermaye / 400000.0), 0.7);
+  kalite_gid := s.sermaye * case v_k when 1 then 0.01 when 2 then 0.022 when 3 then 0.036 else 0 end;
+  gider := s.sermaye * k.sabit;
+  if v_kay = 'komur' then gider := gider * 0.75;
+  elsif v_kay = 'dogalgaz' then
+    usd := coalesce((select fiyat from oyun.piyasa_varlik where kod = 'USD'), 42);
+    kaynak_gid := s.sermaye * 0.015 * usd / 42.0;
+  elsif v_kay = 'yenilenebilir' then gider := gider + s.sermaye * 0.02;
+  end if;
+  gider := gider + personel + kalite_gid + kaynak_gid;
+
+  -- sıkı denetim: kalitesiz hizmete ve kömüre ceza
+  if pold = 'denetim' and (v_k = 0 or v_kay = 'komur') then ceza := gelir * 0.12; end if;
+  ruh := coalesce((select oran from oyun.il_ruhsat where il_id = ps.il_id), 0);
+  ruhsat := gelir * ruh / 100;
+  net := gelir - gider - ruhsat - ceza;
+  vergi := greatest(0, net) * (select kurumlar from oyun.pazar_ayar where id = 1) / 100;
+  net := net - vergi;
+  return jsonb_build_object('pazar', round(pazar), 'pay', round(pay * 100, 1), 'rakip', rakip, 'gelir', round(gelir),
+    'kapasite', round(kap), 'kapasite_dolu', gelir >= kap - 1, 'gider', round(gider), 'personel', round(personel),
+    'kalite_gider', round(kalite_gid), 'kaynak_gider', round(kaynak_gid), 'ruhsat', round(ruhsat), 'ruhsat_oran', ruh,
+    'ceza', round(ceza), 'vergi', round(vergi), 'net', round(net), 'politika', pold, 'kamu_guc', round(dis, 2),
+    'fiyat', v_f, 'kalite', v_k, 'kaynak', v_kay, 'getiri', round(net / s.sermaye * 100, 1));
+end $$;
+
+-- Rekabetçi şirketin geciken haftalarını işler. sirket_hesapla tarafından kilit altında çağrılır.
+create or replace function oyun.pazar_hesapla(p_id bigint) returns void
+language plpgsql security definer set search_path = '' as $$
+declare s oyun.sirketler; ps oyun.pazar_sirket; t timestamptz := oyun.simdi(); n int; i int; h jsonb; zt timestamptz;
+  gurultu numeric; gelir numeric; gider numeric; ruhsat numeric; ceza numeric; v_vergi numeric; net numeric; oran numeric;
+  x record; distributed numeric; distributable numeric; v_odeme numeric; tlm numeric; ilad text; kasa_son numeric;
+begin
+  select * into s from oyun.sirketler where id = p_id for update;
+  select * into ps from oyun.pazar_sirket where sirket_id = p_id for update;
+  if s.id is null or ps.sirket_id is null or not s.aktif or s.sonraki_kazanc > t then return; end if;
+  n := least(52, floor(extract(epoch from (t - s.sonraki_kazanc)) / 604800)::int + 1);
+  tlm := oyun.pazar_tl_milyar();
+  select ad into ilad from oyun.iller where id = ps.il_id;
+  for i in 1..n loop
+    zt := s.sonraki_kazanc + (i - 1) * interval '7 days';
+    h := oyun.pazar_tahmin(p_id, null, null, null, zt);
+    gurultu := 0.9 + random()::numeric * 0.2;
+    gelir := round((h->>'gelir')::numeric * gurultu);
+    gider := (h->>'gider')::numeric;
+    oran := coalesce((h->>'ruhsat_oran')::numeric, 0);
+    ruhsat := round(gelir * oran / 100);
+    ceza := case when (h->>'ceza')::numeric > 0 then round(gelir * 0.12) else 0 end;
+    net := gelir - gider - ruhsat - ceza;
+    v_vergi := round(greatest(0, net) * (select kurumlar from oyun.pazar_ayar where id = 1) / 100);
+    net := net - v_vergi;
+
+    -- kamuya giden paralar (oyuncu ₺ → milyar ₺)
+    if v_vergi > 0 then update oyun.ulke set hazine = hazine + v_vergi / tlm where id = 1; end if;
+    if ruhsat > 0 then
+      update oyun.il_durum set kasa = coalesce(kasa, 0) + ruhsat / tlm where il_id = ps.il_id;
+      insert into oyun.il_ruhsat(il_id, toplam) values (ps.il_id, ruhsat)
+        on conflict (il_id) do update set toplam = oyun.il_ruhsat.toplam + excluded.toplam;
+    end if;
+    -- istihdam ve kaynağın ile etkisi
+    update oyun.il_durum set
+      gelisim = oyun.sinir(gelisim + 0.03 + case ps.kaynak when 'yenilenebilir' then 0.05 else 0 end, 0, 100),
+      memnuniyet = oyun.sinir(memnuniyet + case when s.sektor = 'enerji' and ps.kaynak = 'komur' then -0.4 when ps.kalite >= 2 then 0.05 else 0 end, 0, 100)
+    where il_id = ps.il_id;
+
+    distributed := 0;
+    if net < 0 then
+      update oyun.sirketler set kasa = kasa + net where id = p_id;
+    else
+      distributable := least(net, greatest(0, (select kasa from oyun.sirketler where id = p_id) + net));
+      for x in select * from oyun.sirket_ortaklari where sirket_id = p_id loop
+        if not x.kar_kasada then
+          v_odeme := least(round(distributable * x.pay / 100, 2), greatest(0, distributable - distributed));
+          if v_odeme > 0 then
+            perform oyun.para_islem(x.user_id, v_odeme, 'sirket', format('%s haftalık net kâr payı', s.ad), t);
+            distributed := distributed + v_odeme;
+          end if;
+        end if;
+      end loop;
+      update oyun.sirketler set kasa = kasa + net - distributed where id = p_id;
+    end if;
+    insert into oyun.sirket_hareket(sirket_id, zaman, tutar, aciklama, faaliyet_gelir, faaliyet_gider, dagitilan_kar)
+    values (p_id, t, net, format('7 günlük faaliyet (%s): pazar payı %%%s, %s rakip; gelir - gider - harç - vergi = net',
+            ilad, h->>'pay', h->>'rakip'), gelir, gider + ruhsat + ceza + v_vergi, distributed);
+    insert into oyun.pazar_rapor(sirket_id, zaman, il_id, pazar, pay, rakip, gelir, gider, ruhsat, vergi, ceza, net, fiyat, kalite, kaynak)
+    values (p_id, zt + interval '7 days', ps.il_id, (h->>'pazar')::numeric, (h->>'pay')::numeric, (h->>'rakip')::int,
+            gelir, gider, ruhsat, v_vergi, ceza, net, ps.fiyat, ps.kalite, ps.kaynak);
+    -- marka: kalite ile büyür, zamanla erir
+    update oyun.pazar_sirket set marka = least(100, marka * 0.9 + 3 + 2.5 * kalite + case kaynak when 'yenilenebilir' then 3 else 0 end),
+      hafta = hafta + 1 where sirket_id = p_id;
+    select * into ps from oyun.pazar_sirket where sirket_id = p_id;
+
+    select kasa into kasa_son from oyun.sirketler where id = p_id;
+    if kasa_son <= 0 then
+      update oyun.sirketler set aktif = false, kasa = 0, satilik = null, son_islem = t where id = p_id;
+      update oyun.sirketler set sonraki_kazanc = s.sonraki_kazanc + i * interval '7 days' where id = p_id;
+      perform oyun.olay('ekonomi', format('%s (%s, %s) iflas etti; kasası tükendi.', s.ad,
+        (select ad from oyun.pazar_sektor where kod = s.sektor), ilad), ps.il_id, null, t);
+      for x in select user_id from oyun.sirket_ortaklari where sirket_id = p_id loop
+        perform oyun.bildir(x.user_id, format('%s iflas etti: şirket kasası tükendi ve faaliyet durdu.', s.ad), t);
+      end loop;
+      return;
+    end if;
+  end loop;
+  update oyun.sirketler set sonraki_kazanc = sonraki_kazanc + n * interval '7 days', son_islem = t where id = p_id;
+  -- kasa erirken bir kez uyar
+  if kasa_son < s.sermaye * 0.25 and (ps.son_uyari is null or ps.son_uyari < t - interval '6 days') then
+    update oyun.pazar_sirket set son_uyari = t where sirket_id = p_id;
+    for x in select user_id from oyun.sirket_ortaklari where sirket_id = p_id loop
+      perform oyun.bildir(x.user_id, format('%s zarar ediyor: kasada %s ₺ kaldı. Fiyatı, kaliteyi ya da ili değiştirmezsen iflas edebilir.',
+        s.ad, oyun.tl(kasa_son)), t);
+    end loop;
+  end if;
+end $$;
+
+-- Eski motor + rekabetçi dal + eski türlere sektör politikası (canlıdaki hâl korunarak)
+create or replace function oyun.sirket_hesapla(p_id bigint)
+returns void language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $function$
+declare s oyun.sirketler;n int;i int;net numeric;income numeric;cost numeric;w numeric;t timestamptz:=oyun.simdi();x record;distributed numeric;rate numeric;v_taahhut numeric;v_mevduat numeric;distributable numeric;v_odeme numeric;
+begin
+ perform pg_advisory_xact_lock(98763,hashtext(p_id::text));
+ select * into s from oyun.sirketler where id=p_id for update;
+ if s.id is null or not s.aktif or s.sonraki_kazanc>t then return;end if;
+ if exists(select 1 from oyun.pazar_sektor where kod=s.sektor) then perform oyun.pazar_hesapla(p_id); return; end if;
+ n:=least(52,floor(extract(epoch from (t-s.sonraki_kazanc))/604800)::int+1);
+ w:=(select asgari from oyun.ulke where id=1);
+ rate:=case s.sektor when 'tarim' then .12 when 'sanayi' then .15 when 'teknoloji' then .20 when 'ticaret' then .14 when 'insaat' then .18 when 'medya' then .16 else .08 end;
+ for i in 1..n loop
+  income:=round(s.sermaye*rate*(0.6+random()::numeric*.8),2);
+  cost:=round(s.sermaye*(.025+random()::numeric*.055)+w*(.5+random()::numeric),2);
+  income:=round(income * oyun.kriz_sektor_carpani(s.sektor,s.sonraki_kazanc + (i-1) * interval '7 days')
+                       * oyun.sektor_pol_carpan(s.sektor,s.sonraki_kazanc + (i-1) * interval '7 days'),2); net:=income-cost;
+  distributed:=0;
+  -- Zararda sirket kasasi erir. Karda dagitilabilir para ortaklara aktarilir.
+  if net<0 then
+   if s.sektor='banka' then
+     select coalesce(sum(round(m.anapara*(1+m.faiz/100),2)),0),coalesce(sum(m.anapara),0) into v_taahhut,v_mevduat from oyun.banka_mevduat m where m.banka_id=p_id and not m.kapandi;
+     net:=greatest(net,-greatest(0,(select kasa from oyun.sirketler where id=p_id)-v_taahhut-greatest(s.sermaye*0.10,v_mevduat*0.10)));
+   end if;
+   update oyun.sirketler set kasa=kasa+net where id=p_id;
+  else
+   distributable:=case when s.sektor='banka' then least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net-s.sermaye-coalesce((select sum(round(m.anapara*(1+m.faiz/100),2)) from oyun.banka_mevduat m where m.banka_id=p_id and not m.kapandi),0))) else least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net)) end;
+   for x in select * from oyun.sirket_ortaklari where sirket_id=p_id loop
+    if not x.kar_kasada then
+      v_odeme:=least(round(distributable*x.pay/100,2),greatest(0,distributable-distributed));
+      if v_odeme>0 then
+        perform oyun.para_islem(x.user_id,v_odeme,'sirket',format('Sirket #%s haftalik net kar payi',p_id),t);
+        distributed:=distributed+v_odeme;
+      end if;
+    end if;
+   end loop;
+   update oyun.sirketler set kasa=kasa+net-distributed where id=p_id;
+  end if;
+  insert into oyun.sirket_hareket(sirket_id,zaman,tutar,aciklama,faaliyet_gelir,faaliyet_gider,dagitilan_kar)
+ values(p_id,t,net,'7 günlük faaliyet: gelir - gider = net sonuç; gerçekleşen ortak ödemesi ayrıca kaydedildi',income,cost,distributed);
+ end loop;
+ update oyun.sirketler set sonraki_kazanc=sonraki_kazanc+n*interval '7 days',son_islem=t where id=p_id;
+end $function$;
+
+-- Halka arz değerlemesi yeni türleri de tanısın
+create or replace function oyun.sirket_ort_net(p_sermaye numeric, p_sektor text) returns numeric language sql stable as $$
+  select round(p_sermaye * (case p_sektor when 'tarim' then .12 when 'sanayi' then .15 when 'teknoloji' then .20
+           when 'ticaret' then .14 when 'insaat' then .18 when 'medya' then .16
+           when 'ozel_okul' then .17 when 'ozel_hastane' then .18 when 'market' then .17 when 'ulasim' then .17 when 'enerji' then .18
+           else .08 end)
+         - p_sermaye * .0525 - (select u.asgari from oyun.ulke u where u.id = 1))
+$$;
+
+-- Sahiplik: en az %50 pay ya da en büyük ortak karar verir
+create or replace function oyun.sirket_yonetici_mi(p_sirket bigint, u uuid) returns boolean language sql stable set search_path = '' as $$
+  select exists (select 1 from oyun.sirket_ortaklari o where o.sirket_id = p_sirket and o.user_id = u
+                 and (o.pay >= 50 or o.pay >= (select max(pay) from oyun.sirket_ortaklari where sirket_id = p_sirket)))
+$$;
+
+-- Makamdaki kişi
+create or replace function oyun.makam_sahibi(p_tur text, p_bakanlik text default null, p_il smallint default null) returns uuid
+language sql stable set search_path = '' as $$
+  select user_id from oyun.makamlar where tur = p_tur and bit is null
+    and (p_bakanlik is null or bakanlik = p_bakanlik) and (p_il is null or il_id = p_il)
+  order by bas desc limit 1
+$$;
+-- Bakanlığın yetkilisi: bakan, yoksa cumhurbaşkanı vekâlet eder
+create or replace function oyun.bakanlik_yetkilisi(p_bakanlik text) returns uuid language sql stable set search_path = '' as $$
+  select coalesce(oyun.makam_sahibi('bakan', p_bakanlik, null), oyun.makam_sahibi('cb', null, null))
+$$;
+
+-- ---------------------------------------------------------------- oyuncu RPC'leri: rekabetçi şirket
+create or replace function public.pazar_katalog() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi();
+begin
+  return jsonb_build_object(
+    'sektorler', (select jsonb_agg(jsonb_build_object('kod', k.kod, 'ad', k.ad, 'aciklama', k.aciklama, 'min_sermaye', k.min_sermaye,
+        'bakanlik', b.ad, 'bakan', oyun.kad(oyun.makam_sahibi('bakan', k.bakanlik, null)),
+        'politika', oyun.sektor_pol_durum(k.kod, t), 'politika_bit', (select bit from oyun.sektor_politika where sektor = k.kod and bit > t),
+        'sirket_sayisi', (select count(*) from oyun.sirketler s where s.sektor = k.kod and s.aktif),
+        'esneklik', k.esneklik) order by k.sira)
+      from oyun.pazar_sektor k join oyun.bakanliklar b on b.kod = k.bakanlik),
+    'eski_politikalar', (select jsonb_agg(jsonb_build_object('sektor', y.sektor, 'ad', y.ad, 'politika', oyun.sektor_pol_durum(y.sektor, t)))
+      from oyun.sektor_yetki y where not exists (select 1 from oyun.pazar_sektor k where k.kod = y.sektor)),
+    'benim_il', p.il_id,
+    'kurumlar', (select kurumlar from oyun.pazar_ayar where id = 1),
+    'sirketlerim', coalesce((select jsonb_agg(jsonb_build_object('id', s.id, 'ad', s.ad, 'sektor', s.sektor, 'il', i.ad, 'kasa', round(s.kasa),
+        'sermaye', s.sermaye, 'pay', o.pay, 'aktif', s.aktif) order by s.id)
+      from oyun.sirket_ortaklari o join oyun.sirketler s on s.id = o.sirket_id join oyun.pazar_sirket ps on ps.sirket_id = s.id
+      join oyun.iller i on i.id = ps.il_id where o.user_id = p.id), '[]'::jsonb));
+end $$;
+
+-- Pazar haritası: bir sektör için 81 ilin fırsatları
+create or replace function public.pazar_harita(p_sektor text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); k oyun.pazar_sektor; t timestamptz := oyun.simdi(); u oyun.ulke; makro numeric; pol numeric;
+begin
+  select * into k from oyun.pazar_sektor where kod = p_sektor;
+  if k.kod is null then raise exception 'Geçersiz şirket türü.'; end if;
+  select * into u from oyun.ulke where id = 1;
+  makro := case when k.kod = 'enerji' then oyun.sinir(1 + (coalesce(u.buyume, 3) - 3) * 0.06, 0.7, 1.4)
+                else oyun.sinir(1 + (coalesce(u.buyume, 3) - 3) * 0.03 + (coalesce(u.memnuniyet, 50) - 50) * 0.004, 0.8, 1.25) end;
+  pol := oyun.sektor_pol_carpan(k.kod, t) * oyun.kriz_sektor_carpani(k.kod, t);
+  return jsonb_build_object('sektor', k.kod, 'ad', k.ad, 'iller', (
+    select jsonb_agg(x order by (x->>'firsat')::numeric desc) from (
+      select jsonb_build_object('il_id', i.id, 'il', i.ad, 'mv', i.mv, 'gelisim', round(coalesce(d.gelisim, 50)),
+        'pazar', round(k.taban * oyun.pazar_il_agirlik(i.id) * makro * pol),
+        'rakip', (select count(*) from oyun.pazar_sirket ps join oyun.sirketler s on s.id = ps.sirket_id
+                  where ps.il_id = i.id and s.sektor = k.kod and s.aktif),
+        'ruhsat', coalesce((select oran from oyun.il_ruhsat where il_id = i.id), 0),
+        'benim', i.id = p.il_id,
+        'firsat', round(k.taban * oyun.pazar_il_agirlik(i.id) * makro * pol
+                  / (1 + (select count(*) from oyun.pazar_sirket ps join oyun.sirketler s on s.id = ps.sirket_id
+                          where ps.il_id = i.id and s.sektor = k.kod and s.aktif)))) x
+      from oyun.iller i left join oyun.il_durum d on d.il_id = i.id) z));
+end $$;
+
+create or replace function public.pazar_sirket_kur(p_ad text, p_sektor text, p_sermaye numeric, p_il int, p_kaynak text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); k oyun.pazar_sektor; v_id bigint; t timestamptz := oyun.simdi(); ilad text;
+begin
+  select * into k from oyun.pazar_sektor where kod = p_sektor;
+  if k.kod is null then raise exception 'Geçersiz şirket türü.'; end if;
+  if p_ad is null or char_length(btrim(p_ad)) not between 3 and 50 then raise exception 'Şirket adı 3-50 karakter olmalı.'; end if;
+  if not exists (select 1 from oyun.iller where id = p_il) then raise exception 'Geçersiz il.'; end if;
+  if p_sermaye is null or p_sermaye <> round(p_sermaye) or p_sermaye < k.min_sermaye or p_sermaye > 100000000 then
+    raise exception '% için kuruluş sermayesi en az % ₺, en fazla 100.000.000 ₺ olmalı.', k.ad, oyun.tl(k.min_sermaye);
+  end if;
+  if p_sektor = 'enerji' and coalesce(p_kaynak, 'dogalgaz') not in ('komur','dogalgaz','yenilenebilir') then raise exception 'Geçersiz enerji kaynağı.'; end if;
+  if (select count(*) from oyun.sirket_ortaklari o join oyun.sirketler s on s.id = o.sirket_id
+      where o.user_id = p.id and s.kurucu = p.id and s.aktif and s.kurulus > t - interval '24 hours') >= 3 then
+    raise exception 'Son 24 saatte en fazla 3 şirket kurabilirsin.';
+  end if;
+  perform oyun.para_islem(p.id, -p_sermaye, 'sirket', format('%s kuruluş sermayesi', k.ad), t);
+  insert into oyun.sirketler(ad, sektor, kurucu, sermaye, kasa, son_islem, kurulus, sonraki_kazanc) values (btrim(p_ad), p_sektor, p.id, p_sermaye, p_sermaye, t, t, t + interval '7 days')
+    returning id into v_id;
+  insert into oyun.sirket_ortaklari(sirket_id, user_id, pay) values (v_id, p.id, 100);
+  insert into oyun.pazar_sirket(sirket_id, il_id, kaynak) values (v_id, p_il,
+    case when p_sektor = 'enerji' then coalesce(p_kaynak, 'dogalgaz') end);
+  select ad into ilad from oyun.iller where id = p_il;
+  perform oyun.olay('ekonomi', format('%s, %s''da %s açtı: %s.', p.kad, ilad, lower(k.ad), btrim(p_ad)), p_il::smallint, null, t);
+  return jsonb_build_object('id', v_id, 'tahmin', oyun.pazar_tahmin(v_id));
+end $$;
+
+create or replace function public.pazar_detay(p_sirket bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); s oyun.sirketler; ps oyun.pazar_sirket; k oyun.pazar_sektor; yon boolean; f int; q int; senaryo jsonb := '[]'::jsonb; kay text;
+begin
+  select * into s from oyun.sirketler where id = p_sirket;
+  select * into ps from oyun.pazar_sirket where sirket_id = p_sirket;
+  if s.id is null or ps.sirket_id is null then raise exception 'Rekabetçi şirket bulunamadı.'; end if;
+  if s.aktif and exists (select 1 from oyun.sirket_ortaklari where sirket_id = s.id and user_id = p.id) then
+    perform oyun.sirket_hesapla(s.id);
+    select * into s from oyun.sirketler where id = p_sirket;
+    select * into ps from oyun.pazar_sirket where sirket_id = p_sirket;
+  end if;
+  select * into k from oyun.pazar_sektor where kod = s.sektor;
+  yon := oyun.sirket_yonetici_mi(s.id, p.id);
+  if yon and s.aktif then
+    for f in 1..3 loop for q in 0..3 loop
+      senaryo := senaryo || jsonb_build_array(jsonb_build_object('fiyat', f, 'kalite', q,
+        'net', (oyun.pazar_tahmin(s.id, f::smallint, q::smallint, null)->>'net')::numeric,
+        'pay', (oyun.pazar_tahmin(s.id, f::smallint, q::smallint, null)->>'pay')::numeric));
+    end loop; end loop;
+    if s.sektor = 'enerji' then
+      foreach kay in array array['komur','dogalgaz','yenilenebilir'] loop
+        senaryo := senaryo || jsonb_build_array(jsonb_build_object('kaynak', kay,
+          'net', (oyun.pazar_tahmin(s.id, null, null, kay)->>'net')::numeric));
+      end loop;
+    end if;
+  end if;
+  return jsonb_build_object('id', s.id, 'ad', s.ad, 'sektor', s.sektor, 'sektor_ad', k.ad, 'aciklama', k.aciklama, 'aktif', s.aktif,
+    'il_id', ps.il_id, 'il', (select ad from oyun.iller where id = ps.il_id), 'kasa', round(s.kasa), 'sermaye', s.sermaye,
+    'fiyat', ps.fiyat, 'kalite', ps.kalite, 'kaynak', ps.kaynak, 'marka', round(ps.marka), 'hafta', ps.hafta,
+    'sonraki', s.sonraki_kazanc, 'yonetici', yon, 'son_tasima', ps.son_tasima, 'sahip', oyun.kad(s.kurucu),
+    'ortaklar', (select jsonb_agg(jsonb_build_object('kad', oyun.kad(o.user_id), 'pay', o.pay) order by o.pay desc) from oyun.sirket_ortaklari o where o.sirket_id = s.id),
+    'tahmin', case when s.aktif then oyun.pazar_tahmin(s.id) end, 'senaryo', senaryo,
+    'tasima_bedel', round(s.sermaye * 0.10),
+    'rakipler', coalesce((select jsonb_agg(jsonb_build_object('id', s2.id, 'ad', s2.ad, 'sahip', oyun.kad(s2.kurucu), 'fiyat', p2.fiyat,
+        'kalite', p2.kalite, 'marka', round(p2.marka / 10) * 10, 'sermaye', s2.sermaye, 'kaynak', p2.kaynak) order by s2.sermaye desc)
+      from oyun.pazar_sirket p2 join oyun.sirketler s2 on s2.id = p2.sirket_id
+      where p2.il_id = ps.il_id and s2.sektor = s.sektor and s2.aktif and s2.id <> s.id), '[]'::jsonb),
+    'raporlar', coalesce((select jsonb_agg(r order by r.zaman desc) from (
+      select zaman, pazar, pay, rakip, gelir, gider, ruhsat, vergi, ceza, net, fiyat, kalite, kaynak from oyun.pazar_rapor
+      where sirket_id = s.id order by zaman desc limit 8) r), '[]'::jsonb));
+end $$;
+
+create or replace function public.pazar_ayarla(p_sirket bigint, p_fiyat int, p_kalite int, p_kaynak text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); s oyun.sirketler; ps oyun.pazar_sirket; t timestamptz := oyun.simdi();
+begin
+  select * into s from oyun.sirketler where id = p_sirket;
+  select * into ps from oyun.pazar_sirket where sirket_id = p_sirket;
+  if s.id is null or ps.sirket_id is null or not s.aktif then raise exception 'Rekabetçi şirket bulunamadı.'; end if;
+  if not oyun.sirket_yonetici_mi(s.id, p.id) then raise exception 'Şirketin kararlarını en büyük ortak (ya da en az %%50 pay sahibi) verir.'; end if;
+  if p_fiyat not between 1 and 3 or p_kalite not between 0 and 3 then raise exception 'Fiyat 1-3, kalite 0-3 arasında olmalı.'; end if;
+  if s.sektor = 'enerji' and coalesce(p_kaynak, ps.kaynak) not in ('komur','dogalgaz','yenilenebilir') then raise exception 'Geçersiz enerji kaynağı.'; end if;
+  if ps.son_ayar is not null and ps.son_ayar > t - interval '10 minutes' then raise exception 'Ayarları 10 dakikada bir değiştirebilirsin.'; end if;
+  perform oyun.sirket_hesapla(s.id);   -- geçmiş haftalar eski ayarla kapanır
+  update oyun.pazar_sirket set fiyat = p_fiyat, kalite = p_kalite,
+    kaynak = case when s.sektor = 'enerji' then coalesce(p_kaynak, kaynak) else null end, son_ayar = t
+  where sirket_id = s.id;
+  return oyun.pazar_tahmin(s.id);
+end $$;
+
+create or replace function public.pazar_tasi(p_sirket bigint, p_il int) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); s oyun.sirketler; ps oyun.pazar_sirket; t timestamptz := oyun.simdi(); bedel numeric; ilad text;
+begin
+  select * into s from oyun.sirketler where id = p_sirket;
+  select * into ps from oyun.pazar_sirket where sirket_id = p_sirket;
+  if s.id is null or ps.sirket_id is null or not s.aktif then raise exception 'Rekabetçi şirket bulunamadı.'; end if;
+  if not oyun.sirket_yonetici_mi(s.id, p.id) then raise exception 'Şirketi yalnız en büyük ortak taşıyabilir.'; end if;
+  if not exists (select 1 from oyun.iller where id = p_il) or p_il = ps.il_id then raise exception 'Farklı ve geçerli bir il seç.'; end if;
+  if ps.son_tasima is not null and ps.son_tasima > t - interval '7 days' then raise exception 'Şirket 7 günde bir taşınabilir.'; end if;
+  perform oyun.sirket_hesapla(s.id);
+  select * into s from oyun.sirketler where id = p_sirket;
+  bedel := round(s.sermaye * 0.10);
+  if s.kasa < bedel then raise exception 'Taşınma bedeli % ₺; şirket kasasında yeterli para yok.', oyun.tl(bedel); end if;
+  update oyun.sirketler set kasa = kasa - bedel where id = s.id;
+  update oyun.pazar_sirket set il_id = p_il, marka = marka * 0.4, son_tasima = t where sirket_id = s.id;
+  insert into oyun.sirket_hareket(sirket_id, zaman, tutar, aciklama, faaliyet_gelir, faaliyet_gider, dagitilan_kar)
+    values (s.id, t, -bedel, 'Başka ile taşınma bedeli (kira, kurulum, nakliye)', 0, bedel, 0);
+  select ad into ilad from oyun.iller where id = p_il;
+  perform oyun.olay('ekonomi', format('%s faaliyetini %s''a taşıdı.', s.ad, ilad), p_il::smallint, null, t);
+  return oyun.pazar_tahmin(s.id);
+end $$;
+
+-- ---------------------------------------------------------------- siyasetçi RPC'leri
+create or replace function public.sektor_politika_ayarla(p_sektor text, p_durum text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); y oyun.sektor_yetki; sp oyun.sektor_politika; t timestamptz := oyun.simdi();
+  a oyun.pazar_ayar; bakad text; metin text;
+begin
+  select * into y from oyun.sektor_yetki where sektor = p_sektor;
+  if y.sektor is null then raise exception 'Geçersiz sektör.'; end if;
+  if p_durum not in ('normal','tesvik','denetim') then raise exception 'Politika normal, teşvik ya da denetim olmalı.'; end if;
+  if oyun.bakanlik_yetkilisi(y.bakanlik) is distinct from p.id then
+    raise exception '% politikasını % belirler.', y.ad, (select replace(ad, 'Bakanlığı', 'Bakanı') from oyun.bakanliklar where kod = y.bakanlik);
+  end if;
+  select * into a from oyun.pazar_ayar where id = 1;
+  select * into sp from oyun.sektor_politika where sektor = p_sektor for update;
+  if sp.son_degisim is not null and sp.son_degisim > t - interval '24 hours' then raise exception 'Sektör politikası 24 saatte bir değiştirilebilir.'; end if;
+  if p_durum = 'tesvik' then
+    update oyun.bakanlik_kasa set kasa = kasa - a.tesvik_bedel where kod = y.bakanlik and kasa >= a.tesvik_bedel;
+    if not found then raise exception 'Teşvik için bakanlık kasasında % milyar ₺ gerekli.', a.tesvik_bedel; end if;
+  end if;
+  insert into oyun.sektor_politika(sektor, durum, belirleyen, bas, bit, son_degisim)
+    values (p_sektor, p_durum, p.id, t, case when p_durum = 'normal' then t else t + a.politika_gun * interval '1 day' end, t)
+  on conflict (sektor) do update set durum = excluded.durum, belirleyen = excluded.belirleyen, bas = excluded.bas, bit = excluded.bit, son_degisim = excluded.son_degisim;
+  bakad := (select replace(ad, 'Bakanlığı', 'Bakanı') from oyun.bakanliklar where kod = y.bakanlik);
+  metin := case p_durum
+    when 'tesvik' then format('%s %s, %s sektörüne %s günlük teşvik paketi açıkladı: sektörün pazarı %%15 büyüyecek.', bakad, p.kad, y.ad, a.politika_gun)
+    when 'denetim' then format('%s %s, %s sektöründe %s günlük sıkı denetim başlattı: kalitesiz hizmete ve kirletici üretime ceza kesilecek.', bakad, p.kad, y.ad, a.politika_gun)
+    else format('%s %s, %s sektöründeki özel uygulamayı sona erdirdi.', bakad, p.kad, y.ad) end;
+  perform oyun.olay('ekonomi', metin, null, p.parti_id, t);
+  perform oyun.gazete_ekle('icraat', format('%s sektöründe yeni dönem', y.ad), metin, null, t);
+  return jsonb_build_object('sektor', p_sektor, 'durum', p_durum, 'bit', case when p_durum = 'normal' then null else t + a.politika_gun * interval '1 day' end);
+end $$;
+
+create or replace function public.il_ruhsat_ayarla(p_oran numeric) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); v_il smallint; r oyun.il_ruhsat; t timestamptz := oyun.simdi(); ilad text;
+begin
+  select il_id into v_il from oyun.makamlar where tur = 'bel' and user_id = p.id and bit is null limit 1;
+  if v_il is null then raise exception 'Ruhsat harcını yalnız belediye başkanı belirler.'; end if;
+  if p_oran is null or p_oran < 0 or p_oran > 8 then raise exception 'Ruhsat harcı %%0 ile %%8 arasında olmalı.'; end if;
+  select * into r from oyun.il_ruhsat where il_id = v_il for update;
+  if r.son_degisim is not null and r.son_degisim > t - interval '24 hours' then raise exception 'Ruhsat harcı 24 saatte bir değiştirilebilir.'; end if;
+  insert into oyun.il_ruhsat(il_id, oran, belirleyen, son_degisim) values (v_il, round(p_oran, 1), p.id, t)
+  on conflict (il_id) do update set oran = excluded.oran, belirleyen = excluded.belirleyen, son_degisim = excluded.son_degisim;
+  select ad into ilad from oyun.iller where id = v_il;
+  perform oyun.olay('belediye', format('%s Belediye Başkanı %s işyeri ruhsat harcını %%%s yaptı.', ilad, p.kad, replace(round(p_oran, 1)::text, '.', ',')), v_il, p.parti_id, t);
+  return jsonb_build_object('il_id', v_il, 'oran', round(p_oran, 1));
+end $$;
+
+-- ---------------------------------------------------------------- kamu ihaleleri
+create or replace function oyun.ihale_butce(pr oyun.kamu_ihale_proje, p_il smallint) returns numeric language sql stable set search_path = '' as $$
+  select round(case when pr.kurum = 'belediye'
+    then pr.carpan * oyun.il_gunluk_gelir((select mv from oyun.iller where id = p_il)) * coalesce((select endeks from oyun.ulke where id = 1), 1)
+    else pr.carpan * coalesce((select endeks from oyun.ulke where id = 1), 1) end, 3)
+$$;
+
+create or replace function oyun.ihale_json(x oyun.kamu_ihale, u uuid) returns jsonb language sql stable set search_path = '' as $$
+  select jsonb_build_object('id', x.id, 'proje', x.proje, 'ad', pr.ad, 'aciklama', pr.aciklama, 'kurum', x.kurum,
+    'kurum_ad', case when x.kurum = 'belediye' then i.ad || ' Belediyesi' else (select ad from oyun.bakanliklar where kod = x.bakanlik) end,
+    'il_id', x.il_id, 'il', i.ad, 'acan', oyun.kad(x.acan), 'acan_unvan', oyun.unvan(x.acan), 'butce', x.butce, 'tavan', x.tavan,
+    'bas', x.bas, 'bit', x.bit, 'durum', x.durum, 'teklif_say', x.teklif_say, 'deneyim', pr.deneyim, 'sure_gun', pr.sure_gun,
+    'gelisim', pr.gelisim, 'memnuniyet', pr.memnuniyet,
+    'kazanan', (select ad from oyun.sirketler where id = x.kazanan), 'kazanan_sahip', (select oyun.kad(kurucu) from oyun.sirketler where id = x.kazanan),
+    'kazanan_parti', (select pa.kisa from oyun.sirket_ortaklari o join oyun.profiller pf on pf.id = o.user_id join oyun.partiler pa on pa.id = pf.parti_id
+                      where o.sirket_id = x.kazanan order by o.pay desc limit 1),
+    'bedel', case when x.durum <> 'acik' then x.bedel end, 'yontem', case when x.durum = 'tamam' then x.yontem end,
+    'teslim_at', x.teslim_at, 'sonuc', x.sonuc, 'acan_benim', x.acan = u,
+    'kazanan_benim', x.kazanan is not null and oyun.sirket_yonetici_mi(x.kazanan, u),
+    'benim_yontem', case when x.kazanan is not null and oyun.sirket_yonetici_mi(x.kazanan, u) then x.yontem end,
+    'tekliflerim', coalesce((select jsonb_agg(jsonb_build_object('sirket_id', t.sirket_id, 'sirket', s.ad, 'tutar', t.tutar))
+                   from oyun.kamu_ihale_teklif t join oyun.sirketler s on s.id = t.sirket_id where t.ihale_id = x.id and t.veren = u), '[]'::jsonb),
+    'teklifler', case when x.durum <> 'acik' then (select jsonb_agg(jsonb_build_object('sirket', s.ad, 'tutar', t.tutar) order by t.tutar)
+                   from oyun.kamu_ihale_teklif t join oyun.sirketler s on s.id = t.sirket_id where t.ihale_id = x.id) end)
+  from oyun.kamu_ihale_proje pr, oyun.iller i where pr.kod = x.proje and i.id = x.il_id
+$$;
+
+create or replace function public.ihale_ekrani() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); bel smallint; bakanliklar text[]; cb boolean;
+begin
+  perform oyun.ihale_tick();
+  select il_id into bel from oyun.makamlar where tur = 'bel' and user_id = p.id and bit is null limit 1;
+  cb := exists (select 1 from oyun.makamlar where tur = 'cb' and user_id = p.id and bit is null);
+  select array_agg(b.kod) into bakanliklar from oyun.bakanliklar b where oyun.bakanlik_yetkilisi(b.kod) = p.id;
+  return jsonb_build_object(
+    'acik', coalesce((select jsonb_agg(oyun.ihale_json(x, p.id) order by x.bit) from oyun.kamu_ihale x where x.durum = 'acik'), '[]'::jsonb),
+    'yapim', coalesce((select jsonb_agg(oyun.ihale_json(x, p.id) order by x.teslim_at) from oyun.kamu_ihale x where x.durum = 'yapim'), '[]'::jsonb),
+    'biten', coalesce((select jsonb_agg(oyun.ihale_json(x, p.id) order by x.id desc) from
+                (select * from oyun.kamu_ihale where durum in ('tamam','teklifsiz','iptal') order by id desc limit 20) x), '[]'::jsonb),
+    'insaat_sirketlerim', coalesce((select jsonb_agg(jsonb_build_object('id', s.id, 'ad', s.ad, 'kasa', round(s.kasa),
+          'deneyim', coalesce(d.is_sayisi, 0), 'yasak_bit', case when d.yasak_bit > t then d.yasak_bit end))
+        from oyun.sirketler s left join oyun.sirket_deneyim d on d.sirket_id = s.id
+        where s.sektor = 'insaat' and s.aktif and oyun.sirket_yonetici_mi(s.id, p.id)), '[]'::jsonb),
+    'yetki', jsonb_build_object(
+      'belediye_il', bel, 'belediye_il_ad', (select ad from oyun.iller where id = bel),
+      'belediye_kasa', (select round(kasa, 3) from oyun.il_durum where il_id = bel),
+      'ruhsat', (select oran from oyun.il_ruhsat where il_id = bel),
+      'bakanliklar', coalesce((select jsonb_agg(jsonb_build_object('kod', b.kod, 'ad', b.ad, 'kasa', round(k.kasa, 2)) order by b.sira)
+          from oyun.bakanliklar b left join oyun.bakanlik_kasa k on k.kod = b.kod where b.kod = any(bakanliklar)), '[]'::jsonb),
+      'vekalet', cb and exists (select 1 from unnest(bakanliklar) z where oyun.makam_sahibi('bakan', z, null) is null),
+      'sektorler', coalesce((select jsonb_agg(jsonb_build_object('sektor', y.sektor, 'ad', y.ad, 'durum', oyun.sektor_pol_durum(y.sektor, t),
+            'bit', (select bit from oyun.sektor_politika where sektor = y.sektor and bit > t),
+            'son_degisim', (select son_degisim from oyun.sektor_politika where sektor = y.sektor)) order by y.ad)
+          from oyun.sektor_yetki y where y.bakanlik = any(bakanliklar)), '[]'::jsonb),
+      'projeler', coalesce((select jsonb_agg(jsonb_build_object('kod', pr.kod, 'ad', pr.ad, 'kurum', pr.kurum, 'bakanlik', pr.bakanlik,
+            'aciklama', pr.aciklama, 'sure_gun', pr.sure_gun, 'gelisim', pr.gelisim, 'memnuniyet', pr.memnuniyet, 'deneyim', pr.deneyim,
+            'butce', case when pr.kurum = 'belediye' then oyun.ihale_butce(pr, bel) else oyun.ihale_butce(pr, null) end,
+            'tavan', round(case when pr.kurum = 'belediye' then oyun.ihale_butce(pr, bel) else oyun.ihale_butce(pr, null) end * oyun.pazar_tl_milyar(), -3)) order by pr.sira)
+          from oyun.kamu_ihale_proje pr where (pr.kurum = 'belediye' and bel is not null) or (pr.kurum = 'bakanlik' and pr.bakanlik = any(bakanliklar))), '[]'::jsonb),
+      'tesvik_bedel', (select tesvik_bedel from oyun.pazar_ayar where id = 1)));
+end $$;
+
+create or replace function public.ihale_ac(p_proje text, p_il int, p_saat int default 24) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); pr oyun.kamu_ihale_proje; t timestamptz := oyun.simdi(); v_il smallint; butce numeric; tavan numeric;
+  v_id bigint; kurumad text; ilad text;
+begin
+  select * into pr from oyun.kamu_ihale_proje where kod = p_proje;
+  if pr.kod is null then raise exception 'Geçersiz proje.'; end if;
+  if p_saat not in (12, 24, 48) then raise exception 'Teklif süresi 12, 24 ya da 48 saat olmalı.'; end if;
+  if pr.kurum = 'belediye' then
+    select il_id into v_il from oyun.makamlar where tur = 'bel' and user_id = p.id and bit is null limit 1;
+    if v_il is null then raise exception 'Belediye ihalesini yalnız belediye başkanı açar.'; end if;
+  else
+    if oyun.bakanlik_yetkilisi(pr.bakanlik) is distinct from p.id then
+      raise exception 'Bu ihaleyi % açar.', (select replace(ad, 'Bakanlığı', 'Bakanı') from oyun.bakanliklar where kod = pr.bakanlik);
+    end if;
+    v_il := p_il;
+    if not exists (select 1 from oyun.iller where id = v_il) then raise exception 'Projenin yapılacağı ili seç.'; end if;
+  end if;
+  if (select count(*) from oyun.kamu_ihale where acan = p.id and durum in ('acik','yapim')) >= 3 then
+    raise exception 'Aynı anda en fazla 3 ihalen sürebilir.';
+  end if;
+  if exists (select 1 from oyun.kamu_ihale where proje = pr.kod and il_id = v_il and durum in ('acik','yapim')) then
+    raise exception 'Bu ilde aynı proje zaten ihalede ya da yapımda.';
+  end if;
+  butce := oyun.ihale_butce(pr, v_il);
+  tavan := round(butce * oyun.pazar_tl_milyar(), -3);
+  if tavan < 1000 then raise exception 'Proje bütçesi çok küçük.'; end if;
+  if pr.kurum = 'belediye' then
+    update oyun.il_durum set kasa = kasa - butce where il_id = v_il and kasa >= butce;
+    if not found then raise exception 'Belediye kasasında % milyar ₺ gerekli.', replace(butce::text, '.', ','); end if;
+    kurumad := (select ad from oyun.iller where id = v_il) || ' Belediyesi';
+  else
+    update oyun.bakanlik_kasa set kasa = kasa - butce where kod = pr.bakanlik and kasa >= butce;
+    if not found then raise exception 'Bakanlık kasasında % milyar ₺ gerekli.', replace(butce::text, '.', ','); end if;
+    kurumad := (select ad from oyun.bakanliklar where kod = pr.bakanlik);
+  end if;
+  insert into oyun.kamu_ihale(proje, kurum, il_id, bakanlik, acan, butce, tavan, bas, bit)
+    values (pr.kod, pr.kurum, v_il, pr.bakanlik, p.id, butce, tavan, t, t + p_saat * interval '1 hour') returning id into v_id;
+  select ad into ilad from oyun.iller where id = v_il;
+  perform oyun.olay('ekonomi', format('%s ihale açtı: %s (%s). Yaklaşık maliyet %s ₺; teklifler %s saat içinde.',
+    kurumad, pr.ad, ilad, oyun.tl(tavan), p_saat), v_il, p.parti_id, t);
+  perform oyun.gazete_ekle(case when pr.kurum = 'belediye' then 'belediye' else 'icraat' end, format('İhale ilanı: %s', pr.ad),
+    format('%s, %s için kapalı zarf usulüyle ihaleye çıktı. Yaklaşık maliyet %s ₺. En düşük geçerli teklif kazanır.', kurumad, ilad, oyun.tl(tavan)), v_id, t);
+  return oyun.ihale_json((select x from oyun.kamu_ihale x where id = v_id), p.id);
+end $$;
+
+create or replace function public.ihale_teklif(p_ihale bigint, p_sirket bigint, p_tutar numeric) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); x oyun.kamu_ihale; s oyun.sirketler; d oyun.sirket_deneyim; pr oyun.kamu_ihale_proje; t timestamptz := oyun.simdi();
+begin
+  perform oyun.ihale_tick();
+  select * into x from oyun.kamu_ihale where id = p_ihale for update;
+  if x.id is null or x.durum <> 'acik' or x.bit <= t then raise exception 'İhale teklife açık değil.'; end if;
+  select * into s from oyun.sirketler where id = p_sirket;
+  if s.id is null or not s.aktif or s.sektor <> 'insaat' then raise exception 'Kamu ihalelerine yalnız inşaat şirketleri girebilir.'; end if;
+  if not oyun.sirket_yonetici_mi(s.id, p.id) then raise exception 'Şirket adına teklifi en büyük ortak verir.'; end if;
+  if exists (select 1 from oyun.sirket_ortaklari where sirket_id = s.id and user_id = x.acan) then
+    raise exception 'Çıkar çatışması: ihaleyi açan kişi bu şirketin ortağı.';
+  end if;
+  select * into d from oyun.sirket_deneyim where sirket_id = s.id;
+  if d.yasak_bit > t then raise exception 'Şirket % tarihine kadar kamu ihalelerinden yasaklı.', to_char(d.yasak_bit at time zone 'Europe/Istanbul', 'DD.MM HH24:MI'); end if;
+  select * into pr from oyun.kamu_ihale_proje where kod = x.proje;
+  if coalesce(d.is_sayisi, 0) < pr.deneyim then raise exception 'Bu ihale en az % teslim edilmiş iş deneyimi ister.', pr.deneyim; end if;
+  if p_tutar is null or p_tutar <> round(p_tutar) or p_tutar < round(x.tavan * 0.4) or p_tutar > x.tavan then
+    raise exception 'Teklif % ₺ ile % ₺ arasında olmalı (yaklaşık maliyetin %%40''ı ile tamamı).', oyun.tl(round(x.tavan * 0.4)), oyun.tl(x.tavan);
+  end if;
+  if s.kasa < round(x.tavan * 0.55) then raise exception 'İşi yapabilmek için şirket kasasında en az % ₺ olmalı.', oyun.tl(round(x.tavan * 0.55)); end if;
+  insert into oyun.kamu_ihale_teklif(ihale_id, sirket_id, veren, tutar, zaman) values (x.id, s.id, p.id, p_tutar, t)
+  on conflict (ihale_id, sirket_id) do update set tutar = excluded.tutar, zaman = excluded.zaman, veren = excluded.veren;
+  update oyun.kamu_ihale set teklif_say = (select count(*) from oyun.kamu_ihale_teklif where ihale_id = x.id) where id = x.id;
+  return oyun.ihale_json((select z from oyun.kamu_ihale z where id = x.id), p.id);
+end $$;
+
+create or replace function public.ihale_teklif_geri(p_ihale bigint, p_sirket bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); x oyun.kamu_ihale;
+begin
+  select * into x from oyun.kamu_ihale where id = p_ihale for update;
+  if x.id is null or x.durum <> 'acik' then raise exception 'İhale teklife açık değil.'; end if;
+  delete from oyun.kamu_ihale_teklif where ihale_id = x.id and sirket_id = p_sirket and veren = p.id;
+  if not found then raise exception 'Bu şirketin teklifi yok.'; end if;
+  update oyun.kamu_ihale set teklif_say = (select count(*) from oyun.kamu_ihale_teklif where ihale_id = x.id) where id = x.id;
+  return oyun.ihale_json((select z from oyun.kamu_ihale z where id = x.id), p.id);
+end $$;
+
+create or replace function public.ihale_iptal(p_ihale bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); x oyun.kamu_ihale; t timestamptz := oyun.simdi();
+begin
+  select * into x from oyun.kamu_ihale where id = p_ihale for update;
+  if x.id is null or x.durum <> 'acik' then raise exception 'Yalnız teklif süresi süren ihale iptal edilebilir.'; end if;
+  if x.acan <> p.id then raise exception 'İhaleyi yalnız açan kişi iptal edebilir.'; end if;
+  perform oyun.ihale_iade(x, x.butce);
+  update oyun.kamu_ihale set durum = 'iptal' where id = x.id;
+  perform oyun.olay('ekonomi', format('%s ihalesi (%s) iptal edildi.', (select ad from oyun.kamu_ihale_proje where kod = x.proje),
+    (select ad from oyun.iller where id = x.il_id)), x.il_id, null, t);
+  return jsonb_build_object('id', x.id, 'durum', 'iptal');
+end $$;
+
+-- Kazanan şirket yapım yöntemini seçer (yapım sürerken)
+create or replace function public.ihale_yontem(p_ihale bigint, p_yontem text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); x oyun.kamu_ihale; s oyun.sirketler; yeni numeric; fark numeric;
+begin
+  select * into x from oyun.kamu_ihale where id = p_ihale for update;
+  if x.id is null or x.durum <> 'yapim' then raise exception 'Yöntem yalnız yapım sürerken değiştirilebilir.'; end if;
+  if not oyun.sirket_yonetici_mi(x.kazanan, p.id) then raise exception 'Yöntemi kazanan şirketin en büyük ortağı seçer.'; end if;
+  if p_yontem not in ('standart','kaliteli','tasarruflu') then raise exception 'Geçersiz yöntem.'; end if;
+  if p_yontem = x.yontem then return oyun.ihale_json(x, p.id); end if;
+  yeni := round(x.tavan * case p_yontem when 'kaliteli' then 0.85 when 'tasarruflu' then 0.55 else 0.70 end);
+  fark := yeni - x.maliyet;   -- pozitifse ek harcama, negatifse kasaya dönen malzeme parası
+  select * into s from oyun.sirketler where id = x.kazanan for update;
+  if fark > 0 and s.kasa < fark then raise exception 'Kaliteli yapım için şirket kasasında % ₺ daha gerekli.', oyun.tl(fark); end if;
+  update oyun.sirketler set kasa = kasa - fark where id = s.id;
+  update oyun.kamu_ihale set yontem = p_yontem, maliyet = yeni where id = x.id;
+  insert into oyun.sirket_hareket(sirket_id, zaman, tutar, aciklama, faaliyet_gelir, faaliyet_gider, dagitilan_kar)
+    values (s.id, oyun.simdi(), -fark, format('İhale #%s yapım yöntemi: %s', x.id, p_yontem), 0, greatest(fark, 0), 0);
+  return oyun.ihale_json((select z from oyun.kamu_ihale z where id = x.id), p.id);
+end $$;
+
+-- Kullanılmayan bütçe kamu kasasına döner
+create or replace function oyun.ihale_iade(x oyun.kamu_ihale, p_milyar numeric) returns void language plpgsql security definer set search_path = '' as $$
+begin
+  if p_milyar <= 0 then return; end if;
+  if x.kurum = 'belediye' then update oyun.il_durum set kasa = coalesce(kasa, 0) + p_milyar where il_id = x.il_id;
+  else update oyun.bakanlik_kasa set kasa = kasa + p_milyar where kod = x.bakanlik; end if;
+end $$;
+
+-- Teklif süresi biten ihaleyi sonuçlandırır, yapımı biteni teslim eder
+create or replace function oyun.ihale_tick() returns int
+language plpgsql security definer set search_path = '' as $$
+declare t timestamptz := oyun.simdi(); x oyun.kamu_ihale; b record; pr oyun.kamu_ihale_proje; v_kazanan bigint; v_bedel numeric; v_mal numeric;
+  ilad text; kurumad text; carp numeric; yakalandi boolean; odeme numeric; ceza numeric; risk numeric; n int := 0; sahip uuid; sad text;
+begin
+  if not pg_try_advisory_xact_lock(84841) then return 0; end if;
+  -- 1) teklif süresi bitenler
+  for x in select * from oyun.kamu_ihale where durum = 'acik' and bit <= t order by bit for update loop
+    select * into pr from oyun.kamu_ihale_proje where kod = x.proje;
+    select ad into ilad from oyun.iller where id = x.il_id;
+    kurumad := case when x.kurum = 'belediye' then ilad || ' Belediyesi' else (select ad from oyun.bakanliklar where kod = x.bakanlik) end;
+    v_kazanan := null;
+    for b in select tk.*, s.kasa, s.aktif, s.sektor from oyun.kamu_ihale_teklif tk join oyun.sirketler s on s.id = tk.sirket_id
+             where tk.ihale_id = x.id order by tk.tutar, tk.zaman loop
+      v_mal := round(x.tavan * 0.70);
+      continue when not b.aktif or b.sektor <> 'insaat' or b.kasa < v_mal;
+      continue when exists (select 1 from oyun.sirket_ortaklari where sirket_id = b.sirket_id and user_id = x.acan);
+      continue when coalesce((select yasak_bit from oyun.sirket_deneyim where sirket_id = b.sirket_id), '-infinity') > t;
+      v_kazanan := b.sirket_id; v_bedel := b.tutar; exit;
+    end loop;
+    if v_kazanan is null then
+      perform oyun.ihale_iade(x, x.butce);
+      update oyun.kamu_ihale set durum = 'teklifsiz' where id = x.id;
+      perform oyun.olay('ekonomi', format('%s ihalesine (%s, %s) geçerli teklif gelmedi; bütçe kasaya döndü.', kurumad, pr.ad, ilad), x.il_id, null, x.bit);
+      perform oyun.bildir(x.acan, format('%s ihalesine geçerli teklif gelmedi; bütçe kasaya döndü.', pr.ad), x.bit);
+    else
+      update oyun.sirketler set kasa = kasa - v_mal where id = v_kazanan;
+      insert into oyun.sirket_hareket(sirket_id, zaman, tutar, aciklama, faaliyet_gelir, faaliyet_gider, dagitilan_kar)
+        values (v_kazanan, x.bit, -v_mal, format('İhale #%s yapım maliyeti (standart)', x.id), 0, v_mal, 0);
+      perform oyun.ihale_iade(x, round((x.tavan - v_bedel) / x.tavan * x.butce, 4));
+      update oyun.kamu_ihale set durum = 'yapim', kazanan = v_kazanan, bedel = v_bedel, maliyet = v_mal,
+        teslim_at = x.bit + pr.sure_gun * interval '1 day' where id = x.id;
+      select kurucu, ad into sahip, sad from oyun.sirketler where id = v_kazanan;
+      perform oyun.olay('ekonomi', format('%s ihalesini (%s, %s) %s kazandı: %s ₺ (yaklaşık maliyetin %%%s''i). %s teklif vardı.',
+        kurumad, pr.ad, ilad, sad, oyun.tl(v_bedel), round(v_bedel / x.tavan * 100), x.teklif_say), x.il_id, null, x.bit);
+      perform oyun.gazete_ekle(case when x.kurum = 'belediye' then 'belediye' else 'icraat' end, format('%s ihalesi sonuçlandı', pr.ad),
+        format('%s ihalesini %s teklif arasından %s kazandı. Bedel %s ₺. Şirketin en büyük ortağı: %s.', kurumad, x.teklif_say, sad, oyun.tl(v_bedel),
+          coalesce((select oyun.kad(user_id) from oyun.sirket_ortaklari where sirket_id = v_kazanan order by pay desc limit 1), '-')), x.id, x.bit);
+      for b in select distinct veren from oyun.kamu_ihale_teklif where ihale_id = x.id loop
+        perform oyun.bildir(b.veren, case when exists (select 1 from oyun.kamu_ihale_teklif where ihale_id = x.id and veren = b.veren and sirket_id = v_kazanan)
+          then format('%s ihalesini kazandın (%s ₺). Yapım %s gün sürecek; yöntemi ihale ekranından seçebilirsin.', pr.ad, oyun.tl(v_bedel), pr.sure_gun)
+          else format('%s ihalesini %s kazandı (%s ₺).', pr.ad, sad, oyun.tl(v_bedel)) end, x.bit);
+      end loop;
+      perform oyun.bildir(x.acan, format('%s ihalesini %s kazandı (%s ₺).', pr.ad, sad, oyun.tl(v_bedel)), x.bit);
+    end if;
+    n := n + 1;
+  end loop;
+
+  -- 2) yapımı bitenler
+  for x in select * from oyun.kamu_ihale where durum = 'yapim' and teslim_at <= t order by teslim_at for update loop
+    select * into pr from oyun.kamu_ihale_proje where kod = x.proje;
+    select ad into ilad from oyun.iller where id = x.il_id;
+    select ad into sad from oyun.sirketler where id = x.kazanan;
+    kurumad := case when x.kurum = 'belediye' then ilad || ' Belediyesi' else (select ad from oyun.bakanliklar where kod = x.bakanlik) end;
+    yakalandi := false; ceza := 0; odeme := x.bedel;
+    if x.yontem = 'tasarruflu' then
+      risk := case when oyun.sektor_pol_durum('insaat', t) = 'denetim' then 0.6 else 0.35 end;
+      yakalandi := random() < risk;
+    end if;
+    carp := case x.yontem when 'kaliteli' then 1.35 when 'tasarruflu' then case when yakalandi then 0.3 else 0.6 end else 1 end;
+    if yakalandi then
+      odeme := round(x.bedel * 0.5);
+      ceza := round(x.bedel * 0.2);
+      perform oyun.ihale_iade(x, round((x.bedel - odeme) / x.tavan * x.butce, 4));
+    end if;
+    update oyun.sirketler set kasa = greatest(0, kasa + odeme - ceza) where id = x.kazanan;
+    insert into oyun.sirket_hareket(sirket_id, zaman, tutar, aciklama, faaliyet_gelir, faaliyet_gider, dagitilan_kar)
+      values (x.kazanan, x.teslim_at, odeme - ceza, format('İhale #%s hakedişi%s', x.id, case when yakalandi then ' (denetimde eksik çıktı: kesinti ve ceza)' else '' end),
+              odeme, ceza, 0);
+    insert into oyun.sirket_deneyim(sirket_id, is_sayisi, puan, yasak_bit)
+      values (x.kazanan, case when yakalandi then 0 else 1 end, case x.yontem when 'kaliteli' then 2 when 'standart' then 1 else case when yakalandi then -3 else 0 end end,
+              case when yakalandi then x.teslim_at + interval '14 days' end)
+    on conflict (sirket_id) do update set is_sayisi = oyun.sirket_deneyim.is_sayisi + excluded.is_sayisi,
+      puan = oyun.sirket_deneyim.puan + excluded.puan, yasak_bit = coalesce(excluded.yasak_bit, oyun.sirket_deneyim.yasak_bit);
+    update oyun.il_durum set gelisim = oyun.sinir(gelisim + pr.gelisim * carp, 0, 100),
+      memnuniyet = oyun.sinir(memnuniyet + pr.memnuniyet * carp, 0, 100) where il_id = x.il_id;
+    update oyun.kamu_ihale set durum = 'tamam', sonuc = case when yakalandi then 'yakalandi' else 'teslim' end where id = x.id;
+    if yakalandi then
+      perform oyun.olay('ekonomi', format('Skandal: %s''daki %s denetimde eksik çıktı. %s''e ceza kesildi, şirket 14 gün ihalelerden men edildi.',
+        ilad, lower(pr.ad), sad), x.il_id, null, x.teslim_at);
+      perform oyun.gazete_ekle(case when x.kurum = 'belediye' then 'belediye' else 'icraat' end, format('%s''da ihale skandalı', ilad),
+        format('%s tarafından ihale edilen %s, ucuz malzeme kullanıldığı için denetimden geçemedi. Yüklenici %s''in hakedişinin yarısı ödenmedi, %s ₺ ceza kesildi.',
+          kurumad, lower(pr.ad), sad, oyun.tl(ceza)), x.id, x.teslim_at);
+      perform oyun.bildir(x.acan, format('Açtığın %s ihalesinde yüklenici denetime takıldı; kamuoyunda tartışılıyor.', pr.ad), x.teslim_at);
+    else
+      perform oyun.olay('ekonomi', format('%s''da %s hizmete açıldı (%s, yüklenici %s%s).', ilad, lower(pr.ad), kurumad, sad,
+        case x.yontem when 'kaliteli' then ', kaliteli yapım' when 'tasarruflu' then ', vatandaş işçilikten şikâyetçi' else '' end), x.il_id, null, x.teslim_at);
+    end if;
+    for b in select user_id from oyun.sirket_ortaklari where sirket_id = x.kazanan and pay >= 50 loop
+      perform oyun.bildir(b.user_id, format('%s teslim edildi. Hakediş: %s ₺%s.', pr.ad, oyun.tl(odeme),
+        case when yakalandi then format(', ceza %s ₺, 14 gün ihale yasağı', oyun.tl(ceza)) else '' end), x.teslim_at);
+    end loop;
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+
+-- Rekabetçi şirketlerin haftalık hesabı sahipleri ekranı açmasa da yapılsın (adil rekabet)
+create or replace function oyun.pazar_tick() returns int
+language plpgsql security definer set search_path = '' as $$
+declare r record; n int := 0;
+begin
+  perform oyun.ihale_tick();
+  for r in select s.id from oyun.sirketler s join oyun.pazar_sirket ps on ps.sirket_id = s.id
+           where s.aktif and s.sonraki_kazanc <= oyun.simdi() order by s.sonraki_kazanc limit 200 loop
+    perform oyun.sirket_hesapla(r.id); n := n + 1;
+  end loop;
+  return n;
+end $$;
+
+do $$ begin
+  if exists (select 1 from pg_namespace where nspname = 'cron') then
+    perform cron.unschedule(jobid) from cron.job where jobname = 'ekonomi-pazar';
+    perform cron.schedule('ekonomi-pazar', '*/10 * * * *', 'select oyun.pazar_tick()');
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------- yetkiler
+revoke all on function public.pazar_katalog(), public.pazar_harita(text), public.pazar_sirket_kur(text, text, numeric, int, text),
+  public.pazar_detay(bigint), public.pazar_ayarla(bigint, int, int, text), public.pazar_tasi(bigint, int),
+  public.sektor_politika_ayarla(text, text), public.il_ruhsat_ayarla(numeric), public.ihale_ekrani(), public.ihale_ac(text, int, int),
+  public.ihale_teklif(bigint, bigint, numeric), public.ihale_teklif_geri(bigint, bigint), public.ihale_iptal(bigint),
+  public.ihale_yontem(bigint, text) from public, anon;
+grant execute on function public.pazar_katalog(), public.pazar_harita(text), public.pazar_sirket_kur(text, text, numeric, int, text),
+  public.pazar_detay(bigint), public.pazar_ayarla(bigint, int, int, text), public.pazar_tasi(bigint, int),
+  public.sektor_politika_ayarla(text, text), public.il_ruhsat_ayarla(numeric), public.ihale_ekrani(), public.ihale_ac(text, int, int),
+  public.ihale_teklif(bigint, bigint, numeric), public.ihale_teklif_geri(bigint, bigint), public.ihale_iptal(bigint),
+  public.ihale_yontem(bigint, text) to authenticated;
+revoke all on function oyun.pazar_tahmin(bigint, smallint, smallint, text, timestamptz), oyun.pazar_hesapla(bigint), oyun.pazar_tick(),
+  oyun.ihale_tick(), oyun.ihale_iade(oyun.kamu_ihale, numeric), oyun.ihale_json(oyun.kamu_ihale, uuid),
+  oyun.ihale_butce(oyun.kamu_ihale_proje, smallint), oyun.sirket_yonetici_mi(bigint, uuid), oyun.makam_sahibi(text, text, smallint),
+  oyun.bakanlik_yetkilisi(text), oyun.pazar_tl_milyar(), oyun.pazar_il_agirlik(smallint), oyun.sektor_pol_durum(text, timestamptz),
+  oyun.sektor_pol_carpan(text, timestamptz) from public, anon, authenticated;
+-- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 85) Ekonomi 2. aşama: borsa, Rekabet Kurumu, şirket bağışları,
+--  danışman ve otopilot, yerel piyasa fiyatlarının geçime etkisi, piyasa raporu
+--
+--  • DANIŞMAN / OTOPİLOT: Sunucu rekabetçi şirket için 12 fiyat × kalite seçeneğini hesaplar,
+--    en kârlısını "önerilen" diye verir. Otopilot açıksa her hafta en kârlı ayarı kendisi seçer;
+--    bedeli o haftaki gelirin %4'ü (profesyonel yönetici ücreti).
+--  • PARAVAN KURALI: Bir oyuncu aynı ilde aynı türde iki şirketin çoğunluğuna sahip olamaz.
+--  • BORSA: Halka açık şirketlerin payları oyuncular arasında satılır. Satıcı "% pay başına fiyat"
+--    ile emir verir, alıcı dilediği kadarını alır. Alıcıdan %0,5 komisyon hazineye gider.
+--    Alım-satımdan önce şirketin geciken haftası kapanır (kâr eski sahibe ödenir).
+--  • REKABET KURUMU: Ticaret Bakanı (boşsa CB) bir il + sektör için 24 saatlik soruşturma açar
+--    (bakanlık kasasından 0,5 milyar ₺). Sonuçta: aynı kişinin çoğunluğunda birden çok şirket
+--    (paravan), ildeki bütün rakiplerin premium fiyatı (kartel) ya da tek şirketin %55+ pay ile
+--    premium fiyatı (hâkim durumun kötüye kullanılması) → ilgili şirketlere kasalarının %8'i ceza,
+--    fiyat ortaya çekilir, karar Resmî Gazete'de.
+--  • ŞİRKET BAĞIŞI: En büyük ortak şirket kasasından partiye bağış yapar (7 günde en fazla
+--    sermayenin %20'si). Her bağış herkese açık listede ve olay akışında görünür.
+--  • YEREL PİYASA FİYATLARI: Günde bir kez her ilin market ve enerji şirketlerinin (gelir ağırlıklı)
+--    fiyat düzeyinden o ilin geçim masrafı etkisi çıkar: ucuz ve rekabetçi → geçim %5'e kadar ucuz,
+--    premium tekel → %7,5'e kadar pahalı (oyun.etkiler, tur 'gecim'). Ülke endeksi enflasyona
+--    küçük bir itki verir.
+--  • PİYASA RAPORU: tek ekranda endeks, vergi, sektör liderleri, borsa, ihaleler, kararlar, bağışlar.
+--  Yalnız ekler; oyuncu verisi silinmez.
+-- =====================================================================
+
+alter table oyun.pazar_sirket add column if not exists otopilot boolean not null default false;
+alter table oyun.pazar_ayar add column if not exists yonetici_ucret numeric not null default 4;
+alter table oyun.pazar_ayar add column if not exists komisyon numeric not null default 0.5;
+alter table oyun.pazar_ayar add column if not exists endeks numeric not null default 1;
+alter table oyun.pazar_ayar add column if not exists son_endeks_gun date;
+
+create table if not exists oyun.borsa_emir(
+  id        bigserial primary key,
+  sirket_id bigint not null references oyun.sirketler(id),
+  satici    uuid not null,
+  pay       numeric not null check (pay > 0),
+  kalan     numeric not null check (kalan >= 0),
+  birim     numeric not null check (birim > 0),      -- %1 pay başına ₺
+  zaman     timestamptz not null,
+  durum     text not null default 'acik' check (durum in ('acik','bitti','iptal'))
+);
+create index if not exists borsa_emir_acik on oyun.borsa_emir(sirket_id, birim) where durum = 'acik';
+
+create table if not exists oyun.borsa_islem(
+  id        bigserial primary key,
+  sirket_id bigint not null references oyun.sirketler(id),
+  emir_id   bigint references oyun.borsa_emir(id),
+  satici    uuid not null,
+  alici     uuid not null,
+  pay       numeric not null,
+  birim     numeric not null,
+  tutar     numeric not null,
+  komisyon  numeric not null,
+  zaman     timestamptz not null
+);
+create index if not exists borsa_islem_sirket on oyun.borsa_islem(sirket_id, zaman desc);
+
+create table if not exists oyun.rekabet_sorusturma(
+  id      bigserial primary key,
+  il_id   smallint not null references oyun.iller(id),
+  sektor  text not null,
+  acan    uuid not null,
+  bas     timestamptz not null,
+  bit     timestamptz not null,
+  durum   text not null default 'acik' check (durum in ('acik','ihlal','temiz')),
+  karar   text,
+  ceza    numeric not null default 0
+);
+create index if not exists rekabet_acik on oyun.rekabet_sorusturma(durum, bit);
+
+create table if not exists oyun.sirket_bagis(
+  id        bigserial primary key,
+  sirket_id bigint not null references oyun.sirketler(id),
+  parti_id  bigint not null references oyun.partiler(id),
+  veren     uuid not null,
+  tutar     numeric not null check (tutar > 0),
+  zaman     timestamptz not null
+);
+create index if not exists sirket_bagis_zaman on oyun.sirket_bagis(zaman desc);
+
+do $$ declare t text; begin
+  foreach t in array array['borsa_emir','borsa_islem','rekabet_sorusturma','sirket_bagis'] loop
+    execute format('alter table oyun.%I enable row level security', t);
+    execute format('revoke all on oyun.%I from public, anon, authenticated', t);
+  end loop;
+  revoke all on sequence oyun.borsa_emir_id_seq, oyun.borsa_islem_id_seq, oyun.rekabet_sorusturma_id_seq, oyun.sirket_bagis_id_seq
+    from public, anon, authenticated;
+end $$;
+
+-- ---------------------------------------------------------------- yardımcılar
+-- Şirketin en büyük ortağı
+create or replace function oyun.sirket_sahibi(p_sirket bigint) returns uuid language sql stable set search_path = '' as $$
+  select user_id from oyun.sirket_ortaklari where sirket_id = p_sirket order by pay desc, user_id limit 1
+$$;
+
+-- 12 seçenek içinde en kârlı fiyat × kalite (enerji kaynağı aynı kalır)
+create or replace function oyun.pazar_en_iyi(p_sirket bigint, t timestamptz default null) returns jsonb
+language plpgsql stable set search_path = '' as $$
+declare f int; q int; h jsonb; en jsonb;
+begin
+  for f in 1..3 loop for q in 0..3 loop
+    h := oyun.pazar_tahmin(p_sirket, f::smallint, q::smallint, null, t);
+    if h is not null and (en is null or (h->>'net')::numeric > (en->>'net')::numeric) then
+      en := jsonb_build_object('fiyat', f, 'kalite', q, 'net', (h->>'net')::numeric, 'pay', (h->>'pay')::numeric, 'gelir', (h->>'gelir')::numeric);
+    end if;
+  end loop; end loop;
+  return en;
+end $$;
+
+-- Paravan kuralı: aynı kişi aynı ilde aynı türde iki şirketin çoğunluğuna sahip olamaz
+create or replace function oyun.tg_pazar_paravan() returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_sektor text; u uuid;
+begin
+  select sektor into v_sektor from oyun.sirketler where id = new.sirket_id;
+  for u in select user_id from oyun.sirket_ortaklari where sirket_id = new.sirket_id and pay >= 50 loop
+    if exists (select 1 from oyun.pazar_sirket p2 join oyun.sirketler s2 on s2.id = p2.sirket_id
+               join oyun.sirket_ortaklari o2 on o2.sirket_id = s2.id and o2.user_id = u and o2.pay >= 50
+               where p2.il_id = new.il_id and s2.sektor = v_sektor and s2.aktif and s2.id <> new.sirket_id) then
+      raise exception 'Paravan şirket kuralı: bu ilde aynı türde çoğunluğuna sahip olduğun bir şirket zaten var.';
+    end if;
+  end loop;
+  return new;
+end $$;
+drop trigger if exists pazar_paravan on oyun.pazar_sirket;
+create trigger pazar_paravan before insert or update of il_id on oyun.pazar_sirket
+  for each row execute function oyun.tg_pazar_paravan();
+
+-- ---------------------------------------------------------------- haftalık hesap (otopilot eklendi)
+create or replace function oyun.pazar_hesapla(p_id bigint) returns void
+language plpgsql security definer set search_path = '' as $$
+declare s oyun.sirketler; ps oyun.pazar_sirket; t timestamptz := oyun.simdi(); n int; i int; h jsonb; zt timestamptz;
+  gurultu numeric; gelir numeric; gider numeric; ruhsat numeric; ceza numeric; v_vergi numeric; net numeric; oran numeric;
+  x record; distributed numeric; distributable numeric; v_odeme numeric; tlm numeric; ilad text; kasa_son numeric;
+  en jsonb; yonetim numeric; a oyun.pazar_ayar;
+begin
+  select * into s from oyun.sirketler where id = p_id for update;
+  select * into ps from oyun.pazar_sirket where sirket_id = p_id for update;
+  if s.id is null or ps.sirket_id is null or not s.aktif or s.sonraki_kazanc > t then return; end if;
+  select * into a from oyun.pazar_ayar where id = 1;
+  n := least(52, floor(extract(epoch from (t - s.sonraki_kazanc)) / 604800)::int + 1);
+  tlm := oyun.pazar_tl_milyar();
+  select ad into ilad from oyun.iller where id = ps.il_id;
+  for i in 1..n loop
+    zt := s.sonraki_kazanc + (i - 1) * interval '7 days';
+    -- otopilot: haftanın başında en kârlı ayara geç
+    if ps.otopilot then
+      en := oyun.pazar_en_iyi(p_id, zt);
+      if en is not null and ((en->>'fiyat')::int <> ps.fiyat or (en->>'kalite')::int <> ps.kalite) then
+        update oyun.pazar_sirket set fiyat = (en->>'fiyat')::int, kalite = (en->>'kalite')::int where sirket_id = p_id;
+        select * into ps from oyun.pazar_sirket where sirket_id = p_id;
+      end if;
+    end if;
+    h := oyun.pazar_tahmin(p_id, null, null, null, zt);
+    gurultu := 0.9 + random()::numeric * 0.2;
+    gelir := round((h->>'gelir')::numeric * gurultu);
+    yonetim := case when ps.otopilot then round(gelir * a.yonetici_ucret / 100) else 0 end;
+    gider := (h->>'gider')::numeric + yonetim;
+    oran := coalesce((h->>'ruhsat_oran')::numeric, 0);
+    ruhsat := round(gelir * oran / 100);
+    ceza := case when (h->>'ceza')::numeric > 0 then round(gelir * 0.12) else 0 end;
+    net := gelir - gider - ruhsat - ceza;
+    v_vergi := round(greatest(0, net) * a.kurumlar / 100);
+    net := net - v_vergi;
+
+    if v_vergi > 0 then update oyun.ulke set hazine = hazine + v_vergi / tlm where id = 1; end if;
+    if ruhsat > 0 then
+      update oyun.il_durum set kasa = coalesce(kasa, 0) + ruhsat / tlm where il_id = ps.il_id;
+      insert into oyun.il_ruhsat(il_id, toplam) values (ps.il_id, ruhsat)
+        on conflict (il_id) do update set toplam = oyun.il_ruhsat.toplam + excluded.toplam;
+    end if;
+    update oyun.il_durum set
+      gelisim = oyun.sinir(gelisim + 0.03 + case ps.kaynak when 'yenilenebilir' then 0.05 else 0 end, 0, 100),
+      memnuniyet = oyun.sinir(memnuniyet + case when s.sektor = 'enerji' and ps.kaynak = 'komur' then -0.4 when ps.kalite >= 2 then 0.05 else 0 end, 0, 100)
+    where il_id = ps.il_id;
+
+    distributed := 0;
+    if net < 0 then
+      update oyun.sirketler set kasa = kasa + net where id = p_id;
+    else
+      distributable := least(net, greatest(0, (select kasa from oyun.sirketler where id = p_id) + net));
+      for x in select * from oyun.sirket_ortaklari where sirket_id = p_id loop
+        if not x.kar_kasada then
+          v_odeme := least(round(distributable * x.pay / 100, 2), greatest(0, distributable - distributed));
+          if v_odeme > 0 then
+            perform oyun.para_islem(x.user_id, v_odeme, 'sirket', format('%s haftalık net kâr payı', s.ad), t);
+            distributed := distributed + v_odeme;
+          end if;
+        end if;
+      end loop;
+      update oyun.sirketler set kasa = kasa + net - distributed where id = p_id;
+    end if;
+    insert into oyun.sirket_hareket(sirket_id, zaman, tutar, aciklama, faaliyet_gelir, faaliyet_gider, dagitilan_kar)
+    values (p_id, t, net, format('7 günlük faaliyet (%s): pazar payı %%%s, %s rakip%s; gelir - gider - harç - vergi = net',
+            ilad, h->>'pay', h->>'rakip', case when ps.otopilot then ', otopilot' else '' end), gelir, gider + ruhsat + ceza + v_vergi, distributed);
+    insert into oyun.pazar_rapor(sirket_id, zaman, il_id, pazar, pay, rakip, gelir, gider, ruhsat, vergi, ceza, net, fiyat, kalite, kaynak)
+    values (p_id, zt + interval '7 days', ps.il_id, (h->>'pazar')::numeric, (h->>'pay')::numeric, (h->>'rakip')::int,
+            gelir, gider, ruhsat, v_vergi, ceza, net, ps.fiyat, ps.kalite, ps.kaynak);
+    update oyun.pazar_sirket set marka = least(100, marka * 0.9 + 3 + 2.5 * kalite + case kaynak when 'yenilenebilir' then 3 else 0 end),
+      hafta = hafta + 1 where sirket_id = p_id;
+    select * into ps from oyun.pazar_sirket where sirket_id = p_id;
+
+    select kasa into kasa_son from oyun.sirketler where id = p_id;
+    if kasa_son <= 0 then
+      update oyun.sirketler set aktif = false, kasa = 0, satilik = null, son_islem = t where id = p_id;
+      update oyun.sirketler set sonraki_kazanc = s.sonraki_kazanc + i * interval '7 days' where id = p_id;
+      update oyun.borsa_emir set durum = 'iptal' where sirket_id = p_id and durum = 'acik';
+      perform oyun.olay('ekonomi', format('%s (%s, %s) iflas etti; kasası tükendi.', s.ad,
+        (select ad from oyun.pazar_sektor where kod = s.sektor), ilad), ps.il_id, null, t);
+      for x in select user_id from oyun.sirket_ortaklari where sirket_id = p_id loop
+        perform oyun.bildir(x.user_id, format('%s iflas etti: şirket kasası tükendi ve faaliyet durdu.', s.ad), t);
+      end loop;
+      return;
+    end if;
+  end loop;
+  update oyun.sirketler set sonraki_kazanc = sonraki_kazanc + n * interval '7 days', son_islem = t where id = p_id;
+  if kasa_son < s.sermaye * 0.25 and (ps.son_uyari is null or ps.son_uyari < t - interval '6 days') then
+    update oyun.pazar_sirket set son_uyari = t where sirket_id = p_id;
+    for x in select user_id from oyun.sirket_ortaklari where sirket_id = p_id loop
+      perform oyun.bildir(x.user_id, format('%s zarar ediyor: kasada %s ₺ kaldı. Önerilen ayarı uygula, otopilotu aç ya da ili değiştir; yoksa iflas edebilir.',
+        s.ad, oyun.tl(kasa_son)), t);
+    end loop;
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------- danışman ve otopilot RPC'leri
+create or replace function public.pazar_danisman(p_sirket bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); s oyun.sirketler; ps oyun.pazar_sirket; h jsonb; en jsonb; saglik text;
+begin
+  select * into s from oyun.sirketler where id = p_sirket;
+  select * into ps from oyun.pazar_sirket where sirket_id = p_sirket;
+  if s.id is null or ps.sirket_id is null then raise exception 'Rekabetçi şirket bulunamadı.'; end if;
+  if not s.aktif then return jsonb_build_object('saglik', 'iflas', 'otopilot', ps.otopilot); end if;
+  h := oyun.pazar_tahmin(s.id);
+  en := oyun.pazar_en_iyi(s.id);
+  saglik := case when s.kasa < s.sermaye * 0.25 then 'iflas_riski'
+                 when (h->>'net')::numeric > s.sermaye * 0.01 then 'karda'
+                 when (h->>'net')::numeric >= -s.sermaye * 0.005 then 'basabas' else 'zararda' end;
+  return jsonb_build_object('saglik', saglik, 'otopilot', ps.otopilot, 'oneri', en,
+    'oneri_farkli', en is not null and ((en->>'fiyat')::int <> ps.fiyat or (en->>'kalite')::int <> ps.kalite),
+    'mevcut_net', (h->>'net')::numeric, 'yonetici_ucret', (select yonetici_ucret from oyun.pazar_ayar where id = 1),
+    'otopilot_net', case when en is not null then round((en->>'net')::numeric - (en->>'gelir')::numeric * (select yonetici_ucret from oyun.pazar_ayar where id = 1) / 100 * 0.8) end,
+    'yonetici', oyun.sirket_yonetici_mi(s.id, p.id));
+end $$;
+
+create or replace function public.pazar_otopilot(p_sirket bigint, p_acik boolean) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); s oyun.sirketler; en jsonb;
+begin
+  select * into s from oyun.sirketler where id = p_sirket;
+  if s.id is null or not s.aktif or not exists (select 1 from oyun.pazar_sirket where sirket_id = p_sirket) then raise exception 'Rekabetçi şirket bulunamadı.'; end if;
+  if not oyun.sirket_yonetici_mi(s.id, p.id) then raise exception 'Otopilotu en büyük ortak açıp kapatır.'; end if;
+  perform oyun.sirket_hesapla(s.id);
+  update oyun.pazar_sirket set otopilot = coalesce(p_acik, false) where sirket_id = s.id;
+  if p_acik then
+    en := oyun.pazar_en_iyi(s.id);
+    if en is not null then update oyun.pazar_sirket set fiyat = (en->>'fiyat')::int, kalite = (en->>'kalite')::int, son_ayar = oyun.simdi() where sirket_id = s.id; end if;
+  end if;
+  return public.pazar_danisman(s.id);
+end $$;
+
+-- ---------------------------------------------------------------- borsa
+create or replace function oyun.borsa_son_fiyat(p_sirket bigint, t timestamptz default null) returns numeric language sql stable set search_path = '' as $$
+  select coalesce(
+    (select birim from oyun.borsa_islem where sirket_id = p_sirket and (t is null or zaman <= t) order by zaman desc, id desc limit 1),
+    (select round((h.deger + h.toplanan) / 100) from oyun.halka_arz h where h.sirket_id = p_sirket and h.durum = 'tamam' order by h.id desc limit 1),
+    (select round(sermaye / 100) from oyun.sirketler where id = p_sirket))
+$$;
+
+create or replace function oyun.borsa_haftalik_net(p_sirket bigint) returns numeric language sql stable set search_path = '' as $$
+  select coalesce(round(avg(tutar)), 0) from (select tutar from oyun.sirket_hareket where sirket_id = p_sirket and faaliyet_gelir > 0
+    and aciklama like '7 günlük%' order by zaman desc, id desc limit 4) z
+$$;
+
+create or replace function public.borsa_liste() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi();
+begin
+  return jsonb_build_object('sirketler', coalesce((select jsonb_agg(x order by (x->>'piyasa_degeri')::numeric desc) from (
+    select jsonb_build_object('id', s.id, 'ad', s.ad, 'sektor', s.sektor, 'sermaye', s.sermaye,
+      'son', oyun.borsa_son_fiyat(s.id), 'dun', oyun.borsa_son_fiyat(s.id, t - interval '24 hours'),
+      'piyasa_degeri', oyun.borsa_son_fiyat(s.id) * 100,
+      'en_ucuz', (select min(birim) from oyun.borsa_emir where sirket_id = s.id and durum = 'acik'),
+      'satista', coalesce((select sum(kalan) from oyun.borsa_emir where sirket_id = s.id and durum = 'acik'), 0),
+      'hacim_7g', coalesce((select sum(tutar) from oyun.borsa_islem where sirket_id = s.id and zaman > t - interval '7 days'), 0),
+      'haftalik_net', oyun.borsa_haftalik_net(s.id),
+      'benim_pay', coalesce((select pay from oyun.sirket_ortaklari where sirket_id = s.id and user_id = p.id), 0)) x
+    from oyun.sirketler s where s.halka_acik and s.aktif) z), '[]'::jsonb),
+    'komisyon', (select komisyon from oyun.pazar_ayar where id = 1),
+    'cuzdan', (select para from oyun.cuzdan where user_id = p.id));
+end $$;
+
+create or replace function public.borsa_sirket(p_sirket bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); s oyun.sirketler; t timestamptz := oyun.simdi();
+begin
+  select * into s from oyun.sirketler where id = p_sirket;
+  if s.id is null or not s.halka_acik then raise exception 'Bu şirket borsada işlem görmüyor.'; end if;
+  return jsonb_build_object('id', s.id, 'ad', s.ad, 'sektor', s.sektor, 'aktif', s.aktif, 'sermaye', s.sermaye, 'kasa', round(s.kasa),
+    'son', oyun.borsa_son_fiyat(s.id), 'dun', oyun.borsa_son_fiyat(s.id, t - interval '24 hours'),
+    'haftalik_net', oyun.borsa_haftalik_net(s.id), 'komisyon', (select komisyon from oyun.pazar_ayar where id = 1),
+    'benim_pay', coalesce((select pay from oyun.sirket_ortaklari where sirket_id = s.id and user_id = p.id), 0),
+    'benim_satista', coalesce((select sum(kalan) from oyun.borsa_emir where sirket_id = s.id and satici = p.id and durum = 'acik'), 0),
+    'cuzdan', (select para from oyun.cuzdan where user_id = p.id),
+    'emirler', coalesce((select jsonb_agg(jsonb_build_object('id', e.id, 'satici', oyun.kad(e.satici), 'kalan', e.kalan, 'birim', e.birim,
+        'benim', e.satici = p.id) order by e.birim, e.id) from oyun.borsa_emir e where e.sirket_id = s.id and e.durum = 'acik'), '[]'::jsonb),
+    'islemler', coalesce((select jsonb_agg(jsonb_build_object('zaman', i.zaman, 'pay', i.pay, 'birim', i.birim, 'tutar', i.tutar,
+        'satici', oyun.kad(i.satici), 'alici', oyun.kad(i.alici)) order by i.zaman desc) from
+        (select * from oyun.borsa_islem where sirket_id = s.id order by zaman desc, id desc limit 20) i), '[]'::jsonb),
+    'gunluk', coalesce((select jsonb_agg(jsonb_build_object('gun', g, 'fiyat', f) order by g) from (
+        select distinct on ((zaman at time zone 'Europe/Istanbul')::date) (zaman at time zone 'Europe/Istanbul')::date g, birim f
+        from oyun.borsa_islem where sirket_id = s.id and zaman > t - interval '30 days'
+        order by (zaman at time zone 'Europe/Istanbul')::date, zaman desc) d), '[]'::jsonb),
+    'haftalar', coalesce((select jsonb_agg(jsonb_build_object('zaman', h.zaman, 'net', h.tutar) order by h.zaman) from
+        (select zaman, tutar from oyun.sirket_hareket where sirket_id = s.id and faaliyet_gelir > 0 and aciklama like '7 günlük%' order by zaman desc, id desc limit 8) h), '[]'::jsonb),
+    'ortaklar', (select jsonb_agg(jsonb_build_object('kad', oyun.kad(o.user_id), 'pay', o.pay) order by o.pay desc) from oyun.sirket_ortaklari o where o.sirket_id = s.id));
+end $$;
+
+create or replace function public.borsa_sat(p_sirket bigint, p_pay numeric, p_birim numeric) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); s oyun.sirketler; v_pay numeric; acik numeric; v_id bigint;
+begin
+  select * into s from oyun.sirketler where id = p_sirket;
+  if s.id is null or not s.aktif or not s.halka_acik then raise exception 'Borsada yalnız halka açık şirketlerin payları satılır.'; end if;
+  if p_pay is null or p_pay < 0.1 or p_pay > 100 or round(p_pay, 2) <> p_pay then raise exception 'Pay %%0,1 ile %%100 arasında olmalı (en fazla iki ondalık).'; end if;
+  if p_birim is null or p_birim < 100 or p_birim <> round(p_birim) then raise exception '%%1 pay fiyatı en az 100 ₺ ve tam sayı olmalı.'; end if;
+  perform pg_advisory_xact_lock(98763, hashtext(s.id::text));
+  select pay into v_pay from oyun.sirket_ortaklari where sirket_id = s.id and user_id = p.id;
+  select coalesce(sum(kalan), 0) into acik from oyun.borsa_emir where sirket_id = s.id and satici = p.id and durum = 'acik';
+  if coalesce(v_pay, 0) < acik + p_pay then
+    raise exception 'Satabileceğin pay %%%s (sahip olduğun %%%s, satışta bekleyen %%%s).', greatest(0, coalesce(v_pay, 0) - acik), coalesce(v_pay, 0), acik;
+  end if;
+  if (select count(*) from oyun.borsa_emir where satici = p.id and durum = 'acik') >= 10 then raise exception 'Aynı anda en fazla 10 satış emrin olabilir.'; end if;
+  insert into oyun.borsa_emir(sirket_id, satici, pay, kalan, birim, zaman) values (s.id, p.id, p_pay, p_pay, p_birim, oyun.simdi()) returning id into v_id;
+  return public.borsa_sirket(s.id);
+end $$;
+
+create or replace function public.borsa_al(p_emir bigint, p_pay numeric) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); e oyun.borsa_emir; s oyun.sirketler; v_pay numeric; tutar numeric; kom numeric; t timestamptz := oyun.simdi();
+begin
+  select * into e from oyun.borsa_emir where id = p_emir for update;
+  if e.id is null or e.durum <> 'acik' then raise exception 'Bu satış emri artık geçerli değil.'; end if;
+  if e.satici = p.id then raise exception 'Kendi emrini alamazsın; iptal edebilirsin.'; end if;
+  if p_pay is null or p_pay <= 0 or round(p_pay, 2) <> p_pay or p_pay > e.kalan then raise exception 'Alınacak pay %%0,01 ile %%%s arasında olmalı.', e.kalan; end if;
+  select * into s from oyun.sirketler where id = e.sirket_id;
+  if not s.aktif or not s.halka_acik then raise exception 'Şirket işlem görmüyor.'; end if;
+  perform pg_advisory_xact_lock(98763, hashtext(s.id::text));
+  perform oyun.sirket_hesapla(s.id);     -- geciken hafta eski ortaklarla kapanır
+  select pay into v_pay from oyun.sirket_ortaklari where sirket_id = s.id and user_id = e.satici for update;
+  if coalesce(v_pay, 0) < p_pay then
+    update oyun.borsa_emir set durum = 'iptal' where id = e.id;
+    raise exception 'Satıcının payı artık yetmiyor; emir iptal edildi.';
+  end if;
+  tutar := round(p_pay * e.birim);
+  kom := round(tutar * (select komisyon from oyun.pazar_ayar where id = 1) / 100);
+  perform oyun.para_islem(p.id, -(tutar + kom), 'sirket', format('Borsa: %s %%%s pay alımı (komisyon %s ₺)', s.ad, p_pay, oyun.tl(kom)), t);
+  perform oyun.para_islem(e.satici, tutar, 'sirket', format('Borsa: %s %%%s pay satışı', s.ad, p_pay), t);
+  if kom > 0 then update oyun.ulke set hazine = hazine + kom / oyun.pazar_tl_milyar() where id = 1; end if;
+  if v_pay = p_pay then delete from oyun.sirket_ortaklari where sirket_id = s.id and user_id = e.satici;
+  else update oyun.sirket_ortaklari set pay = pay - p_pay where sirket_id = s.id and user_id = e.satici; end if;
+  insert into oyun.sirket_ortaklari(sirket_id, user_id, pay) values (s.id, p.id, p_pay)
+    on conflict (sirket_id, user_id) do update set pay = oyun.sirket_ortaklari.pay + excluded.pay;
+  update oyun.borsa_emir set kalan = kalan - p_pay, durum = case when kalan - p_pay <= 0 then 'bitti' else 'acik' end where id = e.id;
+  insert into oyun.borsa_islem(sirket_id, emir_id, satici, alici, pay, birim, tutar, komisyon, zaman)
+    values (s.id, e.id, e.satici, p.id, p_pay, e.birim, tutar, kom, t);
+  update oyun.sirketler set satilik = null where id = s.id;
+  perform oyun.bildir(e.satici, format('Borsa: %s, %s şirketinden %%%s payını %s ₺ karşılığında aldı.', p.kad, s.ad, p_pay, oyun.tl(tutar)), t);
+  if p_pay >= 5 then
+    perform oyun.olay('ekonomi', format('Borsa: %s, %s şirketinin %%%s payını aldı (%%1 = %s ₺).', p.kad, s.ad, p_pay, oyun.tl(e.birim)), null, null, t);
+  end if;
+  return public.borsa_sirket(s.id);
+end $$;
+
+create or replace function public.borsa_iptal(p_emir bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); e oyun.borsa_emir;
+begin
+  update oyun.borsa_emir set durum = 'iptal' where id = p_emir and satici = p.id and durum = 'acik' returning * into e;
+  if e.id is null then raise exception 'İptal edilecek açık emir bulunamadı.'; end if;
+  return public.borsa_sirket(e.sirket_id);
+end $$;
+
+-- ---------------------------------------------------------------- Rekabet Kurumu
+create or replace function public.rekabet_ekrani() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim();
+begin
+  perform oyun.rekabet_tick();
+  return jsonb_build_object(
+    'yetkili', oyun.bakanlik_yetkilisi('ticaret') = p.id,
+    'kasa', (select round(kasa, 2) from oyun.bakanlik_kasa where kod = 'ticaret'),
+    'bedel', 0.5,
+    'sektorler', (select jsonb_agg(jsonb_build_object('kod', kod, 'ad', ad) order by sira) from oyun.pazar_sektor),
+    'riskli', coalesce((select jsonb_agg(z order by z.firma desc) from (
+        select ps.il_id, i.ad il, s.sektor, k.ad sektor_ad, count(*) firma,
+          bool_and(ps.fiyat = 3) hepsi_premium, count(distinct oyun.sirket_sahibi(s.id)) sahip
+        from oyun.pazar_sirket ps join oyun.sirketler s on s.id = ps.sirket_id join oyun.iller i on i.id = ps.il_id
+        join oyun.pazar_sektor k on k.kod = s.sektor where s.aktif
+        group by ps.il_id, i.ad, s.sektor, k.ad having bool_or(ps.fiyat = 3)) z), '[]'::jsonb),
+    'sorusturmalar', coalesce((select jsonb_agg(jsonb_build_object('id', r.id, 'il', i.ad, 'sektor', k.ad, 'acan', oyun.kad(r.acan),
+        'bas', r.bas, 'bit', r.bit, 'durum', r.durum, 'karar', r.karar, 'ceza', r.ceza) order by r.id desc)
+      from (select * from oyun.rekabet_sorusturma order by id desc limit 20) r join oyun.iller i on i.id = r.il_id
+      join oyun.pazar_sektor k on k.kod = r.sektor), '[]'::jsonb));
+end $$;
+
+create or replace function public.rekabet_ac(p_il int, p_sektor text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); v_id bigint; ilad text; sad text;
+begin
+  if oyun.bakanlik_yetkilisi('ticaret') is distinct from p.id then raise exception 'Rekabet soruşturmasını Ticaret Bakanı açar (bakanlık boşsa Cumhurbaşkanı).'; end if;
+  select ad into sad from oyun.pazar_sektor where kod = p_sektor;
+  if sad is null then raise exception 'Geçersiz sektör.'; end if;
+  select ad into ilad from oyun.iller where id = p_il;
+  if ilad is null then raise exception 'Geçersiz il.'; end if;
+  if not exists (select 1 from oyun.pazar_sirket ps join oyun.sirketler s on s.id = ps.sirket_id where ps.il_id = p_il and s.sektor = p_sektor and s.aktif) then
+    raise exception 'Bu ilde bu türde faaliyet gösteren şirket yok.';
+  end if;
+  if exists (select 1 from oyun.rekabet_sorusturma where il_id = p_il and sektor = p_sektor and durum = 'acik') then raise exception 'Bu pazar için soruşturma zaten sürüyor.'; end if;
+  if (select count(*) from oyun.rekabet_sorusturma where acan = p.id and bas > t - interval '24 hours') >= 3 then raise exception 'Günde en fazla 3 soruşturma açılabilir.'; end if;
+  update oyun.bakanlik_kasa set kasa = kasa - 0.5 where kod = 'ticaret' and kasa >= 0.5;
+  if not found then raise exception 'Ticaret Bakanlığı kasasında 0,5 milyar ₺ gerekli.'; end if;
+  insert into oyun.rekabet_sorusturma(il_id, sektor, acan, bas, bit) values (p_il, p_sektor, p.id, t, t + interval '24 hours') returning id into v_id;
+  perform oyun.olay('ekonomi', format('Rekabet Kurumu %s''daki %s pazarı hakkında soruşturma başlattı; karar 24 saat içinde.', ilad, lower(sad)), p_il::smallint, p.parti_id, t);
+  perform oyun.gazete_ekle('icraat', format('Rekabet soruşturması: %s %s pazarı', ilad, sad),
+    format('Ticaret Bakanlığı, %s''daki %s şirketleri hakkında kartel ve hâkim durumun kötüye kullanılması iddialarıyla soruşturma başlattı.', ilad, lower(sad)), v_id, t);
+  for sad in select distinct oyun.sirket_sahibi(s.id)::text from oyun.pazar_sirket ps join oyun.sirketler s on s.id = ps.sirket_id
+             where ps.il_id = p_il and s.sektor = p_sektor and s.aktif loop
+    perform oyun.bildir(sad::uuid, format('Rekabet Kurumu %s''daki şirketin hakkında soruşturma açtı. Karar 24 saat sonra; fiyat politikanı gözden geçirebilirsin.', ilad), t);
+  end loop;
+  return public.rekabet_ekrani();
+end $$;
+
+create or replace function oyun.rekabet_tick() returns int
+language plpgsql security definer set search_path = '' as $$
+declare r oyun.rekabet_sorusturma; t timestamptz := oyun.simdi(); x record; ilad text; sad text; n int := 0; firma int; sahip int;
+  premium_hepsi boolean; ihlaller text[]; toplam numeric; c numeric; tlm numeric;
+begin
+  if not pg_try_advisory_xact_lock(84851) then return 0; end if;
+  tlm := oyun.pazar_tl_milyar();
+  for r in select * from oyun.rekabet_sorusturma where durum = 'acik' and bit <= t order by bit for update loop
+    select ad into ilad from oyun.iller where id = r.il_id;
+    select ad into sad from oyun.pazar_sektor where kod = r.sektor;
+    select count(*), count(distinct oyun.sirket_sahibi(s.id)), bool_and(ps.fiyat = 3) into firma, sahip, premium_hepsi
+      from oyun.pazar_sirket ps join oyun.sirketler s on s.id = ps.sirket_id where ps.il_id = r.il_id and s.sektor = r.sektor and s.aktif;
+    ihlaller := '{}'; toplam := 0;
+    for x in select s.id, s.ad, s.kasa, ps.fiyat, oyun.sirket_sahibi(s.id) sahip_id,
+                    (oyun.pazar_tahmin(s.id)->>'pay')::numeric pay,
+                    (select count(*) from oyun.pazar_sirket p3 join oyun.sirketler s3 on s3.id = p3.sirket_id
+                      where p3.il_id = r.il_id and s3.sektor = r.sektor and s3.aktif and oyun.sirket_sahibi(s3.id) = oyun.sirket_sahibi(s.id)) ayni
+             from oyun.pazar_sirket ps join oyun.sirketler s on s.id = ps.sirket_id
+             where ps.il_id = r.il_id and s.sektor = r.sektor and s.aktif loop
+      if x.ayni >= 2 or (firma >= 2 and sahip >= 2 and premium_hepsi) or (x.pay >= 55 and x.fiyat = 3) then
+        c := round(greatest(0, x.kasa) * 0.08);
+        update oyun.sirketler set kasa = kasa - c where id = x.id;
+        update oyun.pazar_sirket set fiyat = least(fiyat, 2), son_ayar = t where sirket_id = x.id;
+        if c > 0 then update oyun.ulke set hazine = hazine + c / tlm where id = 1; end if;
+        insert into oyun.sirket_hareket(sirket_id, zaman, tutar, aciklama, faaliyet_gelir, faaliyet_gider, dagitilan_kar)
+          values (x.id, t, -c, format('Rekabet Kurumu idari para cezası (soruşturma #%s)', r.id), 0, c, 0);
+        perform oyun.bildir(x.sahip_id, format('Rekabet Kurumu %s şirketine %s ₺ ceza verdi; fiyat ortaya çekildi.', x.ad, oyun.tl(c)), t);
+        ihlaller := ihlaller || (x.ad || case when x.ayni >= 2 then ' (paravan yapı)' when x.pay >= 55 and x.fiyat = 3 then ' (hâkim durum)' else ' (kartel)' end);
+        toplam := toplam + c;
+      end if;
+    end loop;
+    if array_length(ihlaller, 1) > 0 then
+      update oyun.rekabet_sorusturma set durum = 'ihlal', ceza = toplam,
+        karar = format('İhlal bulundu: %s. Toplam ceza %s ₺; fiyatlar ortaya çekildi.', array_to_string(ihlaller, ', '), oyun.tl(toplam)) where id = r.id;
+      perform oyun.gazete_ekle('icraat', format('Rekabet Kurumu kararı: %s %s pazarı', ilad, sad),
+        format('%s''daki %s pazarında rekabet ihlali tespit edildi: %s. Şirketlere toplam %s ₺ idari para cezası verildi.', ilad, lower(sad),
+          array_to_string(ihlaller, ', '), oyun.tl(toplam)), r.id, r.bit);
+      perform oyun.olay('ekonomi', format('Rekabet Kurumu %s''daki %s pazarında ihlal buldu; toplam ceza %s ₺.', ilad, lower(sad), oyun.tl(toplam)), r.il_id, null, r.bit);
+    else
+      update oyun.rekabet_sorusturma set durum = 'temiz', karar = 'İhlal bulunmadı; pazarda rekabet işliyor.' where id = r.id;
+      perform oyun.olay('ekonomi', format('Rekabet Kurumu %s''daki %s pazarında ihlal bulmadı.', ilad, lower(sad)), r.il_id, null, r.bit);
+    end if;
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+
+-- ---------------------------------------------------------------- şirket bağışları
+create or replace function public.sirket_parti_bagis(p_sirket bigint, p_parti bigint, p_tutar numeric) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); s oyun.sirketler; pa oyun.partiler; t timestamptz := oyun.simdi(); hafta numeric; sinir numeric;
+begin
+  select * into s from oyun.sirketler where id = p_sirket;
+  if s.id is null or not s.aktif then raise exception 'Şirket bulunamadı.'; end if;
+  if s.sektor = 'banka' then raise exception 'Bankalar siyasi bağış yapamaz.'; end if;
+  if not oyun.sirket_yonetici_mi(s.id, p.id) then raise exception 'Şirket adına bağışı en büyük ortak yapar.'; end if;
+  select * into pa from oyun.partiler where id = p_parti;
+  if pa.id is null or pa.kapali then raise exception 'Parti bulunamadı.'; end if;
+  if p_tutar is null or p_tutar < 1000 or p_tutar <> round(p_tutar) then raise exception 'Bağış en az 1.000 ₺ ve tam sayı olmalı.'; end if;
+  perform pg_advisory_xact_lock(98763, hashtext(s.id::text));
+  perform oyun.sirket_hesapla(s.id);
+  select * into s from oyun.sirketler where id = p_sirket;
+  select coalesce(sum(tutar), 0) into hafta from oyun.sirket_bagis where sirket_id = s.id and zaman > t - interval '7 days';
+  sinir := round(s.sermaye * 0.20);
+  if hafta + p_tutar > sinir then raise exception 'Bu şirket 7 günde en fazla % ₺ bağış yapabilir (kalan % ₺).', oyun.tl(sinir), oyun.tl(greatest(0, sinir - hafta)); end if;
+  if s.kasa < p_tutar then raise exception 'Şirket kasasında yeterli para yok.'; end if;
+  update oyun.sirketler set kasa = kasa - p_tutar where id = s.id;
+  update oyun.partiler set kasa = kasa + p_tutar where id = pa.id;
+  insert into oyun.parti_hareket(parti_id, zaman, tutar, aciklama, tur) values (pa.id, t, p_tutar, format('%s şirketinden bağış (%s)', s.ad, p.kad), 'bagis');
+  insert into oyun.sirket_bagis(sirket_id, parti_id, veren, tutar, zaman) values (s.id, pa.id, p.id, p_tutar, t);
+  insert into oyun.sirket_hareket(sirket_id, zaman, tutar, aciklama, faaliyet_gelir, faaliyet_gider, dagitilan_kar)
+    values (s.id, t, -p_tutar, format('Siyasi bağış: %s', pa.ad), 0, p_tutar, 0);
+  perform oyun.olay('ekonomi', format('%s şirketi %s''ye %s ₺ bağış yaptı (en büyük ortak: %s).', s.ad, pa.kisa, oyun.tl(p_tutar), p.kad), null, pa.id, t);
+  return jsonb_build_object('tamam', true, 'kalan_sinir', sinir - hafta - p_tutar);
+end $$;
+
+create or replace function public.siyasi_bagislar() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi();
+begin
+  return jsonb_build_object(
+    'son', coalesce((select jsonb_agg(jsonb_build_object('sirket', s.ad, 'sektor', s.sektor, 'veren', oyun.kad(b.veren), 'parti', pa.ad,
+        'kisa', pa.kisa, 'renk', pa.renk, 'tutar', b.tutar, 'zaman', b.zaman) order by b.zaman desc)
+      from (select * from oyun.sirket_bagis order by zaman desc limit 50) b join oyun.sirketler s on s.id = b.sirket_id
+      join oyun.partiler pa on pa.id = b.parti_id), '[]'::jsonb),
+    'parti_toplam', coalesce((select jsonb_agg(jsonb_build_object('parti', pa.ad, 'kisa', pa.kisa, 'renk', pa.renk, 'tutar', z.tutar, 'sirket', z.sirket) order by z.tutar desc)
+      from (select parti_id, sum(tutar) tutar, count(distinct sirket_id) sirket from oyun.sirket_bagis where zaman > t - interval '30 days' group by parti_id) z
+      join oyun.partiler pa on pa.id = z.parti_id), '[]'::jsonb),
+    'sirketlerim', coalesce((select jsonb_agg(jsonb_build_object('id', s.id, 'ad', s.ad, 'kasa', round(s.kasa), 'sinir', round(s.sermaye * 0.2),
+        'kalan', greatest(0, round(s.sermaye * 0.2) - coalesce((select sum(tutar) from oyun.sirket_bagis where sirket_id = s.id and zaman > t - interval '7 days'), 0))) order by s.id)
+      from oyun.sirketler s where s.aktif and s.sektor <> 'banka' and oyun.sirket_yonetici_mi(s.id, p.id)), '[]'::jsonb),
+    'partiler', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'ad', ad, 'kisa', kisa) order by ad) from oyun.partiler where not kapali), '[]'::jsonb));
+end $$;
+
+-- ---------------------------------------------------------------- yerel piyasa fiyatları → geçim, enflasyon
+create or replace function oyun.piyasa_endeks_tick() returns void
+language plpgsql security definer set search_path = '' as $$
+declare t timestamptz := oyun.simdi(); gun date := (oyun.simdi() at time zone 'Europe/Istanbul')::date; r record; v_deger numeric;
+  ulke_idx numeric; v_id bigint;
+begin
+  if (select son_endeks_gun from oyun.pazar_ayar where id = 1) is not distinct from gun then return; end if;
+  if not pg_try_advisory_xact_lock(84852) then return; end if;
+  create temp table if not exists pg_temp._pz_fiyat(il_id smallint, sektor text, fk numeric, w numeric) on commit drop;
+  truncate pg_temp._pz_fiyat;
+  insert into pg_temp._pz_fiyat
+    select ps.il_id, s.sektor, oyun.pazar_fiyat_katsayi(ps.fiyat), greatest(1, coalesce((oyun.pazar_tahmin(s.id)->>'gelir')::numeric, 1))
+    from oyun.pazar_sirket ps join oyun.sirketler s on s.id = ps.sirket_id where s.aktif and s.sektor in ('market','enerji');
+  for r in select il_id, sum(fk * w) / sum(w) idx, count(*) filter (where sektor = 'market') market from pg_temp._pz_fiyat group by il_id loop
+    v_deger := oyun.sinir(round((1 - r.idx) * 25 + case when r.market >= 2 then 1 else 0 end, 1), -7.5, 5);
+    select id into v_id from oyun.etkiler where kaynak_tur = 'piyasa' and kaynak_kod = 'il_' || r.il_id order by id desc limit 1;
+    if v_id is null then
+      insert into oyun.etkiler(il_id, tur, deger, bas, bit, kaynak_tur, kaynak_kod, kaynak_ad)
+        values (r.il_id, 'gecim', v_deger, t, t + interval '36 hours', 'piyasa', 'il_' || r.il_id, 'Yerel piyasa fiyatları (market ve enerji)');
+    else
+      update oyun.etkiler set deger = v_deger, bas = t, bit = t + interval '36 hours' where id = v_id;
+    end if;
+  end loop;
+  update oyun.etkiler set bit = t where kaynak_tur = 'piyasa' and bit > t
+    and il_id not in (select distinct il_id from pg_temp._pz_fiyat);
+  select sum(fk * w) / nullif(sum(w), 0) into ulke_idx from pg_temp._pz_fiyat;
+  if ulke_idx is not null then
+    update oyun.ulke set enflasyon = oyun.sinir(enflasyon + (ulke_idx - 1) * 0.4, 0, 200) where id = 1;
+  end if;
+  update oyun.pazar_ayar set endeks = coalesce(round(ulke_idx, 3), 1), son_endeks_gun = gun where id = 1;
+end $$;
+
+-- ---------------------------------------------------------------- piyasa raporu
+create or replace function public.piyasa_raporu() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); u oyun.ulke;
+begin
+  select * into u from oyun.ulke where id = 1;
+  return jsonb_build_object(
+    'endeks', (select endeks from oyun.pazar_ayar where id = 1),
+    'enflasyon', round(u.enflasyon, 1), 'buyume', round(u.buyume, 1), 'issizlik', round(u.issizlik, 1), 'asgari', u.asgari,
+    'benim_il', p.il_id, 'benim_il_ad', (select ad from oyun.iller where id = p.il_id),
+    'benim_gecim', (select deger from oyun.etkiler where kaynak_tur = 'piyasa' and il_id = p.il_id and bit > t order by id desc limit 1),
+    'kurumlar_7g', coalesce((select sum(vergi) from oyun.pazar_rapor where zaman > t - interval '7 days'), 0),
+    'ruhsat_7g', coalesce((select sum(ruhsat) from oyun.pazar_rapor where zaman > t - interval '7 days'), 0),
+    'sektorler', (select jsonb_agg(jsonb_build_object('kod', k.kod, 'ad', k.ad,
+        'sayi', (select count(*) from oyun.sirketler s where s.sektor = k.kod and s.aktif),
+        'politika', oyun.sektor_pol_durum(k.kod, t),
+        'lider', (select jsonb_build_object('ad', s.ad, 'il', i.ad, 'net', r.net, 'sahip', oyun.kad(oyun.sirket_sahibi(s.id)))
+                  from oyun.pazar_rapor r join oyun.sirketler s on s.id = r.sirket_id join oyun.iller i on i.id = r.il_id
+                  where s.sektor = k.kod and r.zaman > t - interval '7 days' order by r.net desc limit 1)) order by k.sira)
+      from oyun.pazar_sektor k),
+    'eski_sayi', (select count(*) from oyun.sirketler s where s.aktif and not exists (select 1 from oyun.pazar_sektor k where k.kod = s.sektor)),
+    'borsa', jsonb_build_object('sirket', (select count(*) from oyun.sirketler where halka_acik and aktif),
+        'deger', coalesce((select sum(oyun.borsa_son_fiyat(id) * 100) from oyun.sirketler where halka_acik and aktif), 0),
+        'hacim_7g', coalesce((select sum(tutar) from oyun.borsa_islem where zaman > t - interval '7 days'), 0)),
+    'ihale', jsonb_build_object('acik', (select count(*) from oyun.kamu_ihale where durum = 'acik'),
+        'yapim', (select count(*) from oyun.kamu_ihale where durum = 'yapim'),
+        'tutar_30g', coalesce((select sum(bedel) from oyun.kamu_ihale where durum in ('yapim','tamam') and bas > t - interval '30 days'), 0)),
+    'ucuz_iller', coalesce((select jsonb_agg(jsonb_build_object('il', i.ad, 'deger', e.deger) order by e.deger desc)
+        from (select * from oyun.etkiler where kaynak_tur = 'piyasa' and bit > t and deger > 0 order by deger desc limit 3) e join oyun.iller i on i.id = e.il_id), '[]'::jsonb),
+    'pahali_iller', coalesce((select jsonb_agg(jsonb_build_object('il', i.ad, 'deger', e.deger) order by e.deger)
+        from (select * from oyun.etkiler where kaynak_tur = 'piyasa' and bit > t and deger < 0 order by deger limit 3) e join oyun.iller i on i.id = e.il_id), '[]'::jsonb),
+    'rekabet', coalesce((select jsonb_agg(jsonb_build_object('il', i.ad, 'sektor', k.ad, 'durum', r.durum, 'karar', r.karar, 'zaman', r.bit) order by r.id desc)
+        from (select * from oyun.rekabet_sorusturma order by id desc limit 5) r join oyun.iller i on i.id = r.il_id join oyun.pazar_sektor k on k.kod = r.sektor), '[]'::jsonb),
+    'bagislar', coalesce((select jsonb_agg(jsonb_build_object('sirket', s.ad, 'parti', pa.kisa, 'renk', pa.renk, 'tutar', b.tutar, 'zaman', b.zaman) order by b.zaman desc)
+        from (select * from oyun.sirket_bagis order by zaman desc limit 5) b join oyun.sirketler s on s.id = b.sirket_id join oyun.partiler pa on pa.id = b.parti_id), '[]'::jsonb));
+end $$;
+
+-- Şirket rehberindeki "kayıtlı vergi" rekabetçi şirketlerin kurumlar vergisini de saysın
+create or replace function public.sirket_vitrini() returns jsonb language sql stable security definer set search_path = '' as $$
+ select jsonb_build_object('sirketler',
+ coalesce((select jsonb_agg(jsonb_build_object(
+   'id',s.id,'ad',s.ad,'sektor',s.sektor,'kurucu',p.kad,
+   'sahip',coalesce((select x.kad from oyun.sirket_ortaklari o join oyun.profiller x on x.id=o.user_id
+       where o.sirket_id=s.id and o.pay>0 order by o.pay desc,o.user_id limit 1),p.kad),
+   'sermaye',s.sermaye,'kasa',s.kasa,'kurulus',s.kurulus,
+   'aktif',s.aktif,'satilik',s.satilik,'halka_acik',s.halka_acik,
+   'il',(select i.ad from oyun.pazar_sirket ps join oyun.iller i on i.id=ps.il_id where ps.sirket_id=s.id),
+   'ortaklar',coalesce((select jsonb_agg(jsonb_build_object('kad',x.kad,'pay',o.pay) order by o.pay desc)
+      from oyun.sirket_ortaklari o join oyun.profiller x on x.id=o.user_id where o.sirket_id=s.id),'[]'::jsonb),
+   'toplam_gelir',coalesce((select sum(greatest(0,h.faaliyet_gelir)) from oyun.sirket_hareket h where h.sirket_id=s.id),0),
+   'net_kazanc',coalesce((select sum(h.tutar) from oyun.sirket_hareket h where h.sirket_id=s.id and h.faaliyet_gelir is not null),0),
+   'vergi',coalesce((select sum(h.vergi) from oyun.hesap_hareket h
+      where h.tur='sirket' and h.vergi>0 and h.aciklama like 'Sirket #'||s.id::text||' %'),0)
+      + coalesce((select sum(r.vergi) from oyun.pazar_rapor r where r.sirket_id=s.id),0)
+ ) order by s.id) from oyun.sirketler s join oyun.profiller p on p.id=s.kurucu where s.aktif and s.sektor<>'banka'),'[]'::jsonb),
+ 'vergi_notu','Kayda alınmış gerçek şirket vergileri gösterilir: eski şirketlerin kâr payı vergisi ve rekabetçi şirketlerin kurumlar vergisi.')
+$$;
+
+-- ---------------------------------------------------------------- zamanlayıcı
+create or replace function oyun.pazar_tick() returns int
+language plpgsql security definer set search_path = '' as $$
+declare r record; n int := 0;
+begin
+  perform oyun.ihale_tick();
+  perform oyun.rekabet_tick();
+  for r in select s.id from oyun.sirketler s join oyun.pazar_sirket ps on ps.sirket_id = s.id
+           where s.aktif and s.sonraki_kazanc <= oyun.simdi() order by s.sonraki_kazanc limit 200 loop
+    perform oyun.sirket_hesapla(r.id); n := n + 1;
+  end loop;
+  perform oyun.piyasa_endeks_tick();
+  return n;
+end $$;
+
+-- ---------------------------------------------------------------- yetkiler
+revoke all on function public.pazar_danisman(bigint), public.pazar_otopilot(bigint, boolean), public.borsa_liste(), public.borsa_sirket(bigint),
+  public.borsa_sat(bigint, numeric, numeric), public.borsa_al(bigint, numeric), public.borsa_iptal(bigint), public.rekabet_ekrani(),
+  public.rekabet_ac(int, text), public.sirket_parti_bagis(bigint, bigint, numeric), public.siyasi_bagislar(), public.piyasa_raporu() from public, anon;
+grant execute on function public.pazar_danisman(bigint), public.pazar_otopilot(bigint, boolean), public.borsa_liste(), public.borsa_sirket(bigint),
+  public.borsa_sat(bigint, numeric, numeric), public.borsa_al(bigint, numeric), public.borsa_iptal(bigint), public.rekabet_ekrani(),
+  public.rekabet_ac(int, text), public.sirket_parti_bagis(bigint, bigint, numeric), public.siyasi_bagislar(), public.piyasa_raporu() to authenticated;
+revoke all on function oyun.sirket_sahibi(bigint), oyun.pazar_en_iyi(bigint, timestamptz), oyun.tg_pazar_paravan(), oyun.borsa_son_fiyat(bigint, timestamptz),
+  oyun.borsa_haftalik_net(bigint), oyun.rekabet_tick(), oyun.piyasa_endeks_tick() from public, anon, authenticated;
+-- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 86) Reklam ve anket ajansları
+--  Gerçek oyuncuların oynadığı oyunda kampanya da gerçek oyunculara ulaşmalı. Bu yüzden:
+--  • REKLAM: Parti (genel başkan, parti kasasından) ya da bir oyuncu (kendi cebinden) bir ajanstan
+--    reklam satın alır. Reklam hedef ildeki (ya da tüm Türkiye'deki) oyuncuların Gündem ekranının
+--    başında "Sponsorlu" kart olarak görünür; kalite 2+ ise başlarken bildirim de gider.
+--    Süre ajansın kalitesine bağlı (12-36 saat). Bir ilde aynı anda en fazla 2, Türkiye genelinde 1 reklam.
+--  • ANKET: Ajans hedef ildeki (ya da Türkiye'deki) gerçek oyunculara 24 saat "Bugün seçim olsa
+--    hangi partiye oy verirsiniz?" sorar. Cevaplayana ajans kasasından katılım ödülü (kalite arttıkça
+--    büyür, ücretin %40'ı kadar havuz) ödenir. Sonuç (oy oranları, kararsızlar, hata payı) yalnız
+--    sipariş verene gelir; isterse yayımlar. Oy günü ve öncesindeki 24 saatte yayın yasağı vardır.
+--  • AJANS ŞİRKETİ: Yeni şirket türü "ajans". Sahibi fiyat (ucuz/orta/premium) ve kalite (0-3) seçer.
+--    Geliri siparişlerden gelir; gideri sabit gider, personel, kalite ve katılım ödülleri.
+--    Haftalık hesapta kâr ortaklara, %20 kurumlar vergisi hazineye. Aynı anda yürüttüğü iş sayısı
+--    kalite ve sermayeyle sınırlı. Müşteri işi 1-5 puanlar; puan ve tamamlanan işler markayı büyütür.
+--  Önce 84 ve 85 kurulmuş olmalı. Yalnız ekler.
+-- =====================================================================
+
+alter table oyun.sirketler drop constraint if exists sirketler_sektor_check;
+alter table oyun.sirketler add constraint sirketler_sektor_check check (sektor in
+  ('tarim','sanayi','teknoloji','ticaret','insaat','medya','banka','ozel_okul','ozel_hastane','market','ulasim','enerji','ajans'));
+
+create table if not exists oyun.ajans(
+  sirket_id   bigint primary key references oyun.sirketler(id),
+  fiyat       smallint not null default 2 check (fiyat between 1 and 3),
+  kalite      smallint not null default 1 check (kalite between 0 and 3),
+  marka       numeric not null default 10,
+  hafta_gelir numeric not null default 0,
+  hafta_odul  numeric not null default 0,
+  is_sayisi   int not null default 0,
+  son_ayar    timestamptz,
+  son_uyari   timestamptz
+);
+
+create table if not exists oyun.ajans_is(
+  id         bigserial primary key,
+  sirket_id  bigint not null references oyun.sirketler(id),
+  tur        text not null check (tur in ('reklam','anket')),
+  il_id      smallint references oyun.iller(id),          -- null = tüm Türkiye
+  kaynak     text not null check (kaynak in ('parti','kisi')),
+  parti_id   bigint references oyun.partiler(id),
+  veren      uuid not null,
+  metin      text,
+  ucret      numeric not null,
+  kalite     smallint not null,
+  odul       numeric not null default 0,                 -- katılımcı başı ödül (anket)
+  havuz      numeric not null default 0,                 -- kalan ödül havuzu (anket)
+  bas        timestamptz not null,
+  bit        timestamptz not null,
+  durum      text not null default 'yayinda' check (durum in ('yayinda','bitti')),
+  gosterim   int not null default 0,
+  sonuc      jsonb,
+  yayimlandi timestamptz,
+  puan       smallint check (puan between 1 and 5)
+);
+create index if not exists ajans_is_aktif on oyun.ajans_is(tur, durum, il_id);
+create index if not exists ajans_is_veren on oyun.ajans_is(veren, id desc);
+
+create table if not exists oyun.ajans_gosterim(
+  is_id   bigint not null references oyun.ajans_is(id),
+  user_id uuid not null,
+  zaman   timestamptz not null,
+  primary key (is_id, user_id)
+);
+create table if not exists oyun.ajans_cevap(
+  is_id    bigint not null references oyun.ajans_is(id),
+  user_id  uuid not null,
+  parti_id bigint,                                         -- null = kararsız
+  odul     numeric not null default 0,
+  zaman    timestamptz not null,
+  primary key (is_id, user_id)
+);
+
+do $$ declare t text; begin
+  foreach t in array array['ajans','ajans_is','ajans_gosterim','ajans_cevap'] loop
+    execute format('alter table oyun.%I enable row level security', t);
+    execute format('revoke all on oyun.%I from public, anon, authenticated', t);
+  end loop;
+  revoke all on sequence oyun.ajans_is_id_seq from public, anon, authenticated;
+end $$;
+
+-- ---------------------------------------------------------------- yardımcılar
+-- İl büyüklüğü katsayısı (Türkiye geneli 6)
+create or replace function oyun.ajans_il_kat(p_il smallint) returns numeric language sql stable set search_path = '' as $$
+  select case when p_il is null then 6 else (select case when mv <= 5 then 1 when mv <= 20 then 2 else 3 end from oyun.iller where id = p_il) end
+$$;
+create or replace function oyun.ajans_ucret(p_sirket bigint, p_tur text, p_il smallint) returns numeric language sql stable set search_path = '' as $$
+  select round((case p_tur when 'anket' then 20000 else 15000 end) * oyun.ajans_il_kat(p_il)
+    * oyun.pazar_fiyat_katsayi(a.fiyat) * coalesce((select endeks from oyun.ulke where id = 1), 1), -2)
+  from oyun.ajans a where a.sirket_id = p_sirket
+$$;
+create or replace function oyun.ajans_kapasite(p_sirket bigint) returns int language sql stable set search_path = '' as $$
+  select least(6, 1 + a.kalite + floor(s.sermaye / 300000)::int) from oyun.ajans a join oyun.sirketler s on s.id = a.sirket_id where a.sirket_id = p_sirket
+$$;
+create or replace function oyun.ajans_dolu(p_sirket bigint) returns int language sql stable set search_path = '' as $$
+  select count(*)::int from oyun.ajans_is where sirket_id = p_sirket and durum = 'yayinda'
+$$;
+-- Oy günü ve öncesindeki 24 saat anket yayın yasağı
+create or replace function oyun.anket_yasagi(t timestamptz) returns boolean language sql stable set search_path = '' as $$
+  select exists (select 1 from oyun.secimler where durum = 'bekliyor' and oy_bas is not null
+                 and oy_bas - interval '24 hours' <= t and coalesce(oy_bit, oy_bas + interval '1 day') > t)
+$$;
+create or replace function oyun.ajans_haftalik_gider(p_sirket bigint) returns numeric language sql stable set search_path = '' as $$
+  select round(s.sermaye * 0.03 + s.sermaye * 0.012 * a.kalite
+    + coalesce((select asgari from oyun.ulke where id = 1), 30000) * 0.6 * power(greatest(0.5, s.sermaye / 300000.0), 0.7))
+  from oyun.ajans a join oyun.sirketler s on s.id = a.sirket_id where a.sirket_id = p_sirket
+$$;
+
+-- ---------------------------------------------------------------- haftalık hesap
+create or replace function oyun.ajans_hesapla(p_id bigint) returns void
+language plpgsql security definer set search_path = '' as $$
+declare s oyun.sirketler; a oyun.ajans; t timestamptz := oyun.simdi(); n int; i int; gider numeric; net numeric; v_vergi numeric;
+  x record; distributed numeric; distributable numeric; v_odeme numeric; kasa_son numeric; gelir numeric; odul numeric;
+begin
+  select * into s from oyun.sirketler where id = p_id for update;
+  select * into a from oyun.ajans where sirket_id = p_id for update;
+  if s.id is null or a.sirket_id is null or not s.aktif or s.sonraki_kazanc > t then return; end if;
+  n := least(52, floor(extract(epoch from (t - s.sonraki_kazanc)) / 604800)::int + 1);
+  for i in 1..n loop
+    gelir := case when i = 1 then a.hafta_gelir else 0 end;
+    odul := case when i = 1 then a.hafta_odul else 0 end;
+    gider := oyun.ajans_haftalik_gider(p_id);
+    net := gelir - odul - gider;
+    v_vergi := round(greatest(0, net) * (select kurumlar from oyun.pazar_ayar where id = 1) / 100);
+    net := net - v_vergi;
+    if v_vergi > 0 then update oyun.ulke set hazine = hazine + v_vergi / oyun.pazar_tl_milyar() where id = 1; end if;
+    -- gelir ve ödüller kasaya zaten işlendi; burada gider ve vergi düşer, kâr dağıtılır
+    update oyun.sirketler set kasa = kasa - gider - v_vergi where id = p_id;
+    distributed := 0;
+    if net > 0 then
+      distributable := least(net, greatest(0, (select kasa from oyun.sirketler where id = p_id)));
+      for x in select * from oyun.sirket_ortaklari where sirket_id = p_id loop
+        if not x.kar_kasada then
+          v_odeme := least(round(distributable * x.pay / 100, 2), greatest(0, distributable - distributed));
+          if v_odeme > 0 then
+            perform oyun.para_islem(x.user_id, v_odeme, 'sirket', format('%s haftalık net kâr payı', s.ad), t);
+            distributed := distributed + v_odeme;
+          end if;
+        end if;
+      end loop;
+      update oyun.sirketler set kasa = kasa - distributed where id = p_id;
+    end if;
+    insert into oyun.sirket_hareket(sirket_id, zaman, tutar, aciklama, faaliyet_gelir, faaliyet_gider, dagitilan_kar)
+      values (p_id, t, net, '7 günlük faaliyet (ajans): sipariş geliri - katılım ödülleri - gider - vergi = net', gelir, odul + gider + v_vergi, distributed);
+    update oyun.ajans set hafta_gelir = 0, hafta_odul = 0, marka = greatest(5, marka * 0.95) where sirket_id = p_id;
+    a.hafta_gelir := 0; a.hafta_odul := 0;
+    select kasa into kasa_son from oyun.sirketler where id = p_id;
+    if kasa_son <= 0 then
+      update oyun.sirketler set aktif = false, kasa = 0, satilik = null, son_islem = t,
+        sonraki_kazanc = s.sonraki_kazanc + i * interval '7 days' where id = p_id;
+      perform oyun.olay('ekonomi', format('%s ajansı iflas etti; kasası tükendi.', s.ad), null, null, t);
+      for x in select user_id from oyun.sirket_ortaklari where sirket_id = p_id loop
+        perform oyun.bildir(x.user_id, format('%s iflas etti: ajansın kasası tükendi.', s.ad), t);
+      end loop;
+      return;
+    end if;
+  end loop;
+  update oyun.sirketler set sonraki_kazanc = sonraki_kazanc + n * interval '7 days', son_islem = t where id = p_id;
+  if kasa_son < s.sermaye * 0.25 and (a.son_uyari is null or a.son_uyari < t - interval '6 days') then
+    update oyun.ajans set son_uyari = t where sirket_id = p_id;
+    for x in select user_id from oyun.sirket_ortaklari where sirket_id = p_id loop
+      perform oyun.bildir(x.user_id, format('%s zarar ediyor: kasada %s ₺ kaldı. Fiyatı düşürmeyi ya da kaliteyi azaltmayı düşün.', s.ad, oyun.tl(kasa_son)), t);
+    end loop;
+  end if;
+end $$;
+
+-- sirket_hesapla: ajans dalı eklendi (84'teki hâl korunarak)
+create or replace function oyun.sirket_hesapla(p_id bigint)
+returns void language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $function$
+declare s oyun.sirketler;n int;i int;net numeric;income numeric;cost numeric;w numeric;t timestamptz:=oyun.simdi();x record;distributed numeric;rate numeric;v_taahhut numeric;v_mevduat numeric;distributable numeric;v_odeme numeric;
+begin
+ perform pg_advisory_xact_lock(98763,hashtext(p_id::text));
+ select * into s from oyun.sirketler where id=p_id for update;
+ if s.id is null or not s.aktif or s.sonraki_kazanc>t then return;end if;
+ if exists(select 1 from oyun.pazar_sektor where kod=s.sektor) then perform oyun.pazar_hesapla(p_id); return; end if;
+ if s.sektor='ajans' then perform oyun.ajans_hesapla(p_id); return; end if;
+ n:=least(52,floor(extract(epoch from (t-s.sonraki_kazanc))/604800)::int+1);
+ w:=(select asgari from oyun.ulke where id=1);
+ rate:=case s.sektor when 'tarim' then .12 when 'sanayi' then .15 when 'teknoloji' then .20 when 'ticaret' then .14 when 'insaat' then .18 when 'medya' then .16 else .08 end;
+ for i in 1..n loop
+  income:=round(s.sermaye*rate*(0.6+random()::numeric*.8),2);
+  cost:=round(s.sermaye*(.025+random()::numeric*.055)+w*(.5+random()::numeric),2);
+  income:=round(income * oyun.kriz_sektor_carpani(s.sektor,s.sonraki_kazanc + (i-1) * interval '7 days')
+                       * oyun.sektor_pol_carpan(s.sektor,s.sonraki_kazanc + (i-1) * interval '7 days'),2); net:=income-cost;
+  distributed:=0;
+  if net<0 then
+   if s.sektor='banka' then
+     select coalesce(sum(round(m.anapara*(1+m.faiz/100),2)),0),coalesce(sum(m.anapara),0) into v_taahhut,v_mevduat from oyun.banka_mevduat m where m.banka_id=p_id and not m.kapandi;
+     net:=greatest(net,-greatest(0,(select kasa from oyun.sirketler where id=p_id)-v_taahhut-greatest(s.sermaye*0.10,v_mevduat*0.10)));
+   end if;
+   update oyun.sirketler set kasa=kasa+net where id=p_id;
+  else
+   distributable:=case when s.sektor='banka' then least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net-s.sermaye-coalesce((select sum(round(m.anapara*(1+m.faiz/100),2)) from oyun.banka_mevduat m where m.banka_id=p_id and not m.kapandi),0))) else least(net,greatest(0,(select kasa from oyun.sirketler where id=p_id)+net)) end;
+   for x in select * from oyun.sirket_ortaklari where sirket_id=p_id loop
+    if not x.kar_kasada then
+      v_odeme:=least(round(distributable*x.pay/100,2),greatest(0,distributable-distributed));
+      if v_odeme>0 then
+        perform oyun.para_islem(x.user_id,v_odeme,'sirket',format('Sirket #%s haftalik net kar payi',p_id),t);
+        distributed:=distributed+v_odeme;
+      end if;
+    end if;
+   end loop;
+   update oyun.sirketler set kasa=kasa+net-distributed where id=p_id;
+  end if;
+  insert into oyun.sirket_hareket(sirket_id,zaman,tutar,aciklama,faaliyet_gelir,faaliyet_gider,dagitilan_kar)
+ values(p_id,t,net,'7 günlük faaliyet: gelir - gider = net sonuç; gerçekleşen ortak ödemesi ayrıca kaydedildi',income,cost,distributed);
+ end loop;
+ update oyun.sirketler set sonraki_kazanc=sonraki_kazanc+n*interval '7 days',son_islem=t where id=p_id;
+end $function$;
+
+-- ---------------------------------------------------------------- ajans sahibi
+create or replace function public.ajans_kur(p_ad text, p_sermaye numeric) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); v_id bigint; t timestamptz := oyun.simdi();
+begin
+  if p_ad is null or char_length(btrim(p_ad)) not between 3 and 50 then raise exception 'Ajans adı 3-50 karakter olmalı.'; end if;
+  if p_sermaye is null or p_sermaye <> round(p_sermaye) or p_sermaye < 150000 or p_sermaye > 100000000 then
+    raise exception 'Ajans sermayesi en az 150.000 ₺, en fazla 100.000.000 ₺ olmalı.';
+  end if;
+  if exists (select 1 from oyun.sirketler s join oyun.sirket_ortaklari o on o.sirket_id = s.id
+             where s.sektor = 'ajans' and s.aktif and o.user_id = p.id and o.pay >= 50) then
+    raise exception 'Zaten çoğunluğuna sahip olduğun bir ajans var.';
+  end if;
+  perform oyun.para_islem(p.id, -p_sermaye, 'sirket', 'Reklam ve anket ajansı kuruluş sermayesi', t);
+  insert into oyun.sirketler(ad, sektor, kurucu, sermaye, kasa, son_islem, kurulus, sonraki_kazanc)
+    values (btrim(p_ad), 'ajans', p.id, p_sermaye, p_sermaye, t, t, t + interval '7 days') returning id into v_id;
+  insert into oyun.sirket_ortaklari(sirket_id, user_id, pay) values (v_id, p.id, 100);
+  insert into oyun.ajans(sirket_id) values (v_id);
+  perform oyun.olay('ekonomi', format('%s yeni bir reklam ve anket ajansı kurdu: %s.', p.kad, btrim(p_ad)), null, null, t);
+  return jsonb_build_object('id', v_id);
+end $$;
+
+create or replace function public.ajans_ayarla(p_sirket bigint, p_fiyat int, p_kalite int) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); a oyun.ajans; t timestamptz := oyun.simdi();
+begin
+  select * into a from oyun.ajans where sirket_id = p_sirket;
+  if a.sirket_id is null or not (select aktif from oyun.sirketler where id = p_sirket) then raise exception 'Ajans bulunamadı.'; end if;
+  if not oyun.sirket_yonetici_mi(p_sirket, p.id) then raise exception 'Ajansın kararlarını en büyük ortak verir.'; end if;
+  if p_fiyat not between 1 and 3 or p_kalite not between 0 and 3 then raise exception 'Fiyat 1-3, kalite 0-3 arasında olmalı.'; end if;
+  if a.son_ayar is not null and a.son_ayar > t - interval '10 minutes' then raise exception 'Ayarları 10 dakikada bir değiştirebilirsin.'; end if;
+  perform oyun.sirket_hesapla(p_sirket);
+  update oyun.ajans set fiyat = p_fiyat, kalite = p_kalite, son_ayar = t where sirket_id = p_sirket;
+  return public.ajans_yonetim(p_sirket);
+end $$;
+
+create or replace function public.ajans_yonetim(p_sirket bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); s oyun.sirketler; a oyun.ajans;
+begin
+  select * into s from oyun.sirketler where id = p_sirket;
+  if s.id is null or s.sektor <> 'ajans' then raise exception 'Ajans bulunamadı.'; end if;
+  if not exists (select 1 from oyun.sirket_ortaklari where sirket_id = s.id and user_id = p.id) then raise exception 'Bu ajansın ortağı değilsin.'; end if;
+  perform oyun.sirket_hesapla(s.id);
+  select * into s from oyun.sirketler where id = p_sirket;
+  select * into a from oyun.ajans where sirket_id = p_sirket;
+  return jsonb_build_object('id', s.id, 'ad', s.ad, 'aktif', s.aktif, 'kasa', round(s.kasa), 'sermaye', s.sermaye,
+    'fiyat', a.fiyat, 'kalite', a.kalite, 'marka', round(a.marka), 'is_sayisi', a.is_sayisi,
+    'hafta_gelir', a.hafta_gelir, 'hafta_odul', a.hafta_odul, 'haftalik_gider', oyun.ajans_haftalik_gider(s.id),
+    'kapasite', oyun.ajans_kapasite(s.id), 'dolu', oyun.ajans_dolu(s.id), 'sonraki', s.sonraki_kazanc,
+    'yonetici', oyun.sirket_yonetici_mi(s.id, p.id),
+    'puan', (select round(avg(puan), 1) from oyun.ajans_is where sirket_id = s.id and puan is not null),
+    'fiyatlar', jsonb_build_object('kucuk', jsonb_build_object('reklam', oyun.ajans_ucret(s.id, 'reklam', (select id from oyun.iller where mv <= 5 order by id limit 1)),
+        'anket', oyun.ajans_ucret(s.id, 'anket', (select id from oyun.iller where mv <= 5 order by id limit 1))),
+      'buyuk', jsonb_build_object('reklam', oyun.ajans_ucret(s.id, 'reklam', 34::smallint), 'anket', oyun.ajans_ucret(s.id, 'anket', 34::smallint)),
+      'turkiye', jsonb_build_object('reklam', oyun.ajans_ucret(s.id, 'reklam', null), 'anket', oyun.ajans_ucret(s.id, 'anket', null))),
+    'reklam_saat', 12 + 8 * a.kalite, 'anket_odul', round((300 + 250 * a.kalite) * coalesce((select endeks from oyun.ulke where id = 1), 1)),
+    'isler', coalesce((select jsonb_agg(oyun.ajans_is_json(j, p.id) order by j.id desc) from (select * from oyun.ajans_is where sirket_id = s.id order by id desc limit 15) j), '[]'::jsonb));
+end $$;
+
+-- ---------------------------------------------------------------- müşteri tarafı
+create or replace function oyun.ajans_is_json(j oyun.ajans_is, u uuid) returns jsonb language sql stable set search_path = '' as $$
+  select jsonb_build_object('id', j.id, 'tur', j.tur, 'ajans', (select ad from oyun.sirketler where id = j.sirket_id), 'sirket_id', j.sirket_id,
+    'il', coalesce((select ad from oyun.iller where id = j.il_id), 'Tüm Türkiye'), 'il_id', j.il_id, 'kaynak', j.kaynak,
+    'parti', (select kisa from oyun.partiler where id = j.parti_id), 'veren', oyun.kad(j.veren), 'metin', j.metin, 'ucret', j.ucret,
+    'bas', j.bas, 'bit', j.bit, 'durum', j.durum, 'gosterim', j.gosterim,
+    'katilim', (select count(*) from oyun.ajans_cevap where is_id = j.id),
+    'sonuc', case when j.veren = u or j.yayimlandi is not null
+                    or (j.parti_id is not null and exists (select 1 from oyun.partiler where id = j.parti_id and gb = u)) then j.sonuc end,
+    'yayimlandi', j.yayimlandi, 'puan', j.puan, 'benim', j.veren = u)
+$$;
+
+create or replace function public.ajans_liste(p_il int default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); v_il smallint := p_il; gbParti oyun.partiler;
+begin
+  perform oyun.ajans_tick();
+  select * into gbParti from oyun.partiler where gb = p.id and not kapali limit 1;
+  return jsonb_build_object(
+    'ajanslar', coalesce((select jsonb_agg(jsonb_build_object('id', s.id, 'ad', s.ad, 'sahip', oyun.kad(oyun.sirket_sahibi(s.id)),
+        'fiyat', a.fiyat, 'kalite', a.kalite, 'marka', round(a.marka), 'is_sayisi', a.is_sayisi,
+        'puan', (select round(avg(puan), 1) from oyun.ajans_is where sirket_id = s.id and puan is not null),
+        'kapasite', oyun.ajans_kapasite(s.id), 'dolu', oyun.ajans_dolu(s.id),
+        'reklam_ucret', oyun.ajans_ucret(s.id, 'reklam', v_il), 'anket_ucret', oyun.ajans_ucret(s.id, 'anket', v_il),
+        'reklam_saat', 12 + 8 * a.kalite, 'anket_odul', round((300 + 250 * a.kalite) * coalesce((select endeks from oyun.ulke where id = 1), 1)),
+        'benim', oyun.sirket_yonetici_mi(s.id, p.id))
+        order by a.marka desc, s.id) from oyun.ajans a join oyun.sirketler s on s.id = a.sirket_id where s.aktif), '[]'::jsonb),
+    'il_id', v_il, 'il', coalesce((select ad from oyun.iller where id = v_il), 'Tüm Türkiye'),
+    'reklam_dolu', (select count(*) from oyun.ajans_is where tur = 'reklam' and durum = 'yayinda' and il_id is not distinct from v_il),
+    'reklam_sinir', case when v_il is null then 1 else 2 end,
+    'parti', case when gbParti.id is not null then jsonb_build_object('id', gbParti.id, 'ad', gbParti.ad, 'kisa', gbParti.kisa, 'kasa', round(gbParti.kasa)) end,
+    'cuzdan', (select para from oyun.cuzdan where user_id = p.id),
+    'yasak', oyun.anket_yasagi(t),
+    'ajansim', (select s.id from oyun.sirketler s join oyun.sirket_ortaklari o on o.sirket_id = s.id where s.sektor = 'ajans' and s.aktif and o.user_id = p.id order by o.pay desc limit 1),
+    'islerim', coalesce((select jsonb_agg(oyun.ajans_is_json(j, p.id) order by j.id desc) from
+        (select * from oyun.ajans_is where veren = p.id or (parti_id is not null and parti_id = gbParti.id) order by id desc limit 20) j), '[]'::jsonb));
+end $$;
+
+create or replace function public.ajans_siparis(p_sirket bigint, p_tur text, p_il int, p_kaynak text, p_metin text default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); s oyun.sirketler; a oyun.ajans; pa oyun.partiler; t timestamptz := oyun.simdi();
+  v_il smallint := p_il; ucret numeric; v_id bigint; saat int; v_odul numeric; hedef text; u uuid; metin text := btrim(coalesce(p_metin, ''));
+begin
+  perform oyun.ajans_tick();
+  select * into s from oyun.sirketler where id = p_sirket;
+  select * into a from oyun.ajans where sirket_id = p_sirket;
+  if s.id is null or a.sirket_id is null or not s.aktif then raise exception 'Ajans bulunamadı.'; end if;
+  if p_tur not in ('reklam','anket') then raise exception 'Hizmet reklam ya da anket olmalı.'; end if;
+  if v_il is not null and not exists (select 1 from oyun.iller where id = v_il) then raise exception 'Geçersiz il.'; end if;
+  if p_kaynak not in ('parti','kisi') then raise exception 'Ödeme kaynağı parti ya da kişi olmalı.'; end if;
+  if oyun.sirket_yonetici_mi(s.id, p.id) then raise exception 'Kendi ajansından sipariş veremezsin.'; end if;
+  if oyun.ajans_dolu(s.id) >= oyun.ajans_kapasite(s.id) then raise exception 'Bu ajansın kapasitesi dolu; başka ajans seç ya da işlerin bitmesini bekle.'; end if;
+  if p_tur = 'reklam' then
+    if char_length(metin) not between 10 and 200 then raise exception 'Reklam metni 10-200 karakter olmalı.'; end if;
+    if (select count(*) from oyun.ajans_is where tur = 'reklam' and durum = 'yayinda' and il_id is not distinct from v_il) >= (case when v_il is null then 1 else 2 end) then
+      raise exception 'Bu hedefte reklam alanı dolu; mevcut reklamlar bitince tekrar dene.';
+    end if;
+  else
+    metin := null;
+    if exists (select 1 from oyun.ajans_is where tur = 'anket' and durum = 'yayinda' and il_id is not distinct from v_il) then
+      raise exception 'Bu hedefte zaten sürmekte olan bir anket var; katılımcılar bölünmesin diye 24 saat bekle.';
+    end if;
+  end if;
+  if exists (select 1 from oyun.ajans_is where veren = p.id and bas > t - interval '1 hour') then raise exception 'Saatte en fazla bir sipariş verebilirsin.'; end if;
+  ucret := oyun.ajans_ucret(s.id, p_tur, v_il);
+  if p_kaynak = 'parti' then
+    select * into pa from oyun.partiler where gb = p.id and not kapali limit 1;
+    if pa.id is null then raise exception 'Parti adına siparişi genel başkan verir.'; end if;
+    update oyun.partiler set kasa = kasa - ucret where id = pa.id and kasa >= ucret;
+    if not found then raise exception 'Parti kasasında % ₺ gerekli.', oyun.tl(ucret); end if;
+    insert into oyun.parti_hareket(parti_id, zaman, tutar, aciklama, tur) values (pa.id, t, -ucret, format('%s: %s siparişi', s.ad, p_tur), 'kampanya');
+  else
+    perform oyun.para_islem(p.id, -ucret, 'kampanya', format('%s: %s siparişi', s.ad, p_tur), t);
+  end if;
+  saat := case when p_tur = 'reklam' then 12 + 8 * a.kalite else 24 end;
+  v_odul := case when p_tur = 'anket' then round((300 + 250 * a.kalite) * coalesce((select endeks from oyun.ulke where id = 1), 1)) else 0 end;
+  insert into oyun.ajans_is(sirket_id, tur, il_id, kaynak, parti_id, veren, metin, ucret, kalite, odul, havuz, bas, bit)
+    values (s.id, p_tur, v_il, p_kaynak, pa.id, p.id, metin, ucret, a.kalite, v_odul, case when p_tur = 'anket' then round(ucret * 0.4) else 0 end,
+            t, t + saat * interval '1 hour') returning id into v_id;
+  update oyun.sirketler set kasa = kasa + ucret where id = s.id;
+  update oyun.ajans set hafta_gelir = hafta_gelir + ucret where sirket_id = s.id;
+  hedef := coalesce((select ad from oyun.iller where id = v_il), 'tüm Türkiye');
+  perform oyun.bildir(oyun.sirket_sahibi(s.id), format('Yeni sipariş: %s, %s için %s (%s ₺).', coalesce(pa.kisa, p.kad), hedef, p_tur, oyun.tl(ucret)), t);
+  -- kaliteli reklam başlarken hedefteki oyunculara bildirim gönderir
+  if p_tur = 'reklam' and a.kalite >= 2 then
+    for u in select id from oyun.profiller where (v_il is null or il_id = v_il) and id <> p.id and not coalesce(yasakli, false) loop
+      perform oyun.bildir(u, format('Sponsorlu · %s: %s', coalesce(pa.kisa, p.kad), left(metin, 120)), t);
+    end loop;
+  end if;
+  if p_tur = 'anket' then
+    for u in select id from oyun.profiller where (v_il is null or il_id = v_il) and id <> p.id and not coalesce(yasakli, false) loop
+      perform oyun.bildir(u, format('%s kamuoyu araştırması yapıyor: tek soruyu cevapla, %s ₺ katılım ödülü kazan (Gündem).', s.ad, oyun.tl(v_odul)), t);
+    end loop;
+  end if;
+  return oyun.ajans_is_json((select j from oyun.ajans_is j where id = v_id), p.id);
+end $$;
+
+-- Oyuncunun Gündem'inde: bir sponsorlu reklam ve cevaplamadığı bir anket
+create or replace function public.ajans_gundem() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); r oyun.ajans_is; k oyun.ajans_is;
+begin
+  perform oyun.ajans_tick();
+  select * into r from oyun.ajans_is where tur = 'reklam' and durum = 'yayinda' and bit > t and (il_id is null or il_id = p.il_id)
+    order by (select count(*) from oyun.ajans_gosterim g where g.is_id = ajans_is.id and g.user_id = p.id), gosterim, random() limit 1;
+  if r.id is not null and r.veren <> p.id then
+    insert into oyun.ajans_gosterim(is_id, user_id, zaman) values (r.id, p.id, t) on conflict do nothing;
+    if found then update oyun.ajans_is set gosterim = gosterim + 1 where id = r.id; end if;
+  end if;
+  select * into k from oyun.ajans_is where tur = 'anket' and durum = 'yayinda' and bit > t and (il_id is null or il_id = p.il_id) and veren <> p.id
+    and not exists (select 1 from oyun.ajans_cevap c where c.is_id = ajans_is.id and c.user_id = p.id) order by bit limit 1;
+  return jsonb_build_object(
+    'reklam', case when r.id is not null then jsonb_build_object('id', r.id, 'metin', r.metin,
+        'kim', coalesce((select ad from oyun.partiler where id = r.parti_id), oyun.kad(r.veren)),
+        'renk', (select renk from oyun.partiler where id = r.parti_id), 'ajans', (select ad from oyun.sirketler where id = r.sirket_id)) end,
+    'anket', case when k.id is not null then jsonb_build_object('id', k.id, 'ajans', (select ad from oyun.sirketler where id = k.sirket_id),
+        'hedef', coalesce((select ad from oyun.iller where id = k.il_id), 'Türkiye'), 'odul', case when k.havuz >= k.odul then k.odul else 0 end, 'bit', k.bit,
+        'partiler', (select jsonb_agg(jsonb_build_object('id', id, 'ad', ad, 'kisa', kisa, 'renk', renk) order by ad) from oyun.partiler where not kapali)) end);
+end $$;
+
+create or replace function public.ajans_anket_cevap(p_is bigint, p_parti bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); k oyun.ajans_is; v_odul numeric := 0;
+begin
+  select * into k from oyun.ajans_is where id = p_is for update;
+  if k.id is null or k.tur <> 'anket' or k.durum <> 'yayinda' or k.bit <= t then raise exception 'Anket sona erdi.'; end if;
+  if k.il_id is not null and k.il_id <> p.il_id then raise exception 'Bu anket başka bir ilde yapılıyor.'; end if;
+  if k.veren = p.id then raise exception 'Kendi yaptırdığın ankete katılamazsın.'; end if;
+  if p_parti is not null and not exists (select 1 from oyun.partiler where id = p_parti and not kapali) then raise exception 'Geçersiz parti.'; end if;
+  if exists (select 1 from oyun.ajans_cevap where is_id = k.id and user_id = p.id) then raise exception 'Bu ankete zaten katıldın.'; end if;
+  -- ödül: havuz ve ajans kasası yeterse; yeni hesaplara (1 günden genç) ödül yok
+  if k.havuz >= k.odul and k.odul > 0 and p.olusturma < t - interval '1 day'
+     and (select kasa from oyun.sirketler where id = k.sirket_id) >= k.odul then
+    v_odul := k.odul;
+    update oyun.ajans_is set havuz = havuz - v_odul where id = k.id;
+    update oyun.sirketler set kasa = kasa - v_odul where id = k.sirket_id;
+    update oyun.ajans set hafta_odul = hafta_odul + v_odul where sirket_id = k.sirket_id;
+    perform oyun.para_islem(p.id, v_odul, 'odul', format('%s anketine katılım ödülü', (select ad from oyun.sirketler where id = k.sirket_id)), t);
+  end if;
+  insert into oyun.ajans_cevap(is_id, user_id, parti_id, odul, zaman) values (k.id, p.id, p_parti, v_odul, t);
+  return jsonb_build_object('tamam', true, 'odul', v_odul);
+end $$;
+
+create or replace function public.ajans_anket_yayimla(p_is bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); k oyun.ajans_is; ozet text;
+begin
+  select * into k from oyun.ajans_is where id = p_is for update;
+  if k.id is null or k.tur <> 'anket' then raise exception 'Anket bulunamadı.'; end if;
+  if not (k.veren = p.id or (k.parti_id is not null and exists (select 1 from oyun.partiler where id = k.parti_id and gb = p.id))) then
+    raise exception 'Sonucu yalnız anketi yaptıran yayımlayabilir.';
+  end if;
+  if k.durum <> 'bitti' or k.sonuc is null then raise exception 'Anket henüz bitmedi.'; end if;
+  if k.yayimlandi is not null then raise exception 'Bu anket zaten yayımlandı.'; end if;
+  if oyun.anket_yasagi(t) then raise exception 'Seçim yasağı: oy günü ve öncesindeki 24 saatte anket sonucu yayımlanamaz.'; end if;
+  if (k.sonuc->>'n')::int < 3 then raise exception 'En az 3 katılımcı olmadan sonuç yayımlanamaz.'; end if;
+  select string_agg(format('%s %%%s', x->>'kisa', replace((x->>'yuzde'), '.', ',')), ', ')
+    into ozet from (select x from jsonb_array_elements(k.sonuc->'partiler') x order by (x->>'oy')::int desc limit 5) z;
+  update oyun.ajans_is set yayimlandi = t where id = k.id;
+  update oyun.ajans set marka = least(100, marka + 2) where sirket_id = k.sirket_id;
+  perform oyun.olay('anket', format('%s anketi (%s, %s kişi, hata payı ±%s): %s. Kararsız %%%s.',
+    (select ad from oyun.sirketler where id = k.sirket_id), coalesce((select ad from oyun.iller where id = k.il_id), 'Türkiye'),
+    k.sonuc->>'n', replace(k.sonuc->>'hata', '.', ','), coalesce(ozet, '-'), replace(k.sonuc->>'kararsiz_yuzde', '.', ',')), k.il_id, k.parti_id, t);
+  return oyun.ajans_is_json((select j from oyun.ajans_is j where id = k.id), p.id);
+end $$;
+
+create or replace function public.ajans_puanla(p_is bigint, p_puan int) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); k oyun.ajans_is;
+begin
+  select * into k from oyun.ajans_is where id = p_is for update;
+  if k.id is null or k.veren <> p.id then raise exception 'Yalnız kendi siparişini puanlayabilirsin.'; end if;
+  if k.durum <> 'bitti' then raise exception 'İş bitince puanlayabilirsin.'; end if;
+  if k.puan is not null then raise exception 'Bu işi zaten puanladın.'; end if;
+  if p_puan not between 1 and 5 then raise exception 'Puan 1-5 arasında olmalı.'; end if;
+  update oyun.ajans_is set puan = p_puan where id = k.id;
+  update oyun.ajans set marka = oyun.sinir(marka + (p_puan - 3) * 3, 0, 100) where sirket_id = k.sirket_id;
+  return jsonb_build_object('tamam', true);
+end $$;
+
+-- Biten reklam ve anketleri kapatır
+create or replace function oyun.ajans_tick() returns int
+language plpgsql security definer set search_path = '' as $$
+declare t timestamptz := oyun.simdi(); k oyun.ajans_is; n int := 0; v_n int; kar int; v_sonuc jsonb; u uuid;
+begin
+  if not pg_try_advisory_xact_lock(84861) then return 0; end if;
+  for k in select * from oyun.ajans_is where durum = 'yayinda' and bit <= t order by bit for update loop
+    if k.tur = 'anket' then
+      select count(*), count(*) filter (where parti_id is null) into v_n, kar from oyun.ajans_cevap where is_id = k.id;
+      v_sonuc := jsonb_build_object('n', v_n, 'kararsiz', kar, 'kararsiz_yuzde', case when v_n > 0 then round(kar * 100.0 / v_n, 1) else 0 end,
+        'hata', case when v_n > 0 then round((98 / sqrt(v_n))::numeric, 1) else null end,
+        'partiler', coalesce((select jsonb_agg(jsonb_build_object('id', pa.id, 'kisa', pa.kisa, 'ad', pa.ad, 'renk', pa.renk, 'oy', z.oy,
+            'yuzde', round(z.oy * 100.0 / nullif(v_n - kar, 0), 1)) order by z.oy desc)
+          from (select parti_id, count(*) oy from oyun.ajans_cevap where is_id = k.id and parti_id is not null group by parti_id) z
+          join oyun.partiler pa on pa.id = z.parti_id), '[]'::jsonb));
+      -- kullanılmayan ödül havuzu ajansın gelirinde kalır
+      update oyun.ajans_is set durum = 'bitti', sonuc = v_sonuc, havuz = 0 where id = k.id;
+      perform oyun.bildir(k.veren, format('Anket sonucu hazır (%s, %s katılımcı). Gündem › Reklam ve anket ajansları › Siparişlerim.',
+        coalesce((select ad from oyun.iller where id = k.il_id), 'Türkiye'), v_n), k.bit);
+    else
+      update oyun.ajans_is set durum = 'bitti' where id = k.id;
+      perform oyun.bildir(k.veren, format('Reklamın sona erdi: %s oyuncu gördü.', k.gosterim), k.bit);
+    end if;
+    update oyun.ajans set is_sayisi = is_sayisi + 1, marka = least(100, marka + 1 + kalite) where sirket_id = k.sirket_id;
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+
+-- Zamanlayıcı: ajansların haftalık hesabı ve iş kapanışları da pazar_tick ile
+create or replace function oyun.pazar_tick() returns int
+language plpgsql security definer set search_path = '' as $$
+declare r record; n int := 0;
+begin
+  perform oyun.ihale_tick();
+  perform oyun.rekabet_tick();
+  perform oyun.ajans_tick();
+  for r in select s.id from oyun.sirketler s
+           where s.aktif and s.sonraki_kazanc <= oyun.simdi()
+             and (exists (select 1 from oyun.pazar_sirket ps where ps.sirket_id = s.id) or s.sektor = 'ajans')
+           order by s.sonraki_kazanc limit 200 loop
+    perform oyun.sirket_hesapla(r.id); n := n + 1;
+  end loop;
+  perform oyun.piyasa_endeks_tick();
+  return n;
+end $$;
+
+revoke all on function public.ajans_kur(text, numeric), public.ajans_ayarla(bigint, int, int), public.ajans_yonetim(bigint),
+  public.ajans_liste(int), public.ajans_siparis(bigint, text, int, text, text), public.ajans_gundem(), public.ajans_anket_cevap(bigint, bigint),
+  public.ajans_anket_yayimla(bigint), public.ajans_puanla(bigint, int) from public, anon;
+grant execute on function public.ajans_kur(text, numeric), public.ajans_ayarla(bigint, int, int), public.ajans_yonetim(bigint),
+  public.ajans_liste(int), public.ajans_siparis(bigint, text, int, text, text), public.ajans_gundem(), public.ajans_anket_cevap(bigint, bigint),
+  public.ajans_anket_yayimla(bigint), public.ajans_puanla(bigint, int) to authenticated;
+revoke all on function oyun.ajans_il_kat(smallint), oyun.ajans_ucret(bigint, text, smallint), oyun.ajans_kapasite(bigint), oyun.ajans_dolu(bigint),
+  oyun.anket_yasagi(timestamptz), oyun.ajans_haftalik_gider(bigint), oyun.ajans_hesapla(bigint), oyun.ajans_is_json(oyun.ajans_is, uuid),
+  oyun.ajans_tick() from public, anon, authenticated;
+-- 11.10.2026 / Gelire dayali krediler, 1-4 haftalik vadeler
+-- Mevcut kredi bakiyeleri ve vadeleri DEGISTIRILMEZ.
+-- Islem cercevesi gelistirici/build/sql_birlestir.js tarafindan yonetilir.
+ALTER TABLE oyun.krediler DROP CONSTRAINT IF EXISTS krediler_gun_check;
+ALTER TABLE oyun.krediler ADD CONSTRAINT krediler_gun_check CHECK (gun IN (7,14,15,21,28,30));
+ALTER TABLE oyun.oyb_kredi DROP CONSTRAINT IF EXISTS oyb_kredi_saat_check;
+ALTER TABLE oyun.oyb_kredi ADD CONSTRAINT oyb_kredi_saat_check CHECK (saat IN (1,3,6,12,24,168,336,504,672));
+CREATE OR REPLACE FUNCTION oyun.kredi_risk_ozeti(p_user uuid, p_saat integer)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path = ''
+AS $fn$
+DECLARE
+    t timestamptz := oyun.simdi();
+    gelir_json jsonb;
+    notu integer := 1100;
+    kara_liste timestamptz;
+    gecikmis integer := 0;
+    maas7 numeric := 0;
+    kira7 numeric := 0;
+    sirket7 numeric := 0;
+    nakit numeric := 0;
+    devlet_gunluk_borc numeric := 0;
+    vadedeki_ozel_borc numeric := 0;
+    haftalik_gelir numeric := 0;
+    mevcut_kapasite numeric := 0;
+    puan_katsayisi numeric := 0;
+    limit_tl numeric := 0;
+    aciklama text := 'Gelir ve kredi notu uygun';
+BEGIN
+    IF p_user IS NULL OR p_saat IS NULL OR p_saat NOT IN (1,3,6,12,24,168,336,360,504,672,720) THEN
+        RAISE EXCEPTION 'Gecersiz kullanici veya kredi vadesi';
+    END IF;
+    SELECT coalesce(b.kredi_notu,1100), b.kara_liste
+      INTO notu, kara_liste
+      FROM oyun.banka_musteri b WHERE b.user_id=p_user;
+    notu := coalesce(notu,1100);
+
+    SELECT greatest(0, coalesce(c.para,0)+coalesce(b.vadesiz,0))
+      INTO nakit
+      FROM oyun.cuzdan c
+      LEFT JOIN oyun.banka_musteri b ON b.user_id=c.user_id
+     WHERE c.user_id=p_user;
+    nakit := coalesce(nakit,0);
+
+    gelir_json := oyun.gelir_hesap(p_user,t);
+    maas7 := greatest(0,coalesce((gelir_json->>'gunluk_net')::numeric,0))*7*0.70;
+    SELECT coalesce(sum(greatest(0,haftalik_kira)),0)*0.80
+      INTO kira7
+      FROM oyun.yatirim_mulkleri WHERE user_id=p_user;
+
+    -- Kar: son 28 gunluk GEREKCELI isletme hareketleri; pay oranina gore, haftaya cevrilir.
+    SELECT coalesce(sum(greatest(0,net_28_gun)*ortak_pay),0)/4*0.40
+      INTO sirket7
+      FROM (
+        SELECT o.sirket_id,
+               o.pay/100 AS ortak_pay,
+               coalesce(sum(coalesce(h.faaliyet_gelir,0)-coalesce(h.faaliyet_gider,0)),0) AS net_28_gun
+          FROM oyun.sirket_ortaklari o
+          JOIN oyun.sirketler s ON s.id=o.sirket_id AND s.aktif AND s.sektor<>'banka'
+          LEFT JOIN oyun.sirket_hareket h
+            ON h.sirket_id=s.id AND h.zaman>=t-interval '28 days'
+         WHERE o.user_id=p_user AND o.pay>0
+         GROUP BY o.sirket_id,o.pay
+      ) x;
+
+    haftalik_gelir := round(maas7+kira7+sirket7,2);
+
+    SELECT coalesce(sum(k.taksit),0)
+      INTO devlet_gunluk_borc
+      FROM oyun.krediler k
+     WHERE k.user_id=p_user AND k.durum IN ('aktif','takip');
+
+    SELECT coalesce(sum(k.kalan) FILTER (WHERE k.vade<=t+make_interval(hours=>p_saat)),0),
+           count(*) FILTER (WHERE k.vade<t)
+      INTO vadedeki_ozel_borc,gecikmis
+      FROM oyun.oyb_kredi k
+     WHERE k.borclu=p_user AND k.durum='aktif';
+
+    puan_katsayisi := CASE
+        WHEN notu<700 THEN 0
+        WHEN notu<900 THEN .35
+        WHEN notu<1100 THEN .50
+        WHEN notu<1500 THEN .70
+        WHEN notu<1700 THEN .85
+        ELSE 1 END;
+
+    -- 1-24 saatlik kredi vadeleri icin gelir vade ile orantilidir;
+    -- boylece kisa vadeye gercekci olmayacak buyuk kredi verilmez.
+    -- DTI: en fazla haftalik duzenli gelirin %40'i borc servisine ayrilir.
+    -- Nakit bir krediyi tek basina hak ettirmez, sadece gelir varsa teminata destek olur.
+    mevcut_kapasite := greatest(0,
+        haftalik_gelir * p_saat / 168 * 0.40
+        + least(nakit * 0.10, haftalik_gelir * p_saat / 168 * 0.10)
+        - devlet_gunluk_borc * p_saat / 24 - vadedeki_ozel_borc);
+    IF haftalik_gelir < 1000 THEN mevcut_kapasite := 0; END IF;
+    -- %20 faiz tamponu ve kredi notu katsayisi; 100 TL adim.
+    limit_tl := greatest(0,least(500000,
+        floor(mevcut_kapasite * puan_katsayisi / 1.20 / 100)*100));
+
+    IF notu<700 THEN
+        aciklama:='Kredi notu 700 altinda';limit_tl:=0;
+    ELSIF kara_liste>t THEN
+        aciklama:='Kara liste suresi devam ediyor';limit_tl:=0;
+    ELSIF gecikmis>0 THEN
+        aciklama:='Vadesi gecen oyuncu bankasi kredisi var';limit_tl:=0;
+    ELSIF EXISTS (
+        SELECT 1 FROM oyun.krediler WHERE user_id=p_user AND durum='takip'
+    ) THEN
+        aciklama:='Yasal takipte devlet bankasi kredisi var';limit_tl:=0;
+    ELSIF limit_tl<1000 THEN
+        aciklama:='Gelir ve kullanilabilir butce yetersiz';
+    END IF;
+
+    RETURN jsonb_build_object(
+        'kredi_notu',notu,'not_ad',oyun.not_ad(notu),
+        'haftalik_maas',round(maas7,2),
+        'haftalik_kira',round(kira7,2),
+        'haftalik_sirket',round(sirket7,2),
+        'haftalik_gelir',haftalik_gelir,
+        'nakit',round(nakit,2),
+        'devlet_gunluk_taksit',round(devlet_gunluk_borc,2),
+        'bu_vadede_ozel_borc',round(vadedeki_ozel_borc,2),
+        'azami_kredi',limit_tl,
+        'uygun',limit_tl>=1000,
+        'neden',aciklama,
+        'vade_saat',p_saat
+    );
+END $fn$;
+CREATE OR REPLACE FUNCTION public.kredi_uygunluk(p_banka bigint DEFAULT NULL,p_saat integer DEFAULT 24)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $fn$
+DECLARE
+    u uuid := auth.uid();
+    risk jsonb;
+    bank oyun.sirketler;
+    faiz numeric;
+    limit_tl numeric;
+BEGIN
+    IF u IS NULL THEN RAISE EXCEPTION 'Oturum gerekli'; END IF;
+    risk := oyun.kredi_risk_ozeti(u,p_saat);
+    limit_tl := (risk->>'azami_kredi')::numeric;
+    IF p_banka IS NULL THEN
+        -- Devlet bankasindaki mevcut statut/puan tavanini da korur.
+        limit_tl := least(limit_tl,oyun.kredi_limiti(u));
+        faiz := oyun.kredi_orani(u)*p_saat/720;
+    ELSE
+        IF p_saat NOT IN (1,3,6,12,24,168,336,504,672) THEN
+            RAISE EXCEPTION 'Gecersiz oyuncu banka vadesi';
+        END IF;
+        SELECT * INTO bank FROM oyun.sirketler
+         WHERE id=p_banka AND sektor='banka' AND aktif;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Banka bulunamadi'; END IF;
+        IF EXISTS(SELECT 1 FROM oyun.sirket_ortaklari
+           WHERE sirket_id=p_banka AND user_id=u AND pay>0) THEN
+            limit_tl:=0;
+            risk:=risk||jsonb_build_object('neden','Kendi bankandan kredi alamazsin');
+        END IF;
+        limit_tl:=least(limit_tl,
+            coalesce((oyun.oyb_saglik(p_banka)->>'kredi_verilebilir')::numeric,0));
+        -- Kredi notu yuksekse dusuk faiz, riskli profilse yuksek faiz.
+        faiz:=round(least(19.50,
+            least(bank.banka_kredi_faiz,1.0)
+            * CASE WHEN p_saat>=168 THEN 7 + 2*(p_saat/168-1)
+                   ELSE p_saat/24.0 END
+            * CASE WHEN (risk->>'kredi_notu')::integer<900 THEN 1.5
+                   WHEN (risk->>'kredi_notu')::integer<1100 THEN 1.35
+                   WHEN (risk->>'kredi_notu')::integer<1500 THEN 1.15
+                   WHEN (risk->>'kredi_notu')::integer<1700 THEN 1.00
+                   ELSE .90 END
+            + CASE WHEN p_saat>=168 THEN (p_saat/168-1)*.50 ELSE 0 END),2);
+    END IF;
+    limit_tl:=greatest(0,floor(limit_tl/100)*100);
+    RETURN risk||jsonb_build_object('azami_kredi',limit_tl,
+       'uygun',limit_tl>=1000,'oran',faiz,'banka_id',p_banka);
+END $fn$;
+CREATE OR REPLACE FUNCTION public.oyb_kredi_basvur(p_banka bigint,p_tutar numeric,p_saat integer)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $fn$
+DECLARE
+    u uuid:=auth.uid();
+    bank oyun.sirketler;
+    risk jsonb;
+    faiz numeric;
+    toplam numeric;
+    yeni_id bigint;
+BEGIN
+    IF u IS NULL THEN RAISE EXCEPTION 'Oturum gerekli'; END IF;
+    IF p_tutar IS NULL OR p_tutar<>trunc(p_tutar) OR p_tutar<1000 OR p_tutar>500000 THEN
+        RAISE EXCEPTION 'Kredi 1.000 - 500.000 TL arasinda tam TL olmali';
+    END IF;
+    IF p_saat NOT IN (1,3,6,12,24,168,336,504,672) OR p_saat IS NULL THEN
+        RAISE EXCEPTION 'Vade saatlik veya 1, 2, 3, 4 haftalik olabilir';
+    END IF;
+    SELECT * INTO bank FROM oyun.sirketler
+      WHERE id=p_banka AND aktif AND sektor='banka';
+    IF NOT FOUND THEN RAISE EXCEPTION 'Banka bulunamadi'; END IF;
+    IF EXISTS(SELECT 1 FROM oyun.sirket_ortaklari
+      WHERE sirket_id=p_banka AND user_id=u AND pay>0) THEN
+        RAISE EXCEPTION 'Kendi bankandan kredi alamazsin';
+    END IF;
+    IF EXISTS(SELECT 1 FROM oyun.oyb_kredi
+      WHERE borclu=u AND durum IN ('basvuru','aktif')) THEN
+        RAISE EXCEPTION 'Once diger oyuncu bankasi kredini kapat veya yanitini bekle';
+    END IF;
+
+    risk:=public.kredi_uygunluk(p_banka,p_saat);
+    IF p_tutar>(risk->>'azami_kredi')::numeric THEN
+        RAISE EXCEPTION 'Kredi reddedildi: %. Azami limit % TL; notun %.',
+          risk->>'neden',risk->>'azami_kredi',risk->>'kredi_notu';
+    END IF;
+    faiz:=(risk->>'oran')::numeric;
+    toplam:=round(p_tutar*(1+faiz/100));
+    INSERT INTO oyun.oyb_kredi(banka_id,borclu,anapara,saat,oran,toplam,kalan)
+    VALUES(p_banka,u,p_tutar,p_saat,faiz,toplam,toplam) RETURNING id INTO yeni_id;
+    RETURN jsonb_build_object('id',yeni_id,'anapara',p_tutar,'toplam',toplam,
+        'oran',faiz,'saat',p_saat,'durum','basvuru',
+        'kredi_notu',risk->'kredi_notu','azami_kredi',risk->'azami_kredi');
+END $fn$;
+CREATE OR REPLACE FUNCTION public.kredi_cek(p_miktar numeric,p_gun integer)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'oyun','public','pg_temp'
+AS $fn$
+DECLARE
+    p oyun.profiller:=oyun.profilim();
+    t timestamptz:=oyun.simdi();
+    m numeric:=round(coalesce(p_miktar,0));
+    mu oyun.banka_musteri;
+    lim numeric;
+    oran numeric;
+    top numeric;
+    tak numeric;
+    risk jsonb;
+BEGIN
+    PERFORM oyun.banka_acik_mi();
+    IF oyun.uyari(p,t) IS NOT NULL THEN
+        RAISE EXCEPTION 'Kredi icin secmen kartin hazir olmali: %',oyun.uyari(p,t);
+    END IF;
+    IF EXISTS(SELECT 1 FROM oyun.krediler
+        WHERE user_id=p.id AND durum IN ('aktif','takip')) THEN
+        RAISE EXCEPTION 'Odenmemis kredin var. Once onu kapatmalisin';
+    END IF;
+    mu:=oyun.musteri(p.id,t);
+    IF mu.kara_liste>t THEN
+        RAISE EXCEPTION 'Takibe dusen kredin nedeniyle su anda kredi alamazsin';
+    END IF;
+    IF mu.kredi_notu<700 THEN
+        RAISE EXCEPTION 'Kredi notun cok dusuk (%)',mu.kredi_notu;
+    END IF;
+    IF p_gun NOT IN (7,14,15,21,28,30) THEN
+        RAISE EXCEPTION 'Vade 1, 2, 3, 4 hafta olabilir (eski 15/30 gun vadeler desteklenir)';
+    END IF;
+    risk:=oyun.kredi_risk_ozeti(p.id,p_gun*24);
+    lim:=least(oyun.kredi_limiti(p.id),(risk->>'azami_kredi')::numeric);
+    IF m<1000 THEN RAISE EXCEPTION 'En az 1.000 TL kredi cekebilirsin'; END IF;
+    IF m>lim THEN
+        RAISE EXCEPTION 'Gelir/butce/not durumuna gore bu vadede kredi limitin % TL. %',
+           lim,risk->>'neden';
+    END IF;
+    oran:=oyun.kredi_orani(p.id);
+    top:=round(m*(1+oran/100*p_gun/30+
+        case when p_gun in (7,14,21,28) then .0025*(p_gun/7-1) else 0 end));
+    tak:=ceil(top/p_gun);
+    INSERT INTO oyun.krediler(user_id,anapara,oran,gun,toplam,taksit,kalan,acilis)
+    VALUES(p.id,m,oran,p_gun,top,tak,top,t);
+    PERFORM oyun.para_islem(p.id,m,'kredi',
+       format('Kredi kullanildi: %s gun vade, aylik %%%s faiz',p_gun,replace(oran::text,'.',',')),t);
+    PERFORM oyun.banka_kayit(p.id,'kredi',top,
+       format('%s TL kredi (geri odeme %s TL, gunluk %s TL x %s gun)',
+         oyun.tl(m),oyun.tl(top),oyun.tl(tak),p_gun),t);
+    PERFORM oyun.bildir(p.id,
+       format('Kredin hesabina gecti: %s TL. Yarin itibaren her gece %s TL taksit (%s gun).',
+         oyun.tl(m),oyun.tl(tak),p_gun),t);
+    RETURN public.banka();
+END $fn$;
+CREATE OR REPLACE FUNCTION public.banka()
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $fn$
+DECLARE
+    p oyun.profiller:=oyun.profilim();
+    j jsonb;
+    vv jsonb;
+    risk7 jsonb;
+    risk14 jsonb;
+    risk15 jsonb;
+    risk21 jsonb;
+    risk28 jsonb;
+    risk30 jsonb;
+    gercek_limit numeric;
+BEGIN
+    j:=oyun.banka_json(p,oyun.simdi());
+    risk7:=oyun.kredi_risk_ozeti(p.id,168);
+    risk14:=oyun.kredi_risk_ozeti(p.id,336);
+    risk15:=oyun.kredi_risk_ozeti(p.id,360);
+    risk21:=oyun.kredi_risk_ozeti(p.id,504);
+    risk28:=oyun.kredi_risk_ozeti(p.id,672);
+    risk30:=oyun.kredi_risk_ozeti(p.id,720);
+    gercek_limit:=least(coalesce((j->>'kredi_limit')::numeric,0),
+        greatest((risk7->>'azami_kredi')::numeric,
+                 (risk14->>'azami_kredi')::numeric,
+                 (risk15->>'azami_kredi')::numeric,
+                 (risk21->>'azami_kredi')::numeric,
+                 (risk28->>'azami_kredi')::numeric,
+                 (risk30->>'azami_kredi')::numeric));
+    j:=j||jsonb_build_object('kredi_limit',greatest(0,gercek_limit),
+      'kredi_butce',jsonb_build_object('vade7',risk7,'vade14',risk14,'vade15',risk15,'vade21',risk21,'vade28',risk28,'vade30',risk30));
+    j:=jsonb_set(j,'{vadesiz}',coalesce(j->'vadesiz','{}'::jsonb)
+        ||jsonb_build_object('saatlik',0,'gunluk',0,'birikmis',0,'faiz_toplam',0),true);
+    SELECT coalesce(jsonb_agg(x||CASE WHEN x?'saatlik' THEN '{}'::jsonb
+      ELSE jsonb_build_object('saatlik',0) END),'[]'::jsonb)
+      INTO vv FROM jsonb_array_elements(coalesce(j->'vadeliler','[]'::jsonb)) x;
+    RETURN jsonb_set(j,'{vadeliler}',vv,true);
+END $fn$;
+REVOKE EXECUTE ON FUNCTION oyun.kredi_risk_ozeti(uuid,integer) FROM PUBLIC,anon;
+REVOKE EXECUTE ON FUNCTION public.kredi_uygunluk(bigint,integer),
+  public.oyb_kredi_basvur(bigint,numeric,integer),
+  public.kredi_cek(numeric,integer),public.banka() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.kredi_uygunluk(bigint,integer),
+  public.oyb_kredi_basvur(bigint,numeric,integer),
+  public.kredi_cek(numeric,integer),public.banka() TO authenticated;
+-- =====================================================================
+--  SEÇİM SİMÜLASYONU ONLINE — 88) Ekonomi güvenliği: ilişkili hesap kuralı, fiyat bantları,
+--  MASAK (şüpheli işlem bildirimi), parti kasası şeffaflığı, yönetim hediyeleri listesi
+--
+--  Haksız zenginleşmenin neredeyse tek yolu: bir oyuncunun ikinci hesabıyla "meşru işlem" kılığında
+--  para taşıması. Bu modül işlemleri RPC'lere dokunmadan TETİKLEYİCİLERLE korur:
+--  1) İLİŞKİLİ HESAP: aynı cihazda açılmış hesaplar (oyun.bagli_hesaplar) birbirleriyle borsada,
+--     hisse/şirket satışında, emlakta, ortaklık teklifinde işlem yapamaz; birbirinin ihalesine
+--     giremez; birbirinin ajansından sipariş veremez; birbirinin anketine katılamaz.
+--     (Banka transferi ve hediyede bu kural zaten vardı.)
+--  2) FİYAT BANTLARI: Borsada son işlem fiyatının ±%20'si (ilk işlemde referansın 0,5-2 katı);
+--     şirket/pay satışında şirket kasasının (defter değeri) 0,5 katı ile sermaye/kasanın 3 katı arası;
+--     emlakta ilin rayiç bedelinin 0,4-2,5 katı. Değer şişirerek ya da 1 ₺'ye satarak para taşınamaz.
+--  3) MASAK: sunucu şüpheli durumları kendiliğinden kaydeder: 24 saatte olağan dışı gelir (ani servet),
+--     aynı iki oyuncu arasında 7 günde 3+ alım-satım, parti kasasından büyük harcama, ihalenin
+--     ihaleyi açanla aynı partiden birine gitmesi. Yetkili moderatör (yeni yetki "ekonomi") inceler:
+--     temiz / ihtar / el koyma (para hazineye geçer, oyuncuya bildirilir, kayıt tutulur).
+--  4) Ödül tavanları anket fonksiyonunda (modül 86): ödül için en az 7 günlük hesap, günde en fazla 3 ödül.
+--  5) ŞEFFAFLIK: her partinin kasa defteri herkese açık; büyük harcamada genel başkan yardımcılarına
+--     bildirim gider. Yönetimin dağıttığı hediyeler herkese açık listede.
+--  Ayarlar oyun.guvenlik_ayar'da; yönetici SQL ile değiştirebilir. Önce 84, 85, 86 kurulmuş olmalı.
+-- =====================================================================
+
+create table if not exists oyun.guvenlik_ayar(
+  id                  int primary key default 1 check (id = 1),
+  fiyat_bandi         boolean not null default true,
+  masak               boolean not null default true,
+  masak_servet_esik   numeric not null default 1000000,  -- 24 saatte bu kadar gelir (fiyat düzeyiyle) → bildirim
+  odul_min_gun        int not null default 7,
+  gunluk_odul_sinir   int not null default 3,
+  parti_bildirim_esik numeric not null default 50000,
+  parti_masak_esik    numeric not null default 250000
+);
+insert into oyun.guvenlik_ayar(id) values (1) on conflict do nothing;
+
+create table if not exists oyun.masak(
+  id          bigserial primary key,
+  tur         text not null check (tur in ('ani_servet','tekrarlayan_ticaret','parti_harcama','ihale_kayirma')),
+  user_id     uuid,
+  karsi_id    uuid,
+  parti_id    bigint,
+  tutar       numeric,
+  aciklama    text not null,
+  zaman       timestamptz not null,
+  durum       text not null default 'yeni' check (durum in ('yeni','temiz','ihtar','el_koyuldu')),
+  karar_veren uuid,
+  karar_not   text,
+  karar_zaman timestamptz,
+  el_koyulan  numeric
+);
+create index if not exists masak_durum on oyun.masak(durum, zaman desc);
+create index if not exists masak_user on oyun.masak(user_id, tur, zaman desc);
+
+do $$ begin
+  execute 'alter table oyun.guvenlik_ayar enable row level security';
+  execute 'alter table oyun.masak enable row level security';
+  revoke all on oyun.guvenlik_ayar, oyun.masak from public, anon, authenticated;
+  revoke all on sequence oyun.masak_id_seq from public, anon, authenticated;
+end $$;
+
+-- Moderatör yetkisi "ekonomi" (eski yetkiler aynen kalır)
+create or replace function oyun.mod_yetki_tanim() returns table(kod text, ad text, aciklama text, sira int) language sql immutable as $$
+  values ('ozet',        'Özet',                    'Oyuncu sayısı, aktiflik, açık şikâyet gibi özet rakamları görür.', 1),
+         ('sikayet',     'Şikâyetler',              'Şikâyet edilen mesaj ve yayınları görür; "sorun yok" ya da "gizle" kararı verir.', 2),
+         ('sustur',      'Susturma',                'Oyuncuyu 1 ya da 7 gün susturur, susturmayı kaldırır.', 3),
+         ('hesap_kapat', 'Hesap kapatma',           'Kural ihlali yapan hesabı kapatır ya da yeniden açar.', 4),
+         ('oyuncu_ara',  'Oyuncu inceleme',         'Oyuncunun bilgilerini ve son mesajlarını görür.', 5),
+         ('eposta',      'E-posta görme',           'Oyuncu incelerken e-posta adresini de görür (kişisel veri; dikkatli ver).', 6),
+         ('duyuru',      'Duyuru',                  'Tüm oyunculara oyun yönetimi adına duyuru gönderir.', 7),
+         ('coklu_hesap', 'Çoklu hesap incelemesi',  'Aynı cihazdan açılan hesapları görür, gerçek kişi olanları onaylar.', 8),
+         ('kurallar',    'Kurallar ve ayarlar',     'Vatandaşlık, parti kurma, teşkilat, havale ve banka kurallarını değiştirir.', 9),
+         ('ekonomi',     'MASAK (ekonomi denetimi)', 'Şüpheli işlem bildirimlerini inceler; temiz, ihtar ya da el koyma kararı verir.', 10)
+$$;
+
+-- ---------------------------------------------------------------- temel yardımcılar
+create or replace function oyun.iliskili(a uuid, b uuid) returns boolean language sql stable set search_path = '' as $$
+  select a is not null and b is not null and a <> b
+     and coalesce((select coklu_kontrol from oyun.ayarlar where id = 1), true)
+     and exists (select 1 from oyun.bagli_hesaplar(a) x where x = b)
+$$;
+create or replace function oyun.iliskili_hata() returns void language plpgsql as $$
+begin
+  raise exception 'Aynı cihazda açılmış (ilişkili) hesaplar arasında bu işlem yapılamaz. Aileniz aynı cihazı kullanıyorsa oyun yönetimine başvurun.';
+end $$;
+create or replace function oyun.bant_acik() returns boolean language sql stable set search_path = '' as $$
+  select coalesce((select fiyat_bandi from oyun.guvenlik_ayar where id = 1), true)
+$$;
+-- Şirketin %1 payının kabul edilebilir aralığı (defter değeri = kasa)
+create or replace function oyun.pay_bandi(p_sirket bigint, out alt numeric, out ust numeric) language sql stable set search_path = '' as $$
+  select round(greatest(0, s.kasa) * 0.5 / 100), round(greatest(s.kasa, s.sermaye, 1) * 3 / 100) from oyun.sirketler s where s.id = p_sirket
+$$;
+create or replace function oyun.masak_ekle(p_tur text, p_user uuid, p_karsi uuid, p_parti bigint, p_tutar numeric, p_aciklama text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not coalesce((select masak from oyun.guvenlik_ayar where id = 1), true) then return; end if;
+  insert into oyun.masak(tur, user_id, karsi_id, parti_id, tutar, aciklama, zaman) values (p_tur, p_user, p_karsi, p_parti, p_tutar, p_aciklama, oyun.simdi());
+end $$;
+
+-- ---------------------------------------------------------------- 1-2) borsa
+create or replace function oyun.tg_borsa_emir_bant() returns trigger language plpgsql security definer set search_path = '' as $$
+declare son numeric; ref numeric; alt numeric; ust numeric;
+begin
+  if not oyun.bant_acik() then return new; end if;
+  select birim into son from oyun.borsa_islem where sirket_id = new.sirket_id order by zaman desc, id desc limit 1;
+  if son is not null then alt := round(son * 0.8); ust := round(son * 1.2);
+  else ref := oyun.borsa_son_fiyat(new.sirket_id); alt := round(ref * 0.5); ust := round(ref * 2); end if;
+  if new.birim < alt or new.birim > ust then
+    raise exception 'Fiyat bandı: %%1 pay fiyatı % ₺ ile % ₺ arasında olmalı (son işlem fiyatına göre).', oyun.tl(alt), oyun.tl(ust);
+  end if;
+  return new;
+end $$;
+drop trigger if exists borsa_emir_bant on oyun.borsa_emir;
+create trigger borsa_emir_bant before insert on oyun.borsa_emir for each row execute function oyun.tg_borsa_emir_bant();
+
+create or replace function oyun.tg_borsa_islem() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if tg_op = 'INSERT' and tg_when = 'BEFORE' then
+    if oyun.iliskili(new.satici, new.alici) then perform oyun.iliskili_hata(); end if;
+    return new;
+  end if;
+  perform oyun.masak_cift_kontrol(new.satici, new.alici, new.tutar);
+  return new;
+end $$;
+drop trigger if exists borsa_islem_iliski on oyun.borsa_islem;
+create trigger borsa_islem_iliski before insert on oyun.borsa_islem for each row execute function oyun.tg_borsa_islem();
+drop trigger if exists borsa_islem_masak on oyun.borsa_islem;
+create trigger borsa_islem_masak after insert on oyun.borsa_islem for each row execute function oyun.tg_borsa_islem();
+
+-- Aynı iki oyuncu 7 günde 3+ kez alım-satım yaptıysa (yönü fark etmez) MASAK'a düşer
+create or replace function oyun.masak_cift_kontrol(a uuid, b uuid, p_tutar numeric) returns void
+language plpgsql security definer set search_path = '' as $$
+declare n int; t timestamptz := oyun.simdi();
+begin
+  if a is null or b is null or a = b then return; end if;
+  select (select count(*) from oyun.borsa_islem where zaman > t - interval '7 days' and ((satici = a and alici = b) or (satici = b and alici = a)))
+       + (select count(*) from oyun.ticaret_devir_kayit where zaman > t - interval '7 days' and ((satici = a and alici = b) or (satici = b and alici = a)))
+    into n;
+  if n >= 3 and not exists (select 1 from oyun.masak where tur = 'tekrarlayan_ticaret' and zaman > t - interval '7 days'
+                            and ((user_id = a and karsi_id = b) or (user_id = b and karsi_id = a))) then
+    perform oyun.masak_ekle('tekrarlayan_ticaret', a, b, null, p_tutar,
+      format('%s ile %s son 7 günde %s kez birbirleriyle alım-satım yaptı.', oyun.kad(a), oyun.kad(b), n));
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------- şirket, hisse ve emlak satışları
+create or replace function oyun.tg_ticaret_devir() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if tg_when = 'BEFORE' then
+    if oyun.iliskili(new.satici, new.alici) then perform oyun.iliskili_hata(); end if;
+  else
+    perform oyun.masak_cift_kontrol(new.satici, new.alici, new.bedel);
+  end if;
+  return new;
+end $$;
+drop trigger if exists ticaret_devir_iliski on oyun.ticaret_devir_kayit;
+create trigger ticaret_devir_iliski before insert on oyun.ticaret_devir_kayit for each row execute function oyun.tg_ticaret_devir();
+drop trigger if exists ticaret_devir_masak on oyun.ticaret_devir_kayit;
+create trigger ticaret_devir_masak after insert on oyun.ticaret_devir_kayit for each row execute function oyun.tg_ticaret_devir();
+
+-- Ortaklık teklifi: verirken bant + ilişki, kabulde ilişki
+create or replace function oyun.tg_sirket_teklif() returns trigger language plpgsql security definer set search_path = '' as $$
+declare b record; birim numeric;
+begin
+  if oyun.iliskili(new.satici, new.alici) and (tg_op = 'INSERT' or new.durum = 'kabul') then perform oyun.iliskili_hata(); end if;
+  if tg_op = 'INSERT' and oyun.bant_acik() and new.pay > 0 then
+    select * into b from oyun.pay_bandi(new.sirket_id);
+    birim := new.bedel / new.pay;
+    if birim < b.alt or birim > b.ust then
+      raise exception 'Fiyat bandı: %%% pay için bedel % ₺ ile % ₺ arasında olmalı (şirketin defter değerine göre).',
+        new.pay, oyun.tl(b.alt * new.pay), oyun.tl(b.ust * new.pay);
+    end if;
+  end if;
+  if tg_op = 'UPDATE' and new.durum = 'kabul' and old.durum is distinct from 'kabul' then
+    perform oyun.masak_cift_kontrol(new.satici, new.alici, new.bedel);
+  end if;
+  return new;
+end $$;
+drop trigger if exists sirket_teklif_guvenlik on oyun.sirket_teklif;
+create trigger sirket_teklif_guvenlik before insert or update on oyun.sirket_teklif for each row execute function oyun.tg_sirket_teklif();
+
+-- Şirketin tamamını satışa çıkarma fiyatı
+create or replace function oyun.tg_sirket_satilik() returns trigger language plpgsql security definer set search_path = '' as $$
+declare b record;
+begin
+  if new.satilik is null or new.satilik is not distinct from old.satilik or not oyun.bant_acik() then return new; end if;
+  select * into b from oyun.pay_bandi(new.id);
+  if new.satilik < b.alt * 100 or new.satilik > b.ust * 100 then
+    raise exception 'Fiyat bandı: şirketin satış fiyatı % ₺ ile % ₺ arasında olmalı (şirket kasasına ve sermayesine göre).', oyun.tl(b.alt * 100), oyun.tl(b.ust * 100);
+  end if;
+  return new;
+end $$;
+drop trigger if exists sirket_satilik_bant on oyun.sirketler;
+create trigger sirket_satilik_bant before update of satilik on oyun.sirketler for each row execute function oyun.tg_sirket_satilik();
+
+-- Emlak: rayiç bedele göre bant, satışta ilişki
+create or replace function oyun.mulk_bant(p_mulk bigint, out alt numeric, out ust numeric) language sql stable set search_path = '' as $$
+  select round(oyun.mulk_il_bedel(m.il_id, m.tip) * 0.4), round(oyun.mulk_il_bedel(m.il_id, m.tip) * 2.5) from oyun.yatirim_mulkleri m where m.id = p_mulk
+$$;
+create or replace function oyun.tg_mulk_ilan() returns trigger language plpgsql security definer set search_path = '' as $$
+declare b record;
+begin
+  if (tg_op = 'INSERT' or new.fiyat is distinct from old.fiyat) and oyun.bant_acik() then
+    select * into b from oyun.mulk_bant(new.mulk_id);
+    if b.alt is not null and (new.fiyat < b.alt or new.fiyat > b.ust) then
+      raise exception 'Fiyat bandı: bu mülk % ₺ ile % ₺ arasında satılabilir (ilin rayiç bedeline göre).', oyun.tl(b.alt), oyun.tl(b.ust);
+    end if;
+  end if;
+  if tg_op = 'UPDATE' and new.durum = 'satildi' and old.durum is distinct from 'satildi' then
+    if oyun.iliskili(new.satici, new.alici) then perform oyun.iliskili_hata(); end if;
+    perform oyun.masak_cift_kontrol(new.satici, new.alici, new.fiyat);
+  end if;
+  return new;
+end $$;
+drop trigger if exists mulk_ilan_guvenlik on oyun.mulk_ilan;
+create trigger mulk_ilan_guvenlik before insert or update on oyun.mulk_ilan for each row execute function oyun.tg_mulk_ilan();
+
+create or replace function oyun.tg_emlak_pazarlik() returns trigger language plpgsql security definer set search_path = '' as $$
+declare b record; v_mulk bigint;
+begin
+  if tg_op = 'INSERT' and oyun.iliskili(new.alici, new.satici) then perform oyun.iliskili_hata(); end if;
+  if oyun.bant_acik() and (tg_op = 'INSERT' or new.teklif is distinct from old.teklif or new.karsi_teklif is distinct from old.karsi_teklif) then
+    select mulk_id into v_mulk from oyun.mulk_ilan where id = new.ilan_id;
+    select * into b from oyun.mulk_bant(v_mulk);
+    if b.alt is not null and ((new.teklif is not null and (new.teklif < b.alt or new.teklif > b.ust))
+        or (new.karsi_teklif is not null and (new.karsi_teklif < b.alt or new.karsi_teklif > b.ust))) then
+      raise exception 'Fiyat bandı: bu mülk için teklif % ₺ ile % ₺ arasında olmalı.', oyun.tl(b.alt), oyun.tl(b.ust);
+    end if;
+  end if;
+  return new;
+end $$;
+do $$ begin
+  if to_regclass('oyun.emlak_pazarlik') is not null then
+    execute 'drop trigger if exists emlak_pazarlik_guvenlik on oyun.emlak_pazarlik';
+    execute 'create trigger emlak_pazarlik_guvenlik before insert or update on oyun.emlak_pazarlik for each row execute function oyun.tg_emlak_pazarlik()';
+  end if;
+end $$;
+
+-- Diğer oturumun eklediği hisse ilan pazarı (varsa): ilan verirken bant
+create or replace function oyun.tg_hisse_ilan() returns trigger language plpgsql security definer set search_path = '' as $$
+declare b record; birim numeric;
+begin
+  if not oyun.bant_acik() or new.pay is null or new.pay <= 0 then return new; end if;
+  select * into b from oyun.pay_bandi(new.sirket_id);
+  birim := new.bedel / new.pay;
+  if birim < b.alt or birim > b.ust then
+    raise exception 'Fiyat bandı: %%% pay için bedel % ₺ ile % ₺ arasında olmalı (şirketin defter değerine göre).', new.pay, oyun.tl(b.alt * new.pay), oyun.tl(b.ust * new.pay);
+  end if;
+  return new;
+end $$;
+do $$ begin
+  if to_regclass('oyun.sirket_hisse_ilanlari') is not null then
+    execute 'drop trigger if exists hisse_ilan_bant on oyun.sirket_hisse_ilanlari';
+    execute 'create trigger hisse_ilan_bant before insert on oyun.sirket_hisse_ilanlari for each row execute function oyun.tg_hisse_ilan()';
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------- ihale, ajans
+create or replace function oyun.tg_ihale_teklif() returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_acan uuid;
+begin
+  select acan into v_acan from oyun.kamu_ihale where id = new.ihale_id;
+  if exists (select 1 from oyun.sirket_ortaklari o where o.sirket_id = new.sirket_id and oyun.iliskili(o.user_id, v_acan)) then
+    raise exception 'Çıkar çatışması: bu şirketin bir ortağı ihaleyi açan kişiyle aynı cihazı kullanıyor.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists ihale_teklif_iliski on oyun.kamu_ihale_teklif;
+create trigger ihale_teklif_iliski before insert or update on oyun.kamu_ihale_teklif for each row execute function oyun.tg_ihale_teklif();
+
+-- İhale ihaleyi açanla aynı partiden birinin şirketine giderse MASAK'a düşer (engel değil, inceleme)
+create or replace function oyun.tg_ihale_sonuc() returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_sahip uuid; pa bigint; pb bigint;
+begin
+  if new.kazanan is null or old.kazanan is not distinct from new.kazanan then return new; end if;
+  v_sahip := oyun.sirket_sahibi(new.kazanan);
+  select parti_id into pa from oyun.profiller where id = new.acan;
+  select parti_id into pb from oyun.profiller where id = v_sahip;
+  if pa is not null and pa = pb then
+    perform oyun.masak_ekle('ihale_kayirma', new.acan, v_sahip, pa, new.bedel,
+      format('%s ihalesi (#%s) ihaleyi açan %s ile aynı partiden %s''in şirketine gitti (%s ₺).',
+        (select ad from oyun.kamu_ihale_proje where kod = new.proje), new.id, oyun.kad(new.acan), oyun.kad(v_sahip), oyun.tl(new.bedel)));
+  end if;
+  return new;
+end $$;
+drop trigger if exists ihale_sonuc_masak on oyun.kamu_ihale;
+create trigger ihale_sonuc_masak after update of kazanan on oyun.kamu_ihale for each row execute function oyun.tg_ihale_sonuc();
+
+create or replace function oyun.tg_ajans_is() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if exists (select 1 from oyun.sirket_ortaklari o where o.sirket_id = new.sirket_id and oyun.iliskili(o.user_id, new.veren)) then
+    raise exception 'Bu ajansın bir ortağı seninle aynı cihazı kullanıyor; ondan sipariş veremezsin.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists ajans_is_iliski on oyun.ajans_is;
+create trigger ajans_is_iliski before insert on oyun.ajans_is for each row execute function oyun.tg_ajans_is();
+
+create or replace function oyun.tg_ajans_cevap() returns trigger language plpgsql security definer set search_path = '' as $$
+declare j oyun.ajans_is;
+begin
+  select * into j from oyun.ajans_is where id = new.is_id;
+  if oyun.iliskili(new.user_id, j.veren) or exists (select 1 from oyun.sirket_ortaklari o where o.sirket_id = j.sirket_id and oyun.iliskili(o.user_id, new.user_id)) then
+    raise exception 'Anketi yaptıranla ya da ajansla aynı cihazı kullanan hesaplar bu ankete katılamaz.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists ajans_cevap_iliski on oyun.ajans_cevap;
+create trigger ajans_cevap_iliski before insert on oyun.ajans_cevap for each row execute function oyun.tg_ajans_cevap();
+
+-- ---------------------------------------------------------------- MASAK: ani servet, parti harcaması
+create or replace function oyun.tg_masak_gelir() returns trigger language plpgsql security definer set search_path = '' as $$
+declare t timestamptz := oyun.simdi(); toplam numeric; esik numeric;
+begin
+  if new.tutar <= 0 or new.tur in ('yonetici','iade') then return new; end if;
+  esik := (select masak_servet_esik from oyun.guvenlik_ayar where id = 1) * coalesce((select endeks from oyun.ulke where id = 1), 1);
+  if new.tutar < esik * 0.1 then return new; end if;     -- küçük girişler için sorgu yapılmaz
+  select coalesce(sum(tutar), 0) into toplam from oyun.hesap_hareket
+    where user_id = new.user_id and tutar > 0 and tur not in ('yonetici','iade') and zaman > t - interval '24 hours';
+  if toplam >= esik and not exists (select 1 from oyun.masak where tur = 'ani_servet' and user_id = new.user_id and zaman > t - interval '24 hours') then
+    perform oyun.masak_ekle('ani_servet', new.user_id, null, null, toplam,
+      format('%s son 24 saatte %s ₺ gelir elde etti (son kalem: %s, %s).', oyun.kad(new.user_id), oyun.tl(toplam), new.tur, left(new.aciklama, 80)));
+  end if;
+  return new;
+end $$;
+drop trigger if exists hesap_hareket_masak on oyun.hesap_hareket;
+create trigger hesap_hareket_masak after insert on oyun.hesap_hareket for each row execute function oyun.tg_masak_gelir();
+
+create or replace function oyun.tg_parti_harcama() returns trigger language plpgsql security definer set search_path = '' as $$
+declare a oyun.guvenlik_ayar; pa oyun.partiler; u uuid; once numeric;
+begin
+  if new.tutar >= 0 then return new; end if;
+  select * into a from oyun.guvenlik_ayar where id = 1;
+  if -new.tutar < a.parti_bildirim_esik then return new; end if;
+  select * into pa from oyun.partiler where id = new.parti_id;
+  -- genel başkan yardımcılarına bilgi
+  for u in select user_id from oyun.parti_gby where parti_id = new.parti_id loop
+    perform oyun.bildir(u, format('%s kasasından %s ₺ harcandı: %s. Kasa defteri herkese açık.', pa.kisa, oyun.tl(-new.tutar), left(new.aciklama, 100)), new.zaman);
+  end loop;
+  once := coalesce(pa.kasa, 0) - new.tutar;
+  if -new.tutar >= a.parti_masak_esik or (once > 0 and -new.tutar >= once * 0.3) then
+    perform oyun.masak_ekle('parti_harcama', pa.gb, null, pa.id, -new.tutar,
+      format('%s kasasından tek seferde %s ₺ çıktı (kasanın %%%s''i): %s.', pa.ad, oyun.tl(-new.tutar),
+        case when once > 0 then round(-new.tutar * 100 / once) else 100 end, left(new.aciklama, 100)));
+  end if;
+  return new;
+end $$;
+drop trigger if exists parti_hareket_masak on oyun.parti_hareket;
+create trigger parti_hareket_masak after insert on oyun.parti_hareket for each row execute function oyun.tg_parti_harcama();
+
+-- ---------------------------------------------------------------- 4) anket ödül tavanı (modül 86'nın fonksiyonu)
+create or replace function public.ajans_anket_cevap(p_is bigint, p_parti bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); k oyun.ajans_is; v_odul numeric := 0; g oyun.guvenlik_ayar;
+begin
+  select * into g from oyun.guvenlik_ayar where id = 1;
+  select * into k from oyun.ajans_is where id = p_is for update;
+  if k.id is null or k.tur <> 'anket' or k.durum <> 'yayinda' or k.bit <= t then raise exception 'Anket sona erdi.'; end if;
+  if k.il_id is not null and k.il_id <> p.il_id then raise exception 'Bu anket başka bir ilde yapılıyor.'; end if;
+  if k.veren = p.id then raise exception 'Kendi yaptırdığın ankete katılamazsın.'; end if;
+  if p_parti is not null and not exists (select 1 from oyun.partiler where id = p_parti and not kapali) then raise exception 'Geçersiz parti.'; end if;
+  if exists (select 1 from oyun.ajans_cevap where is_id = k.id and user_id = p.id) then raise exception 'Bu ankete zaten katıldın.'; end if;
+  -- ödül: havuz ve kasa yeterliyse, hesap en az N günlükse ve bugün ödül sınırı dolmadıysa
+  if k.havuz >= k.odul and k.odul > 0 and p.olusturma < t - g.odul_min_gun * interval '1 day'
+     and (select count(*) from oyun.ajans_cevap where user_id = p.id and odul > 0 and zaman > t - interval '24 hours') < g.gunluk_odul_sinir
+     and (select kasa from oyun.sirketler where id = k.sirket_id) >= k.odul then
+    v_odul := k.odul;
+    update oyun.ajans_is set havuz = havuz - v_odul where id = k.id;
+    update oyun.sirketler set kasa = kasa - v_odul where id = k.sirket_id;
+    update oyun.ajans set hafta_odul = hafta_odul + v_odul where sirket_id = k.sirket_id;
+    perform oyun.para_islem(p.id, v_odul, 'odul', format('%s anketine katılım ödülü', (select ad from oyun.sirketler where id = k.sirket_id)), t);
+  end if;
+  insert into oyun.ajans_cevap(is_id, user_id, parti_id, odul, zaman) values (k.id, p.id, p_parti, v_odul, t);
+  return jsonb_build_object('tamam', true, 'odul', v_odul,
+    'odulsuz_neden', case when v_odul > 0 or k.odul = 0 then null
+      when p.olusturma >= t - g.odul_min_gun * interval '1 day' then format('Katılım ödülü %s günden eski hesaplara verilir.', g.odul_min_gun)
+      when k.havuz < k.odul then 'Bu anketin ödül havuzu tükendi.'
+      else format('Günde en fazla %s anketten ödül alınabilir.', g.gunluk_odul_sinir) end);
+end $$;
+
+-- ---------------------------------------------------------------- 5) şeffaflık
+create or replace function public.parti_kasa_defteri(p_parti bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); pa oyun.partiler; t timestamptz := oyun.simdi();
+begin
+  select * into pa from oyun.partiler where id = p_parti;
+  if pa.id is null then raise exception 'Parti bulunamadı.'; end if;
+  return jsonb_build_object('id', pa.id, 'ad', pa.ad, 'kisa', pa.kisa, 'renk', pa.renk, 'kasa', round(pa.kasa), 'gb', oyun.kad(pa.gb),
+    'giris_30g', coalesce((select sum(tutar) from oyun.parti_hareket where parti_id = pa.id and tutar > 0 and zaman > t - interval '30 days'), 0),
+    'cikis_30g', coalesce((select -sum(tutar) from oyun.parti_hareket where parti_id = pa.id and tutar < 0 and zaman > t - interval '30 days'), 0),
+    'turler', coalesce((select jsonb_agg(jsonb_build_object('tur', tur, 'giris', giris, 'cikis', cikis) order by giris + cikis desc) from (
+        select tur, sum(greatest(tutar, 0)) giris, -sum(least(tutar, 0)) cikis from oyun.parti_hareket
+        where parti_id = pa.id and zaman > t - interval '30 days' group by tur) z), '[]'::jsonb),
+    'hareketler', coalesce((select jsonb_agg(jsonb_build_object('zaman', h.zaman, 'tutar', h.tutar, 'aciklama', h.aciklama, 'tur', h.tur) order by h.zaman desc, h.id desc)
+        from (select * from oyun.parti_hareket where parti_id = pa.id order by zaman desc, id desc limit 100) h), '[]'::jsonb),
+    'partiler', (select jsonb_agg(jsonb_build_object('id', id, 'ad', ad, 'kisa', kisa) order by ad) from oyun.partiler where not kapali));
+end $$;
+
+create or replace function public.yonetim_hediyeleri() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim();
+begin
+  return jsonb_build_object(
+    'toplam', coalesce((select sum(tutar) from oyun.hesap_hareket where tur = 'yonetici' and tutar > 0), 0),
+    'kisi', (select count(distinct user_id) from oyun.hesap_hareket where tur = 'yonetici' and tutar > 0),
+    'liste', coalesce((select jsonb_agg(jsonb_build_object('kad', oyun.kad(h.user_id), 'tutar', h.tutar, 'aciklama', h.aciklama, 'zaman', h.zaman) order by h.zaman desc)
+      from (select * from oyun.hesap_hareket where tur = 'yonetici' and tutar > 0 order by zaman desc limit 100) h), '[]'::jsonb),
+    'el_koyma', coalesce((select jsonb_agg(jsonb_build_object('kad', oyun.kad(m.user_id), 'tutar', m.el_koyulan, 'not', m.karar_not, 'zaman', m.karar_zaman) order by m.karar_zaman desc)
+      from (select * from oyun.masak where durum = 'el_koyuldu' order by karar_zaman desc limit 30) m), '[]'::jsonb));
+end $$;
+
+-- ---------------------------------------------------------------- MASAK paneli (moderatör: "ekonomi")
+create or replace function public.admin_masak(p_durum text default 'yeni') returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.yetki_zorunlu('ekonomi');
+begin
+  return jsonb_build_object(
+    'sayilar', (select jsonb_object_agg(durum, n) from (select durum, count(*) n from oyun.masak group by durum) z),
+    'ayar', (select row_to_json(a) from oyun.guvenlik_ayar a where id = 1),
+    'kayitlar', coalesce((select jsonb_agg(jsonb_build_object('id', m.id, 'tur', m.tur, 'kad', oyun.kad(m.user_id), 'karsi', oyun.kad(m.karsi_id),
+        'parti', (select kisa from oyun.partiler where id = m.parti_id), 'tutar', m.tutar, 'aciklama', m.aciklama, 'zaman', m.zaman,
+        'durum', m.durum, 'karar_not', m.karar_not, 'karar_veren', oyun.kad(m.karar_veren), 'el_koyulan', m.el_koyulan,
+        'para', (select para from oyun.cuzdan where user_id = m.user_id),
+        'bagli', (select jsonb_agg(oyun.kad(b)) from oyun.bagli_hesaplar(m.user_id) b),
+        'son_gelirler', (select jsonb_agg(jsonb_build_object('tur', h.tur, 'tutar', h.tutar, 'aciklama', h.aciklama, 'zaman', h.zaman) order by h.zaman desc)
+           from (select * from oyun.hesap_hareket where user_id = m.user_id and tutar > 0 order by zaman desc limit 8) h)) order by m.zaman desc)
+      from (select * from oyun.masak where p_durum is null or durum = p_durum order by zaman desc limit 50) m), '[]'::jsonb));
+end $$;
+
+create or replace function public.admin_masak_karar(p_id bigint, p_karar text, p_tutar numeric default null, p_not text default null) returns jsonb
+language plpgsql security definer set search_path = oyun, public, pg_temp as $$
+declare p oyun.profiller := oyun.yetki_zorunlu('ekonomi'); m oyun.masak; t timestamptz := oyun.simdi(); v_para numeric; v_al numeric := 0;
+begin
+  select * into m from oyun.masak where id = p_id for update;
+  if m.id is null then raise exception 'Kayıt bulunamadı.'; end if;
+  if m.durum <> 'yeni' then raise exception 'Bu kayıt için zaten karar verildi.'; end if;
+  if p_karar not in ('temiz','ihtar','el_koy') then raise exception 'Karar temiz, ihtar ya da el_koy olmalı.'; end if;
+  if p_karar <> 'temiz' and char_length(coalesce(btrim(p_not), '')) < 10 then raise exception 'İhtar ve el koymada en az 10 karakterlik gerekçe yaz.'; end if;
+  if m.user_id is not null then perform oyun.korunan_hedef(p, m.user_id); end if;
+  if p_karar = 'el_koy' then
+    if m.user_id is null then raise exception 'Bu kayıtta el konulacak kişi yok.'; end if;
+    if p_tutar is null or p_tutar <= 0 then raise exception 'El konulacak tutarı yaz.'; end if;
+    select para into v_para from oyun.cuzdan where user_id = m.user_id for update;
+    v_al := least(round(p_tutar), greatest(0, coalesce(v_para, 0)));
+    if v_al > 0 then
+      perform oyun.para_islem(m.user_id, -v_al, 'ceza', 'MASAK kararıyla el koyma: ' || left(p_not, 120), t);
+      update oyun.ulke set hazine = hazine + v_al / coalesce(oyun.pazar_tl_milyar(), 1000000) where id = 1;
+    end if;
+    perform oyun.bildir(m.user_id, format('MASAK incelemesi sonucunda %s ₺ paranıza el konuldu ve hazineye aktarıldı. Gerekçe: %s', oyun.tl(v_al), p_not), t);
+    perform oyun.olay('adalet', format('MASAK, haksız kazanç incelemesi sonucunda %s''in %s ₺ parasına el koydu.', oyun.kad(m.user_id), oyun.tl(v_al)), null, null, t);
+  elsif p_karar = 'ihtar' and m.user_id is not null then
+    perform oyun.bildir(m.user_id, format('MASAK ihtarı: %s Tekrarlanırsa paranıza el konulabilir ve hesabınız kapatılabilir.', p_not), t);
+  end if;
+  update oyun.masak set durum = case p_karar when 'temiz' then 'temiz' when 'ihtar' then 'ihtar' else 'el_koyuldu' end,
+    karar_veren = p.id, karar_not = p_not, karar_zaman = t, el_koyulan = nullif(v_al, 0) where id = m.id;
+  perform oyun.mod_log(p, 'masak_' || p_karar, oyun.kad(m.user_id), format('#%s %s %s', m.id, m.tur, coalesce(p_not, '')));
+  return public.admin_masak('yeni');
+end $$;
+
+revoke all on function public.parti_kasa_defteri(bigint), public.yonetim_hediyeleri(), public.admin_masak(text),
+  public.admin_masak_karar(bigint, text, numeric, text), public.ajans_anket_cevap(bigint, bigint) from public, anon;
+grant execute on function public.parti_kasa_defteri(bigint), public.yonetim_hediyeleri(), public.admin_masak(text),
+  public.admin_masak_karar(bigint, text, numeric, text), public.ajans_anket_cevap(bigint, bigint) to authenticated;
+revoke all on function oyun.iliskili(uuid, uuid), oyun.iliskili_hata(), oyun.bant_acik(), oyun.pay_bandi(bigint), oyun.masak_ekle(text, uuid, uuid, bigint, numeric, text),
+  oyun.masak_cift_kontrol(uuid, uuid, numeric), oyun.mulk_bant(bigint), oyun.tg_borsa_emir_bant(), oyun.tg_borsa_islem(), oyun.tg_ticaret_devir(),
+  oyun.tg_sirket_teklif(), oyun.tg_sirket_satilik(), oyun.tg_mulk_ilan(), oyun.tg_emlak_pazarlik(), oyun.tg_hisse_ilan(), oyun.tg_ihale_teklif(),
+  oyun.tg_ihale_sonuc(), oyun.tg_ajans_is(), oyun.tg_ajans_cevap(), oyun.tg_masak_gelir(), oyun.tg_parti_harcama() from public, anon, authenticated;
+-- Belediye şehir yönetimi v1 (binalar, ekonomi programları, işlem defteri).
+-- Kaynak: migrations/20261011_belediye_sehir_simulasyonu.sql + _islem_fix.sql (canlıda 11 Ekim'de uygulandı).
+CREATE TABLE IF NOT EXISTS oyun.belediye_bina_katalog(
+ kod text PRIMARY KEY, ad text NOT NULL, kategori text NOT NULL, aciklama text NOT NULL,
+ maliyet numeric NOT NULL CHECK(maliyet>0), gunluk_bakim numeric NOT NULL CHECK(gunluk_bakim>=0),
+ gunluk_gelir numeric NOT NULL CHECK(gunluk_gelir>=0), insaat_saat integer NOT NULL CHECK(insaat_saat BETWEEN 1 AND 48),
+ gelisim numeric NOT NULL DEFAULT 0, memnuniyet numeric NOT NULL DEFAULT 0,
+ istihdam integer NOT NULL DEFAULT 0, kapasite integer NOT NULL DEFAULT 0, cevre numeric NOT NULL DEFAULT 0, sira integer NOT NULL DEFAULT 0
+);
+INSERT INTO oyun.belediye_bina_katalog(kod,ad,kategori,aciklama,maliyet,gunluk_bakim,gunluk_gelir,insaat_saat,gelisim,memnuniyet,istihdam,kapasite,cevre,sira) VALUES
+('hastane','Şehir Hastanesi','Saglik','Sağlık hizmetleri ve istihdam sağlar.',0.24,0.0018,0.0004,18,1.0,2.1,90,250,0,10),
+('aile_sagligi','Aile Sağlığı Merkezi','Saglik','Mahallelerde temel sağlık hizmeti.',0.035,0.00028,0,5,0.3,0.8,20,80,0,11),
+('okul','Devlet Okulu','Egitim','Eğitim ve nitelikli insan gücü.',0.08,0.00055,0,10,0.9,0.9,28,200,0,20),
+('universite','Üniversite Kampüsü','Egitim','Eğitim ve kent ekonomisine katkı.',0.36,0.002,0.0008,22,2.1,1.1,160,600,0,21),
+('kutuphane','Kütüphane','Egitim','Ücretsiz kültür ve öğrenme alanı.',0.024,0.00018,0,3,0.25,0.55,8,110,0,22),
+('itfaiye','İtfaiye İstasyonu','Guvenlik','Yangınlara ve afetlere hazırlık.',0.075,0.0007,0,8,0.45,1.3,35,120,0,30),
+('polis_destek','Zabıta Hizmet Binası','Guvenlik','Yerel denetim, güven ve düzen.',0.042,0.00035,0,5,0.2,0.65,24,70,0,31),
+('otobus_garaji','Otobüs Garajı','Ulasim','Toplu ulaşım filosunu güçlendirir.',0.11,0.0009,0.0006,11,0.95,1.1,65,300,0,40),
+('otopark','Katlı Otopark','Ulasim','Ücretli park geliri üretir.',0.065,0.00035,0.0009,8,0.45,0.2,18,160,-0.1,41),
+('yol_kavsak','Kavşak ve Altgeçit','Ulasim','Trafik akışını iyileştirir.',0.10,0.0005,0,9,1.0,0.8,20,350,0,42),
+('su_aritma','Su Arıtma Tesisi','Altyapi','Temiz suya erişimi artırır.',0.16,0.0008,0.0003,15,1.3,1.6,45,500,1,50),
+('atik_tesisi','Geri Dönüşüm Tesisi','Cevre','Atık dönüşümü, çevre puanı ve gelir.',0.095,0.0006,0.00065,11,0.8,0.7,40,220,2,51),
+('sehir_parki','Şehir Parkı','Cevre','Yeşil alan ve sosyal yaşam.',0.047,0.00025,0,6,0.25,1.35,14,250,3,52),
+('gunes_enerji','Güneş Enerjisi Santrali','Enerji','Enerji üretimiyle belediyeye gelir.',0.18,0.0005,0.0018,13,1.0,0.45,28,500,2,60),
+('hal_pazar','Toptancı Hali','Ekonomi','Tarım ve ticaret için pazar alanı.',0.07,0.0004,0.0011,8,0.6,0.55,75,260,0,70),
+('sanayi_sitesi','Küçük Sanayi Sitesi','Ekonomi','Esnafa iş yeri ve kente kira geliri.',0.21,0.001,0.0022,16,1.8,0.4,180,420,-1,71),
+('kultur_merkezi','Kültür ve Kongre Merkezi','Sosyal','Etkinlik ve kültür ekonomisi.',0.09,0.0006,0.0005,9,0.6,1.15,48,250,0,80),
+('spor_tesisi','Spor Kompleksi','Sosyal','Gençlik ve spor hizmetleri.',0.075,0.00055,0.0002,8,0.4,1.2,36,220,0,81),
+('sosyal_konut','Sosyal Konut Projesi','Konut','Uygun fiyatlı konut ve kira geliri.',0.28,0.0011,0.0012,20,1.1,1.9,65,300,0,90),
+('kreş','Belediye Kreşi','Sosyal','Çocuk bakım hizmeti ve aile desteği.',0.04,0.0003,0,6,0.3,0.95,22,90,0,91)
+ON CONFLICT(kod) DO UPDATE SET ad=excluded.ad,kategori=excluded.kategori,aciklama=excluded.aciklama,maliyet=excluded.maliyet,gunluk_bakim=excluded.gunluk_bakim,gunluk_gelir=excluded.gunluk_gelir,insaat_saat=excluded.insaat_saat,gelisim=excluded.gelisim,memnuniyet=excluded.memnuniyet,istihdam=excluded.istihdam,kapasite=excluded.kapasite,cevre=excluded.cevre,sira=excluded.sira;
+CREATE TABLE IF NOT EXISTS oyun.belediye_bina(
+ id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+ il_id smallint NOT NULL REFERENCES oyun.iller(id), kod text NOT NULL REFERENCES oyun.belediye_bina_katalog(kod),
+ seviye smallint NOT NULL DEFAULT 0 CHECK(seviye BETWEEN 0 AND 3),
+ hedef_seviye smallint NOT NULL DEFAULT 1 CHECK(hedef_seviye BETWEEN 1 AND 3),
+ durum text NOT NULL DEFAULT 'insa' CHECK(durum IN ('insa','aktif','askida')),
+ baslangic timestamptz NOT NULL DEFAULT now(), bitis timestamptz,
+ son_bakim date NOT NULL DEFAULT (now() AT TIME ZONE 'Europe/Istanbul')::date,
+ baskan uuid NOT NULL REFERENCES oyun.profiller(id), son_yatirim numeric NOT NULL DEFAULT 0,
+ UNIQUE(il_id,kod)
+);
+CREATE INDEX IF NOT EXISTS belediye_bina_il_idx ON oyun.belediye_bina(il_id,durum);
+CREATE TABLE IF NOT EXISTS oyun.belediye_sehir_hareket(
+ id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+ il_id smallint NOT NULL REFERENCES oyun.iller(id), bina_id bigint REFERENCES oyun.belediye_bina(id),
+ tur text NOT NULL, tutar numeric NOT NULL DEFAULT 0, aciklama text NOT NULL DEFAULT '',
+ zaman timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS belediye_hareket_il_idx ON oyun.belediye_sehir_hareket(il_id,id DESC);
+CREATE TABLE IF NOT EXISTS oyun.belediye_ekonomi_katalog(
+ kod text PRIMARY KEY, ad text NOT NULL, aciklama text NOT NULL,
+ maliyet numeric NOT NULL CHECK(maliyet>0), gelisim numeric NOT NULL, memnuniyet numeric NOT NULL, istihdam integer NOT NULL DEFAULT 0, cevre numeric NOT NULL DEFAULT 0, sira integer NOT NULL DEFAULT 0
+);
+INSERT INTO oyun.belediye_ekonomi_katalog VALUES
+('esnaf_destek','Esnaf Destek Paketi','Yerel esnafa destek ve ticari canlanma.',0.025,0.35,0.35,45,0,1),
+('istihdam','İstihdam Seferberliği','Yeni iş alanlarını destekleyen belediye programı.',0.06,0.70,0.30,100,0,2),
+('turizm','Turizm Tanıtım Kampanyası','Şehir turizmi ve ticari hareketliliği artırır.',0.035,0.45,0.40,40,0,3),
+('cevre','Temiz Şehir Kampanyası','Çevre temizliği ve atık toplama seferberliği.',0.018,0.15,0.70,15,2,4),
+('egitim_bursu','Eğitim ve Burs Programı','Gençlere eğitim desteği.',0.028,0.30,0.65,15,0,5),
+('konut','Konut Üretim Teşviki','Yeni konut alanlarını destekler.',0.09,0.85,0.45,80,0,6),
+('ulasim','Ulaşım İyileştirme Programı','Toplu taşımada hizmet kalitesini yükseltir.',0.04,0.35,0.60,35,0,7),
+('afet','Afet Hazırlık Programı','Arama kurtarma ve afet hazırlığını güçlendirir.',0.032,0.25,0.75,25,0,8)
+ON CONFLICT(kod) DO UPDATE SET ad=excluded.ad,aciklama=excluded.aciklama,maliyet=excluded.maliyet,gelisim=excluded.gelisim,memnuniyet=excluded.memnuniyet,istihdam=excluded.istihdam,cevre=excluded.cevre,sira=excluded.sira;
+CREATE TABLE IF NOT EXISTS oyun.belediye_ekonomi_karar(
+ id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY, il_id smallint NOT NULL REFERENCES oyun.iller(id),
+ kod text NOT NULL REFERENCES oyun.belediye_ekonomi_katalog(kod), baskan uuid NOT NULL REFERENCES oyun.profiller(id),
+ maliyet numeric NOT NULL, zaman timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS belediye_ekonomi_karar_il_idx ON oyun.belediye_ekonomi_karar(il_id,zaman DESC);
+DO $$ DECLARE t text; BEGIN
+ FOREACH t IN ARRAY ARRAY['belediye_bina_katalog','belediye_bina','belediye_sehir_hareket','belediye_ekonomi_katalog','belediye_ekonomi_karar'] LOOP
+ EXECUTE format('ALTER TABLE oyun.%I ENABLE ROW LEVEL SECURITY',t);
+ EXECUTE format('REVOKE ALL ON TABLE oyun.%I FROM PUBLIC,anon,authenticated',t);
+ END LOOP;
+END $$;
+
+CREATE OR REPLACE FUNCTION oyun.belediye_bina_tick() RETURNS integer
+LANGUAGE plpgsql SET search_path='oyun','public','pg_temp' AS $$
+DECLARE r record; bugun date := (now() AT TIME ZONE 'Europe/Istanbul')::date;
+        gun int; gider numeric; gelir numeric; v_kasa numeric; n integer := 0;
+BEGIN
+ IF NOT pg_try_advisory_xact_lock(772921,1) THEN RETURN 0; END IF;
+ FOR r IN SELECT b.id,b.il_id,b.kod,b.hedef_seviye,k.gelisim,k.memnuniyet,k.ad
+  FROM oyun.belediye_bina b JOIN oyun.belediye_bina_katalog k USING(kod)
+  WHERE b.durum='insa' AND b.bitis<=now() ORDER BY b.id FOR UPDATE OF b LOOP
+   UPDATE oyun.belediye_bina SET durum='aktif',seviye=r.hedef_seviye,son_bakim=bugun WHERE id=r.id;
+   UPDATE oyun.il_durum SET gelisim=oyun.sinir(gelisim+r.gelisim,0,100),
+      memnuniyet=oyun.sinir(memnuniyet+r.memnuniyet,0,100) WHERE il_id=r.il_id;
+   INSERT INTO oyun.belediye_sehir_hareket(il_id,bina_id,tur,aciklama)
+    VALUES(r.il_id,r.id,'tamamlandi',r.ad || ' · ' || r.hedef_seviye || '. seviye tamamlandi');
+   n:=n+1;
+ END LOOP;
+ FOR r IN SELECT b.id,b.il_id,b.seviye,b.son_bakim,k.ad,k.gunluk_bakim,k.gunluk_gelir
+  FROM oyun.belediye_bina b JOIN oyun.belediye_bina_katalog k USING(kod)
+  WHERE b.durum='aktif' AND b.son_bakim<bugun ORDER BY b.id FOR UPDATE OF b LOOP
+   gun:=LEAST(30,bugun-r.son_bakim); gider:=round(r.gunluk_bakim*r.seviye*gun,6);
+   gelir:=round(r.gunluk_gelir*r.seviye*gun,6);
+   SELECT d.kasa INTO v_kasa FROM oyun.il_durum d WHERE d.il_id=r.il_id FOR UPDATE;
+   IF v_kasa < gider THEN
+     UPDATE oyun.belediye_bina SET durum='askida',son_bakim=bugun WHERE id=r.id;
+     UPDATE oyun.il_durum SET memnuniyet=oyun.sinir(memnuniyet-0.15,0,100) WHERE il_id=r.il_id;
+     INSERT INTO oyun.belediye_sehir_hareket(il_id,bina_id,tur,aciklama)
+       VALUES(r.il_id,r.id,'askida',r.ad || ' bakim butcesi olmadigindan durduruldu');
+   ELSE
+     UPDATE oyun.il_durum SET kasa=kasa-gider+gelir WHERE il_id=r.il_id;
+     UPDATE oyun.belediye_bina SET son_bakim=bugun WHERE id=r.id;
+     INSERT INTO oyun.belediye_sehir_hareket(il_id,bina_id,tur,tutar,aciklama)
+       VALUES(r.il_id,r.id,'isletme',gelir-gider,r.ad || ' · ' || gun || ' gunluk isletme neti');
+   END IF;
+   n:=n+1;
+ END LOOP;
+ RETURN n;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.belediye_bina_islem(p_kod text,p_islem text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='oyun','public','pg_temp' AS $$
+DECLARE p oyun.profiller := oyun.profilim(); m oyun.makamlar := oyun.baskan_zorunlu(p);
+ k oyun.belediye_bina_katalog; b oyun.belediye_bina; v_kasa numeric; bedel numeric; hedef int; sure int; yeni_id bigint;
+BEGIN
+ IF p_islem NOT IN ('insa','yukselt','yeniden_ac') THEN RAISE EXCEPTION 'Gecersiz bina islemi'; END IF;
+ SELECT * INTO k FROM oyun.belediye_bina_katalog WHERE kod=p_kod;
+ IF k.kod IS NULL THEN RAISE EXCEPTION 'Bina katalogda yok'; END IF;
+ PERFORM pg_advisory_xact_lock(772922,m.il_id::integer);
+ SELECT kasa INTO v_kasa FROM oyun.il_durum WHERE il_id=m.il_id FOR UPDATE;
+ SELECT * INTO b FROM oyun.belediye_bina WHERE il_id=m.il_id AND kod=p_kod FOR UPDATE;
+ IF p_islem='insa' THEN
+   IF b.id IS NOT NULL THEN RAISE EXCEPTION 'Bu bina sehirde zaten var. Yukseltme secenegini kullan'; END IF;
+   hedef:=1; bedel:=k.maliyet; sure:=k.insaat_saat;
+ ELSIF p_islem='yukselt' THEN
+   IF b.id IS NULL OR b.durum<>'aktif' OR b.seviye>=3 THEN RAISE EXCEPTION 'Yalnizca aktif ve 3. seviyenin altindaki binalar yukseltilebilir'; END IF;
+   hedef:=b.seviye+1; bedel:=round(k.maliyet*(0.6+0.55*hedef),6); sure:=k.insaat_saat;
+ ELSE
+   IF b.id IS NULL OR b.durum<>'askida' THEN RAISE EXCEPTION 'Yalnizca bakim nedeniyle kapanmis bina yeniden acilabilir'; END IF;
+   hedef:=b.seviye; bedel:=round(k.gunluk_bakim*3*b.seviye,6); sure:=1;
+ END IF;
+ IF v_kasa<bedel THEN RAISE EXCEPTION 'Belediye kasasi yetersiz. Gerekli: % milyar TL; kasa: % milyar TL',bedel,v_kasa; END IF;
+ UPDATE oyun.il_durum SET kasa=kasa-bedel WHERE il_id=m.il_id;
+ IF b.id IS NULL THEN
+   INSERT INTO oyun.belediye_bina(il_id,kod,seviye,hedef_seviye,durum,baslangic,bitis,baskan,son_yatirim)
+   VALUES(m.il_id,p_kod,0,hedef,'insa',now(),now()+make_interval(hours=>sure),p.id,bedel) RETURNING id INTO yeni_id;
+ ELSE
+   UPDATE oyun.belediye_bina SET hedef_seviye=hedef,durum='insa',baslangic=now(),
+     bitis=now()+make_interval(hours=>sure),baskan=p.id,son_yatirim=bedel WHERE id=b.id;
+   yeni_id:=b.id;
+ END IF;
+ INSERT INTO oyun.belediye_sehir_hareket(il_id,bina_id,tur,tutar,aciklama)
+ VALUES(m.il_id,yeni_id,p_islem,-bedel,k.ad || ' · ' || hedef || '. seviye insaat/yatirim');
+ PERFORM oyun.olay('belediye',format('%s Belediyesi %s projesini baslatti.',(select ad from oyun.iller where id=m.il_id),k.ad),m.il_id,p.parti_id,now());
+ RETURN jsonb_build_object('tamam',true,'bina_id',yeni_id,'bedel',bedel,'bitiş',now()+make_interval(hours=>sure));
+END $$;
+
+CREATE OR REPLACE FUNCTION public.belediye_ekonomi_programi(p_kod text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='oyun','public','pg_temp' AS $$
+DECLARE p oyun.profiller := oyun.profilim(); m oyun.makamlar := oyun.baskan_zorunlu(p);
+ k oyun.belediye_ekonomi_katalog; v_kasa numeric; t timestamptz:=now();
+BEGIN
+ SELECT * INTO k FROM oyun.belediye_ekonomi_katalog WHERE kod=p_kod;
+ IF k.kod IS NULL THEN RAISE EXCEPTION 'Ekonomi programi bulunamadi'; END IF;
+ PERFORM pg_advisory_xact_lock(772922,m.il_id::integer);
+ IF EXISTS(SELECT 1 FROM oyun.belediye_ekonomi_karar WHERE il_id=m.il_id AND zaman>t-interval '12 hours') THEN
+  RAISE EXCEPTION 'Belediye 12 saatte bir ekonomi programi uygulayabilir'; END IF;
+ IF EXISTS(SELECT 1 FROM oyun.belediye_ekonomi_karar WHERE il_id=m.il_id AND kod=p_kod AND zaman>t-interval '48 hours') THEN
+  RAISE EXCEPTION 'Ayni program 48 saatte bir uygulanabilir'; END IF;
+ SELECT kasa INTO v_kasa FROM oyun.il_durum WHERE il_id=m.il_id FOR UPDATE;
+ IF v_kasa<k.maliyet THEN RAISE EXCEPTION 'Butce yetersiz: % milyar TL gerekli',k.maliyet; END IF;
+ UPDATE oyun.il_durum SET kasa=kasa-k.maliyet,gelisim=oyun.sinir(gelisim+k.gelisim,0,100),
+  memnuniyet=oyun.sinir(memnuniyet+k.memnuniyet,0,100) WHERE il_id=m.il_id;
+ INSERT INTO oyun.belediye_ekonomi_karar(il_id,kod,baskan,maliyet,zaman) VALUES(m.il_id,p_kod,p.id,k.maliyet,t);
+ INSERT INTO oyun.belediye_sehir_hareket(il_id,tur,tutar,aciklama) VALUES(m.il_id,'ekonomi',-k.maliyet,k.ad);
+ PERFORM oyun.olay('belediye',format('%s Belediyesi %s uyguladi.',(select ad from oyun.iller where id=m.il_id),k.ad),m.il_id,p.parti_id,t);
+ RETURN jsonb_build_object('tamam',true,'maliyet',k.maliyet,'gelisim',k.gelisim,'memnuniyet',k.memnuniyet);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.belediye_sehir_paneli() RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='oyun','public','pg_temp' AS $$
+DECLARE p oyun.profiller := oyun.profilim(); m oyun.makamlar; d oyun.il_durum; t timestamptz:=now();
+BEGIN
+ SELECT * INTO m FROM oyun.makamlar WHERE user_id=p.id AND tur='bel' AND bit IS NULL ORDER BY id DESC LIMIT 1;
+ IF m.id IS NULL THEN RETURN NULL; END IF;
+ SELECT * INTO d FROM oyun.il_durum WHERE il_id=m.il_id;
+ RETURN jsonb_build_object(
+ 'il_id',m.il_id,'il_ad',(SELECT ad FROM oyun.iller WHERE id=m.il_id),
+ 'kasa',d.kasa,'gelisim',d.gelisim,'memnuniyet',d.memnuniyet,
+ 'temel_gelir',oyun.il_gelir(m.il_id),'temel_gider',oyun.il_gider(m.il_id),
+ 'bina_gelir',coalesce((SELECT sum(k.gunluk_gelir*b.seviye) FROM oyun.belediye_bina b JOIN oyun.belediye_bina_katalog k USING(kod) WHERE b.il_id=m.il_id AND b.durum='aktif'),0),
+ 'bina_gider',coalesce((SELECT sum(k.gunluk_bakim*b.seviye) FROM oyun.belediye_bina b JOIN oyun.belediye_bina_katalog k USING(kod) WHERE b.il_id=m.il_id AND b.durum='aktif'),0),
+ 'istihdam',coalesce((SELECT sum(k.istihdam*b.seviye) FROM oyun.belediye_bina b JOIN oyun.belediye_bina_katalog k USING(kod) WHERE b.il_id=m.il_id AND b.durum='aktif'),0),
+ 'kapasite',coalesce((SELECT sum(k.kapasite*b.seviye) FROM oyun.belediye_bina b JOIN oyun.belediye_bina_katalog k USING(kod) WHERE b.il_id=m.il_id AND b.durum='aktif'),0),
+ 'cevre',coalesce((SELECT sum(k.cevre*b.seviye) FROM oyun.belediye_bina b JOIN oyun.belediye_bina_katalog k USING(kod) WHERE b.il_id=m.il_id AND b.durum='aktif'),0),
+ 'binalar',coalesce((SELECT jsonb_agg(jsonb_build_object('kod',k.kod,'ad',k.ad,'kategori',k.kategori,'aciklama',k.aciklama,
+    'maliyet',k.maliyet,'gunluk_bakim',k.gunluk_bakim,'gunluk_gelir',k.gunluk_gelir,'insaat_saat',k.insaat_saat,
+    'gelisim',k.gelisim,'memnuniyet',k.memnuniyet,'istihdam',k.istihdam,'kapasite',k.kapasite,'cevre',k.cevre,
+    'seviye',coalesce(b.seviye,0),'hedef',b.hedef_seviye,'durum',coalesce(b.durum,'yok'),
+    'bitis',b.bitis,'baslangic',b.baslangic,
+    'yukseltme_maliyet',round(k.maliyet*(0.6+0.55*(coalesce(b.seviye,0)+1)),6),
+    'yeniden_ac_maliyet',round(k.gunluk_bakim*3*coalesce(b.seviye,0),6)) ORDER BY k.sira)
+    FROM oyun.belediye_bina_katalog k LEFT JOIN oyun.belediye_bina b ON b.kod=k.kod AND b.il_id=m.il_id),'[]'::jsonb),
+ 'programlar',coalesce((SELECT jsonb_agg(jsonb_build_object('kod',k.kod,'ad',k.ad,'aciklama',k.aciklama,
+    'maliyet',k.maliyet,'gelisim',k.gelisim,'memnuniyet',k.memnuniyet,'istihdam',k.istihdam,'cevre',k.cevre,
+    'son',(SELECT max(zaman) FROM oyun.belediye_ekonomi_karar x WHERE x.il_id=m.il_id AND x.kod=k.kod)) ORDER BY k.sira)
+    FROM oyun.belediye_ekonomi_katalog k),'[]'::jsonb),
+ 'son_program',(SELECT max(zaman) FROM oyun.belediye_ekonomi_karar WHERE il_id=m.il_id),
+ 'hareketler',coalesce((SELECT jsonb_agg(jsonb_build_object('tur',x.tur,'tutar',x.tutar,'aciklama',x.aciklama,'zaman',x.zaman) ORDER BY x.id DESC)
+    FROM (SELECT * FROM oyun.belediye_sehir_hareket WHERE il_id=m.il_id ORDER BY id DESC LIMIT 25) x),'[]'::jsonb));
+END $$;
+
+REVOKE ALL ON FUNCTION public.belediye_bina_islem(text,text) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.belediye_ekonomi_programi(text) FROM PUBLIC,anon,authenticated;
+REVOKE ALL ON FUNCTION public.belediye_sehir_paneli() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.belediye_bina_islem(text,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.belediye_ekonomi_programi(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.belediye_sehir_paneli() TO authenticated;
+CREATE OR REPLACE FUNCTION oyun.belediye_bina_tick() RETURNS integer
+LANGUAGE plpgsql SET search_path='oyun','public','pg_temp' AS $$
+DECLARE r record; bugun date := (now() AT TIME ZONE 'Europe/Istanbul')::date;
+        gun int; gider numeric; gelir numeric; v_kasa numeric; n integer := 0;
+BEGIN
+ IF NOT pg_try_advisory_xact_lock(772921,1) THEN RETURN 0; END IF;
+ FOR r IN SELECT b.id,b.il_id,b.kod,b.hedef_seviye,k.gelisim,k.memnuniyet,k.ad
+  FROM oyun.belediye_bina b JOIN oyun.belediye_bina_katalog k USING(kod)
+  WHERE b.durum='insa' AND b.bitis<=now() ORDER BY b.id FOR UPDATE OF b LOOP
+   UPDATE oyun.belediye_bina SET durum='aktif',seviye=r.hedef_seviye,son_bakim=bugun WHERE id=r.id;
+   UPDATE oyun.il_durum SET gelisim=oyun.sinir(gelisim+r.gelisim,0,100),
+      memnuniyet=oyun.sinir(memnuniyet+r.memnuniyet,0,100) WHERE il_id=r.il_id;
+   INSERT INTO oyun.belediye_sehir_hareket(il_id,bina_id,tur,aciklama)
+    VALUES(r.il_id,r.id,'tamamlandi',r.ad || ' · ' || r.hedef_seviye || '. seviye tamamlandi');
+   n:=n+1;
+ END LOOP;
+ FOR r IN SELECT b.id,b.il_id,b.seviye,b.son_bakim,k.ad,k.gunluk_bakim,k.gunluk_gelir
+  FROM oyun.belediye_bina b JOIN oyun.belediye_bina_katalog k USING(kod)
+  WHERE b.durum='aktif' AND b.son_bakim<bugun ORDER BY b.id FOR UPDATE OF b LOOP
+   gun:=LEAST(30,bugun-r.son_bakim); gider:=round(r.gunluk_bakim*r.seviye*gun,6);
+   gelir:=round(r.gunluk_gelir*r.seviye*gun,6);
+   SELECT d.kasa INTO v_kasa FROM oyun.il_durum d WHERE d.il_id=r.il_id FOR UPDATE;
+   IF v_kasa < gider THEN
+     UPDATE oyun.belediye_bina SET durum='askida',son_bakim=bugun WHERE id=r.id;
+     UPDATE oyun.il_durum SET memnuniyet=oyun.sinir(memnuniyet-0.15,0,100) WHERE il_id=r.il_id;
+     INSERT INTO oyun.belediye_sehir_hareket(il_id,bina_id,tur,aciklama)
+       VALUES(r.il_id,r.id,'askida',r.ad || ' bakim butcesi olmadigindan durduruldu');
+   ELSE
+     UPDATE oyun.il_durum SET kasa=kasa-gider+gelir WHERE il_id=r.il_id;
+     UPDATE oyun.belediye_bina SET son_bakim=bugun WHERE id=r.id;
+     INSERT INTO oyun.belediye_sehir_hareket(il_id,bina_id,tur,tutar,aciklama)
+       VALUES(r.il_id,r.id,'isletme',gelir-gider,r.ad || ' · ' || gun || ' gunluk isletme neti');
+   END IF;
+   n:=n+1;
+ END LOOP;
+ RETURN n;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.belediye_bina_islem(p_kod text,p_islem text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='oyun','public','pg_temp' AS $$
+DECLARE p oyun.profiller := oyun.profilim(); m oyun.makamlar := oyun.baskan_zorunlu(p);
+ k oyun.belediye_bina_katalog; b oyun.belediye_bina; v_kasa numeric; bedel numeric; hedef int; sure int; yeni_id bigint;
+BEGIN
+ IF p_islem NOT IN ('insa','yukselt','yeniden_ac') THEN RAISE EXCEPTION 'Gecersiz bina islemi'; END IF;
+ SELECT * INTO k FROM oyun.belediye_bina_katalog WHERE kod=p_kod;
+ IF k.kod IS NULL THEN RAISE EXCEPTION 'Bina katalogda yok'; END IF;
+ PERFORM pg_advisory_xact_lock(772922,m.il_id::integer);
+ SELECT kasa INTO v_kasa FROM oyun.il_durum WHERE il_id=m.il_id FOR UPDATE;
+ SELECT * INTO b FROM oyun.belediye_bina WHERE il_id=m.il_id AND kod=p_kod FOR UPDATE;
+ IF p_islem='insa' THEN
+   IF b.id IS NOT NULL THEN RAISE EXCEPTION 'Bu bina sehirde zaten var. Yukseltme secenegini kullan'; END IF;
+   hedef:=1; bedel:=k.maliyet; sure:=k.insaat_saat;
+ ELSIF p_islem='yukselt' THEN
+   IF b.id IS NULL OR b.durum<>'aktif' OR b.seviye>=3 THEN RAISE EXCEPTION 'Yalnizca aktif ve 3. seviyenin altindaki binalar yukseltilebilir'; END IF;
+   hedef:=b.seviye+1; bedel:=round(k.maliyet*(0.6+0.55*hedef),6); sure:=k.insaat_saat;
+ ELSE
+   IF b.id IS NULL OR b.durum<>'askida' THEN RAISE EXCEPTION 'Yalnizca bakim nedeniyle kapanmis bina yeniden acilabilir'; END IF;
+   hedef:=b.seviye; bedel:=round(k.gunluk_bakim*3*b.seviye,6); sure:=1;
+ END IF;
+ IF v_kasa<bedel THEN RAISE EXCEPTION 'Belediye kasasi yetersiz. Gerekli: % milyar TL; kasa: % milyar TL',bedel,v_kasa; END IF;
+ UPDATE oyun.il_durum SET kasa=kasa-bedel WHERE il_id=m.il_id;
+ IF b.id IS NULL THEN
+   INSERT INTO oyun.belediye_bina(il_id,kod,seviye,hedef_seviye,durum,baslangic,bitis,baskan,son_yatirim)
+   VALUES(m.il_id,p_kod,0,hedef,'insa',now(),now()+make_interval(hours=>sure),p.id,bedel) RETURNING id INTO yeni_id;
+ ELSE
+   UPDATE oyun.belediye_bina SET hedef_seviye=hedef,durum='insa',baslangic=now(),
+     bitis=now()+make_interval(hours=>sure),baskan=p.id,son_yatirim=bedel WHERE id=b.id;
+   yeni_id:=b.id;
+ END IF;
+ INSERT INTO oyun.belediye_sehir_hareket(il_id,bina_id,tur,tutar,aciklama)
+ VALUES(m.il_id,yeni_id,p_islem,-bedel,k.ad || ' · ' || hedef || '. seviye insaat/yatirim');
+ PERFORM oyun.olay('belediye',format('%s Belediyesi %s projesini baslatti.',(select ad from oyun.iller where id=m.il_id),k.ad),m.il_id,p.parti_id,now());
+ RETURN jsonb_build_object('tamam',true,'bina_id',yeni_id,'bedel',bedel,'bitiş',now()+make_interval(hours=>sure));
+END $$;
+
+CREATE OR REPLACE FUNCTION public.belediye_ekonomi_programi(p_kod text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='oyun','public','pg_temp' AS $$
+DECLARE p oyun.profiller := oyun.profilim(); m oyun.makamlar := oyun.baskan_zorunlu(p);
+ k oyun.belediye_ekonomi_katalog; v_kasa numeric; t timestamptz:=now();
+BEGIN
+ SELECT * INTO k FROM oyun.belediye_ekonomi_katalog WHERE kod=p_kod;
+ IF k.kod IS NULL THEN RAISE EXCEPTION 'Ekonomi programi bulunamadi'; END IF;
+ PERFORM pg_advisory_xact_lock(772922,m.il_id::integer);
+ IF EXISTS(SELECT 1 FROM oyun.belediye_ekonomi_karar WHERE il_id=m.il_id AND zaman>t-interval '12 hours') THEN
+  RAISE EXCEPTION 'Belediye 12 saatte bir ekonomi programi uygulayabilir'; END IF;
+ IF EXISTS(SELECT 1 FROM oyun.belediye_ekonomi_karar WHERE il_id=m.il_id AND kod=p_kod AND zaman>t-interval '48 hours') THEN
+  RAISE EXCEPTION 'Ayni program 48 saatte bir uygulanabilir'; END IF;
+ SELECT kasa INTO v_kasa FROM oyun.il_durum WHERE il_id=m.il_id FOR UPDATE;
+ IF v_kasa<k.maliyet THEN RAISE EXCEPTION 'Butce yetersiz: % milyar TL gerekli',k.maliyet; END IF;
+ UPDATE oyun.il_durum SET kasa=kasa-k.maliyet,gelisim=oyun.sinir(gelisim+k.gelisim,0,100),
+  memnuniyet=oyun.sinir(memnuniyet+k.memnuniyet,0,100) WHERE il_id=m.il_id;
+ INSERT INTO oyun.belediye_ekonomi_karar(il_id,kod,baskan,maliyet,zaman) VALUES(m.il_id,p_kod,p.id,k.maliyet,t);
+ INSERT INTO oyun.belediye_sehir_hareket(il_id,tur,tutar,aciklama) VALUES(m.il_id,'ekonomi',-k.maliyet,k.ad);
+ PERFORM oyun.olay('belediye',format('%s Belediyesi %s uyguladi.',(select ad from oyun.iller where id=m.il_id),k.ad),m.il_id,p.parti_id,t);
+ RETURN jsonb_build_object('tamam',true,'maliyet',k.maliyet,'gelisim',k.gelisim,'memnuniyet',k.memnuniyet);
+END $$;
+-- =====================================================================
+--  91) BELEDİYE DETAY: hizmet karnesi, kriz masası, İller Bankası kredisi
+--  - Şehre/hazineye bağış artık kamu kuruyla çevrilir (1 milyar kamu ₺ =
+--    oyun.pazar_tl_milyar() oyuncu ₺). Önceden 1.000 ₺ bağış 1.000 milyar ₺ ekliyordu.
+--  - Gece kasası: gelir 60 günlük tavana kadar birikir; bağış ve kredi parası kesilmez.
+--  - Hizmet karnesi: 7 alan (temizlik, su, ulaşım, sağlık-sosyal, eğitim-kültür,
+--    güvenlik-afet, yeşil alan). Binalar, hizmetler, programlar ve kriz kararları
+--    puan verir; karne ortalaması her gece memnuniyeti kendine çeker.
+--  - Kriz masası: başkanlı illerde ara ara şehir olayı çıkar; 24 saatte karar
+--    verilmezse "başkan sessiz kaldı" sonucu işler. Kararlar herkese açıktır.
+--  - İller Bankası: belediye 10/20/30 günlük kredi çeker; taksitler her gece
+--    kasadan düşer, ödenemeyen taksit %5 gecikme cezasıyla borca eklenir.
+--  Oyuncu verisini değiştirmez; yalnız yeni tablo, katalog ve fonksiyon ekler.
+-- =====================================================================
+
+-- ---------------------------------------------------------------- bağış birimi
+do $$
+declare d text;
+begin
+  d := pg_get_functiondef('public.serbest_bagis(text,text,numeric,text)'::regprocedure);
+  if position('kasa=kasa+m,gelisim' in d) > 0 then
+    d := replace(d, 'update oyun.il_durum set kasa=kasa+m,gelisim',
+                    'update oyun.il_durum set kasa=kasa+m/oyun.pazar_tl_milyar(),gelisim');
+    d := replace(d, 'insert into oyun.il_bagis_kayit(il_id,user_id,tutar,zaman) values(v_id::smallint,u,m,t);',
+                    'insert into oyun.il_bagis_kayit(il_id,user_id,tutar,zaman) values(v_id::smallint,u,m,t);
+   insert into oyun.belediye_sehir_hareket(il_id,tur,tutar,aciklama,zaman)
+     values(v_id::smallint,''bagis'',m/oyun.pazar_tl_milyar(),left(p.kad||'' bağış yaptı ('' || oyun.tl(m) || '' ₺)'',170),t);');
+    d := replace(d, 'update oyun.ulke set hazine=hazine+m where id=1;',
+                    'update oyun.ulke set hazine=hazine+m/oyun.pazar_tl_milyar() where id=1;');
+    if position('kasa=kasa+m,gelisim' in d) > 0 or position('hazine=hazine+m where' in d) > 0 then
+      raise exception 'serbest_bagis yamasi uygulanamadi';
+    end if;
+    execute d;
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------- tablolar
+create table if not exists oyun.belediye_karne_alan(
+  kod text primary key, ad text not null, aciklama text not null, sira int not null default 0);
+insert into oyun.belediye_karne_alan(kod, ad, aciklama, sira) values
+ ('temizlik','Temizlik ve atık','Çöp toplama, geri dönüşüm, sokak temizliği.',1),
+ ('su','Su ve altyapı','İçme suyu, kanalizasyon, yol altyapısı.',2),
+ ('ulasim','Ulaşım','Toplu taşıma, trafik, otopark.',3),
+ ('saglik','Sağlık ve sosyal','Sağlık hizmeti, sosyal yardım, konut, kreş.',4),
+ ('egitim','Eğitim ve kültür','Okul, kütüphane, kültür ve spor.',5),
+ ('guvenlik','Güvenlik ve afet','İtfaiye, zabıta, afete hazırlık.',6),
+ ('yesil','Yeşil alan ve çevre','Park, temiz hava, yenilenebilir enerji.',7)
+on conflict (kod) do update set ad = excluded.ad, aciklama = excluded.aciklama, sira = excluded.sira;
+
+-- kaynak: 'bina:<kod>', 'hizmet:<kod>', 'program:<kod>', 'yatirim:<kod>'
+create table if not exists oyun.belediye_karne_harita(
+  kaynak text not null, alan text not null references oyun.belediye_karne_alan(kod),
+  puan numeric not null, primary key (kaynak, alan));
+insert into oyun.belediye_karne_harita(kaynak, alan, puan) values
+ ('bina:hastane','saglik',10), ('bina:aile_sagligi','saglik',6),
+ ('bina:okul','egitim',8), ('bina:universite','egitim',10), ('bina:kutuphane','egitim',5),
+ ('bina:itfaiye','guvenlik',10), ('bina:polis_destek','guvenlik',6),
+ ('bina:otobus_garaji','ulasim',8), ('bina:otopark','ulasim',4),
+ ('bina:yol_kavsak','ulasim',7), ('bina:yol_kavsak','su',3),
+ ('bina:su_aritma','su',12), ('bina:atik_tesisi','temizlik',12), ('bina:atik_tesisi','yesil',3),
+ ('bina:sehir_parki','yesil',10), ('bina:gunes_enerji','yesil',6),
+ ('bina:hal_pazar','temizlik',2), ('bina:sanayi_sitesi','yesil',-4),
+ ('bina:kultur_merkezi','egitim',5), ('bina:spor_tesisi','saglik',4), ('bina:spor_tesisi','egitim',2),
+ ('bina:sosyal_konut','saglik',6), ('bina:kreş','saglik',3), ('bina:kreş','egitim',3),
+ ('hizmet:lokanta','saglik',6), ('hizmet:ulasim','ulasim',10), ('hizmet:kira','saglik',8), ('hizmet:istihdam','saglik',3),
+ ('program:cevre','temizlik',8), ('program:cevre','yesil',4), ('program:afet','guvenlik',8),
+ ('program:ulasim','ulasim',6), ('program:egitim_bursu','egitim',6), ('program:konut','saglik',4),
+ ('yatirim:altyapi','su',6), ('yatirim:altyapi','ulasim',4), ('yatirim:rayli','ulasim',12)
+on conflict (kaynak, alan) do update set puan = excluded.puan;
+
+-- Kriz kararlarından gelen süreli karne etkileri
+create table if not exists oyun.belediye_karne_etki(
+  id bigint generated by default as identity primary key,
+  il_id smallint not null references oyun.iller(id), alan text not null references oyun.belediye_karne_alan(kod),
+  puan numeric not null, kaynak text not null default '', bitis timestamptz not null);
+create index if not exists belediye_karne_etki_il_idx on oyun.belediye_karne_etki(il_id, bitis);
+
+-- İller Bankası kredileri (borç başkana değil şehre aittir; yeni başkan devralır)
+create table if not exists oyun.belediye_borc(
+  id bigint generated by default as identity primary key,
+  il_id smallint not null references oyun.iller(id), baskan uuid references oyun.profiller(id),
+  anapara numeric not null check (anapara > 0), toplam numeric not null, kalan numeric not null,
+  taksit numeric not null, gun int not null check (gun in (10, 20, 30)), faiz numeric not null,
+  baslangic timestamptz not null, son_odeme date not null, gecikme int not null default 0,
+  durum text not null default 'aktif' check (durum in ('aktif','kapandi')), kapanis timestamptz);
+create index if not exists belediye_borc_il_idx on oyun.belediye_borc(il_id, durum);
+
+-- Kriz masası
+create table if not exists oyun.belediye_kriz_katalog(
+  kod text primary key, baslik text not null, metin text not null,
+  aylar int[], agirlik int not null default 10,
+  secenekler jsonb not null, sessiz jsonb not null);
+create table if not exists oyun.belediye_kriz(
+  id bigint generated by default as identity primary key,
+  il_id smallint not null references oyun.iller(id), kod text not null references oyun.belediye_kriz_katalog(kod),
+  baskan uuid references oyun.profiller(id),
+  baslangic timestamptz not null, son timestamptz not null,
+  durum text not null default 'acik' check (durum in ('acik','cozuldu','sessiz')),
+  secim text, maliyet numeric not null default 0, sonuc text, karar_zamani timestamptz);
+create index if not exists belediye_kriz_il_idx on oyun.belediye_kriz(il_id, id desc);
+create index if not exists belediye_kriz_acik_idx on oyun.belediye_kriz(son) where durum = 'acik';
+
+do $$ declare t text; begin
+  foreach t in array array['belediye_karne_alan','belediye_karne_harita','belediye_karne_etki','belediye_borc',
+                           'belediye_kriz_katalog','belediye_kriz'] loop
+    execute format('alter table oyun.%I enable row level security', t);
+    execute format('revoke all on table oyun.%I from public, anon, authenticated', t);
+  end loop;
+end $$;
+
+-- Seçenek: k, ad, aciklama, gun (il günlük geliri cinsinden maliyet; eksi = gelir),
+-- mem (memnuniyet), gel (gelişmişlik), etki {alan: puan} (14 gün), sans (başarı olasılığı),
+-- basarisiz {mem, etki, metin}. sessiz: 24 saatte karar verilmezse işleyen sonuç.
+insert into oyun.belediye_kriz_katalog(kod, baslik, metin, aylar, agirlik, secenekler, sessiz) values
+('kar','Yoğun kar yağışı','Gece başlayan kar yolları kapattı; ana arterlerde araçlar mahsur kaldı.', array[11,12,1,2,3], 14,
+ '[{"k":"a","ad":"Tüm ekipler sahaya, iş makinesi kirala","aciklama":"Pahalı ama şehir sabah açılır.","gun":1.5,"mem":2,"etki":{"ulasim":6}},
+   {"k":"b","ad":"Yalnız ana arterleri aç","aciklama":"Mahalle araları birkaç gün kapalı kalır.","gun":0.5,"mem":-1,"etki":{"ulasim":1}},
+   {"k":"c","ad":"Okulları tatil et, kar dursun","aciklama":"Bedava ama esnaf ve vatandaş öfkeli.","gun":0,"mem":-3,"etki":{"ulasim":-6}}]',
+ '{"mem":-4,"etki":{"ulasim":-8},"metin":"Başkan ortada yoktu; şehir iki gün kardan çıkamadı."}'),
+('su','Ana isale hattı patladı','Şehrin yarısında su kesik; vatandaşlar bidonlarla kuyrukta.', null, 12,
+ '[{"k":"a","ad":"Acil onarım ve tanker desteği","aciklama":"Su 12 saatte gelir.","gun":1.2,"mem":1,"etki":{"su":5}},
+   {"k":"b","ad":"Normal ihaleyle onar","aciklama":"Ucuz, ama kesinti günlerce sürer.","gun":0.4,"mem":-2,"etki":{"su":-4}}]',
+ '{"mem":-4,"etki":{"su":-8},"metin":"Belediyeden açıklama gelmedi; kesinti üç gün sürdü."}'),
+('cop','Çöp toplama krizi','Temizlik işçileri iş bıraktı, sokaklarda çöp yığılıyor.', null, 12,
+ '[{"k":"a","ad":"Toplu sözleşmede zammı kabul et","aciklama":"İşçiler hemen işbaşı yapar.","gun":2,"mem":2,"etki":{"temizlik":6}},
+   {"k":"b","ad":"Taşeron firmaya ihale et","aciklama":"Ucuz; firmanın işi beceremeyebilir.","gun":1,"mem":0,"etki":{"temizlik":2},"sans":0.55,"basarisiz":{"mem":-3,"etki":{"temizlik":-5},"metin":"Taşeron yetişemedi; çöp dağları büyüdü."}},
+   {"k":"c","ad":"Grevi kanunsuz ilan et","aciklama":"Bedava ama sert tepki çeker.","gun":0,"mem":-4,"etki":{"temizlik":-8}}]',
+ '{"mem":-5,"etki":{"temizlik":-10},"metin":"Belediye sessiz kaldı; çöp bir hafta toplanmadı."}'),
+('sel','Sağanak ve sel','Dere taştı, alt geçitler ve bodrum katlar su altında.', array[9,10,11,3,4,5], 10,
+ '[{"k":"a","ad":"AFAD ile ortak müdahale ve dere ıslahı","aciklama":"Kalıcı önlem; yüksek maliyet.","gun":2,"mem":2,"gel":0.4,"etki":{"guvenlik":6,"su":4}},
+   {"k":"b","ad":"Hasar tespiti ve nakdî yardım","aciklama":"Mağdurlar desteklenir, altyapı aynı kalır.","gun":1,"mem":1,"etki":{"saglik":2}},
+   {"k":"c","ad":"İl afet müdürlüğüne bırak","aciklama":"Belediye bütçesi korunur.","gun":0,"mem":-3,"etki":{"guvenlik":-5}}]',
+ '{"mem":-5,"etki":{"guvenlik":-8,"su":-3},"metin":"Başkan sel bölgesine gitmedi; tepki büyüdü."}'),
+('deprem','Orta şiddette deprem','Can kaybı yok ama eski binalarda çatlaklar var, halk sokakta.', null, 6,
+ '[{"k":"a","ad":"Bina tarama ve güçlendirme programı","aciklama":"Pahalı ama şehir afete hazırlanır.","gun":2.5,"mem":2,"gel":0.5,"etki":{"guvenlik":10}},
+   {"k":"b","ad":"Çadır kent ve psikososyal destek","aciklama":"Kısa vadeli rahatlama.","gun":0.8,"mem":2,"etki":{"saglik":4}},
+   {"k":"c","ad":"Panik yok, açıklama yap","aciklama":"Bedava; güven sorunu doğabilir.","gun":0,"mem":-2,"etki":{"guvenlik":-4}}]',
+ '{"mem":-5,"etki":{"guvenlik":-8},"metin":"Belediye deprem gecesi sessiz kaldı."}'),
+('festival','Uluslararası festival başvurusu','Bir festival organizasyonu şehrinizde yapılmak için belediye desteği istiyor.', array[4,5,6,7,8,9], 10,
+ '[{"k":"a","ad":"Ev sahipliği yap, tüm masrafı üstlen","aciklama":"Turizm ve kültüre büyük katkı.","gun":1.5,"mem":3,"gel":1,"etki":{"egitim":5}},
+   {"k":"b","ad":"Sponsorlarla ortak yap","aciklama":"Ucuz; sponsor bulunamayabilir.","gun":0.3,"mem":2,"etki":{"egitim":3},"sans":0.6,"basarisiz":{"mem":-1,"etki":{},"metin":"Sponsor çıkmadı, festival sönük geçti."}},
+   {"k":"c","ad":"Teşekkür et, reddet","aciklama":"Bütçe korunur.","gun":0,"mem":0,"etki":{}}]',
+ '{"mem":-1,"etki":{},"metin":"Başvuru yanıtsız kaldı, festival komşu ile gitti."}'),
+('hayvan','Sokak hayvanları şikâyeti','Mahalle sakinleri sokak hayvanları için belediyeden çözüm istiyor.', null, 8,
+ '[{"k":"a","ad":"Barınak ve kısırlaştırma kampanyası","aciklama":"Kalıcı ve insancıl çözüm.","gun":0.8,"mem":1,"etki":{"saglik":3}},
+   {"k":"b","ad":"Toplatıp barınağa götür","aciklama":"Ucuz ama hayvanseverler tepkili.","gun":0.2,"mem":-2,"etki":{"saglik":1}}]',
+ '{"mem":-2,"etki":{"saglik":-2},"metin":"Şikâyetler cevapsız kaldı."}'),
+('kavsak','Kavşakta ölümlü kaza','Aynı kavşakta bu ay üçüncü kaza; mahalleli yolu kapattı.', null, 9,
+ '[{"k":"a","ad":"Akıllı kavşak ve üst geçit","aciklama":"Kalıcı çözüm.","gun":1,"mem":2,"etki":{"ulasim":6,"guvenlik":2}},
+   {"k":"b","ad":"Hız kesici ve levha","aciklama":"Ucuz geçici önlem.","gun":0.1,"mem":0,"etki":{"ulasim":1}}]',
+ '{"mem":-3,"etki":{"ulasim":-4,"guvenlik":-2},"metin":"Belediye taziye bile yayımlamadı."}'),
+('rant','Müteahhitten imar teklifi','Büyük bir müteahhit, parkı imara açarsanız kasaya ciddi para bırakacağını söylüyor.', null, 7,
+ '[{"k":"a","ad":"Kabul et, parkı imara aç","aciklama":"Kasaya para girer; çevreciler ayakta.","gun":-3,"mem":-3,"gel":0.5,"etki":{"yesil":-8}},
+   {"k":"b","ad":"Halka sor (kent konseyi)","aciklama":"Halk onaylarsa uzlaşmalı proje.","gun":0.3,"mem":2,"etki":{"yesil":1},"sans":0.5,"basarisiz":{"mem":-1,"etki":{"yesil":-2},"metin":"Kent konseyi bölündü, proje askıda."}},
+   {"k":"c","ad":"Reddet, park kalsın","aciklama":"Kasa boş kalır, halk memnun.","gun":0,"mem":2,"etki":{"yesil":3}}]',
+ '{"mem":0,"etki":{},"metin":"Teklif cevapsız kaldı."}'),
+('hava','Hava kirliliği alarmı','Kış aylarında partikül değerleri sınırı aştı.', array[11,12,1,2], 9,
+ '[{"k":"a","ad":"Doğalgaz dönüşüm desteği","aciklama":"Sobalı evlere hibe.","gun":1.5,"mem":2,"etki":{"yesil":8,"saglik":3}},
+   {"k":"b","ad":"Uyarı yayımla, denetim artır","aciklama":"Neredeyse bedava.","gun":0.1,"mem":-1,"etki":{"yesil":1}}]',
+ '{"mem":-2,"etki":{"yesil":-4,"saglik":-2},"metin":"Belediye uyarıları görmezden geldi."}'),
+('yangin','Orman yangını şehre yaklaşıyor','Yangın kent sınırına 5 km mesafede.', array[6,7,8,9], 10,
+ '[{"k":"a","ad":"Tüm ekipleri ve kiralık helikopteri gönder","aciklama":"Yangın hızla kontrol altına alınır.","gun":2,"mem":3,"etki":{"guvenlik":8,"yesil":2}},
+   {"k":"b","ad":"İtfaiyeyi yerleşim sınırına yığ","aciklama":"Ev kaybı olmaz, orman yanar.","gun":0.6,"mem":0,"etki":{"guvenlik":2,"yesil":-4}}]',
+ '{"mem":-5,"etki":{"guvenlik":-6,"yesil":-6},"metin":"Başkan tatildeydi; yangın günlerce sürdü."}'),
+('maas','Belediye işçileri maaş farkı istiyor','Sendika, enflasyon farkı ödenmezse eylem kararı alacağını açıkladı.', null, 10,
+ '[{"k":"a","ad":"Talebi tam karşıla","aciklama":"Hizmetler aksamaz.","gun":1.5,"mem":1,"etki":{"temizlik":4}},
+   {"k":"b","ad":"Yarısını öde, uzlaş","aciklama":"Sendika kabul edebilir.","gun":0.6,"mem":0,"etki":{"temizlik":2},"sans":0.6,"basarisiz":{"mem":-2,"etki":{"temizlik":-4},"metin":"Sendika uzlaşmayı reddetti, iş yavaşlattı."}},
+   {"k":"c","ad":"Reddet","aciklama":"Bütçe korunur, eylem başlar.","gun":0,"mem":-2,"etki":{"temizlik":-6}}]',
+ '{"mem":-3,"etki":{"temizlik":-6},"metin":"Sendikanın mektubu yanıtsız kaldı; eylem başladı."}'),
+('tarihi','İnşaatta tarihî eser','Belediye kazısında Roma dönemine ait mozaikler çıktı.', null, 6,
+ '[{"k":"a","ad":"Kazıyı genişlet, müze kur","aciklama":"Kültür turizmine yatırım.","gun":1,"mem":2,"gel":0.5,"etki":{"egitim":6}},
+   {"k":"b","ad":"Üstünü kapat, inşaata devam","aciklama":"Bedava; ortaya çıkarsa skandal.","gun":0,"mem":0,"etki":{},"sans":0.7,"basarisiz":{"mem":-6,"etki":{"egitim":-4},"metin":"Gizlenen mozaikler basına sızdı; büyük skandal."}}]',
+ '{"mem":-1,"etki":{"egitim":-2},"metin":"Kazı kendi hâline bırakıldı."}'),
+('sicak','Sıcak hava dalgası','Termometreler 42 dereceyi gösteriyor; yaşlılar risk altında.', array[6,7,8], 9,
+ '[{"k":"a","ad":"Serinleme merkezleri ve su dağıtımı","aciklama":"Kırılgan gruplar korunur.","gun":0.5,"mem":2,"etki":{"saglik":4}},
+   {"k":"b","ad":"Sadece duyuru yap","aciklama":"Bedava.","gun":0,"mem":-1,"etki":{"saglik":-1}}]',
+ '{"mem":-2,"etki":{"saglik":-3},"metin":"Belediye sıcak dalgasında önlem almadı."}'),
+('yatirimci','Fabrika yatırımı teklifi','Bir yatırımcı, belediye arsa ve altyapı desteği verirse şehre fabrika kurmak istiyor.', null, 8,
+ '[{"k":"a","ad":"Arsa ve altyapıyı belediye karşılasın","aciklama":"İstihdam ve gelişmişlik artar.","gun":1.5,"mem":2,"gel":1.2,"etki":{"yesil":-2}},
+   {"k":"b","ad":"Arsayı bedelli ver","aciklama":"Kasaya para girer; yatırımcı vazgeçebilir.","gun":-1,"mem":1,"gel":0.6,"etki":{},"sans":0.5,"basarisiz":{"mem":0,"etki":{},"metin":"Yatırımcı başka ile gitti."}},
+   {"k":"c","ad":"Çevre gerekçesiyle reddet","aciklama":"Çevreciler memnun.","gun":0,"mem":0,"etki":{"yesil":2}}]',
+ '{"mem":-1,"etki":{},"metin":"Yatırımcı yanıt alamayınca başka ile gitti."}')
+on conflict (kod) do update set baslik = excluded.baslik, metin = excluded.metin, aylar = excluded.aylar,
+  agirlik = excluded.agirlik, secenekler = excluded.secenekler, sessiz = excluded.sessiz;
+
+-- ---------------------------------------------------------------- karne
+-- Büyük ilin aynı puan için daha çok yatırıma ihtiyacı var.
+create or replace function oyun.belediye_olcek(p_il smallint) returns numeric
+language sql stable set search_path = '' as $$
+  select greatest(0.7, least(2.2, sqrt(greatest(1, i.mv)::numeric / 7.4))) from oyun.iller i where i.id = p_il
+$$;
+
+create or replace function oyun.belediye_karne_katki(p_il smallint)
+returns table(alan text, kaynak text, puan numeric)
+language sql stable set search_path = '' as $$
+  with t as (select oyun.simdi() s)
+  select m.alan, k.ad || ' · ' || b.seviye || '. seviye',
+         m.puan * (case b.seviye when 1 then 1 when 2 then 1.6 else 2.1 end)
+    from oyun.belediye_bina b join oyun.belediye_bina_katalog k on k.kod = b.kod
+    join oyun.belediye_karne_harita m on m.kaynak = 'bina:' || b.kod
+   where b.il_id = p_il and b.durum = 'aktif' and b.seviye > 0
+  union all
+  select m.alan, bh.ad, m.puan
+    from oyun.il_hizmet h join oyun.belediye_hizmetleri bh on bh.kod = h.kod
+    join oyun.belediye_karne_harita m on m.kaynak = 'hizmet:' || h.kod
+   where h.il_id = p_il
+  union all
+  select m.alan, k.ad || ' (program)',
+         m.puan * greatest(0, 1 - extract(epoch from (t.s - x.zaman)) / (7 * 86400.0))
+    from oyun.belediye_ekonomi_karar x join oyun.belediye_ekonomi_katalog k on k.kod = x.kod
+    join oyun.belediye_karne_harita m on m.kaynak = 'program:' || x.kod, t
+   where x.il_id = p_il and x.zaman > t.s - interval '7 days'
+  union all
+  select m.alan, y.ad,
+         case when x.kod = 'rayli' then m.puan
+              else m.puan * greatest(0, 1 - extract(epoch from (t.s - x.zaman)) / (30 * 86400.0)) end
+    from (select kod, zaman, row_number() over (partition by kod order by zaman desc) n
+            from oyun.belediye_proje_kayit where il_id = p_il) x
+    join oyun.belediye_yatirimlari y on y.kod = x.kod
+    join oyun.belediye_karne_harita m on m.kaynak = 'yatirim:' || x.kod, t
+   where (x.kod = 'rayli' and x.n <= 2) or (x.kod <> 'rayli' and x.zaman > t.s - interval '30 days')
+  union all
+  select e.alan, e.kaynak, e.puan from oyun.belediye_karne_etki e, t
+   where e.il_id = p_il and e.bitis > t.s
+$$;
+
+create or replace function oyun.belediye_karne(p_il smallint) returns jsonb
+language plpgsql stable set search_path = '' as $$
+declare taban numeric; olcek numeric; sonuc jsonb; ort numeric;
+begin
+  select 30 + 0.3 * coalesce(d.gelisim, 50) into taban from oyun.il_durum d where d.il_id = p_il;
+  olcek := oyun.belediye_olcek(p_il);
+  with k as (select * from oyun.belediye_karne_katki(p_il)),
+  a as (
+    select al.kod, al.ad, al.aciklama, al.sira,
+           round(oyun.sinir(coalesce(taban, 45) + coalesce((select sum(k.puan) from k where k.alan = al.kod), 0) / olcek, 0, 100), 1) puan,
+           coalesce((select jsonb_agg(jsonb_build_object('kaynak', z.kaynak, 'puan', round(z.p / olcek, 1)) order by abs(z.p) desc)
+                       from (select k.kaynak, sum(k.puan) p from k where k.alan = al.kod group by k.kaynak
+                             order by abs(sum(k.puan)) desc limit 6) z), '[]'::jsonb) katkilar
+      from oyun.belediye_karne_alan al)
+  select jsonb_agg(jsonb_build_object('kod', kod, 'ad', ad, 'aciklama', aciklama, 'puan', puan, 'katkilar', katkilar) order by sira),
+         round(avg(puan), 1)
+    into sonuc, ort from a;
+  return jsonb_build_object('alanlar', coalesce(sonuc, '[]'::jsonb), 'ortalama', ort,
+                            'taban', round(coalesce(taban, 45), 1), 'olcek', round(olcek, 2));
+end $$;
+
+create or replace function oyun.belediye_karne_ort(p_il smallint) returns numeric
+language sql stable set search_path = '' as $$
+  select coalesce((oyun.belediye_karne(p_il)->>'ortalama')::numeric, 45)
+$$;
+
+-- ---------------------------------------------------------------- kredi
+create or replace function oyun.belediye_kredi_faiz(p_gun int) returns numeric
+language sql stable set search_path = '' as $$
+  -- dönemin tamamı için: aylık (enflasyon/12 + 1) puan, güne oranlanır
+  select round(((coalesce(u.enflasyon, 30) / 12 + 1) / 100) * p_gun / 30.0, 4) from oyun.ulke u where u.id = 1
+$$;
+
+create or replace function oyun.belediye_kredi_limit(p_il smallint) returns numeric
+language sql stable set search_path = '' as $$
+  select round(greatest(0, 20 * oyun.il_gelir(p_il)
+           - coalesce((select sum(kalan) from oyun.belediye_borc where il_id = p_il and durum = 'aktif'), 0)), 4)
+$$;
+
+create or replace function public.belediye_kredi_al(p_tutar numeric, p_gun int)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); m oyun.makamlar := oyun.baskan_zorunlu(p);
+  t timestamptz := oyun.simdi(); lim numeric; f numeric; toplam numeric; yid bigint; ilad text;
+begin
+  if p_gun is null or p_gun not in (10, 20, 30) then raise exception 'Vade 10, 20 ya da 30 gün olabilir'; end if;
+  if p_tutar is null or p_tutar < 0.01 then raise exception 'Kredi en az 0,01 milyar ₺ (10 milyon ₺) olmalı'; end if;
+  p_tutar := round(p_tutar, 4);
+  perform pg_advisory_xact_lock(772922, m.il_id::integer);
+  if (select count(*) from oyun.belediye_borc where il_id = m.il_id and durum = 'aktif') >= 3 then
+    raise exception 'Aynı anda en fazla 3 kredi kullanılabilir'; end if;
+  if exists (select 1 from oyun.belediye_borc where il_id = m.il_id and baslangic > t - interval '24 hours') then
+    raise exception 'İller Bankası 24 saatte bir kredi verir'; end if;
+  if exists (select 1 from oyun.belediye_borc where il_id = m.il_id and durum = 'aktif' and gecikme >= 3) then
+    raise exception 'Gecikmedeki taksitler ödenmeden yeni kredi verilmez'; end if;
+  lim := oyun.belediye_kredi_limit(m.il_id);
+  if p_tutar > lim then
+    raise exception 'Kredi limiti: % milyar ₺ (20 günlük gelirden mevcut borç düşülür)', to_char(lim, 'FM999990.0000'); end if;
+  f := oyun.belediye_kredi_faiz(p_gun);
+  toplam := round(p_tutar * (1 + f), 6);
+  insert into oyun.belediye_borc(il_id, baskan, anapara, toplam, kalan, taksit, gun, faiz, baslangic, son_odeme)
+  values (m.il_id, p.id, p_tutar, toplam, toplam, round(toplam / p_gun, 6), p_gun, f, t, (t at time zone 'Europe/Istanbul')::date)
+  returning id into yid;
+  update oyun.il_durum set kasa = kasa + p_tutar where il_id = m.il_id;
+  insert into oyun.belediye_sehir_hareket(il_id, tur, tutar, aciklama, zaman)
+  values (m.il_id, 'kredi', p_tutar, format('İller Bankası kredisi · %s gün · geri ödeme %s milyar ₺', p_gun, to_char(toplam, 'FM999990.0000')), t);
+  select ad into ilad from oyun.iller where id = m.il_id;
+  perform oyun.olay('belediye', format('%s Belediyesi İller Bankası''ndan %s milyar ₺ kredi çekti (%s gün vadeli).',
+                    ilad, to_char(p_tutar, 'FM999990.00##'), p_gun), m.il_id, p.parti_id, t);
+  return jsonb_build_object('tamam', true, 'id', yid, 'anapara', p_tutar, 'toplam', toplam,
+                            'taksit', round(toplam / p_gun, 6), 'faiz', f);
+end $$;
+
+create or replace function public.belediye_kredi_kapat(p_id bigint)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); m oyun.makamlar := oyun.baskan_zorunlu(p);
+  b oyun.belediye_borc; t timestamptz := oyun.simdi(); v_kasa numeric;
+begin
+  perform pg_advisory_xact_lock(772922, m.il_id::integer);
+  select * into b from oyun.belediye_borc where id = p_id and il_id = m.il_id and durum = 'aktif' for update;
+  if b.id is null then raise exception 'Kapatılacak kredi bulunamadı'; end if;
+  select kasa into v_kasa from oyun.il_durum where il_id = m.il_id for update;
+  if v_kasa < b.kalan then
+    raise exception 'Kasa yetersiz: kalan borç % milyar ₺', to_char(b.kalan, 'FM999990.0000'); end if;
+  update oyun.il_durum set kasa = kasa - b.kalan where il_id = m.il_id;
+  update oyun.belediye_borc set kalan = 0, durum = 'kapandi', kapanis = t where id = b.id;
+  insert into oyun.belediye_sehir_hareket(il_id, tur, tutar, aciklama, zaman)
+  values (m.il_id, 'kredi_kapama', -b.kalan, 'İller Bankası kredisi erken kapatıldı', t);
+  return jsonb_build_object('tamam', true, 'odenen', b.kalan);
+end $$;
+
+-- ---------------------------------------------------------------- kriz masası
+create or replace function oyun.belediye_kriz_etki(p_il smallint, p_etki jsonb, p_kaynak text, p_t timestamptz)
+returns void language plpgsql set search_path = '' as $$
+declare k text; v text;
+begin
+  for k, v in select * from jsonb_each_text(coalesce(p_etki, '{}'::jsonb)) loop
+    if exists (select 1 from oyun.belediye_karne_alan where kod = k) and v::numeric <> 0 then
+      insert into oyun.belediye_karne_etki(il_id, alan, puan, kaynak, bitis)
+      values (p_il, k, v::numeric, left(p_kaynak, 120), p_t + interval '14 days');
+    end if;
+  end loop;
+end $$;
+
+create or replace function oyun.belediye_kriz_baslat(p_il smallint, p_kod text default null)
+returns bigint language plpgsql set search_path = '' as $$
+declare t timestamptz := oyun.simdi(); ay int := extract(month from (oyun.simdi() at time zone 'Europe/Istanbul'));
+  v_kod text := p_kod; k oyun.belediye_kriz_katalog; bas uuid; ilad text; yid bigint;
+begin
+  select user_id into bas from oyun.makamlar where tur = 'bel' and il_id = p_il and bit is null order by id desc limit 1;
+  if bas is null or exists (select 1 from oyun.belediye_kriz where il_id = p_il and durum = 'acik') then return null; end if;
+  if v_kod is null then
+    select c.kod into v_kod from oyun.belediye_kriz_katalog c
+     where (c.aylar is null or ay = any(c.aylar))
+       and c.kod not in (select x.kod from oyun.belediye_kriz x where x.il_id = p_il order by x.id desc limit 4)
+     order by -ln(greatest(random(), 1e-9)) / c.agirlik limit 1;
+  end if;
+  select * into k from oyun.belediye_kriz_katalog where kod = v_kod;
+  if k.kod is null then return null; end if;
+  insert into oyun.belediye_kriz(il_id, kod, baskan, baslangic, son)
+  values (p_il, k.kod, bas, t, t + interval '24 hours') returning id into yid;
+  select ad into ilad from oyun.iller where id = p_il;
+  perform oyun.bildir(bas, format('Kriz masası: %s. 24 saat içinde karar ver (Yönetim › Belediye › Kriz masası).', k.baslik), t);
+  perform oyun.olay('belediye', format('%s''da kriz: %s. Gözler belediye başkanında.', ilad, k.baslik), p_il, null, t);
+  return yid;
+end $$;
+
+create or replace function oyun.belediye_kriz_uygula(p_kriz bigint, p_secim text, p_t timestamptz)
+returns jsonb language plpgsql set search_path = '' as $$
+declare x oyun.belediye_kriz; k oyun.belediye_kriz_katalog; s jsonb; v_maliyet numeric := 0; basarili boolean := true;
+  mem numeric; gel numeric; etki jsonb; metin text; ilad text; v_durum text; secad text; bkad text;
+begin
+  select * into x from oyun.belediye_kriz where id = p_kriz and durum = 'acik' for update;
+  if x.id is null then raise exception 'Bu kriz kapanmış'; end if;
+  select * into k from oyun.belediye_kriz_katalog where kod = x.kod;
+  select ad into ilad from oyun.iller where id = x.il_id;
+  if p_secim is null then
+    v_durum := 'sessiz'; s := k.sessiz; mem := coalesce((s->>'mem')::numeric, 0); gel := 0;
+    etki := s->'etki'; metin := s->>'metin'; secad := 'Karar verilmedi';
+  else
+    select e into s from jsonb_array_elements(k.secenekler) e where e->>'k' = p_secim;
+    if s is null then raise exception 'Geçersiz seçenek'; end if;
+    v_durum := 'cozuldu'; secad := s->>'ad';
+    v_maliyet := round(coalesce((s->>'gun')::numeric, 0) * oyun.il_gelir(x.il_id), 6);
+    if v_maliyet > 0 and (select kasa from oyun.il_durum where il_id = x.il_id) < v_maliyet then
+      raise exception 'Belediye kasası yetersiz: % milyar ₺ gerekli. İller Bankası''ndan kredi çekebilirsin.',
+        to_char(v_maliyet, 'FM999990.0000'); end if;
+    basarili := random() < coalesce((s->>'sans')::numeric, 1);
+    if basarili then
+      mem := coalesce((s->>'mem')::numeric, 0); gel := coalesce((s->>'gel')::numeric, 0); etki := s->'etki';
+      metin := format('%s: %s', ilad, s->>'ad');
+    else
+      mem := coalesce((s->'basarisiz'->>'mem')::numeric, 0); gel := 0; etki := s->'basarisiz'->'etki';
+      metin := format('%s: %s', ilad, s->'basarisiz'->>'metin');
+    end if;
+  end if;
+  update oyun.il_durum set kasa = kasa - v_maliyet,
+         memnuniyet = oyun.sinir(memnuniyet + mem, 0, 100), gelisim = oyun.sinir(gelisim + gel, 0, 100)
+   where il_id = x.il_id;
+  perform oyun.belediye_kriz_etki(x.il_id, etki, k.baslik, p_t);
+  if v_maliyet <> 0 then
+    insert into oyun.belediye_sehir_hareket(il_id, tur, tutar, aciklama, zaman)
+    values (x.il_id, 'kriz', -v_maliyet, left(k.baslik || ' · ' || secad, 170), p_t);
+  end if;
+  update oyun.belediye_kriz set durum = v_durum, secim = p_secim, maliyet = v_maliyet,
+         sonuc = case when v_durum = 'sessiz' then metin when basarili then 'Başarılı' else s->'basarisiz'->>'metin' end,
+         karar_zamani = p_t
+   where id = x.id;
+  select kad into bkad from oyun.profiller where id = x.baskan;
+  perform oyun.olay('belediye',
+    case when v_durum = 'sessiz' then format('%s: %s — %s', ilad, k.baslik, metin)
+         else format('%s Belediye Başkanı %s, %s krizinde kararını verdi: %s.%s', ilad, coalesce(bkad, ''), lower(k.baslik), secad,
+                     case when basarili then '' else ' Ancak sonuç beklendiği gibi olmadı.' end) end,
+    x.il_id, (select parti_id from oyun.profiller where id = x.baskan), p_t);
+  if v_durum = 'sessiz' and x.baskan is not null then
+    perform oyun.bildir(x.baskan, format('Kriz masası: %s için 24 saatte karar vermedin. %s', k.baslik, metin), p_t);
+  end if;
+  return jsonb_build_object('tamam', true, 'durum', v_durum, 'basarili', basarili, 'maliyet', v_maliyet,
+                            'memnuniyet', mem, 'sonuc', metin);
+end $$;
+
+create or replace function oyun.belediye_kriz_tick(p_olasilik numeric default 0.06)
+returns integer language plpgsql set search_path = '' as $$
+declare t timestamptz := oyun.simdi(); r record; n int := 0;
+begin
+  if not pg_try_advisory_xact_lock(772923, 1) then return 0; end if;
+  for r in select id from oyun.belediye_kriz where durum = 'acik' and son <= t order by id loop
+    perform oyun.belediye_kriz_uygula(r.id, null, t); n := n + 1;
+  end loop;
+  -- Görevde başkan yoksa açık kriz yöneticisiz kalmasın: başkanı düşen ilin krizi kapanır.
+  update oyun.belediye_kriz k set durum = 'sessiz', sonuc = 'Başkanlık boşaldı', karar_zamani = t
+   where k.durum = 'acik' and not exists (select 1 from oyun.makamlar m where m.tur = 'bel' and m.il_id = k.il_id and m.bit is null);
+  for r in select m.il_id from oyun.makamlar m
+            where m.tur = 'bel' and m.bit is null
+              and not exists (select 1 from oyun.belediye_kriz k where k.il_id = m.il_id
+                                and (k.durum = 'acik' or k.baslangic > t - interval '36 hours'))
+              and random() < p_olasilik loop
+    if oyun.belediye_kriz_baslat(r.il_id) is not null then n := n + 1; end if;
+  end loop;
+  return n;
+end $$;
+
+create or replace function public.belediye_kriz_karar(p_id bigint, p_secim text)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); m oyun.makamlar := oyun.baskan_zorunlu(p);
+  t timestamptz := oyun.simdi();
+begin
+  if p_secim is null or btrim(p_secim) = '' then raise exception 'Bir seçenek seç'; end if;
+  perform pg_advisory_xact_lock(772922, m.il_id::integer);
+  if not exists (select 1 from oyun.belediye_kriz where id = p_id and il_id = m.il_id and durum = 'acik' and son > t) then
+    raise exception 'Bu kriz için karar süresi doldu ya da kriz senin ilinde değil'; end if;
+  return oyun.belediye_kriz_uygula(p_id, p_secim, t);
+end $$;
+
+-- ---------------------------------------------------------------- paneller
+create or replace function oyun.belediye_kriz_json(x oyun.belediye_kriz) returns jsonb
+language sql stable set search_path = '' as $$
+  select jsonb_build_object('id', x.id, 'kod', x.kod, 'baslik', k.baslik, 'metin', k.metin,
+    'baslangic', x.baslangic, 'son', x.son, 'durum', x.durum, 'secim', x.secim, 'maliyet', x.maliyet,
+    'sonuc', x.sonuc, 'karar_zamani', x.karar_zamani,
+    'secim_ad', (select e->>'ad' from jsonb_array_elements(k.secenekler) e where e->>'k' = x.secim),
+    'secenekler', (select jsonb_agg(e || jsonb_build_object('maliyet', round(coalesce((e->>'gun')::numeric, 0) * oyun.il_gelir(x.il_id), 6)))
+                     from jsonb_array_elements(k.secenekler) e))
+  from oyun.belediye_kriz_katalog k where k.kod = x.kod
+$$;
+
+create or replace function public.belediye_detay_paneli()
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare p oyun.profiller := oyun.profilim(); m oyun.makamlar; d oyun.il_durum;
+begin
+  select * into m from oyun.makamlar where user_id = p.id and tur = 'bel' and bit is null order by id desc limit 1;
+  if m.id is null then return null; end if;
+  select * into d from oyun.il_durum where il_id = m.il_id;
+  return jsonb_build_object(
+    'il_id', m.il_id, 'il_ad', (select ad from oyun.iller where id = m.il_id),
+    'kasa', d.kasa, 'memnuniyet', d.memnuniyet, 'gelisim', d.gelisim,
+    'gunluk_gelir', oyun.il_gelir(m.il_id), 'gunluk_gider', oyun.il_gider(m.il_id),
+    'tl_milyar', oyun.pazar_tl_milyar(),
+    'karne', oyun.belediye_karne(m.il_id),
+    'kredi', jsonb_build_object(
+       'limit', oyun.belediye_kredi_limit(m.il_id),
+       'faiz', jsonb_build_object('10', oyun.belediye_kredi_faiz(10), '20', oyun.belediye_kredi_faiz(20), '30', oyun.belediye_kredi_faiz(30)),
+       'son_kredi', (select max(baslangic) from oyun.belediye_borc where il_id = m.il_id),
+       'borclar', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'anapara', anapara, 'toplam', toplam, 'kalan', kalan,
+            'taksit', taksit, 'gun', gun, 'faiz', faiz, 'baslangic', baslangic, 'gecikme', gecikme, 'durum', durum) order by id desc)
+          from (select * from oyun.belediye_borc where il_id = m.il_id and (durum = 'aktif' or kapanis > oyun.simdi() - interval '7 days')
+                order by id desc limit 8) b), '[]'::jsonb),
+       'toplam_borc', coalesce((select sum(kalan) from oyun.belediye_borc where il_id = m.il_id and durum = 'aktif'), 0)),
+    'kriz', (select oyun.belediye_kriz_json(x) from oyun.belediye_kriz x where x.il_id = m.il_id and x.durum = 'acik' order by id desc limit 1),
+    'kriz_gecmis', coalesce((select jsonb_agg(oyun.belediye_kriz_json(x) order by x.id desc)
+          from (select * from oyun.belediye_kriz where il_id = m.il_id and durum <> 'acik' order by id desc limit 8) x), '[]'::jsonb));
+end $$;
+
+-- Herkese açık belediye karnesi: seçmen başkanı hizmetle, borçla, krizlerdeki kararlarıyla görür.
+create or replace function public.belediye_karnesi(p_il integer)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare d oyun.il_durum; bas record;
+begin
+  if auth.uid() is null then raise exception 'Oturum açmalısın'; end if;
+  select * into d from oyun.il_durum where il_id = p_il;
+  if d.il_id is null then raise exception 'İl bulunamadı'; end if;
+  select pr.kad, pr.id, pa.kisa parti, m.bas into bas from oyun.makamlar m join oyun.profiller pr on pr.id = m.user_id
+    left join oyun.partiler pa on pa.id = pr.parti_id
+   where m.tur = 'bel' and m.il_id = p_il and m.bit is null order by m.id desc limit 1;
+  return jsonb_build_object('il_id', p_il, 'il_ad', (select ad from oyun.iller where id = p_il),
+    'baskan', case when bas.kad is null then null else jsonb_build_object('kad', bas.kad, 'parti', bas.parti, 'bas', bas.bas) end,
+    'kasa', d.kasa, 'memnuniyet', d.memnuniyet, 'gelisim', d.gelisim,
+    'borc', coalesce((select sum(kalan) from oyun.belediye_borc where il_id = p_il and durum = 'aktif'), 0),
+    'gecikme', coalesce((select sum(gecikme) from oyun.belediye_borc where il_id = p_il and durum = 'aktif'), 0),
+    'aktif_bina', (select count(*) from oyun.belediye_bina where il_id = p_il and durum = 'aktif'),
+    'karne', oyun.belediye_karne(p_il::smallint),
+    'krizler', coalesce((select jsonb_agg(jsonb_build_object('baslik', k.baslik, 'durum', x.durum, 'zaman', coalesce(x.karar_zamani, x.baslangic),
+           'secim_ad', (select e->>'ad' from jsonb_array_elements(k.secenekler) e where e->>'k' = x.secim), 'sonuc', x.sonuc) order by x.id desc)
+        from (select * from oyun.belediye_kriz where il_id = p_il order by id desc limit 6) x
+        join oyun.belediye_kriz_katalog k on k.kod = x.kod), '[]'::jsonb));
+end $$;
+
+-- ---------------------------------------------------------------- gece hesabı
+create or replace function oyun.belediye_gunluk(t timestamptz) returns void language plpgsql as $$
+declare r record; h record; b record; v_kasa numeric; bas uuid; g numeric; pay numeric;
+  bugun date := (t at time zone 'Europe/Istanbul')::date;
+begin
+  for r in select d.il_id, i.ad, i.mv from oyun.il_durum d join oyun.iller i on i.id = d.il_id loop
+    g := oyun.il_gelir(r.il_id);
+    -- Vergi geliri 60 günlük gelire kadar birikir; bağış ve kredi gibi dış kaynaklar kesilmez.
+    update oyun.il_durum set kasa = coalesce(kasa, 0) + least(g, greatest(0, 60 * g - coalesce(kasa, 0))) - oyun.il_gider(r.il_id)
+     where il_id = r.il_id returning kasa into v_kasa;
+    -- İller Bankası taksitleri
+    for b in select * from oyun.belediye_borc where il_id = r.il_id and durum = 'aktif' and son_odeme < bugun order by id loop
+      pay := least(b.taksit, b.kalan);
+      if v_kasa >= pay then
+        update oyun.il_durum set kasa = kasa - pay where il_id = r.il_id returning kasa into v_kasa;
+        update oyun.belediye_borc set kalan = round(kalan - pay, 6), son_odeme = bugun,
+               durum = case when kalan - pay <= 0.000001 then 'kapandi' else 'aktif' end,
+               kapanis = case when kalan - pay <= 0.000001 then t end
+         where id = b.id;
+        insert into oyun.belediye_sehir_hareket(il_id, tur, tutar, aciklama, zaman)
+        values (r.il_id, 'kredi_taksit', -pay, 'İller Bankası taksiti', t);
+      else
+        update oyun.belediye_borc set kalan = round(kalan + b.taksit * 0.05, 6), gecikme = gecikme + 1, son_odeme = bugun
+         where id = b.id;
+        update oyun.il_durum set memnuniyet = oyun.sinir(memnuniyet - 1, 0, 100) where il_id = r.il_id;
+        insert into oyun.belediye_sehir_hareket(il_id, tur, tutar, aciklama, zaman)
+        values (r.il_id, 'kredi_gecikme', 0, 'İller Bankası taksiti ödenemedi; %5 gecikme cezası borca eklendi', t);
+        bas := (select user_id from oyun.makamlar where tur = 'bel' and il_id = r.il_id and bit is null limit 1);
+        if bas is not null then
+          perform oyun.bildir(bas, 'İller Bankası taksiti kasada para olmadığı için ödenemedi; %5 gecikme cezası eklendi.', t);
+        end if;
+        if (b.gecikme + 1) % 3 = 0 then
+          perform oyun.olay('belediye', format('Sayıştay uyarısı: %s Belediyesi İller Bankası borcunu %s gündür ödeyemiyor.', r.ad, b.gecikme + 1), r.il_id, null, t);
+        end if;
+      end if;
+    end loop;
+    if v_kasa < 0 then
+      bas := (select user_id from oyun.makamlar where tur = 'bel' and il_id = r.il_id and bit is null limit 1);
+      update oyun.il_durum set hemsehri = 0 where il_id = r.il_id and hemsehri > 0;
+      for h in select k.kod, bh.ad from oyun.il_hizmet k join oyun.belediye_hizmetleri bh on bh.kod = k.kod
+               where k.il_id = r.il_id order by bh.oran desc loop
+        exit when (select kasa from oyun.il_durum where il_id = r.il_id) >= 0;
+        delete from oyun.il_hizmet where il_id = r.il_id and kod = h.kod;
+        update oyun.il_durum set kasa = kasa + oyun.hizmet_gider(r.il_id, h.kod) where il_id = r.il_id;
+        perform oyun.olay('belediye', format('%s Belediyesi kasası yetmediği için %s hizmetini kapattı.', r.ad, h.ad), r.il_id, null, t);
+      end loop;
+      if bas is not null then perform oyun.bildir(bas, 'Belediye kasası eksiye düştü: hemşehri desteği durduruldu, gerekirse hizmetler kapatıldı.', t); end if;
+      update oyun.il_durum set kasa = greatest(kasa, 0) where il_id = r.il_id;
+    end if;
+  end loop;
+  delete from oyun.belediye_karne_etki where bitis < t - interval '30 days';
+  -- gelişmişlik yatırım almazsa yavaşça ortalamaya döner; memnuniyet hizmetlere, desteğe, vergiye
+  -- ve hizmet karnesine (binalar, programlar, kriz kararları) göre şekillenir
+  update oyun.il_durum d set gelisim = gelisim + (50 - gelisim) * 0.01,
+    memnuniyet = oyun.sinir(memnuniyet + (50 + 4 * (select count(*) from oyun.il_hizmet ih where ih.il_id = d.il_id) + least(10, hemsehri / 30)
+                                          - kent_vergisi * 2 - oyun.il_duz(d.il_id, 'emlak') / 30
+                                          + (oyun.belediye_karne_ort(d.il_id) - 45) * 0.5 - memnuniyet) * 0.05, 0, 100);
+end $$;
+
+-- ---------------------------------------------------------------- yetkiler
+revoke all on function public.belediye_kredi_al(numeric, int), public.belediye_kredi_kapat(bigint),
+  public.belediye_kriz_karar(bigint, text), public.belediye_detay_paneli(), public.belediye_karnesi(integer)
+  from public, anon, authenticated;
+grant execute on function public.belediye_kredi_al(numeric, int), public.belediye_kredi_kapat(bigint),
+  public.belediye_kriz_karar(bigint, text), public.belediye_detay_paneli(), public.belediye_karnesi(integer)
+  to authenticated;
+revoke all on function oyun.belediye_kriz_tick(numeric), oyun.belediye_kriz_baslat(smallint, text),
+  oyun.belediye_kriz_uygula(bigint, text, timestamptz), oyun.belediye_kriz_etki(smallint, jsonb, text, timestamptz)
+  from public, anon, authenticated;
+-- =====================================================================
+--  93) EKONOMİ KURUMLARI: Merkez Bankası, belediye tahvili, SPK, konkordato/iflas
+--  - Merkez Bankası: başkanı yürütme başı atar (aday kabul eder, tarafsız olmalı).
+--    PPK haftada bir politika faizini belirler (tek kararda en fazla ±10 puan).
+--    Faiz oyun.banka_oranlar() üzerinden devlet bankası mevduat/kredi oranlarını,
+--    reel faiz de her gün enflasyon ve büyümeyi etkiler. Karar verilene kadar
+--    eski formül (enflasyon + banka_reel_faiz, en az %15) geçerlidir.
+--  - Belediye tahvili: belediye başkanı 14/30/60 gün vadeli tahvil ihraç eder,
+--    oyuncular 48 saat içinde alır; para il kasasına girer, vadede faiziyle
+--    kasadan ödenir. Kasa yetmezse temerrüt (kısmi ödeme, memnuniyet −5).
+--  - SPK: bağlantılı hesaplar arası ya da 48 saatte karşılıklı hisse işlemleri
+--    otomatik incelenir; Hazine ve Maliye Bakanı 72 saatte karar verir. Ceza
+--    işlem tutarının %20'si (en az 10.000 ₺) + 7 gün borsa işlem yasağı.
+--  - Konkordato/iflas: kasası eksiye düşen şirket konkordato ilan eder (açık
+--    sermayenin yarısını geçerse kendiliğinden başlar); 14 günde açık kapanmazsa
+--    şirket iflas eder, borsadan çıkar. Bankalar kapsam dışıdır.
+--  Oyuncu verisini değiştirmez; yalnız yeni tablo, fonksiyon ve tetik ekler.
+--  Canlıya 2026-10-13'te uygulandı (migrations/20261013_ekonomi_kurumlar.sql).
+-- =====================================================================
+
+-- ------------------------------------------------------------ Merkez Bankası
+create table if not exists oyun.merkez_bankasi(
+  id int primary key default 1 check (id=1),
+  baskan uuid references oyun.profiller(id),
+  atama timestamptz,
+  politika_faiz numeric,
+  son_karar timestamptz,
+  son_etki_gun date,
+  son_maas_gun date
+);
+insert into oyun.merkez_bankasi(id) values(1) on conflict do nothing;
+create table if not exists oyun.ppk_kararlari(
+  id bigserial primary key, zaman timestamptz not null, baskan uuid, onceki numeric, yeni numeric not null,
+  enflasyon numeric, gerekce text
+);
+create table if not exists oyun.tcmb_teklifleri(
+  id bigserial primary key, teklif_eden uuid not null, aday uuid not null, durum text not null default 'bekliyor',
+  zaman timestamptz not null
+);
+create unique index if not exists tcmb_teklif_tek on oyun.tcmb_teklifleri(aday) where durum='bekliyor';
+revoke all on oyun.merkez_bankasi, oyun.ppk_kararlari, oyun.tcmb_teklifleri from anon, authenticated;
+alter table oyun.merkez_bankasi enable row level security;
+alter table oyun.ppk_kararlari enable row level security;
+alter table oyun.tcmb_teklifleri enable row level security;
+
+create or replace function oyun.politika_faizi() returns numeric language sql stable set search_path to '' as $$
+  select coalesce((select politika_faiz from oyun.merkez_bankasi where id=1),
+                  (select greatest(15,round(u.enflasyon+a.banka_reel_faiz,1)) from oyun.ulke u, oyun.ayarlar a where u.id=1 and a.id=1))
+$$;
+
+create or replace function oyun.banka_oranlar() returns jsonb language sql stable set search_path to '' as $function$
+  with x as (select oyun.politika_faizi() py)
+  select jsonb_build_object(
+    'politika',py,'vadesiz',0,
+    'vadeli1s',round(py / 365.0 / 24.0,3),
+    'vadeli3s',round(py / 365.0 * 3 / 24.0,3),
+    'vadeli6s',round(py / 365.0 * 6 / 24.0,3),
+    'vadeli12s',round(py / 365.0 * 12 / 24.0,3),
+    'vadeli24s',round(py / 365.0,3),
+    'vadeli7',round(py / 365.0 * 7,3),
+    'vadeli30',round(py / 365.0 * 30,3),
+    'kredi',round(py/12*1.60,2),
+    'gecikme_gunluk',1
+  ) from x
+$function$;
+
+create or replace function public.tcmb_baskan_ata(p_kad text) returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim(); h oyun.profiller; t timestamptz := oyun.simdi(); v_id bigint;
+begin
+  perform oyun.cb_zorunlu(p);
+  h := oyun.profil_bul(p_kad);
+  if h.yasakli then raise exception 'Yasaklı hesaba teklif gönderilemez.'; end if;
+  if (select baskan from oyun.merkez_bankasi where id=1) = h.id then raise exception 'Bu oyuncu zaten Merkez Bankası Başkanı.'; end if;
+  if exists(select 1 from oyun.makamlar where user_id=h.id and bit is null) then
+    raise exception 'Merkez Bankası Başkanı tarafsız olmalı: adayın aktif bir siyasi görevi var.'; end if;
+  insert into oyun.tcmb_teklifleri(teklif_eden,aday,zaman) values(p.id,h.id,t)
+    on conflict (aday) where durum='bekliyor' do update set teklif_eden=excluded.teklif_eden, zaman=excluded.zaman
+    returning id into v_id;
+  perform oyun.bildir(h.id, format('%s %s, seni Merkez Bankası Başkanı olarak atamak istiyor. Hayat › Ekonomi merkezi › Merkez Bankası ekranından kabul edebilir ya da reddedebilirsin. Kabul edersen siyasi görev alamazsın; seçilirsen bankadaki görevin biter.', oyun.yurutme_unvan(), p.kad), t);
+  return jsonb_build_object('durum','bekliyor','teklif_id',v_id,'aday',h.kad);
+end $$;
+
+create or replace function public.tcmb_teklif_yanit(p_teklif bigint, p_kabul boolean) returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim(); k oyun.tcmb_teklifleri; t timestamptz := oyun.simdi(); eski uuid;
+begin
+  select * into k from oyun.tcmb_teklifleri where id=p_teklif and aday=p.id and durum='bekliyor' for update;
+  if k.id is null then raise exception 'Teklif bulunamadı.'; end if;
+  if not p_kabul then
+    update oyun.tcmb_teklifleri set durum='red' where id=k.id;
+    perform oyun.bildir(k.teklif_eden, format('%s, Merkez Bankası Başkanlığı teklifini reddetti.', p.kad), t);
+    return jsonb_build_object('durum','red');
+  end if;
+  if oyun.yurutme_user() is distinct from k.teklif_eden then
+    update oyun.tcmb_teklifleri set durum='gecersiz' where id=k.id;
+    raise exception 'Teklifi yapan kişi artık yürütmenin başında değil; teklif geçersiz.';
+  end if;
+  if exists(select 1 from oyun.makamlar where user_id=p.id and bit is null) then
+    raise exception 'Aktif siyasi görevin varken Merkez Bankası Başkanı olamazsın.'; end if;
+  select baskan into eski from oyun.merkez_bankasi where id=1 for update;
+  update oyun.merkez_bankasi set baskan=p.id, atama=t, son_maas_gun=(t at time zone 'Europe/Istanbul')::date where id=1;
+  update oyun.tcmb_teklifleri set durum='kabul' where id=k.id;
+  update oyun.tcmb_teklifleri set durum='gecersiz' where durum='bekliyor';
+  if eski is not null and eski<>p.id then perform oyun.bildir(eski, 'Merkez Bankası Başkanlığı görevin sona erdi; yerine yeni başkan atandı.', t); end if;
+  perform oyun.olay('ekonomi', format('%s, Merkez Bankası Başkanı olarak göreve başladı.', p.kad), null, null, t);
+  perform oyun.gazete_ekle('icraat', 'Merkez Bankası''na yeni başkan', format('%s atamasıyla %s, Merkez Bankası Başkanlığı görevine getirildi. Piyasalar ilk faiz kararını bekliyor.', oyun.yurutme_unvan(), p.kad), null, t);
+  return public.merkez_bankasi();
+end $$;
+
+create or replace function public.tcmb_baskan_gorevden_al() returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); eski uuid;
+begin
+  perform oyun.cb_zorunlu(p);
+  select baskan into eski from oyun.merkez_bankasi where id=1 for update;
+  if eski is null then raise exception 'Merkez Bankası Başkanlığı zaten boş.'; end if;
+  update oyun.merkez_bankasi set baskan=null, atama=null where id=1;
+  perform oyun.bildir(eski, format('%s kararıyla Merkez Bankası Başkanlığı görevinden alındın.', oyun.yurutme_unvan()), t);
+  perform oyun.olay('ekonomi', format('Merkez Bankası Başkanı %s görevden alındı. Piyasalarda belirsizlik.', oyun.kad(eski)), null, null, t);
+  update oyun.pazar_ayar set endeks = round(endeks*0.98,4) where id=1;
+  return public.merkez_bankasi();
+end $$;
+
+create or replace function public.ppk_faiz_karari(p_faiz numeric, p_gerekce text default null) returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim(); m oyun.merkez_bankasi; t timestamptz := oyun.simdi(); eski numeric; enf numeric;
+begin
+  select * into m from oyun.merkez_bankasi where id=1 for update;
+  if m.baskan is distinct from p.id then raise exception 'Faiz kararını yalnızca Merkez Bankası Başkanı verir.'; end if;
+  if p_faiz is null or p_faiz<0 or p_faiz>100 or p_faiz<>round(p_faiz,2) then raise exception 'Politika faizi %%0 ile %%100 arasında, en fazla iki ondalıklı olmalı.'; end if;
+  if m.son_karar is not null and m.son_karar > t - interval '7 days' then
+    raise exception 'Para Politikası Kurulu haftada bir toplanır. Sonraki karar: %', to_char((m.son_karar + interval '7 days') at time zone 'Europe/Istanbul','DD.MM HH24:MI'); end if;
+  eski := oyun.politika_faizi();
+  if abs(p_faiz-eski) > 10 then raise exception 'Tek kararda en fazla 10 puan değişiklik yapılabilir (şu an %%%s).', eski; end if;
+  select enflasyon into enf from oyun.ulke where id=1;
+  update oyun.merkez_bankasi set politika_faiz=p_faiz, son_karar=t,
+    son_etki_gun=coalesce(son_etki_gun,(t at time zone 'Europe/Istanbul')::date) where id=1;
+  insert into oyun.ppk_kararlari(zaman,baskan,onceki,yeni,enflasyon,gerekce) values(t,p.id,eski,p_faiz,round(enf,2),left(nullif(btrim(p_gerekce),''),500));
+  update oyun.pazar_ayar set endeks = round(oyun.sinir(endeks*(1 + (eski-p_faiz)*0.002),0.3,3),4) where id=1;
+  perform oyun.olay('ekonomi', format('Merkez Bankası politika faizini %%%s''ten %%%s''e %s.', eski, p_faiz,
+    case when p_faiz>eski then 'yükseltti' when p_faiz<eski then 'indirdi' else 'sabit bıraktı' end), null, null, t);
+  perform oyun.gazete_ekle('icraat', format('PPK kararı: politika faizi %%%s', p_faiz),
+    format('Merkez Bankası Para Politikası Kurulu, politika faizini %%%s seviyesinden %%%s seviyesine getirdi. Yıllık enflasyon %%%s.%s', eski, p_faiz, round(enf,1),
+      coalesce(' Gerekçe: '||left(nullif(btrim(p_gerekce),''),300),'')), null, t);
+  return public.merkez_bankasi();
+end $$;
+
+create or replace function public.merkez_bankasi() returns jsonb language plpgsql security definer set search_path to '' as $$
+declare me uuid := oyun.ben(); m oyun.merkez_bankasi; u oyun.ulke; pf numeric;
+begin
+  select * into m from oyun.merkez_bankasi where id=1;
+  select * into u from oyun.ulke where id=1;
+  pf := oyun.politika_faizi();
+  return jsonb_build_object(
+    'baskan', case when m.baskan is null then null else jsonb_build_object('id',m.baskan,'kad',oyun.kad(m.baskan),'atama',m.atama) end,
+    'politika_faiz', pf, 'tcmb_karari', m.politika_faiz is not null,
+    'enflasyon', round(u.enflasyon,2), 'buyume', round(u.buyume,2), 'reel_faiz', round(pf-u.enflasyon,2),
+    'oranlar', oyun.banka_oranlar(),
+    'sonraki_karar', case when m.son_karar is null then null else m.son_karar + interval '7 days' end,
+    'ben_baskan', m.baskan is not distinct from me and me is not null,
+    'ben_atayabilir', oyun.yurutme_user() is not distinct from me and me is not null,
+    'yurutme_unvan', oyun.yurutme_unvan(),
+    'bekleyen_teklifim', (select jsonb_build_object('id',id,'teklif_eden',oyun.kad(teklif_eden),'zaman',zaman) from oyun.tcmb_teklifleri where aday=me and durum='bekliyor' limit 1),
+    'kararlar', coalesce((select jsonb_agg(jsonb_build_object('zaman',zaman,'baskan',oyun.kad(baskan),'onceki',onceki,'yeni',yeni,'enflasyon',enflasyon,'gerekce',gerekce) order by zaman desc)
+                 from (select * from oyun.ppk_kararlari order by zaman desc limit 20) k),'[]'::jsonb),
+    'kural', 'PPK haftada bir toplanır; tek kararda en fazla 10 puan. Reel faiz (faiz − enflasyon) yüksekse enflasyon düşer ama büyüme yavaşlar; düşükse tersi.'
+  );
+end $$;
+
+create or replace function oyun.merkez_bankasi_tick(t timestamptz) returns void language plpgsql set search_path to '' as $$
+declare m oyun.merkez_bankasi; bugun date := (t at time zone 'Europe/Istanbul')::date; g date; reel numeric; maas numeric;
+begin
+  select * into m from oyun.merkez_bankasi where id=1 for update;
+  if m.baskan is not null and (exists(select 1 from oyun.makamlar where user_id=m.baskan and bit is null)
+       or (select yasakli from oyun.profiller where id=m.baskan)) then
+    perform oyun.bildir(m.baskan, 'Siyasi görev aldığın için Merkez Bankası Başkanlığın sona erdi.', t);
+    perform oyun.olay('ekonomi', format('%s, siyasi görev aldığı için Merkez Bankası Başkanlığından ayrıldı.', oyun.kad(m.baskan)), null, null, t);
+    update oyun.merkez_bankasi set baskan=null, atama=null where id=1 returning * into m;
+  end if;
+  if m.politika_faiz is not null and m.son_etki_gun is not null and m.son_etki_gun < bugun then
+    g := greatest(m.son_etki_gun, bugun-31);
+    while g < bugun loop
+      g := g+1;
+      select oyun.politika_faizi() - enflasyon into reel from oyun.ulke where id=1;
+      reel := oyun.sinir(reel,-40,40);
+      update oyun.ulke set enflasyon = oyun.sinir(enflasyon - reel*0.01, 0, 200),
+                           buyume   = oyun.sinir(buyume - reel*0.006, -10, 15) where id=1;
+    end loop;
+    update oyun.merkez_bankasi set son_etki_gun=bugun where id=1;
+  end if;
+  if m.baskan is not null and coalesce(m.son_maas_gun, bugun-1) < bugun then
+    maas := round(oyun.makam_maasi('bakan', null) / 30);
+    perform oyun.para_islem(m.baskan, maas, 'maas', 'Merkez Bankası Başkanlığı günlük maaşı', t);
+    update oyun.merkez_bankasi set son_maas_gun=bugun where id=1;
+  end if;
+end $$;
+
+-- ------------------------------------------------------------ Belediye tahvili
+create table if not exists oyun.belediye_tahvil(
+  id bigserial primary key, il_id smallint not null references oyun.iller(id), ihrac_eden uuid not null,
+  hedef numeric not null, toplanan numeric not null default 0, faiz numeric not null, vade_gun int not null,
+  bas timestamptz not null, satis_bit timestamptz not null, vade timestamptz,
+  durum text not null default 'satista' check (durum in ('satista','tutuluyor','odendi','temerrut','iptal')),
+  odenen numeric, sonuc_zaman timestamptz
+);
+create index if not exists belediye_tahvil_durum on oyun.belediye_tahvil(durum, satis_bit, vade);
+create table if not exists oyun.belediye_tahvil_pay(
+  tahvil_id bigint not null references oyun.belediye_tahvil(id), user_id uuid not null, tutar numeric not null, alis timestamptz not null,
+  primary key(tahvil_id,user_id)
+);
+revoke all on oyun.belediye_tahvil, oyun.belediye_tahvil_pay from anon, authenticated;
+alter table oyun.belediye_tahvil enable row level security;
+alter table oyun.belediye_tahvil_pay enable row level security;
+
+create or replace function oyun.bel_tahvil_tavan(p_il smallint) returns numeric language sql stable set search_path to '' as $$
+  select round(greatest(1, coalesce((select kasa from oyun.il_durum where il_id=p_il),0)) * oyun.pazar_tl_milyar())
+$$;
+
+create or replace function public.belediye_tahvil_ihrac(p_hedef numeric, p_faiz numeric, p_vade_gun int) returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); v_il smallint; tavan numeric; acik numeric; yillik numeric; v_id bigint; ilad text;
+begin
+  select il_id into v_il from oyun.makamlar where tur='bel' and user_id=p.id and bit is null limit 1;
+  if v_il is null then raise exception 'Belediye tahvilini yalnızca görevdeki belediye başkanı ihraç edebilir.'; end if;
+  if p_vade_gun not in (14,30,60) then raise exception 'Vade 14, 30 veya 60 gün olabilir.'; end if;
+  if p_faiz is null or p_faiz<=0 or p_faiz<>round(p_faiz,2) then raise exception 'Dönem faizi pozitif ve en fazla iki ondalıklı olmalı.'; end if;
+  yillik := p_faiz*365.0/p_vade_gun;
+  if yillik > oyun.politika_faizi()+25 then
+    raise exception 'Yıllık karşılığı %%%s; politika faizinin 25 puan üstüne çıkamaz (en fazla %%%s dönem faizi).', round(yillik,1), round((oyun.politika_faizi()+25)*p_vade_gun/365.0,2); end if;
+  tavan := oyun.bel_tahvil_tavan(v_il);
+  if p_hedef is null or p_hedef<100000 or p_hedef<>round(p_hedef) or p_hedef>tavan then
+    raise exception 'Tahvil tutarı 100.000 ₺ ile %s ₺ arasında olmalı (sınır belediye kasasına göre belirlenir).', oyun.tl(tavan); end if;
+  select coalesce(sum(case when durum='satista' then hedef else toplanan end),0) into acik from oyun.belediye_tahvil where il_id=v_il and durum in ('satista','tutuluyor');
+  if acik + p_hedef > tavan*2 then raise exception 'Belediyenin ödenmemiş tahvil stoku sınırı aşar (en fazla %s ₺ daha).', oyun.tl(greatest(0,tavan*2-acik)); end if;
+  if exists(select 1 from oyun.belediye_tahvil where il_id=v_il and durum='satista') then raise exception 'Satışta olan bir tahvil varken yenisi ihraç edilemez.'; end if;
+  insert into oyun.belediye_tahvil(il_id,ihrac_eden,hedef,faiz,vade_gun,bas,satis_bit)
+    values(v_il,p.id,p_hedef,p_faiz,p_vade_gun,t,t+interval '48 hours') returning id into v_id;
+  select ad into ilad from oyun.iller where id=v_il;
+  perform oyun.olay('ekonomi', format('%s Belediyesi %s ₺ tutarında, %s gün vadeli, %%%s getirili tahvil ihraç etti. Satış 48 saat sürecek.', ilad, oyun.tl(p_hedef), p_vade_gun, p_faiz), v_il, p.parti_id, t);
+  perform oyun.gazete_ekle('icraat', format('%s Belediyesi borçlanmaya gidiyor', ilad),
+    format('Belediye Başkanı %s, %s ₺ tutarında %s gün vadeli tahvil ihraç etti. Yatırımcılara dönem sonunda %%%s getiri vaat ediliyor.', p.kad, oyun.tl(p_hedef), p_vade_gun, p_faiz), v_id, t);
+  return public.belediye_tahvilleri();
+end $$;
+
+create or replace function public.belediye_tahvil_al(p_tahvil bigint, p_tutar numeric) returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); b oyun.belediye_tahvil; ilad text;
+begin
+  select * into b from oyun.belediye_tahvil where id=p_tahvil for update;
+  if b.id is null or b.durum<>'satista' or b.satis_bit<=t then raise exception 'Bu tahvilin satışı kapandı.'; end if;
+  if p_tutar is null or p_tutar<1000 or p_tutar<>round(p_tutar) then raise exception 'En az 1.000 ₺, tam sayı tutar gir.'; end if;
+  if b.toplanan+p_tutar > b.hedef then raise exception 'Kalan tahvil miktarı %s ₺.', oyun.tl(b.hedef-b.toplanan); end if;
+  select ad into ilad from oyun.iller where id=b.il_id;
+  perform oyun.para_islem(p.id,-p_tutar,'tahvil',format('%s Belediyesi tahvili #%s alımı',ilad,b.id),t);
+  insert into oyun.belediye_tahvil_pay(tahvil_id,user_id,tutar,alis) values(b.id,p.id,p_tutar,t)
+    on conflict (tahvil_id,user_id) do update set tutar=oyun.belediye_tahvil_pay.tutar+excluded.tutar;
+  update oyun.belediye_tahvil set toplanan=toplanan+p_tutar where id=b.id;
+  return public.belediye_tahvilleri();
+end $$;
+
+create or replace function public.belediye_tahvilleri() returns jsonb language plpgsql security definer set search_path to '' as $$
+declare me uuid := oyun.ben(); v_il smallint;
+begin
+  select il_id into v_il from oyun.makamlar where tur='bel' and user_id=me and bit is null limit 1;
+  return jsonb_build_object(
+    'tahviller', coalesce((select jsonb_agg(jsonb_build_object('id',b.id,'il_id',b.il_id,'il',i.ad,'ihrac_eden',oyun.kad(b.ihrac_eden),
+        'hedef',b.hedef,'toplanan',b.toplanan,'faiz',b.faiz,'yillik',round(b.faiz*365.0/b.vade_gun,1),'vade_gun',b.vade_gun,
+        'satis_bit',b.satis_bit,'vade',b.vade,'durum',b.durum,'odenen',b.odenen,
+        'payim',(select tutar from oyun.belediye_tahvil_pay x where x.tahvil_id=b.id and x.user_id=me)) order by b.bas desc)
+      from (select * from oyun.belediye_tahvil where durum in ('satista','tutuluyor') or bas > oyun.simdi()-interval '30 days' order by bas desc limit 60) b
+      join oyun.iller i on i.id=b.il_id),'[]'::jsonb),
+    'belediyem', case when v_il is null then null else jsonb_build_object('il_id',v_il,'il',(select ad from oyun.iller where id=v_il),'tavan',oyun.bel_tahvil_tavan(v_il),
+       'acik_stok',(select coalesce(sum(case when durum='satista' then hedef else toplanan end),0) from oyun.belediye_tahvil where il_id=v_il and durum in ('satista','tutuluyor')),
+       'max_yillik_faiz', oyun.politika_faizi()+25) end,
+    'politika_faiz', oyun.politika_faizi(),
+    'kural','Satış 48 saat sürer; hedefin %30''u toplanmazsa iptal edilip para iade edilir. Vadede belediye kasası yetmezse tahvil temerrüde düşer ve yatırımcılar kasadaki kadarını alır.'
+  );
+end $$;
+
+create or replace function oyun.belediye_tahvil_tick(t timestamptz) returns void language plpgsql set search_path to '' as $$
+declare b oyun.belediye_tahvil; x record; ilad text; kur numeric; borc numeric; v_kasa numeric; oran numeric; od numeric; toplam_od numeric; bb uuid;
+begin
+  kur := oyun.pazar_tl_milyar();
+  for b in select * from oyun.belediye_tahvil where durum='satista' and satis_bit<=t order by id for update loop
+    select ad into ilad from oyun.iller where id=b.il_id;
+    if b.toplanan < b.hedef*0.3 then
+      for x in select * from oyun.belediye_tahvil_pay where tahvil_id=b.id loop
+        perform oyun.para_islem(x.user_id, x.tutar, 'tahvil', format('%s Belediyesi tahvili #%s iptal: iade', ilad, b.id), t);
+      end loop;
+      update oyun.belediye_tahvil set durum='iptal', sonuc_zaman=t where id=b.id;
+      perform oyun.bildir(b.ihrac_eden, format('%s Belediyesi tahvili yeterli talep görmedi (%s / %s ₺); iptal edildi, paralar iade edildi.', ilad, oyun.tl(b.toplanan), oyun.tl(b.hedef)), t);
+      perform oyun.olay('ekonomi', format('%s Belediyesi tahvili yeterli talep görmediği için iptal edildi.', ilad), b.il_id, null, t);
+    else
+      update oyun.il_durum set kasa=coalesce(kasa,0)+b.toplanan/kur where il_id=b.il_id;
+      update oyun.belediye_tahvil set durum='tutuluyor', vade=t+make_interval(days=>b.vade_gun) where id=b.id;
+      perform oyun.bildir(b.ihrac_eden, format('%s Belediyesi tahvil satışı tamamlandı: %s ₺ belediye kasasına girdi. Vadede %s ₺ geri ödenecek.', ilad, oyun.tl(b.toplanan), oyun.tl(round(b.toplanan*(1+b.faiz/100)))), t);
+      perform oyun.olay('ekonomi', format('%s Belediyesi tahvil satışında %s ₺ topladı.', ilad, oyun.tl(b.toplanan)), b.il_id, null, t);
+    end if;
+  end loop;
+  for b in select * from oyun.belediye_tahvil where durum='tutuluyor' and vade<=t order by vade for update loop
+    select ad into ilad from oyun.iller where id=b.il_id;
+    borc := round(b.toplanan*(1+b.faiz/100));
+    select coalesce(d.kasa,0) into v_kasa from oyun.il_durum d where d.il_id=b.il_id for update;
+    v_kasa := coalesce(v_kasa,0);
+    oran := case when v_kasa*kur >= borc then 1 else greatest(0, v_kasa*kur/borc) end;
+    toplam_od := 0;
+    for x in select * from oyun.belediye_tahvil_pay where tahvil_id=b.id loop
+      od := floor(x.tutar*(1+b.faiz/100)*oran);
+      if od>0 then
+        perform oyun.para_islem(x.user_id, od, 'tahvil', format('%s Belediyesi tahvili #%s vade ödemesi%s', ilad, b.id, case when oran<1 then ' (kısmi — temerrüt)' else '' end), t);
+        toplam_od := toplam_od+od;
+      end if;
+      if oran<1 then perform oyun.bildir(x.user_id, format('%s Belediyesi tahvil borcunu ödeyemedi. Alacağının yalnızca %%%s''i ödendi.', ilad, round(oran*100)), t); end if;
+    end loop;
+    update oyun.il_durum d set kasa=greatest(0,coalesce(d.kasa,0)-toplam_od/kur) where d.il_id=b.il_id;
+    if oran<1 then
+      update oyun.belediye_tahvil set durum='temerrut', odenen=toplam_od, sonuc_zaman=t where id=b.id;
+      update oyun.il_durum d set memnuniyet=greatest(0,d.memnuniyet-5) where d.il_id=b.il_id;
+      perform oyun.olay('ekonomi', format('%s Belediyesi tahvil borcunu ödeyemedi: temerrüt! Yatırımcılar alacağının %%%s''ini alabildi.', ilad, round(oran*100)), b.il_id, null, t);
+      perform oyun.gazete_ekle('icraat', format('%s Belediyesi temerrüde düştü', ilad),
+        format('%s Belediyesi, %s ₺ tutarındaki tahvil borcunu vadesinde ödeyemedi. Yatırımcılar alacağının ancak %%%s''ini tahsil edebildi; kent halkında memnuniyetsizlik büyüyor.', ilad, oyun.tl(borc), round(oran*100)), b.id, t);
+      bb := oyun.makam_sahibi('bel',null,b.il_id);
+      if bb is not null then perform oyun.bildir(bb, format('%s Belediyesi tahvil borcunu ödeyemedi; kentte memnuniyet 5 puan düştü.', ilad), t); end if;
+    else
+      update oyun.belediye_tahvil set durum='odendi', odenen=toplam_od, sonuc_zaman=t where id=b.id;
+      perform oyun.olay('ekonomi', format('%s Belediyesi %s ₺ tahvil borcunu vadesinde ödedi.', ilad, oyun.tl(toplam_od)), b.il_id, null, t);
+    end if;
+  end loop;
+end $$;
+
+-- ------------------------------------------------------------ SPK
+create table if not exists oyun.spk_inceleme(
+  id bigserial primary key, sirket_id bigint references oyun.sirketler(id), taraf1 uuid not null, taraf2 uuid,
+  tur text not null check (tur in ('bagli_hesap','karsilikli_islem','manipulasyon')),
+  kanit jsonb not null default '{}'::jsonb, acan uuid, bas timestamptz not null, bit timestamptz not null,
+  durum text not null default 'acik' check (durum in ('acik','ceza','beraat')),
+  ceza numeric, karar_veren uuid, karar_not text, karar_zaman timestamptz
+);
+create index if not exists spk_acik on oyun.spk_inceleme(durum, bit);
+create table if not exists oyun.spk_yasak(user_id uuid primary key, bit timestamptz not null, neden text);
+revoke all on oyun.spk_inceleme, oyun.spk_yasak from anon, authenticated;
+alter table oyun.spk_inceleme enable row level security;
+alter table oyun.spk_yasak enable row level security;
+
+create or replace function oyun.spk_yasakli_mi(u uuid) returns boolean language sql stable set search_path to '' as $$
+  select exists(select 1 from oyun.spk_yasak where user_id=u and bit>oyun.simdi())
+$$;
+
+create or replace function oyun.bagli_hesap_mi(a uuid, b uuid) returns boolean language sql stable set search_path to '' as $$
+  select exists(select 1 from oyun.oturumlar x join oyun.oturumlar y on y.user_id=b
+                where x.user_id=a and ((x.cihaz is not null and x.cihaz<>'' and x.cihaz=y.cihaz) or (x.iz is not null and x.iz<>'' and x.iz=y.iz)))
+$$;
+
+create or replace function oyun.tg_spk_emir() returns trigger language plpgsql set search_path to '' as $$
+begin
+  if oyun.spk_yasakli_mi(new.satici) then raise exception 'SPK işlem yasağın sürüyor; borsada emir veremezsin.'; end if;
+  return new;
+end $$;
+create or replace function oyun.tg_spk_islem_once() returns trigger language plpgsql set search_path to '' as $$
+begin
+  if oyun.spk_yasakli_mi(new.alici) then raise exception 'SPK işlem yasağın sürüyor; borsada alım yapamazsın.'; end if;
+  if oyun.spk_yasakli_mi(new.satici) then raise exception 'Satıcıya SPK işlem yasağı getirildi; bu emir işlem göremez.'; end if;
+  return new;
+end $$;
+
+create or replace function oyun.tg_spk_gozetim() returns trigger language plpgsql set search_path to '' as $$
+declare v_tur text; k jsonb; t timestamptz := oyun.simdi(); sad text;
+begin
+  if new.alici is null or new.satici is null or new.alici=new.satici then return new; end if;
+  if exists(select 1 from oyun.spk_inceleme where durum='acik' and sirket_id=new.sirket_id
+            and ((taraf1=new.alici and taraf2=new.satici) or (taraf1=new.satici and taraf2=new.alici))) then return new; end if;
+  if oyun.bagli_hesap_mi(new.alici,new.satici) then
+    v_tur := 'bagli_hesap';
+  elsif exists(select 1 from oyun.borsa_islem b where b.sirket_id=new.sirket_id and b.alici=new.satici and b.satici=new.alici
+               and b.zaman > t - interval '48 hours' and b.id<>new.id) then
+    v_tur := 'karsilikli_islem';
+  else
+    return new;
+  end if;
+  k := jsonb_build_object('islem_id',new.id,'pay',new.pay,'birim',new.birim,'tutar',new.tutar,
+       'iliskili_tutar',(select coalesce(sum(tutar),0) from oyun.borsa_islem b where b.sirket_id=new.sirket_id and b.zaman>t-interval '7 days'
+                          and ((b.alici=new.alici and b.satici=new.satici) or (b.alici=new.satici and b.satici=new.alici))));
+  insert into oyun.spk_inceleme(sirket_id,taraf1,taraf2,tur,kanit,bas,bit) values(new.sirket_id,new.alici,new.satici,v_tur,k,t,t+interval '72 hours');
+  select ad into sad from oyun.sirketler where id=new.sirket_id;
+  perform oyun.olay('ekonomi', format('SPK, %s hisselerinde olağandışı işlemler tespit etti ve inceleme başlattı.', sad), null, null, t);
+  perform oyun.bildir(new.alici, format('SPK, %s hisselerindeki işlemin hakkında inceleme başlattı. Karar 72 saat içinde.', sad), t);
+  perform oyun.bildir(new.satici, format('SPK, %s hisselerindeki işlemin hakkında inceleme başlattı. Karar 72 saat içinde.', sad), t);
+  return new;
+end $$;
+
+drop trigger if exists spk_emir on oyun.borsa_emir;
+create trigger spk_emir before insert on oyun.borsa_emir for each row execute function oyun.tg_spk_emir();
+drop trigger if exists spk_islem_once on oyun.borsa_islem;
+create trigger spk_islem_once before insert on oyun.borsa_islem for each row execute function oyun.tg_spk_islem_once();
+drop trigger if exists spk_gozetim on oyun.borsa_islem;
+create trigger spk_gozetim after insert on oyun.borsa_islem for each row execute function oyun.tg_spk_gozetim();
+
+create or replace function oyun.spk_sonuclandir(p_id bigint, p_ceza boolean, p_karar_veren uuid, p_not text, t timestamptz) returns void language plpgsql set search_path to '' as $$
+declare i oyun.spk_inceleme; tutar numeric; c numeric; odenen numeric; u uuid; sad text; toplam numeric := 0;
+begin
+  select * into i from oyun.spk_inceleme where id=p_id and durum='acik' for update;
+  if i.id is null then return; end if;
+  select ad into sad from oyun.sirketler where id=i.sirket_id;
+  if p_ceza then
+    tutar := greatest(coalesce((i.kanit->>'iliskili_tutar')::numeric,(i.kanit->>'tutar')::numeric,0), coalesce((i.kanit->>'tutar')::numeric,0));
+    c := greatest(10000, round(tutar*0.20));
+    foreach u in array array_remove(array[i.taraf1,i.taraf2],null) loop
+      odenen := oyun.tahsil_et(u, c, false, format('SPK idari para cezası (%s, inceleme #%s)', coalesce(sad,'borsa'), i.id), t);
+      toplam := toplam + coalesce(odenen,0);
+      insert into oyun.spk_yasak(user_id,bit,neden) values(u,t+interval '7 days',format('SPK inceleme #%s',i.id))
+        on conflict (user_id) do update set bit=greatest(oyun.spk_yasak.bit,excluded.bit), neden=excluded.neden;
+      perform oyun.bildir(u, format('SPK kararı: %s hisselerindeki işlemlerin piyasa dolandırıcılığı sayıldı. %s ₺ idari para cezası ve 7 gün borsa işlem yasağı.', coalesce(sad,'—'), oyun.tl(c)), t);
+    end loop;
+    if toplam>0 then update oyun.ulke set hazine=hazine+toplam/oyun.pazar_tl_milyar() where id=1; end if;
+    update oyun.spk_inceleme set durum='ceza', ceza=c, karar_veren=p_karar_veren, karar_not=p_not, karar_zaman=t where id=i.id;
+    perform oyun.olay('ekonomi', format('SPK, %s hisselerinde işlem yapan %s hakkında ceza kararı verdi: kişi başı %s ₺ ve 7 gün işlem yasağı.', coalesce(sad,'—'),
+       concat_ws(' ve ', oyun.kad(i.taraf1), case when i.taraf2 is not null then oyun.kad(i.taraf2) end), oyun.tl(c)), null, null, t);
+    perform oyun.gazete_ekle('icraat', 'SPK''dan borsa cezası', format('Sermaye Piyasası Kurulu, %s hisselerindeki şüpheli işlemlerle ilgili incelemesini cezayla sonuçlandırdı.', coalesce(sad,'—')), i.id, t);
+  else
+    update oyun.spk_inceleme set durum='beraat', karar_veren=p_karar_veren, karar_not=p_not, karar_zaman=t where id=i.id;
+    foreach u in array array_remove(array[i.taraf1,i.taraf2],null) loop
+      perform oyun.bildir(u, format('SPK, %s hisselerindeki işlemlerin hakkındaki incelemeyi kapattı; ihlal bulunmadı.', coalesce(sad,'—')), t);
+    end loop;
+  end if;
+end $$;
+
+create or replace function public.spk_inceleme_ac(p_sirket bigint, p_kad text, p_aciklama text) returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim(); h oyun.profiller; t timestamptz := oyun.simdi(); s oyun.sirketler; v_tutar numeric;
+begin
+  if oyun.bakanlik_yetkilisi('maliye') is distinct from p.id then raise exception 'SPK incelemesini Hazine ve Maliye Bakanı başlatır (bakanlık boşsa yürütme başı).'; end if;
+  select * into s from oyun.sirketler where id=p_sirket and aktif and halka_acik;
+  if s.id is null then raise exception 'Borsada işlem gören şirket bulunamadı.'; end if;
+  h := oyun.profil_bul(p_kad);
+  select coalesce(sum(tutar),0) into v_tutar from oyun.borsa_islem where sirket_id=s.id and (alici=h.id or satici=h.id) and zaman>t-interval '14 days';
+  if v_tutar=0 then raise exception 'Bu oyuncunun son 14 günde bu şirkette borsa işlemi yok.'; end if;
+  if exists(select 1 from oyun.spk_inceleme where durum='acik' and sirket_id=s.id and (taraf1=h.id or taraf2=h.id)) then raise exception 'Bu konuda açık inceleme zaten var.'; end if;
+  if (select count(*) from oyun.spk_inceleme where acan=p.id and bas>t-interval '24 hours')>=3 then raise exception 'Günde en fazla 3 inceleme başlatılabilir.'; end if;
+  update oyun.bakanlik_kasa set kasa=kasa-0.5 where kod='maliye' and kasa>=0.5;
+  if not found then raise exception 'Maliye Bakanlığı kasasında 0,5 milyar ₺ gerekli.'; end if;
+  insert into oyun.spk_inceleme(sirket_id,taraf1,tur,kanit,acan,bas,bit)
+    values(s.id,h.id,'manipulasyon',jsonb_build_object('tutar',v_tutar,'iliskili_tutar',v_tutar,'iddia',left(coalesce(p_aciklama,''),500)),p.id,t,t+interval '72 hours');
+  perform oyun.bildir(h.id, format('SPK, %s hisselerindeki işlemlerin hakkında manipülasyon incelemesi başlattı.', s.ad), t);
+  perform oyun.olay('ekonomi', format('SPK, %s hisselerinde manipülasyon iddiasıyla inceleme başlattı.', s.ad), null, p.parti_id, t);
+  return public.spk_ekrani();
+end $$;
+
+create or replace function public.spk_karar(p_id bigint, p_ceza boolean, p_not text default null) returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim();
+begin
+  if oyun.bakanlik_yetkilisi('maliye') is distinct from p.id then raise exception 'SPK kararını Hazine ve Maliye Bakanı verir.'; end if;
+  if not exists(select 1 from oyun.spk_inceleme where id=p_id and durum='acik') then raise exception 'Açık inceleme bulunamadı.'; end if;
+  if exists(select 1 from oyun.spk_inceleme where id=p_id and (taraf1=p.id or taraf2=p.id)) then raise exception 'Taraf olduğun incelemede karar veremezsin.'; end if;
+  perform oyun.spk_sonuclandir(p_id, p_ceza, p.id, left(nullif(btrim(p_not),''),500), oyun.simdi());
+  return public.spk_ekrani();
+end $$;
+
+create or replace function public.spk_ekrani() returns jsonb language plpgsql security definer set search_path to '' as $$
+declare me uuid := oyun.ben();
+begin
+  return jsonb_build_object(
+    'yetkili', oyun.bakanlik_yetkilisi('maliye') is not distinct from me and me is not null,
+    'yasagim', (select bit from oyun.spk_yasak where user_id=me and bit>oyun.simdi()),
+    'sirketler', coalesce((select jsonb_agg(jsonb_build_object('id',id,'ad',ad) order by ad) from oyun.sirketler where aktif and halka_acik),'[]'::jsonb),
+    'incelemeler', coalesce((select jsonb_agg(jsonb_build_object('id',i.id,'sirket',s.ad,'sirket_id',i.sirket_id,'taraf1',oyun.kad(i.taraf1),
+        'taraf2',case when i.taraf2 is null then null else oyun.kad(i.taraf2) end,'tur',i.tur,
+        'tur_ad',case i.tur when 'bagli_hesap' then 'Bağlantılı hesaplar arası işlem' when 'karsilikli_islem' then 'Karşılıklı al-sat (fiyat şişirme şüphesi)' else 'Manipülasyon iddiası' end,
+        'tutar',i.kanit->>'iliskili_tutar','iddia',i.kanit->>'iddia','acan',case when i.acan is null then 'Otomatik gözetim' else oyun.kad(i.acan) end,
+        'taraf_benim', i.taraf1=me or i.taraf2=me,
+        'bas',i.bas,'bit',i.bit,'durum',i.durum,'ceza',i.ceza,'karar_not',i.karar_not) order by i.bas desc)
+      from (select * from oyun.spk_inceleme order by bas desc limit 40) i left join oyun.sirketler s on s.id=i.sirket_id),'[]'::jsonb),
+    'kural','Bağlantılı hesaplar arasındaki veya 48 saat içinde karşılıklı yapılan hisse işlemleri otomatik incelemeye alınır. Hazine ve Maliye Bakanı 72 saat içinde karar verir; verilmezse bağlantılı hesap vakaları cezayla, diğerleri beraatle kapanır. Ceza: işlem tutarının %20''si (en az 10.000 ₺) ve 7 gün işlem yasağı.'
+  );
+end $$;
+
+create or replace function oyun.spk_tick(t timestamptz) returns void language plpgsql set search_path to '' as $$
+declare r record;
+begin
+  for r in select id, tur from oyun.spk_inceleme where durum='acik' and bit<=t order by bit limit 100 loop
+    perform oyun.spk_sonuclandir(r.id, r.tur='bagli_hesap', null, 'Süre doldu: kurul otomatik karar verdi.', t);
+  end loop;
+  delete from oyun.spk_yasak where bit < t - interval '30 days';
+end $$;
+
+-- ------------------------------------------------------------ Konkordato / iflas
+create table if not exists oyun.sirket_konkordato(
+  id bigserial primary key, sirket_id bigint not null references oyun.sirketler(id), bas timestamptz not null, bit timestamptz not null,
+  durum text not null default 'surec' check (durum in ('surec','kurtuldu','iflas')),
+  baslatan uuid, baslangic_kasa numeric, sonuc_zaman timestamptz
+);
+create unique index if not exists konkordato_tek on oyun.sirket_konkordato(sirket_id) where durum='surec';
+revoke all on oyun.sirket_konkordato from anon, authenticated;
+alter table oyun.sirket_konkordato enable row level security;
+
+create or replace function oyun.konkordato_baslat(p_sirket bigint, p_baslatan uuid, t timestamptz) returns void language plpgsql set search_path to '' as $$
+declare s oyun.sirketler; x record;
+begin
+  select * into s from oyun.sirketler where id=p_sirket for update;
+  if s.id is null or not s.aktif or s.kasa>=0 or s.sektor='banka' then return; end if;
+  if exists(select 1 from oyun.sirket_konkordato where sirket_id=s.id and durum='surec') then return; end if;
+  insert into oyun.sirket_konkordato(sirket_id,bas,bit,baslatan,baslangic_kasa) values(s.id,t,t+interval '14 days',p_baslatan,s.kasa);
+  for x in select user_id from oyun.sirket_ortaklari where sirket_id=s.id loop
+    perform oyun.bildir(x.user_id, format('%s konkordato sürecine girdi: kasa açığı %s ₺. 14 gün içinde sermaye artırımıyla açık kapatılmazsa şirket iflas eder ve paylar değersizleşir.', s.ad, oyun.tl(-s.kasa)), t);
+  end loop;
+  perform oyun.olay('ekonomi', format('%s konkordato ilan etti (kasa açığı %s ₺).', s.ad, oyun.tl(-s.kasa)), null, null, t);
+  perform oyun.gazete_ekle('icraat', format('%s konkordato ilan etti', s.ad),
+    format('Borç yükü altındaki %s, alacaklılardan koruma için konkordato süreci başlattı. Ortakların 14 gün içinde sermaye koyması bekleniyor.', s.ad), s.id, t);
+end $$;
+
+create or replace function public.sirket_konkordato_ilan(p_sirket bigint) returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim(); s oyun.sirketler; t timestamptz := oyun.simdi();
+begin
+  select * into s from oyun.sirketler where id=p_sirket;
+  if s.id is null or not s.aktif then raise exception 'Şirket bulunamadı.'; end if;
+  if not oyun.sirket_yonetici_mi(s.id,p.id) then raise exception 'Konkordatoyu şirketin yöneticisi (en büyük ortak) ilan eder.'; end if;
+  if s.sektor='banka' then raise exception 'Bankalar konkordato ilan edemez.'; end if;
+  if s.kasa>=0 then raise exception 'Kasası artıda olan şirket konkordato ilan edemez.'; end if;
+  if exists(select 1 from oyun.sirket_konkordato where sirket_id=s.id and durum='surec') then raise exception 'Şirket zaten konkordato sürecinde.'; end if;
+  perform oyun.konkordato_baslat(s.id,p.id,t);
+  return public.konkordato_durum(s.id);
+end $$;
+
+create or replace function public.konkordato_durum(p_sirket bigint default null) returns jsonb language plpgsql security definer set search_path to '' as $$
+begin
+  return coalesce((select jsonb_agg(jsonb_build_object('id',k.id,'sirket_id',k.sirket_id,'sirket',s.ad,'bas',k.bas,'bit',k.bit,'durum',k.durum,
+      'kasa',s.kasa,'baslangic_kasa',k.baslangic_kasa,'sonuc_zaman',k.sonuc_zaman) order by k.bas desc)
+    from oyun.sirket_konkordato k join oyun.sirketler s on s.id=k.sirket_id
+    where (p_sirket is null and (k.durum='surec' or k.bas>oyun.simdi()-interval '30 days')) or k.sirket_id=p_sirket),'[]'::jsonb);
+end $$;
+
+-- Ekran: tüm süreçler + yönettiğim, kasası eksideki şirketler
+create or replace function public.konkordato_ekrani() returns jsonb language plpgsql security definer set search_path to '' as $$
+declare me uuid := oyun.ben();
+begin
+  return jsonb_build_object(
+    'surecler', public.konkordato_durum(null),
+    'riskli', coalesce((select jsonb_agg(jsonb_build_object('id',s.id,'ad',s.ad,'kasa',s.kasa,'sermaye',s.sermaye,
+        'surecte', exists(select 1 from oyun.sirket_konkordato k where k.sirket_id=s.id and k.durum='surec'),
+        'otomatik_esik', round(-0.5*greatest(s.sermaye,1))) order by s.kasa)
+      from oyun.sirketler s where s.aktif and s.kasa<0 and s.sektor<>'banka' and oyun.sirket_yonetici_mi(s.id,me)),'[]'::jsonb),
+    'kural','Kasası eksiye düşen şirketin yöneticisi konkordato ilan edebilir; açık sermayenin yarısını geçerse süreç kendiliğinden başlar. 14 gün içinde ortaklar sermaye artırımıyla kasayı artıya çekerse şirket kurtulur; çekemezse iflas eder, hisseler borsadan çıkar ve paylar değersizleşir. Bankalar kapsam dışıdır.'
+  );
+end $$;
+
+create or replace function oyun.konkordato_tick(t timestamptz) returns void language plpgsql set search_path to '' as $$
+declare r record; k oyun.sirket_konkordato; s oyun.sirketler; x record;
+begin
+  for r in select sx.id from oyun.sirketler sx where sx.aktif and sx.sektor<>'banka' and sx.kasa < -0.5*greatest(sx.sermaye,1)
+            and not exists(select 1 from oyun.sirket_konkordato kx where kx.sirket_id=sx.id and kx.durum='surec') limit 50 loop
+    perform oyun.konkordato_baslat(r.id,null,t);
+  end loop;
+  for k in select * from oyun.sirket_konkordato kk where kk.durum='surec' and kk.bit<=t order by kk.bit for update loop
+    select * into s from oyun.sirketler sx where sx.id=k.sirket_id for update;
+    if s.kasa>=0 or not s.aktif then
+      update oyun.sirket_konkordato set durum='kurtuldu', sonuc_zaman=t where id=k.id;
+      if s.aktif then
+        perform oyun.olay('ekonomi', format('%s konkordatodan başarıyla çıktı.', s.ad), null, null, t);
+        for x in select o.user_id from oyun.sirket_ortaklari o where o.sirket_id=s.id loop
+          perform oyun.bildir(x.user_id, format('%s konkordatodan çıktı; şirket faaliyetine devam ediyor.', s.ad), t);
+        end loop;
+      end if;
+      continue;
+    end if;
+    if exists(select 1 from oyun.halka_arz h where h.sirket_id=s.id and h.durum='acik') then continue; end if;
+    update oyun.borsa_emir e set durum='iptal' where e.sirket_id=s.id and e.durum='acik';
+    begin
+      update oyun.sirket_hisse_ilanlari i set durum='iptal', kapanis=t where i.sirket_id=s.id and i.kapanis is null;
+    exception when others then null; end;
+    update oyun.sirketler sx set aktif=false, halka_acik=false, satilik=null where sx.id=s.id;
+    update oyun.sirket_konkordato kx set durum='iflas', sonuc_zaman=t where kx.id=k.id;
+    for x in select o.user_id from oyun.sirket_ortaklari o where o.sirket_id=s.id loop
+      perform oyun.bildir(x.user_id, format('%s iflas etti. Konkordato süresinde açık (%s ₺) kapatılamadı; payların değersiz hâle geldi.', s.ad, oyun.tl(-s.kasa)), t);
+    end loop;
+    perform oyun.olay('ekonomi', format('%s iflas etti; şirket tasfiye edildi.', s.ad), null, null, t);
+    perform oyun.gazete_ekle('icraat', format('%s iflas etti', s.ad),
+      format('Konkordato süresinde borçlarını yapılandıramayan %s için iflas kararı verildi. Hisseler borsadan çıkarıldı.', s.ad), s.id, t);
+    update oyun.pazar_ayar pa set endeks=round(pa.endeks*0.995,4) where pa.id=1;
+  end loop;
+end $$;
+
+-- ------------------------------------------------------------ motor
+create or replace function oyun.ekonomi2_tick() returns void language plpgsql security definer set search_path to '' as $$
+declare t timestamptz := oyun.simdi();
+begin
+  if not pg_try_advisory_xact_lock(424250) then return; end if;
+  perform oyun.merkez_bankasi_tick(t);
+  perform oyun.belediye_tahvil_tick(t);
+  perform oyun.spk_tick(t);
+  perform oyun.konkordato_tick(t);
+end $$;
+
+-- ------------------------------------------------------------ yetkiler
+revoke all on function public.tcmb_baskan_ata(text), public.tcmb_teklif_yanit(bigint,boolean), public.tcmb_baskan_gorevden_al(),
+  public.ppk_faiz_karari(numeric,text), public.merkez_bankasi(),
+  public.belediye_tahvil_ihrac(numeric,numeric,int), public.belediye_tahvil_al(bigint,numeric), public.belediye_tahvilleri(),
+  public.spk_inceleme_ac(bigint,text,text), public.spk_karar(bigint,boolean,text), public.spk_ekrani(),
+  public.sirket_konkordato_ilan(bigint), public.konkordato_durum(bigint), public.konkordato_ekrani() from public, anon;
+grant execute on function public.tcmb_baskan_ata(text), public.tcmb_teklif_yanit(bigint,boolean), public.tcmb_baskan_gorevden_al(),
+  public.ppk_faiz_karari(numeric,text), public.merkez_bankasi(),
+  public.belediye_tahvil_ihrac(numeric,numeric,int), public.belediye_tahvil_al(bigint,numeric), public.belediye_tahvilleri(),
+  public.spk_inceleme_ac(bigint,text,text), public.spk_karar(bigint,boolean,text), public.spk_ekrani(),
+  public.sirket_konkordato_ilan(bigint), public.konkordato_durum(bigint), public.konkordato_ekrani() to authenticated;
+-- =====================================================================
+--  76 · GENEL SEÇİM SAYIM HATASI: "column reference l.aday_id is ambiguous"
+--
+--  KÖK NEDEN: oyun._sonuc_mv (56 ve 72) içinde plpgsql döngü değişkeni "l" ile,
+--  bağımsız adayları seçen SQL ifadesindeki tablo takma adı "l" (from _b23_liste l)
+--  çakışıyor. PostgreSQL bunu ilk çalıştırmada "column reference "l.aday_id" is
+--  ambiguous" diye reddeder ve sayım hiç tamamlanmaz.
+--  Canlıda bugüne kadar görünmedi çünkü "her aday vekil" test modu AÇIK
+--  (oyun.mv_secim_modu): o modda oyun._sonuc_mv_test çalışır ve bu yola hiç girilmez.
+--  Test modu kapatıldığı anda (gerçek oyuncular için kapatılacak) genel seçim,
+--  1 Kasım dahil, sayılamazdı ve oyun motoru sonucu yazamazdı.
+--
+--  DÜZELTME: yalnızca o ifadenin takma adı "bl" yapıldı. Fonksiyonun geri kalanı,
+--  canlıda çalışan sürümle (72_parti_birlesme_ortak_mv_listesi) birebir aynıdır.
+--  Oyuncu verisine dokunmaz; iki kez çalıştırılabilir.
+-- =====================================================================
+CREATE OR REPLACE FUNCTION oyun._sonuc_mv(s oyun.secimler)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
+declare
+  baraj numeric:=(select baraj from oyun.ayarlar where id=1);
+  onsecim oyun.secimler;
+  toplam bigint;
+  il record;
+  l record;
+  k int;
+  ana bigint;
+  iller_j jsonb:='{}'::jsonb;
+  ilj jsonb;
+  bos int:=0;
+  dolu int:=0;
+  sandalye_top int;
+  bag_oy bigint;
+  bag_sandalye int;
+begin
+  -- Geçici düşük oyuncu sayısı test modu: her kesinleşmiş aday seçilir.
+  if exists (select 1 from oyun.mv_secim_modu where id = 1 and her_aday_vekil) then
+    return oyun._sonuc_mv_test(s);
+  end if;
+  select * into onsecim from oyun.secimler where tur='mv_on' and donem=s.donem;
+  select count(*) into toplam from oyun.oylar where secim_id=s.id;
+  sandalye_top:=coalesce((select sum(mv_secim) from oyun.iller),600);
+
+  create temp table if not exists _b23_ulusal(
+    parti_id bigint primary key,
+    oy bigint,
+    yuzde numeric,
+    gecti boolean,
+    sandalye int default 0
+  ) on commit drop;
+  delete from _b23_ulusal;
+
+  insert into _b23_ulusal(parti_id,oy)
+  select parti_id,count(*)
+  from oyun.oylar
+  where secim_id=s.id and parti_id is not null
+  group by parti_id;
+
+  update _b23_ulusal
+  set yuzde=case when toplam>0 then round(oy*100.0/toplam,2) else 0 end;
+
+  update _b23_ulusal u
+  set gecti=(coalesce(u.oy*100.0/nullif(toplam,0),0)>=baraj) or coalesce((
+    select sum(u2.oy)*100.0/nullif(toplam,0)>=baraj
+    from oyun.ittifak_uyeler iu
+    join oyun.ittifak_uyeler iu2 on iu2.ittifak_id=iu.ittifak_id
+    join _b23_ulusal u2 on u2.parti_id=iu2.parti_id
+    where iu.parti_id=u.parti_id
+  ),false);
+
+  create temp table if not exists _b23_kaz(
+    user_id uuid,
+    il_id smallint,
+    parti_id bigint,
+    aday_id bigint
+  ) on commit drop;
+  delete from _b23_kaz;
+
+  create temp table if not exists _b23_liste(
+    anahtar bigint primary key,
+    parti_id bigint,
+    aday_id bigint,
+    oy bigint,
+    lim int,
+    kaz int default 0
+  ) on commit drop;
+
+  for il in select * from oyun.iller order by id loop
+    delete from _b23_liste;
+
+    insert into _b23_liste(anahtar,parti_id,aday_id,oy,lim)
+    select x.parti_id,x.parti_id,null,x.oy,x.lim
+    from (
+      select v.lider as parti_id,
+             count(*)::bigint oy,
+             (select count(*)
+              from oyun.adaylar a
+              where a.secim_id=onsecim.id
+                and a.il_id=il.id
+                and a.parti_id is not null
+                and oyun.mv_ortak_liste_partisi(s.id,il.id,a.parti_id)=v.lider
+                and a.sira is not null)::int lim
+      from (
+        select oyun.mv_ortak_liste_partisi(s.id,il.id,o.parti_id) as lider
+        from oyun.oylar o
+        join _b23_ulusal u on u.parti_id=o.parti_id and u.gecti
+        where o.secim_id=s.id and o.il_id=il.id and o.parti_id is not null
+      ) v
+      group by v.lider
+    ) x
+    where x.lim>0 and x.oy>0;
+
+    insert into _b23_liste(anahtar,parti_id,aday_id,oy,lim)
+    select -a.id,null,a.id,count(o.*)::bigint,1
+    from oyun.adaylar a
+    join oyun.oylar o
+      on o.secim_id=s.id and o.aday_id=a.id
+    where a.secim_id=s.id
+      and a.parti_id is null
+      and a.il_id=il.id
+    group by a.id
+    having count(o.*)>0;
+
+    for k in 1..coalesce(il.mv_secim,il.mv) loop
+      ana:=null;
+      select anahtar into ana
+      from _b23_liste
+      where kaz<lim and oy>0
+      order by oy::numeric/(kaz+1) desc,oy desc,anahtar
+      limit 1;
+      exit when ana is null;
+      update _b23_liste set kaz=kaz+1 where anahtar=ana;
+    end loop;
+
+    for l in select * from _b23_liste where parti_id is not null and kaz>0 loop
+      insert into _b23_kaz(user_id,il_id,parti_id,aday_id)
+      select a.user_id,il.id,a.parti_id,a.id
+      from oyun.adaylar a
+      where a.secim_id=onsecim.id
+        and a.il_id=il.id
+        and a.parti_id is not null
+        and oyun.mv_ortak_liste_partisi(s.id,il.id,a.parti_id)=l.parti_id
+        and a.sira is not null
+      order by a.sira, case when a.parti_id=l.parti_id then 0 else 1 end, a.id
+      limit l.kaz;
+    end loop;
+
+    insert into _b23_kaz(user_id,il_id,parti_id,aday_id)
+    select a.user_id,il.id,null,a.id
+    from _b23_liste bl
+    join oyun.adaylar a on a.id=bl.aday_id
+    where bl.parti_id is null and bl.kaz>0;
+
+    select jsonb_build_object(
+      'gecerli',(select count(*) from oyun.oylar where secim_id=s.id and il_id=il.id),
+      'partiler',coalesce((
+        select jsonb_object_agg(o.parti_id::text,jsonb_build_object(
+          'oy',o.n,
+          'sandalye',(select count(*) from _b23_kaz z where z.il_id=il.id and z.parti_id=o.parti_id)
+        ))
+        from (
+          select parti_id,count(*) n
+          from oyun.oylar
+          where secim_id=s.id and il_id=il.id and parti_id is not null
+          group by parti_id
+        ) o
+      ),'{}'::jsonb),
+      'bagimsizlar',coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'aday_id',a.id,
+          'kad',pr.kad,
+          'oy',(select count(*) from oyun.oylar o where o.secim_id=s.id and o.aday_id=a.id),
+          'sandalye',case when exists(select 1 from _b23_kaz z where z.aday_id=a.id) then 1 else 0 end
+        ) order by (select count(*) from oyun.oylar o where o.secim_id=s.id and o.aday_id=a.id) desc,a.id)
+        from oyun.adaylar a
+        join oyun.profiller pr on pr.id=a.user_id
+        where a.secim_id=s.id and a.parti_id is null and a.il_id=il.id
+      ),'[]'::jsonb),
+      'secilen',coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'kad',pr.kad,
+          'parti_id',z.parti_id,
+          'bagimsiz',z.parti_id is null
+        ) order by z.parti_id nulls last,pr.kad)
+        from _b23_kaz z
+        join oyun.profiller pr on pr.id=z.user_id
+        where z.il_id=il.id
+      ),'[]'::jsonb),
+      'mv',coalesce(il.mv_secim,il.mv)
+    ) into ilj;
+
+    if (ilj->>'gecerli')::int>0 or jsonb_array_length(ilj->'secilen')>0 then
+      iller_j:=iller_j||jsonb_build_object(il.id::text,ilj);
+    end if;
+  end loop;
+
+  -- Sandalyeler liste sahibine değil, seçilen adayların kendi partilerine yazılır.
+  update _b23_ulusal u set sandalye=(select count(*) from _b23_kaz z where z.parti_id=u.parti_id);
+
+  insert into oyun.kazananlar(secim_id,user_id,il_id,parti_id)
+  select s.id,user_id,il_id,parti_id from _b23_kaz
+  on conflict do nothing;
+
+  select count(*) into dolu from _b23_kaz;
+  bos:=sandalye_top-dolu;
+  select count(*) into bag_oy
+  from oyun.oylar where secim_id=s.id and parti_id is null and aday_id is not null;
+  select count(*) into bag_sandalye
+  from _b23_kaz where parti_id is null;
+
+  perform oyun.olay(
+    'secim',
+    format('Genel seçim sonuçlandı: %s oy kullanıldı, %s sandalye doldu, %s sandalye boş kaldı.',toplam,dolu,bos),
+    null,null,s.sonuc_at
+  );
+
+  return jsonb_build_object(
+    'toplam',toplam,
+    'baraj',baraj,
+    'sandalye_toplam',sandalye_top,
+    'dolu',dolu,
+    'bos',bos,
+    'bagimsiz_oy',bag_oy,
+    'bagimsiz_sandalye',bag_sandalye,
+    'bagimsizlar',coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'aday_id',a.id,
+        'kad',pr.kad,
+        'il_id',a.il_id,
+        'oy',(select count(*) from oyun.oylar o where o.secim_id=s.id and o.aday_id=a.id),
+        'sandalye',case when exists(select 1 from _b23_kaz z where z.aday_id=a.id) then 1 else 0 end
+      ) order by (select count(*) from oyun.oylar o where o.secim_id=s.id and o.aday_id=a.id) desc,a.id)
+      from oyun.adaylar a
+      join oyun.profiller pr on pr.id=a.user_id
+      where a.secim_id=s.id and a.parti_id is null
+    ),'[]'::jsonb),
+    'ulusal',coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'parti_id',u.parti_id,
+        'kisa',p.kisa,
+        'ad',p.ad,
+        'renk',p.renk,
+        'oy',u.oy,
+        'yuzde',u.yuzde,
+        'gecti',u.gecti,
+        'sandalye',u.sandalye
+      ) order by u.oy desc)
+      from _b23_ulusal u
+      join oyun.partiler p on p.id=u.parti_id
+    ),'[]'::jsonb),
+    'iller',iller_j
+  );
+end $function$
+;
 -- =====================================================================
 --  KALICILIK (son): bütünlük kontrolü, silme koruması, sürüm bilgisi, sahibin sıfırlama/geri yükleme araçları
 -- =====================================================================
@@ -25582,3 +34131,9 @@ select cron.schedule('halka-arz', '* * * * *', 'select oyun.halka_arz_tick()');
 
 -- İlk takvimi hemen üret
 select oyun.tick();
+-- Belediye: bina inşaat/bakım (30 dk) ve kriz masası (saatte bir; açık krizlerin süresini de kapatır)
+select cron.schedule('belediye-sehir-bina-tick', '*/30 * * * *', 'select oyun.belediye_bina_tick()');
+select cron.schedule('belediye-kriz', '7 * * * *', 'select oyun.belediye_kriz_tick()');
+-- Ekonomi kurumları (Merkez Bankası, belediye tahvili, SPK, konkordato): 10 dakikada bir
+select cron.unschedule(jobid) from cron.job where jobname = 'ekonomi-2';
+select cron.schedule('ekonomi-2', '*/10 * * * *', 'select oyun.ekonomi2_tick()');

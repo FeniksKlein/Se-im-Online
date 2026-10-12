@@ -248,3 +248,13 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Testler: `python3 test/belediye_detay.py` (bağış, tavan, karne, kredi/gecikme, kriz/sessiz/soğuma), `node test/belediye_detay_arayuz.js` (veri `test/veri/belediye_detay_ornek.json`; sunucuda modül yokken eski ekranın çalıştığı da sınanır).
 - **Canlı durum:** bağış düzeltmesi canlıda. `migrations/20261011_belediye_detay.sql` canlıya henüz uygulanmadı (deneme iptal edildi); Supabase SQL Editor'de bir kez çalıştırılmalı (iki kez çalışabilir). Çalışana kadar arayüz yeni sekmeleri gizler.
 - Bilinen tutarsızlık (dokunulmadı): hazineye/il kasasına para aktaran bazı eski fonksiyonlar `/1e6` ya da `/1e9` kullanıyor (tahvil, piyango, kira vergisi, emlak vergisi); oyunun resmî kuru `pazar_tl_milyar()`.
+
+## 2026-10-13 · 2026.10.13-1 ekonomi kurumları (canlıda)
+- Sunucu: `gelistirici/sql/93_ekonomi_kurumlar.sql` (aynısı `migrations/20261013_ekonomi_kurumlar.sql`). **Canlı Supabase'e uygulandı**, ayrıca çalıştırmaya gerek yok. Yeni zamanlanmış iş: `ekonomi-2` (10 dk'da bir `oyun.ekonomi2_tick()`).
+  - Merkez Bankası: başkanı yürütme başı atar (teklif + kabul, aktif siyasi görevi olmamalı; görev alınca başkanlık biter). PPK haftada bir politika faizi (tek kararda ±10 puan). `oyun.politika_faizi()` → `oyun.banka_oranlar()`; karar yokken eski formül. Reel faiz her gün enflasyon/büyümeyi iter. Başkana günlük bakan maaşı/30.
+  - Belediye tahvili: başkan 14/30/60 gün, tutar ≤ il kasası×pazar_tl_milyar (stok ≤ 2 katı), yıllık getiri ≤ politika+25. 48 saat satış, %30 altı iptal/iade; vadede kasadan ödeme, yetmezse temerrüt (kısmi, memnuniyet −5).
+  - SPK: `borsa_islem` tetikleri — bağlantılı hesap (aynı cihaz/iz) ya da 48 saatte karşılıklı işlem otomatik inceleme; Maliye Bakanı 72 saatte karar verir (yoksa bağlantılı=ceza, diğer=beraat). Ceza %20 (≥10.000 ₺) hazineye + 7 gün işlem yasağı (`spk_yasak`, emir/işlem tetikleri).
+  - Konkordato/iflas: yönetici kasası eksideki şirket için ilan eder; açık > sermaye/2 ise otomatik. 14 günde kasa ≥ 0 değilse iflas (aktif=false, borsadan çıkar, emirler iptal). Bankalar hariç.
+- Arayüz: `gelistirici/www/ekonomi_kurumlar.js` (Hayat › Ekonomi merkezi'nde dört yeni kart; Borsa'da SPK, Şehir Yönetimi'nde tahvil düğmesi).
+- Testler: `test/ekonomi_kurumlar.py` (hepsi.sh'e eklendi), `test/ekonomi_kurumlar_arayuz.js`. `guvenlik.py` ve `kalicilik.py` bu değişiklikten önce de parti kurucu davet kuralı yüzünden bayat beklentiyle düşüyor.
+- Yayın: `docs/index.html`'e yalnızca `<script src="ekonomi_kurumlar.js?v=20261013-2">` eklendi ve `docs/ekonomi_kurumlar.js` kopyalandı (İş Dünyası ile aynı yöntem; başka değişiklik yayına taşınmadı). `www/index.html` (mağaza paketi) bir sonraki tam derlemede güncellenir.
