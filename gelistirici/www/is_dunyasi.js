@@ -76,7 +76,7 @@ async function isDunyasiEkrani(){
    const d=ID.veri,m=d.benim||[],oz=m.reduce((a,s)=>a+Number(s.kasa||0)*Number(s.pay||0)/100,0);
    iskelet("İş Dünyası",idBicim()+
     '<section class="id-hero"><div class="id-kicker">EKONOMİ · TİCARET · YATIRIM</div><h2>İş Dünyası</h2><p>Üret, yatırım yap, satış gerçekleştir. Kendi ticaret imparatorluğunu kur.</p><div class="id-stat"><span><small>Şirketlerin</small><b>'+m.length+'</b></span><span><small>Kasa payların</small><b>'+idTL(oz)+'</b></span><span><small>İşletmelerim</small><b>'+m.filter(x=>!!x.tur).length+'</b></span></div></section>'+
-    '<div class="id-grid"><button class="id-kart" style="border-color:#a995ff;background:linear-gradient(140deg,#44386e,#20284c)" onclick="ticaretMerkezEkrani()"><span class="emo">🏭</span><b>Üretim ve Ticaret</b><small>68 ürün · Sanal müşteri · Franchise · Mağaza zinciri</small></button>'+Object.entries(ID_BAS).map(([k,v])=>'<button class="id-kart '+(ID.sekme===k?'aktif':'')+'" onclick="idSekme(\''+k+'\')"><span class="emo">'+v[0]+'</span><b>'+v[1]+'</b><small>'+({ozet:"Ekonomik varlıklarını yönet",uretim:"Fabrika ve toptan satış",magaza:"Perakende ve stok",sozlesme:"Gerçek oyuncu anlaşmaları",sigorta:"Poliçe ve risk yönetimi",marka:"Marka zinciri oluştur",birlesme:"Şirket imparatorluğu kur"})[k]+'</small></button>').join("")+'</div>'+
+    '<div class="id-grid"><button class="id-kart" style="border-color:#a995ff;background:linear-gradient(140deg,#44386e,#20284c)" onclick="ticaretMerkezEkrani()"><span class="emo">🏭</span><b>Üretim ve Ticaret</b><small>68 ürün · Sanal müşteri · Franchise · Mağaza zinciri</small></button><button class="id-kart" onclick="vergiIsletmeEkrani()"><span class="emo">🏛️</span><b>Vergiler ve Kâr Payı</b><small>KDV · Kurumlar · Stopaj · Günlük çekim · Meclis kanunları</small></button>'+Object.entries(ID_BAS).map(([k,v])=>'<button class="id-kart '+(ID.sekme===k?'aktif':'')+'" onclick="idSekme(\''+k+'\')"><span class="emo">'+v[0]+'</span><b>'+v[1]+'</b><small>'+({ozet:"Ekonomik varlıklarını yönet",uretim:"Fabrika ve toptan satış",magaza:"Perakende ve stok",sozlesme:"Gerçek oyuncu anlaşmaları",sigorta:"Poliçe ve risk yönetimi",marka:"Marka zinciri oluştur",birlesme:"Şirket imparatorluğu kur"})[k]+'</small></button>').join("")+'</div>'+
     '<div class="bolum-bas"><h2>'+ID_BAS[ID.sekme][0]+' '+ID_BAS[ID.sekme][1]+'</h2><span class="kucuk">Canlı ekonomi</span></div>'+idAltPanel(),{geri:true});
  }catch(err){iskelet("İş Dünyası",'<div class="kart"><h2>Bağlantı kontrolü</h2><p class="alt">'+idTxt(hataCevir(err.message))+'</p></div>',{geri:true});}
 }
@@ -212,4 +212,11 @@ window.isDunyasiEkrani=isDunyasiEkrani;
  const script=document.createElement("script");
  script.id="ticaretGercekciModul";script.src="ticaret_gercekci.js?v=20261013-5";script.async=false;
  document.body.appendChild(script);
+})();
+
+/* Sirket vergi kanunlari ve gunluk ortak kar payi ekranlari. */
+(function(){
+ if(document.getElementById("vergiKarPayiModul"))return;
+ const sc=document.createElement("script");sc.id="vergiKarPayiModul";sc.src="vergi_kar_payi.js?v=20261013-1";sc.async=false;
+ document.body.appendChild(sc);
 })();
