@@ -206,7 +206,7 @@ window.isDunyasiEkrani=isDunyasiEkrani;
 (function(){
  if(document.getElementById("ticaretGercekciModul"))return;
  const script=document.createElement("script");
- script.id="ticaretGercekciModul";script.src="ticaret_gercekci.js?v=20261013-5";script.async=false;
+ script.id="ticaretGercekciModul";script.src="ticaret_gercekci.js?v=20261013-6";script.async=false;
  document.body.appendChild(script);
 })();
 
