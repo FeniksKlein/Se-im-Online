@@ -43,18 +43,11 @@
     const ic = satirlar.join("");
     return ic ? `<div class="bolum-bas"><h2>${baslik}</h2>${alt ? `<span class="kucuk">${alt}</span>` : ""}</div><div class="kart ms-grup">${ic}</div>` : "";
   };
-  const hizli = (ik, bas, cagri, fn) => (fn && !var_(fn)) ? "" :
-    `<button class="ms-hizli" onclick="${cagri}">${MS_IKON[ik]}<b>${bas}</b></button>`;
 
   function msCss(){
     return `<style id="menuSadeCss">
       .ms-yik svg{width:22px;height:22px;color:var(--ink2,#a995ff)}
       .ms-grup{padding-top:4px;padding-bottom:4px}
-      .ms-ust{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 14px}
-      .ms-hizli{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border-radius:14px;background:var(--panel);border:1px solid var(--line2);color:var(--txt);min-width:0}
-      .ms-hizli svg{width:24px;height:24px;color:var(--ink2,#a995ff)}
-      .ms-hizli b{font-size:11.5px;line-height:1.2;text-align:center}
-      .ms-giris .yik svg{width:22px;height:22px;color:var(--ink2,#a995ff)}
     </style>`;
   }
 
@@ -69,12 +62,6 @@
         <div class="para" style="font-size:34px;margin-top:2px">${cz ? tlYaz(cz.para) : "—"}</div>
         <div class="kucuk" style="margin-top:6px">Şirketler, yatırımlar, bankalar ve emlak tek yerde.</div>
       </section>
-      <div class="ms-ust">
-        ${hizli("sirket", "Şirketlerim", "ekranAc(sirketYonetimEkrani)", "sirketYonetimEkrani")}
-        ${hizli("arz", "Halka arzlar", "ekranAc(halkaArzPazarEkrani)", "halkaArzPazarEkrani")}
-        ${hizli("borsa", "Borsa", "ekranAc(borsaEkrani)", "borsaEkrani")}
-        ${hizli("gonder", "Para gönder", "paraGonderModal()", "paraGonderModal")}
-      </div>
       ${grup("Şirket ve iş", "Kur, yönet, yarış", [
         satir("sirket", "Şirketlerim ve şirket kur", "Ortak olduğun şirketleri yönet, yeni şirket kur", "ekranAc(sirketYonetimEkrani)", "sirketYonetimEkrani"),
         satir("dunya", "İş dünyası", "Üretim, mağaza, inşaat, sigorta, franchise, birleşme", "ekranAc(isDunyasiEkrani)", "isDunyasiEkrani"),
