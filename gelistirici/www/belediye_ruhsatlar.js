@@ -29,6 +29,9 @@ async function belRuhsatMerkeziEkrani(){
  <b>#${x.id} · ${e(belTurAdi(x.tur))}</b> <span class="rozet ${x.durum==="onay"||x.durum==="kullanildi"?"yesil":x.durum==="red"?"kirmizi":"altin"}">${x.durum==="onay"?"Onaylandı":x.durum==="bekliyor"?"Başkan kararı bekleniyor":x.durum==="kullanildi"?"Kullanıldı":"Reddedildi"}</span>
  <div class="kucuk">${e((r.iller||[]).find(i=>i.id===x.il_id)?.ad||"")} · ${e(x.sirket||"")} ${x.hedef?"· Hedef #"+x.hedef:""} · ${tarihSaat(x.tarih)}</div>
  ${x.durum==="onay"?`<p class="kucuk">Onaylı tarife %${fmt(x.oran,2)} · taban ${fmt(x.taban)} TL. 72 saat içinde yatırım ekranından aynı işlemi gerçekleştir.</p>`:""}
+ ${x.durum==="onay"&&x.tur==="kur_sirket"&&x.sektor==="ajans"&&!x.sirket_id&&x.sirket_adi&&
+    x.karar_zamani&&Date.now()-new Date(x.karar_zamani).getTime()<72*3600000?
+    `<button class="btn altin" onclick="belOnayliAjansKur(${x.id})">📣 Bu onaylı ruhsatla ajans kur</button>`:""}
  ${x.odenmis!=null?`<div class="kucuk">Ödenen belediye harcı: ${fmt(x.odenmis)} TL</div>`:""}
  ${x.gerekce?`<p class="kucuk">Başkan notu: ${e(x.gerekce)}</p>`:""}
  </div>`).join("")||'<p class="alt">Henüz yatırım ruhsatı başvurusu yapmadın.</p>'}</div>`;
@@ -63,6 +66,8 @@ async function belRuhsatAlanDegisti(){
  const $tur=$("#blrTur"),$il=$("#blrIl"),$cs=$("#blrSirket"),$hedef=$("#blrHedef");
  if(!$tur||!$il||!window.BEL_RUHSAT_KAYNAK)return;
  const tur=$tur.value,il=Number($il.value),isim=tur.startsWith("kur_"),pazar=tur==="kur_pazar"||tur==="kur_sirket",hedefli=tur==="arsa_insaat"||tur==="sube";
+ // Yeni şirket ruhsatında önceki şirketin görünmeyen seçimi taşınmasın.
+ if(pazar&&$cs){$cs.value="";$cs.disabled=true;}else if($cs)$cs.disabled=false;
  const gelen=(window.BEL_RUHSAT_KAYNAK.ek?.benim||[]).filter(s=>{
   if(tur==="arsa_insaat"||tur==="yeni_proje"||tur==="kur_insaat")return s.tur==="insaat"||s.sektor==="insaat";
   if(tur==="sube"||tur==="kur_magaza")return s.tur==="magaza"||s.sektor==="ticaret";
@@ -74,7 +79,7 @@ async function belRuhsatAlanDegisti(){
  const secenekler=(isim&&!pazar?'<option value="">Yeni şirket kurulacak</option>':"")+
  gelen.map(s=>`<option value="${s.id}">${e(s.ad)} (#${s.id})</option>`).join("");
  if($cs){$cs.innerHTML=secenekler;if(gelen.some(s=>String(s.id)===eski))$cs.value=eski;}
- const sid=Number($cs?.value||0);
+ const sid=pazar?0:Number($cs?.value||0);
  const kutu=$("#blrSirketKutu"),ad=$("#blrAdKutu"),sektor=$("#blrSektorKutu"),ht=$("#blrHedefKutu");
  if(kutu)kutu.style.display=pazar?"none":gelen.length||!isim?"block":"none";
  if(ad)ad.style.display=isim&&(!sid||pazar)?"block":"none";
@@ -102,9 +107,24 @@ async function belRuhsatAlanDegisti(){
  }catch(_){$hedef.innerHTML='<option value="">Bilgi alınamadı</option>';}
 }
 
+async function belOnayliAjansKur(id){
+ const x=(window.BEL_RUHSAT_KAYNAK?.r?.benim||[]).find(p=>Number(p.id)===Number(id));
+ if(!x||x.durum!=="onay"||x.tur!=="kur_sirket"||x.sektor!=="ajans"||x.sirket_id||
+    !x.sirket_adi||!x.karar_zamani||
+    Date.now()-new Date(x.karar_zamani).getTime()>=72*3600000){
+   toast("Ajans kuruluşuna uygun ve geçerli onaylı ruhsat bulunamadı.",true);return;
+ }
+ if(typeof window.sirketTumTurKur!=="function"){
+   toast("Şirket kuruluş ekranını yüklemek için oyunu yenile.",true);return;
+ }
+ await window.sirketTumTurKur({tur:"ajans",ad:x.sirket_adi,il:Number(x.il_id),
+   sermaye:Math.max(150000,Number(x.tahmini)||150000)});
+}
+window.belOnayliAjansKur=belOnayliAjansKur;
+
 async function belRuhsatBasvur(){
- const tur=$("#blrTur")?.value, il=Number($("#blrIl")?.value),sirket=Number($("#blrSirket")?.value||0)||null;
- const yeni=tur?.startsWith("kur_")&&(!sirket||tur==="kur_pazar");
+ const tur=$("#blrTur")?.value, il=Number($("#blrIl")?.value),sirket=["kur_pazar","kur_sirket"].includes(tur)?null:(Number($("#blrSirket")?.value||0)||null);
+ const yeni=tur?.startsWith("kur_")&&!sirket;
  const ad=yeni?$("#blrAd")?.value?.trim():null, sektor=["kur_pazar","kur_sirket"].includes(tur)?$("#blrSektor")?.value:null;
  const hedef=["arsa_insaat","sube"].includes(tur)?Number($("#blrHedef")?.value||0)||null:null;
  const yatirim=Number($("#blrTutar")?.value);
