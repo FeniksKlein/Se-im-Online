@@ -17,8 +17,8 @@ async function belRuhsatMerkeziEkrani(){
  const kart=`<div class="kart"><h2>🏛️ Belediye Yatırım Ruhsatları</h2><p class="alt">Fabrika, market, şirket, inşaat ve şube açılışlarında belediyeye başvur. Belediye başkanı onaylamadan yatırım başlayamaz. Onaylanan ruhsat 72 saat geçerlidir; gerçek harç, yatırım sırasında şirket kasasından belediye kasasına ödenir.</p>
  <div class="kv"><span class="k">Başvurularım</span><span class="v">${(r.benim||[]).length}</span></div></div>
  <div class="kart"><h3>Yeni yatırım başvurusu</h3>
-  <div class="alan"><label>Yatırım türü</label><select id="blrTur" onchange="belRuhsatAlanDegisti()">${BEL_RUHSAT_TURLER.map(([k,a])=>`<option value="${k}">${e(a)}</option>`).join("")}</select></div>
-  <div class="alan"><label>Yatırım yapılacak il</label><select id="blrIl" onchange="belRuhsatAlanDegisti()">${ilSec}</select></div>
+  <div class="alan"><label>Yatırım türü</label><select id="blrTur" onchange="belRuhsatTuruDegisti()">${BEL_RUHSAT_TURLER.map(([k,a])=>`<option value="${k}">${e(a)}</option>`).join("")}</select></div>
+  <div class="alan"><label>Yatırım yapılacak il</label><select id="blrIl" onchange="belRuhsatAlanDegisti(true)">${ilSec}</select></div>
   <div class="alan" id="blrModKutu" style="display:none"><label>Kuruluş yöntemi</label><select id="blrMode" onchange="belRuhsatAlanDegisti(true)"><option value="yeni">➕ Yeni şirket kuracağım</option><option value="mevcut">🏢 Mevcut şirketimi faaliyete bağlayacağım</option></select><p class="alt">Yeni şirket varsayılandır. Mevcut şirket bağlama açıkça seçilmelidir.</p></div>
   <div class="alan" id="blrSirketKutu" style="display:none"><label>Bağlanacak mevcut şirket</label><select id="blrSirket" onchange="belRuhsatAlanDegisti()"></select><p class="alt">Ruhsat yalnızca seçtiğin mevcut şirket için geçerli olur.</p></div>
   <div class="alan" id="blrAdKutu"><label>Kurulacak şirketin tam adı</label><input id="blrAd" maxlength="50" placeholder="Yatırımı yapacak şirketin adı"></div>
@@ -30,9 +30,11 @@ async function belRuhsatMerkeziEkrani(){
  <b>#${x.id} · ${e(belTurAdi(x.tur))}</b> <span class="rozet ${x.durum==="onay"||x.durum==="kullanildi"?"yesil":x.durum==="red"?"kirmizi":"altin"}">${x.durum==="onay"?"Onaylandı":x.durum==="bekliyor"?"Başkan kararı bekleniyor":x.durum==="kullanildi"?"Kullanıldı":"Reddedildi"}</span>
  <div class="kucuk">${e((r.iller||[]).find(i=>i.id===x.il_id)?.ad||"")} · ${e(x.sirket||"")} ${x.hedef?"· Hedef #"+x.hedef:""} · ${tarihSaat(x.tarih)}</div>
  ${x.durum==="onay"?`<p class="kucuk">Onaylı tarife %${fmt(x.oran,2)} · taban ${fmt(x.taban)} TL. 72 saat içinde yatırım ekranından aynı işlemi gerçekleştir.</p>`:""}
- ${x.durum==="onay"&&x.tur==="kur_sirket"&&x.sektor==="ajans"&&!x.sirket_id&&x.sirket_adi&&
+ ${x.durum==="onay"&&x.tur?.startsWith("kur_")&&!x.sirket_id&&x.sirket_adi&&
     x.karar_zamani&&Date.now()-new Date(x.karar_zamani).getTime()<72*3600000?
-    `<button class="btn altin" onclick="belOnayliAjansKur(${x.id})">📣 Bu onaylı ruhsatla ajans kur</button>`:""}
+    `<button class="btn altin" onclick="belOnayliRuhsatlaKur(${x.id})">🏢 Bu onaylı ruhsatla şirket kur</button>`:""}
+ ${["kur_sirket","kur_pazar"].includes(x.tur)&&x.sirket_id?
+    `<p class="alt">⚠️ Eski sistem bu yeni şirket ruhsatını mevcut bir şirkete bağlamış. Bu ruhsatla yeni şirket kurulamaz; yanlış bağlamadan doğan eski kaydın saklanır.</p><button class="btn ikinci" onclick="belHataliRuhsatYeniBasvuru(${x.id})">Yeni şirket adına doğru ruhsat başvurusu aç</button>`:""}
  ${x.odenmis!=null?`<div class="kucuk">Ödenen belediye harcı: ${fmt(x.odenmis)} TL</div>`:""}
  ${x.gerekce?`<p class="kucuk">Başkan notu: ${e(x.gerekce)}</p>`:""}
  </div>`).join("")||'<p class="alt">Henüz yatırım ruhsatı başvurusu yapmadın.</p>'}</div>`;
@@ -63,6 +65,11 @@ async function belRuhsatMerkeziEkrani(){
  await belRuhsatAlanDegisti();
 }
 
+function belRuhsatTuruDegisti(){
+ const mode=$("#blrMode");
+ if(mode)mode.value="yeni";
+ belRuhsatAlanDegisti(true);
+}
 async function belRuhsatAlanDegisti(modeDegisti=false){
  const tEl=$("#blrTur"), cityEl=$("#blrIl"), selector=$("#blrSirket"), box=$("#blrSirketKutu"),
    modeBox=$("#blrModKutu"), modeEl=$("#blrMode"), nameBox=$("#blrAdKutu"), nameEl=$("#blrAd"),
@@ -121,20 +128,39 @@ async function belRuhsatAlanDegisti(modeDegisti=false){
  }catch(err){if(request===window.BEL_RUHSAT_SIRA)targetEl.innerHTML='<option value="">Bilgi alınamadı</option>';}
 }
 
-async function belOnayliAjansKur(id){
- const x=(window.BEL_RUHSAT_KAYNAK?.r?.benim||[]).find(p=>Number(p.id)===Number(id));
- if(!x||x.durum!=="onay"||x.tur!=="kur_sirket"||x.sektor!=="ajans"||x.sirket_id||
-    !x.sirket_adi||!x.karar_zamani||
-    Date.now()-new Date(x.karar_zamani).getTime()>=72*3600000){
-   toast("Ajans kuruluşuna uygun ve geçerli onaylı ruhsat bulunamadı.",true);return;
+async function belOnayliRuhsatlaKur(id){
+ const info=(window.BEL_RUHSAT_KAYNAK?.r?.benim||[]).find(x=>Number(x.id)===Number(id));
+ if(!info||info.durum!=="onay"||info.sirket_id||!info.sirket_adi||
+   !info.karar_zamani||Date.now()-new Date(info.karar_zamani).getTime()>=72*3600000){
+  toast("Kuruluş için geçerli bir onaylı ruhsat bulunamadı.",true);return;
  }
+ const tur=info.tur==="kur_fabrika"?"sanayi":info.tur==="kur_magaza"?"ticaret":
+   info.tur==="kur_insaat"?"insaat":info.tur==="kur_sigorta"?"sigorta":
+   info.tur==="kur_pazar"?"pazar:"+info.sektor:info.tur==="kur_sirket"?info.sektor:null;
+ if(!tur){toast("Bu ruhsatın bağlı olduğu şirket türü tanımlanamadı.",true);return;}
  if(typeof window.sirketTumTurKur!=="function"){
-   toast("Şirket kuruluş ekranını yüklemek için oyunu yenile.",true);return;
+  toast("Kuruluş modülünü yüklemek için oyunu yenile.",true);return;
  }
- await window.sirketTumTurKur({tur:"ajans",ad:x.sirket_adi,il:Number(x.il_id),
-   sermaye:Math.max(150000,Number(x.tahmini)||150000)});
+ await window.sirketTumTurKur({tur,ad:info.sirket_adi,il:Number(info.il_id),
+  sermaye:Math.max(tur==="ajans"?150000:tur==="banka"?1000000:100000,Number(info.tahmini)||100000)});
 }
-window.belOnayliAjansKur=belOnayliAjansKur;
+window.belOnayliRuhsatlaKur=belOnayliRuhsatlaKur;
+
+async function belHataliRuhsatYeniBasvuru(id){
+ const info=(window.BEL_RUHSAT_KAYNAK?.r?.benim||[]).find(x=>Number(x.id)===Number(id));
+ if(!info||!["kur_sirket","kur_pazar"].includes(info.tur)||!info.sirket_id)return;
+ if(!await onayla("Yanlış bağlı ruhsat",
+   "Eski ruhsatın silinmeyecek veya harcı tekrar kesilmeyecek. Yeni şirketin gerçek adıyla yeni başvuru oluşturup belediye onayı alabilirsin.","Yeni başvuru aç"))return;
+ const type=$("#blrTur"),city=$("#blrIl"),amount=$("#blrTutar");
+ if(type)type.value=info.tur;
+ if(city)city.value=String(info.il_id);
+ if(amount)amount.value=String(info.tahmini||100000);
+ belRuhsatTuruDegisti();
+ const sector=$("#blrSektor");if(sector&&info.sektor)sector.value=info.sektor;
+ const name=$("#blrAd");if(name){name.value="";name.focus();}
+ toast("Yanlış bağlantılı eski ruhsat korunuyor. Yeni kurulacak şirketin adını yazarak yeni başvuru yap.");
+}
+window.belHataliRuhsatYeniBasvuru=belHataliRuhsatYeniBasvuru;
 
 async function belRuhsatBasvur(){
  const kind=$("#blrTur")?.value, city=Number($("#blrIl")?.value);
