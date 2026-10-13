@@ -7834,7 +7834,6 @@ function gundemEkAlt(ek){
       ${akisYazHtml("gAkis", "Ne düşünüyorsun? Görüşünü yaz…")}
       ${et.length ? `<div class="etiket-cipler" style="margin-top:10px">${et.map(x => `<span class="etiket-cip" onclick="ekranAc(()=>akisEkrani('${e(x.etiket)}'))">#${e(x.etiket)} <span class="kucuk">${x.kisi}</span></span>`).join("")}</div>` : ""}
       <div id="gAkisListe">${AKIS.gundemListe.map(akisSatirHtml).join("") || `<div class="bos" style="padding:12px 0">Henüz paylaşım yok. İlk sözü sen söyle.</div>`}</div>
-      ${AKIS.gundemListe.length ? `<button class="btn ikinci" onclick="ekranAc(()=>akisEkrani())">Akışın tamamı</button>` : ""}
     </div>
     <div class="kart"><button class="giris-satir" style="border:0;padding:4px 0" onclick="ekranAc(raporEkrani)"><span class="yik">${IKON.anket}</span><span class="orta"><b>Raporum ve başarımlarım</b><span class="kucuk">Bu ayın özeti, paylaşılabilir kart</span></span><span class="ok">›</span></button></div>`;
   setTimeout(() => {
