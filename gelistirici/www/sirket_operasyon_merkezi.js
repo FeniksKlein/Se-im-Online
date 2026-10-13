@@ -291,7 +291,7 @@
  if(document.getElementById("tumSirketlerModul"))return;
  const script=document.createElement("script");
  script.id="tumSirketlerModul";
- script.src="sirket_tum_turler.js?v=20261013-1";
+ script.src="sirket_tum_turler.js?v=20261013-2";
  script.async=false;
  document.body.appendChild(script);
 })();
