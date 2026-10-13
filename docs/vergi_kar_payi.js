@@ -54,7 +54,7 @@ function offerTax(){
  dropdown("veCode","Mevcut vergi",types.map(t=>[t.kod,t.ad+" · %"+t.oran]))+
  '<div id="veNewTax">'+input("veNewCode","Yeni vergi kodu","","ornek_vergi")+
  input("veNewName","Yeni vergi adı","","Örneğin Çevre Vergisi")+
- dropdown("veBase","Vergi matrahı",[["satis","Satış/ciro"],["kar","Şirket kârı"],["dagitim","Ortak kâr payı"],["sozlesme","Sözleşme bedeli"],["genel_gelir","Genel gelir"]])+'</div>'+
+ dropdown("veBase","Vergi matrahı",[["satis","Satış/ciro"],["kar","Şirket kârı"],["dagitim","Ortak kâr payı"],["sozlesme","Sözleşme bedeli"]])+'</div>'+
  amount("veRate","Yeni vergi oranı (%)",20,0,50)+
  input("veTitle","Kanun teklifi başlığı","","Örneğin Kurumlar Vergisi Düzenlemesi")+
  '<div class="alan"><label>Kanun gerekçesi</label><textarea id="veReason" maxlength="3000" rows="4" placeholder="Gerekçeyi en az 10 karakterle yaz"></textarea></div>'+
