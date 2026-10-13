@@ -240,3 +240,9 @@
  const s=document.createElement("script");s.id="arsaInsaatModul";s.src="arsa_insaat_magaza.js?v=20261013-1";
  s.async=false;document.body.appendChild(s);
 })();
+
+/* Dernek faaliyetlerini GitHub Pages sürümüne ekle. */
+(function(){
+ if(window.STK_FAALIYET_MODUL||document.getElementById("dernekFaaliyetModul"))return;
+ var s=document.createElement("script");s.id="dernekFaaliyetModul";s.src="dernek_faaliyet.js?v=20261013-1";s.async=false;document.body.appendChild(s);
+})();
