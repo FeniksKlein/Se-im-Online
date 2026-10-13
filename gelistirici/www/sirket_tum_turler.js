@@ -23,7 +23,7 @@ const GROUPS=[
  ["pazar:ozel_okul","🎓 Özel okul","kur_pazar","service"],
  ["pazar:ulasim","🚌 Ulaşım firması","kur_pazar","service"]
 ];
-async function sirketTumTurKur(){
+async function sirketTumTurKur(onayli){
   let permits,market;
   try{[permits,market]=await Promise.all([API.rpc("bel_ruhsat_merkezi"),API.rpc("pazar_katalog")]);}
   catch(err){toast("Şirket türleri ve ruhsatlar yüklenemedi: "+String(err.message||err),true);return;}
@@ -47,7 +47,10 @@ async function sirketTumTurKur(){
    '<button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>'
   );
   const el=id=>m.querySelector("#"+id),type=el("stkType"),city=el("stkCity"),name=el("stkName");
-  city.value=String(home);
+  city.value=String(onayli?.il||home);
+  if(onayli?.tur)type.value=String(onayli.tur);
+  if(onayli?.ad)name.value=String(onayli.ad);
+  if(onayli?.sermaye)el("stkMoney").value=String(onayli.sermaye);
   const current=()=>GROUPS.find(x=>x[0]===type.value)||GROUPS[0];
   const permission=(info)=>{
     if(info[2]==="none")return true;
