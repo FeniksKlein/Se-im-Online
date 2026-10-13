@@ -69,7 +69,7 @@
   yukleniyor("Şirketlerim");
   await yenile();
   if(V.hata){
-   iskelet("Şirketlerim",box("Şirketler yüklenemedi",'<p class="alt">'+guvenli(V.hata)+'</p>',
+   iskelet("Şirket portföyüm",box("Şirketler yüklenemedi",'<p class="alt">'+guvenli(V.hata)+'</p>',
     btn("Yeniden dene","sirketYonetimEkrani()")), {geri:true});
    return;
   }
@@ -97,7 +97,7 @@
   }
   html+='<div class="kart">'+btn("Şirket kur / Finansal yönetim","ekranAc(sirketEskiYonetimEkrani)",true)+
    btn("Üretim ve Ticaret","ekranAc(function(){ticaretMerkezEkrani()})",true)+'</div>';
-  iskelet("Şirketlerim",html,{geri:true});
+  iskelet("Şirket portföyüm",html,{geri:true});
  }
  async function sirketPortfoyDetay(id){
   id=okId(id);yukleniyor("Şirket detayları");
