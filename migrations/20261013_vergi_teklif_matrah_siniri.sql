@@ -4,8 +4,7 @@ declare src text;
 begin
  select pg_get_functiondef('public.eko_vergi_kanun_teklif(text,text,numeric,text,text,text,text)'::regprocedure) into src;
  if position('v_toplam numeric' in src)>0 then return;end if;
- src:=replace(src,'b text:=btrim(coalesce(p_baslik,''));m text; yeni bigint;s record;',
- 'b text:=btrim(coalesce(p_baslik,''));m text; yeni bigint;s record;v_toplam numeric;v_matrah text;');
+ src:=replace(src,'s record;', 's record; v_toplam numeric; v_matrah text;');
  src:=replace(src,
  'if p_islem=''yeni'' then',
  'if p_islem=''yeni'' and p_matrah=''genel_gelir'' then
