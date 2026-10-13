@@ -46,8 +46,9 @@ const HAYAT = {
       const tasmaYok = async (ad) => { const t = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth); assert.ok(t <= 1, `${ad} ${w}px yatay taşma ${t}px`); };
       const foto = async (ad) => { if (shot) await page.screenshot({ path: path.join(shot, `${ad}_${w}.png`), fullPage: true }); };
 
-      // 1) Hayat: ekonomi kartları yok, tek "Ekonomi" girişi var
-      await page.evaluate(() => sekmeAc('hayat')); await page.waitForSelector('.ms-giris');
+      // 1) Hayat: Ekonomi sadece alt menüden açılır, içeride tekrar bağlantısı yok.
+      await page.evaluate(() => sekmeAc('hayat')); await page.waitForSelector('#icerik .olay');
+      assert.equal(await page.locator('#icerik .ms-giris').count(), 0, 'Hayat içinde Ekonomi kısayolu kalmamalı');
       const hayat = await page.locator('#icerik').textContent();
       for (const yok of ['İŞ DÜNYASI', 'Rekabetçi şirketler', 'Oyuncu bankaları', 'Halka arzlar', 'Diğer para işlemleri', 'Ekonomi merkezi'])
         assert.ok(!hayat.includes(yok), `Hayat'ta hâlâ "${yok}" var`);
@@ -59,7 +60,9 @@ const HAYAT = {
       assert.deepEqual(m, ['Gündem', 'Devlet', 'Adliye', 'Hayat', 'Ekonomi', 'Sohbet', 'Meclis', 'Harita', 'Partiler', 'Dernekler']);
 
       // 3) Ekonomi sekmesi: hepsi tek ekranda, her giriş tek kez
-      await page.click('.ms-giris'); await page.waitForSelector('.ms-ust');
+      await page.locator('nav.sekmeler button').filter({ hasText: /^Ekonomi$/ }).click();
+      await page.waitForSelector('.ms-grup');
+      assert.equal(await page.locator('.ms-ust').count(), 0, 'Ekonomi üstünde tekrarlanan hızlı bağlantılar kalmamalı');
       assert.equal(await page.evaluate(() => D.sekme), 'ekonomi');
       assert.equal(await page.locator('nav.sekmeler button.aktif span').first().textContent(), 'Ekonomi');
       const satirlar = await page.locator('#icerik .giris-satir b').allTextContents();
@@ -69,7 +72,7 @@ const HAYAT = {
       await foto('ekonomi'); await tasmaYok('Ekonomi');
       // Alt ekrana gidip geri gelince Ekonomi'ye dönülür
       await page.evaluate(() => { window.borsaEkrani = () => iskelet('Borsa', '<div class="kart">b</div>', { geri: true }); });
-      await page.evaluate(() => ekranAc(borsaEkrani)); await page.click('header .geri'); await page.waitForSelector('.ms-ust');
+      await page.evaluate(() => ekranAc(borsaEkrani)); await page.click('header .geri'); await page.waitForSelector('.ms-grup');
 
       // 4) Devlet: makam sahibi "Makamım" bölümüyle açılır
       await page.evaluate(() => { D._dvMakamIlk = false; D.devletSekme = null; sekmeAc('devlet'); }); await page.waitForSelector('.ynt-bolum');
