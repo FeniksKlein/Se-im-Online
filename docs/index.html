@@ -4139,7 +4139,6 @@ function hayatCiz(h){
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><span class="rozet altin">${e(st.ad)}</span>${kb.seri > 1 ? `<span class="rozet">${h.bugun_toplandi ? kb.seri : kb.seri - 1} günlük seri</span>` : ""}${bk.vadesiz ? `<span class="rozet">Bankada ${tlYaz(bk.vadesiz + (bk.vadeli || 0))}</span>` : ""}</div>
     </section>
     <section class="kart" style="margin-bottom:12px"><h2>🎯 Görevler</h2><p class="alt">270 günlük, haftalık ve kalıcı görev. Gerçek oyun faaliyetlerinden oyun parası kazan.</p><button class="btn altin" onclick="ekranAc(gorevEkrani)">Görevleri gör ve ödül kazan</button></section>
-    <div class="kart" style="margin-bottom:12px"><button class="giris-satir ms-giris" onclick="sekmeAc('ekonomi')"><span class="yik">${IKON.ekonomi || ""}</span><span class="orta"><b>Ekonomi</b><span class="kucuk">Şirketler, borsa, halka arz, bankalar, emlak, para gönder</span></span><span class="ok">›</span></button></div>
     <div class="olay ${dolu ? "oy" : "basvuru"}" style="margin-top:4px">
       <div class="baslik"><b>Maaş kumbarası</b><span class="rozet ${dolu ? "kirmizi" : "altin"}">${dolu ? "Doldu!" : fmt(kb.saat, 1) + " / " + fmt(kb.kapasite || 16) + " saat"}</span></div>
       <div class="sayac" style="font-size:30px">${tlYaz(kb.birikmis)}</div>
@@ -9843,7 +9842,7 @@ window.oybKrediMasasiEkrani = oybKrediMasasiEkrani;
 <script src="secim_detay_sonuclar.js?v=20261012"></script>
 <script src="is_dunyasi.js?v=20261013-6"></script>
 <script src="ekonomi_kurumlar.js?v=20261013-2"></script>
-<script src="menu_sade.js?v=20261013-4"></script>
+<script src="menu_sade.js?v=20261013-5"></script>
 <script src="belediye_ruhsatlar.js?v=20261013-1"></script>
 </body>
 </html>
