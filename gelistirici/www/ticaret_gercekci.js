@@ -17,6 +17,21 @@ const item=id=>(TC.veri?.urunler||[]).find(x=>x.kod===id);
 const mine=(id)=> (TC.veri?.sirketler||[]).find(x=>x.id===Number(id));
 const storeStock=id=>(TC.veri?.stok||[]).filter(x=>x.sirket===id);
 const bizNames=(list)=>list.map(x=>[x.id,x.ad+" · Kasa "+money(x.kasa)]);
+/* Fabrika bazinda sunucunun hesapladigi uretim deneyimi ve sermaye kapasitesi. */
+const tcCapacityInfo=s=>s?.kapasite||{};
+const tcCapacityMultiplier=s=>Math.max(1,Math.min(10,Number(tcCapacityInfo(s).katsayi)||1));
+const tcBatchCapacity=(s,p)=>Math.ceil((Number(p?.parti)||0)*tcCapacityMultiplier(s));
+function tcCapacityDescription(s){
+ const c=tcCapacityInfo(s),mult=tcCapacityMultiplier(s);
+ const produced=Number(c.tamamlanan_adet||0);
+ const eq=Number(c.esdeger_parti||0);
+ const nextProd=c.sonraki_uretim_esdeger==null?"Üretim tecrübesi üst seviyede":
+   "Sonraki üretim bonusu: "+Math.max(0,Number(c.sonraki_uretim_esdeger)-eq).toFixed(2)+" eşdeğer parti sonra";
+ const nextCap=c.sonraki_sermaye==null?"Sermaye bonusu üst seviyede":
+   "Sonraki sermaye bonusu: "+money(c.sonraki_sermaye)+" sermayede";
+ return "Üretim kapasitesi x"+mult.toLocaleString("tr-TR",{maximumFractionDigits:2})+
+  " · Tamamlanan "+produced.toLocaleString("tr-TR")+" ürün · "+nextProd+" · "+nextCap;
+}
 function popup(head,inside,label,callback){
  const root=modal('<h3>'+tm(head)+'</h3>'+inside+'<button id="tcOK" class="btn altin">'+tm(label)+'</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
  const b=root.querySelector("#tcOK");b.onclick=async()=>{b.disabled=true;try{await callback(root)}finally{b.disabled=false;}};
@@ -130,15 +145,18 @@ function produce(id,preferredProduct){
  '<div class="tc-hint" id="tcDetails"></div>',
  "Üretimi başlat",async node=>{
   const p=item(sel(node,"tcItem")),qty=Number(sel(node,"tcQty"));
-  if(!p||!Number.isInteger(qty)||qty<1||qty>p.parti){toast("Parti kapasitesi aşıldı.",true);return;}
+  const max=tcBatchCapacity(firm,p);
+  if(!p||!Number.isInteger(qty)||qty<1||qty>max){toast("Bu fabrikanın güncel parti kapasitesi "+max+" adet. Adedi buna göre ayarla.",true);return;}
   await action("uret",{sirket:id,urun:p.kod,adet:qty},"Üretim emri verildi. Süre bitince stoklara eklenecek.");
  });
  const refresh=()=>{
    const p=item(sel(m,"tcItem")),qty=Number(sel(m,"tcQty"));
    if(!p)return;
-   m.querySelector("#tcQty").max=p.parti;
-   m.querySelector("#tcDetails").textContent="Parti üst sınırı "+p.parti+" · Süre "+p.dakika+
-   " dk · Maliyet "+money(p.maliyet*qty)+" · Önerilen raf fiyatı "+money(p.satis);
+   const max=tcBatchCapacity(firm,p);
+   m.querySelector("#tcQty").max=max;
+   m.querySelector("#tcDetails").textContent="Güncel parti kapasitesi "+max+" adet (başlangıç "+p.parti+
+   ") · Süre "+p.dakika+" dk · Maliyet "+money(p.maliyet*qty)+
+   " · Önerilen raf fiyatı "+money(p.satis)+" · "+tcCapacityDescription(firm);
  };
  if(preferredProduct&&list.some(x=>x.kod===preferredProduct))
   m.querySelector("#tcItem").value=preferredProduct;
@@ -248,7 +266,8 @@ function panel(){
   for(const s of arr){
    const st=storeStock(s.id);
    html+=card("🏭 "+s.ad,"Faaliyet: "+tm(s.grup)+" · Kasa "+money(s.kasa)+
-   " · Stokta "+st.reduce((n,x)=>n+Number(x.adet),0)+" ürün",
+   " · Stokta "+st.reduce((n,x)=>n+Number(x.adet),0)+" ürün"+
+   '<p class="tc-hint">'+tm(tcCapacityDescription(s))+"</p>",
    button("Üretim emri ver","tcProduce("+s.id+")"));
    for(const x of st)html+=card((item(x.urun)?.ad||x.urun)+" · "+x.adet+" adet",
    "Birim stok maliyeti "+money(x.maliyet)+" · Toptan satış "+money(x.fiyat),
@@ -264,7 +283,8 @@ function panel(){
    const code=String(p.kod||"");
    const canProduce=!!f&&/^[a-z0-9_]+$/.test(code);
    html+=card(p.ad,
-    tm(p.grup)+" · Parti üst sınırı "+p.parti+" · "+p.dakika+" dakika · Birim maliyet "+money(p.maliyet)+
+    tm(p.grup)+" · "+(canProduce?"Güncel parti kapasitesi "+tcBatchCapacity(f,p)+" (başlangıç "+p.parti+")":
+    "Başlangıç parti kapasitesi "+p.parti)+" · "+p.dakika+" dakika · Birim maliyet "+money(p.maliyet)+
     " · Önerilen tüketici fiyatı "+money(p.satis),
     canProduce?button("Bu ürünü üret","tcProduce("+Number(f.id)+",'"+code+"')"):
     secondary("Bu ürünü üretmek için fabrika kur","tcFactoryPermit('"+(
