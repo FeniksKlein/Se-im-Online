@@ -385,10 +385,6 @@ async function ihaleRuhsat(){
       const r = eski.apply(this, arguments);
       try {
         if (baslik === "Hayat") { const g = $(".vit-ana-izgara"); if (g && !g.querySelector(".pz-ek")) g.insertAdjacentHTML("beforeend", kartlar); }
-        if (baslik === "Şirketler") { const d = $(".vit-dugme"); if (d && !d.querySelector(".pz-ek")) d.insertAdjacentHTML("beforeend", `<button class="btn altin pz-ek" onclick="ekranAc(pazarMerkezEkrani)">Rekabetçi şirket kur</button><button class="btn ikinci pz-ek" onclick="ekranAc(ihaleEkrani)">Kamu ihaleleri</button>`); }
-        if (baslik === "Şirketlerimi yönet" || baslik === "Şirketlerim") {
-          const ic = $("#icerik"); if (ic && !ic.querySelector(".pz-ek")) ic.insertAdjacentHTML("afterbegin", `<div class="kart pz-ek"><h2>Rekabetçi şirketler ve ihaleler</h2><p class="alt">Okul, hastane, market, ulaşım ve enerji şirketlerinin fiyat ve kalite kararlarını ayrı ekrandan yönetirsin. İnşaat şirketlerin kamu ihalelerine girebilir.</p><button class="btn altin" onclick="ekranAc(pazarMerkezEkrani)">Rekabetçi şirketlerim</button><button class="btn ikinci" onclick="ekranAc(ihaleEkrani)">Kamu ihaleleri</button></div>`);
-        }
       } catch (_) {}
       return r;
     };
