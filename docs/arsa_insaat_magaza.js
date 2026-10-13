@@ -137,11 +137,6 @@ if(typeof window.iskelet==="function"){
    if(grid&&!grid.querySelector(".ea-entry"))grid.insertAdjacentHTML("beforeend",
     '<button class="id-kart ea-entry" onclick="arsaEkrani()"><span class="emo">🏙️</span><b>Arsalar ve Gayrimenkul</b><small>Belediye arsaları · İnşaat · Tapu · Kira · Mağaza zinciri</small></button>');
   }
-  if(baslik==="Ekonomi"){
-   const main=document.querySelector("#icerik .ms-grup");
-   if(main&&!document.querySelector(".ea-entry"))main.insertAdjacentHTML("afterbegin",
-    '<button class="giris-satir ea-entry" onclick="arsaEkrani()"><span class="yik">🏙️</span><span class="orta"><b>Şehir Emlak ve İnşaat</b><span class="kucuk">Arsa, müteahhit, dükkân ve mağaza zincirleri</span></span><span class="ok">›</span></button>');
-  }
   return result;
  };
 }
