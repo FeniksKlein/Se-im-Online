@@ -197,10 +197,6 @@ window.isDunyasiEkrani=isDunyasiEkrani;
      const grid=document.querySelector(".vit-ana-izgara");
      if(grid&&!grid.querySelector(".id-giris"))grid.insertAdjacentHTML("afterbegin",'<button class="vit-ana-kart id-giris" style="grid-column:1 / -1;background:linear-gradient(110deg,#232e5a,#48378d);border:1px solid #977cff;min-height:82px;flex-direction:row;align-items:center;gap:12px;text-align:left" onclick="ekranAc(isDunyasiEkrani)"><span class="vit-ikon" style="font-size:33px">🌐</span><span style="display:flex;flex-direction:column;gap:4px"><b style="font-size:18px">İŞ DÜNYASI</b><span>Üretim · Ticaret · İnşaat · Sigorta · Franchise</span></span><span class="ok">›</span></button>');
     }
-    if(baslik==="Şirketler"){
-      const el=document.querySelector(".vit-dugme");
-      if(el&&!el.querySelector(".id-giris"))el.insertAdjacentHTML("afterbegin",'<button class="btn altin id-giris" onclick="ekranAc(isDunyasiEkrani)">🌐 İş Dünyası · 7 yeni sistem</button>');
-    }
    }catch(err){console.warn("İş Dünyası giriş hatası:",err);}
    return sonuc;
  };
