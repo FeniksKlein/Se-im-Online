@@ -9753,7 +9753,7 @@ function kmDavaModal(id, kad){
     };
   }
 })();
-const BEL_RUHSAT_TURLER = [["kur_fabrika","Fabrika kuruluşu"],["kur_magaza","Market / mağaza kuruluşu"],["kur_insaat","Müteahhitlik şirketi"],["kur_sigorta","Sigorta şirketi"],["kur_pazar","Okul / hastane / market / enerji şirketi"],["arsa_insaat","Arsa üzerinde inşaat"],["yeni_proje","Yeni konut projesi"],["sube","Mağaza şubesi açılışı"]];
+const BEL_RUHSAT_TURLER = [["kur_fabrika","Fabrika kuruluşu"],["kur_magaza","Market / mağaza kuruluşu"],["kur_insaat","Müteahhitlik şirketi"],["kur_sigorta","Sigorta şirketi"],["kur_pazar","Okul / hastane / market / enerji şirketi"],["kur_sirket","Genel şirket kuruluşu"],["arsa_insaat","Arsa üzerinde inşaat"],["yeni_proje","Yeni konut projesi"],["sube","Mağaza şubesi açılışı"]];
 function belTurAdi(tur) { return (BEL_RUHSAT_TURLER.find(v=>v[0]===tur)||[])[1]||tur; }
 
 async function belRuhsatMerkeziEkrani(){
@@ -9817,7 +9817,7 @@ async function belRuhsatMerkeziEkrani(){
 async function belRuhsatAlanDegisti(){
  const $tur=$("#blrTur"),$il=$("#blrIl"),$cs=$("#blrSirket"),$hedef=$("#blrHedef");
  if(!$tur||!$il||!window.BEL_RUHSAT_KAYNAK)return;
- const tur=$tur.value,il=Number($il.value),isim=tur.startsWith("kur_"),pazar=tur==="kur_pazar",hedefli=tur==="arsa_insaat"||tur==="sube";
+ const tur=$tur.value,il=Number($il.value),isim=tur.startsWith("kur_"),pazar=tur==="kur_pazar"||tur==="kur_sirket",hedefli=tur==="arsa_insaat"||tur==="sube";
  const gelen=(window.BEL_RUHSAT_KAYNAK.ek?.benim||[]).filter(s=>{
   if(tur==="arsa_insaat"||tur==="yeni_proje"||tur==="kur_insaat")return s.tur==="insaat"||s.sektor==="insaat";
   if(tur==="sube"||tur==="kur_magaza")return s.tur==="magaza"||s.sektor==="ticaret";
@@ -9834,6 +9834,15 @@ async function belRuhsatAlanDegisti(){
  if(kutu)kutu.style.display=pazar?"none":gelen.length||!isim?"block":"none";
  if(ad)ad.style.display=isim&&(!sid||pazar)?"block":"none";
  if(sektor)sektor.style.display=pazar?"block":"none";
+ const sec=$("#blrSektor");
+ if(sec){
+  const onceki=sec.value;
+  const secenek=tur==="kur_sirket"
+   ?[["tarim","Tarım"],["sanayi","Sanayi"],["teknoloji","Teknoloji"],["ticaret","Ticaret"],["insaat","İnşaat"],["medya","Medya"]]
+   :(window.BEL_RUHSAT_KAYNAK.pk?.sektorler||[]).map(x=>[x.kod,x.ad]);
+  sec.innerHTML=secenek.map(([kod,ad])=>`<option value="${e(kod)}">${e(ad)}</option>`).join("");
+  if(secenek.some(x=>x[0]===onceki))sec.value=onceki;
+ }
  if(ht)ht.style.display=hedefli?"block":"none";
  if(!hedefli||!$hedef)return;
  const reqId=window.BEL_RUHSAT_SIRA=(window.BEL_RUHSAT_SIRA||0)+1;
@@ -9851,7 +9860,7 @@ async function belRuhsatAlanDegisti(){
 async function belRuhsatBasvur(){
  const tur=$("#blrTur")?.value, il=Number($("#blrIl")?.value),sirket=Number($("#blrSirket")?.value||0)||null;
  const yeni=tur?.startsWith("kur_")&&(!sirket||tur==="kur_pazar");
- const ad=yeni?$("#blrAd")?.value?.trim():null, sektor=tur==="kur_pazar"?$("#blrSektor")?.value:null;
+ const ad=yeni?$("#blrAd")?.value?.trim():null, sektor=["kur_pazar","kur_sirket"].includes(tur)?$("#blrSektor")?.value:null;
  const hedef=["arsa_insaat","sube"].includes(tur)?Number($("#blrHedef")?.value||0)||null:null;
  const yatirim=Number($("#blrTutar")?.value);
  if(yeni&&(!ad||ad.length<3)){toast("Kurulacak şirketin adını yaz.",true);return;}
