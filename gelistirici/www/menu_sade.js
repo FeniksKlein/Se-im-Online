@@ -252,3 +252,60 @@
  const s=document.createElement("script");s.id="arsaInsaatModul";s.src="arsa_insaat_magaza.js?v=20261013-1";
  s.async=false;document.body.appendChild(s);
 })();
+
+
+/* ---------------- Tum sohbet odalari + ozel mesaj icin ortak bildirim rozeti ----------------
+   'sohbet' sunucuda tum erisilebilir odalar ve ozel mesajlarin toplamidir.
+   'ozel' ayrica korunur: DM listesi ve DM okunma durumu degismez.
+   Rozet, karsi tarafin kendi mesajlarini saymaz; okunan odalar otomatik duser.
+*/
+(function () {
+  if (window.__tumSohbetRozeti20261013) return;
+  window.__tumSohbetRozeti20261013 = true;
+
+  function sohbetSayi() {
+    if (typeof D === "undefined" || !D.okunmamis) return 0;
+    const ok = D.okunmamis;
+    const ham = ok.sohbet != null ? ok.sohbet : ok.ozel;
+    const sayi = Number(ham);
+    return Number.isFinite(sayi) ? Math.max(0, Math.floor(sayi)) : 0;
+  }
+  function sohbetRozetiniCiz() {
+    const n = sohbetSayi();
+    const d = document.getElementById("dmSayi");
+    if (d && typeof sayiRozet === "function") d.innerHTML = sayiRozet(n);
+    const dugme = document.getElementById("sohbetSekme");
+    if (dugme) {
+      dugme.classList.toggle("mesaj-var", n > 0);
+      dugme.setAttribute("aria-label", "Sohbet, " + n + " okunmamış mesaj");
+    }
+  }
+
+  if (typeof iskelet === "function") {
+    const oncekiIskelet = iskelet;
+    window.iskelet = iskelet = function () {
+      const sonuc = oncekiIskelet.apply(this, arguments);
+      sohbetRozetiniCiz();
+      return sonuc;
+    };
+  }
+  if (typeof rozetGuncelle === "function") {
+    const oncekiRozet = rozetGuncelle;
+    window.rozetGuncelle = rozetGuncelle = function () {
+      const sonuc = oncekiRozet.apply(this, arguments);
+      sohbetRozetiniCiz();
+      return sonuc;
+    };
+  }
+  if (typeof sohbetEkrani === "function") {
+    const oncekiSohbet = sohbetEkrani;
+    window.sohbetEkrani = sohbetEkrani = async function () {
+      const sonuc = await oncekiSohbet.apply(this, arguments);
+      // Kanal ilk acildiginda sunucu okunma imlecini ilerletir; rozeti hemen guncelle.
+      try {
+        if (D.sekme === "sohbet" && API) rozetGuncelle(await API.rpc("rozetler"));
+      } catch (_) { /* Sekiz saniyelik genel yoklama tekrar deneyecektir. */ }
+      return sonuc;
+    };
+  }
+})();
