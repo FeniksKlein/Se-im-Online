@@ -8630,6 +8630,7 @@ async function ekonomiMerkeziEkrani(){
         <div class="br-kutu"><small>Kurumlar vergisi (7 gün)</small><b>${brTL(r.kurumlar_7g)}</b><span>Ruhsat harcı ${brTL(r.ruhsat_7g)}</span></div>
       </div>
       <div class="br-git">
+        <button onclick="ekranAc(belRuhsatMerkeziEkrani)">🏛️<span><b>Belediye yatırım ruhsatları</b><small>İnşaat, fabrika, market ve harç başvuruları</small></span></button>
         <button onclick="ekranAc(pazarMerkezEkrani)">${PZ_IKON.sirket}<span><b>Şirket kur</b><small>Okul, hastane, market, ulaşım, enerji</small></span></button>
         <button onclick="ekranAc(borsaEkrani)">${BR_IKON.borsa}<span><b>Borsa</b><small>${fmt(r.borsa.sirket)} şirket · ${brTL(r.borsa.deger)}</small></span></button>
         <button onclick="ekranAc(ihaleEkrani)">${PZ_IKON.ihale}<span><b>Kamu ihaleleri</b><small>${fmt(r.ihale.acik)} açık · ${fmt(r.ihale.yapim)} yapımda</small></span></button>
@@ -9298,7 +9299,7 @@ async function belediyeSehirYonetimEkrani(){
   ${[["Günlük temel gelir",x.temel_gelir],["Binaların günlük geliri",x.bina_gelir],["Günlük temel gider",-Number(x.temel_gider)],["Binaların günlük bakımı",-Number(x.bina_gider)],["Tahmini günlük net gelir",gel-gider]].map(([k,v])=>`<div class="kv"><span class="k">${k}</span><span class="v ${Number(v)>=0?"iyi":"kotu"}">${v>0?"+":""}${BM(v)}</span></div>`).join("")}
   ${[["Çalışan binalar",bn.filter(v=>v.durum==="aktif").length],["Yapımı devam edenler",bn.filter(v=>v.durum==="insa").length],["Hizmet istihdamı (simülasyon)",x.istihdam],["Hizmet kapasitesi",x.kapasite],["Çevre puanı katkısı",x.cevre]].map(([k,v])=>`<div class="kv"><span class="k">${k}</span><span class="v">${fmt(v)}</span></div>`).join("")}
   <p class="kucuk">Vergi geliri kasada 60 günlük gelire kadar birikir; bağış ve kredi parası bu sınıra takılmaz.${dt?` Oyuncu bağışları kamu kuruyla çevrilir: ${fmt(dt.tl_milyar)} ₺ bağış kasaya 1 milyar ₺ ekler.`:""}</p></div>
-  <div class="kart"><h2>Başkanlık işlemleri</h2><button class="btn altin" onclick="ekranAc(belediyeEkrani)">Vergiler, sosyal yardımlar, hizmetler ve eski yatırımlar</button>
+  <div class="kart"><h2>Başkanlık işlemleri</h2><button class="btn altin" onclick="ekranAc(belRuhsatMerkeziEkrani)">🏛️ Yatırım ruhsatları, onaylar ve belediye mali denetimi</button><button class="btn altin" onclick="ekranAc(belediyeEkrani)">Vergiler, sosyal yardımlar, hizmetler ve eski yatırımlar</button>
   ${typeof belediyeHizmetIhaleEkrani==="function"?`<button class="btn ikinci" onclick="ekranAc(belediyeHizmetIhaleEkrani)">Belediye şirket ihaleleri</button>`:""}
   <button class="btn ikinci" onclick="belediyeKarneModal(${x.il_id})">Halkın gördüğü belediye karnesi</button></div>`;
  }else if(mode==="karne"){
@@ -9843,5 +9844,6 @@ window.oybKrediMasasiEkrani = oybKrediMasasiEkrani;
 <script src="is_dunyasi.js?v=20261013-6"></script>
 <script src="ekonomi_kurumlar.js?v=20261013-2"></script>
 <script src="menu_sade.js?v=20261013-4"></script>
+<script src="belediye_ruhsatlar.js?v=20261013-1"></script>
 </body>
 </html>
