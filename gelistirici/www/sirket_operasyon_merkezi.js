@@ -135,24 +135,40 @@
    }
   } else if(f?.tur==="magaza"&&f.yonetici){
    const ss=stok(id),sales=(V.ticaret?.satislar||[]).filter(x=>num(x.sirket)===id);
-   h+='<div class="kart"><h2>🛒 Mağaza ve satış</h2>'+
-    '<p class="alt">Oyuncu fabrikalarından ürün satın al. Satın aldıkların mağazaya gelir; sanal müşteriler düzenli satış yaptıkça kasa gelir kazanır.</p>'+
-    btn("Toptan ürün satın al","sirketPortfoyTedarik("+id+")")+'</div>';
+   const kitchen=["fastfood","kahve"].includes(f.kategori);
+   const buyers=f.kategori==="fastfood"?"Çalışanlar, öğrenciler ve aileler":
+    f.kategori==="kahve"?"Ofis çalışanları, öğrenciler ve kahve müşterileri":"Mahalle sakinleri ve aileler";
+   h+='<div class="kart"><h2>'+ (kitchen?"🍔 Mutfak ve satış":"🛒 Market ve satış")+'</h2>'+
+    '<p class="alt">'+(kitchen?
+      "Mutfak malzeme maliyetini ödeyerek ürünleri hazırlar, hazır stokları şehirdeki sanal müşterilere satar.":
+      "Fabrikalardan toptan ürün satın al; stok oluşturduktan sonra şehirdeki müşterilere saatlik sat.")+
+    " Alıcılar: "+guvenli(buyers)+" · Satışlar talep, fiyat, rekabet ve şehir ekonomisiyle sınırlıdır."+'</p>'+
+    btn(kitchen?"Mutfakta ürün hazırla":"Toptan ürün satın al",
+      kitchen?"sirketPortfoyMutfak("+id+")":"sirketPortfoyTedarik("+id+")")+
+    '</div>';
+   if(kitchen){
+    const orders=(V.ticaret?.uretim||[]).filter(x=>num(x.sirket)===id&&!x.tamam);
+    for(const q of orders)h+=box("Hazırlanıyor · "+(urun(q.urun)?.ad||q.urun),
+      satir("Adet",q.adet)+satir("Hazır olacağı saat",tarih(q.hazir)));
+   }
    if(!ss.length)h+=box("Mağazada stok yok","<p class='alt'>Aşağıdaki tedarikçilerden ürün satın alabilirsin.</p>");
    for(const x of ss)h+=box(urun(x.urun)?.ad||x.urun,
      satir("Stok",num(x.adet)+" adet")+satir("Raf fiyatı",para(x.fiyat)));
-   h+='<div class="kart"><h2>🏭 Oyuncu fabrikalarının satış stokları</h2></div>';
-   const supplies=tedarik().filter(x=>num(x.sirket)!==id&&num(x.adet)>0);
-   if(!supplies.length)h+=box("Hazır toptan stok yok","<p class='alt'>Fabrikalar üretimi tamamladıktan sonra burada satış açılır.</p>");
-   for(const x of supplies){
-    const code=String(x.urun||"");if(!/^[a-z0-9_]+$/.test(code))continue;
-    h+=box((urun(code)?.ad||code)+" · "+x.ad,
-      satir("Satılık miktar",num(x.adet)+" adet")+satir("Toptan fiyat",para(x.fiyat)),
-      btn("Bu ürünü mağazama al","sirketToptanAlModal("+okId(x.sirket)+",'"+code+"',"+id+")"));
+   if(!kitchen){
+    h+='<div class="kart"><h2>🏭 Oyuncu fabrikalarının satış stokları</h2></div>';
+    const supplies=tedarik().filter(x=>num(x.sirket)!==id&&num(x.adet)>0);
+    if(!supplies.length)h+=box("Hazır toptan stok yok","<p class='alt'>Fabrikalar üretimi tamamladıktan sonra burada satış açılır.</p>");
+    for(const x of supplies){
+     const code=String(x.urun||"");if(!/^[a-z0-9_]+$/.test(code))continue;
+     h+=box((urun(code)?.ad||code)+" · "+x.ad,
+       satir("Satılık miktar",num(x.adet)+" adet")+satir("Toptan fiyat",para(x.fiyat)),
+       btn("Bu ürünü mağazama al","sirketToptanAlModal("+okId(x.sirket)+",'"+code+"',"+id+")"));
+    }
    }
    h+='<div class="kart"><h2>📊 Son müşteri satışları</h2></div>';
    if(!sales.length)h+=box("Henüz satış yok","<p class='alt'>Sanal müşteriler ancak hazır stok oluştuktan sonra satın alabilir.</p>");
    for(const x of sales.slice(0,12))h+=box((urun(x.urun)?.ad||x.urun)+" · "+num(x.adet)+" adet",
+    satir("Alıcılar",x.musteri||"Yerel müşteriler")+
     satir("Zaman",tarih(x.zaman))+satir("Ciro",para(x.ciro))+satir("Net kâr",para(x.kar)));
   } else if(f?.tur==="fabrika"||f?.tur==="magaza") {
     h+=box("Ortaklık görünümü","<p class='alt'>İşlemleri şirketi yönetme yetkisi olan ortak yapabilir.</p>");
@@ -172,6 +188,18 @@
    try{
     await window.ticaretMerkezEkrani("uretim");
     if(ilk){ilk=false;window.tcProduce(id);}
+   }catch(err){toast(String(err.message||err),true);}
+  });
+ }
+ async function sirketPortfoyMutfak(id){
+  if(typeof window.ticaretMerkezEkrani!=="function"||typeof window.tcKitchen!=="function"){
+   toast("Mutfak modülü henüz yüklenmedi. Sayfayı yenileyip tekrar dene.",true);return;
+  }
+  let ilk=true;
+  ekranAc(async function(){
+   try{
+    await window.ticaretMerkezEkrani("magaza");
+    if(ilk){ilk=false;window.tcKitchen(id);}
    }catch(err){toast(String(err.message||err),true);}
   });
  }
@@ -253,6 +281,7 @@
  window.sirketToptanAlModal=sirketToptanAlModal;
  window.sirketPortfoyUret=sirketPortfoyUret;
  window.sirketPortfoyTedarik=sirketPortfoyTedarik;
+ window.sirketPortfoyMutfak=sirketPortfoyMutfak;
  window.sirketPortfoyFiyat=sirketPortfoyFiyat;
  window.sirketYonetimEkrani=sirketPortfoyEkrani;
 })();
