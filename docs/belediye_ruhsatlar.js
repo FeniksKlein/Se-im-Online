@@ -17,9 +17,10 @@ async function belRuhsatMerkeziEkrani(){
  const kart=`<div class="kart"><h2>🏛️ Belediye Yatırım Ruhsatları</h2><p class="alt">Fabrika, market, şirket, inşaat ve şube açılışlarında belediyeye başvur. Belediye başkanı onaylamadan yatırım başlayamaz. Onaylanan ruhsat 72 saat geçerlidir; gerçek harç, yatırım sırasında şirket kasasından belediye kasasına ödenir.</p>
  <div class="kv"><span class="k">Başvurularım</span><span class="v">${(r.benim||[]).length}</span></div></div>
  <div class="kart"><h3>Yeni yatırım başvurusu</h3>
-  <div class="alan"><label>Yatırım türü</label><select id="blrTur" onchange="belRuhsatAlanDegisti()">${BEL_RUHSAT_TURLER.map(([k,a])=>`<option value="${k}">${e(a)}</option>`).join("")}</select></div>
-  <div class="alan"><label>Yatırım yapılacak il</label><select id="blrIl" onchange="belRuhsatAlanDegisti()">${ilSec}</select></div>
-  <div class="alan" id="blrSirketKutu" style="display:none"><label>Yatırımı yapan şirket (mevcut şirketin etkinleştirilmesi için seçilebilir)</label><select id="blrSirket" onchange="belRuhsatAlanDegisti()"></select></div>
+  <div class="alan"><label>Yatırım türü</label><select id="blrTur" onchange="belRuhsatTuruDegisti()">${BEL_RUHSAT_TURLER.map(([k,a])=>`<option value="${k}">${e(a)}</option>`).join("")}</select></div>
+  <div class="alan"><label>Yatırım yapılacak il</label><select id="blrIl" onchange="belRuhsatAlanDegisti(true)">${ilSec}</select></div>
+  <div class="alan" id="blrModKutu" style="display:none"><label>Kuruluş yöntemi</label><select id="blrMode" onchange="belRuhsatAlanDegisti(true)"><option value="yeni">➕ Yeni şirket kuracağım</option><option value="mevcut">🏢 Mevcut şirketimi faaliyete bağlayacağım</option></select><p class="alt">Yeni şirket varsayılandır. Mevcut şirket bağlama açıkça seçilmelidir.</p></div>
+  <div class="alan" id="blrSirketKutu" style="display:none"><label>Bağlanacak mevcut şirket</label><select id="blrSirket" onchange="belRuhsatAlanDegisti()"></select><p class="alt">Ruhsat yalnızca seçtiğin mevcut şirket için geçerli olur.</p></div>
   <div class="alan" id="blrAdKutu"><label>Kurulacak şirketin tam adı</label><input id="blrAd" maxlength="50" placeholder="Yatırımı yapacak şirketin adı"></div>
   <div class="alan" id="blrSektorKutu" style="display:none"><label>Şirket sektörü</label><select id="blrSektor">${(pk.sektorler||[]).map(x=>`<option value="${e(x.kod)}">${e(x.ad)}</option>`).join("")}</select></div>
   <div class="alan" id="blrHedefKutu" style="display:none"><label>Arsa / kiralanacak dükkân</label><select id="blrHedef"></select></div>
@@ -29,9 +30,11 @@ async function belRuhsatMerkeziEkrani(){
  <b>#${x.id} · ${e(belTurAdi(x.tur))}</b> <span class="rozet ${x.durum==="onay"||x.durum==="kullanildi"?"yesil":x.durum==="red"?"kirmizi":"altin"}">${x.durum==="onay"?"Onaylandı":x.durum==="bekliyor"?"Başkan kararı bekleniyor":x.durum==="kullanildi"?"Kullanıldı":"Reddedildi"}</span>
  <div class="kucuk">${e((r.iller||[]).find(i=>i.id===x.il_id)?.ad||"")} · ${e(x.sirket||"")} ${x.hedef?"· Hedef #"+x.hedef:""} · ${tarihSaat(x.tarih)}</div>
  ${x.durum==="onay"?`<p class="kucuk">Onaylı tarife %${fmt(x.oran,2)} · taban ${fmt(x.taban)} TL. 72 saat içinde yatırım ekranından aynı işlemi gerçekleştir.</p>`:""}
- ${x.durum==="onay"&&x.tur==="kur_sirket"&&x.sektor==="ajans"&&!x.sirket_id&&x.sirket_adi&&
+ ${x.durum==="onay"&&x.tur?.startsWith("kur_")&&!x.sirket_id&&x.sirket_adi&&
     x.karar_zamani&&Date.now()-new Date(x.karar_zamani).getTime()<72*3600000?
-    `<button class="btn altin" onclick="belOnayliAjansKur(${x.id})">📣 Bu onaylı ruhsatla ajans kur</button>`:""}
+    `<button class="btn altin" onclick="belOnayliRuhsatlaKur(${x.id})">🏢 Bu onaylı ruhsatla şirket kur</button>`:""}
+ ${["kur_sirket","kur_pazar"].includes(x.tur)&&x.sirket_id?
+    `<p class="alt">⚠️ Eski sistem bu yeni şirket ruhsatını mevcut bir şirkete bağlamış. Bu ruhsatla yeni şirket kurulamaz; yanlış bağlamadan doğan eski kaydın saklanır.</p><button class="btn ikinci" onclick="belHataliRuhsatYeniBasvuru(${x.id})">Yeni şirket adına doğru ruhsat başvurusu aç</button>`:""}
  ${x.odenmis!=null?`<div class="kucuk">Ödenen belediye harcı: ${fmt(x.odenmis)} TL</div>`:""}
  ${x.gerekce?`<p class="kucuk">Başkan notu: ${e(x.gerekce)}</p>`:""}
  </div>`).join("")||'<p class="alt">Henüz yatırım ruhsatı başvurusu yapmadın.</p>'}</div>`;
@@ -62,78 +65,126 @@ async function belRuhsatMerkeziEkrani(){
  await belRuhsatAlanDegisti();
 }
 
-async function belRuhsatAlanDegisti(){
- const $tur=$("#blrTur"),$il=$("#blrIl"),$cs=$("#blrSirket"),$hedef=$("#blrHedef");
- if(!$tur||!$il||!window.BEL_RUHSAT_KAYNAK)return;
- const tur=$tur.value,il=Number($il.value),isim=tur.startsWith("kur_"),pazar=tur==="kur_pazar"||tur==="kur_sirket",hedefli=tur==="arsa_insaat"||tur==="sube";
- // Yeni şirket ruhsatında önceki şirketin görünmeyen seçimi taşınmasın.
- if(pazar&&$cs){$cs.value="";$cs.disabled=true;}else if($cs)$cs.disabled=false;
- const gelen=(window.BEL_RUHSAT_KAYNAK.ek?.benim||[]).filter(s=>{
-  if(tur==="arsa_insaat"||tur==="yeni_proje"||tur==="kur_insaat")return s.tur==="insaat"||s.sektor==="insaat";
-  if(tur==="sube"||tur==="kur_magaza")return s.tur==="magaza"||s.sektor==="ticaret";
-  if(tur==="kur_fabrika")return ["sanayi","tarim","teknoloji"].includes(s.sektor);
-  if(tur==="kur_sigorta")return s.sektor==="ticaret";
-  return true;
+function belRuhsatTuruDegisti(){
+ const mode=$("#blrMode");
+ if(mode)mode.value="yeni";
+ belRuhsatAlanDegisti(true);
+}
+async function belRuhsatAlanDegisti(modeDegisti=false){
+ const tEl=$("#blrTur"), cityEl=$("#blrIl"), selector=$("#blrSirket"), box=$("#blrSirketKutu"),
+   modeBox=$("#blrModKutu"), modeEl=$("#blrMode"), nameBox=$("#blrAdKutu"), nameEl=$("#blrAd"),
+   sectorBox=$("#blrSektorKutu"), targetBox=$("#blrHedefKutu"), targetEl=$("#blrHedef");
+ if(!tEl||!cityEl||!window.BEL_RUHSAT_KAYNAK)return;
+ const kind=tEl.value, city=Number(cityEl.value);
+ const companyPermit=kind.startsWith("kur_"), service=kind==="kur_pazar"||kind==="kur_sirket";
+ const flexible=["kur_fabrika","kur_magaza","kur_insaat","kur_sigorta"].includes(kind);
+ const needsCompany=["arsa_insaat","yeni_proje","sube"].includes(kind);
+ if(modeBox)modeBox.style.display=flexible?"":"none";
+ const mode=flexible&&modeEl?.value==="mevcut"?"mevcut":"yeni";
+ const existingMode=needsCompany||(flexible&&mode==="mevcut");
+ if(modeDegisti&&selector)selector.value="";
+ const available=(window.BEL_RUHSAT_KAYNAK.ek?.benim||[]).filter(company=>{
+   if(kind==="arsa_insaat"||kind==="yeni_proje"||kind==="kur_insaat")return company.tur==="insaat"||company.sektor==="insaat";
+   if(kind==="sube"||kind==="kur_magaza")return company.tur==="magaza"||company.sektor==="ticaret";
+   if(kind==="kur_fabrika")return ["sanayi","tarim","teknoloji"].includes(company.sektor);
+   if(kind==="kur_sigorta")return company.sektor==="ticaret";
+   return true;
  });
- const eski=$cs?.value;
- const secenekler=(isim&&!pazar?'<option value="">Yeni şirket kurulacak</option>':"")+
- gelen.map(s=>`<option value="${s.id}">${e(s.ad)} (#${s.id})</option>`).join("");
- if($cs){$cs.innerHTML=secenekler;if(gelen.some(s=>String(s.id)===eski))$cs.value=eski;}
- const sid=pazar?0:Number($cs?.value||0);
- const kutu=$("#blrSirketKutu"),ad=$("#blrAdKutu"),sektor=$("#blrSektorKutu"),ht=$("#blrHedefKutu");
- if(kutu)kutu.style.display=pazar?"none":gelen.length||!isim?"block":"none";
- if(ad)ad.style.display=isim&&(!sid||pazar)?"block":"none";
- if(sektor)sektor.style.display=pazar?"block":"none";
- const sec=$("#blrSektor");
- if(sec){
-  const onceki=sec.value;
-  const secenek=tur==="kur_sirket"
-   ?[["tarim","Tarım"],["sanayi","Sanayi"],["teknoloji","Teknoloji"],["ticaret","Ticaret"],["insaat","İnşaat"],["medya","Medya"],["ajans","Reklam ve anket ajansı"]]
-   :(window.BEL_RUHSAT_KAYNAK.pk?.sektorler||[]).map(x=>[x.kod,x.ad]);
-  sec.innerHTML=secenek.map(([kod,ad])=>`<option value="${e(kod)}">${e(ad)}</option>`).join("");
-  if(secenek.some(x=>x[0]===onceki))sec.value=onceki;
+ const previously=selector?.value||"";
+ if(selector){
+   selector.innerHTML='<option value="">— Şirket seç —</option>'+available.map(company=>
+    '<option value="'+Number(company.id)+'">'+e(company.ad)+' (#'+Number(company.id)+')</option>').join("");
+   if(!modeDegisti&&available.some(company=>String(company.id)===previously))selector.value=previously;
+   else selector.value="";
+   selector.disabled=!existingMode;
  }
- if(ht)ht.style.display=hedefli?"block":"none";
- if(!hedefli||!$hedef)return;
- const reqId=window.BEL_RUHSAT_SIRA=(window.BEL_RUHSAT_SIRA||0)+1;
- $hedef.innerHTML='<option value="">Yükleniyor…</option>';
+ const companyId=existingMode?Number(selector?.value||0):0;
+ if(box)box.style.display=existingMode?"":"none";
+ if(nameBox)nameBox.style.display=companyPermit&&!existingMode?"":"none";
+ if(nameEl)nameEl.disabled=companyPermit&&existingMode;
+ if(sectorBox)sectorBox.style.display=service?"":"none";
+ const sectorEl=$("#blrSektor");
+ if(sectorEl){
+   const old=sectorEl.value;
+   const choices=kind==="kur_sirket"?
+    [["tarim","Tarım"],["sanayi","Sanayi"],["teknoloji","Teknoloji"],["ticaret","Ticaret"],["insaat","İnşaat"],["medya","Medya"],["ajans","Reklam ve anket ajansı"]]:
+    (window.BEL_RUHSAT_KAYNAK.pk?.sektorler||[]).map(x=>[x.kod,x.ad]);
+   sectorEl.innerHTML=choices.map(([code,label])=>'<option value="'+e(code)+'">'+e(label)+'</option>').join("");
+   if(choices.some(x=>x[0]===old))sectorEl.value=old;
+ }
+ const targeted=kind==="arsa_insaat"||kind==="sube";
+ if(targetBox)targetBox.style.display=targeted?"":"none";
+ if(!targeted||!targetEl)return;
+ const request=window.BEL_RUHSAT_SIRA=(window.BEL_RUHSAT_SIRA||0)+1;
+ if(!companyId){targetEl.innerHTML='<option value="">Önce şirket seç</option>';return;}
+ targetEl.innerHTML='<option value="">Yükleniyor…</option>';
  try{
-  const x=await API.rpc("eko_emlak_panel",{p_il:il});
-  if(reqId!==window.BEL_RUHSAT_SIRA)return;
-  const liste=tur==="arsa_insaat"
-   ?(x.benim_arsalarim||[]).filter(a=>a.il===il&&a.sirket===sid).map(a=>({id:a.id,ad:`Arsa #${a.id} · ${a.kapasite} bağımsız bölüm`}))
-   :(x.kiralik||[]).map(a=>({id:a.id,ad:`Dükkân #${a.id} · ${e(a.yapi)} · ${fmt(a.kira)} TL/hafta`}));
-  $hedef.innerHTML=liste.map(z=>`<option value="${z.id}">${e(z.ad)}</option>`).join("")||'<option value="">Uygun arsa / dükkân bulunamadı</option>';
- }catch(_){$hedef.innerHTML='<option value="">Bilgi alınamadı</option>';}
+  const v=await API.rpc("eko_emlak_panel",{p_il:city});
+  if(request!==window.BEL_RUHSAT_SIRA)return;
+  const choices=kind==="arsa_insaat"?
+   (v.benim_arsalarim||[]).filter(a=>a.il===city&&a.sirket===companyId).map(a=>({id:a.id,ad:"Arsa #"+a.id+" · "+a.kapasite+" bağımsız bölüm"})):
+   (v.kiralik||[]).map(a=>({id:a.id,ad:"Dükkân #"+a.id+" · "+a.yapi+" · "+fmt(a.kira)+" TL/hafta"}));
+  targetEl.innerHTML=choices.map(a=>'<option value="'+Number(a.id)+'">'+e(a.ad)+'</option>').join("")||'<option value="">Uygun arsa / dükkân bulunamadı</option>';
+ }catch(err){if(request===window.BEL_RUHSAT_SIRA)targetEl.innerHTML='<option value="">Bilgi alınamadı</option>';}
 }
 
-async function belOnayliAjansKur(id){
- const x=(window.BEL_RUHSAT_KAYNAK?.r?.benim||[]).find(p=>Number(p.id)===Number(id));
- if(!x||x.durum!=="onay"||x.tur!=="kur_sirket"||x.sektor!=="ajans"||x.sirket_id||
-    !x.sirket_adi||!x.karar_zamani||
-    Date.now()-new Date(x.karar_zamani).getTime()>=72*3600000){
-   toast("Ajans kuruluşuna uygun ve geçerli onaylı ruhsat bulunamadı.",true);return;
+async function belOnayliRuhsatlaKur(id){
+ const info=(window.BEL_RUHSAT_KAYNAK?.r?.benim||[]).find(x=>Number(x.id)===Number(id));
+ if(!info||info.durum!=="onay"||info.sirket_id||!info.sirket_adi||
+   !info.karar_zamani||Date.now()-new Date(info.karar_zamani).getTime()>=72*3600000){
+  toast("Kuruluş için geçerli bir onaylı ruhsat bulunamadı.",true);return;
  }
+ const tur=info.tur==="kur_fabrika"?"sanayi":info.tur==="kur_magaza"?"ticaret":
+   info.tur==="kur_insaat"?"insaat":info.tur==="kur_sigorta"?"sigorta":
+   info.tur==="kur_pazar"?"pazar:"+info.sektor:info.tur==="kur_sirket"?info.sektor:null;
+ if(!tur){toast("Bu ruhsatın bağlı olduğu şirket türü tanımlanamadı.",true);return;}
  if(typeof window.sirketTumTurKur!=="function"){
-   toast("Şirket kuruluş ekranını yüklemek için oyunu yenile.",true);return;
+  toast("Kuruluş modülünü yüklemek için oyunu yenile.",true);return;
  }
- await window.sirketTumTurKur({tur:"ajans",ad:x.sirket_adi,il:Number(x.il_id),
-   sermaye:Math.max(150000,Number(x.tahmini)||150000)});
+ await window.sirketTumTurKur({tur,ad:info.sirket_adi,il:Number(info.il_id),
+  sermaye:Math.max(tur==="ajans"?150000:tur==="banka"?1000000:100000,Number(info.tahmini)||100000)});
 }
-window.belOnayliAjansKur=belOnayliAjansKur;
+window.belOnayliRuhsatlaKur=belOnayliRuhsatlaKur;
+
+async function belHataliRuhsatYeniBasvuru(id){
+ const info=(window.BEL_RUHSAT_KAYNAK?.r?.benim||[]).find(x=>Number(x.id)===Number(id));
+ if(!info||!["kur_sirket","kur_pazar"].includes(info.tur)||!info.sirket_id)return;
+ if(!await onayla("Yanlış bağlı ruhsat",
+   "Eski ruhsatın silinmeyecek veya harcı tekrar kesilmeyecek. Yeni şirketin gerçek adıyla yeni başvuru oluşturup belediye onayı alabilirsin.","Yeni başvuru aç"))return;
+ const type=$("#blrTur"),city=$("#blrIl"),amount=$("#blrTutar");
+ if(type)type.value=info.tur;
+ if(city)city.value=String(info.il_id);
+ if(amount)amount.value=String(info.tahmini||100000);
+ belRuhsatTuruDegisti();
+ const sector=$("#blrSektor");if(sector&&info.sektor)sector.value=info.sektor;
+ const name=$("#blrAd");if(name){name.value="";name.focus();}
+ toast("Yanlış bağlantılı eski ruhsat korunuyor. Yeni kurulacak şirketin adını yazarak yeni başvuru yap.");
+}
+window.belHataliRuhsatYeniBasvuru=belHataliRuhsatYeniBasvuru;
 
 async function belRuhsatBasvur(){
- const tur=$("#blrTur")?.value, il=Number($("#blrIl")?.value),sirket=["kur_pazar","kur_sirket"].includes(tur)?null:(Number($("#blrSirket")?.value||0)||null);
- const yeni=tur?.startsWith("kur_")&&!sirket;
- const ad=yeni?$("#blrAd")?.value?.trim():null, sektor=["kur_pazar","kur_sirket"].includes(tur)?$("#blrSektor")?.value:null;
- const hedef=["arsa_insaat","sube"].includes(tur)?Number($("#blrHedef")?.value||0)||null:null;
- const yatirim=Number($("#blrTutar")?.value);
- if(yeni&&(!ad||ad.length<3)){toast("Kurulacak şirketin adını yaz.",true);return;}
- if(["arsa_insaat","sube"].includes(tur)&&!hedef){toast("İşleme ait arsayı veya dükkânı seç.",true);return;}
- if(!Number.isFinite(yatirim)||yatirim<0||yatirim>1e9){toast("Geçerli yatırım tutarı gir.",true);return;}
+ const kind=$("#blrTur")?.value, city=Number($("#blrIl")?.value);
+ const flexible=["kur_fabrika","kur_magaza","kur_insaat","kur_sigorta"].includes(kind);
+ const mode=flexible&&$("#blrMode")?.value==="mevcut"?"mevcut":"yeni";
+ const existingRequired=["arsa_insaat","yeni_proje","sube"].includes(kind);
+ const companyId=existingRequired||mode==="mevcut"?Number($("#blrSirket")?.value||0)||null:null;
+ const newCompany=kind?.startsWith("kur_")&&companyId===null;
+ const known=(window.BEL_RUHSAT_KAYNAK?.ek?.benim||[]).find(x=>Number(x.id)===companyId);
+ const companyName=newCompany?$("#blrAd")?.value?.trim():(flexible&&companyId?known?.ad:null);
+ const sector=["kur_pazar","kur_sirket"].includes(kind)?$("#blrSektor")?.value:null;
+ const target=["arsa_insaat","sube"].includes(kind)?Number($("#blrHedef")?.value||0)||null:null;
+ const investment=Number($("#blrTutar")?.value);
+ if((existingRequired||mode==="mevcut")&&!companyId){toast("Mevcut şirketi açıkça seçmelisin.",true);return;}
+ if((existingRequired||mode==="mevcut")&&!known){toast("Şirket sahibi olduğun kayıtlar arasında bulunamadı.",true);return;}
+ if(newCompany&&(!companyName||companyName.length<3||companyName.length>50)){toast("Yeni kurulacak şirketin adını 3–50 karakter yaz.",true);return;}
+ if(flexible&&mode==="mevcut"&&!await onayla("Mevcut şirkete bağlama",
+  known.ad+" (#"+known.id+") şirketinin bu belediye ruhsatına bağlanmasını onaylıyor musun? Bu işlem yeni şirket oluşturmaz.","Bu şirkete bağla"))return;
+ if(["arsa_insaat","sube"].includes(kind)&&!target){toast("İşleme ait arsayı veya dükkânı seç.",true);return;}
+ if(!Number.isFinite(investment)||investment<0||investment>1e9){toast("Geçerli yatırım tutarı gir.",true);return;}
  try{
-  const res=await API.rpc("bel_ruhsat_basvur",{p_tur:tur,p_il:il,p_sirket:sirket,p_hedef:hedef,p_ad:ad,p_sektor:sektor,p_yatirim:yatirim});
-  toast("Başvuru #"+res.id+" belediyeye gönderildi. Tahmini harç: "+fmt(res.tahmini_harc)+" TL");
+  const response=await API.rpc("bel_ruhsat_basvur",{p_tur:kind,p_il:city,p_sirket:companyId,
+   p_hedef:target,p_ad:companyName||null,p_sektor:sector,p_yatirim:investment});
+  toast("Başvuru #"+response.id+" belediyeye gönderildi. Tahmini harç: "+fmt(response.tahmini_harc)+" TL");
   belRuhsatMerkeziEkrani();
  }catch(err){toast(hataCevir(err.message),true);}
 }
