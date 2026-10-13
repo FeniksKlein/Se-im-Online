@@ -2203,7 +2203,6 @@ async function partilerEkrani(){
         '<p class="alt">Henüz ideolojisi açıklanan parti yok.</p>'}
     </div>
     <button class="btn altin" onclick="kurucuDavetModal()" style="margin:0 0 12px">Kurucular kurulu · Gelen davetler</button>
-    ${typeof stkGirisHtml === "function" ? stkGirisHtml() : ""}
     <div class="bolum-bas"><h2>Tüm partiler</h2><span class="kucuk">${l.length} parti</span></div>
     <div class="kart">${l.map(p => { const k = (kim || []).find(x => x.parti.id === p.id); return `<div class="liste-satir" onclick="ekranAc(()=>partiDetay(${p.id}))" style="cursor:pointer">${amblemKutu(p)}
       <div class="orta"><b>${e(p.ad)}</b>${p.kurulus_bit ? ` <span class="rozet altin">Kuruluşta</span>` : ""}<div class="kucuk">${k && k.ideolojiler && k.ideolojiler.length ? e(ideolojiYaz(k.ideolojiler)) + " · " : ""}${p.uye} üye · ${p.vekil} vekil · ${p.belediye} belediye</div>${p.ittifak ? `<div class="kucuk" style="margin-top:3px;color:var(--gold2)">İttifak: ${e(p.ittifak.ad)} · ${(p.ittifak.uyeler||[]).map(u=>e(u.kisa)).join(" + ")}</div>` : ""}</div><span style="color:${e(p.renk)};font-family:var(--disp);font-weight:700;font-size:18px">${e(p.kisa)}</span></div>`; }).join("")}</div>
