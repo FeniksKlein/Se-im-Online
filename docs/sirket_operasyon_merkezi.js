@@ -285,3 +285,13 @@
  window.sirketPortfoyFiyat=sirketPortfoyFiyat;
  window.sirketYonetimEkrani=sirketPortfoyEkrani;
 })();
+
+/* Tüm şirket türleri: tek kuruluş, üretim, satış ve sektörel yönetim. */
+(function(){
+ if(document.getElementById("tumSirketlerModul"))return;
+ const script=document.createElement("script");
+ script.id="tumSirketlerModul";
+ script.src="sirket_tum_turler.js?v=20261013-1";
+ script.async=false;
+ document.body.appendChild(script);
+})();
