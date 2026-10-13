@@ -217,6 +217,6 @@ window.isDunyasiEkrani=isDunyasiEkrani;
 /* Sirket vergi kanunlari ve gunluk ortak kar payi ekranlari. */
 (function(){
  if(document.getElementById("vergiKarPayiModul"))return;
- const sc=document.createElement("script");sc.id="vergiKarPayiModul";sc.src="vergi_kar_payi.js?v=20261013-1";sc.async=false;
+ const sc=document.createElement("script");sc.id="vergiKarPayiModul";sc.src="vergi_kar_payi.js?v=20261013-2";sc.async=false;
  document.body.appendChild(sc);
 })();
