@@ -85,7 +85,7 @@
         satir("gecmis", "Alım-satım geçmişim", "Geçmiş işlemlerin", "ekranAc(ticaretGecmisimEkrani)", "ticaretGecmisimEkrani")
       ])}
       ${grup("Emlak", "", [
-        satir("emlak", "Satılık mülkler", "İlanları gör, pazarlık yap, mülkünü ilana koy", "ekranAc(emlakYeniEkrani)", "emlakYeniEkrani")
+        satir("emlak", "Şehir Emlak ve İnşaat", "Müteahhitlerin ürettiği daire ve dükkânları incele, arsa ve tapu işlemlerini yönet", "arsaEkrani()", null)
       ])}
       ${grup("Ekonomi kurumları", "Herkes izleyebilir", [
         satir("mb", "Merkez Bankası", "Politika faizi ve PPK kararları", "ekranAc(merkezBankasiEkrani)", "merkezBankasiEkrani"),
@@ -224,7 +224,7 @@
 /* Belediye arsasi / gayrimenkul modulu (is dunyasi uzerinde yuklenir). */
 (function(){
  if(document.getElementById("arsaInsaatModul"))return;
- const s=document.createElement("script");s.id="arsaInsaatModul";s.src="arsa_insaat_magaza.js?v=20261013-1";
+ const s=document.createElement("script");s.id="arsaInsaatModul";s.src="arsa_insaat_magaza.js?v=20261013-2";
  s.async=false;document.body.appendChild(s);
 })();
 
