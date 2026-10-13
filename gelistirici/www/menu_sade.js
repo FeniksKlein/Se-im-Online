@@ -12,6 +12,7 @@
   const MS_IKON = {
     ekonomi: sv('<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 6-7"/><path d="M16 7h4v4"/>'),
     sirket: sv('<rect x="4" y="3" width="10" height="18" rx="1"/><path d="M14 9h6v12h-6M7 7h4M7 11h4M7 15h4"/>'),
+    ruhsat: sv('<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-7h6v7M9 10h6"/>'),
     dunya: sv('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>'),
     yaris: sv('<path d="M6 20V10M12 20V4M18 20v-7"/>'),
     rehber: sv('<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M9 7h6"/>'),
@@ -53,6 +54,29 @@
 
   try { if (!document.getElementById("menuSadeCss")) document.head.insertAdjacentHTML("beforeend", msCss()); } catch (_) {}
 
+  /* Ruhsat modülü bazı sürümlerde menüden yüklenmiyordu; gerektiğinde aç. */
+  let msRuhsatYukleniyor = false;
+  function msRuhsatMerkeziAc(){
+    const ac = () => ekranAc(window.belRuhsatMerkeziEkrani);
+    if (typeof window.belRuhsatMerkeziEkrani === "function") return ac();
+    if (msRuhsatYukleniyor) return;
+    msRuhsatYukleniyor = true;
+    const script = document.createElement("script");
+    script.src = "belediye_ruhsatlar.js?v=20261013-2";
+    script.onload = () => {
+      msRuhsatYukleniyor = false;
+      if (typeof window.belRuhsatMerkeziEkrani === "function") ac();
+      else toast("Ruhsat merkezi açılamadı. Sayfayı yenileyip tekrar dene.", true);
+    };
+    script.onerror = () => {
+      msRuhsatYukleniyor = false;
+      script.remove();
+      toast("Ruhsat merkezi yüklenemedi. Sayfayı yenileyip tekrar dene.", true);
+    };
+    document.body.appendChild(script);
+  }
+  window.msRuhsatMerkeziAc = msRuhsatMerkeziAc;
+
   /* ---------------- Ekonomi sekmesi ---------------- */
   function ekonomiEkrani(){
     const cz = D.durum && D.durum.profil && D.durum.profil.cuzdan;
@@ -64,6 +88,7 @@
       </section>
       ${grup("Şirket ve iş", "Kur, yönet, yarış", [
         satir("sirket", "Şirketlerim ve şirket kur", "Ortak olduğun şirketleri yönet, yeni şirket kur", "ekranAc(sirketYonetimEkrani)", "sirketYonetimEkrani"),
+        satir("ruhsat", "Yatırım Ruhsat Merkezi", "Şirket, fabrika, mağaza, inşaat ruhsatlarına başvur; belediye onaylarını takip et", "msRuhsatMerkeziAc()", "msRuhsatMerkeziAc"),
         satir("dunya", "İş dünyası", "Üretim, mağaza, inşaat, sigorta, franchise, birleşme", "ekranAc(isDunyasiEkrani)", "isDunyasiEkrani"),
         satir("yaris", "Rekabetçi şirketler", "Okul, hastane, market, ulaşım, enerji; fiyat ve kalite", "ekranAc(pazarMerkezEkrani)", "pazarMerkezEkrani"),
         satir("ihale", "Kamu ihaleleri", "Belediye ve bakanlık ihalelerine teklif ver", "ekranAc(ihaleEkrani)", "ihaleEkrani"),
