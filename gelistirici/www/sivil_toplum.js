@@ -8,11 +8,6 @@ const STK_TUR = { basin: "Basın açıklaması", bildiri: "Bildiri", destek: "De
 const STK_HEDEF = { genel: "Genel konu", kanun: "Bir kanun", parti: "Bir parti", dernek: "Başka bir dernek", oyuncu: "Bir oyuncu / aday" };
 
 // Partiler sekmesindeki giriş kartı
-function stkGirisHtml() {
-  return `<div class="kart"><h2>Sivil toplum</h2><p class="alt">Dernek kur ya da üye ol; protesto düzenle, basın açıklaması yap, bildiri yayımla, partilere ve adaylara destek açıkla.</p>
-    <button class="btn altin" onclick="sekmeAc('dernek')">Dernekler ve sivil toplum kuruluşları</button></div>`;
-}
-
 function stkEylemHtml(x, opt) {
   opt = opt || {};
   const p = x.bas ? trParca(x.bas) : null;
