@@ -15,6 +15,7 @@ const GROUPS=[
  ["insaat","🏗️ Müteahhitlik","kur_insaat","build"],
  ["sigorta","🛡️ Sigorta şirketi","kur_sigorta","insurance"],
  ["medya","📰 Medya şirketi","kur_sirket","legacy"],
+ ["ajans","📣 Reklam ve anket ajansı","kur_sirket","agency"],
  ["banka","🏦 Banka","none","legacy"],
  ["pazar:market","🏬 Market zinciri (haftalık pazar)","kur_pazar","service"],
  ["pazar:enerji","⚡ Enerji santrali","kur_pazar","service"],
@@ -58,7 +59,7 @@ async function sirketTumTurKur(){
   };
   function update(){
     const info=current(),sektor=info[0],category=info[3];
-    const min=sektor==="banka"?1000000:(minMap[sektor]||100000);
+    const min=sektor==="banka"?1000000:sektor==="ajans"?150000:(minMap[sektor]||100000);
     el("stkMoney").min=String(min);
     if(Number(el("stkMoney").value)<min)el("stkMoney").value=String(min);
     el("stkProdBox").style.display=category==="factory"?"":"none";
@@ -70,6 +71,7 @@ async function sirketTumTurKur(){
       category==="build"?"Arsa al, belediye izniyle inşaat yap, tamamlanan konutları ve dükkânları sat.":
       category==="insurance"?"Poliçe primi, hasar rezervi, tazminat ve şirket kârı.":
       category==="service"?"Üretim/hizmet kapasitesi, pazar talebi, fiyat, rakipler, haftalık satış geliri ve giderler.":
+      category==="agency"?"Oyunculara reklam kampanyası ve kamuoyu anketi satar; fiyat ve çalışan kapasitesini yönet.":
       sektor==="banka"?"Mevduat, kredi, faiz, banka kasası ve finans işlemleri.":
       "Sözleşmeler, ortaklıklar ve haftalık faaliyet geliri-gideri.";
     el("stkDescription").textContent=how+" Asgari sermaye: "+cash(min)+".";
@@ -83,11 +85,11 @@ async function sirketTumTurKur(){
   el("stkLicense").onclick=()=>{modalKapat();ekranAc(belRuhsatMerkeziEkrani);};
   el("stkCreate").onclick=async function(){
     const info=current(),sector=info[0],category=info[3],company=name.value.trim(),capital=Number(el("stkMoney").value),
-      loc=Number(city.value),min=sector==="banka"?1000000:(minMap[sector]||100000);
+      loc=Number(city.value),min=sector==="banka"?1000000:sector==="ajans"?150000:(minMap[sector]||100000);
     if(company.length<3||company.length>50){toast("Şirket adı 3–50 karakter olmalı.",true);return;}
     if(!Number.isSafeInteger(capital)||capital<min||capital>100000000){toast("Sermaye "+cash(min)+" ile 100.000.000 ₺ arasında tam sayı olmalı.",true);return;}
     if(!Number.isInteger(loc)||loc<1||loc>81){toast("Geçerli bir faaliyet ili seç.",true);return;}
-    if(category==="factory"&&sector!=="sanayi"&&loc!==home){toast("Tarım ve teknoloji fabrikaları şimdilik kayıtlı ilde açılır. Farklı il için sanayi fabrikası seç.",true);return;}
+    if(((category==="factory"&&sector!=="sanayi")||sector==="insaat"||sector==="ajans")&&loc!==home){toast("Bu şirket türü kayıtlı ikamet ilinde açılır. Başka şehirde fabrika açmak için sanayi sektörünü seç.",true);return;}
     if(!permission(info)){toast("Önce bu şirket ve il için belediyeden onaylı ruhsat al.",true);return;}
     if(!await onayla("Şirket kuruluşu",company+" için "+cash(capital)+" sermaye cüzdanından yatırılacak ve gerekli belediye harcı şirket kasasından kesilecek.","Kur"))return;
     this.disabled=true;
@@ -96,6 +98,8 @@ async function sirketTumTurKur(){
       if(category==="service"){
         result=await API.rpc("pazar_sirket_kur",{p_ad:company,p_sektor:sector.split(":")[1],p_sermaye:capital,
           p_il:loc,p_kaynak:sector==="pazar:enerji"?el("stkEnergy").value:null});
+      }else if(category==="agency"){
+        result=await API.rpc("ajans_kur",{p_ad:company,p_sermaye:capital});
       }else if(category==="factory"&&sector!=="sanayi"){
         result=await API.rpc("sirket_kur_aktif",{p_ad:company,p_sektor:sector,p_sermaye:capital,
           p_urun:sector==="tarim"?"gida":"teknoloji"});
@@ -156,6 +160,9 @@ if(typeof originalDetail==="function"){
      }else if(sector==="banka"){
        description='<p class="alt">Banka mevduatı, kredi ürünleri, faizler, müşteri işlemleri ve banka kasası.</p>';
        html='<button class="btn altin" onclick="ekranAc(oyuncuBankaEkrani)">Bankacılık işlemlerini aç</button>';
+     }else if(sector==="ajans"){
+       description='<p class="alt">Oyuncu partilerine ve adaylara reklam ve anket hizmetleri sat; kampanya, fiyat, iş kapasitesi ve geliri yönet.</p>';
+       html='<button class="btn altin" onclick="ekranAc(()=>ajansYonetimEkrani('+sid+'))">Reklam ve anket siparişlerini yönet</button>';
      }else if(sector==="medya"){
        description='<p class="alt">Reklam ve hizmet sözleşmeleri, giderler, ortaklık ve şirket finansmanı.</p>';
        html='<button class="btn altin" onclick="ekranAc(isDunyasiEkrani)">Sözleşme ve hizmet satışları</button>';
