@@ -210,7 +210,6 @@ async function siyasiBagisYap(){
     const r = eski.apply(this, arguments);
     try {
       if (baslik === "Hayat") { const g = $(".vit-ana-izgara"); if (g && !g.querySelector(".br-ek")) g.insertAdjacentHTML("afterbegin", `<button class="vit-ana-kart br-ek" onclick="ekranAc(ekonomiMerkeziEkrani)"><span class="vit-ikon" style="color:var(--ink2)">${BR_IKON.rapor}</span><b>Ekonomi merkezi</b><span>Piyasa raporu, borsa, şirketler, ihaleler, Rekabet Kurumu</span></button>`); }
-      if (baslik === "Şirketler") { const d = $(".vit-dugme"); if (d && !d.querySelector(".br-ek")) d.insertAdjacentHTML("beforeend", `<button class="btn ikinci br-ek" onclick="ekranAc(borsaEkrani)">Borsa</button>`); }
       if (baslik === "Rekabetçi şirketler" || baslik === "Kamu ihaleleri") { const ic = $("#icerik"); if (ic && !ic.querySelector(".br-ek")) ic.insertAdjacentHTML("beforeend", `<button class="btn ikinci br-ek" onclick="ekranAc(ekonomiMerkeziEkrani)">Ekonomi merkezi</button>`); }
     } catch (_) {}
     return r;
