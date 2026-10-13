@@ -167,23 +167,25 @@
   if(typeof window.ticaretMerkezEkrani!=="function"||typeof window.tcProduce!=="function"){
    toast("Üretim modülü henüz yüklenmedi; sayfayı yenileyip tekrar dene.",true);return;
   }
-  ekranAc(function(){ticaretMerkezEkrani("uretim")});
-  // Panel veri yükleme asenkrondur. Orijinal modülün açılmasını bekle.
-  try{
-   const t=await API.rpc("eko_ticaret_panel");
-   if(!t.sirketler?.some(x=>num(x.id)===num(id)&&x.yonetici&&x.tur==="fabrika"))throw Error("Fabrika yönetimi bulunamadı.");
-   // tcProduce kullandığı veriyi kendi ekranı yükler. Önce ekranın render olmasını bekle.
-   await ticaretMerkezEkrani("uretim");
-   window.tcProduce(id);
-  }catch(err){toast(String(err.message||err),true);}
+  let ilk=true;
+  ekranAc(async function(){
+   try{
+    await window.ticaretMerkezEkrani("uretim");
+    if(ilk){ilk=false;window.tcProduce(id);}
+   }catch(err){toast(String(err.message||err),true);}
+  });
  }
  async function sirketPortfoyTedarik(id){
   if(typeof window.ticaretMerkezEkrani!=="function"||typeof window.tcWholesale!=="function"){
    toast("Ticaret ekranını açmak için sayfayı yenileyip tekrar dene.",true);return;
   }
-  ekranAc(function(){ticaretMerkezEkrani("magaza")});
-  try{await ticaretMerkezEkrani("magaza");window.tcWholesale(id);}
-  catch(err){toast(String(err.message||err),true);}
+  let ilk=true;
+  ekranAc(async function(){
+   try{
+    await window.ticaretMerkezEkrani("magaza");
+    if(ilk){ilk=false;window.tcWholesale(id);}
+   }catch(err){toast(String(err.message||err),true);}
+  });
  }
  function sirketToptanAlModal(supplier,code,buyer){
   supplier=okId(supplier);buyer=okId(buyer);code=String(code||"");
