@@ -1,5 +1,5 @@
-"""Tek görev kuralı: kimse aynı anda iki görev taşıyamaz.
-İstisnalar: milletvekili + genel başkan yardımcısı; genel başkan + cumhurbaşkanı.
+"""Makam uyumu kuralları: genel başkan yardımcılığı mevcut devlet göreviyle yürütülebilir.
+İstisnalar: TBMM Başkanı ve TBMM Başkanvekili ile GBY görevi birleştirilemez.
 Çalıştır: ../kur_yerel.sh && python3 tek_gorev.py"""
 from db import q, rpc, saat, kullanici_ekle, hata_bekle
 
@@ -27,17 +27,22 @@ bel = oyuncu("Baskan", 35, 1); makam("bel", bel, 35)
 yrd = oyuncu("Yardimci", 35, 1)
 cb  = oyuncu("Cumhur", 6, 1); makam("cb", cb)
 
-# ---- genel başkan yardımcısı yalnızca vekil olabilir
+# ---- genel başkan yardımcılığı mevcut siyasi/yürütme görevleriyle birlikte yürütülebilir
 rpc(gb, "gby_ata", 1, "Vekil")
 assert roller(vek) in ("mv,gby", "gby,mv")
 ok("Milletvekili aynı anda genel başkan yardımcısı olabilir")
-hata_bekle(rpc, gb, "gby_ata", 2, "Bakan", icerir="milletvekili olabilir")
-hata_bekle(rpc, gb, "gby_ata", 2, "Baskan", icerir="milletvekili olabilir")
-hata_bekle(rpc, gb, "gby_ata", 2, "Cumhur", icerir="milletvekili olabilir")
+rpc(gb, "gby_ata", 2, "Bakan")
+assert "bakan" in roller(bak).split(",") and "gby" in roller(bak).split(",")
+rpc(gb, "gby_ata", 2, "Baskan")
+assert "bel" in roller(bel).split(",") and "gby" in roller(bel).split(",")
+rpc(gb, "gby_ata", 2, "Cumhur")
+assert "cb" in roller(cb).split(",") and "gby" in roller(cb).split(",")
+meclis = oyuncu("Meclis", 35, 1); makam("tbmm", meclis, 35)
+hata_bekle(rpc, gb, "gby_ata", 2, "Meclis", icerir="birleştirilemez")
 rpc(gb, "gby_ata", 2, "Yardimci")
 rpc(gb, "gby_ata", 3, "Yardimci")        # aynı kişinin sırası değişebilir
 assert q("select count(*) from oyun.parti_gby where parti_id=1") == "2"
-ok("Bakan, belediye başkanı ve cumhurbaşkanı genel başkan yardımcısı atanamaz; yardımcının sırası değişebilir")
+ok("Bakan, belediye başkanı ve cumhurbaşkanı görevlerini koruyarak GBY olabilir; TBMM Başkanlığı ayrı kalır")
 
 # ---- bir milletvekili vekillikten ayrilmadan bakan olabilir
 bakan_vekil = oyuncu("BakanVekil", 35, 1); makam("mv", bakan_vekil, 35)
