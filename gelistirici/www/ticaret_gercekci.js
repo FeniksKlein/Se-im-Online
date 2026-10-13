@@ -217,6 +217,44 @@ function produce(id,preferredProduct){
   m.querySelector("#tcItem").value=preferredProduct;
  m.querySelector("#tcItem").onchange=refresh;m.querySelector("#tcQty").oninput=refresh;refresh();
 }
+function kitchenPrepare(id,preferred){
+ const s=mine(id);
+ if(!s||!s.yonetici||s.tur!=="magaza"||!["fastfood","kahve"].includes(s.kategori)){
+  toast("Ürün hazırlama yalnızca fast-food ve kahvecilerde yapılabilir.",true);return;
+ }
+ const prods=(TC.veri?.urunler||[]).filter(x=>x.kategori===s.kategori);
+ if(!prods.length){toast("Bu işletmeye uygun ürün yok.",true);return;}
+ const m=popup(s.ad+" · Mutfakta ürün hazırla",
+  '<p class="alt">Malzeme ve hazırlama maliyeti işletme kasasından hemen ödenir. Ürünler hazırlık bitince stoğa girer ve şehir sakinlerine saatlik satılır.</p>'+
+  choices("tcKitchenItem","Ürün",prods.map(x=>[x.kod,x.ad]))+
+  field("tcKitchenQty","Adet",10,1,250)+
+  '<p class="tc-hint" id="tcKitchenDetails"></p>',
+  "Hazırlamayı başlat",async root=>{
+   const p=item(sel(root,"tcKitchenItem")),qty=Number(sel(root,"tcKitchenQty"));
+   const max=p?Math.min(Number(p.parti)||0,250):0;
+   if(!p||p.kategori!==s.kategori||!Number.isInteger(qty)||qty<1||qty>max){
+    toast("Adet 1 ile "+max+" arasında olmalıdır.",true);return;
+   }
+   try{
+    const result=await API.rpc("eko_magaza_hazirla",{p_sirket:id,p_urun:p.kod,p_adet:qty});
+    modalKapat();toast(qty+" adet "+p.ad+" hazırlanıyor. Hazır olacağı saat: "+date(result.hazir));
+    await ticaretMerkezEkrani("magaza");
+   }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message),true);}
+  });
+ if(preferred&&prods.some(x=>x.kod===preferred))m.querySelector("#tcKitchenItem").value=preferred;
+ const update=()=>{
+  const p=item(sel(m,"tcKitchenItem")),qty=Number(sel(m,"tcKitchenQty"))||0;
+  if(!p)return;
+  const max=Math.min(Number(p.parti)||0,250);
+  m.querySelector("#tcKitchenQty").max=max;
+  m.querySelector("#tcKitchenDetails").textContent="Parti üst sınırı "+max+
+   " · Maliyet "+money(p.maliyet*qty)+" · Hazırlık "+Math.max(10,Math.ceil(p.dakika*.5))+
+   " dakika · Önerilen satış fiyatı "+money(p.satis)+" / adet";
+ };
+ m.querySelector("#tcKitchenItem").onchange=update;
+ m.querySelector("#tcKitchenQty").oninput=update;
+ update();
+}
 function price(id,prod,current){
  const p=item(prod);
  popup("Ürün satış fiyatı",'<p class="alt">'+tm(p?.ad||prod)+' · Fiyat piyasa ve maliyet sınırları içinde olmalıdır.</p>'+
@@ -352,30 +390,53 @@ function panel(){
   html+='</div></details>';
  }
  if(TC.sekme==="magaza"){
-  html+=card("Yapay müşteriye satış","Sanal müşteriler her saat şehrin gelişimi, ürün talebi, mağaza kategorisi, rekabet ve raf fiyatına göre alışveriş yapar. Stoklar gerçekten azalır; ciro, maliyet, personel gideri, vergi ve franchise payları rapora yansır.");
+  html+=card("Şehir müşterilerine satış","Marketler oyuncu fabrikalarından toptan alıp mahalle sakinleri ve ailelere satar. Fast-food ve kahveci kendi ürünlerini malzeme maliyeti ödeyerek hazırlar. Öğrenciler, çalışanlar ve aileler sanal müşteridir. Talep; günün saati, şehir gelişimi, rekabet, fiyat, stok ve günlük şehir kotasına göre değişir. Satış garanti değildir.");
   html+=hint;
   const shops=own("magaza");
+  const cats={market:"🛒 Market",kahve:"☕ Kahveci",fastfood:"🍔 Fast food"};
   for(const s of shops){
-   const st=storeStock(s.id);
-   const cats={market:"🛒 Market",kahve:"☕ Kahve",fastfood:"🍔 Fast food"};
-   html+=card(cats[s.kategori]+" · "+s.ad,
-   "Şirket kasası "+money(s.kasa)+" · Sermaye "+money(s.sermaye)+" · "+
-   st.reduce((n,x)=>n+Number(x.adet),0)+" adet stok",
-   button("Üreticiden ürün al","tcWholesale("+s.id+")")+
-   secondary("Mağaza türü","tcType("+s.id+")")+
-   secondary("Otomatik tedarik","tcAutomation("+s.id+")"));
-   for(const x of st)html+=card((item(x.urun)?.ad||x.urun)+" · "+x.adet+" adet",
-     "Alış maliyeti "+money(x.maliyet)+" · Raf fiyatı "+money(x.fiyat),
-     secondary("Raf fiyatı değiştir","tcPrice("+s.id+",'"+x.urun+"',"+Number(x.fiyat)+")"));
-   for(const x of (d.oto||[]).filter(x=>x.sirket===s.id&&x.aktif))
+   const st=storeStock(s.id),homeCook=["fastfood","kahve"].includes(s.kategori);
+   const pending=(d.uretim||[]).filter(x=>Number(x.sirket)===Number(s.id)&&!x.tamam);
+   const buyers=s.kategori==="fastfood"?"Öğrenciler, çalışanlar ve aileler":
+    s.kategori==="kahve"?"Ofis çalışanları, öğrenciler ve kahve müşterileri":
+    "Mahalle sakinleri ve aileler";
+   html+=card((cats[s.kategori]||"🛍️ İşletme")+" · "+s.ad,
+    "Kasa "+money(s.kasa)+" · Sermaye "+money(s.sermaye)+" · Stok "+
+    st.reduce((a,x)=>a+Number(x.adet||0),0)+" adet · Alıcılar: "+tm(buyers)+
+    '<div class="tc-hint">Sonraki saatlik müşteri kontrolü: '+
+    tm(s.sonraki_satis?date(s.sonraki_satis):"Saatlik")+
+    ' · Hazırlanmakta olan parti: '+pending.length+"</div>",
+    (homeCook?button("Kendi ürünümü hazırla","tcKitchen("+s.id+")"):
+      button("Fabrikadan ürün satın al","tcWholesale("+s.id+")"))+
+    secondary("İşletme türü","tcType("+s.id+")")+
+    (homeCook?"":secondary("Otomatik stok tedariki","tcAutomation("+s.id+")")));
+   for(const q of pending)html+=card("Hazırlanıyor · "+(item(q.urun)?.ad||q.urun),
+    "Ürün: "+q.adet+" adet · Bitiş saati: "+date(q.hazir));
+   for(const x of st){
+    const code=String(x.urun||"");
+    if(!/^[a-z0-9_]+$/.test(code))continue;
+    html+=card((item(code)?.ad||code)+" · "+x.adet+" adet",
+     "Ürün maliyeti "+money(x.maliyet)+" · Raf satış fiyatı "+money(x.fiyat),
+     secondary("Raf fiyatını değiştir","tcPrice("+s.id+",'"+code+"',"+Number(x.fiyat)+")"));
+   }
+   for(const x of (d.oto||[]).filter(x=>Number(x.sirket)===Number(s.id)&&x.aktif))
     html+=card("Otomatik tedarik · "+(item(x.urun)?.ad||x.urun),
-    "Stok eşiği "+x.esik+" · Sipariş "+x.miktar+" adet · Son tarih "+date(x.bitis),
-    secondary("Otomasyonu kapat","tcDisable("+s.id+",'"+x.urun+"')"));
+     "Stok eşiği "+x.esik+" · Sipariş "+x.miktar+" adet · Bitiş "+date(x.bitis),
+     secondary("Otomatik siparişi kapat","tcDisable("+s.id+",'"+x.urun+"')"));
   }
-  html+=title("Oyuncu üreticilerinin stokları","Canlı teklif");
-  if(!(d.tedarikciler||[]).length)html+=card("Üretici stoku yok","Üreticiler ürünlerini tamamladıkça listede görünür.");
+  html+=title("Sanal müşterilere gerçekleşen satışlar","Son işlemler");
+  const recent=(d.satislar||[]).filter(x=>shops.some(s=>Number(s.id)===Number(x.sirket)));
+  if(!recent.length)html+=card("Henüz satış yapılmadı","Stok oluşturduktan sonra saatlik müşteri alımları başlayabilir; satış garanti edilmez.");
+  for(const x of recent.slice(0,20)){
+   const firm=shops.find(s=>Number(s.id)===Number(x.sirket));
+   html+=card((item(x.urun)?.ad||x.urun)+" · "+(firm?.ad||"İşletme"),
+    "Alıcı: "+tm(x.musteri||"Yerel müşteriler")+" · "+x.adet+" adet · "+date(x.zaman)+
+    " · Ciro "+money(x.ciro)+" · Net kâr "+money(x.kar));
+  }
+  html+=title("Oyuncu fabrikalarındaki stoklar","Toptan satış teklifleri");
+  if(!(d.tedarikciler||[]).length)html+=card("Hazır üretici stoğu yok","Fabrika üretimi tamamlandığında burada satış teklifi görünür.");
   for(const x of d.tedarikciler||[])html+=card((item(x.urun)?.ad||x.urun)+" · "+x.ad,
-    x.adet+" adet · Toptan "+money(x.fiyat)+" / adet");
+    x.adet+" adet · Toptan fiyat "+money(x.fiyat)+" / adet");
  }
  if(TC.sekme==="zincir"){
   html+=card("Gerçekçi mağaza zincirleri","Fast food, kahveci ve market markaları kur. Başka oyunculara isim hakkı sat, brüt cirodan pay ve <b>yalnızca pozitif net kârdan</b> ek ortaklık payı al.",
@@ -427,4 +488,5 @@ window.tcAutomation=automation;window.tcDisable=offAuto;window.tcType=storeType;
 window.tcBrand=brandSettings;window.tcBuyBrand=franchiseBuy;
 window.tcFactoryPermit=factoryWithPermit;
 window.tcMarketPermit=marketWithPermit;
+window.tcKitchen=kitchenPrepare;
 })();
