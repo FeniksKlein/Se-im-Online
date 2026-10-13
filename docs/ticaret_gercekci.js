@@ -32,10 +32,72 @@ async function action(kind,data,text){
   return result;
  }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message),true);return null;}
 }
+/* Belediye ruhsatından tek ekranda gerçek fabrika kuruluşu. Şirket/para değişikliği
+   yalnızca oyuncu onayından sonra sunucudaki mevcut eko_islem('kur') RPC'siyle yapılır. */
+async function factoryWithPermit(preferredGroup){
+ let permits;
+ try{
+  const v=await API.rpc("bel_ruhsat_merkezi");
+  permits=(v.benim||[]).filter(r=>r.tur==="kur_fabrika"&&r.durum==="onay"&&
+   r.sirket&&r.il_id&&r.karar_zamani&&
+   (Date.now()-new Date(r.karar_zamani).getTime())<72*60*60*1000);
+ }catch(err){toast(hataCevir(err.message),true);return;}
+ if(!permits.length){
+  if(await onayla("Fabrika ruhsatı gerekli",
+   "Henüz geçerli, onaylı bir fabrika kuruluş ruhsatın görünmüyor. Ruhsat Merkezi üzerinden belediyeye başvurabilirsin.",
+   "Ruhsat Merkezi'ne git")){
+    if(typeof window.msRuhsatMerkeziAc==="function")window.msRuhsatMerkeziAc();
+    else if(typeof window.belRuhsatMerkeziEkrani==="function")ekranAc(belRuhsatMerkeziEkrani);
+    else toast("Ruhsat Merkezi için Ekonomi menüsünü aç.",true);
+  }
+  return;
+ }
+ const list=permits.map(r=>[r.id,r.sirket+" · İl "+r.il_id+" · Onaylı"]);
+ const el=popup("Onaylı ruhsatla fabrika kur",
+  '<p class="alt">Onaylanan fabrika ruhsatını kullanarak şirketini ve üretim tesisini aynı işlemde kur. Şirket adı ve il ruhsatla birebir eşleşir. Kuruluş sermayesi cüzdanından, belediye harcı şirket kasasından tahsil edilir.</p>'+
+  choices("tcPermit","Kullanılacak ruhsat",list)+
+  choices("tcPermitGroup","Üretilecek ürün grubu",[
+   ["gida","🥖 Gıda (su, ekmek, un vb.)"],["teknoloji","💻 Teknoloji"],
+   ["malzeme","🧱 İnşaat malzemeleri"]])+
+  field("tcPermitCapital","Kuruluş sermayesi (TL)",250000,100000,100000000)+
+  '<p class="alt" id="tcPermitInfo"></p>',
+  "Fabrikayı kur",async root=>{
+   const r=permits.find(x=>x.id===Number(sel(root,"tcPermit")));
+   const capital=Number(sel(root,"tcPermitCapital"));
+   const group=sel(root,"tcPermitGroup");
+   if(!r||!["gida","teknoloji","malzeme"].includes(group)||
+    !Number.isInteger(capital)||capital<100000||capital>100000000){
+    toast("Geçerli ruhsat, üretim grubu ve sermaye seç.",true);return;
+   }
+   if(!await onayla("Fabrika kuruluşu",
+    r.sirket+" adlı sanayi şirketi "+money(capital)+" sermayeyle kurulacak. Belediyenin ruhsat harcı ayrıca şirket kasasından kesilecek.",
+    "Kur ve üretime bağla"))return;
+   try{
+    await API.rpc("eko_islem",{p_eylem:"kur",
+     p_veri:{tur:"fabrika",il:Number(r.il_id),ad:r.sirket,urun:group,tutar:capital}});
+    modalKapat();
+    toast("Fabrikan kuruldu ve üretime bağlandı. Üretim emri verebilirsin.");
+    if(typeof durumYenile==="function")durumYenile().catch(()=>{});
+    await ticaretMerkezEkrani("uretim");
+   }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message),true);}
+  });
+ if(["gida","teknoloji","malzeme"].includes(preferredGroup))
+  el.querySelector("#tcPermitGroup").value=preferredGroup;
+ const info=()=>{
+  const r=permits.find(x=>x.id===Number(sel(el,"tcPermit")));
+  el.querySelector("#tcPermitInfo").textContent=r?
+   "Ruhsat: "+r.sirket+" · Geçerlilik sonu: "+
+   date(new Date(new Date(r.karar_zamani).getTime()+72*60*60*1000).toISOString()):"";
+ };
+ el.querySelector("#tcPermit").onchange=info;info();
+}
 function convert(){
  const all=(TC.veri?.sirketler||[]).filter(x=>!x.tur&&x.yonetici);
  const allowed=all.filter(x=>["tarim","sanayi","teknoloji","ticaret","market"].includes(x.sektor));
- if(!allowed.length){toast("Önce Şirketlerim ekranında tarım, sanayi, teknoloji veya ticaret şirketi kurmalısın.",true);return;}
+ if(!allowed.length){
+  toast("Üretime bağlanabilecek tarım, sanayi, teknoloji veya ticaret şirketin yok. Onaylı fabrika ruhsatın varsa aşağıdaki kuruluş butonunu kullan.",true);
+  return;
+ }
  const el=popup("Mevcut şirketi işletmeye bağla",
   '<p class="alt">Ayrı şirket kurmadan elindeki şirketi üretim veya mağazacılığa bağla. Eski otomatik gelirler yerine ticaret geliri işler.</p>'+
   choices("tcCompany","Şirket",allowed.map(x=>[x.id,x.ad+" · "+x.sektor]))+
@@ -57,8 +119,9 @@ function convert(){
  };
  el.querySelector("#tcCompany").onchange=update;update();
 }
-function produce(id){
+function produce(id,preferredProduct){
  const firm=mine(id);
+ if(!firm||firm.tur!=="fabrika"||!firm.yonetici){toast("Üretimi yönetebileceğin fabrika bulunamadı.",true);return;}
  const list=(TC.veri.urunler||[]).filter(x=>x.grup===firm.grup);
  if(!list.length){toast("Bu üretim grubunda ürün bulunamadı.",true);return;}
  const m=popup(firm.ad+" · Üretim emri",
@@ -77,6 +140,8 @@ function produce(id){
    m.querySelector("#tcDetails").textContent="Parti üst sınırı "+p.parti+" · Süre "+p.dakika+
    " dk · Maliyet "+money(p.maliyet*qty)+" · Önerilen raf fiyatı "+money(p.satis);
  };
+ if(preferredProduct&&list.some(x=>x.kod===preferredProduct))
+  m.querySelector("#tcItem").value=preferredProduct;
  m.querySelector("#tcItem").onchange=refresh;m.querySelector("#tcQty").oninput=refresh;refresh();
 }
 function price(id,prod,current){
@@ -164,8 +229,18 @@ function franchiseBuy(id){
 function panel(){
  const d=TC.veri||{};
  let html="";
- const hint=card("Ticaret sistemi","Şirketlerim ekranında şirket kurduktan sonra buradan üretim veya perakende faaliyetine bağlayabilirsin.",
- button("Mevcut şirketimi bağla","tcConvert()")+secondary("Şirketlerime git","ekranAc(sirketYonetimEkrani)"));
+ const firms=d.sirketler||[];
+ const available=firms.filter(x=>x.yonetici&&!x.tur&&
+  ["tarim","sanayi","teknoloji","ticaret","market"].includes(x.sektor));
+ const factory=own("fabrika");
+ const situation=factory.length?"Üretim yapabileceğin fabrikan mevcut.":
+  available.length?"Uygun şirketin var; üretime bağlayarak ürün üretebilirsin.":
+  firms.length?"Şirketlerin var ancak üretime uygun bir fabrika şirketi görünmüyor. Enerji ve ajans şirketleri bu bölümde gıda üretemez.":
+  "Henüz üretim şirketi kurmadın.";
+ const hint=card("Ticaret sistemi",tm(situation)+" Şirketlerim'de bir sanayi, tarım veya teknoloji şirketi kurabilir veya onaylı belediye ruhsatınla doğrudan fabrika açabilirsin.",
+ button("Onaylı ruhsatımla fabrika kur","tcFactoryPermit()")+
+ secondary("Mevcut şirketimi bağla","tcConvert()")+
+ secondary("Şirketlerime git","ekranAc(sirketYonetimEkrani)"));
  if(TC.sekme==="uretim"){
   html+=card("Üretim ve toptan satış","Gıda, teknoloji veya yapı malzemeleri üreten fabrikalarda farklı ürünlerin parti kapasitesi ve üretim süresi vardır. Üretim bedeli emir verildiğinde düşer, ürünler süre sonunda satış stoklarına geçer.");
   html+=hint;
@@ -184,9 +259,17 @@ function panel(){
    "Maliyet "+money(x.maliyet)+" · "+(x.tamam?"Stoklara aktarıldı":"Hazır olacağı zaman "+date(x.hazir)));
   html+=title("Üretilebilen ürünler",""+(d.urunler||[]).length+" çeşit");
   html+='<details class="tc-products"><summary style="padding:14px;border-radius:12px;background:var(--panel);color:var(--txt);cursor:pointer">Tüm ürünleri göster / gizle</summary><div style="padding-top:10px">';
-  for(const p of d.urunler||[])html+=card(p.ad,
+  for(const p of d.urunler||[]){
+   const f=factory.find(x=>x.grup===p.grup);
+   const code=String(p.kod||"");
+   const canProduce=!!f&&/^[a-z0-9_]+$/.test(code);
+   html+=card(p.ad,
     tm(p.grup)+" · Parti üst sınırı "+p.parti+" · "+p.dakika+" dakika · Birim maliyet "+money(p.maliyet)+
-    " · Önerilen tüketici fiyatı "+money(p.satis));
+    " · Önerilen tüketici fiyatı "+money(p.satis),
+    canProduce?button("Bu ürünü üret","tcProduce("+Number(f.id)+",'"+code+"')"):
+    secondary("Bu ürünü üretmek için fabrika kur","tcFactoryPermit('"+(
+     ["gida","teknoloji","malzeme"].includes(p.grup)?p.grup:"gida")+"')"));
+  }
   html+='</div></details>';
  }
  if(TC.sekme==="magaza"){
@@ -263,4 +346,5 @@ window.ticaretMerkezEkrani=ticaretMerkezEkrani;
 window.tcConvert=convert;window.tcProduce=produce;window.tcPrice=price;window.tcWholesale=wholesale;
 window.tcAutomation=automation;window.tcDisable=offAuto;window.tcType=storeType;
 window.tcBrand=brandSettings;window.tcBuyBrand=franchiseBuy;
+window.tcFactoryPermit=factoryWithPermit;
 })();
