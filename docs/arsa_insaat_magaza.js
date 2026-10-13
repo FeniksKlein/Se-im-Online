@@ -1,7 +1,7 @@
 /* Belediyeler arsa, insaat, tapu, dukkan kiralama ve magaza zincirleri. */
 (function(){
 "use strict";
-const EA={il:null,sekme:"arsa",veri:null};
+const EA={il:null,sekme:"arsa",veri:null,eskiler:[]};
 const safe=x=>typeof e==="function"?e(String(x??"")):String(x??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const para=x=>typeof tlYaz==="function"?tlYaz(Math.round(Number(x)||0)):Math.round(Number(x)||0).toLocaleString("tr-TR")+" TL";
 const when=x=>x?new Date(x).toLocaleString("tr-TR",{dateStyle:"short",timeStyle:"short"}):"—";
@@ -108,6 +108,10 @@ function body(){
   html+=box("Tapularım ve kiralarım","Satın alınan daireler ve dükkânlar burada görünür. Dükkânını haftalık kira karşılığı diğer oyuncuların mağazalarına verebilirsin.");
   if(!(d.benim_mulklerim||[]).length)html+=box("Henüz tapun yok","Satılık Daire ve Dükkân bölümünden satın alabilirsin.");
   for(const x of d.benim_mulklerim||[])html+=box((x.tur==="daire"?"🏠 Daire":"🏬 Dükkân")+" #"+x.id,"Proje: "+safe(x.yapi)+" · "+x.m2+" m² · "+(x.kirada?"Kirada":x.kira?"Kiralık ilan: "+para(x.kira)+"/hafta":"Henüz kiraya verilmedi"),x.tur==="dukkan"&&!x.kirada?btn("Haftalık kira belirle","eaSetRent("+x.id+","+Number(x.kira||1000)+")"):"");
+  if(EA.eskiler.length){
+   html+=box("Önceden edinilmiş tapular","Eski dönemde alınan gayrimenkuller korunur. Bu tapulardan yeni satış ya da devir yapılamaz.");
+   for(const x of EA.eskiler) html+=box("📜 "+safe(x.tip)+" #"+Number(x.id),safe(x.il)+" · Eski alış: "+para(x.alis)+" · Haftalık kira: "+para(x.haftalik));
+  }
  }
  return html;
 }
@@ -116,6 +120,10 @@ async function arsaEkrani(il){
  yukleniyor("Arsa ve Gayrimenkul");
  try{
   const v=await API.rpc("eko_emlak_panel",{p_il:EA.il||null});EA.veri=v;EA.il=Number(v.il);
+  if(EA.sekme==="benim"){
+   try {const old=await API.rpc("mulk_liste");EA.eskiler=Array.isArray(old?.mulkler)?old.mulkler:[];}
+   catch(_) {EA.eskiler=[];}
+  }
   const cities=Array.from({length:81},(_,i)=>i+1).map(i=>'<option value="'+i+'"'+(i===EA.il?" selected":"")+'>'+String(i).padStart(2,"0")+" · "+safe(typeof ilAd==="function"?ilAd(i):"İl "+i)+'</option>').join("");
   const tabs=[["arsa","🏞️ Arsalar"],["insaat","🏗️ İnşaat"],["pazar","🏘️ Satılık"],["kira","🔑 Kiralık"],["sube","🛍️ Zincirler"],["benim","📜 Tapularım"]];
   const html='<style>.ea-tabs{display:flex;overflow-x:auto;gap:7px;padding:0 0 10px;margin:10px 0 14px}.ea-tabs button{flex:0 0 auto;white-space:nowrap;border:1px solid var(--line2);background:var(--panel);color:var(--txt);padding:10px 12px;border-radius:13px;font-weight:750}.ea-tabs button.ea-current{border-color:#a995ff;background:#40345f}.ea-card{margin-bottom:10px}.ea-card h3{margin:0 0 6px}.ea-card .btn{margin:8px 0 0}.ea-top{background:linear-gradient(130deg,#243861,#352c66);padding:17px;border-radius:17px;color:#fff}.ea-top h2{margin:0 0 7px;color:#fff}.ea-top p{font-size:12px;color:#d2d8ec}.ea-il{width:100%;background:#131934;color:#fff;border:1px solid #6c6499;border-radius:10px;padding:13px;font-size:15px;margin-top:12px}</style>'+
