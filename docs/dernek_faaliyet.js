@@ -18,7 +18,7 @@
     var b = m.querySelector("#" + btn);
     b.onclick = async function () {
       b.disabled = true;
-      try { var r = await fn(); modalKapat(); toast(success); if(done) await done(r); }
+      try { var r = await fn(); if (r === null) { b.disabled = false; return; } modalKapat(); toast(success); if(done) await done(r); }
       catch(err) { b.disabled = false; fail(m,err); }
     };
   };
