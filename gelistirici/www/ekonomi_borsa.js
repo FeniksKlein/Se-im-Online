@@ -50,6 +50,7 @@ async function ekonomiMerkeziEkrani(){
         <div class="br-kutu"><small>Kurumlar vergisi (7 gün)</small><b>${brTL(r.kurumlar_7g)}</b><span>Ruhsat harcı ${brTL(r.ruhsat_7g)}</span></div>
       </div>
       <div class="br-git">
+        <button onclick="ekranAc(belRuhsatMerkeziEkrani)">🏛️<span><b>Belediye yatırım ruhsatları</b><small>İnşaat, fabrika, market ve harç başvuruları</small></span></button>
         <button onclick="ekranAc(pazarMerkezEkrani)">${PZ_IKON.sirket}<span><b>Şirket kur</b><small>Okul, hastane, market, ulaşım, enerji</small></span></button>
         <button onclick="ekranAc(borsaEkrani)">${BR_IKON.borsa}<span><b>Borsa</b><small>${fmt(r.borsa.sirket)} şirket · ${brTL(r.borsa.deger)}</small></span></button>
         <button onclick="ekranAc(ihaleEkrani)">${PZ_IKON.ihale}<span><b>Kamu ihaleleri</b><small>${fmt(r.ihale.acik)} açık · ${fmt(r.ihale.yapim)} yapımda</small></span></button>
