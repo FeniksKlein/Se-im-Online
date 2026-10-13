@@ -83,7 +83,7 @@ async function belRuhsatAlanDegisti(){
  if(sec){
   const onceki=sec.value;
   const secenek=tur==="kur_sirket"
-   ?[["tarim","Tarım"],["sanayi","Sanayi"],["teknoloji","Teknoloji"],["ticaret","Ticaret"],["insaat","İnşaat"],["medya","Medya"]]
+   ?[["tarim","Tarım"],["sanayi","Sanayi"],["teknoloji","Teknoloji"],["ticaret","Ticaret"],["insaat","İnşaat"],["medya","Medya"],["ajans","Reklam ve anket ajansı"]]
    :(window.BEL_RUHSAT_KAYNAK.pk?.sektorler||[]).map(x=>[x.kod,x.ad]);
   sec.innerHTML=secenek.map(([kod,ad])=>`<option value="${e(kod)}">${e(ad)}</option>`).join("");
   if(secenek.some(x=>x[0]===onceki))sec.value=onceki;
