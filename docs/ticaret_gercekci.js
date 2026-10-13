@@ -106,6 +106,61 @@ async function factoryWithPermit(preferredGroup){
  };
  el.querySelector("#tcPermit").onchange=info;info();
 }
+/* Onaylı belediye ruhsatıyla yeni market şirketi kur ve mağazacılığa bağla.
+   Sadece onaydan sonra mevcut sunucu RPC'sini çağırır; mevcut şirketler korunur. */
+async function marketWithPermit(){
+ let permits, cities;
+ try{
+  const v=await API.rpc("bel_ruhsat_merkezi");
+  cities=v.iller||[];
+  permits=(v.benim||[]).filter(r=>r.tur==="kur_magaza"&&r.durum==="onay"&&
+   r.sirket&&r.il_id&&r.karar_zamani&&
+   (Date.now()-new Date(r.karar_zamani).getTime())<72*60*60*1000);
+ }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message),true);return;}
+ if(!permits.length){
+  if(await onayla("Market ruhsatı gerekli",
+   "Henüz geçerli, onaylı market kuruluş ruhsatın görünmüyor. Belediye Yatırım Ruhsat Merkezi'nden başvuru yapabilirsin.",
+   "Ruhsat Merkezi'ne git")){
+   if(typeof window.msRuhsatMerkeziAc==="function")window.msRuhsatMerkeziAc();
+   else if(typeof window.belRuhsatMerkeziEkrani==="function")ekranAc(belRuhsatMerkeziEkrani);
+   else toast("Ruhsat Merkezi için Ekonomi menüsünü aç.",true);
+  }
+  return;
+ }
+ const ilAdi=id=>cities.find(x=>Number(x.id)===Number(id))?.ad||"İl "+id;
+ const el=popup("Onaylı ruhsatla market kur",
+  '<p class="alt">Belediye onaylı market ruhsatını kullanarak aynı isim ve ilde yeni ticaret şirketiyle market aç. Ruhsat başvurusunu tekrar yapmazsın. Sermaye şahsi cüzdanından; ruhsat harcı yeni şirket kasasından bir kez tahsil edilir.</p>'+
+  choices("tcMarketPermit","Onaylı market ruhsatı",
+   permits.map(r=>[r.id,r.sirket+" · "+ilAdi(r.il_id)+" · Onaylı"]))+
+  field("tcMarketCapital","Kuruluş sermayesi (TL)",200000,100000,100000000)+
+  '<p class="alt" id="tcMarketPermitInfo"></p>',
+  "Marketi kur",async root=>{
+   const r=permits.find(x=>Number(x.id)===Number(sel(root,"tcMarketPermit")));
+   const capital=Number(sel(root,"tcMarketCapital"));
+   if(!r||!Number.isInteger(capital)||capital<100000||capital>100000000){
+    toast("Geçerli ruhsat ve 100.000-100.000.000 TL arası sermaye seç.",true);return;
+   }
+   if(!await onayla("Market kuruluşunu onayla",
+    ilAdi(r.il_id)+" ilinde "+r.sirket+" isimli market "+money(capital)+
+    " sermayeyle kurulacak. Belediye ruhsat harcı yalnızca kuruluş sırasında şirket kasasından kesilecek.",
+    "Kur ve mağazalara bağla"))return;
+   try{
+    await API.rpc("eko_islem",{p_eylem:"kur",
+     p_veri:{tur:"magaza",il:Number(r.il_id),ad:r.sirket,tutar:capital}});
+    modalKapat();
+    toast("Market kuruldu. Üreticilerden stok alarak müşterilere satış yapabilirsin.");
+    if(typeof durumYenile==="function")durumYenile().catch(()=>{});
+    await ticaretMerkezEkrani("magaza");
+   }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message),true);}
+  });
+ const info=()=>{
+  const r=permits.find(x=>Number(x.id)===Number(sel(el,"tcMarketPermit")));
+  if(r)el.querySelector("#tcMarketPermitInfo").textContent="Ruhsat #"+r.id+
+   " · "+ilAdi(r.il_id)+" · Son geçerlilik: "+
+   date(new Date(new Date(r.karar_zamani).getTime()+72*60*60*1000).toISOString());
+ };
+ el.querySelector("#tcMarketPermit").onchange=info;info();
+}
 function convert(){
  const all=(TC.veri?.sirketler||[]).filter(x=>!x.tur&&x.yonetici);
  const allowed=all.filter(x=>["tarim","sanayi","teknoloji","ticaret","market"].includes(x.sektor));
@@ -255,8 +310,12 @@ function panel(){
   available.length?"Uygun şirketin var; üretime bağlayarak ürün üretebilirsin.":
   firms.length?"Şirketlerin var ancak üretime uygun bir fabrika şirketi görünmüyor. Enerji ve ajans şirketleri bu bölümde gıda üretemez.":
   "Henüz üretim şirketi kurmadın.";
- const hint=card("Ticaret sistemi",tm(situation)+" Şirketlerim'de bir sanayi, tarım veya teknoloji şirketi kurabilir veya onaylı belediye ruhsatınla doğrudan fabrika açabilirsin.",
- button("Onaylı ruhsatımla fabrika kur","tcFactoryPermit()")+
+ const hint=card("Ticaret sistemi",(TC.sekme==="magaza"
+  ?"Market kurmak için onaylı belediye ruhsatını kullan veya mevcut ticaret şirketini mağazaya bağla."
+  :tm(situation)+" Şirketlerim'de bir sanayi, tarım veya teknoloji şirketi kurabilir veya onaylı belediye ruhsatınla doğrudan fabrika açabilirsin."),
+ (TC.sekme==="magaza"
+  ?button("Onaylı ruhsatımla market kur","tcMarketPermit()")
+  :button("Onaylı ruhsatımla fabrika kur","tcFactoryPermit()"))+
  secondary("Mevcut şirketimi bağla","tcConvert()")+
  secondary("Şirketlerime git","ekranAc(sirketYonetimEkrani)"));
  if(TC.sekme==="uretim"){
@@ -367,4 +426,5 @@ window.tcConvert=convert;window.tcProduce=produce;window.tcPrice=price;window.tc
 window.tcAutomation=automation;window.tcDisable=offAuto;window.tcType=storeType;
 window.tcBrand=brandSettings;window.tcBuyBrand=franchiseBuy;
 window.tcFactoryPermit=factoryWithPermit;
+window.tcMarketPermit=marketWithPermit;
 })();
