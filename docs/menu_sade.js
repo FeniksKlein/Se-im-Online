@@ -77,6 +77,23 @@
   }
   window.msRuhsatMerkeziAc = msRuhsatMerkeziAc;
 
+
+  /* UC ekonomi merkezi: Github Pages'de ayri JS, mobil pakette gomulu. */
+  let ucLoaderPromise=null;
+  window.ucYeniAc=function(which){
+    if(typeof window.ucEkonomiEkrani==="function")return window.ucEkonomiEkrani(which);
+    if(!ucLoaderPromise){
+      ucLoaderPromise=new Promise((resolve,reject)=>{
+        const script=document.createElement("script");
+        script.src="uc_ekonomi_yeni.js?v=20261014-1";
+        script.onload=resolve;
+        script.onerror=()=>reject(new Error("Yeni ekonomi ekranları yüklenemedi"));
+        document.body.appendChild(script);
+      });
+    }
+    return ucLoaderPromise.then(()=>window.ucEkonomiEkrani(which)).catch(err=>{ucLoaderPromise=null;toast(err.message,true);});
+  };
+
   /* ---------------- Ekonomi sekmesi ---------------- */
   function ekonomiEkrani(){
     const cz = D.durum && D.durum.profil && D.durum.profil.cuzdan;
@@ -88,6 +105,9 @@
       </section>
       ${grup("Şirket ve iş", "Kur, yönet, yarış", [
         satir("sirket", "Şirketlerim ve şirket kur", "Ortak olduğun şirketleri yönet, yeni şirket kur", "ekranAc(sirketYonetimEkrani)", "sirketYonetimEkrani"),
+        satir("dunya", "🌾 Tarım ve hayvancılık", "Tarla, mevsim, hasat, süt, et ve market tedariki", "ucYeniAc('tarim')", "ucYeniAc"),
+        satir("rehber", "📚 Kitap ve yayınevi", "Kitap yaz, yayımla, telif al, yeni baskı yap", "ucYeniAc('kitap')", "ucYeniAc"),
+        satir("ajans", "🎟️ Biletli organizasyonlar", "Konferans, konser, fuar, sponsor ve bilet satışı", "ucYeniAc('etkinlik')", "ucYeniAc"),
         satir("ruhsat", "Yatırım Ruhsat Merkezi", "Şirket, fabrika, mağaza, inşaat ruhsatlarına başvur; belediye onaylarını takip et", "msRuhsatMerkeziAc()", "msRuhsatMerkeziAc"),
         satir("dunya", "İş dünyası", "Üretim, mağaza, inşaat, sigorta, franchise, birleşme", "ekranAc(isDunyasiEkrani)", "isDunyasiEkrani"),
         satir("yaris", "Rekabetçi şirketler", "Okul, hastane, market, ulaşım, enerji; fiyat ve kalite", "ekranAc(pazarMerkezEkrani)", "pazarMerkezEkrani"),
