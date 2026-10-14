@@ -28,3 +28,6 @@ select cron.schedule('belediye-kriz', '7 * * * *', 'select oyun.belediye_kriz_ti
 -- Ekonomi kurumları (Merkez Bankası, belediye tahvili, SPK, konkordato): 10 dakikada bir
 select cron.unschedule(jobid) from cron.job where jobname = 'ekonomi-2';
 select cron.schedule('ekonomi-2', '*/10 * * * *', 'select oyun.ekonomi2_tick()');
+-- Siyasi kurumlar (davet ödülleri, ulusal kriz masası, kapatma davaları, kol etkinlikleri): 5 dakikada bir
+select cron.unschedule(jobid) from cron.job where jobname = 'siyasi-kurumlar';
+select cron.schedule('siyasi-kurumlar', '*/5 * * * *', 'select oyun.siyasi_kurumlar_tick()');

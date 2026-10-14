@@ -1,0 +1,2551 @@
+{
+ "kriz_cb": {
+  "ayar": {
+   "aktif": true,
+   "son_kriz": "2026-11-03T12:00:00+03:00",
+   "min_aralik_gun": 10,
+   "haftalik_ihtimal": 100
+  },
+  "aktif": {
+   "id": 6,
+   "bas": "2026-11-03T12:00:00+03:00",
+   "bit": null,
+   "ilk": {
+    "ad": null,
+    "at": null,
+    "karar": null,
+    "veren": null,
+    "secenekler": [
+     {
+      "ad": "Tüm AFAD ekiplerini ve orduyu bölgeye gönder",
+      "kod": "afad",
+      "il_mem": 6,
+      "afad_tl": 8000,
+      "maliyet": 8.05,
+      "aciklama": "Hızlı ve güçlü müdahale; maliyeti yüksek.",
+      "ulke_mem": 2,
+      "kasa_oran": 0
+     },
+     {
+      "ad": "Valilik koordinasyonunda kademeli müdahale",
+      "kod": "koordinasyon",
+      "il_mem": 3,
+      "afad_tl": 3000,
+      "maliyet": 3.02,
+      "aciklama": "Daha ucuz ama yavaş.",
+      "ulke_mem": 0,
+      "kasa_oran": 0
+     },
+     {
+      "ad": "Hasar tespiti bitmeden kaynak ayırma",
+      "kod": "bekle",
+      "il_mem": -4,
+      "afad_tl": 0,
+      "maliyet": 0.0,
+      "aciklama": "Hazine korunur, halk tepki gösterebilir.",
+      "ulke_mem": -2,
+      "kasa_oran": 0
+     }
+    ]
+   },
+   "kod": "deprem",
+   "halk": {
+    "n": 0,
+    "hukumet": null,
+    "belediye": null
+   },
+   "asama": 1,
+   "durum": "aktif",
+   "il_ad": "Hatay",
+   "il_id": 31,
+   "karne": null,
+   "y_son": "2026-11-03T18:00:00+03:00",
+   "yerel": {
+    "ad": null,
+    "at": null,
+    "karar": null,
+    "veren": null,
+    "il_kasa": 1.12100517,
+    "secenekler": [
+     {
+      "ad": "Belediye kasasından çadır kent ve aşevi kur",
+      "kod": "cadir",
+      "il_mem": 6,
+      "afad_tl": 0,
+      "maliyet": 0.0,
+      "aciklama": "Belediye kasasının %25'i harcanır.",
+      "ulke_mem": 0,
+      "kasa_oran": 0.25
+     },
+     {
+      "ad": "Ücretsiz ulaşım ve su dağıtımı",
+      "kod": "ulasim",
+      "il_mem": 3,
+      "afad_tl": 0,
+      "maliyet": 0.0,
+      "aciklama": "Belediye kasasının %10'u harcanır.",
+      "ulke_mem": 0,
+      "kasa_oran": 0.1
+     },
+     {
+      "ad": "Merkezi hükümetin müdahalesini bekle",
+      "kod": "merkez",
+      "il_mem": -3,
+      "afad_tl": 0,
+      "maliyet": 0.0,
+      "aciklama": "Kasa korunur.",
+      "ulke_mem": 0,
+      "kasa_oran": 0
+     }
+    ]
+   },
+   "a1_son": "2026-11-03T18:00:00+03:00",
+   "a2_son": null,
+   "baslik": "Büyük deprem",
+   "kalici": {
+    "ad": null,
+    "at": null,
+    "karar": null,
+    "veren": null,
+    "secenekler": null
+   },
+   "kapsam": "il",
+   "puanim": null,
+   "maliyet": 0.0,
+   "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor.",
+   "bakanlik": "İçişleri Bakanlığı",
+   "kategori": "Afet",
+   "bel_karne": null,
+   "puan_halk": null,
+   "yetki_ilk": true,
+   "puan_karar": null,
+   "yetkililer": {
+    "bakan": "Icisleri",
+    "yurutme": "Reis",
+    "belediye": "HatayBaskan"
+   },
+   "afad_toplam": 0,
+   "yetki_yerel": false,
+   "yetki_kalici": false,
+   "bel_puan_halk": null,
+   "bel_puan_karar": null,
+   "zaman_cizelgesi": [
+    {
+     "kim": null,
+     "tip": "basla",
+     "zaman": "2026-11-03T12:00:00+03:00",
+     "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor."
+    }
+   ],
+   "degerlendirebilir": false,
+   "degerlendirme_son": null,
+   "degerlendirme_engel": "Kriz yönetiminden sorumlu olduğun için puan veremezsin.",
+   "belediye_puanlayabilir": false
+  },
+  "arsiv": [
+   {
+    "id": 5,
+    "bas": "2026-11-03T12:00:00+03:00",
+    "bit": null,
+    "ilk": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kod": "deprem",
+    "halk": {
+     "n": 0,
+     "hukumet": null,
+     "belediye": null
+    },
+    "asama": 1,
+    "durum": "bitti",
+    "il_ad": "Hatay",
+    "il_id": 31,
+    "karne": null,
+    "y_son": "2026-11-03T18:00:00+03:00",
+    "yerel": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "il_kasa": 1.12100517,
+     "secenekler": null
+    },
+    "a1_son": "2026-11-03T18:00:00+03:00",
+    "a2_son": null,
+    "baslik": "Büyük deprem",
+    "kalici": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kapsam": "il",
+    "puanim": null,
+    "maliyet": 0.0,
+    "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor.",
+    "bakanlik": "İçişleri Bakanlığı",
+    "kategori": "Afet",
+    "bel_karne": null,
+    "puan_halk": null,
+    "yetki_ilk": false,
+    "puan_karar": null,
+    "yetkililer": {
+     "bakan": "Icisleri",
+     "yurutme": "Reis",
+     "belediye": "HatayBaskan"
+    },
+    "afad_toplam": 0,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": null,
+    "bel_puan_karar": null,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-11-03T12:00:00+03:00",
+      "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": null,
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": false
+   },
+   {
+    "id": 4,
+    "bas": "2026-11-03T12:00:00+03:00",
+    "bit": null,
+    "ilk": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kod": "deprem",
+    "halk": {
+     "n": 0,
+     "hukumet": null,
+     "belediye": null
+    },
+    "asama": 1,
+    "durum": "bitti",
+    "il_ad": "Hatay",
+    "il_id": 31,
+    "karne": null,
+    "y_son": "2026-11-03T18:00:00+03:00",
+    "yerel": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "il_kasa": 1.12100517,
+     "secenekler": null
+    },
+    "a1_son": "2026-11-03T18:00:00+03:00",
+    "a2_son": null,
+    "baslik": "Büyük deprem",
+    "kalici": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kapsam": "il",
+    "puanim": null,
+    "maliyet": 0.0,
+    "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor.",
+    "bakanlik": "İçişleri Bakanlığı",
+    "kategori": "Afet",
+    "bel_karne": null,
+    "puan_halk": null,
+    "yetki_ilk": false,
+    "puan_karar": null,
+    "yetkililer": {
+     "bakan": "Icisleri",
+     "yurutme": "Reis",
+     "belediye": "HatayBaskan"
+    },
+    "afad_toplam": 0,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": null,
+    "bel_puan_karar": null,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-11-03T12:00:00+03:00",
+      "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": null,
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": false
+   },
+   {
+    "id": 3,
+    "bas": "2026-10-28T18:30:00+03:00",
+    "bit": null,
+    "ilk": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kod": "sel",
+    "halk": {
+     "n": 0,
+     "hukumet": null,
+     "belediye": null
+    },
+    "asama": 1,
+    "durum": "bitti",
+    "il_ad": "Kastamonu",
+    "il_id": 37,
+    "karne": null,
+    "y_son": "2026-10-29T00:30:00+03:00",
+    "yerel": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "il_kasa": 0.892746,
+     "secenekler": null
+    },
+    "a1_son": "2026-10-29T00:30:00+03:00",
+    "a2_son": null,
+    "baslik": "Sel felaketi",
+    "kalici": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kapsam": "il",
+    "puanim": null,
+    "maliyet": 0.0,
+    "aciklama": "Şiddetli yağışların ardından dereler taştı; evler, yollar ve tarım alanları sular altında kaldı.",
+    "bakanlik": "İçişleri Bakanlığı",
+    "kategori": "Afet",
+    "bel_karne": null,
+    "puan_halk": null,
+    "yetki_ilk": false,
+    "puan_karar": null,
+    "yetkililer": {
+     "bakan": "Icisleri",
+     "yurutme": "Reis",
+     "belediye": null
+    },
+    "afad_toplam": 0,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": null,
+    "bel_puan_karar": null,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-10-28T18:30:00+03:00",
+      "aciklama": "Şiddetli yağışların ardından dereler taştı; evler, yollar ve tarım alanları sular altında kaldı."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": null,
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": false
+   },
+   {
+    "id": 2,
+    "bas": "2026-10-20T12:00:00+03:00",
+    "bit": "2026-10-22T21:00:00+03:00",
+    "ilk": {
+     "ad": null,
+     "at": "2026-10-20T18:00:00+03:00",
+     "karar": "yok",
+     "veren": null,
+     "secenekler": null
+    },
+    "kod": "salgin",
+    "halk": {
+     "n": 0,
+     "hukumet": null,
+     "belediye": null
+    },
+    "asama": 3,
+    "durum": "bitti",
+    "il_ad": null,
+    "il_id": null,
+    "karne": 0,
+    "y_son": null,
+    "yerel": null,
+    "a1_son": "2026-10-20T18:00:00+03:00",
+    "a2_son": "2026-10-21T19:00:00+03:00",
+    "baslik": "Salgın hastalık",
+    "kalici": {
+     "ad": null,
+     "at": "2026-10-21T19:00:00+03:00",
+     "karar": "yok",
+     "veren": null,
+     "secenekler": null
+    },
+    "kapsam": "ulke",
+    "puanim": null,
+    "maliyet": 0.0,
+    "aciklama": "Hızla yayılan bir solunum yolu hastalığı hastanelerde yoğunluğa yol açıyor. Ülke çapında sağlık tedbirleri gerekiyor.",
+    "bakanlik": "Sağlık Bakanlığı",
+    "kategori": "Sağlık",
+    "bel_karne": null,
+    "puan_halk": null,
+    "yetki_ilk": false,
+    "puan_karar": 0,
+    "yetkililer": {
+     "bakan": null,
+     "yurutme": "Reis",
+     "belediye": null
+    },
+    "afad_toplam": 0,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": null,
+    "bel_puan_karar": null,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-10-20T12:00:00+03:00",
+      "aciklama": "Hızla yayılan bir solunum yolu hastalığı hastanelerde yoğunluğa yol açıyor. Ülke çapında sağlık tedbirleri gerekiyor."
+     },
+     {
+      "kim": null,
+      "tip": "ilk",
+      "zaman": "2026-10-20T19:00:00+03:00",
+      "aciklama": "İlk müdahale kararı süresinde verilmedi; halkın memnuniyeti düştü."
+     },
+     {
+      "kim": null,
+      "tip": "kalici",
+      "zaman": "2026-10-21T20:00:00+03:00",
+      "aciklama": "Kalıcı çözüm kararı süresinde verilmedi. Halk değerlendirmesi 24 saat açık."
+     },
+     {
+      "kim": null,
+      "tip": "karne",
+      "zaman": "2026-10-22T21:00:00+03:00",
+      "aciklama": "Kriz sona erdi. Hükümet karnesi 0/100."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": "2026-10-22T20:00:00+03:00",
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": false
+   },
+   {
+    "id": 1,
+    "bas": "2026-10-19T10:00:00+03:00",
+    "bit": "2026-10-20T12:00:00+03:00",
+    "ilk": {
+     "ad": "Tüm AFAD ekiplerini ve orduyu bölgeye gönder",
+     "at": "2026-10-19T10:00:00+03:00",
+     "karar": "afad",
+     "veren": "Icisleri",
+     "secenekler": null
+    },
+    "kod": "deprem",
+    "halk": {
+     "n": 4,
+     "hukumet": 4.5,
+     "belediye": 3.0
+    },
+    "asama": 3,
+    "durum": "bitti",
+    "il_ad": "Hatay",
+    "il_id": 31,
+    "karne": 89,
+    "y_son": "2026-10-19T16:00:00+03:00",
+    "yerel": {
+     "ad": "Belediye kasasından çadır kent ve aşevi kur",
+     "at": "2026-10-19T10:00:00+03:00",
+     "karar": "cadir",
+     "veren": "HatayBaskan",
+     "il_kasa": 1.12100517,
+     "secenekler": null
+    },
+    "a1_son": "2026-10-19T16:00:00+03:00",
+    "a2_son": "2026-10-20T10:00:00+03:00",
+    "baslik": "Büyük deprem",
+    "kalici": {
+     "ad": "Depreme dayanıklı kalıcı konut seferberliği",
+     "at": "2026-10-19T10:00:00+03:00",
+     "karar": "kentsel",
+     "veren": "Reis",
+     "secenekler": null
+    },
+    "kapsam": "il",
+    "puanim": null,
+    "maliyet": 20.2,
+    "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor.",
+    "bakanlik": "İçişleri Bakanlığı",
+    "kategori": "Afet",
+    "bel_karne": 74,
+    "puan_halk": 87.5,
+    "yetki_ilk": false,
+    "puan_karar": 90,
+    "yetkililer": {
+     "bakan": "Icisleri",
+     "yurutme": "Reis",
+     "belediye": "HatayBaskan"
+    },
+    "afad_toplam": 40000,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": 50.0,
+    "bel_puan_karar": 90,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-10-19T10:00:00+03:00",
+      "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor."
+     },
+     {
+      "kim": "Icisleri",
+      "tip": "ilk",
+      "zaman": "2026-10-19T10:00:00+03:00",
+      "aciklama": "Tüm AFAD ekiplerini ve orduyu bölgeye gönder. Hazine maliyeti 8.44 milyar ₺, 5 oyuncuya 8.000 ₺ AFAD yardımı."
+     },
+     {
+      "kim": "Reis",
+      "tip": "kalici",
+      "zaman": "2026-10-19T10:00:00+03:00",
+      "aciklama": "Depreme dayanıklı kalıcı konut seferberliği. Hazine maliyeti 11.76 milyar ₺."
+     },
+     {
+      "kim": "HatayBaskan",
+      "tip": "yerel",
+      "zaman": "2026-10-19T10:00:00+03:00",
+      "aciklama": "Belediye kasasından çadır kent ve aşevi kur. Belediye kasasından 0.149 milyar ₺ harcandı."
+     },
+     {
+      "kim": null,
+      "tip": "karne",
+      "zaman": "2026-10-20T12:00:00+03:00",
+      "aciklama": "Kriz sona erdi. Hükümet karnesi 89/100, belediye karnesi 74/100."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": "2026-10-20T10:00:00+03:00",
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": false
+   }
+  ],
+  "hazine": 201.35,
+  "katalog": null,
+  "yonetici": false
+ },
+ "kriz_vatandas": {
+  "ayar": {
+   "aktif": true,
+   "son_kriz": "2026-11-03T12:00:00+03:00",
+   "min_aralik_gun": 10,
+   "haftalik_ihtimal": 100
+  },
+  "aktif": {
+   "id": 6,
+   "bas": "2026-11-03T12:00:00+03:00",
+   "bit": null,
+   "ilk": {
+    "ad": null,
+    "at": null,
+    "karar": null,
+    "veren": null,
+    "secenekler": [
+     {
+      "ad": "Tüm AFAD ekiplerini ve orduyu bölgeye gönder",
+      "kod": "afad",
+      "il_mem": 6,
+      "afad_tl": 8000,
+      "maliyet": 8.05,
+      "aciklama": "Hızlı ve güçlü müdahale; maliyeti yüksek.",
+      "ulke_mem": 2,
+      "kasa_oran": 0
+     },
+     {
+      "ad": "Valilik koordinasyonunda kademeli müdahale",
+      "kod": "koordinasyon",
+      "il_mem": 3,
+      "afad_tl": 3000,
+      "maliyet": 3.02,
+      "aciklama": "Daha ucuz ama yavaş.",
+      "ulke_mem": 0,
+      "kasa_oran": 0
+     },
+     {
+      "ad": "Hasar tespiti bitmeden kaynak ayırma",
+      "kod": "bekle",
+      "il_mem": -4,
+      "afad_tl": 0,
+      "maliyet": 0.0,
+      "aciklama": "Hazine korunur, halk tepki gösterebilir.",
+      "ulke_mem": -2,
+      "kasa_oran": 0
+     }
+    ]
+   },
+   "kod": "deprem",
+   "halk": {
+    "n": 0,
+    "hukumet": null,
+    "belediye": null
+   },
+   "asama": 1,
+   "durum": "aktif",
+   "il_ad": "Hatay",
+   "il_id": 31,
+   "karne": null,
+   "y_son": "2026-11-03T18:00:00+03:00",
+   "yerel": {
+    "ad": null,
+    "at": null,
+    "karar": null,
+    "veren": null,
+    "il_kasa": 1.12100517,
+    "secenekler": [
+     {
+      "ad": "Belediye kasasından çadır kent ve aşevi kur",
+      "kod": "cadir",
+      "il_mem": 6,
+      "afad_tl": 0,
+      "maliyet": 0.0,
+      "aciklama": "Belediye kasasının %25'i harcanır.",
+      "ulke_mem": 0,
+      "kasa_oran": 0.25
+     },
+     {
+      "ad": "Ücretsiz ulaşım ve su dağıtımı",
+      "kod": "ulasim",
+      "il_mem": 3,
+      "afad_tl": 0,
+      "maliyet": 0.0,
+      "aciklama": "Belediye kasasının %10'u harcanır.",
+      "ulke_mem": 0,
+      "kasa_oran": 0.1
+     },
+     {
+      "ad": "Merkezi hükümetin müdahalesini bekle",
+      "kod": "merkez",
+      "il_mem": -3,
+      "afad_tl": 0,
+      "maliyet": 0.0,
+      "aciklama": "Kasa korunur.",
+      "ulke_mem": 0,
+      "kasa_oran": 0
+     }
+    ]
+   },
+   "a1_son": "2026-11-03T18:00:00+03:00",
+   "a2_son": null,
+   "baslik": "Büyük deprem",
+   "kalici": {
+    "ad": null,
+    "at": null,
+    "karar": null,
+    "veren": null,
+    "secenekler": null
+   },
+   "kapsam": "il",
+   "puanim": null,
+   "maliyet": 0.0,
+   "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor.",
+   "bakanlik": "İçişleri Bakanlığı",
+   "kategori": "Afet",
+   "bel_karne": null,
+   "puan_halk": null,
+   "yetki_ilk": false,
+   "puan_karar": null,
+   "yetkililer": {
+    "bakan": "Icisleri",
+    "yurutme": "Reis",
+    "belediye": "HatayBaskan"
+   },
+   "afad_toplam": 0,
+   "yetki_yerel": false,
+   "yetki_kalici": false,
+   "bel_puan_halk": null,
+   "bel_puan_karar": null,
+   "zaman_cizelgesi": [
+    {
+     "kim": null,
+     "tip": "basla",
+     "zaman": "2026-11-03T12:00:00+03:00",
+     "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor."
+    }
+   ],
+   "degerlendirebilir": true,
+   "degerlendirme_son": null,
+   "degerlendirme_engel": null,
+   "belediye_puanlayabilir": true
+  },
+  "arsiv": [
+   {
+    "id": 5,
+    "bas": "2026-11-03T12:00:00+03:00",
+    "bit": null,
+    "ilk": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kod": "deprem",
+    "halk": {
+     "n": 0,
+     "hukumet": null,
+     "belediye": null
+    },
+    "asama": 1,
+    "durum": "bitti",
+    "il_ad": "Hatay",
+    "il_id": 31,
+    "karne": null,
+    "y_son": "2026-11-03T18:00:00+03:00",
+    "yerel": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "il_kasa": 1.12100517,
+     "secenekler": null
+    },
+    "a1_son": "2026-11-03T18:00:00+03:00",
+    "a2_son": null,
+    "baslik": "Büyük deprem",
+    "kalici": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kapsam": "il",
+    "puanim": null,
+    "maliyet": 0.0,
+    "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor.",
+    "bakanlik": "İçişleri Bakanlığı",
+    "kategori": "Afet",
+    "bel_karne": null,
+    "puan_halk": null,
+    "yetki_ilk": false,
+    "puan_karar": null,
+    "yetkililer": {
+     "bakan": "Icisleri",
+     "yurutme": "Reis",
+     "belediye": "HatayBaskan"
+    },
+    "afad_toplam": 0,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": null,
+    "bel_puan_karar": null,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-11-03T12:00:00+03:00",
+      "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": null,
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": true
+   },
+   {
+    "id": 4,
+    "bas": "2026-11-03T12:00:00+03:00",
+    "bit": null,
+    "ilk": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kod": "deprem",
+    "halk": {
+     "n": 0,
+     "hukumet": null,
+     "belediye": null
+    },
+    "asama": 1,
+    "durum": "bitti",
+    "il_ad": "Hatay",
+    "il_id": 31,
+    "karne": null,
+    "y_son": "2026-11-03T18:00:00+03:00",
+    "yerel": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "il_kasa": 1.12100517,
+     "secenekler": null
+    },
+    "a1_son": "2026-11-03T18:00:00+03:00",
+    "a2_son": null,
+    "baslik": "Büyük deprem",
+    "kalici": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kapsam": "il",
+    "puanim": null,
+    "maliyet": 0.0,
+    "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor.",
+    "bakanlik": "İçişleri Bakanlığı",
+    "kategori": "Afet",
+    "bel_karne": null,
+    "puan_halk": null,
+    "yetki_ilk": false,
+    "puan_karar": null,
+    "yetkililer": {
+     "bakan": "Icisleri",
+     "yurutme": "Reis",
+     "belediye": "HatayBaskan"
+    },
+    "afad_toplam": 0,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": null,
+    "bel_puan_karar": null,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-11-03T12:00:00+03:00",
+      "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": null,
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": true
+   },
+   {
+    "id": 3,
+    "bas": "2026-10-28T18:30:00+03:00",
+    "bit": null,
+    "ilk": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kod": "sel",
+    "halk": {
+     "n": 0,
+     "hukumet": null,
+     "belediye": null
+    },
+    "asama": 1,
+    "durum": "bitti",
+    "il_ad": "Kastamonu",
+    "il_id": 37,
+    "karne": null,
+    "y_son": "2026-10-29T00:30:00+03:00",
+    "yerel": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "il_kasa": 0.892746,
+     "secenekler": null
+    },
+    "a1_son": "2026-10-29T00:30:00+03:00",
+    "a2_son": null,
+    "baslik": "Sel felaketi",
+    "kalici": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kapsam": "il",
+    "puanim": null,
+    "maliyet": 0.0,
+    "aciklama": "Şiddetli yağışların ardından dereler taştı; evler, yollar ve tarım alanları sular altında kaldı.",
+    "bakanlik": "İçişleri Bakanlığı",
+    "kategori": "Afet",
+    "bel_karne": null,
+    "puan_halk": null,
+    "yetki_ilk": false,
+    "puan_karar": null,
+    "yetkililer": {
+     "bakan": "Icisleri",
+     "yurutme": "Reis",
+     "belediye": null
+    },
+    "afad_toplam": 0,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": null,
+    "bel_puan_karar": null,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-10-28T18:30:00+03:00",
+      "aciklama": "Şiddetli yağışların ardından dereler taştı; evler, yollar ve tarım alanları sular altında kaldı."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": null,
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": false
+   },
+   {
+    "id": 2,
+    "bas": "2026-10-20T12:00:00+03:00",
+    "bit": "2026-10-22T21:00:00+03:00",
+    "ilk": {
+     "ad": null,
+     "at": "2026-10-20T18:00:00+03:00",
+     "karar": "yok",
+     "veren": null,
+     "secenekler": null
+    },
+    "kod": "salgin",
+    "halk": {
+     "n": 0,
+     "hukumet": null,
+     "belediye": null
+    },
+    "asama": 3,
+    "durum": "bitti",
+    "il_ad": null,
+    "il_id": null,
+    "karne": 0,
+    "y_son": null,
+    "yerel": null,
+    "a1_son": "2026-10-20T18:00:00+03:00",
+    "a2_son": "2026-10-21T19:00:00+03:00",
+    "baslik": "Salgın hastalık",
+    "kalici": {
+     "ad": null,
+     "at": "2026-10-21T19:00:00+03:00",
+     "karar": "yok",
+     "veren": null,
+     "secenekler": null
+    },
+    "kapsam": "ulke",
+    "puanim": null,
+    "maliyet": 0.0,
+    "aciklama": "Hızla yayılan bir solunum yolu hastalığı hastanelerde yoğunluğa yol açıyor. Ülke çapında sağlık tedbirleri gerekiyor.",
+    "bakanlik": "Sağlık Bakanlığı",
+    "kategori": "Sağlık",
+    "bel_karne": null,
+    "puan_halk": null,
+    "yetki_ilk": false,
+    "puan_karar": 0,
+    "yetkililer": {
+     "bakan": null,
+     "yurutme": "Reis",
+     "belediye": null
+    },
+    "afad_toplam": 0,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": null,
+    "bel_puan_karar": null,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-10-20T12:00:00+03:00",
+      "aciklama": "Hızla yayılan bir solunum yolu hastalığı hastanelerde yoğunluğa yol açıyor. Ülke çapında sağlık tedbirleri gerekiyor."
+     },
+     {
+      "kim": null,
+      "tip": "ilk",
+      "zaman": "2026-10-20T19:00:00+03:00",
+      "aciklama": "İlk müdahale kararı süresinde verilmedi; halkın memnuniyeti düştü."
+     },
+     {
+      "kim": null,
+      "tip": "kalici",
+      "zaman": "2026-10-21T20:00:00+03:00",
+      "aciklama": "Kalıcı çözüm kararı süresinde verilmedi. Halk değerlendirmesi 24 saat açık."
+     },
+     {
+      "kim": null,
+      "tip": "karne",
+      "zaman": "2026-10-22T21:00:00+03:00",
+      "aciklama": "Kriz sona erdi. Hükümet karnesi 0/100."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": "2026-10-22T20:00:00+03:00",
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": false
+   },
+   {
+    "id": 1,
+    "bas": "2026-10-19T10:00:00+03:00",
+    "bit": "2026-10-20T12:00:00+03:00",
+    "ilk": {
+     "ad": "Tüm AFAD ekiplerini ve orduyu bölgeye gönder",
+     "at": "2026-10-19T10:00:00+03:00",
+     "karar": "afad",
+     "veren": "Icisleri",
+     "secenekler": null
+    },
+    "kod": "deprem",
+    "halk": {
+     "n": 4,
+     "hukumet": 4.5,
+     "belediye": 3.0
+    },
+    "asama": 3,
+    "durum": "bitti",
+    "il_ad": "Hatay",
+    "il_id": 31,
+    "karne": 89,
+    "y_son": "2026-10-19T16:00:00+03:00",
+    "yerel": {
+     "ad": "Belediye kasasından çadır kent ve aşevi kur",
+     "at": "2026-10-19T10:00:00+03:00",
+     "karar": "cadir",
+     "veren": "HatayBaskan",
+     "il_kasa": 1.12100517,
+     "secenekler": null
+    },
+    "a1_son": "2026-10-19T16:00:00+03:00",
+    "a2_son": "2026-10-20T10:00:00+03:00",
+    "baslik": "Büyük deprem",
+    "kalici": {
+     "ad": "Depreme dayanıklı kalıcı konut seferberliği",
+     "at": "2026-10-19T10:00:00+03:00",
+     "karar": "kentsel",
+     "veren": "Reis",
+     "secenekler": null
+    },
+    "kapsam": "il",
+    "puanim": {
+     "hukumet": 4,
+     "belediye": 3
+    },
+    "maliyet": 20.2,
+    "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor.",
+    "bakanlik": "İçişleri Bakanlığı",
+    "kategori": "Afet",
+    "bel_karne": 74,
+    "puan_halk": 87.5,
+    "yetki_ilk": false,
+    "puan_karar": 90,
+    "yetkililer": {
+     "bakan": "Icisleri",
+     "yurutme": "Reis",
+     "belediye": "HatayBaskan"
+    },
+    "afad_toplam": 40000,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": 50.0,
+    "bel_puan_karar": 90,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-10-19T10:00:00+03:00",
+      "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor."
+     },
+     {
+      "kim": "Icisleri",
+      "tip": "ilk",
+      "zaman": "2026-10-19T10:00:00+03:00",
+      "aciklama": "Tüm AFAD ekiplerini ve orduyu bölgeye gönder. Hazine maliyeti 8.44 milyar ₺, 5 oyuncuya 8.000 ₺ AFAD yardımı."
+     },
+     {
+      "kim": "Reis",
+      "tip": "kalici",
+      "zaman": "2026-10-19T10:00:00+03:00",
+      "aciklama": "Depreme dayanıklı kalıcı konut seferberliği. Hazine maliyeti 11.76 milyar ₺."
+     },
+     {
+      "kim": "HatayBaskan",
+      "tip": "yerel",
+      "zaman": "2026-10-19T10:00:00+03:00",
+      "aciklama": "Belediye kasasından çadır kent ve aşevi kur. Belediye kasasından 0.149 milyar ₺ harcandı."
+     },
+     {
+      "kim": null,
+      "tip": "karne",
+      "zaman": "2026-10-20T12:00:00+03:00",
+      "aciklama": "Kriz sona erdi. Hükümet karnesi 89/100, belediye karnesi 74/100."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": "2026-10-20T10:00:00+03:00",
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": true
+   }
+  ],
+  "hazine": 201.35,
+  "katalog": null,
+  "yonetici": false
+ },
+ "kriz_yon": {
+  "ayar": {
+   "aktif": true,
+   "son_kriz": "2026-11-03T12:00:00+03:00",
+   "min_aralik_gun": 10,
+   "haftalik_ihtimal": 100
+  },
+  "aktif": {
+   "id": 6,
+   "bas": "2026-11-03T12:00:00+03:00",
+   "bit": null,
+   "ilk": {
+    "ad": null,
+    "at": null,
+    "karar": null,
+    "veren": null,
+    "secenekler": [
+     {
+      "ad": "Tüm AFAD ekiplerini ve orduyu bölgeye gönder",
+      "kod": "afad",
+      "il_mem": 6,
+      "afad_tl": 8000,
+      "maliyet": 8.05,
+      "aciklama": "Hızlı ve güçlü müdahale; maliyeti yüksek.",
+      "ulke_mem": 2,
+      "kasa_oran": 0
+     },
+     {
+      "ad": "Valilik koordinasyonunda kademeli müdahale",
+      "kod": "koordinasyon",
+      "il_mem": 3,
+      "afad_tl": 3000,
+      "maliyet": 3.02,
+      "aciklama": "Daha ucuz ama yavaş.",
+      "ulke_mem": 0,
+      "kasa_oran": 0
+     },
+     {
+      "ad": "Hasar tespiti bitmeden kaynak ayırma",
+      "kod": "bekle",
+      "il_mem": -4,
+      "afad_tl": 0,
+      "maliyet": 0.0,
+      "aciklama": "Hazine korunur, halk tepki gösterebilir.",
+      "ulke_mem": -2,
+      "kasa_oran": 0
+     }
+    ]
+   },
+   "kod": "deprem",
+   "halk": {
+    "n": 0,
+    "hukumet": null,
+    "belediye": null
+   },
+   "asama": 1,
+   "durum": "aktif",
+   "il_ad": "Hatay",
+   "il_id": 31,
+   "karne": null,
+   "y_son": "2026-11-03T18:00:00+03:00",
+   "yerel": {
+    "ad": null,
+    "at": null,
+    "karar": null,
+    "veren": null,
+    "il_kasa": 1.12100517,
+    "secenekler": [
+     {
+      "ad": "Belediye kasasından çadır kent ve aşevi kur",
+      "kod": "cadir",
+      "il_mem": 6,
+      "afad_tl": 0,
+      "maliyet": 0.0,
+      "aciklama": "Belediye kasasının %25'i harcanır.",
+      "ulke_mem": 0,
+      "kasa_oran": 0.25
+     },
+     {
+      "ad": "Ücretsiz ulaşım ve su dağıtımı",
+      "kod": "ulasim",
+      "il_mem": 3,
+      "afad_tl": 0,
+      "maliyet": 0.0,
+      "aciklama": "Belediye kasasının %10'u harcanır.",
+      "ulke_mem": 0,
+      "kasa_oran": 0.1
+     },
+     {
+      "ad": "Merkezi hükümetin müdahalesini bekle",
+      "kod": "merkez",
+      "il_mem": -3,
+      "afad_tl": 0,
+      "maliyet": 0.0,
+      "aciklama": "Kasa korunur.",
+      "ulke_mem": 0,
+      "kasa_oran": 0
+     }
+    ]
+   },
+   "a1_son": "2026-11-03T18:00:00+03:00",
+   "a2_son": null,
+   "baslik": "Büyük deprem",
+   "kalici": {
+    "ad": null,
+    "at": null,
+    "karar": null,
+    "veren": null,
+    "secenekler": null
+   },
+   "kapsam": "il",
+   "puanim": null,
+   "maliyet": 0.0,
+   "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor.",
+   "bakanlik": "İçişleri Bakanlığı",
+   "kategori": "Afet",
+   "bel_karne": null,
+   "puan_halk": null,
+   "yetki_ilk": false,
+   "puan_karar": null,
+   "yetkililer": {
+    "bakan": "Icisleri",
+    "yurutme": "Reis",
+    "belediye": "HatayBaskan"
+   },
+   "afad_toplam": 0,
+   "yetki_yerel": false,
+   "yetki_kalici": false,
+   "bel_puan_halk": null,
+   "bel_puan_karar": null,
+   "zaman_cizelgesi": [
+    {
+     "kim": null,
+     "tip": "basla",
+     "zaman": "2026-11-03T12:00:00+03:00",
+     "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor."
+    }
+   ],
+   "degerlendirebilir": true,
+   "degerlendirme_son": null,
+   "degerlendirme_engel": null,
+   "belediye_puanlayabilir": false
+  },
+  "arsiv": [
+   {
+    "id": 5,
+    "bas": "2026-11-03T12:00:00+03:00",
+    "bit": null,
+    "ilk": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kod": "deprem",
+    "halk": {
+     "n": 0,
+     "hukumet": null,
+     "belediye": null
+    },
+    "asama": 1,
+    "durum": "bitti",
+    "il_ad": "Hatay",
+    "il_id": 31,
+    "karne": null,
+    "y_son": "2026-11-03T18:00:00+03:00",
+    "yerel": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "il_kasa": 1.12100517,
+     "secenekler": null
+    },
+    "a1_son": "2026-11-03T18:00:00+03:00",
+    "a2_son": null,
+    "baslik": "Büyük deprem",
+    "kalici": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kapsam": "il",
+    "puanim": null,
+    "maliyet": 0.0,
+    "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor.",
+    "bakanlik": "İçişleri Bakanlığı",
+    "kategori": "Afet",
+    "bel_karne": null,
+    "puan_halk": null,
+    "yetki_ilk": false,
+    "puan_karar": null,
+    "yetkililer": {
+     "bakan": "Icisleri",
+     "yurutme": "Reis",
+     "belediye": "HatayBaskan"
+    },
+    "afad_toplam": 0,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": null,
+    "bel_puan_karar": null,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-11-03T12:00:00+03:00",
+      "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": null,
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": false
+   },
+   {
+    "id": 4,
+    "bas": "2026-11-03T12:00:00+03:00",
+    "bit": null,
+    "ilk": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kod": "deprem",
+    "halk": {
+     "n": 0,
+     "hukumet": null,
+     "belediye": null
+    },
+    "asama": 1,
+    "durum": "bitti",
+    "il_ad": "Hatay",
+    "il_id": 31,
+    "karne": null,
+    "y_son": "2026-11-03T18:00:00+03:00",
+    "yerel": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "il_kasa": 1.12100517,
+     "secenekler": null
+    },
+    "a1_son": "2026-11-03T18:00:00+03:00",
+    "a2_son": null,
+    "baslik": "Büyük deprem",
+    "kalici": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kapsam": "il",
+    "puanim": null,
+    "maliyet": 0.0,
+    "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor.",
+    "bakanlik": "İçişleri Bakanlığı",
+    "kategori": "Afet",
+    "bel_karne": null,
+    "puan_halk": null,
+    "yetki_ilk": false,
+    "puan_karar": null,
+    "yetkililer": {
+     "bakan": "Icisleri",
+     "yurutme": "Reis",
+     "belediye": "HatayBaskan"
+    },
+    "afad_toplam": 0,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": null,
+    "bel_puan_karar": null,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-11-03T12:00:00+03:00",
+      "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": null,
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": false
+   },
+   {
+    "id": 3,
+    "bas": "2026-10-28T18:30:00+03:00",
+    "bit": null,
+    "ilk": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kod": "sel",
+    "halk": {
+     "n": 0,
+     "hukumet": null,
+     "belediye": null
+    },
+    "asama": 1,
+    "durum": "bitti",
+    "il_ad": "Kastamonu",
+    "il_id": 37,
+    "karne": null,
+    "y_son": "2026-10-29T00:30:00+03:00",
+    "yerel": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "il_kasa": 0.892746,
+     "secenekler": null
+    },
+    "a1_son": "2026-10-29T00:30:00+03:00",
+    "a2_son": null,
+    "baslik": "Sel felaketi",
+    "kalici": {
+     "ad": null,
+     "at": null,
+     "karar": null,
+     "veren": null,
+     "secenekler": null
+    },
+    "kapsam": "il",
+    "puanim": null,
+    "maliyet": 0.0,
+    "aciklama": "Şiddetli yağışların ardından dereler taştı; evler, yollar ve tarım alanları sular altında kaldı.",
+    "bakanlik": "İçişleri Bakanlığı",
+    "kategori": "Afet",
+    "bel_karne": null,
+    "puan_halk": null,
+    "yetki_ilk": false,
+    "puan_karar": null,
+    "yetkililer": {
+     "bakan": "Icisleri",
+     "yurutme": "Reis",
+     "belediye": null
+    },
+    "afad_toplam": 0,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": null,
+    "bel_puan_karar": null,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-10-28T18:30:00+03:00",
+      "aciklama": "Şiddetli yağışların ardından dereler taştı; evler, yollar ve tarım alanları sular altında kaldı."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": null,
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": false
+   },
+   {
+    "id": 2,
+    "bas": "2026-10-20T12:00:00+03:00",
+    "bit": "2026-10-22T21:00:00+03:00",
+    "ilk": {
+     "ad": null,
+     "at": "2026-10-20T18:00:00+03:00",
+     "karar": "yok",
+     "veren": null,
+     "secenekler": null
+    },
+    "kod": "salgin",
+    "halk": {
+     "n": 0,
+     "hukumet": null,
+     "belediye": null
+    },
+    "asama": 3,
+    "durum": "bitti",
+    "il_ad": null,
+    "il_id": null,
+    "karne": 0,
+    "y_son": null,
+    "yerel": null,
+    "a1_son": "2026-10-20T18:00:00+03:00",
+    "a2_son": "2026-10-21T19:00:00+03:00",
+    "baslik": "Salgın hastalık",
+    "kalici": {
+     "ad": null,
+     "at": "2026-10-21T19:00:00+03:00",
+     "karar": "yok",
+     "veren": null,
+     "secenekler": null
+    },
+    "kapsam": "ulke",
+    "puanim": null,
+    "maliyet": 0.0,
+    "aciklama": "Hızla yayılan bir solunum yolu hastalığı hastanelerde yoğunluğa yol açıyor. Ülke çapında sağlık tedbirleri gerekiyor.",
+    "bakanlik": "Sağlık Bakanlığı",
+    "kategori": "Sağlık",
+    "bel_karne": null,
+    "puan_halk": null,
+    "yetki_ilk": false,
+    "puan_karar": 0,
+    "yetkililer": {
+     "bakan": null,
+     "yurutme": "Reis",
+     "belediye": null
+    },
+    "afad_toplam": 0,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": null,
+    "bel_puan_karar": null,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-10-20T12:00:00+03:00",
+      "aciklama": "Hızla yayılan bir solunum yolu hastalığı hastanelerde yoğunluğa yol açıyor. Ülke çapında sağlık tedbirleri gerekiyor."
+     },
+     {
+      "kim": null,
+      "tip": "ilk",
+      "zaman": "2026-10-20T19:00:00+03:00",
+      "aciklama": "İlk müdahale kararı süresinde verilmedi; halkın memnuniyeti düştü."
+     },
+     {
+      "kim": null,
+      "tip": "kalici",
+      "zaman": "2026-10-21T20:00:00+03:00",
+      "aciklama": "Kalıcı çözüm kararı süresinde verilmedi. Halk değerlendirmesi 24 saat açık."
+     },
+     {
+      "kim": null,
+      "tip": "karne",
+      "zaman": "2026-10-22T21:00:00+03:00",
+      "aciklama": "Kriz sona erdi. Hükümet karnesi 0/100."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": "2026-10-22T20:00:00+03:00",
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": false
+   },
+   {
+    "id": 1,
+    "bas": "2026-10-19T10:00:00+03:00",
+    "bit": "2026-10-20T12:00:00+03:00",
+    "ilk": {
+     "ad": "Tüm AFAD ekiplerini ve orduyu bölgeye gönder",
+     "at": "2026-10-19T10:00:00+03:00",
+     "karar": "afad",
+     "veren": "Icisleri",
+     "secenekler": null
+    },
+    "kod": "deprem",
+    "halk": {
+     "n": 4,
+     "hukumet": 4.5,
+     "belediye": 3.0
+    },
+    "asama": 3,
+    "durum": "bitti",
+    "il_ad": "Hatay",
+    "il_id": 31,
+    "karne": 89,
+    "y_son": "2026-10-19T16:00:00+03:00",
+    "yerel": {
+     "ad": "Belediye kasasından çadır kent ve aşevi kur",
+     "at": "2026-10-19T10:00:00+03:00",
+     "karar": "cadir",
+     "veren": "HatayBaskan",
+     "il_kasa": 1.12100517,
+     "secenekler": null
+    },
+    "a1_son": "2026-10-19T16:00:00+03:00",
+    "a2_son": "2026-10-20T10:00:00+03:00",
+    "baslik": "Büyük deprem",
+    "kalici": {
+     "ad": "Depreme dayanıklı kalıcı konut seferberliği",
+     "at": "2026-10-19T10:00:00+03:00",
+     "karar": "kentsel",
+     "veren": "Reis",
+     "secenekler": null
+    },
+    "kapsam": "il",
+    "puanim": null,
+    "maliyet": 20.2,
+    "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor.",
+    "bakanlik": "İçişleri Bakanlığı",
+    "kategori": "Afet",
+    "bel_karne": 74,
+    "puan_halk": 87.5,
+    "yetki_ilk": false,
+    "puan_karar": 90,
+    "yetkililer": {
+     "bakan": "Icisleri",
+     "yurutme": "Reis",
+     "belediye": "HatayBaskan"
+    },
+    "afad_toplam": 40000,
+    "yetki_yerel": false,
+    "yetki_kalici": false,
+    "bel_puan_halk": 50.0,
+    "bel_puan_karar": 90,
+    "zaman_cizelgesi": [
+     {
+      "kim": null,
+      "tip": "basla",
+      "zaman": "2026-10-19T10:00:00+03:00",
+      "aciklama": "Şiddetli bir deprem binalarda ve altyapıda ağır hasara yol açtı. Arama kurtarma, barınma ve yeniden inşa kararları bekleniyor."
+     },
+     {
+      "kim": "Icisleri",
+      "tip": "ilk",
+      "zaman": "2026-10-19T10:00:00+03:00",
+      "aciklama": "Tüm AFAD ekiplerini ve orduyu bölgeye gönder. Hazine maliyeti 8.44 milyar ₺, 5 oyuncuya 8.000 ₺ AFAD yardımı."
+     },
+     {
+      "kim": "Reis",
+      "tip": "kalici",
+      "zaman": "2026-10-19T10:00:00+03:00",
+      "aciklama": "Depreme dayanıklı kalıcı konut seferberliği. Hazine maliyeti 11.76 milyar ₺."
+     },
+     {
+      "kim": "HatayBaskan",
+      "tip": "yerel",
+      "zaman": "2026-10-19T10:00:00+03:00",
+      "aciklama": "Belediye kasasından çadır kent ve aşevi kur. Belediye kasasından 0.149 milyar ₺ harcandı."
+     },
+     {
+      "kim": null,
+      "tip": "karne",
+      "zaman": "2026-10-20T12:00:00+03:00",
+      "aciklama": "Kriz sona erdi. Hükümet karnesi 89/100, belediye karnesi 74/100."
+     }
+    ],
+    "degerlendirebilir": false,
+    "degerlendirme_son": "2026-10-20T10:00:00+03:00",
+    "degerlendirme_engel": null,
+    "belediye_puanlayabilir": false
+   }
+  ],
+  "hazine": 201.35,
+  "katalog": [
+   {
+    "kod": "deprem",
+    "iller": [
+     "İstanbul",
+     "İzmir",
+     "Kahramanmaraş",
+     "Hatay",
+     "Malatya",
+     "Adıyaman",
+     "Elazığ",
+     "Bingöl",
+     "Erzincan",
+     "Düzce",
+     "Kocaeli",
+     "Sakarya",
+     "Bursa",
+     "Balıkesir",
+     "Manisa",
+     "Muğla",
+     "Denizli",
+     "Van",
+     "Muş",
+     "Erzurum",
+     "Çanakkale",
+     "Yalova",
+     "Bolu",
+     "Tokat",
+     "Osmaniye",
+     "Gaziantep",
+     "Adana",
+     "Aydın"
+    ],
+    "baslik": "Büyük deprem",
+    "kapsam": "il"
+   },
+   {
+    "kod": "yangin",
+    "iller": [
+     "Antalya",
+     "Muğla",
+     "İzmir",
+     "Aydın",
+     "Mersin",
+     "Adana",
+     "Çanakkale",
+     "Manisa",
+     "Denizli",
+     "Hatay",
+     "Osmaniye",
+     "Balıkesir"
+    ],
+    "baslik": "Büyük orman yangını",
+    "kapsam": "il"
+   },
+   {
+    "kod": "maden",
+    "iller": [
+     "Zonguldak",
+     "Manisa",
+     "Bartın",
+     "Karabük",
+     "Erzincan",
+     "Şırnak",
+     "Kütahya",
+     "Bursa"
+    ],
+    "baslik": "Maden ocağında göçük",
+    "kapsam": "il"
+   },
+   {
+    "kod": "sel",
+    "iller": [
+     "Rize",
+     "Trabzon",
+     "Artvin",
+     "Giresun",
+     "Ordu",
+     "Samsun",
+     "Kastamonu",
+     "Bartın",
+     "Sinop",
+     "Zonguldak",
+     "Düzce",
+     "Antalya",
+     "Mersin",
+     "Ankara",
+     "İstanbul"
+    ],
+    "baslik": "Sel felaketi",
+    "kapsam": "il"
+   },
+   {
+    "kod": "grev",
+    "iller": null,
+    "baslik": "Genel grev",
+    "kapsam": "ulke"
+   },
+   {
+    "kod": "gida",
+    "iller": null,
+    "baslik": "Gıda fiyatlarında patlama",
+    "kapsam": "ulke"
+   },
+   {
+    "kod": "siber",
+    "iller": null,
+    "baslik": "Kamuya siber saldırı",
+    "kapsam": "ulke"
+   },
+   {
+    "kod": "kur",
+    "iller": null,
+    "baslik": "Kur şoku",
+    "kapsam": "ulke"
+   },
+   {
+    "kod": "kuraklik",
+    "iller": null,
+    "baslik": "Kuraklık ve su krizi",
+    "kapsam": "ulke"
+   },
+   {
+    "kod": "enerji",
+    "iller": null,
+    "baslik": "Kış ortasında enerji krizi",
+    "kapsam": "ulke"
+   },
+   {
+    "kod": "salgin",
+    "iller": null,
+    "baslik": "Salgın hastalık",
+    "kapsam": "ulke"
+   }
+  ],
+  "yonetici": true
+ },
+ "komisyonlar": {
+  "dolu": 5,
+  "boyut": 3,
+  "vekilim": true,
+  "kontenjan": [
+   {
+    "mv": 3,
+    "renk": "#335599",
+    "parti": "AP",
+    "kontenjan": 2
+   },
+   {
+    "mv": 2,
+    "renk": "#335599",
+    "parti": "BP",
+    "kontenjan": 1
+   }
+  ],
+  "komisyonlar": [
+   {
+    "ad": "Anayasa Komisyonu",
+    "kod": "anayasa",
+    "kisa": "Anayasa",
+    "baskan": null,
+    "gundem": [],
+    "uyeler": [],
+    "uyeyim": false,
+    "aciklama": "Anayasa değişiklikleri, seçim kanunları ve kararname iptalleri.",
+    "baskan_oyum": null,
+    "son_kararlar": [],
+    "gecerli_uyeyim": false
+   },
+   {
+    "ad": "Adalet Komisyonu",
+    "kod": "adalet",
+    "kisa": "Adalet",
+    "baskan": null,
+    "gundem": [],
+    "uyeler": [],
+    "uyeyim": false,
+    "aciklama": "Ceza, yargı, hukuk ve temel haklarla ilgili teklifler.",
+    "baskan_oyum": null,
+    "son_kararlar": [],
+    "gecerli_uyeyim": false
+   },
+   {
+    "ad": "Plan ve Bütçe Komisyonu",
+    "kod": "plan_butce",
+    "kisa": "Plan ve Bütçe",
+    "baskan": "Avekil1",
+    "gundem": [],
+    "uyeler": [
+     {
+      "oy": 2,
+      "kad": "Avekil1",
+      "renk": "#335599",
+      "parti": "AP",
+      "baskan": true,
+      "gecerli": true,
+      "cikarabilirim": false
+     }
+    ],
+    "uyeyim": true,
+    "aciklama": "Bütçe kanunu, vergiler, faiz, borç ve kamu maliyesi.",
+    "baskan_oyum": "Avekil1",
+    "son_kararlar": [
+     {
+      "at": "2026-10-30T10:00:00+03:00",
+      "id": 1,
+      "ret": 2,
+      "kabul": 1,
+      "karar": "ret",
+      "baslik": "Vergi indirimi kanunu"
+     }
+    ],
+    "gecerli_uyeyim": true
+   },
+   {
+    "ad": "İçişleri Komisyonu",
+    "kod": "icisleri",
+    "kisa": "İçişleri",
+    "baskan": null,
+    "gundem": [],
+    "uyeler": [],
+    "uyeyim": false,
+    "aciklama": "Yerel yönetimler, güvenlik, afet ve iç düzen.",
+    "baskan_oyum": null,
+    "son_kararlar": [
+     {
+      "at": "2026-10-31T11:00:00+03:00",
+      "id": 3,
+      "ret": 0,
+      "kabul": 0,
+      "karar": "raporsuz",
+      "baslik": "Yeni teklif başlığı"
+     }
+    ],
+    "gecerli_uyeyim": false
+   },
+   {
+    "ad": "Sanayi, Ticaret, Enerji, Tabii Kaynaklar, Bilgi ve Teknoloji Komisyonu",
+    "kod": "sanayi",
+    "kisa": "Sanayi ve Ticaret",
+    "baskan": null,
+    "gundem": [],
+    "uyeler": [],
+    "uyeyim": false,
+    "aciklama": "Şirketler, ticaret, enerji, tarım, ulaştırma ve teknoloji.",
+    "baskan_oyum": null,
+    "son_kararlar": [],
+    "gecerli_uyeyim": false
+   },
+   {
+    "ad": "Sağlık, Aile, Çalışma ve Sosyal İşler Komisyonu",
+    "kod": "saglik",
+    "kisa": "Sağlık ve Çalışma",
+    "baskan": "Avekil2",
+    "gundem": [
+     {
+      "id": 4,
+      "ret": 1,
+      "oyum": "kabul",
+      "kabul": 1,
+      "baslik": "Asgari ücret desteği",
+      "oy_bas": "2026-11-04T12:00:00+03:00"
+     }
+    ],
+    "uyeler": [
+     {
+      "oy": 0,
+      "kad": "Avekil1",
+      "renk": "#335599",
+      "parti": "AP",
+      "baskan": false,
+      "gecerli": true,
+      "cikarabilirim": false
+     },
+     {
+      "oy": 2,
+      "kad": "Avekil2",
+      "renk": "#335599",
+      "parti": "AP",
+      "baskan": true,
+      "gecerli": true,
+      "cikarabilirim": false
+     },
+     {
+      "oy": 0,
+      "kad": "Bvekil1",
+      "renk": "#335599",
+      "parti": "BP",
+      "baskan": false,
+      "gecerli": true,
+      "cikarabilirim": false
+     }
+    ],
+    "uyeyim": true,
+    "aciklama": "Sağlık, asgari ücret, çalışma hayatı ve sosyal güvenlik.",
+    "baskan_oyum": "Avekil2",
+    "son_kararlar": [],
+    "gecerli_uyeyim": true
+   },
+   {
+    "ad": "Millî Eğitim, Kültür, Gençlik ve Spor Komisyonu",
+    "kod": "egitim",
+    "kisa": "Eğitim ve Kültür",
+    "baskan": null,
+    "gundem": [],
+    "uyeler": [],
+    "uyeyim": false,
+    "aciklama": "Eğitim, üniversiteler, kültür, gençlik ve spor.",
+    "baskan_oyum": null,
+    "son_kararlar": [
+     {
+      "at": "2026-10-30T10:00:00+03:00",
+      "id": 2,
+      "ret": 0,
+      "kabul": 0,
+      "karar": "raporsuz",
+      "baslik": "Okul sütü kanunu"
+     }
+    ],
+    "gecerli_uyeyim": false
+   },
+   {
+    "ad": "Dışişleri Komisyonu",
+    "kod": "disisleri",
+    "kisa": "Dışişleri",
+    "baskan": null,
+    "gundem": [],
+    "uyeler": [],
+    "uyeyim": false,
+    "aciklama": "Uluslararası anlaşmalar, dış politika ve savunma.",
+    "baskan_oyum": null,
+    "son_kararlar": [],
+    "gecerli_uyeyim": false
+   }
+  ],
+  "uyeliklerim": 2,
+  "azami_uyelik": 2,
+  "tbmm_baskani": false
+ },
+ "komisyon_kanun": {
+  "acik": true,
+  "esik": 2,
+  "oyum": "kabul",
+  "bitis": "2026-11-04T12:00:00+03:00",
+  "karar": null,
+  "oylar": [
+   {
+    "oy": "kabul",
+    "kad": "Avekil1",
+    "renk": "#335599",
+    "parti": "AP",
+    "gerekce": null
+   },
+   {
+    "oy": "ret",
+    "kad": "Bvekil1",
+    "renk": "#335599",
+    "parti": "BP",
+    "gerekce": "Bütçe kaynağı gösterilmemiş"
+   }
+  ],
+  "rapor": null,
+  "baskan": "Avekil2",
+  "kom_ad": "Sağlık, Aile, Çalışma ve Sosyal İşler Komisyonu",
+  "kom_kod": "saglik",
+  "karar_at": null,
+  "rapor_at": null,
+  "havale_at": "2026-11-03T12:00:00+03:00",
+  "uye_sayisi": 3,
+  "havale_eden": null,
+  "komisyonlar": [
+   {
+    "ad": "Anayasa Komisyonu",
+    "kod": "anayasa"
+   },
+   {
+    "ad": "Adalet Komisyonu",
+    "kod": "adalet"
+   },
+   {
+    "ad": "Plan ve Bütçe Komisyonu",
+    "kod": "plan_butce"
+   },
+   {
+    "ad": "İçişleri Komisyonu",
+    "kod": "icisleri"
+   },
+   {
+    "ad": "Sanayi, Ticaret, Enerji, Tabii Kaynaklar, Bilgi ve Teknoloji Komisyonu",
+    "kod": "sanayi"
+   },
+   {
+    "ad": "Sağlık, Aile, Çalışma ve Sosyal İşler Komisyonu",
+    "kod": "saglik"
+   },
+   {
+    "ad": "Millî Eğitim, Kültür, Gençlik ve Spor Komisyonu",
+    "kod": "egitim"
+   },
+   {
+    "ad": "Dışişleri Komisyonu",
+    "kod": "disisleri"
+   }
+  ],
+  "rapor_yazan": null,
+  "oy_verebilirim": true,
+  "havale_edebilirim": false,
+  "rapor_yazabilirim": false
+ },
+ "kanun_id": 4,
+ "kanun_detay": {
+  "id": 4,
+  "no": null,
+  "tur": "serbest",
+  "dolu": 5,
+  "grup": {
+   "liste": [],
+   "yetkim": false,
+   "benim_grubum": null
+  },
+  "veri": null,
+  "benim": false,
+  "durum": "gorusmede",
+  "metin": "Asgari ücretliye vergi desteği verilsin ve sağlık primi düşsün.",
+  "oylar": null,
+  "parti": {
+   "ad": "A Partisi",
+   "id": 6,
+   "kisa": "AP",
+   "renk": "#335599",
+   "amblem": "a_yildiz"
+  },
+  "baslik": "Asgari ücret desteği",
+  "cb_bit": null,
+  "iki_uc": 4,
+  "oy_bas": "2026-11-04T12:00:00+03:00",
+  "oy_bit": "2026-11-05T12:00:00+03:00",
+  "uc_bes": 3,
+  "oy_acik": false,
+  "vekilim": true,
+  "sonuc_at": null,
+  "duzenleme": null,
+  "imzaladim": false,
+  "israr_bit": null,
+  "kararname": null,
+  "oy_verdim": false,
+  "teklif_at": "2026-11-03T12:00:00+03:00",
+  "benim_oyum": null,
+  "imza_yeter": 2,
+  "referandum": null,
+  "israr_yeter": 3,
+  "karar_yeter": 2,
+  "sonuc_metin": null,
+  "teklif_eden": "Avekil2",
+  "tbmm_baskani": false,
+  "veto_gerekce": null,
+  "toplanti_yeter": 2,
+  "anayasa_aciklama": null,
+  "cb_karar_verebilir": false
+ },
+ "davalar_hakim": {
+  "heyet": 3,
+  "davalar": [
+   {
+    "id": 3,
+    "bas": "2026-11-03T12:00:00+03:00",
+    "acan": "Avekil3",
+    "imza": 1,
+    "kisa": "BP",
+    "oyum": null,
+    "renk": "#335599",
+    "durum": "imza",
+    "hakim": null,
+    "heyet": 3,
+    "iddia": "Partinin yurt dışındaki kuruluşlardan kayıt dışı yardım aldığı banka kayıtlarıyla ortaya konmuştur.",
+    "oylar": null,
+    "parti": "B Partisi",
+    "kapali": false,
+    "oy_ret": null,
+    "savunan": null,
+    "savunma": null,
+    "acan_rol": "vekiller",
+    "imza_son": "2026-11-05T12:00:00+03:00",
+    "karar_at": null,
+    "parti_id": 7,
+    "imzaladim": false,
+    "karar_son": null,
+    "oy_yardim": null,
+    "gerekce_ad": "Yabancı devlet ya da kuruluşlardan yardım almak",
+    "imza_gerek": 2,
+    "oy_kapatma": null,
+    "savunma_at": null,
+    "verilen_oy": 0,
+    "gerekce_tur": "yabanci",
+    "savunma_son": null,
+    "karar_gerekce": null,
+    "savunabilirim": false,
+    "oy_verebilirim": false,
+    "imzalayabilirim": false
+   },
+   {
+    "id": 2,
+    "bas": "2026-11-01T10:00:00+03:00",
+    "acan": "Avekil1",
+    "imza": 2,
+    "kisa": "BP",
+    "oyum": "kapatma",
+    "renk": "#335599",
+    "durum": "yardim",
+    "hakim": "Hakim2",
+    "heyet": 3,
+    "iddia": "Parti hesaplarında açıklanamayan bağışlar ve mali denetime sunulmayan harcamalar tespit edilmiştir.",
+    "oylar": [
+     {
+      "kad": "Hakim1",
+      "karar": "kapatma",
+      "gerekce": "Mali usulsüzlük ağır ve süreklidir."
+     },
+     {
+      "kad": "Hakim2",
+      "karar": "yardim",
+      "gerekce": "Kapatma ağır; yardımdan yoksunluk yeterli."
+     },
+     {
+      "kad": "Hakim3",
+      "karar": "ret",
+      "gerekce": "Deliller yetersizdir; dava reddedilmelidir."
+     }
+    ],
+    "parti": "B Partisi",
+    "kapali": false,
+    "oy_ret": 1,
+    "savunan": null,
+    "savunma": null,
+    "acan_rol": "vekiller",
+    "imza_son": "2026-11-03T10:00:00+03:00",
+    "karar_at": "2026-11-02T11:00:00+03:00",
+    "parti_id": 7,
+    "imzaladim": false,
+    "karar_son": "2026-11-05T11:00:00+03:00",
+    "oy_yardim": 1,
+    "gerekce_ad": "Mali denetimde usulsüzlük ve hesap vermemek",
+    "imza_gerek": 2,
+    "oy_kapatma": 1,
+    "savunma_at": null,
+    "verilen_oy": 3,
+    "gerekce_tur": "mali",
+    "savunma_son": "2026-11-02T10:00:00+03:00",
+    "karar_gerekce": "Kapatma ağır; yardımdan yoksunluk yeterli.",
+    "savunabilirim": false,
+    "oy_verebilirim": false,
+    "imzalayabilirim": false
+   },
+   {
+    "id": 1,
+    "bas": "2026-10-30T11:00:00+03:00",
+    "acan": "AdaletBakani",
+    "imza": 0,
+    "kisa": "CP",
+    "oyum": "kapatma",
+    "renk": "#335599",
+    "durum": "kapatma",
+    "hakim": "Hakim1",
+    "heyet": 3,
+    "iddia": "Parti yöneticilerinin açıklamaları demokratik cumhuriyet ilkelerine aykırı eylemlerin odağı olduğunu gösteriyor.",
+    "oylar": [
+     {
+      "kad": "Hakim1",
+      "karar": "kapatma",
+      "gerekce": "Deliller partinin odak hâline geldiğini gösteriyor."
+     },
+     {
+      "kad": "Hakim2",
+      "karar": "kapatma",
+      "gerekce": "Üçte iki çoğunluk için oyumu kapatma yönünde kullanıyorum."
+     }
+    ],
+    "parti": "C Partisi",
+    "kapali": true,
+    "oy_ret": 0,
+    "savunan": "GenelC",
+    "savunma": "İddialar soyuttur; partimiz demokratik ilkelere bağlıdır ve hiçbir yasa dışı eylemin odağı değildir.",
+    "acan_rol": "adalet_bakani",
+    "imza_son": null,
+    "karar_at": "2026-10-30T11:00:00+03:00",
+    "parti_id": 8,
+    "imzaladim": false,
+    "karar_son": "2026-11-02T11:00:00+03:00",
+    "oy_yardim": 0,
+    "gerekce_ad": "Demokratik ve laik cumhuriyet ilkelerine aykırı eylemlerin odağı olmak",
+    "imza_gerek": null,
+    "oy_kapatma": 2,
+    "savunma_at": "2026-10-30T11:00:00+03:00",
+    "verilen_oy": 2,
+    "gerekce_tur": "odak",
+    "savunma_son": "2026-10-31T11:00:00+03:00",
+    "karar_gerekce": "Deliller partinin odak hâline geldiğini gösteriyor.",
+    "savunabilirim": false,
+    "oy_verebilirim": false,
+    "imzalayabilirim": false
+   }
+  ],
+  "acan_rol": null,
+  "partiler": [
+   {
+    "ad": "A Partisi",
+    "id": 6,
+    "kisa": "AP"
+   },
+   {
+    "ad": "Anadolu Birlik Partisi",
+    "id": 2,
+    "kisa": "ABP"
+   },
+   {
+    "ad": "B Partisi",
+    "id": 7,
+    "kisa": "BP"
+   },
+   {
+    "ad": "Cumhuriyet Yolu Partisi",
+    "id": 1,
+    "kisa": "CYP"
+   },
+   {
+    "ad": "Emek ve Özgürlük Partisi",
+    "id": 5,
+    "kisa": "EÖP"
+   },
+   {
+    "ad": "Millî Kalkınma Partisi",
+    "id": 4,
+    "kisa": "MKP"
+   },
+   {
+    "ad": "Yeni Demokrasi Partisi",
+    "id": 3,
+    "kisa": "YDP"
+   }
+  ],
+  "acabilirim": false,
+  "gerekceler": [
+   {
+    "ad": "Demokratik ve laik cumhuriyet ilkelerine aykırı eylemlerin odağı olmak",
+    "kod": "odak"
+   },
+   {
+    "ad": "Yabancı devlet ya da kuruluşlardan yardım almak",
+    "kod": "yabanci"
+   },
+   {
+    "ad": "Mali denetimde usulsüzlük ve hesap vermemek",
+    "kod": "mali"
+   },
+   {
+    "ad": "Siyasi Partiler Kanunu'na aykırı diğer eylemler",
+    "kod": "diger"
+   }
+  ],
+  "imza_gerek": 2,
+  "yardim_yasaklari": [
+   {
+    "bit": "2026-12-02T11:00:00+03:00",
+    "parti": "BP"
+   }
+  ]
+ },
+ "davalar_gb": {
+  "heyet": 3,
+  "davalar": [],
+  "acan_rol": null,
+  "partiler": [
+   {
+    "ad": "Anadolu Birlik Partisi",
+    "id": 2,
+    "kisa": "ABP"
+   },
+   {
+    "ad": "B Partisi",
+    "id": 7,
+    "kisa": "BP"
+   },
+   {
+    "ad": "Cumhuriyet Yolu Partisi",
+    "id": 1,
+    "kisa": "CYP"
+   },
+   {
+    "ad": "Emek ve Özgürlük Partisi",
+    "id": 5,
+    "kisa": "EÖP"
+   },
+   {
+    "ad": "Millî Kalkınma Partisi",
+    "id": 4,
+    "kisa": "MKP"
+   },
+   {
+    "ad": "Yeni Demokrasi Partisi",
+    "id": 3,
+    "kisa": "YDP"
+   }
+  ],
+  "acabilirim": false,
+  "gerekceler": [
+   {
+    "ad": "Demokratik ve laik cumhuriyet ilkelerine aykırı eylemlerin odağı olmak",
+    "kod": "odak"
+   },
+   {
+    "ad": "Yabancı devlet ya da kuruluşlardan yardım almak",
+    "kod": "yabanci"
+   },
+   {
+    "ad": "Mali denetimde usulsüzlük ve hesap vermemek",
+    "kod": "mali"
+   },
+   {
+    "ad": "Siyasi Partiler Kanunu'na aykırı diğer eylemler",
+    "kod": "diger"
+   }
+  ],
+  "imza_gerek": 2,
+  "yardim_yasaklari": []
+ },
+ "kollar": {
+  "parti": "AP",
+  "kapali": false,
+  "kollar": [
+   {
+    "ad": "Gençlik Kolları",
+    "tur": "genclik",
+    "kasa": 16000,
+    "baskan": "Avekil3",
+    "uyeyim": false,
+    "baskanim": false,
+    "baskan_at": "2026-11-03T12:00:00+03:00",
+    "duyurular": [
+     {
+      "metin": "Hafta sonu bütün illerde stant açıyoruz.",
+      "yazan": "GencUye",
+      "zaman": "2026-11-02T11:00:00+03:00",
+      "baslik": "Hafta sonu"
+     }
+    ],
+    "hareketler": [
+     {
+      "kim": "GenelA",
+      "tutar": 20000,
+      "zaman": "2026-11-02T11:00:00+03:00",
+      "aciklama": "Parti kasasından aktarım"
+     },
+     {
+      "kim": "GencUye",
+      "tutar": 1000,
+      "zaman": "2026-11-02T11:00:00+03:00",
+      "aciklama": "Üye bağışı"
+     },
+     {
+      "kim": "GencUye",
+      "tutar": -5000,
+      "zaman": "2026-11-02T11:00:00+03:00",
+      "aciklama": "Buluşma: Gençlik buluşması"
+     }
+    ],
+    "istatistik": {
+     "katilim": 1,
+     "etkinlik": 1,
+     "kazanilan_uye": 1
+    },
+    "uye_sayisi": 1,
+    "etkinlikler": [
+     {
+      "id": 1,
+      "il": "Ankara",
+      "bas": "2026-11-02T11:00:00+03:00",
+      "bit": "2026-11-03T11:00:00+03:00",
+      "tip": "bulusma",
+      "aktif": false,
+      "il_id": 6,
+      "sonuc": "1 katılımcı (1 parti dışından)",
+      "baslik": "Gençlik buluşması",
+      "tip_ad": "Buluşma",
+      "aciklama": "Ankara'da gençlerle buluşuyoruz.",
+      "katildim": false,
+      "katilimci": 1,
+      "katilabilirim": false
+     }
+    ]
+   },
+   {
+    "ad": "Kadın Kolları",
+    "tur": "kadin",
+    "kasa": 0,
+    "baskan": null,
+    "uyeyim": false,
+    "baskanim": null,
+    "baskan_at": null,
+    "duyurular": [],
+    "hareketler": [],
+    "istatistik": {
+     "katilim": 0,
+     "etkinlik": 0,
+     "kazanilan_uye": 0
+    },
+    "uye_sayisi": 0,
+    "etkinlikler": []
+   }
+  ],
+  "tipler": [
+   {
+    "ad": "Buluşma",
+    "kod": "bulusma",
+    "ucret": 5000
+   },
+   {
+    "ad": "Siyaset akademisi",
+    "kod": "egitim",
+    "ucret": 8000
+   },
+   {
+    "ad": "Dayanışma etkinliği",
+    "kod": "dayanisma",
+    "ucret": 10000
+   },
+   {
+    "ad": "Saha kampanyası",
+    "kod": "kampanya",
+    "ucret": 15000
+   }
+  ],
+  "uyeyim": true,
+  "parti_id": 6,
+  "parti_kasa": 498750,
+  "atayabilirim": true,
+  "teskilat_illeri": [
+   {
+    "ad": "Ankara",
+    "id": 6
+   }
+  ],
+  "butce_verebilirim": true
+ },
+ "davet": {
+  "kod": "5Y9D2N",
+  "ayar": {
+   "aktif": true,
+   "sure_gun": 45,
+   "giris_gun": 7,
+   "odul_eden": 20000,
+   "odul_edilen": 10000,
+   "haftalik_tavan": 10
+  },
+  "kod_son": "2026-10-20T04:54:02.484+03:00",
+  "sayilar": {
+   "kazanc": 40000,
+   "odendi": 2,
+   "bekliyor": 0,
+   "gecersiz": 0
+  },
+  "liderler": [
+   {
+    "n": 2,
+    "kad": "Ahmet"
+   }
+  ],
+  "yonetici": false,
+  "davetlerim": [
+   {
+    "kad": "Deniz",
+    "durum": "odendi",
+    "eksik": null,
+    "neden": null,
+    "zaman": "2026-10-14T10:00:00+03:00"
+   },
+   {
+    "kad": "Burak",
+    "durum": "odendi",
+    "eksik": null,
+    "neden": null,
+    "zaman": "2026-10-14T10:00:00+03:00"
+   }
+  ],
+  "kod_girebilir": false,
+  "beni_davet_eden": null
+ },
+ "parti_id": 6
+}
