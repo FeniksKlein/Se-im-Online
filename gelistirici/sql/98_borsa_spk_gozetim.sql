@@ -103,7 +103,10 @@ begin
   select coalesce(sum(i.pay),0) into son_alinan from oyun.borsa_islem i
    where i.sirket_id=new.sirket_id and i.alici=new.satici
      and i.zaman>now()-interval '24 hours';
-  if coalesce(tutulan,0)-son_alinan < new.pay-0.000001 then
+  -- public.borsa_al önce satıcı payını düşürür, BEFORE INSERT yeni bakiye üzerinden çalışır.
+  -- İşlem öncesi eski pay = işlem sonrası mevcut pay + new.pay;
+  -- satılabilir bakiye için kalan payın 24 saatlik yeni alımları karşılaması gerekir.
+  if coalesce(tutulan,0) < son_alinan-0.000001 then
     raise exception 'Manipülasyon koruması: son 24 saatte borsadan alınan pay hemen satılamaz. Eski satılabilir pay: %% %.',greatest(0,round(coalesce(tutulan,0)-son_alinan,2));
   end if;
   f:=oyun.borsa_son_fiyat(new.sirket_id);
