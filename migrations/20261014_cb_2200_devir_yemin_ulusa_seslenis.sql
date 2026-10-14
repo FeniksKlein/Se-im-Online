@@ -1,14 +1,14 @@
--- 14.10.2026 — Seçim sonrası 22:00 devir ve cumhurbaşkanlığı töreni.
+-- 14.10.2026 — Seçim sonrası 22:15 devir ve cumhurbaşkanlığı töreni.
 -- İdempotent, mevcut oyuncu/oy verilerini silmez. Saatler Europe/Istanbul.
 BEGIN;
 
--- Yalnız 14 Ekim ikinci turunu hedefle; henüz devredilmemişse 22:00'ye çek.
+-- Yalnız 14 Ekim ikinci turunu hedefle; henüz devredilmemişse 22:15'e çek.
 UPDATE oyun.secimler
-SET goreve_bas = TIMESTAMPTZ '2026-10-14 22:00:00+03'
+SET goreve_bas = TIMESTAMPTZ '2026-10-14 22:15:00+03'
 WHERE id = 45389
   AND tur = 'cb2' AND donem = '2026-11'
   AND durum = 'sonuclandi'
-  AND goreve_bas > TIMESTAMPTZ '2026-10-14 22:00:00+03';
+  AND goreve_bas > TIMESTAMPTZ '2026-10-14 22:15:00+03';
 
 CREATE TABLE IF NOT EXISTS oyun.cb_torenleri (
   makam_id bigint PRIMARY KEY REFERENCES oyun.makamlar(id) ON DELETE CASCADE,
@@ -118,4 +118,4 @@ GRANT EXECUTE ON FUNCTION public.cb_seslenisler() TO authenticated;
 COMMIT;
 
 -- Saat geçmişse göreve başlamayı hemen işlemek için mevcut kronu tetikle.
-SELECT oyun.tick() WHERE oyun.simdi() >= TIMESTAMPTZ '2026-10-14 22:00:00+03';
+SELECT oyun.tick() WHERE oyun.simdi() >= TIMESTAMPTZ '2026-10-14 22:15:00+03';
