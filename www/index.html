@@ -8569,9 +8569,9 @@ async function borsaEkrani(){
     iskelet("Borsa", `
       <div class="kart"><div class="pz-bas"><span class="pz-logo">${BR_IKON.borsa}</span><div><h2>Halka açık şirketler</h2>
         <p class="alt">Halka arz edilmiş şirketlerin payları burada oyuncular arasında el değiştirir. Pay sahibi haftalık kârdan payı kadar alır.</p></div></div>
-        <p class="pz-not">Fiyat "%1 pay" içindir. Alıcıdan %${fmt(v.komisyon, 1)} komisyon alınır ve hazineye gider. Şirketini borsaya açmak için "Şirketlerim"den halka arz yap.</p></div>
+        <p class="pz-not">Fiyat "%1 pay" içindir. Şirketin fiyatı yalnız yeterli hacim ve bağımsız işlemlerle, 24 saatte en fazla %10 değişebilir. Alıcıdan %${fmt(v.komisyon, 1)} komisyon alınır ve hazineye gider. Şirketini borsaya açmak için "Şirketlerim"den halka arz yap.</p></div>
       ${portfoy.length ? `<div class="kart"><h2>Portföyüm</h2>${portfoy.map(s => `<div class="kv"><span>${e(s.ad)} · %${fmt(s.benim_pay, 2)}</span><b>${brTL(s.benim_pay * s.son)}</b></div>`).join("")}
-        <p class="pz-not">Değer son işlem fiyatıyla hesaplanır.</p></div>` : ""}
+        <p class="pz-not">Portföyün değeri onaylı piyasa fiyatıyla hesaplanır. Küçük pay işlemleri şirket değerini değiştirmez.</p></div>` : ""}
       ${liste.map(s => `<button class="kart vit-banka" onclick="ekranAc(()=>borsaSirketEkrani(${s.id}))">
         <div class="vit-bas"><span class="orta"><b>${e(s.ad)}</b><span class="kucuk" style="display:block">${e(typeof pzSektorAd === "function" ? pzSektorAd(s.sektor) : s.sektor)}${+s.benim_pay ? ` · payın %${fmt(s.benim_pay, 2)}` : ""}</span></span><span class="ok">›</span></div>
         <div class="vit-stats"><span><small>%1 pay</small><b>${brTL(s.son)}</b>${brDegisim(s.son, s.dun)}</span><span><small>Haftalık kâr (ort.)</small><b style="color:${pzRenk(s.haftalik_net)}">${brTL(s.haftalik_net)}</b></span><span><small>Satışta</small><b>${+s.satista ? "%" + fmt(s.satista, 2) : "yok"}</b></span></div></button>`).join("")
@@ -8596,7 +8596,7 @@ async function borsaSirketEkrani(id){
         || '<p class="alt">Şu an satışta pay yok.</p>'}</div>
       ${satilabilir > 0 && b.aktif ? `<div class="kart"><h2>Pay sat</h2><p class="alt">Sahip olduğun %${fmt(b.benim_pay, 2)}; satışta %${fmt(b.benim_satista, 2)}.</p>
         <div class="alan"><label>Satılacak pay (%)</label><input id="brSatPay" type="number" min="0.1" max="${satilabilir}" step="0.1" value="${Math.min(satilabilir, 5)}"></div>
-        <div class="alan"><label>%1 pay fiyatı (₺)</label><input id="brSatFiyat" type="number" min="100" step="100" value="${Math.max(100, Math.round(+b.son / 100) * 100)}"></div>
+        <div class="alan"><label>%1 pay fiyatı (₺)</label><input id="brSatFiyat" type="number" min="${Math.max(100,Math.round(+b.son*0.90))}" max="${Math.round(+b.son*1.10)}" step="100" value="${Math.max(100, Math.round(+b.son / 100) * 100)}"></div>
         <button class="btn altin" onclick="borsaSat()">Satış emri ver</button></div>` : ""}
       <div class="kart"><h2>Son işlemler</h2>${(b.islemler || []).map(x => `<div class="kv"><span>${tarihSaat(x.zaman)} · %${fmt(x.pay, 2)}<span class="kucuk" style="display:block">${e(x.satici)} → ${e(x.alici)}</span></span><b>${brTL(x.birim)}</b></div>`).join("") || '<p class="alt">Henüz işlem olmadı.</p>'}</div>
       <div class="kart"><h2>Ortaklar</h2>${(b.ortaklar || []).map(o => `<div class="kv"><span>${e(o.kad)}</span><b>%${fmt(o.pay, 2)}</b></div>`).join("")}</div>`, { geri: true });
