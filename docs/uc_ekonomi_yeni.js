@@ -147,7 +147,7 @@ function renderBooks(){
    "Durum: <b>"+E(k.durum)+"</b> · Stok: "+k.stok+" · Satılan: "+k.satilan+
    (k.durum==="yayinda"?" · Fiyat: "+TL(k.fiyat):"");
    let acts="";
-   if(k.durum==="yayinda")acts+=btn("📖 Oku","ucBookModal('oku',"+k.id+")",true)+
+   if(k.durum==="yayinda")acts+=(k.icerik?btn("📖 Oku","ucBookModal('oku',"+k.id+")",true):"")+
       (!k.aldim&&!k.yazar_benim&&k.stok>0?btn("Satın al","ucBookModal('satinal',"+k.id+")"):"");
    if(own&&k.durum==="teklif")acts+=btn("Yayımla","ucBookModal('yayinla',"+k.id+")")+btn("Reddet","ucBookDo('reddet',"+k.id+")",true)+btn("Metni incele","ucBookModal('oku',"+k.id+")",true);
    if(own&&k.durum==="yayinda")acts+=btn("Yeni baskı","ucBookModal('yenibaski',"+k.id+")");
