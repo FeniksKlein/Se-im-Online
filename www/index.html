@@ -8569,7 +8569,7 @@ async function borsaEkrani(){
     iskelet("Borsa", `
       <div class="kart"><div class="pz-bas"><span class="pz-logo">${BR_IKON.borsa}</span><div><h2>Halka açık şirketler</h2>
         <p class="alt">Halka arz edilmiş şirketlerin payları burada oyuncular arasında el değiştirir. Pay sahibi haftalık kârdan payı kadar alır.</p></div></div>
-        <p class="pz-not">Fiyat "%1 pay" içindir. Şirketin fiyatı yalnız yeterli hacim ve bağımsız işlemlerle, 24 saatte en fazla %10 değişebilir. Alıcıdan %${fmt(v.komisyon, 1)} komisyon alınır ve hazineye gider. Şirketini borsaya açmak için "Şirketlerim"den halka arz yap.</p></div>
+        <p class="pz-not">Fiyat "%1 pay" içindir. Şirketin fiyatı yeterli hacim, bağımsız yatırımcılar ve gerçek şirket verileriyle, 24 saatte en fazla %5 değişir. Şüpheli hacim fiyatı etkilemez. Alıcıdan %${fmt(v.komisyon, 1)} komisyon alınır ve hazineye gider. Şirketini borsaya açmak için "Şirketlerim"den halka arz yap.</p></div>
       ${portfoy.length ? `<div class="kart"><h2>Portföyüm</h2>${portfoy.map(s => `<div class="kv"><span>${e(s.ad)} · %${fmt(s.benim_pay, 2)}</span><b>${brTL(s.benim_pay * s.son)}</b></div>`).join("")}
         <p class="pz-not">Portföyün değeri onaylı piyasa fiyatıyla hesaplanır. Küçük pay işlemleri şirket değerini değiştirmez.</p></div>` : ""}
       ${liste.map(s => `<button class="kart vit-banka" onclick="ekranAc(()=>borsaSirketEkrani(${s.id}))">
@@ -8583,18 +8583,20 @@ async function borsaSirketEkrani(id){
   try {
     const b = await API.rpc("borsa_sirket", { p_sirket: id });
     BR.sirket = b;
-    const satilabilir = Math.max(0, +b.benim_pay - +b.benim_satista);
+    const satilabilir = Math.max(0, +b.benim_pay - (+b.kilitli_pay || 0) - +b.benim_satista);
     const yillik = +b.haftalik_net * 52, deger = +b.son * 100;
     iskelet(e(b.ad), `
       <div class="kart"><h2>${e(b.ad)}</h2><p class="alt">${e(typeof pzSektorAd === "function" ? pzSektorAd(b.sektor) : b.sektor)}${b.aktif ? "" : ' · <span class="rozet kirmizi">İflas</span>'}</p>
         <div class="pz-net">${brTL(b.son)}</div><div class="kucuk">%1 pay · son 24 saat ${brDegisim(b.son, b.dun)}</div>
         ${brSpark(b.gunluk)}
+        ${b.devre_kesici ? `<p class="pz-not" style="color:var(--al2)">⏸ Devre kesici etkin: işlemler ${e(new Date(b.devre_kesici).toLocaleTimeString("tr-TR", {hour:"2-digit",minute:"2-digit"}))} saatine kadar durduruldu.</p>` : ""}
+        <p class="pz-not">Onaylanmış piyasa fiyatı esas alınır. Çok küçük ve şüpheli işlemler şirketin piyasa değerini değiştirmez.</p>
         <div class="pz-grid"><span><small>Piyasa değeri</small><b>${brTL(deger)}</b></span><span><small>Haftalık kâr (ort.)</small><b style="color:${pzRenk(b.haftalik_net)}">${brTL(b.haftalik_net)}</b></span><span><small>Fiyat / kazanç</small><b>${yillik > 0 ? fmt(deger / yillik, 1) + " yıl" : "kâr yok"}</b></span></div>
         <p class="pz-not">${+b.haftalik_net > 0 ? `%1 pay haftada yaklaşık ${brTL(b.haftalik_net / 100)} kâr payı getirir (şirket kârı dağıtıyorsa).` : "Şirket son haftalarda zarar ediyor; kâr payı ödenmiyor."}</p></div>
       <div class="kart"><h2>Satış emirleri</h2>${(b.emirler || []).map(x => `<div class="pz-satir"><span class="sol"><b>%${fmt(x.kalan, 2)} pay · ${brTL(x.birim)}/%1</b><span class="kucuk" style="display:block">${e(x.satici)}${x.benim ? " (sen)" : ""} · toplam ${brTL(x.kalan * x.birim)}</span></span>
-          <span class="sag">${x.benim ? `<button class="btn tehlike yarim" style="margin:0;padding:8px 12px" onclick="borsaIptal(${x.id})">İptal</button>` : b.aktif ? `<button class="btn yarim" style="margin:0;padding:8px 12px" onclick="borsaAlModal(${x.id})">Al</button>` : ""}</span></div>`).join("")
+          <span class="sag">${x.benim ? `<button class="btn tehlike yarim" style="margin:0;padding:8px 12px" onclick="borsaIptal(${x.id})">İptal</button>` : b.aktif && !b.devre_kesici ? `<button class="btn yarim" style="margin:0;padding:8px 12px" onclick="borsaAlModal(${x.id})">Al</button>` : ""}</span></div>`).join("")
         || '<p class="alt">Şu an satışta pay yok.</p>'}</div>
-      ${satilabilir > 0 && b.aktif ? `<div class="kart"><h2>Pay sat</h2><p class="alt">Sahip olduğun %${fmt(b.benim_pay, 2)}; satışta %${fmt(b.benim_satista, 2)}.</p>
+      ${satilabilir > 0 && b.aktif && !b.devre_kesici ? `<div class="kart"><h2>Pay sat</h2><p class="alt">Sahip olduğun %${fmt(b.benim_pay, 2)}; son 24 saatte aldığın ve henüz satılamayan %${fmt(b.kilitli_pay || 0, 2)}; satışta %${fmt(b.benim_satista, 2)}.</p>
         <div class="alan"><label>Satılacak pay (%)</label><input id="brSatPay" type="number" min="0.1" max="${satilabilir}" step="0.1" value="${Math.min(satilabilir, 5)}"></div>
         <div class="alan"><label>%1 pay fiyatı (₺)</label><input id="brSatFiyat" type="number" min="${Math.max(100,Math.round(+b.son*0.90))}" max="${Math.round(+b.son*1.10)}" step="100" value="${Math.max(100, Math.round(+b.son / 100) * 100)}"></div>
         <button class="btn altin" onclick="borsaSat()">Satış emri ver</button></div>` : ""}
