@@ -227,7 +227,7 @@ iskelet=function(baslik,govde,sec){
 const eskiDurum=durumYenile;
 durumYenile=async function(){
  const r=await eskiDurum.apply(this,arguments),p=r&&r.profil;
- if(p&&p.cb_mi&&!acik&&!kontrolEdiliyor&&Date.now()-sonDeneme>30000){
+ if(p&&Array.isArray(p.makamlar)&&p.makamlar.some(x=>x.tur==='cb')&&!acik&&!kontrolEdiliyor&&Date.now()-sonDeneme>30000){
   sonDeneme=Date.now();kontrolEdiliyor=true;
   Promise.resolve().then(async function(){
    try{
