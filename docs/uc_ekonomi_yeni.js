@@ -66,6 +66,15 @@ async function actFarm(action,sirket,qty=1,product=null,ekim=null){
  toast("İşlem gerçekleşti"+(r.adet?" · "+r.adet+" ürün":"")); await open("tarim");
  }catch(err){toast(err.message||String(err),true);}
 }
+window.ucFarmBagla=async function(id){
+  try{
+   if(typeof onayla==="function"&&!await onayla("Eski tarım şirketi bağlantısı",
+   "Mevcut tarım şirketin üretim yapan gıda fabrikasına bağlanacak. Şirketin sahibi ve bakiyesi korunur.","Üretime bağla"))return;
+   await API.rpc("eko_ticaret_islem",{p_eylem:"bagla",p_veri:{sirket:Number(id),urun:"gida"}});
+   toast("Tarım şirketin gıda üretimine bağlandı.");
+   await open("tarim");
+  }catch(err){toast(err.message||String(err),true);}
+};
 window.ucFarmModal=farmDialog;window.ucFarmDo=actFarm;
 function renderFarm(){
  const companies=farmCo(), plots=cache?.ekimler||[], stocks=cache?.stok||[];
@@ -73,6 +82,12 @@ function renderFarm(){
  btn("Yeni tarım şirketi kur", "ekranAc(sirketYonetimEkrani)",true));
  if(!companies.length)return out+card("Henüz tarım işletmen yok","Mevcut şirket kurma ve belediye ruhsatı sisteminden Tarım / Gıda üretimi şirketi kur. Şirket otomatik gıda fabrikasına bağlandıktan sonra buradan tarla ve hayvan alabilirsin.",companyButton);
  for(const s of companies){
+   if(s.bagli===false){
+     out+=card("🚜 "+s.ad+" · Üretim bağlantısı gerekli",
+       "Bu eski tarım şirketi gıda fabrikası sistemine henüz bağlanmamış. Mevcut sermaye ve şirket kasası korunur. Tam sahibiysen üretim bağlantısını aktif edebilirsin.",
+       btn("Gıda üretimine bağla","ucFarmBagla("+s.id+")"));
+     continue;
+   }
    const pending=plots.filter(x=>Number(x.sirket)===Number(s.id));
    const used=pending.reduce((sum,x)=>sum+Number(x.tarla),0);
    out+=card("🚜 "+s.ad,"Şirket kasası: <b>"+TL(s.kasa)+"</b> · Tarla: <b>"+s.tarla+"</b> (boş "+Math.max(0,s.tarla-used)+") · Hayvan: <b>"+s.hayvan+"</b> · İl #"+s.il,
