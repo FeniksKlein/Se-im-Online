@@ -1913,6 +1913,14 @@ function bakanPanelHtml(panel, vekalet){
         <button class="btn ${hazir && panel.kasa >= ic.maliyet ? "altin" : "ikinci"}" ${hazir ? "" : "disabled"} onclick="icraatYap('${ic.kod}', ${ic.il_gerekli})">${hazir ? (panel.kasa >= ic.maliyet ? "Uygula" : "Kasada yeterli ödenek yok") : "Tekrar: " + tarihSaat(ic.hazir)}</button></div>`; }).join("")}
       ${vekalet ? "" : `<button class="btn tehlike" onclick="bakanIstifa()">Bakanlıktan istifa et</button>`}</div>`;
 }
+
+function cbYardimcisiDenetimHtml(denetim){
+ const kayitlar=Array.isArray(denetim)?denetim:[];
+ return '<div class="kart"><h2>Cumhurbaşkanı Yardımcılığı · Bakanlık Denetimi</h2><p class="alt">Cumhurbaşkanı adına bakanlık faaliyetlerini ve bütçeleri inceleyebilirsin. Bu ekran yalnızca denetim amaçlıdır; bakan adına işlem yapılamaz.</p>'
+ +(kayitlar.length?kayitlar.map(b=>'<details class="vekil-bakanlik" style="margin-top:10px"><summary><b>'+e(b.bakanlik)+'</b><span class="kucuk"> · '+e(b.bakan||'Bakan atanmadı')+' · Kasa '+fmt(b.kasa,2)+' milyar ₺</span></summary>'
+ +'<div style="padding:10px 0">'+((b.icraatlar||[]).length?(b.icraatlar||[]).map(i=>'<div class="liste-satir"><div class="orta"><b>'+e(i.ad)+'</b><div class="kucuk">'+e(i.yapan||'—')+' · '+tarihSaat(i.zaman)+(i.il?' · '+e(i.il):'')+' · '+fmt(i.maliyet,2)+' milyar ₺</div></div></div>').join(''):'<p class="alt">Henüz kayıtlı icraat yok.</p>')+'</div></details>').join(''):'<p class="alt">Bakanlık kaydı bulunamadı.</p>')+'</div>';
+}
+
 function bosMakamHtml(b){
   const SONRAKI = { bel: "Belediye seçimi", mv: "Genel seçim (Meclis)", cb: "Cumhurbaşkanlığı seçimi", kurultay: "Kurultay (genel başkan)" };
   const say = b.bakanliklar.length + b.belediyeler.length + (b.vekil.bos > 0 ? 1 : 0) + b.partiler.length + (b.cb ? 0 : 1);
@@ -1932,17 +1940,18 @@ function bosMakamHtml(b){
     ${b.sonraki.length ? `<div class="kucuk" style="margin-top:8px;font-weight:800;color:var(--txt2)">Sıradaki seçimler</div>${b.sonraki.map(x => `<div class="kv"><span class="k">${SONRAKI[x.tur]}</span><span class="v kucuk">${x.basvuru_bit ? "başvuru " + tarih(x.basvuru_bas) + "–" + tarih(x.basvuru_bit) + " · " : ""}oylama ${tarih(x.oy_bas)}</span></div>`).join("")}` : ""}</div>`;
 }
 async function hukumetHtml(){
-  const ben = D.durum.profil, cbmiyim = ben.cb_mi, bakanim = ben.makamlar.find(x => x.tur === "bakan");
+  const ben = D.durum.profil, cbmiyim = ben.cb_mi, bakanim = ben.makamlar.find(x => x.tur === "bakan"), cbYardimciMiyim = ben.makamlar.some(x => x.tur === "cb_yardimcisi");
   const kab = await API.rpc("kabine"), yurutmeyim = !!kab.yurutme_benim, parlamenter = kab.sistem === "parlamenter";
   const cbY = await API.rpc("cb_yardimcilari").catch(() => ({ yardimcilar: [], bekleyen: [] }));
-  const [u, panel, kl, bos, vp, siyasi, teklifler] = await Promise.all([
+  const [u, panel, kl, bos, vp, siyasi, teklifler, denetim] = await Promise.all([
     API.rpc("ulke_karnesi"),
     bakanim ? API.rpc("bakanlik_paneli") : null,
     cbmiyim ? API.rpc("kanunlar", { p_limit: 40 }) : [],
     API.rpc("bos_makamlar"),
     yurutmeyim ? API.rpc("vekalet_paneli") : [],
     API.rpc("siyasi_sistem"),
-    API.rpc("bakanlik_teklif_durumlari").catch(() => [])
+    API.rpc("bakanlik_teklif_durumlari").catch(() => []),
+    cbYardimciMiyim ? API.rpc("cb_yardimcisi_bakan_denetim").catch(() => []) : Promise.resolve([])
   ]);
   D._karne = u; D._panel = panel; D._vekil = vp || []; D._siyasi = siyasi;
   const bekleyen = (kl || []).filter(k => k.durum === "cb_onayinda");
@@ -1957,6 +1966,7 @@ async function hukumetHtml(){
     ${parlamenter && kab.cb ? `<div class="kart"><div class="kucuk">Cumhurbaşkanı · devlet başkanı</div><b>${e(kab.cb.kad)}</b><div class="alt">${partiRozet(kab.cb.parti)} · parlamenter sistemde yürütmeyi Başbakan ve hükümet kullanır.</div></div>` : ""}
     <div class="kart"><h2>Meclis ve siyasi sistem</h2><p class="alt">Güvenoyu, gensoru, erken seçim ve yasa değişiklikleri Meclis sayfasında yönetilir.</p><button class="btn ikinci" onclick="meclisSekmeAc('oylamalar')">Meclis işlemlerine git</button></div>
     ${cbYardimcilariHtml(cbY,cbmiyim)}
+    ${cbYardimciMiyim ? cbYardimcisiDenetimHtml(denetim) : ""}
     ${yurutmeyim ? `<div class="olay basvuru"><div class="baslik"><b>${parlamenter ? "Başbakanlık" : "Cumhurbaşkanlığı"} masası</b><span class="rozet altin">Yürütme</span></div>
       <p class="alt" style="margin-top:6px">Ekonomiyi ve kabineyi yönetirsin. Asgari ücret, vergi, kıdem primi, sosyal destek ve taşınma desteği aşağıdaki ekonomi masasından ayarlanır. Bakanları atayıp görevden alabilirsin.${parlamenter ? " Hükümet, Meclis güvenini kaybederse veya koalisyon ortağı çekilirse düşer." : ` Ayrıca anayasal sınır içinde kararname çıkarabilirsin (günde ${fmt(u.kararname_sinir ?? 3)}).`}</p>
       ${parlamenter ? "" : `<button class="btn altin" onclick="kararnameModal()">Kararname çıkar</button>`}</div>
@@ -3286,7 +3296,7 @@ async function sohbetListe(){
     kabine: kik(sv('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>'), "#64D2FF") };
   const ALT = { genel: "Tüm oyuncular", il: "Senin ilindeki oyuncular", belediye: "Herkes izler; belediye başkanı ve ilin vekilleri konuşur",
     parti: "Yalnızca parti üyeleri görür", yonetim: "Genel başkan ve yardımcıları", ittifak: "Yalnızca ittifak partilerinin yöneticileri ve milletvekilleri",
-    meclis: "Vekiller, bakanlar ve cumhurbaşkanı konuşur; herkes izler", kabine: "Cumhurbaşkanı ve bakanlar" };
+    meclis: "Vekiller, bakanlar ve cumhurbaşkanı konuşur; herkes izler", kabine: "Cumhurbaşkanı, yardımcıları ve bakanlar" };
   const GRUP = [["Herkese açık", ["genel", "il", "belediye"]], ["Siyasi örgüt", ["parti", "yonetim", "ittifak"]], ["Devlet", ["meclis", "grup", "divan", "kabine"]]];
   const satir = (k) => {
     const kilitli = !!k.kilit;
@@ -7109,8 +7119,8 @@ async function adliyeEkrani(){
   try{iskelet("Adliye",await adliyeHtml());}
   catch(err){iskelet("Adliye",'<div class="bos">'+e(hataCevir(err.message))+'</div>');}
 }
-const ADL_TURLER={hakaret:"Hakaret",iftira:"İftira",rusvet:"Rüşvet",yolsuzluk:"Yolsuzluk",usulsuzluk:"Usulsüz işlem",dolandiricilik:"Dolandırıcılık",diger:"Diğer"};
-const ADL_CEZALAR={beraat:"Beraat",uyari:"Uyarı",sustur_1s:"1 saat sohbetten susturma",sustur_1g:"1 gün sohbetten susturma",sustur_1h:"1 hafta sohbetten susturma",para_10b:"10.000 ₺ para cezası",para_50b:"50.000 ₺ para cezası",aday_yasagi:"30 gün adaylık yasağı",vekillik_dusur:"Milletvekilliğinin düşürülmesi",parti_para:"Partiye 25.000 ₺ hazine yardımı kesintisi",dusme:"Dava düştü (süre doldu)"};
+const ADL_TURLER={hakaret:"Hakaret",iftira:"İftira",rusvet:"Rüşvet",yolsuzluk:"Yolsuzluk",usulsuzluk:"Usulsüz işlem",dolandiricilik:"Dolandırıcılık",diger:"Diğer",tazminat:"Tazminat davası"};
+const ADL_CEZALAR={beraat:"Beraat",uyari:"Uyarı",sustur_1s:"1 saat sohbetten susturma",sustur_1g:"1 gün sohbetten susturma",sustur_1h:"1 hafta sohbetten susturma",para_10b:"10.000 ₺ para cezası",para_50b:"50.000 ₺ para cezası",aday_yasagi:"30 gün adaylık yasağı",vekillik_dusur:"Milletvekilliğinin düşürülmesi",parti_para:"Partiye 25.000 ₺ hazine yardımı kesintisi",tazminat:"Tazminata hükmedildi",dusme:"Dava düştü (süre doldu)"};
 const ADL_PARTI_CEZA=["beraat","uyari","parti_para"];
 
 const ADL_SUCLAR={
@@ -7120,7 +7130,8 @@ const ADL_SUCLAR={
  yolsuzluk:"Kamu ya da kurum kaynaklarını yetkisiz kişisel çıkar için kullanmak, zimmete geçirmek veya kayırmacılık yapmak.",
  usulsuzluk:"Makamın görev sınırlarını, seçim ve ihale kurallarını veya oyun içi resmî işlem kurallarını ihlal etmek.",
  dolandiricilik:"Yanlış beyanla başka oyuncunun oyun parasını, mülkünü, hissesini veya hakkını hileyle elde etmek.",
- diger:"Oyun kurallarıyla çelişen başka somut eylemler. Hangi kuralın ihlal edildiği dilekçede açıklanmalıdır."
+ diger:"Oyun kurallarıyla çelişen başka somut eylemler. Hangi kuralın ihlal edildiği dilekçede açıklanmalıdır.",
+ tazminat:"Somut oyun içi zararını ve delillerini açıklayarak 1.000–500.000 ₺ tazminat isteyebilirsin."
 };
 function adlSozcuGorevleri(){
  return '<p class="alt"><b>Parti sözcüsü ne yapar?</b> Yalnız genel başkan tarafından kendi parti üyeleri arasından atanır veya görevden alınır. Parti adına açılan veya partiye karşı açılan davalarda partiyi temsil edip savunma ve beyan sunar. Bir parti üyesinin kişisel davasında ise ancak o üyenin dosyaya özel izniyle savunma yapabilir. Sözcü yargıç değildir, ceza veremez ve hiçbir üyeyi izinsiz temsil edemez.</p>';
@@ -7330,11 +7341,20 @@ function adlDavaModal(){
   +'<div class="alan"><label>Dava türü</label><select id="adlTur">'+secenek+'</select></div>'
   +'<p class="alt" id="adlSucAciklamasi">'+e(ADL_SUCLAR.hakaret)+'</p>'
   +'<div class="alan"><label>Davacı olarak</label><select id="adlDavaciParti"><option value="">Kendi adıma</option>'+ben.map(p=>'<option value="'+p.id+'">'+e(p.ad)+' adına</option>').join("")+'</select></div>'
+  +'<div class="alan" id="adlTazminatKutu" style="display:none"><label>Talep edilen tazminat (₺)</label><input id="adlTazminatTutar" type="number" min="1000" max="500000" step="1000" placeholder="Örn. 25000"></div>'
   +adlAlan("İddia (20–1600 karakter)","adlIddia","textarea")
   +adlAlan("Deliller ve olayın detayları","adlDelil","textarea","Örn. sohbet mesajının tarihi ve kanalı")
   +'<button class="btn altin" id="adlDavaAc">Davayı aç</button>');
  adlFormBaslik(m,"Adliyede yeni dava");
- m.querySelector("#adlTur").onchange=()=>{m.querySelector("#adlSucAciklamasi").textContent=ADL_SUCLAR[m.querySelector("#adlTur").value]||"";};
+ m.querySelector("#adlTur").onchange=()=>{
+   const tazminat=m.querySelector("#adlTur").value==="tazminat";
+   m.querySelector("#adlSucAciklamasi").textContent=ADL_SUCLAR[m.querySelector("#adlTur").value]||"";
+   m.querySelector("#adlTazminatKutu").style.display=tazminat?"block":"none";
+   m.querySelector("#adlHedefTur option[value='parti']").disabled=tazminat;
+   m.querySelector("#adlDavaciParti").disabled=tazminat;
+   if(tazminat){m.querySelector("#adlHedefTur").value="oyuncu";m.querySelector("#adlDavaciParti").value="";}
+   m.querySelector("#adlHedefTur").onchange();
+  };
  m.querySelector("#adlHedefTur").onchange=()=>{
   const parti=m.querySelector("#adlHedefTur").value==="parti";
   m.querySelector("#adlOyuncuKutu").style.display=parti?"none":"block";
@@ -7343,7 +7363,9 @@ function adlDavaModal(){
  m.querySelector("#adlDavaAc").onclick=async()=>{
   const tur=m.querySelector("#adlHedefTur").value;
   try{
-   const v=await API.rpc("adliye_dava_ac",{p_hedef_tur:tur,p_hedef:tur==="parti"?m.querySelector("#adlHedefParti").value:m.querySelector("#adlHedef").value,
+   const v=m.querySelector("#adlTur").value==="tazminat"
+    ?await API.rpc("adliye_tazminat_davasi_ac",{p_hedef:m.querySelector("#adlHedef").value,p_talep:Number(m.querySelector("#adlTazminatTutar").value),p_iddia:m.querySelector("#adlIddia").value,p_delil:m.querySelector("#adlDelil").value})
+    :await API.rpc("adliye_dava_ac",{p_hedef_tur:tur,p_hedef:tur==="parti"?m.querySelector("#adlHedefParti").value:m.querySelector("#adlHedef").value,
     p_tur:m.querySelector("#adlTur").value,p_iddia:m.querySelector("#adlIddia").value,
     p_delil:m.querySelector("#adlDelil").value,p_davaci_parti:m.querySelector("#adlDavaciParti").value||null});
    modalKapat();toast("Dava #"+v.id+" açıldı.");if(D.sekme==="adliye")await adliyeEkrani();else{D.devletSekme="adliye";await devletEkrani();}
