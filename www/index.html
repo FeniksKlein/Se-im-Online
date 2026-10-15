@@ -7141,12 +7141,12 @@ function adlBilgiHtml(){
  return '<div class="kart"><details><summary style="cursor:pointer;font-weight:700">Adliye ne işe yarar? (Aç)</summary>'
   +'<p class="alt">Adliye, Seçim Simülasyonu Online oyuncuları arasındaki <b>oyun içi</b> anlaşmazlıkların delilli dava ve açık duruşmayla incelendiği bir sistemdir. Gerçek hayattaki mahkeme veya ceza hukuku yerine geçmez.</p>'
   +'<div class="kv"><span class="k">Dava açma</span><span class="v">Oyuncu veya yetkili parti temsilcisi iddiayı ve delilleri bildirir.</span></div>'
-  +'<div class="kv"><span class="k">Savunma</span><span class="v">Davalı yanıt verebilir; parti sözcüsü yalnız yetkisi varsa temsil edebilir.</span></div>'
+  +'<div class="kv"><span class="k">Savunma</span><span class="v">Davalı yanıt verebilir; parti sözcüsü yalnız yetkisi varsa temsil edebilir. Hâkim, ilgili oyuncuları da duruşmaya çağırabilir.</span></div>'
   +'<div class="kv"><span class="k">Yargılama</span><span class="v">3 üyeli Yüksek Mahkeme delilleri inceler; karar oy çokluğuyla (2 oy) verilir. Mahkemenin savunma süresinden sonra 72 saati vardır, yoksa dava düşer.</span></div>'
   +'<div class="kv"><span class="k">İstinaf</span><span class="v">Kaybeden taraf 24 saat içinde bir kez itiraz eder; kurayla seçilen tarafsız 3 kişilik jüri kararı onaylar ya da bozar. Ağır cezalar karar kesinleşince uygulanır.</span></div>'
   +'<div class="kv"><span class="k">Harç</span><span class="v">Dava açan harcı peşin öder. Kazanırsa geri alır ve harcı davalı öder; kaybederse harç hazineye kalır.</span></div>'
   +'<div class="kv"><span class="k">Bağımsızlık</span><span class="v">Yargıçlar partisizdir; 30 günlük görev süresinde partiye giremez, aday olamaz, yalnız Meclis 3/5 oyla görevden alabilir.</span></div>'
-  +'<div class="kv"><span class="k">Af</span><span class="v">Cumhurbaşkanı bireysel veya genel af ilan edebilir. Gerekçeler kamuya açıktır.</span></div>'
+  +'<div class="kv"><span class="k">Af</span><span class="v">Cumhurbaşkanı oyun içi cezalarda bireysel veya genel af ilan edebilir. Tazminat alacakları affedilemez; gerekçeler kamuya açıktır.</span></div>'
   +'<p class="alt"><b>Unutmayın:</b> Fikir ayrılığı, muhalefet etmek ve kanıtlanmamış suçlamalar otomatik olarak suç değildir.</p>'
   +'<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Hangi davranışlar suç sayılır? (Aç)</summary>'
   +'<p class="alt">Aşağıdaki tanımlar yalnız oyun içindeki davranışlara uygulanır. Mesaj, işlem kaydı, belge ve savunmalar değerlendirilmelidir.</p>'+suclar+'</details>'
@@ -7413,7 +7413,7 @@ async function adliyeDosya(id){
    +(d.af_at?'<span class="rozet yesil">Cumhurbaşkanlığı affı · '+adlTarih(d.af_at)+'</span><p class="alt">'+e(d.af_gerekce||"")+'</p>':'')
    +'</div>':'';
   const hakim=ek?ek.oy_verebilirim:(ADL.hakim_miyim&&d.durum==="acik"&&!d.davalimiyim&&!d.davacimiyim);
-  const gerek=ADL.cb_miyim&&d.durum==="karar"&&!d.af_at&&d.karar!=="beraat";
+  const gerek=ADL.cb_miyim&&d.durum==="karar"&&!d.af_at&&d.karar!=="beraat"&&d.karar!=="tazminat";
   const heyet=ek&&d.durum==="acik"?'<div class="kart"><h3>Yüksek Mahkeme heyeti</h3><p class="alt">'+ek.oy_sayi+'/'+ek.heyet_sayi+' üye oy verdi; karar için '+ek.gerekli+' üyenin aynı kararda birleşmesi gerekir. Oylar karar açıklanınca görünür.</p>'+(ek.oyum?'<p class="kucuk">Oyun: '+e(ADL_CEZALAR[ek.oyum.karar]||ek.oyum.karar)+'</p>':'')+'</div>':'';
   const ist=ek?adlIstinafHtml(d,ek):'';
   const eylem=heyet+ist+(hakim?'<div class="kart"><button class="btn altin" onclick="adlKararModal('+id+')">'+(ek&&ek.oyum?'Oyumu değiştir':'Yüksek Mahkeme: oyumu ver')+'</button></div>':'')
