@@ -21,8 +21,8 @@ const shot = process.argv[2];
       window.MAHKEME = { ayar: { gorev_gun: 30, karar_saat: 72, istinaf_saat: 24, juri_saat: 48, harc: 5000, aym_gun: 10 }, salt_cogunluk: 5, azil_gerekli: 5,
         vekil_miyim: true, uye_miyim: false, cb_miyim: false, yargic_olabilir: false,
         uyeler: [{ sira: 1, kaynak: 'cb', kad: 'YargicA', gorev_bit: simdiIso, benim: false, azil: { id: 3, teklif_eden: 'Vekil2', gerekce: 'Taraflı davranıyor <b>x</b>', bit: simdiIso, kabul: 2, ret: 1, oyum: null } },
-                 { sira: 2, kaynak: 'meclis', kad: 'YargicB', gorev_bit: simdiIso, benim: false, azil: null },
-                 { sira: 3, kaynak: 'meclis', kad: null, adaylar: [{ kad: 'YargicC', oy: 3 }], oyum: null }],
+                 { sira: 2, kaynak: 'meclis', kad: null, adaylar: [{ kad: 'YargicC', oy: 3 }], oyum: null },
+                 { sira: 3, kaynak: 'adalet', kad: 'AdaletBakani', gorev_bit: null, benim: false, azil: null }],
         juri_gorevlerim: [{ dava_id: 7, bit: simdiIso, oyum: null }],
         aym: [{ id: 1, kanun_id: 9, kanun: 'Baraj Kanunu', kanun_no: 12, parti: 'AAA', basvuran: 'Vekil1', gerekce: 'Temsilde adalete aykırı', gorus: null, bas: simdiIso, karar_son: simdiIso, durum: 'acik', oy_sayi: 1, oyum: null, gorus_verebilirim: false }],
         aym_kanunlar: [{ id: 10, no: 13, baslik: 'Vergi Kanunu', tur: 'butce', sonuc_at: simdiIso }] };
@@ -41,7 +41,7 @@ const shot = process.argv[2];
     await page.evaluate(() => adliyeEkrani());
     await page.waitForSelector('text=Yüksek Mahkeme');
     const t = await page.locator('#icerik').textContent();
-    assert.match(t, /3 üye · oy çokluğuyla karar/); assert.match(t, /Boş koltuk/); assert.match(t, /YargicC — 3 oy/); assert.match(t, /İstinaf jürisi görevin var/);
+    assert.match(t, /3 üye · oy çokluğuyla karar/); assert.match(t, /Boş koltuk/); assert.match(t, /YargicC — 3 oy/); assert.match(t, /3. üye · Adalet Bakanı/); assert.match(t, /AdaletBakani/); assert.match(t, /İstinaf jürisi görevin var/);
     assert.match(t, /Dava aç · harç 5\.000/); assert.match(t, /Anayasa Mahkemesi/); assert.match(t, /12 sayılı Baraj Kanunu/);
     assert.equal(await page.locator('#icerik b >> text=<b>x</b>').count(), 0);
     if (shot) await page.screenshot({ path: path.join(shot, 'mahkeme.png'), fullPage: false });
@@ -49,7 +49,7 @@ const shot = process.argv[2];
     assert.deepEqual(await page.evaluate(() => calls.find(c => c.ad === 'mahkeme_azil_oy').args), { p_id: 3, p_oy: 'kabul' });
     await page.waitForSelector('text=Aday için oy ver'); await page.getByRole('button', { name: 'Aday için oy ver' }).click();
     await page.fill('#adlMecAday', 'YargicC'); await page.click('#adlMecGonder'); await page.waitForFunction(() => calls.some(c => c.ad === 'mahkeme_meclis_oy'));
-    assert.deepEqual(await page.evaluate(() => calls.find(c => c.ad === 'mahkeme_meclis_oy').args), { p_sira: 3, p_kad: 'YargicC' });
+    assert.deepEqual(await page.evaluate(() => calls.find(c => c.ad === 'mahkeme_meclis_oy').args), { p_sira: 2, p_kad: 'YargicC' });
     await page.waitForSelector('text=Kanun için iptal başvurusu yap'); await page.getByRole('button', { name: 'Kanun için iptal başvurusu yap' }).click();
     await page.fill('#aymGerekce', 'Vergi kanunu mülkiyet hakkını ölçüsüz sınırlıyor.'); await page.click('#aymGonder');
     await page.waitForFunction(() => calls.some(c => c.ad === 'aym_basvur'));
