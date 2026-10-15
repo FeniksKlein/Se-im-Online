@@ -1,0 +1,528 @@
+{
+ "pano": {
+  "seri": [
+   {
+    "gun": "2026-10-14",
+    "deger": 1000
+   },
+   {
+    "gun": "2026-10-15",
+    "deger": 1032.4
+   }
+  ],
+  "benim": {
+   "il": 34,
+   "bolge": {
+    "bolge": 1,
+    "sgk_destek": 0,
+    "vergi_indirim": 0
+   },
+   "bugun": 13764,
+   "hafta": 84059,
+   "portfoy": 2757262,
+   "sirketler": [
+    {
+     "ad": "UYGAR HOLDING",
+     "id": 1,
+     "pay": 8.00759,
+     "kar7": 187914,
+     "deger": 6500000
+    },
+    {
+     "ad": "İstanbul Enerji Santrali",
+     "id": 10,
+     "pay": 100,
+     "kar7": 61347,
+     "deger": 1118291
+    },
+    {
+     "ad": "Dijital Ajans Reklam Hizmetleri",
+     "id": 28,
+     "pay": 100,
+     "kar7": 0,
+     "deger": 450700
+    },
+    {
+     "ad": "Feniks Klein A.Ş.",
+     "id": 94,
+     "pay": 100,
+     "kar7": 16591,
+     "deger": 423410
+    },
+    {
+     "ad": "Feniks Market",
+     "id": 100,
+     "pay": 100,
+     "kar7": 4722,
+     "deger": 244368
+    }
+   ]
+  },
+  "endeks": {
+   "deger": 1032.4,
+   "onceki": 1000,
+   "sirket": 32,
+   "toplam": 20475443,
+   "degisim": 3.24,
+   "guncelleme": "2026-10-15T14:02:45Z"
+  },
+  "zincir": {
+   "npc": 49723,
+   "reklam": 0,
+   "elektrik": 35144,
+   "lojistik": 18851
+  },
+  "bolgeler": [
+   {
+    "bolge": 1,
+    "ornek": "Ankara, İstanbul, İzmir",
+    "sgk_destek": 0,
+    "vergi_indirim": 0
+   },
+   {
+    "bolge": 2,
+    "ornek": "Kayseri, Konya, Mersin",
+    "sgk_destek": 0,
+    "vergi_indirim": 10
+   },
+   {
+    "bolge": 3,
+    "ornek": "Adana, Gaziantep, Hatay",
+    "sgk_destek": 5,
+    "vergi_indirim": 20
+   },
+   {
+    "bolge": 4,
+    "ornek": "Erzurum, Kahramanmaraş, Ordu",
+    "sgk_destek": 10,
+    "vergi_indirim": 30
+   },
+   {
+    "bolge": 5,
+    "ornek": "Adıyaman, Diyarbakır, Şanlıurfa",
+    "sgk_destek": 15,
+    "vergi_indirim": 45
+   },
+   {
+    "bolge": 6,
+    "ornek": "Ağrı, Mardin, Van",
+    "sgk_destek": 20,
+    "vergi_indirim": 60
+   }
+  ],
+  "buyukler": [
+   {
+    "ad": "UYGAR HOLDING",
+    "id": 1,
+    "il": "İstanbul",
+    "tur": "as",
+    "kar7": 187914,
+    "deger": 6500000,
+    "sahip": "uygarzk",
+    "sektor": "teknoloji",
+    "degisim": 4.1,
+    "sektor_ad": "Bilişim ve Yazılım",
+    "halka_acik": true
+   },
+   {
+    "ad": "Koç Holding",
+    "id": 8,
+    "il": "İstanbul",
+    "tur": "ltd",
+    "kar7": 83950,
+    "deger": 1968500,
+    "sahip": "TuranRiver",
+    "sektor": "ticaret",
+    "degisim": 2.2,
+    "sektor_ad": "Toptan ve Perakende Ticaret",
+    "halka_acik": false
+   },
+   {
+    "ad": "Sabancı Teknoloji",
+    "id": 9,
+    "il": "Adana",
+    "tur": "as",
+    "kar7": 5592,
+    "deger": 1500000,
+    "sahip": "CELAL",
+    "sektor": "teknoloji",
+    "degisim": -1.3,
+    "sektor_ad": "Bilişim ve Yazılım",
+    "halka_acik": true
+   },
+   {
+    "ad": "İstanbul Enerji Santrali",
+    "id": 10,
+    "il": "İstanbul",
+    "tur": "ltd",
+    "kar7": 61347,
+    "deger": 1118291,
+    "sahip": "ArvenTora",
+    "sektor": "enerji",
+    "degisim": 6.8,
+    "sektor_ad": "Enerji Santrali",
+    "halka_acik": false
+   },
+   {
+    "ad": "Türkiye İş Bankası",
+    "id": 12,
+    "il": null,
+    "tur": "ltd",
+    "kar7": 0,
+    "deger": 1036787,
+    "sahip": "mustafaozdm",
+    "sektor": "banka",
+    "degisim": 0,
+    "sektor_ad": "banka",
+    "halka_acik": false
+   },
+   {
+    "ad": "BŞ İnşaat",
+    "id": 21,
+    "il": "Ankara",
+    "tur": "ltd",
+    "kar7": 19989,
+    "deger": 702040,
+    "sahip": "BerkSahingoz",
+    "sektor": "insaat",
+    "degisim": 1.1,
+    "sektor_ad": "İnşaat ve Taahhüt",
+    "halka_acik": false
+   },
+   {
+    "ad": "Kon Enerji Santrali",
+    "id": 20,
+    "il": "İstanbul",
+    "tur": "ltd",
+    "kar7": 34246,
+    "deger": 643748,
+    "sahip": "AbdullahGencer",
+    "sektor": "enerji",
+    "degisim": 5.2,
+    "sektor_ad": "Enerji Santrali",
+    "halka_acik": false
+   },
+   {
+    "ad": "UYGAR OKULLARI",
+    "id": 11,
+    "il": "İstanbul",
+    "tur": "ltd",
+    "kar7": 25601,
+    "deger": 601010,
+    "sahip": "uygarzk",
+    "sektor": "ozel_okul",
+    "degisim": null,
+    "sektor_ad": "Özel Okul",
+    "halka_acik": false
+   },
+   {
+    "ad": "ASELSAN",
+    "id": 5,
+    "il": "İstanbul",
+    "tur": "as",
+    "kar7": 26223,
+    "deger": 550000,
+    "sahip": "Adem",
+    "sektor": "sanayi",
+    "degisim": 0,
+    "sektor_ad": "Sanayi Üretimi",
+    "halka_acik": true
+   },
+   {
+    "ad": "Özel Anadolu Hastanesi",
+    "id": 13,
+    "il": "İstanbul",
+    "tur": "as",
+    "kar7": 33037,
+    "deger": 461600,
+    "sahip": "mustafaozdm",
+    "sektor": "ozel_hastane",
+    "degisim": 0.4,
+    "sektor_ad": "Özel Hastane",
+    "halka_acik": true
+   },
+   {
+    "ad": "Dijital Ajans Reklam Hizmetleri",
+    "id": 28,
+    "il": null,
+    "tur": "ltd",
+    "kar7": 0,
+    "deger": 450700,
+    "sahip": "ArvenTora",
+    "sektor": "ajans",
+    "degisim": 0,
+    "sektor_ad": "ajans",
+    "halka_acik": false
+   },
+   {
+    "ad": "Antakya Market (AKM)",
+    "id": 26,
+    "il": "Hatay",
+    "tur": "ltd",
+    "kar7": 17869,
+    "deger": 378690,
+    "sahip": "EkremLaufeyoğlu",
+    "sektor": "market",
+    "degisim": 3.3,
+    "sektor_ad": "Market Zinciri",
+    "halka_acik": false
+   }
+  ],
+  "kurumlar": 25,
+  "sektorler": [
+   {
+    "ad": "Bilişim ve Yazılım",
+    "kod": "teknoloji",
+    "kar7": 204308,
+    "deger": 8362602,
+    "sirket": 4
+   },
+   {
+    "ad": "Enerji Santrali",
+    "kod": "enerji",
+    "kar7": 95593,
+    "deger": 1762039,
+    "sirket": 2
+   },
+   {
+    "ad": "Toptan ve Perakende Ticaret",
+    "kod": "ticaret",
+    "kar7": 88672,
+    "deger": 2436868,
+    "sirket": 4
+   },
+   {
+    "ad": "Sanayi Üretimi",
+    "kod": "sanayi",
+    "kar7": 46547,
+    "deger": 1758473,
+    "sirket": 5
+   },
+   {
+    "ad": "Tarım ve Hayvancılık",
+    "kod": "tarim",
+    "kar7": -2884,
+    "deger": 128840,
+    "sirket": 1
+   },
+   {
+    "ad": "banka",
+    "kod": "banka",
+    "kar7": 0,
+    "deger": 1036787,
+    "sirket": 1
+   }
+  ],
+  "yukselenler": [
+   {
+    "id": 10,
+    "ad": "İstanbul Enerji Santrali",
+    "degisim": 6.8
+   },
+   {
+    "id": 20,
+    "ad": "Kon Enerji Santrali",
+    "degisim": 5.2
+   },
+   {
+    "id": 1,
+    "ad": "UYGAR HOLDING",
+    "degisim": 4.1
+   }
+  ],
+  "politika_faizi": 45.1
+ },
+ "karne": {
+  "ad": "İstanbul Enerji Santrali",
+  "id": 10,
+  "il": "İstanbul",
+  "tur": "ltd",
+  "kar7": 61347,
+  "kasa": 504821,
+  "aktif": true,
+  "bolge": {
+   "bolge": 1,
+   "sgk_destek": 0,
+   "vergi_indirim": 0
+  },
+  "deger": 1118291,
+  "fiyat": 3,
+  "il_id": 34,
+  "marka": 12,
+  "sahip": "ArvenTora",
+  "defter": 504821,
+  "gunler": [
+   {
+    "gun": "2026-10-12",
+    "net": 21010,
+    "pay": 22.5,
+    "gelir": 37907,
+    "gider": 9894,
+    "rakip": 1,
+    "vergi": 7003,
+    "tesvik": 0,
+    "b2b_gelir": 12106
+   },
+   {
+    "gun": "2026-10-13",
+    "net": 11104,
+    "pay": 22.5,
+    "gelir": 24653,
+    "gider": 9848,
+    "rakip": 1,
+    "vergi": 3701,
+    "tesvik": 0,
+    "b2b_gelir": 0
+   },
+   {
+    "gun": "2026-10-14",
+    "net": -2469,
+    "pay": 22.6,
+    "gelir": 30717,
+    "gider": 10091,
+    "rakip": 1,
+    "vergi": 0,
+    "tesvik": 0,
+    "b2b_gelir": 0
+   },
+   {
+    "gun": "2026-10-15",
+    "net": 13764,
+    "pay": 22.7,
+    "gelir": 28348,
+    "gider": 9996,
+    "rakip": 1,
+    "vergi": 4588,
+    "tesvik": 900,
+    "b2b_gelir": 0
+   }
+  ],
+  "kalite": 1,
+  "piyasa": null,
+  "reklam": 0,
+  "sektor": "enerji",
+  "tahmin": {
+   "net": 99724,
+   "pay": 39.8,
+   "ceza": 0,
+   "bolge": 1,
+   "fiyat": 3,
+   "gelir": 195000,
+   "gider": 62034,
+   "pazar": 689334,
+   "rakip": 1,
+   "sabit": 25000,
+   "talep": 274684,
+   "vergi": 33241,
+   "getiri": 19.9,
+   "kalite": 1,
+   "kaynak": "dogalgaz",
+   "reklam": 0,
+   "ruhsat": 0,
+   "kamu_guc": 0.57,
+   "kapasite": 150000,
+   "personel": 24550,
+   "politika": "normal",
+   "gunluk_net": 14246,
+   "sgk_destek": 0,
+   "ruhsat_oran": 0,
+   "kalite_gider": 5000,
+   "kaynak_gider": 7484,
+   "kapasite_dolu": true,
+   "reklam_seviye": 0,
+   "vergi_indirim": 0,
+   "kurumlar_orani": 25
+  },
+  "as_esik": 250000,
+  "as_harc": 2500,
+  "kurulus": "2026-10-11T12:02:22Z",
+  "sermaye": 500000,
+  "kurullar": [
+   {
+    "id": 3,
+    "tur": "yonetici",
+    "baslik": "Mehmet yönetici (CEO) olarak atansın",
+    "durum": "acik",
+    "acan": "Ortak1",
+    "bit": "2026-10-16T14:00:00Z",
+    "evet": 30,
+    "hayir": 10,
+    "katilim": 40,
+    "sonuc": null,
+    "benim_oy": null
+   },
+   {
+    "id": 1,
+    "tur": "temettu",
+    "baslik": "5.000 ₺ temettü dağıtılması",
+    "durum": "kabul",
+    "acan": "ArvenTora",
+    "bit": "2026-10-16T14:04:35Z",
+    "evet": 100,
+    "hayir": 0,
+    "katilim": 100,
+    "sonuc": "5.000 ₺ temettü dağıtıldı.",
+    "benim_oy": true
+   }
+  ],
+  "ortaklar": [
+   {
+    "kad": "ArvenTora",
+    "pay": 60
+   },
+   {
+    "kad": "Ortak1",
+    "pay": 30
+   },
+   {
+    "kad": "Ortak2",
+    "pay": 10
+   }
+  ],
+  "otopilot": true,
+  "yonetici": null,
+  "benim_pay": 60,
+  "sektor_ad": "Enerji Santrali",
+  "deger_seri": [
+   {
+    "gun": "2026-10-14",
+    "deger": 1047000
+   },
+   {
+    "gun": "2026-10-15",
+    "deger": 1118291
+   }
+  ],
+  "halka_acik": false,
+  "musteriler": [
+   {
+    "ad": "UYGAR HOLDING",
+    "kalem": "Elektrik faturası",
+    "tutar": 6525
+   },
+   {
+    "ad": "Koç Holding",
+    "kalem": "Elektrik faturası",
+    "tutar": 2700
+   },
+   {
+    "ad": "ASELSAN",
+    "kalem": "Elektrik faturası",
+    "tutar": 1616
+   }
+  ],
+  "yonetici_mi": true,
+  "tedarikciler": [
+   {
+    "ad": "CK Ulaşım",
+    "kalem": "Lojistik ve servis",
+    "tutar": 1528
+   },
+   {
+    "ad": "Yurt içi tedarikçiler",
+    "kalem": "Lojistik ve servis",
+    "tutar": 1328
+   }
+  ]
+ }
+}

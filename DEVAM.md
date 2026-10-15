@@ -265,3 +265,14 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Alt menü sırası: Gündem, Devlet, Adliye, Hayat, Ekonomi, Sohbet, Meclis, Harita, Partiler, Dernekler.
 - Kod: `gelistirici/www/menu_sade.js` (en son yüklenir; `derle.js` listesine eklendi), `index.html`'de nav satırı ve `hayatCiz` ekonomi bloğu. Yayın: `docs/menu_sade.js` + `docs/index.html` aynı düzenlemeler.
 - Test: `node test/menu_sade_arayuz.js` (yeni), `yonetim_arayuz.js` yeni davranışa göre güncellendi. Sunucu değişikliği yok, migration yok.
+
+
+## 2026-10-15 · 2026.10.15-1 Ekonomi 3.0 (canlıda)
+- Sunucu: `gelistirici/sql/99_ekonomi3_a_duzeltme.sql`, `99_ekonomi3_b_faaliyet.sql`, `99_ekonomi3_c_piyasa.sql` (aynıları `migrations/20261015_ekonomi3_*.sql`). **Canlı Supabase'e uygulandı** (migration adları `ekonomi3_a_duzeltme_20261015`, `ekonomi3_b_faaliyet_20261015`, `ekonomi3_c1_tur_marka_deger_20261015`, `ekonomi3_c2_kurul_pano_20261015`, `ekonomi3_c3_basarimlar_20261015`); Ercan'ın ayrıca çalıştırmasına gerek yok. Öncesinde `oyun.yedek_al` → `yedek_20261015_164513_002621`.
+- Ayrıntı: TASARIM.md §17. Özet: para birimi düzeltmesi (hazine 5.600 → 252 milyar), Milli Piyango gerçek usul, zamanlayıcılar kaydırıldı, 11 sektörde günlük faaliyet, bölgesel teşvik, şirketler arası gider zinciri, reklam bütçesi, şirket değeri + Şirketler Endeksi, 18.00 kapanış / 20.00 bilanço, genel kurul + CEO, Ltd./A.Ş., marka filtresi, 6 ekonomi başarımı.
+- Yeni zamanlayıcı: `ekonomi-3` (2-59/10). `ekonomi-pazar` artık her tick'te `oyun.ana_faaliyet_ac()` çalıştırır.
+- **Not:** `apply_migration` içinde `drop trigger` onay istediği için iptal oluyordu; `create or replace trigger` kullanıldı.
+- Arayüz: `gelistirici/www/ekonomi3.js` (derle.js listesinin sonunda). Yayın: `docs/ekonomi3.js` + `docs/index.html`'e tek script etiketi (diğer modüllerle aynı yöntem; docs kaynaktan çok ayrıştığı için tam derleme yayına kopyalanmadı). `www/index.html` sonuna gömülü.
+- `ekonomi_pazar.js` kaynağında haftalık ifadeler günlüğe çevrildi; yayındaki derlenmiş sürümde aynı ifadeler ekonomi3.js tarafından ekranda düzeltilir.
+- Test: `NODE_PATH=/opt/npm-tools/node_modules node gelistirici/test/ekonomi3_arayuz.js [klasör]` (320/390/768 px, sahte RPC, veri `test/veri/ekonomi3_ornek.json`).
+- Bilinen: gerçek marka adlı eski şirketler (Koç Holding, ASELSAN, TÜPRAŞ, MİGROS, NVIDIA, Türkiye İş Bankası) olduğu gibi duruyor; sahipleri genel kuruldan ad değiştirebilir. Yeni kayıtlar filtreden geçer.

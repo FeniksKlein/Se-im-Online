@@ -60,7 +60,7 @@ async function pazarMerkezEkrani(){
     iskelet("Rekabetçi şirketler", `
       <div class="kart"><div class="pz-bas"><span class="pz-logo">${PZ_IKON.sirket}</span><div><h2>Kendi işini kur, rakiplerinle yarış</h2>
         <p class="alt">Şirketin seçtiğin ilde faaliyet gösterir. O ilin pazarını aynı türdeki oyuncu şirketleriyle paylaşırsın: boş ilde kazanırsın, kalabalık ilde fiyat savaşı zarar ettirir.</p></div></div>
-        <p class="pz-not">Fiyatını ve kaliteni sen seçersin. Haftalık kâr ortaklara ödenir, %${fmt(k.kurumlar)} kurumlar vergisi hazineye, belediyenin ruhsat harcı il kasasına gider. Kasası biten şirket iflas eder.</p></div>
+        <p class="pz-not">Fiyatını ve kaliteni sen seçersin. Kâr her gün hesaplanır ve ortaklara ödenir, %${fmt(k.kurumlar)} kurumlar vergisi hazineye, belediyenin ruhsat harcı il kasasına gider. Kasası biten şirket iflas eder.</p></div>
       <div class="kart"><h2>Üç adımda şirket</h2>
         <div class="kv"><span>1. Aşağıdan şirket türünü seç</span><b>Okul, hastane, market…</b></div>
         <div class="kv"><span>2. Haritadan rakibi az ili seç</span><b>Fırsat çubuğu</b></div>
@@ -148,9 +148,9 @@ async function pazarDetayEkrani(id){
     const t = d.tahmin || {};
     iskelet(e(d.ad), `
       <div class="kart"><div class="pz-bas"><span class="pz-logo">${PZ_IKON.sirket}</span><div style="min-width:0"><h2>${e(d.ad)}</h2>
-        <p class="alt">${e(d.sektor_ad)} · ${e(d.il)} · ${d.hafta ? fmt(d.hafta) + ". hafta" : "yeni açıldı"}</p></div></div>
+        <p class="alt">${e(d.sektor_ad)} · ${e(d.il)} · ${d.hafta ? fmt(d.hafta) + ". gün" : "yeni açıldı"}</p></div></div>
         ${d.aktif ? `<div class="pz-grid"><span><small>Şirket kasası</small><b>${pzTL(d.kasa)}</b></span><span><small>Sermaye</small><b>${pzTL(d.sermaye)}</b></span><span><small>Marka</small><b>${fmt(d.marka)} / 100</b></span></div>
-        <p class="pz-not">Sonraki haftalık hesap: ${tarihSaat(d.sonraki)}${d.kasa < d.sermaye * 0.25 ? ' · <b style="color:var(--al2)">Kasa eriyor, iflas riski var.</b>' : ""}</p>` : `<p class="alt" style="margin-top:8px"><span class="rozet kirmizi">İflas etti</span> Kasası tükendiği için faaliyet durdu.</p>`}</div>
+        <p class="pz-not">Sonraki günlük hesap: ${tarihSaat(d.sonraki)}${d.kasa < d.sermaye * 0.25 ? ' · <b style="color:var(--al2)">Kasa eriyor, iflas riski var.</b>' : ""}</p>` : `<p class="alt" style="margin-top:8px"><span class="rozet kirmizi">İflas etti</span> Kasası tükendiği için faaliyet durdu.</p>`}</div>
       ${d.aktif && dn ? pazarYonetimKart(d, dn) : ""}
       ${d.aktif ? `<div class="kart"><h2>Bu haftanın tahmini</h2><p class="alt">Bugünkü ayarlarınla ve rakiplerinle hesaplanır. Gerçek sonuç %10 oynayabilir.</p>
         <div class="pz-net" style="color:${pzRenk(t.net)}">${pzIsaret(t.net)}</div><div class="kucuk">net / hafta · sermayenin %${fmt(t.getiri, 1)}'i</div>
@@ -169,9 +169,9 @@ async function pazarDetayEkrani(id){
       ${d.aktif && !d.yonetici ? `<div class="kart"><p class="alt">Şirketin kararlarını en büyük ortak verir.</p></div>` : ""}
       <div class="kart"><h2>${e(d.il)}'daki rakipler</h2>${(d.rakipler || []).map(r => `<div class="pz-satir"><span class="sol"><b>${e(r.ad)}</b><span class="kucuk" style="display:block">${e(r.sahip)} · ${pzTL(r.sermaye)} sermaye${r.kaynak ? " · " + PZ_KAYNAK[r.kaynak] : ""}</span></span>
           <span class="sag"><b>${PZ_FIYAT[r.fiyat]}</b><span class="kucuk" style="display:block">Kalite ${PZ_KALITE[r.kalite].toLocaleLowerCase("tr")} · marka ~${fmt(r.marka)}</span></span></div>`).join("") || '<p class="alt">Bu ilde rakibin yok. Pazar senin, ama boş pazar başkalarının da gözü önünde.</p>'}</div>
-      <div class="kart"><h2>Haftalık raporlar</h2>${(d.raporlar || []).length ? `<div class="pz-kaydir"><table class="pz-tablo"><tr><th>Hafta</th><th>Pay</th><th>Gelir</th><th>Gider</th><th>Net</th></tr>
+      <div class="kart"><h2>Günlük raporlar</h2>${(d.raporlar || []).length ? `<div class="pz-kaydir"><table class="pz-tablo"><tr><th>Gün</th><th>Pay</th><th>Gelir</th><th>Gider</th><th>Net</th></tr>
         ${d.raporlar.map(r => `<tr><td>${tarih(r.zaman)}</td><td>%${fmt(r.pay, 1)}</td><td>${pzTL(r.gelir)}</td><td>${pzTL(+r.gider + +r.ruhsat + +r.vergi + +r.ceza)}</td><td style="color:${pzRenk(r.net)}">${pzIsaret(r.net)}</td></tr>`).join("")}</table></div>`
-        : '<p class="alt">İlk haftalık rapor bir hafta sonra çıkar.</p>'}</div>
+        : '<p class="alt">İlk günlük rapor bir gün sonra çıkar.</p>'}</div>
       <div class="kart"><h2>Ortaklar</h2>${(d.ortaklar || []).map(o => `<div class="kv"><span>${e(o.kad)}</span><b>%${fmt(o.pay, 2)}</b></div>`).join("")}
         <p class="pz-not">Pay satışı, kâr payı tercihi ve halka arz "Şirketlerim" ekranındadır.</p>
         <button class="btn ikinci" onclick="ekranAc(sirketYonetimEkrani)">Şirketlerim</button></div>`, { geri: true });
@@ -180,7 +180,7 @@ async function pazarDetayEkrani(id){
 }
 function pazarAyarKart(d){
   const enerji = d.sektor === "enerji";
-  return `<div class="kart"><h2>Kararların</h2><p class="alt">Değişiklik bir sonraki haftalık hesaba işler. Aşağıdaki tahmin rakiplerin bugünkü ayarlarına göredir.${(PZ.danisman || {}).otopilot ? " Otopilot açıkken fiyat ve kaliteyi her hafta otopilot belirler." : ""}</p>
+  return `<div class="kart"><h2>Kararların</h2><p class="alt">Değişiklik bir sonraki günlük hesaba işler. Aşağıdaki tahmin rakiplerin bugünkü ayarlarına göredir.${(PZ.danisman || {}).otopilot ? " Otopilot açıkken fiyat ve kaliteyi her hafta otopilot belirler." : ""}</p>
     <div class="alan"><label>Fiyat politikası</label><div class="pz-secim" id="pzFiyat">${[1, 2, 3].map(f => `<button data-v="${f}" onclick="pazarSec('fiyat',${f})">${PZ_FIYAT[f]}<small id="pzF${f}"></small></button>`).join("")}</div></div>
     <div class="alan"><label>Kalite bütçesi</label><div class="pz-secim" id="pzKalite" style="--n:4">${[0, 1, 2, 3].map(k => `<button data-v="${k}" onclick="pazarSec('kalite',${k})">${PZ_KALITE[k]}<small id="pzK${k}"></small></button>`).join("")}</div></div>
     ${enerji ? `<div class="alan"><label>Enerji kaynağı</label><div class="pz-secim" id="pzKaynak">${Object.keys(PZ_KAYNAK).map(k => `<button data-v="${k}" onclick="pazarSec('kaynak','${k}')">${PZ_KAYNAK[k]}<small id="pzY${k}"></small></button>`).join("")}</div>
