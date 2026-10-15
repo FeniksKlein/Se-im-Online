@@ -11,7 +11,7 @@ const E= s=>typeof e==="function"?e(String(s??"")):String(s??"").replace(/[&<>"'
 const TL=n=>Math.round(Number(n)||0).toLocaleString("tr-TR")+" ₺";
 const DT=x=>x?new Date(x).toLocaleString("tr-TR",{dateStyle:"short",timeStyle:"short"}):"—";
 const NAME={uc_bugday:"🌾 Buğday",uc_sebze:"🥬 Sebze",uc_sut:"🥛 Süt",uc_et:"🥩 Et"};
-let tab="tarim",cache=null,busy=false;
+let tab="tarim",cache=null,busy=false,medyaOdak=0;
 const btn=(label,act,alt=false)=>'<button class="btn '+(alt?'ikinci':'altin')+'" onclick="'+act+'">'+E(label)+'</button>';
 const card=(head,desc,actions="")=>'<div class="kart" style="margin-bottom:10px;padding:15px"><h3 style="margin-bottom:7px">'+E(head)+'</h3><p class="alt">'+desc+'</p>'+actions+'</div>';
 const opts=arr=>arr.map(x=>'<option value="'+E(x[0])+'">'+E(x[1])+'</option>').join("");
@@ -37,14 +37,14 @@ const farmCo=()=>cache?.sirketler||[];
 const pressCo=()=>cache?.yayinevleri||[];
 const eventCo=()=>cache?.sirketler||[];
 async function open(which){
- tab=["tarim","kitap","etkinlik"].includes(which)?which:"tarim";
+ tab=["tarim","kitap","etkinlik","medya"].includes(which)?which:"tarim";
  yukleniyor("Yeni ekonomi");
  try{
-  cache=await API.rpc({tarim:"uc_tarim_panel",kitap:"uc_kitap_panel",etkinlik:"uc_etkinlik_panel"}[tab]);
-  const tabs=[["tarim","🌾 Tarım ve çiftlik"],["kitap","📚 Kitap ve yayınevi"],["etkinlik","🎟️ Etkinlikler"]];
+  cache=await API.rpc({tarim:"uc_tarim_panel",kitap:"uc_kitap_panel",etkinlik:"uc_etkinlik_panel",medya:"uc_medya_panel"}[tab]);
+  const tabs=[["tarim","🌾 Tarım ve çiftlik"],["kitap","📚 Kitap ve yayınevi"],["etkinlik","🎟️ Etkinlikler"],["medya","🏢 Medya ve yayınevleri"]];
   const head='<section class="sahne"><div class="ne">İŞ DÜNYASI · YENİ FAALİYETLER</div><h2 style="font-size:25px;margin:9px 0">Üret, yayımla, organize et</h2><p class="alt">Her işlem mevcut şirketin ve oyuncunun gerçek oyun bakiyesine bağlıdır. Satışlar ve giderler kalıcıdır.</p></section>'+
    '<div class="segment" style="overflow-x:auto;margin:14px 0">'+tabs.map(x=>'<button class="'+(tab===x[0]?'aktif':'')+'" onclick="ucEkonomiEkrani(\''+x[0]+'\')">'+x[1]+'</button>').join("")+'</div>';
-  const body=tab==="tarim"?renderFarm():tab==="kitap"?renderBooks():renderEvents();
+  const body=tab==="tarim"?renderFarm():tab==="kitap"?renderBooks():tab==="medya"?renderMedia():renderEvents();
   iskelet("Yeni Ekonomi",head+body);
  }catch(err){iskelet("Yeni Ekonomi",card("Bağlantı hatası",E(err.message||String(err)),btn("Tekrar dene","ucEkonomiEkrani('"+tab+"')")));toast(err.message||String(err),true);}
 }
@@ -175,7 +175,8 @@ window.ucBookModal=bookDialog;window.ucBookDo=bookAct;
 function renderBooks(){
  let out=card("📚 Kitap yaz, yayımla, telif kazan","Kitabına satış fiyatını <b>yazar olarak sen belirlersin</b>. Yayınevi yöneticisi onaylar ve baskı giderini karşılar. Yayımlanan kitabı diğer oyuncular oyun parasıyla satın alır; kitap, satın alanın kitaplığında kalır. Ayrıca sanal okur satışı yapılır. Yazar her satıştan <b>%15 telif</b> alır.",
  btn("✍️ Kitap yaz ve gönder","ucBookModal('teklif',0)")+
- btn("🏢 Medya şirketi kur","ekranAc(sirketYonetimEkrani)",true));
+ btn("🏢 Yayınevlerini ve kitaplarını gör","ucEkonomiEkrani(\'medya\')",true)+
+ btn("🏗️ Medya şirketi kur","ekranAc(sirketYonetimEkrani)",true));
  const manages=cache?.benim_yayinevleri||[];
  for(const k of cache?.kitaplar||[]){
    const own=manages.some(id=>Number(id)===Number(k.yayinevi));
@@ -186,6 +187,7 @@ function renderBooks(){
    if(k.durum==="yayinda")acts+=(k.icerik?btn("📖 Oku","ucBookModal('oku',"+k.id+")",true):"")+
       (!k.aldim&&!k.yazar_benim&&k.stok>0?btn("📕 "+TL(k.fiyat)+" · Satın al","ucBookModal('satinal',"+k.id+")"):"")+
       (k.aldim?note("✅ Kitaplığında · İstediğin zaman okuyabilirsin."):(!k.yazar_benim&&k.stok<=0?note("Stok tükendi; yayınevi yeni baskı yaptığında satın alabilirsin."):"")); 
+   acts+=btn("🏢 Yayınevi sayfası","ucMedyaAc("+k.yayinevi+")",true);
    if(k.yazar_benim && (k.durum==="teklif"||k.durum==="yayinda"))acts+=btn("💰 Fiyatı belirle / değiştir","ucBookModal('fiyat',"+k.id+")",true);
    if(own&&k.durum==="teklif")acts+=btn("Yayımla","ucBookModal('yayinla',"+k.id+")")+btn("Reddet","ucBookDo('reddet',"+k.id+")",true)+btn("Metni incele","ucBookModal('oku',"+k.id+")",true);
    if(own&&k.durum==="yayinda")acts+=btn("Yeni baskı","ucBookModal('yenibaski',"+k.id+")");
@@ -194,6 +196,89 @@ function renderBooks(){
  if(!(cache?.kitaplar||[]).length)out+=card("Henüz kitap yok","İlk eserini yayınevine gönderebilirsin.");
  return out;
 }
+
+/* Medya ve yayınevleri: herkese açık şirketler, yayımlanmış kitaplar ve destek. */
+function renderMedia(){
+ const entries=cache?.sirketler||[];
+ let out=card("🏢 Medya şirketleri ve yayınevleri",
+ "Millet TV gibi medya şirketlerini ve reklam ajanslarını incele. Yayımlanmış kitapların fiyat ve stok durumunu gör, oyun parasıyla satın al veya şirkete destek ol. <b>Kitapların tam metni burada gösterilmez.</b>",
+ btn("📚 Kitaplığıma git","ucEkonomiEkrani('kitap')",true));
+ out+='<div class="alan" style="margin:12px 0"><label>🔎 Şirket veya sahip ara</label><input id="ucMedyaAra" type="search" placeholder="Örn. Millet TV" oninput="ucMedyaFiltrele(this.value)" style="width:100%"></div>';
+ if(!entries.length)return out+card("Henüz medya şirketi yok","Oyuncular şirket kurma bölümünden medya şirketi açabilir.");
+ for(const s of entries){
+   const publications=Array.isArray(s.kitaplar)?s.kitaplar:[];
+   const media=s.sektor==="medya";
+   let books='<div class="alt" style="margin:12px 0 7px;font-weight:700">📕 Yayımlanan kitaplar</div>';
+   if(!media)books=note("Bu şirket reklam ajansıdır. Kitap yayımlama medya şirketleri üzerinden yapılır.");
+   else if(!publications.length)books+=note("Bu yayınevinin henüz satışa sunulmuş kitabı yok. Bekleyen teklifler yayımlanıncaya kadar listelenmez.");
+   else for(const k of publications){
+     const canBuy=!k.benim&&!k.aldim&&Number(k.stok)>0;
+     books+='<div style="border:1px solid var(--line2,#354364);border-radius:12px;padding:12px;margin:8px 0">'+
+       '<b>'+E(k.baslik)+'</b><div class="alt">Yazar: '+E(k.yazar||"—")+' · '+E(k.tur||"Kitap")+'</div>'+
+       '<p class="alt" style="white-space:pre-line">'+E(k.ozet||"")+'</p>'+
+       '<div class="alt">Fiyat: <b>'+TL(k.fiyat)+'</b> · Stok: '+Number(k.stok)+' · Satılan: '+Number(k.satilan)+'</div>'+
+       (canBuy?btn("📕 Satın al · "+TL(k.fiyat),"ucMedyaKitapAl("+k.id+")"):
+         (k.aldim?note("✅ Kitaplığında · Tam metni Kitap bölümünde okuyabilirsin."):
+          k.benim?note("✍️ Bu kitabın yazarı sensin."):note("Şu anda stok yok.")))+
+       '</div>';
+   }
+   const key=E((s.ad+" "+(s.sahip||"")).toLocaleLowerCase("tr-TR"));
+   out+='<div class="kart uc-medya-kart" data-arama="'+key+'" data-medya="'+Number(s.id)+'" style="margin-bottom:12px;padding:14px">'+
+     '<details'+(Number(medyaOdak)===Number(s.id)?' open':'')+'>'+
+     '<summary style="cursor:pointer;list-style:none;display:flex;gap:10px;justify-content:space-between;align-items:center">'+
+       '<span style="font-weight:800;font-size:19px">'+(media?'📺 ':'📢 ')+E(s.ad)+'</span>'+
+       '<span class="alt">'+(media?'Medya / Yayınevi':'Reklam ajansı')+' · ›</span>'+
+     '</summary>'+
+     '<p class="alt" style="margin-top:10px">Yönetici: <b>'+E(s.sahip||"—")+'</b> · '+(media?'Yayımlanan kitap: '+publications.length:'Ajans hizmetleri')+'</p>'+
+     '<p class="alt">Toplam oyuncu desteği: <b>'+TL(s.destek_toplam)+'</b> · '+Number(s.destek_sayisi)+' işlem</p>'+
+     books+
+     btn("💝 Bu şirkete bağış yap","ucMedyaBagis("+s.id+")")+
+     '</details></div>';
+ }
+ return out;
+}
+window.ucMedyaFiltrele=function(q){
+ const txt=String(q||"").trim().toLocaleLowerCase("tr-TR");
+ document.querySelectorAll(".uc-medya-kart").forEach(el=>{
+  el.style.display=el.dataset.arama.includes(txt)?"":"none";
+ });
+};
+window.ucMedyaAc=async function(id){
+ medyaOdak=Number(id);
+ await open("medya");
+ try{document.querySelector('.uc-medya-kart[data-medya="'+medyaOdak+'"]')?.scrollIntoView({block:"nearest"});}catch(_){}
+};
+window.ucMedyaBagis=function(id){
+ const s=(cache?.sirketler||[]).find(x=>Number(x.id)===Number(id));
+ if(!s)return toast("Şirketi yeniden açıp dene.",true);
+ medyaOdak=Number(id);
+ return dialog("💝 "+s.ad+" şirketine destek ol",
+   note("Bağış cüzdanından alınır ve doğrudan şirket kasasına eklenir. Bir satış veya kâr işlemi değildir.")+
+   field("ucMedyaTutar","Bağış miktarı (100–1.000.000 ₺)",1000,"number",100,1000000)+
+   note("Aynı şirkete 24 saatte en fazla 10 işlem ve toplam 5 milyon ₺ destek gönderilebilir."),
+   "Bağışı gönder",async el=>{
+     const amount=Number(val(el,"ucMedyaTutar"));
+     if(!Number.isInteger(amount)||amount<100||amount>1000000){
+       toast("100 ile 1.000.000 ₺ arasında tam sayı gir.",true);return false;
+     }
+     if(typeof onayla==="function"&&!await onayla("Şirkete bağış onayı",
+       s.ad+" şirketine "+TL(amount)+" göndermek istiyor musun?","Gönder"))return false;
+     await command("uc_medya_bagis",{p_sirket:Number(id),p_tutar:amount});
+   });
+};
+window.ucMedyaKitapAl=async function(id){
+ const k=(cache?.sirketler||[]).flatMap(x=>x.kitaplar||[]).find(x=>Number(x.id)===Number(id));
+ if(!k||k.aldim||k.benim||Number(k.stok)<=0)return toast("Kitap satın almaya uygun değil.",true);
+ if(typeof onayla==="function"&&!await onayla("Kitap satın al",
+   k.baslik+" kitabı için "+TL(k.fiyat)+" cüzdanından düşecek.","Satın al"))return;
+ try{
+   await command("uc_kitap_islem",{p_islem:"satinal",p_id:Number(id),p_veri:{}});
+   toast("Kitap satın alındı! Kitaplığımdan okuyabilirsin.");
+   if(typeof durumYenile==="function")durumYenile().catch(()=>{});
+   await open("medya");
+ }catch(err){toast(err.message||String(err),true);}
+};
+
 function eventDialog(mode,id){
  if(mode==="kur"){
   const companies=eventCo().filter(s=>["medya","ajans"].includes(s.sektor));
