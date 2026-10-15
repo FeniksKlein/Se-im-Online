@@ -1,7 +1,7 @@
 /* Urun bazli uretim, toptan ticaret, NPC magaza satislari ve franchise. */
 (function(){
 "use strict";
-const TC={sekme:"uretim",veri:null};
+const TC={sekme:"uretim",veri:null,otoVeri:null};
 const tm=x=>typeof e==="function"?e(String(x??"")):String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&#39;","'":"&#39;"}[c]));
 const money=x=>typeof tlYaz==="function"?tlYaz(Math.round(Number(x)||0)):Math.round(Number(x)||0).toLocaleString("tr-TR")+" TL";
 const date=x=>x?new Date(x).toLocaleString("tr-TR",{dateStyle:"short",timeStyle:"short"}):"—";
@@ -303,6 +303,119 @@ function automation(id){
  m.querySelector("#tcItem").onchange=update;update();
 }
 function offAuto(sirket,urun){action("oto",{sirket,urun,aktif:false},"Otomatik tedarik kapatıldı.");}
+
+/* Opt-in automation: factory production, own-factory supply and NPC sales switch. */
+async function tcAutoAction(kind,data,label){
+ try{
+  await API.rpc("eko_otomasyon_ayarla",{p_eylem:kind,p_veri:data});
+  if(typeof modalKapat==="function")modalKapat();
+  toast(label||"Otomasyon ayarı kaydedildi.");
+  await ticaretMerkezEkrani();
+ }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message),true);}
+}
+function tcAutoProduction(id,preferred){
+ const s=mine(id);
+ if(!s||s.tur!=="fabrika"||!s.yonetici){toast("Fabrika yönetim yetkin yok.",true);return;}
+ const products=(TC.veri?.urunler||[]).filter(x=>x.grup===s.grup);
+ if(!products.length){toast("Bu fabrikanın ürün kataloğu boş.",true);return;}
+ const current=()=> (TC.otoVeri?.uretim||[]).find(x=>Number(x.sirket)===Number(id)&&x.urun===sel(m,"tcApItem"));
+ const m=popup(s.ad+" · Otomatik üretim",
+  '<p class="alt">Ücretsiz otomasyon ayarı. Fabrika stoğu belirlenen eşiğe düşünce, başka üretim emri yoksa, kasadan gerçek maliyeti ödeyerek yeni üretim başlar. Günlük bütçe sınırı ve üretim süresi geçerlidir.</p>'+
+  choices("tcApItem","Ürün",products.map(x=>[x.kod,x.ad]))+
+  field("tcApMin","Üretim başlatma stok eşiği",50,0,5000)+
+  field("tcApQty","Üretim partisi (adet)",20,1,500)+
+  field("tcApBudget","Günlük azami üretim harcaması (TL)",5000,100,100000000)+
+  '<p id="tcApInfo" class="tc-hint"></p>',
+  "Otomatik üretimi aç / güncelle",async root=>{
+   const p=item(sel(root,"tcApItem")),min=Number(sel(root,"tcApMin"));
+   const qty=Number(sel(root,"tcApQty")),budget=Number(sel(root,"tcApBudget"));
+   if(!p||!Number.isInteger(min)||min<0||min>5000||
+    !Number.isInteger(qty)||qty<1||qty>Math.min(500,tcBatchCapacity(s,p))||
+    !Number.isFinite(budget)||budget<Math.max(100,Math.round(p.maliyet*qty))){
+    toast("Stok, parti veya günlük bütçe geçersiz. Üretim maliyetini karşılayacak bütçe belirle.",true);return;
+   }
+   await tcAutoAction("uretim",{sirket:id,urun:p.kod,esik:min,adet:qty,butce:budget,aktif:true},
+    "Fabrikanda otomatik üretim etkinleştirildi.");
+  });
+ if(preferred&&products.some(p=>p.kod===preferred))m.querySelector("#tcApItem").value=preferred;
+ const update=()=>{
+  const p=item(sel(m,"tcApItem"));if(!p)return;
+  const a=current(),max=Math.min(500,tcBatchCapacity(s,p));
+  m.querySelector("#tcApMin").value=a?.esik??50;
+  m.querySelector("#tcApQty").value=Math.min(max,a?.miktar??Math.min(100,max));
+  m.querySelector("#tcApQty").max=max;
+  m.querySelector("#tcApBudget").value=a?.gunluk_butce??Math.max(100,Math.round(p.maliyet*max*3));
+  m.querySelector("#tcApInfo").textContent="Parti sınırı "+max+" adet · Süre "+p.dakika+
+   " dk · Birim üretim maliyeti "+money(p.maliyet)+
+   (a?.aktif?" · Otomatik üretim AÇIK":" · Otomatik üretim KAPALI")+
+   (a?.son_hata?" · Son uyarı: "+a.son_hata:"");
+ };
+ m.querySelector("#tcApItem").onchange=update;update();
+}
+function tcOwnSupply(id){
+ const s=mine(id),factories=own("fabrika");
+ if(!s||s.tur!=="magaza"||!s.yonetici){toast("Market yönetim yetkin yok.",true);return;}
+ if(!factories.length){toast("Önce yönettiğin bir fabrika kur veya şirketini üretime bağla.",true);return;}
+ const valid=f=> (TC.veri?.urunler||[]).filter(x=>x.grup===f.grup);
+ const eligible=factories.filter(f=>valid(f).length);
+ if(!eligible.length){toast("Fabrikalarında tedarik edilebilen ürün bulunamadı.",true);return;}
+ const m=popup(s.ad+" · Kendi fabrikamdan otomatik al",
+  '<p class="alt">Market stoğu eşiğe düşünce seçtiğin fabrikanın tamamlanmış üretiminden ürün alınır. Gerçek toptan bedel market kasasından fabrika kasasına aktarılır; üretim ve vergi kayıtları korunur. Hazır ürün, uygun fiyat veya bakiye yoksa bekler. Otomasyon için ayrıca abonelik ücreti yoktur.</p>'+
+  choices("tcOsFactory","Fabrikan",eligible.map(x=>[x.id,x.ad+" · "+x.grup]))+
+  choices("tcOsItem","Ürün",valid(eligible[0]).map(x=>[x.kod,x.ad]))+
+  field("tcOsMin","Market yenileme stok eşiği",30,0,5000)+
+  field("tcOsQty","Toptan alınacak adet",50,1,500)+
+  field("tcOsMax","Azami toptan birim fiyat (TL)",200,1,100000000)+
+  '<p id="tcOsInfo" class="tc-hint"></p>',
+  "Kendi fabrikamdan otomatik al",async root=>{
+   const f=Number(sel(root,"tcOsFactory")),p=item(sel(root,"tcOsItem"));
+   const min=Number(sel(root,"tcOsMin")),qty=Number(sel(root,"tcOsQty"));
+   const max=Number(sel(root,"tcOsMax"));
+   if(!eligible.some(x=>Number(x.id)===f)||!p||
+      !Number.isInteger(min)||min<0||min>5000||
+      !Number.isInteger(qty)||qty<1||qty>500||
+      !Number.isFinite(max)||max<p.maliyet||max>p.satis*3){
+      toast("Fabrika, ürün, stok veya fiyat sınırı geçersiz.",true);return;
+   }
+   await tcAutoAction("kendi",{sirket:id,fabrika:f,urun:p.kod,esik:min,adet:qty,ust:max,aktif:true},
+    "Fabrikan ile marketin arasında otomatik tedarik açıldı.");
+  });
+ const update=()=>{
+  const f=eligible.find(x=>Number(x.id)===Number(sel(m,"tcOsFactory")));
+  if(!f)return;
+  const p=item(sel(m,"tcOsItem"));
+  if(!p)return;
+  const a=(TC.otoVeri?.kendi||[]).find(x=>Number(x.magaza)===Number(id)&&Number(x.fabrika)===Number(f.id)&&x.urun===p.kod);
+  const stock=(TC.veri?.stok||[]).find(x=>Number(x.sirket)===Number(f.id)&&x.urun===p.kod);
+  m.querySelector("#tcOsMin").value=a?.esik??30;
+  m.querySelector("#tcOsQty").value=a?.miktar??50;
+  m.querySelector("#tcOsMax").value=a?.ust??Math.max(p.maliyet,Math.min(p.satis*3,Number(stock?.fiyat)||p.satis*.9));
+  m.querySelector("#tcOsInfo").textContent="Fabrikada hazır stok: "+Number(stock?.adet||0)+
+   " adet · Toptan fiyat: "+(stock?money(stock.fiyat):"Henüz stok yok")+
+   (a?.aktif?" · Otomatik alım AÇIK":" · Otomatik alım KAPALI")+
+   (a?.son_hata?" · Son uyarı: "+a.son_hata:"");
+ };
+ const changeFactory=()=>{
+  const f=eligible.find(x=>Number(x.id)===Number(sel(m,"tcOsFactory")));
+  const list=valid(f||eligible[0]);
+  m.querySelector("#tcOsItem").innerHTML=list.map(x=>'<option value="'+tm(x.kod)+'">'+tm(x.ad)+'</option>').join("");
+  update();
+ };
+ m.querySelector("#tcOsFactory").onchange=changeFactory;
+ m.querySelector("#tcOsItem").onchange=update;
+ update();
+}
+function tcDisableProduction(sirket,urun){
+ tcAutoAction("uretim",{sirket,urun,aktif:false},"Otomatik üretim kapatıldı.");
+}
+function tcDisableOwn(magaza,fabrika,urun){
+ tcAutoAction("kendi",{sirket:magaza,fabrika,urun,aktif:false},"Kendi fabrikandan otomatik tedarik kapatıldı.");
+}
+function tcToggleSales(id,active){
+ tcAutoAction("satis",{sirket:id,aktif:!!active},active?
+  "Market için sanal müşteri satışı açıldı.":"Market için sanal müşteri satışı durduruldu.");
+}
+
 function storeType(id){
  const s=mine(id);
  popup("Mağaza faaliyet türü",'<p class="alt">Fast food, kahve ve market mağazaları farklı müşteri kitlelerine hizmet verir. Ürünlerin stokta olması yine zorunludur.</p>'+
@@ -365,7 +478,16 @@ function panel(){
    html+=card("🏭 "+s.ad,"Faaliyet: "+tm(s.grup)+" · Kasa "+money(s.kasa)+
    " · Stokta "+st.reduce((n,x)=>n+Number(x.adet),0)+" ürün"+
    '<p class="tc-hint">'+tm(tcCapacityDescription(s))+"</p>",
-   button("Üretim emri ver","tcProduce("+s.id+")"));
+   button("Üretim emri ver","tcProduce("+s.id+")")+
+   secondary("⚙️ Otomatik üretim ayarla","tcAutoProduction("+s.id+")"));
+   for(const a of (TC.otoVeri?.uretim||[]).filter(a=>Number(a.sirket)===Number(s.id)&&a.aktif)){
+    const code=String(a.urun||"");if(!/^[a-z0-9_]+$/.test(code))continue;
+    html+=card("⚙️ Otomatik üretim · "+(item(code)?.ad||code),
+      "Eşik "+a.esik+" adet · Parti "+a.miktar+" adet · Günlük bütçe "+money(a.gunluk_butce)+
+      (a.son_islem?" · Son üretim "+date(a.son_islem):"")+
+      (a.son_hata?" · Uyarı: "+tm(a.son_hata):""),
+      secondary("Otomatik üretimi durdur","tcDisableProduction("+s.id+",'"+code+"')"));
+   }
    for(const x of st)html+=card((item(x.urun)?.ad||x.urun)+" · "+x.adet+" adet",
    "Birim stok maliyeti "+money(x.maliyet)+" · Toptan satış "+money(x.fiyat),
    secondary("Toptan fiyatı belirle","tcPrice("+s.id+",'"+x.urun+"',"+Number(x.fiyat)+")"));
@@ -409,7 +531,12 @@ function panel(){
     (homeCook?button("Kendi ürünümü hazırla","tcKitchen("+s.id+")"):
       button("Fabrikadan ürün satın al","tcWholesale("+s.id+")"))+
     secondary("İşletme türü","tcType("+s.id+")")+
-    (homeCook?"":secondary("Otomatik stok tedariki","tcAutomation("+s.id+")")));
+    secondary("🏭 Kendi fabrikamdan otomatik al","tcOwnSupply("+s.id+")")+
+    secondary("⚙️ Dış üreticiden otomatik al","tcAutomation("+s.id+")")+
+    secondary((TC.otoVeri?.satis||[]).find(x=>Number(x.sirket)===Number(s.id))?.aktif===false?
+      "▶️ Otomatik satışı aç":"⏸️ Otomatik satışı durdur",
+     "tcToggleSales("+s.id+","+
+      ((TC.otoVeri?.satis||[]).find(x=>Number(x.sirket)===Number(s.id))?.aktif===false?"true":"false")+")"));
    for(const q of pending)html+=card("Hazırlanıyor · "+(item(q.urun)?.ad||q.urun),
     "Ürün: "+q.adet+" adet · Bitiş saati: "+date(q.hazir));
    for(const x of st){
@@ -418,6 +545,16 @@ function panel(){
     html+=card((item(code)?.ad||code)+" · "+x.adet+" adet",
      "Ürün maliyeti "+money(x.maliyet)+" · Raf satış fiyatı "+money(x.fiyat),
      secondary("Raf fiyatını değiştir","tcPrice("+s.id+",'"+code+"',"+Number(x.fiyat)+")"));
+   }
+   for(const a of (TC.otoVeri?.kendi||[]).filter(a=>Number(a.magaza)===Number(s.id)&&a.aktif)){
+    const code=String(a.urun||"");if(!/^[a-z0-9_]+$/.test(code))continue;
+    const fac=mine(a.fabrika);
+    html+=card("🏭 Kendi fabrikamdan · "+(item(code)?.ad||code),
+      "Fabrika: "+tm(fac?.ad||String(a.fabrika))+" · Yenileme eşiği "+
+      a.esik+" · Alınacak "+a.miktar+" adet"+
+      (a.son_islem?" · Son alım "+date(a.son_islem):"")+
+      (a.son_hata?" · Uyarı: "+tm(a.son_hata):""),
+      secondary("Kendi fabrikamdan alımı kapat","tcDisableOwn("+s.id+","+Number(a.fabrika)+",'"+code+"')"));
    }
    for(const x of (d.oto||[]).filter(x=>Number(x.sirket)===Number(s.id)&&x.aktif))
     html+=card("Otomatik tedarik · "+(item(x.urun)?.ad||x.urun),
@@ -473,7 +610,7 @@ async function ticaretMerkezEkrani(tab){
  if(tab&&["uretim","magaza","zincir","rapor"].includes(tab))TC.sekme=tab;
  yukleniyor("Üretim ve Ticaret");
  try{
-  TC.veri=await API.rpc("eko_ticaret_panel");
+  [TC.veri,TC.otoVeri]=await Promise.all([API.rpc("eko_ticaret_panel"),API.rpc("eko_otomasyon_panel").catch(()=>({uretim:[],kendi:[],satis:[]}))]);
   const tabs=[["uretim","🏭 Üretim"],["magaza","🛍️ Mağazalar"],["zincir","🏷️ Zincirler"],["rapor","📊 Kâr / Zarar"]];
   const html='<style>.tc-hero{padding:18px;border-radius:18px;background:linear-gradient(120deg,#293963,#46346c);color:#fff}.tc-hero h2{font-size:26px;color:#fff;margin:0 0 6px}.tc-hero p{font-size:13px;color:#d4dbf2}.tc-tabs{display:flex;gap:7px;overflow-x:auto;padding:10px 0;margin-bottom:8px}.tc-tabs button{white-space:nowrap;flex:0 0 auto;padding:10px 13px;border-radius:12px;border:1px solid var(--line2);background:var(--panel);color:var(--txt)}.tc-tabs button.tc-selected{border-color:#a995ff;background:#383063}.tc-card{margin-bottom:10px}.tc-card h3{margin:0 0 8px}.tc-card .btn{margin-top:6px;margin-right:5px}.tc-hint{padding:12px;margin:12px 0;background:var(--panel2);border-radius:12px;color:var(--txt)}</style>'+
    '<section class="tc-hero"><h2>🏭 Üretim ve Ticaret</h2><p>Üret · Tedarik et · Sanal müşterilere sat · Franchise zinciri kur</p></section>'+
@@ -485,6 +622,9 @@ async function ticaretMerkezEkrani(tab){
 window.ticaretMerkezEkrani=ticaretMerkezEkrani;
 window.tcConvert=convert;window.tcProduce=produce;window.tcPrice=price;window.tcWholesale=wholesale;
 window.tcAutomation=automation;window.tcDisable=offAuto;window.tcType=storeType;
+window.tcAutoProduction=tcAutoProduction;window.tcOwnSupply=tcOwnSupply;
+window.tcDisableProduction=tcDisableProduction;window.tcDisableOwn=tcDisableOwn;
+window.tcToggleSales=tcToggleSales;
 window.tcBrand=brandSettings;window.tcBuyBrand=franchiseBuy;
 window.tcFactoryPermit=factoryWithPermit;
 window.tcMarketPermit=marketWithPermit;
