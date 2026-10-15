@@ -82,8 +82,7 @@ begin
         ))
     )
     else null end;
-end $function$
-
+end $function$;
 
 -- Güncel fonksiyon: unvan
 CREATE OR REPLACE FUNCTION oyun.unvan(u uuid)
@@ -103,8 +102,7 @@ AS $function$
     (select i.ad||' Belediye Başkanı' from oyun.makamlar m join oyun.iller i on i.id=m.il_id where m.user_id=u and m.tur='bel' and m.bit is null limit 1),
     oyun.gby_unvan(u)
   )
-$function$
-
+$function$;
 
 -- Güncel fonksiyon: dava_heyeti
 CREATE OR REPLACE FUNCTION oyun.dava_heyeti(d oyun.adliye_davalar)
@@ -115,8 +113,7 @@ CREATE OR REPLACE FUNCTION oyun.dava_heyeti(d oyun.adliye_davalar)
 AS $function$
   select coalesce(array_agg(user_id order by sira), '{}') from oyun.mahkeme_uye
    where user_id is not null and user_id is distinct from d.davaci and user_id is distinct from d.davali and not exists (select 1 from oyun.adliye_ek_taraf et where et.dava_id=d.id and et.user_id=oyun.mahkeme_uye.user_id)
-$function$
-
+$function$;
 
 -- Güncel fonksiyon: adliye_oy_say
 CREATE OR REPLACE FUNCTION oyun.adliye_oy_say(p_dava bigint, t timestamp with time zone)
@@ -146,8 +143,7 @@ begin
      d.id, coalesce((select kisa from oyun.partiler where id = d.davaci_parti), oyun.kad(d.davaci)),
      coalesce(oyun.kad(d.davali), (select kisa from oyun.partiler where id = d.davali_parti)), r.karar, r.n, cardinality(heyet)), array['adliye'], t);
   return true;
-end $function$
-
+end $function$;
 
 -- Güncel fonksiyon: adliye_kesinlestir
 CREATE OR REPLACE FUNCTION oyun.adliye_kesinlestir(p_dava bigint, t timestamp with time zone)
@@ -195,8 +191,7 @@ begin
    where id = d.id;
   perform oyun.bildir(x.id, format('Adliye #%s kararı kesinleşti: %s.', d.id, d.karar), t)
     from (select d.davaci id union select d.davali where d.davali is not null) x;
-end $function$
-
+end $function$;
 
 -- Güncel fonksiyon: adliye_istinaf_sonuc
 CREATE OR REPLACE FUNCTION oyun.adliye_istinaf_sonuc(p_dava bigint, t timestamp with time zone)
@@ -224,8 +219,7 @@ begin
     perform oyun.olay('adliye', format('İstinaf jürisi Adliye #%s kararını onayladı (%s onay / %s boz).', p_dava, onay, boz), null, null, t);
   end if;
   perform oyun.adliye_kesinlestir(p_dava, t);
-end $function$
-
+end $function$;
 
 -- Güncel fonksiyon: sohbet_ozet
 CREATE OR REPLACE FUNCTION public.sohbet_ozet()
@@ -266,8 +260,7 @@ begin
   return jsonb_build_object('kanallar', liste,
     'cevrimici', (select count(*) from oyun.profiller where not yasakli and son_gorulme > t - interval '5 minutes'),
     'toplam_okunmamis', (select coalesce(sum((x ->> 'okunmamis')::int), 0) from jsonb_array_elements(liste) x));
-end $function$
-
+end $function$;
 
 -- Güncel fonksiyon: adliye_beyan_ver
 CREATE OR REPLACE FUNCTION public.adliye_beyan_ver(p_dava bigint, p_metin text)
@@ -297,8 +290,7 @@ begin
  insert into oyun.adliye_beyan(dava_id,yazar,rol,metin,zaman) values(d.id,p.id,rol,trim(p_metin),t);
  if rol in ('davali','sozcu') then update oyun.adliye_davalar set savunma_geldi=true where id=d.id; end if;
  return jsonb_build_object('tamam',true);
-end $function$
-
+end $function$;
 
 -- Güncel fonksiyon: adliye_detay
 CREATE OR REPLACE FUNCTION public.adliye_detay(p_dava bigint)
@@ -318,8 +310,7 @@ begin
  'yorumlar',coalesce((select jsonb_agg(jsonb_build_object('id',y.id,'yazar',oyun.kad(y.yazar),'metin',y.metin,'zaman',y.zaman) order by y.id)
  from (select * from oyun.adliye_yorum where dava_id=p_dava order by id desc limit 80) y),'[]'::jsonb)
  );
-end $function$
-
+end $function$;
 
 -- Güncel fonksiyon: adliye_durum
 CREATE OR REPLACE FUNCTION public.adliye_durum()
@@ -358,8 +349,7 @@ begin
  'atamalar',coalesce((select jsonb_agg(jsonb_build_object('yapan',oyun.kad(a.yapan),'eski',oyun.kad(a.eski),'yeni',oyun.kad(a.yeni),'gerekce',a.gerekce,'zaman',a.zaman) order by a.id desc)
  from (select * from oyun.adliye_atama_kayit order by id desc limit 15) a),'[]'::jsonb)
  );
-end $function$
-
+end $function$;
 
 -- Güncel fonksiyon: adliye_oy_ver
 CREATE OR REPLACE FUNCTION public.adliye_oy_ver(p_dava bigint, p_karar text, p_gerekce text)
@@ -386,8 +376,7 @@ begin
   on conflict (dava_id, uye) do update set karar = excluded.karar, tazminat_tutar = null, gerekce = excluded.gerekce, zaman = excluded.zaman;
   karar_cikti := oyun.adliye_oy_say(d.id, t);
   return jsonb_build_object('tamam', true, 'karar_cikti', karar_cikti);
-end $function$
-
+end $function$;
 
 -- Güncel fonksiyon: adliye_dava_ek
 CREATE OR REPLACE FUNCTION public.adliye_dava_ek(p_dava bigint)
@@ -421,8 +410,7 @@ begin
     'istinaf_hakkim', d.durum = 'karar' and not d.kesin and i.dava_id is null and oyun.simdi() < d.istinaf_son and (
         (d.karar = 'beraat' and (d.davaci = p.id or exists (select 1 from oyun.partiler pa left join oyun.parti_sozcu s on s.parti_id = pa.id where pa.id = d.davaci_parti and (pa.gb = p.id or s.user_id = p.id))))
      or (d.karar not in ('beraat','dusme') and (d.davali = p.id or exists (select 1 from oyun.partiler pa left join oyun.parti_sozcu s on s.parti_id = pa.id where pa.id = d.davali_parti and (pa.gb = p.id or s.user_id = p.id))))));
-end $function$
-
+end $function$;
 
 -- Güncel fonksiyon: adliye_istinaf
 CREATE OR REPLACE FUNCTION public.adliye_istinaf(p_dava bigint, p_gerekce text)
@@ -475,9 +463,7 @@ begin
   update oyun.adliye_davalar set istinaf_son = juri_bit where id = d.id;
   perform oyun.olay('adliye', format('Adliye #%s kararı istinafa taşındı; %s kişilik jüri kurayla belirlendi.', d.id, n), null, null, t);
   return jsonb_build_object('tamam', true, 'juri', n);
-end $function$
-
-
+end $function$;
 
 -- Sadece mevcut Yüksek Mahkeme üyeleri açık davaya gerekçeli ilgili taraf ekleyebilir.
 create or replace function public.adliye_taraf_ekle(p_dava bigint,p_kad text,p_gerekce text)
