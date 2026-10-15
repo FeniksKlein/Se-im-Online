@@ -85,7 +85,7 @@
     if(!ucLoaderPromise){
       ucLoaderPromise=new Promise((resolve,reject)=>{
         const script=document.createElement("script");
-        script.src="uc_ekonomi_yeni.js?v=20261014-1";
+        script.src="uc_ekonomi_yeni.js?v=20261015-medya-1";
         script.onload=resolve;
         script.onerror=()=>reject(new Error("Yeni ekonomi ekranları yüklenemedi"));
         document.body.appendChild(script);
@@ -107,6 +107,7 @@
         satir("sirket", "Şirketlerim ve şirket kur", "Ortak olduğun şirketleri yönet, yeni şirket kur", "ekranAc(sirketYonetimEkrani)", "sirketYonetimEkrani"),
         satir("dunya", "🌾 Tarım ve hayvancılık", "Tarla, mevsim, hasat, süt, et ve market tedariki", "ucYeniAc('tarim')", "ucYeniAc"),
         satir("rehber", "📚 Kitap ve yayınevi", "Kitap yaz, yayımla, telif al, yeni baskı yap", "ucYeniAc('kitap')", "ucYeniAc"),
+        satir("ajans", "📺 Medya ve yayınevleri", "Millet TV, yayınlanan kitaplar ve bağışlar", "ucYeniAc('medya')", "ucYeniAc"),
         satir("ajans", "🎟️ Biletli organizasyonlar", "Konferans, konser, fuar, sponsor ve bilet satışı", "ucYeniAc('etkinlik')", "ucYeniAc"),
         satir("ruhsat", "Yatırım Ruhsat Merkezi", "Şirket, fabrika, mağaza, inşaat ruhsatlarına başvur; belediye onaylarını takip et", "msRuhsatMerkeziAc()", "msRuhsatMerkeziAc"),
         satir("dunya", "İş dünyası", "Üretim, mağaza, inşaat, sigorta, franchise, birleşme", "ekranAc(isDunyasiEkrani)", "isDunyasiEkrani"),
