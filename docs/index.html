@@ -7267,8 +7267,8 @@ function adlSecimItirazKararModal(id){
  };
 }
 async function adlYargicIstifa(){
- if(!ADL.hakim_miyim&&!(ADL.mahkeme&&ADL.mahkeme.uye_miyim))return;
- if(!await onayla('Yüksek Mahkeme üyeliğinden istifa','İstifanız hemen geçerli olacak; koltuğunuza yeni üye Cumhurbaşkanınca (1. üye) ya da Meclis\'çe (2.–3. üye) seçilecek.','İstifa et',true))return;
+ if(!ADL.hakim_miyim&&!(ADL.mahkeme&&ADL.mahkeme.uyeler&&ADL.mahkeme.uyeler.some(u=>u.benim&&u.sira!==3)))return;
+ if(!await onayla('Yüksek Mahkeme üyeliğinden istifa','İstifanız hemen geçerli olacak; 1. üyeyi Cumhurbaşkanı atar, 2. üyeyi Meclis seçer.','İstifa et',true))return;
  try{await API.rpc('adliye_hakim_istifa');toast('Yüksek Yargıç görevinden istifa ettiniz.');await adliyeEkrani();}
  catch(err){toast(hataCevir(err.message),true);}
 }
@@ -7569,17 +7569,17 @@ async function adlTopluOy(aday){
  catch(err){toast(hataCevir(err.message),true);}
 }
 function adlMahkemeHtml(M){
- const kaynak=u=>u.sira===1?"Mahkeme başkanı · Cumhurbaşkanı atar":u.sira+". üye · Meclis seçer";
+ const kaynak=u=>u.sira===1?"Mahkeme başkanı · Cumhurbaşkanı atar":u.sira===3?"3. üye · Adalet Bakanı (görevi gereği)":"2. üye · Meclis seçer";
  const satir=u=>{
   let h='<div class="liste-satir" style="align-items:flex-start"><div class="orta"><div class="kucuk">'+e(kaynak(u))+'</div>';
   if(u.kad){
    h+='<b>'+e(u.kad)+'</b>'+(u.benim?' <span class="rozet altin">Sensin</span>':'')
-    +'<div class="kucuk">Görev bitişi: '+adlTarih(u.gorev_bit)+'</div>';
-   if(u.azil){
+    +(u.sira===3?'<div class="kucuk">Adalet Bakanlığı görev süresince üyedir.</div>':'<div class="kucuk">Görev bitişi: '+adlTarih(u.gorev_bit)+'</div>');
+   if(u.azil&&u.sira!==3){
     h+='<div class="kart" style="margin:8px 0 0;padding:10px"><b>Görevden alma oylaması</b><p class="kucuk">'+e(u.azil.teklif_eden)+': '+e(u.azil.gerekce)+'</p>'
      +'<p class="kucuk">'+u.azil.kabul+' kabul · '+u.azil.ret+' ret · gerekli '+M.azil_gerekli+' · son '+adlTarih(u.azil.bit)+'</p>'
      +(M.vekil_miyim?'<div class="vit-dugme"><button class="btn '+(u.azil.oyum==="kabul"?"altin":"ikinci")+'" onclick="adlAzilOy('+u.azil.id+',\'kabul\')">Görevden alınsın</button><button class="btn '+(u.azil.oyum==="ret"?"altin":"ikinci")+'" onclick="adlAzilOy('+u.azil.id+',\'ret\')">Kalsın</button></div>':'')+'</div>';
-   } else if(M.vekil_miyim) h+='<button class="kucuk" style="text-decoration:underline;margin-top:4px" onclick="adlAzilModal('+u.sira+')">Görevden alma teklifi ver</button>';
+   } else if(M.vekil_miyim&&u.sira!==3) h+='<button class="kucuk" style="text-decoration:underline;margin-top:4px" onclick="adlAzilModal('+u.sira+')">Görevden alma teklifi ver</button>';
   } else {
    h+='<b style="color:var(--txt2)">Boş koltuk</b>';
    if(u.sira===1) h+='<div class="kucuk">Cumhurbaşkanının ataması bekleniyor.</div>';
@@ -7593,10 +7593,10 @@ function adlMahkemeHtml(M){
   }
   return h+'</div></div>';
  };
- return '<div class="kart"><h3>Yüksek Mahkeme</h3><p class="alt">3 üye · oy çokluğuyla karar · yargıçlar partisiz · görev süresi '+e(M.ayar.gorev_gun)+' gün · görevden alma yalnız Meclis 3/5</p>'
+ return '<div class="kart"><h3>Yüksek Mahkeme</h3><p class="alt">3 üye · 1. üyeyi Cumhurbaşkanı atar · 2. üyeyi Meclis seçer · 3. üye görevdeki Adalet Bakanıdır. İlk iki yargıç partisiz ve '+e(M.ayar.gorev_gun)+' gün süreyle görevdedir.</p>'
   +M.uyeler.map(satir).join('')
   +(M.cb_miyim&&!M.uyeler[0].kad?'<button class="btn altin" onclick="adlHakimModal()">Mahkeme başkanı ata</button>':'')
-  +(M.uye_miyim?'<button class="btn tehlike" onclick="adlYargicIstifa()">Yüksek Mahkeme üyeliğinden istifa et</button>':'')
+  +(M.uyeler.some(u=>u.benim&&u.sira!==3)?'<button class="btn tehlike" onclick="adlYargicIstifa()">Yüksek Mahkeme üyeliğinden istifa et</button>':'')
   +'</div>';
 }
 function adlJuriHtml(M){
@@ -7630,6 +7630,7 @@ function adlJuriOy(id,oy){
  adlIslem(()=>API.rpc("adliye_juri_oy",{p_dava:id,p_oy:oy,p_gerekce:n?n.value:""}),"Jüri oyun kaydedildi.",id,false);
 }
 function adlMeclisOyModal(sira){
+ if(sira!==2)return toast("Meclis yalnız 2. üyeyi seçer; 3. üye Adalet Bakanıdır.",true);
  const m=modal('<p class="alt">Yargıç adayı partisiz olmalı ve başka makamı olmamalıdır. Partilerin yargıç önerilerine aşağıdaki "Yüksek Yargıç aday önerileri" bölümünden bakabilirsin.</p>'+adlAlan("Adayın kullanıcı adı","adlMecAday")+'<button class="btn altin" id="adlMecGonder">Oyumu ver</button>');
  adlFormBaslik(m,"Meclis · Yüksek Mahkeme "+sira+". üye seçimi");
  m.querySelector("#adlMecGonder").onclick=async()=>{
@@ -7638,6 +7639,7 @@ function adlMeclisOyModal(sira){
  };
 }
 function adlAzilModal(sira){
+ if(sira===3)return toast("3. üye Adalet Bakanıdır; görev değişimi bakanlık üzerinden yapılır.",true);
  const m=modal('<p class="alt">Görevden alma için 48 saat içinde aktif milletvekillerinin 3/5\'i kabul oyu vermelidir. Teklifin kamuya açıktır.</p>'+adlAlan("Gerekçe (20–1000)","adlAzilGerekce","textarea")+'<button class="btn tehlike" id="adlAzilGonder">Teklifi Meclis\'e sun</button>');
  adlFormBaslik(m,"Yüksek Mahkeme "+sira+". üye · Görevden alma");
  m.querySelector("#adlAzilGonder").onclick=()=>adlIslem(()=>API.rpc("mahkeme_azil_teklif",{p_sira:sira,p_gerekce:m.querySelector("#adlAzilGerekce").value}),"Görevden alma teklifi Meclis'te oylamaya açıldı.");
@@ -9245,7 +9247,8 @@ async function seffaflikEkrani(){
     if (GV.parti == null) GV.parti = D.durum && D.durum.profil && D.durum.profil.parti ? D.durum.profil.parti.id : null;
     let d = null;
     if (GV.parti != null) d = await API.rpc("parti_kasa_defteri", { p_parti: GV.parti });
-    else {
+    else if(u.sira===3) h+='<div class="kucuk">Görevdeki Adalet Bakanı bu koltuğa otomatik geçer. Ayrıca seçim yapılmaz.</div>';
+   else if(u.sira===2) {
       const pl = await API.rpc("partiler").catch(() => []);
       const ilk = (pl || []).find(x => !x.kapali) || (pl || [])[0];
       if (ilk) { GV.parti = ilk.id; d = await API.rpc("parti_kasa_defteri", { p_parti: ilk.id }); }
