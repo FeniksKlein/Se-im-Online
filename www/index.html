@@ -7386,9 +7386,12 @@ async function adliyeDosya(id){
   const davaliParti=ADL.partiler.find(x=>x.ad===d.davali_parti);
   const davaciParti=ADL.partiler.find(x=>x.ad===d.davaci_parti);
   const tar=d.davali||d.davali_parti||"—";
+  const ilgililer=Array.isArray(r.ilgililer)?r.ilgililer:[];
   const head='<div class="kart"><div class="baslik"><b>#'+d.id+' · '+e(ADL_TURLER[d.tur]||d.tur)+'</b><span class="rozet">'+e(adlEtiket(d,ek))+'</span></div>'
    +'<div class="kv"><span class="k">Davacı</span><span class="v">'+e(d.davaci_parti||d.davaci)+'</span></div>'
    +'<div class="kv"><span class="k">Davalı</span><span class="v">'+e(tar)+'</span></div>'
+    +(d.tur==="tazminat"?'<div class="kv"><span class="k">Talep edilen tazminat</span><span class="v">'+tlYaz(d.tazminat_talep||0)+'</span></div>':'')
+    +(ilgililer.length?'<h3>Davaya çağrılan ilgili taraflar</h3>'+ilgililer.map(x=>'<div class="liste-satir"><div class="orta"><b>'+e(x.kad)+'</b><p class="kucuk">'+e(x.gerekce)+' · '+e(x.ekleyen)+'</p></div></div>').join(''):'')
    +(davaciParti&&davaciParti.sozcu?'<div class="kv"><span class="k">Davacı parti sözcüsü</span><span class="v">'+e(davaciParti.sozcu)+'</span></div>':'')
    +(davaliParti&&davaliParti.sozcu?'<div class="kv"><span class="k">Davalı parti sözcüsü</span><span class="v">'+e(davaliParti.sozcu)+'</span></div>':'')
    +'<p class="alt">Açılış: '+adlTarih(d.acilis)+' · Savunma için son: '+adlTarih(d.savunma_son)+(ek&&ek.karar_son&&d.durum==="acik"?' · Karar için son: '+adlTarih(ek.karar_son):'')+'</p>'
@@ -7397,14 +7400,16 @@ async function adliyeDosya(id){
    +(d.delil?'<h3>Sunulan deliller</h3><p style="white-space:pre-wrap">'+e(d.delil)+'</p>':'')
    +'</div>';
   const beyan='<div class="kart"><h3>Açık duruşma – taraf beyanları</h3>'
-   +(r.beyanlar.length?r.beyanlar.map(b=>'<div class="liste-satir"><div class="orta"><b>'+e(b.yazar)+' · '+e(b.rol==="sozcu"?"Parti sözcüsü":b.rol==="davali"?"Savunma":"Davacı")+'</b><div class="kucuk">'+adlTarih(b.zaman)+'</div><p style="white-space:pre-wrap;margin-top:6px">'+e(b.metin)+'</p></div></div>').join(""):'<p class="alt">Henüz beyan verilmedi.</p>')
-   +(d.durum==="acik"&&sozHak?'<button class="btn altin" onclick="adlBeyanModal('+id+')">Savunma / beyan ver</button>':'')
-   +(d.durum==="acik"&&yetki?'<button class="btn ikinci" onclick="adlTemsil('+id+','+(!d.temsil_iznim)+')">'+(d.temsil_iznim?"Parti sözcüsü temsil iznini kaldır":"Parti sözcünü savunmaya yetkilendir")+'</button>':'')
+   +(r.beyanlar.length?r.beyanlar.map(b=>'<div class="liste-satir"><div class="orta"><b>'+e(b.yazar)+' · '+e(b.rol==="sozcu"?"Parti sözcüsü":b.rol==="davali"?"Savunma":b.rol==="ilgili"?"İlgili taraf":"Davacı")+'</b><div class="kucuk">'+adlTarih(b.zaman)+'</div><p style="white-space:pre-wrap;margin-top:6px">'+e(b.metin)+'</p></div></div>').join(""):'<p class="alt">Henüz beyan verilmedi.</p>')
+   +(d.durum==="acik"&&(sozHak||r.ilgili_miyim)?'<button class="btn altin" onclick="adlBeyanModal('+id+')">Savunma / beyan ver</button>':'')
+   +(d.durum==="acik"&&ek&&ek.oy_verebilirim?'<button class="btn ikinci" onclick="adlTarafModal('+id+')">Davada adı geçen oyuncuyu çağır</button>':'')
+    +(d.durum==="acik"&&yetki?'<button class="btn ikinci" onclick="adlTemsil('+id+','+(!d.temsil_iznim)+')">'+(d.temsil_iznim?"Parti sözcüsü temsil iznini kaldır":"Parti sözcünü savunmaya yetkilendir")+'</button>':'')
    +'</div>';
   const karar=d.durum==="karar"?'<div class="kart"><h3>Gerekçeli karar</h3><b>'+e(ADL_CEZALAR[d.karar]||"—")+'</b>'
    +(ek&&ek.ilk_karar&&ek.ilk_karar!==d.karar?'<p class="kucuk">İlk derece kararı: '+e(ADL_CEZALAR[ek.ilk_karar]||ek.ilk_karar)+' (istinafta bozuldu)</p>':'')
-   +'<p style="white-space:pre-wrap;margin-top:8px">'+e(d.gerekce||"")+'</p><p class="alt">Kararı yazan üye: '+e(d.hakim||"—")+' · '+adlTarih(d.karar_at)+'</p>'
-   +(ek&&ek.oylar?'<h3 style="margin-top:10px">Heyet oyları</h3>'+ek.oylar.map(o=>'<div class="liste-satir"><div class="orta"><b>'+e(o.uye)+'</b> · '+e(ADL_CEZALAR[o.karar]||o.karar)+(o.karar!==d.ilk_karar&&o.karar!==d.karar?' <span class="rozet">Karşı oy</span>':'')+'<p class="kucuk" style="white-space:pre-wrap">'+e(o.gerekce)+'</p></div></div>').join(''):'')
+   +(d.karar==="tazminat"?'<p class="alt"><b>Hükmedilen: '+tlYaz(d.tazminat_tutar||0)+'</b> · Ödenen: '+tlYaz(d.tazminat_odenen||0)+' · Kalan: '+tlYaz(Math.max(0,Number(d.tazminat_tutar||0)-Number(d.tazminat_odenen||0)))+'</p>':'')
+    +'<p style="white-space:pre-wrap;margin-top:8px">'+e(d.gerekce||"")+'</p><p class="alt">Kararı yazan üye: '+e(d.hakim||"—")+' · '+adlTarih(d.karar_at)+'</p>'
+   +(ek&&ek.oylar?'<h3 style="margin-top:10px">Heyet oyları</h3>'+ek.oylar.map(o=>'<div class="liste-satir"><div class="orta"><b>'+e(o.uye)+'</b> · '+e(ADL_CEZALAR[o.karar]||o.karar)+(o.karar==="tazminat"?" · "+tlYaz(o.tazminat_tutar||0):"")+(o.karar!==d.ilk_karar&&o.karar!==d.karar?' <span class="rozet">Karşı oy</span>':'')+'<p class="kucuk" style="white-space:pre-wrap">'+e(o.gerekce)+'</p></div></div>').join(''):'')
    +(d.af_at?'<span class="rozet yesil">Cumhurbaşkanlığı affı · '+adlTarih(d.af_at)+'</span><p class="alt">'+e(d.af_gerekce||"")+'</p>':'')
    +'</div>':'';
   const hakim=ek?ek.oy_verebilirim:(ADL.hakim_miyim&&d.durum==="acik"&&!d.davalimiyim&&!d.davacimiyim);
@@ -7412,13 +7417,28 @@ async function adliyeDosya(id){
   const heyet=ek&&d.durum==="acik"?'<div class="kart"><h3>Yüksek Mahkeme heyeti</h3><p class="alt">'+ek.oy_sayi+'/'+ek.heyet_sayi+' üye oy verdi; karar için '+ek.gerekli+' üyenin aynı kararda birleşmesi gerekir. Oylar karar açıklanınca görünür.</p>'+(ek.oyum?'<p class="kucuk">Oyun: '+e(ADL_CEZALAR[ek.oyum.karar]||ek.oyum.karar)+'</p>':'')+'</div>':'';
   const ist=ek?adlIstinafHtml(d,ek):'';
   const eylem=heyet+ist+(hakim?'<div class="kart"><button class="btn altin" onclick="adlKararModal('+id+')">'+(ek&&ek.oyum?'Oyumu değiştir':'Yüksek Mahkeme: oyumu ver')+'</button></div>':'')
-   +(gerek?'<div class="kart"><button class="btn ikinci" onclick="adlAfModal('+id+')">Cumhurbaşkanı: cezayı affet</button></div>':'');
+   +(gerek?'<div class="kart"><button class="btn ikinci" onclick="adlAfModal('+id+')">Cumhurbaşkanı: cezayı affet</button></div>':'')
+    +(d.karar==="tazminat"&&ek&&ek.kesin&&d.davalimiyim&&Number(d.tazminat_tutar)>Number(d.tazminat_odenen)?'<div class="kart"><button class="btn altin" onclick="adlTazminatOde('+id+')">Tazminat borcunu öde · '+tlYaz(Number(d.tazminat_tutar)-Number(d.tazminat_odenen))+'</button></div>':'');
   const yorum='<div class="kart"><h3>Herkese açık karar ve duruşma tartışması</h3>'
    +(r.yorumlar.length?r.yorumlar.map(y=>'<div class="liste-satir"><div class="orta"><b>'+e(y.yazar)+'</b><div class="kucuk">'+adlTarih(y.zaman)+'</div><p style="white-space:pre-wrap;margin-top:4px">'+e(y.metin)+'</p></div></div>').join(""):'<p class="alt">Henüz yorum yapılmadı.</p>')
    +'<button class="btn ikinci" onclick="adlYorumModal('+id+')">Duruşmaya yorum yaz</button></div>';
   iskelet("Dava #"+id,head+beyan+karar+eylem+yorum,{geri:true});
  }catch(err){iskelet("Dava #"+id,'<div class="bos">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
+
+function adlTarafModal(id){
+ const m=modal(adlAlan("Davada adı geçen oyuncunun kullanıcı adı","adlIlgiliKad","input")
+  +adlAlan("Dosyaya ekleme gerekçesi (20–500 karakter)","adlIlgiliGerekce","textarea")
+  +'<p class="alt">Çağrılan oyuncu bildirim alır ve açık duruşmada beyan verebilir. İlgili taraf olması kendiliğinden ceza doğurmaz.</p>'
+  +'<button class="btn altin" id="adlIlgiliEkle">İlgili tarafı çağır</button>');
+ adlFormBaslik(m,"Dava #"+id+" · İlgili taraf ekle");
+ m.querySelector("#adlIlgiliEkle").onclick=()=>adlIslem(()=>API.rpc("adliye_taraf_ekle",{p_dava:id,p_kad:m.querySelector("#adlIlgiliKad").value,p_gerekce:m.querySelector("#adlIlgiliGerekce").value}),"Oyuncu davaya ilgili taraf olarak çağrıldı.",id);
+}
+async function adlTazminatOde(id){
+ if(!await onayla("Tazminat borcunu öde","Cüzdanındaki uygun tutar kesinleşmiş borcundan düşülerek alacaklıya aktarılır.","Öde",true))return;
+ adlIslem(()=>API.rpc("adliye_tazminat_ode",{p_dava:id,p_tutar:null}),"Ödeme yapıldı; kalan borç güncellendi.",id,false);
+}
+
 function adlBeyanModal(id){
  const m=modal(adlAlan("Duruşma beyanınız / savunmanız","adlMetin","textarea")+"<button class='btn altin' id='adlOnay'>Beyanı yayımla</button>");
  adlFormBaslik(m,"Dava #"+id+" · Herkese açık beyan");
@@ -7458,18 +7478,26 @@ async function adlAiOnerModal(id,m){
 
 function adlKararModal(id){
  const dv=(ADL.davalar||[]).find(x=>x.id===id)||{};
- const opts=Object.entries(ADL_CEZALAR).filter(([k])=>k!=="dusme"&&(dv.davali?k!=="parti_para":ADL_PARTI_CEZA.includes(k))).map(([k,v])=>'<option value="'+k+'">'+e(v)+'</option>').join("");
+ const opts=Object.entries(ADL_CEZALAR).filter(([k])=>k!=="dusme"&&(dv.tur==="tazminat"?["beraat","tazminat"].includes(k):k!=="tazminat"&&(dv.davali?k!=="parti_para":ADL_PARTI_CEZA.includes(k)))).map(([k,v])=>'<option value="'+k+'">'+e(v)+'</option>').join("");
  const m=modal('<div class="alan"><label>Mahkeme kararı</label><select id="adlCeza">'+opts+'</select></div>'
+   +(dv.tur==="tazminat"?'<div class="alan" id="adlKararTutarKutu" style="display:none"><label>Hükmedilecek tazminat (en fazla '+tlYaz(dv.tazminat_talep||0)+')</label><input id="adlKararTutar" type="number" min="1000" max="'+Number(dv.tazminat_talep||500000)+'" step="1000"></div>':'')
   +'<button type="button" class="btn ikinci" id="adlAiOner">Yapay zekâdan ceza önerisi al</button>'
   +'<div id="adlAiSonuc" role="status" class="alt" style="padding:8px 0">Bu öneri mahkeme kararı değildir.</div>'
   +adlAlan("Gerekçeli karar","adlGerekce","textarea")
   +'<p class="alt">Bu sizin oyunuzdur. Heyetin çoğunluğu aynı karara varınca karar açıklanır; oylar ve gerekçeler o zaman herkese açılır. Karar çıkana kadar oyunuzu değiştirebilirsiniz.</p>'
   +'<button class="btn altin" id="adlKarar">Oyumu ver</button>');
  adlFormBaslik(m,"Yüksek Mahkeme · Dava #"+id);
- m.querySelector("#adlAiOner").onclick=()=>adlAiOnerModal(id,m);
+ if(dv.tur==="tazminat"){
+    const sec=m.querySelector("#adlCeza");
+    sec.onchange=()=>{m.querySelector("#adlKararTutarKutu").style.display=sec.value==="tazminat"?"block":"none";};
+    sec.onchange();m.querySelector("#adlAiOner").style.display="none";
+   }else m.querySelector("#adlAiOner").onclick=()=>adlAiOnerModal(id,m);
  m.querySelector("#adlKarar").onclick=async()=>{
   if(!await onayla("Oyunu ver","Çoğunluk oluşursa karar hemen açıklanır. Ağır cezalar istinaf süresi bitince uygulanır.","Oyumu ver",true))return;
-  adlIslem(()=>API.rpc("adliye_oy_ver",{p_dava:id,p_karar:m.querySelector("#adlCeza").value,p_gerekce:m.querySelector("#adlGerekce").value}),"Oyun kaydedildi.",id);
+  const kararTuru=m.querySelector("#adlCeza").value;
+   adlIslem(()=>kararTuru==="tazminat"
+    ?API.rpc("adliye_tazminat_oy",{p_dava:id,p_tutar:Number(m.querySelector("#adlKararTutar").value),p_gerekce:m.querySelector("#adlGerekce").value})
+    :API.rpc("adliye_oy_ver",{p_dava:id,p_karar:kararTuru,p_gerekce:m.querySelector("#adlGerekce").value}),"Oyun kaydedildi.",id);
  };
 }
 function adlAfModal(id){
