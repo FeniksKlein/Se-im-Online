@@ -25,7 +25,7 @@ window.AYAR = {
   APP_STORE:   "https://apps.apple.com/",
   GOOGLE_PLAY: "https://play.google.com/store/apps"
 };
-window.UYGULAMA_SURUM = "2026.10.14-2";   // derleme sırasında SURUM dosyasından yazılır
+window.UYGULAMA_SURUM = "2026.10.15-3";   // derleme sırasında SURUM dosyasından yazılır
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -1208,6 +1208,10 @@ async function durumYenile(){
 }
 function paraKisa(n){ n = +n || 0; return n < 1e5 ? fmt(n) + " ₺" : n < 1e6 ? fmt(n / 1000) + " B ₺" : fmt(n / 1e6, 1) + " Mn ₺"; }
 function sayiRozet(n){ return n > 0 ? `<span class="sayi">${n > 99 ? "99+" : n}</span>` : ""; }
+function sohbetOkunmamisSayi(ok){
+  const sayi = Number(ok && (ok.sohbet != null ? ok.sohbet : ok.ozel));
+  return Number.isFinite(sayi) ? Math.max(0, Math.floor(sayi)) : 0;
+}
 function iskelet(baslik, govde, opt){
   if(baslik==="Partiler")govde='<div class="kart"><button class="btn altin" onclick="ekranAc(koalisyonPazarlikEkrani)">Gizli siyasi pazarlıklar ve koalisyon protokolleri</button></div>'+govde;
   if(baslik==="Şirketlerim")govde='<div class="kart"><button class="btn altin" onclick="ekranAc(belediyeHizmetIhaleEkrani)">Belediyelerin hizmet ihaleleri</button></div>'+govde;
@@ -1225,7 +1229,7 @@ function iskelet(baslik, govde, opt){
   const belediyeMenu = !!(D.durum && D.durum.profil && (D.durum.profil.makamlar || []).some(x => x.tur === "bel"));
   const yonetimMenu = typeof yonetimVarMi === "function" && yonetimVarMi();
   const sekmeler = opt.sekmesiz ? "" : `<nav class="sekmeler">${[["gundem","Gündem"],["devlet","Devlet"],["adliye","Adliye"],["hayat","Hayat"],["ekonomi","Ekonomi"],["sohbet","Sohbet"],["meclis","Meclis"],["harita","Harita"],["parti","Partiler"],["dernek","Dernekler"]]
-    .map(([k, ad]) => `<button class="${D.sekme === k || (k === "devlet" && D.sekme === "yonetim") ? "aktif" : ""}${k === "sohbet" && +ok.ozel > 0 ? " mesaj-var" : ""}" ${k === "sohbet" ? `id="sohbetSekme" aria-label="Sohbet, ${+ok.ozel || 0} okunmamış özel mesaj"` : ""} onclick="sekmeAc('${k}')">${IKON[k] || IKON.devlet}<span>${ad}</span>${k === "sohbet" ? `<span id="dmSayi">${sayiRozet(ok.ozel)}</span>` : ""}${k === "hayat" && cz && (cz.dolu || cz.gunun_ilki) ? `<span class="nokta"></span>` : ""}</button>`).join("")}</nav>`;
+    .map(([k, ad]) => `<button class="${D.sekme === k || (k === "devlet" && D.sekme === "yonetim") ? "aktif" : ""}${k === "sohbet" && sohbetOkunmamisSayi(ok) > 0 ? " mesaj-var" : ""}" ${k === "sohbet" ? `id="sohbetSekme" aria-label="Sohbet, ${sohbetOkunmamisSayi(ok)} okunmamış mesaj"` : ""} onclick="sekmeAc('${k}')">${IKON[k] || IKON.devlet}<span>${ad}</span>${k === "sohbet" ? `<span id="dmSayi">${sayiRozet(sohbetOkunmamisSayi(ok))}</span>` : ""}${k === "hayat" && cz && (cz.dolu || cz.gunun_ilki) ? `<span class="nokta"></span>` : ""}</button>`).join("")}</nav>`;
   // Aynı ekran yenilenince (dakikalık tazeleme, işlem sonrası) kaydırma konumu korunur
   const anahtar = D.sekme + "|" + (D._ekranNo || 0) + "|" + baslik, eskiIc = $("#icerik");
   const eskiKaydirma = eskiIc && D._sonAnahtar === anahtar ? eskiIc.scrollTop : 0;
@@ -1238,12 +1242,12 @@ function rozetGuncelle(ok){
   D.okunmamis = ok || D.okunmamis;
   const z = $("#zilSayi"), d = $("#dmSayi");
   if (z) z.innerHTML = sayiRozet(D.okunmamis.bildirim);
-  if (d) d.innerHTML = sayiRozet(D.okunmamis.ozel);
+  const sayi = sohbetOkunmamisSayi(D.okunmamis);
+  if (d) d.innerHTML = sayiRozet(sayi);
   const sohbet = $("#sohbetSekme");
   if (sohbet) {
-    const sayi = Math.max(0, Number(D.okunmamis.ozel) || 0);
     sohbet.classList.toggle("mesaj-var", sayi > 0);
-    sohbet.setAttribute("aria-label", `Sohbet, ${sayi} okunmamış özel mesaj`);
+    sohbet.setAttribute("aria-label", `Sohbet, ${sayi} okunmamış mesaj`);
   }
 }
 function yukleniyor(baslik){ iskelet(baslik, `<div class="yukleniyor">Yükleniyor…</div>`, { geri: D.yigin.length > 0 }); }
@@ -3347,6 +3351,24 @@ async function ozelListeTazele(){
   } catch (_) { /* Sonraki kontrolde yeniden dene. */ }
   finally { ozelListeTazeleniyor = false; }
 }
+function sohbetKanalSagHtml(k){
+  const n = k.kilit ? 0 : Math.max(0, Number(k.okunmamis) || 0);
+  return `${k.son ? `<div class="kucuk">${zamanKisa(k.son.zaman)}</div>` : ""}${n ? `<span class="rozet kirmizi" style="margin-top:4px">Yeni mesaj · ${n > 99 ? "99+" : n}</span>` : k.kilit ? "" : `<span style="color:var(--mut)">›</span>`}`;
+}
+async function sohbetKanallariTazele(){
+  if (D.sekme !== "sohbet" || D.yigin.length || !$("[data-sohbet-kanal]") || document.hidden) return;
+  const oz = await API.rpc("sohbet_ozet");
+  if (D.sekme !== "sohbet" || D.yigin.length || !$("[data-sohbet-kanal]")) return;
+  for (const k of oz.kanallar || []) {
+    const satir = document.querySelector(`[data-sohbet-kanal="${k.kanal}"]`);
+    if (!satir) continue;
+    satir.classList.toggle("mesaj-yeni", !k.kilit && Number(k.okunmamis) > 0);
+    const ozet = satir.querySelector("[data-sohbet-ozet]");
+    if (ozet) ozet.textContent = k.kilit || (k.son ? `${k.son.kad}: ${k.son.metin}` : satir.dataset.sohbetAlt || "");
+    const sag = satir.querySelector("[data-sohbet-sag]");
+    if (sag) sag.innerHTML = sohbetKanalSagHtml(k);
+  }
+}
 async function sohbetListe(){
   yukleniyor("Sohbet");
   let dm, oz; try { [dm, oz] = await Promise.all([API.rpc("ozel_liste"), API.rpc("sohbet_ozet")]); await durumYenile(); } catch (err) { iskelet("Sohbet", `<div class="bos">${e(hataCevir(err.message))}</div>`); return; }
@@ -3368,11 +3390,11 @@ async function sohbetListe(){
   const GRUP = [["Herkese açık", ["genel", "il", "belediye"]], ["Siyasi örgüt", ["parti", "yonetim", "ittifak"]], ["Devlet", ["meclis", "grup", "divan", "kabine"]]];
   const satir = (k) => {
     const kilitli = !!k.kilit;
-    return `<div class="kanal" ${kilitli ? `style="opacity:.55" onclick="toast('${e(k.kilit)}')"` : `onclick="ekranAc(()=>sohbetEkrani('${k.kanal}'))"`}>${IK[k.kanal]}
+    return `<div class="kanal${!kilitli && Number(k.okunmamis) > 0 ? " mesaj-yeni" : ""}" data-sohbet-kanal="${e(k.kanal)}" data-sohbet-alt="${e(ALT[k.kanal] || "")}" ${kilitli ? `style="opacity:.55" onclick="toast('${e(k.kilit)}')"` : `onclick="ekranAc(()=>sohbetEkrani('${k.kanal}'))"`}>${IK[k.kanal]}
       <div style="flex:1;min-width:0"><b>${e(k.baslik)}</b>${kilitli ? ` <span class="kucuk"></span>` : ""}
-        <div class="kucuk" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${kilitli ? e(k.kilit) : k.son ? `${e(k.son.kad)}: ${e(k.son.metin)}` : e(ALT[k.kanal])}</div>
+        <div class="kucuk" data-sohbet-ozet style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${kilitli ? e(k.kilit) : k.son ? `${e(k.son.kad)}: ${e(k.son.metin)}` : e(ALT[k.kanal])}</div>
         ${!kilitli && k.cevrimici != null ? `<div class="kucuk" style="color:var(--good)">● ${k.cevrimici} çevrimiçi${k.yazabilir ? "" : " · yalnızca izleme"}</div>` : !kilitli && !k.yazabilir ? `<div class="kucuk">Yalnızca izleme</div>` : ""}</div>
-      <div style="text-align:right">${k.son ? `<div class="kucuk">${zamanKisa(k.son.zaman)}</div>` : ""}${k.okunmamis ? `<span class="rozet kirmizi" style="margin-top:4px">${k.okunmamis > 99 ? "99+" : k.okunmamis}</span>` : kilitli ? "" : `<span style="color:var(--mut)">›</span>`}</div></div>`;
+      <div style="text-align:right" data-sohbet-sag>${sohbetKanalSagHtml(k)}</div></div>`;
   };
   iskelet("Sohbet", `
     <div class="kart" style="display:flex;justify-content:space-between;align-items:center"><b>Sohbet</b><span class="kucuk" style="color:var(--good)">● ${oz.cevrimici} oyuncu çevrimiçi</span></div>
@@ -4957,14 +4979,14 @@ setInterval(() => {
   });
 }, 1000);
 setInterval(() => { if (D.durum && D.sekme === "gundem" && !D.yigin.length && !$("#modal") && !document.hidden) gundemEkrani(); }, 60000);
-// Oyun açıkken özel mesaj rozeti ve Sohbet'teki konuşma listesi yaklaşık 8 saniyede güncellenir.
+// Oyun açıkken tüm sohbet rozetleri ve konuşma listeleri yaklaşık 8 saniyede güncellenir.
 let mesajKontroluSuruyor = false;
 async function mesajBildirimKontrol(){
   if (mesajKontroluSuruyor || !API || !D.durum || !D.durum.profil || document.hidden) return;
   mesajKontroluSuruyor = true;
   try {
     rozetGuncelle(await API.rpc("rozetler"));
-    if (D.sekme === "sohbet" && !D.yigin.length) await ozelListeTazele();
+    if (D.sekme === "sohbet" && !D.yigin.length) await Promise.all([ozelListeTazele(), sohbetKanallariTazele()]);
   } catch (_) { /* Bağlantı geri gelince devam eder. */ }
   finally { mesajKontroluSuruyor = false; }
 }
