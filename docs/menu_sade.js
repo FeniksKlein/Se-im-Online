@@ -112,7 +112,7 @@
         satir("ruhsat", "Yatırım Ruhsat Merkezi", "Şirket, fabrika, mağaza, inşaat ruhsatlarına başvur; belediye onaylarını takip et", "msRuhsatMerkeziAc()", "msRuhsatMerkeziAc"),
         satir("dunya", "İş dünyası", "Üretim, mağaza, inşaat, sigorta, franchise, birleşme", "ekranAc(isDunyasiEkrani)", "isDunyasiEkrani"),
         satir("yaris", "Rekabetçi şirketler", "Okul, hastane, market, ulaşım, enerji; fiyat ve kalite", "ekranAc(pazarMerkezEkrani)", "pazarMerkezEkrani"),
-        satir("ihale", "Kamu ihaleleri", "Belediye ve bakanlık ihalelerine teklif ver", "ekranAc(ihaleEkrani)", "ihaleEkrani"),
+        satir("ihale", "📢 İhale İlan Panosu", "Tüm belediye hizmet ve kamu yapım ilanlarını gör, şirketinle teklif ver", "ekranAc(msIhaleMerkeziAc)", "msIhaleMerkeziAc"),
         satir("ajans", "Reklam ve anket ajansları", "Kampanya reklamı, kamuoyu araştırması", "ekranAc(ajansMerkezEkrani)", "ajansMerkezEkrani"),
         satir("rehber", "Şirket rehberi", "Oyundaki tüm şirketler, sahipleri, kâr sıralaması", "ekranAc(sirketVitrinEkrani)", "sirketVitrinEkrani"),
         satir("gecmis", "Satılık şirketler", "Devren satılan şirketleri incele", "ekranAc(sirketPazarEkrani)", "sirketPazarEkrani")
@@ -264,6 +264,39 @@
       }
       return eski.apply(this, args);
     };
+  }
+})();
+
+/* Tum oyuncular icin tek ilan panosu; webde ihtiyac olunca yuklenir,
+   telefon uygulamasinin tek dosya derlemesinde dogrudan kullanilir. */
+(function(){
+  let yukleme = null;
+  window.msIhaleMerkeziAc = async function(){
+    if (typeof window.ihaleIlanPanosu === "function") return window.ihaleIlanPanosu();
+    if (!yukleme) yukleme = new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "ihale_ilan_panosu.js?v=20261015-2";
+      s.onload = resolve;
+      s.onerror = () => reject(new Error("İhale ilanları yüklenemedi. Sayfayı yenileyip yeniden dene."));
+      document.body.appendChild(s);
+    });
+    try { await yukleme; return window.ihaleIlanPanosu(); }
+    catch (err) { yukleme = null; toast(err.message, true); }
+  };
+  if (typeof gundemEkrani === "function") {
+    const eski = gundemEkrani;
+    window.gundemEkrani = gundemEkrani = async function(){
+      const sonuc = await eski.apply(this, arguments);
+      try {
+        if (D.sekme === "gundem") {
+          const gazete = document.querySelector("#icerik .vit-gazete");
+          if (gazete && !document.querySelector("#icerik .ms-ihale-ilani"))
+            gazete.insertAdjacentHTML("beforebegin", '<div class="kart ms-ihale-ilani"><h2>📢 İhale İlan Panosu</h2><p class="alt">Belediyelerin hizmet ve kamu yapım ihaleleri ilana çıkıyor. Şirketinle kapalı teklif ver, kazananları izle.</p><button class="btn altin" onclick="ekranAc(msIhaleMerkeziAc)">Açık ihaleleri ve teklifleri gör</button></div>');
+        }
+      } catch (_) {}
+      return sonuc;
+    };
+    if (typeof EKRAN === "object" && EKRAN) EKRAN.gundem = () => gundemEkrani();
   }
 })();
 

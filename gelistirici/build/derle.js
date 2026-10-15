@@ -17,6 +17,7 @@ for (const m of ['arayuz.js','sivil_toplum.js','kurucu_ideoloji.js','ekonomi_vit
   html=html.replace(`<script src="${m}"></script>`,()=>'<script>'+fs.readFileSync(path.join(kok,'www',m),'utf8')+'</script>');
 // Yeni ekonomi arayuzunu tek dosyalik iOS/Android paketine gom; internetten ek JS istemesin.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','uc_ekonomi_yeni.js'),'utf8')+'</script></body>');
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','ihale_ilan_panosu.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
