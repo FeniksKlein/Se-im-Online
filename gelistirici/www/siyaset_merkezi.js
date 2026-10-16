@@ -173,10 +173,24 @@
         ${ps.length ? `<div class="sm-bar" role="img" aria-label="Sandalye dağılımı">${ps.map(x => `<i style="width:${x.sandalye / 6}%;background:${e(x.parti.renk)}" title="${e(x.parti.kisa)} ${x.sandalye}"></i>`).join("")}</div>
           <div class="kucuk" style="display:flex;justify-content:space-between"><span>0</span><span>Salt çoğunluk 301</span><span>600</span></div>` : ""}
         ${(p.partiler || []).map(x => `<div class="kv"><span class="k">${partiK(x.parti)}</span><span class="v"><b>${x.sandalye}</b> sandalye · %${String(x.yuzde).replace(".", ",")}${x.baraj_ustu ? "" : ' <span class="rozet">baraj altı</span>'}</span></div>`).join("") || bos("Henüz veri yok.")}
-        <button class="btn altin" style="margin-top:10px" onclick="sekmeAc('gundem')">Ankette oyunu ver</button></div>
+        <button class="btn altin" style="margin-top:10px" onclick="window.smAnketeGit()">Ankette oyunu ver</button></div>
       ${ps.length ? `<div class="bolum-bas"><h2>İllerde birinci parti</h2></div><div class="kart"><div class="sm-il-izgara">${(p.iller || []).map(i =>
         `<div class="sm-il" style="border-left-color:${e(i.birinci ? i.birinci.renk : "var(--line2)")}" ><b>${e(i.il)} <span style="display:inline;color:var(--mut);font-weight:400">${i.mv}</span></b><span>${e(i.dagilim.map(d => d.kisa + " " + d.s).join(" · "))}</span></div>`).join("")}</div></div>` : ""}
       <p class="kucuk">${e(p.aciklama || "")} Bu tablo yalnızca bir kamuoyu tahminidir; gerçek sonuç sandıkta belli olur.</p>`, { geri: true });
+  };
+
+  /* ------------------------------------------------------------------ Ankete doğrudan geçiş */
+  window.smAnketeGit = async function () {
+    try {
+      const d = await rpc("anket_durum");
+      if (!d || d.acik === false || !Array.isArray(d.partiler) || !d.partiler.length) {
+        toast("Şu an açık anket yok.", true);
+        return;
+      }
+      ekranAc(anketEkrani);
+    } catch (err) {
+      toast(hataCevir(err.message), true);
+    }
   };
 
   /* ------------------------------------------------------------------ Haftanın özeti */
