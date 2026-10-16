@@ -114,7 +114,14 @@ function bakanYanitModal(id){
 }
 async function anketEkrani(){
   yukleniyor("Haftalık Siyasi Anket");
-  try{anketCiz(await API.rpc("anket_durum"));}
+  try{
+    const d=await API.rpc("anket_durum");
+    if(!d||d.acik===false||!Array.isArray(d.partiler)||!d.partiler.length){
+      iskelet("Haftalık Siyasi Anket",'<div class="bos">Şu an açık anket yok.</div>',{geri:true});
+      return;
+    }
+    anketCiz(d);
+  }
   catch(err){iskelet("Haftalık Siyasi Anket",'<div class="bos">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
 function anketCiz(d){
