@@ -5098,21 +5098,22 @@ async function belDestekGeriCek(pid,il){
  catch(err){toast(hataCevir(err.message),true)}
 }
 function sirketMiniFinans(s,asgari){
- // Rekabetçi şirketlerde klasik sabit sektör oranı yanlış sonuç verir:
- // Sunucunun gerçek pazar tahminini kullan (rakip, fiyat, kapasite, kalite, vergi ve ücret dahil).
+ // Ekonomi 3.0'daki tüm pazar sektörlerinde sunucunun 7 günlük tahminini kullan.
+ // Eski sabit sektör katsayısı, özellikle teknoloji/medya şirketlerinde gerçeğin
+ // birkaç katı kâr gösteriyordu; şirket finans raporuyla aynı kaynak kullanılmalı.
  const p=s.pazar_tahmin;
- const pazarSektorleri=['ozel_okul','ozel_hastane','market','ulasim','enerji'];
- if(pazarSektorleri.includes(s.sektor)){
-  if(!p||!Number.isFinite(Number(p.net))){
+ const pazarSektorleri=['ozel_okul','ozel_hastane','market','ulasim','enerji','teknoloji','sanayi','ticaret','insaat','medya','tarim'];
+ if(p!=null||pazarSektorleri.includes(s.sektor)){
+  if(!p||[p.net,p.gelir,p.gider,p.ruhsat,p.ceza,p.vergi].some(v=>v==null||!Number.isFinite(Number(v)))){
    return `<div class="kart" style="background:var(--panel2);margin:10px 0"><h3>7 günlük faaliyet tahmini</h3><p class="alt">Canlı pazar tahmini şu an alınamadı. Yanlış zarar göstermek yerine güncel hesabı açabilirsin.</p><button class="btn altin" onclick="pazarDetayEkrani(${s.id})">Güncel pazar hesabını gör</button></div>`;
   }
   const gelir=Number(p.gelir),gider=Number(p.gider||0)+Number(p.ruhsat||0)+Number(p.ceza||0)+Number(p.vergi||0),net=Number(p.net);
   return `<div class="kart" style="background:var(--panel2);margin:10px 0">
-   <h3>7 günlük canlı pazar tahmini</h3>
+   <h3>Gelecek 7 günün canlı pazar tahmini</h3>
    <div class="kv"><span>Tahmini gelir</span><b>${fmt(gelir)} ₺</b></div>
    <div class="kv"><span>Toplam gider, harç ve vergi</span><b>${fmt(gider)} ₺</b></div>
    <div class="kv"><span>Net kâr / zarar tahmini</span><b style="color:${net<0?"var(--acc2)":"var(--good)"}">${fmt(net)} ₺</b></div>
-   <p class="alt">Fiyat, kalite, şehir, rekabet, giderler ve vergiler dikkate alınır. Bu tahmin mevcut koşullara göredir; gerçek sonuç değişebilir.</p>
+   <p class="alt">Fiyat, kalite, şehir, rekabet, giderler ve vergiler dikkate alınır. Bu bir gelecek tahminidir; piyasa panosundaki gerçekleşen son 7 günün kârından farklı olabilir.</p>
    <button class="btn altin" onclick="pazarDetayEkrani(${s.id})">Pazar tahmini ve şirketi yönet</button>
    <button class="btn ikinci" onclick="sirketFinansDetay(${s.id})">Finans raporu ve geçmiş</button>
   </div>`;
@@ -5148,12 +5149,12 @@ async function sirketFinansDetay(id){
     <div class="kv"><span>Şirket sermayesi</span><b>${fmt(x.sermaye)} ₺</b></div>
     <div class="kv"><span>Şirketin mevcut kasası</span><b>${fmt(x.kasa)} ₺</b></div>
     <div class="kv"><span>Dağıtılabilecek kâr</span><b>${fmt(x.dagitilabilir_kar)} ₺</b></div>
-    <div class="kv"><span>Sonraki 7 günlük hesap</span><b>${tarihSaat(x.sonraki_hesaplama)}</b></div>
+    <div class="kv"><span>${rekabetci?"Sonraki günlük hesap":"Sonraki 7 günlük hesap"}</span><b>${tarihSaat(x.sonraki_hesaplama)}</b></div>
    </div>
    <div class="kart"><h2>Bir sonraki 7 günün tahmini</h2>
      ${rekabetci?`<p class="alt">Canlı rekabetçi pazar modeli; fiyat, kalite, rakipler, harç ve kurumlar vergisi dahil. %10 oynama aralığı net sonuç içindir.</p>`:""}
-     <div class="kv"><span>${rekabetci?"Bugünkü gelir tahmini":"Olası brüt gelir"}</span><b>${rekabetci?fmt(x.tahmini_gelir_min):fmt(x.tahmini_gelir_min)+" – "+fmt(x.tahmini_gelir_max)} ₺</b></div>
-     <div class="kv"><span>${rekabetci?"Bugünkü toplam gider ve vergiler":"Olası gider"}</span><b>${rekabetci?fmt(x.tahmini_gider_min):fmt(x.tahmini_gider_min)+" – "+fmt(x.tahmini_gider_max)} ₺</b></div>
+     <div class="kv"><span>${rekabetci?"7 günlük gelir tahmini":"Olası brüt gelir"}</span><b>${rekabetci?fmt(x.tahmini_gelir_min):fmt(x.tahmini_gelir_min)+" – "+fmt(x.tahmini_gelir_max)} ₺</b></div>
+     <div class="kv"><span>${rekabetci?"7 günlük toplam gider ve vergiler":"Olası gider"}</span><b>${rekabetci?fmt(x.tahmini_gider_min):fmt(x.tahmini_gider_min)+" – "+fmt(x.tahmini_gider_max)} ₺</b></div>
      <div class="kv"><span>Net kâr/zarar aralığı</span><b>${fmt(x.tahmini_net_min)} – ${fmt(x.tahmini_net_max)} ₺</b></div>
      <div class="kv"><span>Ortalama net tahmin</span><b>${fmt(x.tahmini_ortalama_net)} ₺</b></div>
      <p class="alt">${rekabetci?"Pazar geliri rekabet, kapasite, fiyat ve kaliteye göre; net kâr ise giderler, belediye harcı ve vergiler düşüldükten sonra hesaplanır.":"Gelir sermaye ve sektör kapasitesinden; gider asgari ücret ve işletme maliyetlerinden oluşur."} Gerçek sonuçlar değişebilir. Bankalarda kredi, mevduat ve faiz yükümlülükleri ayrıca izlenir.</p>
