@@ -159,3 +159,10 @@
     getir(false);
   };
 })();
+
+// Geniş CB Yardımcılığı modülü (mevcut tek-dosya yayınını değiştirmeden yükle).
+if (!window.cbYrdDosyaAc) {
+  const cbYrdScript = document.createElement('script');
+  cbYrdScript.src = 'cb_yrd.js?v=20261016-3';
+  document.head.appendChild(cbYrdScript);
+}

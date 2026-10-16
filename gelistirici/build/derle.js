@@ -13,8 +13,10 @@ for (const m of ['parti_yasam.js','parti_isbirligi.js','aday_sirket_ek.js','part
 // Yazı tipi: yazi/ klasöründeki WOFF dosyaları base64 olarak gömülür (internetsiz çalışır)
 const yazi=(dosya,kalinlik)=>`@font-face{font-family:"Kurul Display";font-style:normal;font-weight:${kalinlik};font-display:swap;src:url(data:font/woff;base64,${fs.readFileSync(path.join(kok,'www/yazi',dosya)).toString('base64')}) format("woff")}`;
 html=html.replace('/*YAZITIPI*/',()=>yazi('kurul-regular.woff',400)+yazi('kurul-bold.woff',700));
-for (const m of ['arayuz.js','sivil_toplum.js','kurucu_ideoloji.js','ekonomi_vitrin.js','emlak_vitrin.js','toplum_ek.js','gorevler.js','halka_arz.js','adliye.js','canli_ek.js','secim_detay_sonuclar.js','cimer_ek.js','ekonomi_pazar.js','is_dunyasi.js','ekonomi_borsa.js','ekonomi_kurumlar.js','ajans.js','guvenlik.js','banka_kredi_icra.js','belediye_sehir.js','yonetim.js','banka_kredi_masasi.js','belediye_ruhsatlar.js','menu_sade.js','dernek_faaliyet.js','sirket_operasyon_merkezi.js','sirket_tum_turler.js','ekonomi3.js','oyuncu_arama.js'])
+for (const m of ['arayuz.js','sivil_toplum.js','kurucu_ideoloji.js','ekonomi_vitrin.js','emlak_vitrin.js','toplum_ek.js','gorevler.js','halka_arz.js','adliye.js','canli_ek.js','secim_detay_sonuclar.js','cimer_ek.js','ekonomi_pazar.js','is_dunyasi.js','ekonomi_borsa.js','ekonomi_kurumlar.js','ajans.js','guvenlik.js','banka_kredi_icra.js','belediye_sehir.js','yonetim.js','banka_kredi_masasi.js','belediye_ruhsatlar.js','menu_sade.js','dernek_faaliyet.js','sirket_operasyon_merkezi.js','sirket_tum_turler.js','ekonomi3.js','oyuncu_arama.js','cb_yrd.js'])
   html=html.replace(`<script src="${m}"></script>`,()=>'<script>'+fs.readFileSync(path.join(kok,'www',m),'utf8')+'</script>');
+// Eski kaynak şablonunda cb_yrd.js etiketi bulunmasa da uygulama paketi yeni masayı içersin.
+if (!html.includes('cbYrdDosyaAc')) html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','cb_yrd.js'),'utf8')+'</script></body>');
 // Yeni ekonomi arayuzunu tek dosyalik iOS/Android paketine gom; internetten ek JS istemesin.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','uc_ekonomi_yeni.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','ihale_ilan_panosu.js'),'utf8')+'</script></body>');
