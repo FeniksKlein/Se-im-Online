@@ -1223,7 +1223,7 @@ function iskelet(baslik, govde, opt){
   const geri = opt.geri ? `<button class="geri" onclick="geriGit()" aria-label="Geri">‹</button>` : "";
   const cz = D.durum && D.durum.profil && D.durum.profil.cuzdan;
   const ikonlar = opt.geri || opt.ikonsuz ? "" :
-    `${cz ? `<button class="ikon para-cip" onclick="sekmeAc('hayat')" aria-label="Cüzdan">${paraKisa(cz.para)}</button>` : ""}<button class="ikon" onclick="ekranAc(bildirimEkrani)" aria-label="Bildirimler">${IKON.zil}<span id="zilSayi">${sayiRozet(ok.bildirim)}</span></button>
+    `${cz ? `<button class="ikon para-cip" onclick="sekmeAc('hayat')" aria-label="Cüzdan">${paraKisa(cz.para)}</button>` : ""}<button class="ikon" onclick="oyuncuAramaAc()" aria-label="Oyuncu ara" title="Oyuncu ara"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button><button class="ikon" onclick="ekranAc(bildirimEkrani)" aria-label="Bildirimler">${IKON.zil}<span id="zilSayi">${sayiRozet(ok.bildirim)}</span></button>
      <button class="ikon portre-ikon" onclick="sekmeAc('ben')" aria-label="Profilim">${typeof portre === "function" && D.durum && D.durum.profil ? portre(D.durum.profil.kad, D.durum.profil.parti && D.durum.profil.parti.renk) : IKON.ben}</button>`;
   const bakanMenu = !!(D.durum && D.durum.profil && (D.durum.profil.makamlar || []).some(x => x.tur === "bakan"));
   const belediyeMenu = !!(D.durum && D.durum.profil && (D.durum.profil.makamlar || []).some(x => x.tur === "bel"));
@@ -1855,6 +1855,7 @@ function haritaCiz(){
   iskelet("Türkiye", `
     <div class="segment">${[["belediye","Belediye"],["vekil","Vekil"],["gelisim","Gelişmişlik"],["oyuncu","Oyuncu"]].map(([k, a]) => `<button class="${D.haritaMod === k ? "aktif" : ""}" onclick="D.haritaMod='${k}';haritaCiz()">${a}</button>`).join("")}</div>
     <div class="kart harita" style="margin-top:12px;padding:10px">${svg}<div class="lejant">${lejant}</div></div>
+    <div class="kart"><button class="btn altin" onclick="oyuncuAramaAc()">İllere göre oyuncu ara</button><p class="kucuk">81 ilde kayıtlı oyuncuları kullanıcı adı, il ve partiye göre bul.</p></div>
     <div class="kart"><h2>İller (${top} oyuncu)</h2>${sirali.map(v => `<div class="liste-satir" onclick="ilDetay(${v.id})" style="cursor:pointer">
       <div class="orta"><b>${e(v.ad)}</b><div class="kucuk">${v.mv} vekil · ${v.oyuncu} oyuncu · gelişmişlik ${fmt(v.gelisim || 0, 0)}${v.bel ? ` · Başkan: ${e(v.bel.kad)}` : ""}</div></div>
       ${v.oyuncu < v.mv ? `<span class="rozet yesil">fırsat</span>` : ""}</div>`).join("")}</div>`);
@@ -1868,6 +1869,7 @@ async function ilDetay(id){
   m.querySelector(".modal").innerHTML = `<div class="tutamak"></div>
     <h3 style="font-size:22px;font-weight:900">${e(d.ad)} ${d.benim_ilim ? `<span class="rozet altin">Senin ilin</span>` : ""}</h3>
     <div class="alt">${d.mv} milletvekili · ${d.oyuncu} oyuncu</div>
+    <button class="btn altin" onclick="oyuncuAramaAc({il:${d.id}})">Bu ildeki oyuncuları ara</button>
     ${d.durum ? `<div class="gosterge" style="margin-top:12px">
       <div><div class="ad">Gelişmişlik</div><div class="deger">${fmt(d.durum.gelisim, 1)}</div></div>
       <div><div class="ad">Halk memnuniyeti</div><div class="deger">${fmt(d.durum.memnuniyet, 1)}</div></div>
@@ -2923,6 +2925,7 @@ async function partilerEkrani(){
   for (const pa of l) if (pa.ittifak && pa.ittifak.id) ittifakHaritasi.set(pa.ittifak.id, pa.ittifak);
   const aktifIttifaklar = [...ittifakHaritasi.values()];
   iskelet("Partiler", `
+    <div class="kart"><button class="btn altin" onclick="oyuncuAramaAc()">Partiye göre oyuncu ara</button><p class="kucuk">İstediğin partiyi seçerek üyelerini ve profillerini bul.</p></div>
     ${benim ? `<div class="kart cizgili" onclick="ekranAc(()=>partiDetay(${benim.id}))" style="cursor:pointer;display:flex;gap:12px;align-items:center;--parti:${e(benim.renk)}">${amblemKutu(benim, 48)}<div style="flex:1"><div class="kucuk">Partin</div><b style="font-family:var(--disp);font-size:22px">${e(benim.ad)}</b></div><span style="font-size:22px;color:var(--mut)">›</span></div>` : ""}
     <div class="kart"><h2>İttifaklar</h2>
       <p class="alt">Kurulan ittifakları ve üye partileri herkes görebilir. İttifak oyları normal seçimde %7 barajı için birlikte değerlendirilir.</p>
@@ -3050,7 +3053,7 @@ async function partiDetay(id){
     <div id="kasaKart"></div>
     <div id="ittifakKart"></div>
     <div id="partiIlUyeleriKart"></div>
-    <div class="kart"><h2>Üyeler</h2>${p.uyeler.map(u => `<div class="liste-satir" onclick="oyuncuKart('${e(u.kad)}')" style="cursor:pointer"><div class="orta"><b>${e(u.kad)}${u.kad === p.gb ? ` <span class="rozet altin">GB</span>` : p.gby.some(g => g.kad === u.kad) ? ` <span class="rozet">GBY</span>` : ""}</b><div class="kucuk">${e(u.il)}</div></div>${makamAd(u.makam)}</div>`).join("") || `<div class="bos">Henüz üye yok. İlk üye sen ol!</div>`}</div>`, { geri: true });
+    <div class="kart"><h2>Üyeler</h2><button class="btn ikinci" onclick="oyuncuAramaAc({parti:${p.id}})">Bu partinin üyelerini ara</button>${p.uyeler.map(u => `<div class="liste-satir" onclick="oyuncuKart('${e(u.kad)}')" style="cursor:pointer"><div class="orta"><b>${e(u.kad)}${u.kad === p.gb ? ` <span class="rozet altin">GB</span>` : p.gby.some(g => g.kad === u.kad) ? ` <span class="rozet">GBY</span>` : ""}</b><div class="kucuk">${e(u.il)}</div></div>${makamAd(u.makam)}</div>`).join("") || `<div class="bos">Henüz üye yok. İlk üye sen ol!</div>`}</div>`, { geri: true });
   if (typeof partiKimlikKartCiz === "function") partiKimlikKartCiz(p.id);
   partiAdayKartiCiz(p.id);
   ittifakKartCiz(p.id);
@@ -3401,7 +3404,8 @@ async function sohbetListe(){
     ${GRUP.map(([ad, liste]) => `<div class="kart"><h2>${ad}</h2>${liste.filter(kn => kn !== "ittifak" || oz.kanallar.some(k => k.kanal === kn && !k.kilit)).map(kn => satir(oz.kanallar.find(k => k.kanal === kn))).join("")}</div>`).join("")}
     <div class="kart"><h2 id="ozelMesajBaslik">Özel mesajlar${dm.some(x=>+x.okunmamis>0) ? ` <span class="rozet kirmizi">${dm.reduce((n,x)=>n+(Number(x.okunmamis)||0),0)} yeni</span>` : ""}</h2>
       <div id="ozelMesajListesi">${ozelSatirlarHtml(dm)}</div>
-      <button class="btn ikinci" onclick="yeniOzelModal()">Yeni mesaj</button></div>
+      <button class="btn ikinci" onclick="yeniOzelModal()">Yeni mesaj</button>
+      <button class="btn altin" onclick="oyuncuAramaAc()">Oyuncu ara · Profil ve mesaj</button></div>
     <div class="kart"><div class="kucuk">Hakaret, küfür, nefret söylemi ve spam yasaktır. Uygunsuz bir mesaja dokunup şikâyet edebilir, oyuncuyu engelleyebilirsin. 3 kişinin şikâyet ettiği mesaj otomatik gizlenir. Kilitli kanallar ilgili göreve gelince açılır.</div></div>`);
 }
 function yeniOzelModal(){
@@ -9912,5 +9916,6 @@ window.oybKrediMasasiEkrani = oybKrediMasasiEkrani;
 <script src="belediye_ruhsatlar.js?v=20261013-4"></script>
 <script src="cb_toren_2215.js?v=20261014-2215"></script>
 <script src="ekonomi3.js?v=20261015-1"></script>
+<script src="oyuncu_arama.js?v=20261016-1"></script>
 </body>
 </html>
