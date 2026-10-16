@@ -78,9 +78,7 @@ create table if not exists oyun.icraatlar(
 alter table oyun.icraatlar add column if not exists oyuncu   jsonb not null default '[]';
 alter table oyun.icraatlar add column if not exists sure_gun int;
 alter table oyun.icraatlar add column if not exists ozel     text;
-delete from oyun.icraatlar where kod not in ('adl_harc','adl_ifade','dis_zirve','dis_turizm','ic_nufus','ic_afad','mal_iade','mal_varlik',
-  'sav_sanayi','sav_bedelli','egt_burs','egt_seferber','sag_ucretsiz','sag_hastane','san_osb','san_tesvik','tic_fiyat','tic_ihracat',
-  'tar_market','tar_sulama','ula_toplu','ula_tren','cal_istihdam','cal_esnaf');
+-- Kataloglar eklemeli güncellenir: sonradan eklenen bakanlık görevlerini ASLA silme.
 -- oyuncu etkileri: ucret (% maaş) · ucret_yeni (% maaş, yalnız ilk iki statü) · gecim (% geçim masrafı indirimi) · tasinma (% indirim)
 --                  il_bekleme (gün) · yayin (+hak/gün) · kidem_x (kıdem puanı çarpanı, %)
 insert into oyun.icraatlar(kod, bakanlik, ad, aciklama, maliyet, bekleme_saat, il_gerekli, etki, oyuncu, sure_gun, ozel) values
