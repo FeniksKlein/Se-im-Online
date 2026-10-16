@@ -276,3 +276,14 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - `ekonomi_pazar.js` kaynağında haftalık ifadeler günlüğe çevrildi; yayındaki derlenmiş sürümde aynı ifadeler ekonomi3.js tarafından ekranda düzeltilir.
 - Test: `NODE_PATH=/opt/npm-tools/node_modules node gelistirici/test/ekonomi3_arayuz.js [klasör]` (320/390/768 px, sahte RPC, veri `test/veri/ekonomi3_ornek.json`).
 - Bilinen: gerçek marka adlı eski şirketler (Koç Holding, ASELSAN, TÜPRAŞ, MİGROS, NVIDIA, Türkiye İş Bankası) olduğu gibi duruyor; sahipleri genel kuruldan ad değiştirebilir. Yeni kayıtlar filtreden geçer.
+
+## 2026-10-16 · 2026.10.16-5 Siyaset Merkezi (canlıda)
+- Amaç: oyuncuyu her hafta oyuna bağlayan siyasi ritim ve dram katmanı. Ayrıntı: TASARIM.md §18.
+- Sunucu: `gelistirici/sql/102_siyaset_merkezi.sql` (aynısı `migrations/20261016_siyaset_merkezi.sql`). **Canlı Supabase'e uygulandı** (migration adları `siyaset_merkezi_a_tablolar`, `_b_yayin_transfer_balkon`, `_c1_musahit`, `_c2_resmi_saha_mentor`, `_d_rozet_ozet_zamanlayici` · 20261016). Öncesinde yedek: `yedek_20261016_131910_415598`. Canlıdaki 54 fonksiyonun gövde özeti yerel kaynakla birebir aynı (md5 karşılaştırıldı). Ercan'ın ayrıca çalıştırmasına gerek yok.
+- Yeni zamanlayıcı: `siyaset-merkezi` (1-59/5) → `oyun.siyaset_merkezi_tick()`.
+- **Not:** `apply_migration` içinde `delete from` geçen gövdeler onay istediği için iptal oluyor (drop trigger gibi). Müşahit kaldırma bu yüzden `iptal_at` ile yumuşak silme yapar; tetik `create or replace trigger` ile kuruldu.
+- Yeni tablolar: parti_gecis, canli_yayin(+_konuk/_mesaj/_tepki/_oy), balkon, tebrik, musahit, resmi_gun(+_mesaj), stant(+_ziyaret/_gonullu), kapi_ziyaret, mentor_gonullu, mentor_bag, haftanin_ozeti, hafta_bildirim. Ayarlar: kurucu_rozet_bitis (31.12.2026), mentor_odul (1.000 ₺), stant_bedel (2.000 ₺).
+- `profiller.parti_id` değişince `parti_gecis_tg` tetiği çalışır (makamlı ya da kıdem ≥ 60 ise duyurulur; parti kapanması/toplu geçiş sessiz).
+- Arayüz: `gelistirici/www/siyaset_merkezi.js` (derle.js listesinin sonunda). Yayın: `docs/siyaset_merkezi.js` + `docs/index.html`'e tek script etiketi. Gündem'e "Siyasi hafta" kartı, oyuncu kartına "Parti geçmişi". Kayıt ekranı ve kurallarda yaş sınırı 18'e çıkarıldı; kurallara "Siyaset Merkezi" ve "Gerçek kişiler ve saygı" bölümleri eklendi (üç index.html dosyasında da).
+- Test: `python3 gelistirici/test/siyaset_merkezi.py` (10 bölüm, hepsi geçiyor). Ekran görüntüleri 390 px, sayfa hatası yok.
+- Bilinen: kaynak klasör (`gelistirici/sql`) 13–15 Ekim'de doğrudan canlıya uygulanan bazı migration'ları içermiyor; `kur_yerel.sh` 99_ekonomi3 adımında `eko_vergi_hareket` yok diye duruyor. Yerel test için 99_* modülleri dışarıda bırakılarak kuruldu. Ayrıca uzak depoda birleştirilmemiş birkaç dal var (ör. `feature/meclis-oy-kaydi-arastirma-20261015`).

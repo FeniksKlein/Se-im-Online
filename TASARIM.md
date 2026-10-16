@@ -772,3 +772,46 @@ Haksız zenginleşmenin ana yolu, bir oyuncunun ikinci hesabıyla "meşru işlem
 - **Milli Piyango:** bilet 1.000 ₺ → %50 ikramiye havuzu, %10 amorti, %40 hazine. Büyük ikramiye son üç hane (1/1000), çıkmazsa devreder; son hane tutana amorti. Yeni dönem tabanı 100.000 ₺.
 - **Başarımlar:** Girişimci, İlk Kâr, Patron (paylar ≥ 1 Mn ₺), Gong Çaldı (halka arz), Holding (3 sektörde çoğunluk), Sektör Devi (en değerli 10).
 - **Arayüz:** `gelistirici/www/ekonomi3.js` — Piyasa panosu (endeks, portföy, en değerli şirketler, yükselenler, sektörler, şirketler arası ticaret, bölgesel teşvik), Şirket karnesi (değer grafiği, son 14 gün, haftalık tahmin, fiyat/kalite/reklam kararları, hukuki yapı, müşteriler/tedarikçiler, ortaklar, genel kurul). Girişler bir çizim gözcüsüyle eklenir (Ekonomi sekmesi, şirket portföyü, şirket detayı, eski Şirketlerim).
+
+
+## 18. Siyaset Merkezi: haftalık ritim ve siyasi dram (2026-10-16, modül 102)
+Gündem'deki "Siyasi hafta" kartından ve Siyaset Merkezi ekranından açılır. Hiçbiri angarya değildir; hepsi oyuncular arası etkileşim yaratır.
+
+### Haftalık takvim
+Pazartesi Meclis haftası · Salı basın günü · Çarşamba grup günü · Perşembe oylama günü · Cuma anket günü · Cumartesi saha günü · Pazar haftanın özeti (20.00). Takvim kısıtlama getirmez; ilgili günde ilgili kişilere bir kez hatırlatma gider (vekiller, genel başkanlar, ankete katılanlar).
+
+### "Şu an seçim olsa"
+Haftalık ankete katılan oyuncuların oyları yaşadıkları ile göre dağıtılır; her ilin sandalyesi d'Hondt ile, ülke barajını geçen partiler arasında paylaştırılır. Ankete katılım olmayan illerde ülke geneli oranlar kullanılır. Bu hafta 10 kişiden az katılım varsa geçen hafta gösterilir. 30 kişiden az katılımda "kesin değil" uyarısı çıkar.
+
+### Haftanın özeti
+Her pazar 20.00'de kaydedilir: yasalaşan kanunlar, transferler, yeni partiler, sonuçlanan seçimler, miting sayısı ve en kalabalığı, anketin ilk beşi, haftanın en beğenilen paylaşımı, canlı yayın, stant ve kapı ziyareti sayıları, yeni vatandaşlar. Arşivde 12 hafta görünür.
+
+### Canlı yayınlar
+- **Basın toplantısı:** makam sahibi, genel başkan, yardımcı ya da parti sözcüsü açar; hemen başlar, 30 dakika sürer, kişi başı günde bir. Gazeteciler (aktif gazete sahibi ya da yazarı) en fazla 2 soru sorar; konuşmacı soruları yanıtlar. Gazetecilere ve parti üyelerine haber gider.
+- **Tartışma programı:** gazete sahibi 48 saat içine planlar (45 dakika, gazete başına günde bir). 2–4 konuk davet eder; yalnız moderatör ve kabul eden konuklar konuşur. İzleyiciler program boyunca ve bittikten sonra 15 dakika "en ikna edici konuğu" seçer; sonuç Gündem'e haber olur.
+- Herkes alkışlayabilir ya da yuhalayabilir.
+
+### Transferler ve rozet töreni
+Makamı olan ya da kıdem puanı 60 ve üstü bir oyuncu parti değiştirince Gündem'e haber düşer, iki partinin üyelerine bildirim gider. Yeni partinin genel başkanı ya da yardımcısı 72 saat içinde rozet takabilir; tören Akış'ta paylaşılır. Parti kapanması ya da aynı anda üçten fazla geçiş duyurulmaz. Oyuncu kartında parti geçmişi görünür.
+
+### Balkon konuşması ve tebrik
+Genel seçimde en çok sandalye alan partinin genel başkanı, cumhurbaşkanlığı seçiminde kazanan, sonuçtan sonraki 48 saat içinde bir kez balkon konuşması yapar (herkese bildirim). Rakip partilerin genel başkanları ve seçimin adayları bir kez tebrik mesajı gönderebilir.
+
+### Müşahitler
+Genel başkan ya da teşkilattan sorumlu yardımcı, yaklaşan genel/cumhurbaşkanlığı/belediye seçimi için her ile bir müşahit atar: o ilde yaşayan, o seçimde aday olmayan parti üyesi. Müşahit oy saatlerinde sandık başına geçer (kıdem +1, "Sandık Görevlisi" rozeti), sonuçlardan sonra 48 saat içinde "temiz" ya da "itiraz" tutanağı yazar. İtiraz tutanağı genel başkana gider; resmî itiraz Adliye'den açılır. Partilerin il kapsaması herkese görünür. Kaldırılan müşahit kaydı silinmez, iptal edilmiş olarak saklanır.
+
+### Resmî günler
+29 Ekim, 10 Kasım, 18 Mart, 23 Nisan, 1 Mayıs, 19 Mayıs, 15 Temmuz, 30 Ağustos (2026–2030) ve dini bayramlar (2027: Ramazan 9 Mart, Kurban 16 Mayıs). O gün 08.00'de makam sahiplerine ve genel başkanlara hatırlatma, 09.00'da herkese bildirim gider. Makam sahipleri ve parti yöneticileri günde bir mesaj yayımlar. Yeni yılların dini bayramları `oyun.resmi_gun` tablosuna eklenir.
+
+### Saha çalışması
+- **Stant:** genel başkan, teşkilattan sorumlu yardımcı ya da o ilin partili vekili/belediye başkanı, partinin teşkilatı olan bir ilde stant açar (parti kasasından 2.000 ₺, 3 saat, il başına günde bir). İlde yaşayan herkese haber gider. İldekiler uğrar ve soru bırakır, parti üyeleri gönüllü olur ve soruları yanıtlar (24 saat).
+- **Kapı kapı:** parti üyesi haftada 3 kez kendi ilinde başka partiden ya da bağımsız birine kısa not bırakır. Aynı partiden bir oyuncuya haftada bir ziyaret; engelleyenlere ve propaganda bildirimini kapatanlara gitmez.
+
+### Yol arkadaşı
+Hesabı 14 günden eski ve kıdem puanı 10+ olan oyuncular gönüllü olur (en fazla 5 eşlik). İlk 14 günündeki yeni oyuncu birini seçer ya da otomatik eşlenir (aynı il önce). Yeni oyuncu ilk oyunu kullanınca (seçim ya da haftalık anket) ikisine de 1.000 ₺ ödül; aynı cihazdan bağlı hesaplara ödül verilmez. Eşlik 21 günde biter. Mentor "Yol Arkadaşı" rozeti alır.
+
+### Yeni rozetler
+Kurucu Vatandaş (31.12.2026'ya kadar kayıt olanlar), Sandık Görevlisi, Yol Arkadaşı.
+
+### Yaş ve içerik kuralı
+Oyun 18 yaş ve üzeri içindir. Gerçek kişilere ya da oyunculara hakaret, tehdit, nefret söylemi ve kişisel bilgi paylaşımı yasaktır; şikâyet ve engelleme her profilde açıktır.

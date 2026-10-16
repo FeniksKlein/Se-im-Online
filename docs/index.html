@@ -1293,7 +1293,7 @@ function kayitEkrani(){
     <div class="alan"><label>E-posta</label><input id="eposta" type="email" autocomplete="email" inputmode="email"></div>
     <div class="alan"><label>Şifre (en az 8 karakter)</label><input id="sifre" type="password" autocomplete="new-password"></div>
     <div class="alan"><label>Şifre tekrar</label><input id="sifre2" type="password" autocomplete="new-password"></div>
-    <label class="onay"><input type="checkbox" id="kvkk"><span><a class="bag" href="#" onclick="metinGoster('gizlilik');return false">Gizlilik ve KVKK Aydınlatma Metni</a>'ni ve <a class="bag" href="#" onclick="metinGoster('kurallar');return false">Oyun Kuralları</a>'nı okudum, kabul ediyorum. 13 yaşından büyüğüm.</span></label>
+    <label class="onay"><input type="checkbox" id="kvkk"><span><a class="bag" href="#" onclick="metinGoster('gizlilik');return false">Gizlilik ve KVKK Aydınlatma Metni</a>'ni ve <a class="bag" href="#" onclick="metinGoster('kurallar');return false">Oyun Kuralları</a>'nı okudum, kabul ediyorum. 18 yaşından büyüğüm.</span></label>
     <div class="hata-metin" id="hata"></div>
     <button class="btn" id="kaydol">Kayıt ol</button>
     <button class="btn ikinci" onclick="karsilama()">Geri</button></div>`;
@@ -3706,6 +3706,10 @@ const METIN = {
     <h4>Sohbet ve propaganda</h4>
     <p>Türkiye Meydanı (herkes), il kahvesi (ilindekiler), parti sohbeti (üyeler) ve TBMM Genel Kurulu (vekiller, bakanlar ve cumhurbaşkanı konuşur, herkes izler) kanalları vardır. Oyuncular birbirine özel mesaj gönderebilir.</p>
     <p>Görev ve adaylıklar propaganda hakkı verir: cumhurbaşkanı ve bakanlar tüm Türkiye'ye günde 1, genel başkan partisine günde 3, yardımcıları günde 1, vekil ve belediye başkanı iline günde 1, adaylar her seçim için seçmenlerine günde 1 yayın gönderebilir. Yayınlar seçmenlerin bildirim kutusuna düşer.</p>
+    <h4>Siyaset Merkezi</h4>
+    <p>Gündem'deki "Siyasi hafta" kartından açılır. Her haftanın bir ritmi vardır: pazartesi Meclis haftası, salı basın günü, çarşamba grup günü, perşembe oylama günü, cuma anket günü ("Şu an seçim olsa" Meclis tablosu), cumartesi saha günü, pazar 20.00'de haftanın özeti. Makam sahipleri ve parti yöneticileri basın toplantısı yapar, gazeteciler soru sorar; gazete sahipleri konuklu tartışma programı açar, izleyiciler en ikna edici konuğu seçer. Makamlı oyuncuların parti değiştirmesi herkese duyurulur, yeni partinin genel başkanı rozet takar. Seçimi kazanan balkon konuşması yapar, rakipler tebrik eder. Partiler sandıklara müşahit atar. Resmî günlerde liderler mesaj yayımlar. Partiler illerde stant açar, üyeler haftada 3 kapı ziyareti yapar. Yeni oyuncular deneyimli bir yol arkadaşı seçebilir; yeni oyuncu ilk oyunu kullanınca ikisi de ödül alır.</p>
+    <h4>Gerçek kişiler ve saygı</h4>
+    <p>Oyundaki herkes kurgusal bir siyasetçiyi oynar. Gerçek siyasetçilere, gerçek kişilere ya da oyunculara hakaret, tehdit, nefret söylemi ve kişisel bilgi paylaşımı yasaktır; bu tür içerik şikâyet edildiğinde kaldırılır, hesap susturulabilir ya da kapatılabilir. Rahatsız olduğun bir oyuncuyu profilinden engelleyebilir ve şikâyet edebilirsin.</p>
     <h4>Kurallar</h4>
     <p>• Oy ve aday olabilmek için hesabının en az 3 günlük olması gerekir.<br>• Parti içi seçimlerde (ön seçim, kurultay) adaylık için başvuru süresi içinde parti üyesi olman yeterlidir. Oy kullanmak için başvurular açılmadan önce partiye üye olmuş olmalısın.<br>• Bir kişi aynı anda tek seçilmiş görev tutabilir (vekil, belediye başkanı veya cumhurbaşkanı). Yeni görevine başlayınca eskisi düşer; boşalan vekilliğe listedeki sıradaki aday gelir.<br>• İlini 30 günde bir değiştirebilirsin (taşınma masraflıdır); seçim dönemlerinde (6–11 ve 26–2 arası) il değiştirilemez.<br>• Görev süreleri 1 aydır.<br>• Birden fazla hesap açmak, hesap satmak, hakaret, küfür, taciz, nefret söylemi ve spam yasaktır. 3 kişinin şikâyet ettiği mesaj otomatik gizlenir; 24 saatte çok sayıda şikâyet alan hesap 24 saat susturulur; ağır ihlallerde hesap kapatılır.</p></div>`,
   gizlilik: () => `<h3 style="font-size:20px;font-weight:900">Gizlilik ve KVKK Aydınlatma Metni</h3><div class="metin">
@@ -3728,7 +3732,7 @@ const METIN = {
     <p>Veriler, oyunun altyapı hizmet sağlayıcısı Supabase'in sunucularında saklanır; bu nedenle yurt dışına aktarılabilir. Doğrulama e-postaları e-posta gönderim hizmeti aracılığıyla iletilir.</p>
     <h4>Hakların</h4>
     <p>KVKK m.11 kapsamında verilerine erişme, düzeltilmesini ve silinmesini isteme haklarına sahipsin. Hesabını ve kişisel verilerini <b>Ben → Hesabımı sil</b> ile istediğin an kendin silebilirsin. Silmede kullanıcı adın ve profilin kaldırılır; verdiğin oylar kimliğinden ayrılarak yalnızca sayım toplamlarında kalır.</p>
-    <h4>Yaş</h4><p>Oyun 13 yaş ve üzeri içindir.</p>
+    <h4>Yaş</h4><p>Oyun 18 yaş ve üzeri içindir. Siyasi içerik, oyuncular arası sohbet ve oyun içi satın alma barındırdığı için 18 yaşından küçükler hesap açamaz.</p>
     <h4>Kurgusallık</h4><p>Oyundaki partiler oyuncular tarafından kurulan kurgusal oluşumlardır; gerçek siyasi partilerle bağlantıları yoktur. Gerçek partileri çağrıştıran adlar kullanılamaz.</p></div>`
 };
 function metinGoster(k){ modal(METIN[k]() + `<button class="btn ikinci" onclick="modalKapat()">Kapat</button>`); }
@@ -9918,5 +9922,6 @@ window.oybKrediMasasiEkrani = oybKrediMasasiEkrani;
 <script src="cb_toren_2215.js?v=20261014-2215"></script>
 <script src="ekonomi3.js?v=20261015-1"></script>
 <script src="oyuncu_arama.js?v=20261016-1"></script>
+<script src="siyaset_merkezi.js?v=20261016-1"></script>
 </body>
 </html>
