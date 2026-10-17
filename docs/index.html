@@ -25,7 +25,7 @@ window.AYAR = {
   APP_STORE:   "https://apps.apple.com/",
   GOOGLE_PLAY: "https://play.google.com/store/apps"
 };
-window.UYGULAMA_SURUM = "2026.10.17-3";   // derleme sırasında SURUM dosyasından yazılır
+window.UYGULAMA_SURUM = "2026.10.17-4";   // derleme sırasında SURUM dosyasından yazılır
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -2062,6 +2062,9 @@ async function hukumetHtml(){
       : `<div class="kart"><div class="kucuk">Cumhurbaşkanı</div><div class="alt">Makam boş — yeni cumhurbaşkanı en yakın seçim takviminde belirlenecek.</div></div>`);
   return `
     ${yurutmeKart}
+    ${cbmiyim ? `<div class="kart"><h2>Cumhurbaşkanının erken seçim yetkisi</h2>
+      <p class="alt">Cumhurbaşkanı TBMM oylaması olmadan erken genel seçim kararı alabilir. Karar kayda geçer ve uygun seçim takvimi açılır.</p>
+      <button class="btn tehlike" onclick="cbErkenSecimModal()">Erken genel seçim kararı al</button></div>` : ""}
     ${parlamenter && kab.cb ? `<div class="kart"><div class="kucuk">Cumhurbaşkanı · devlet başkanı</div><b>${e(kab.cb.kad)}</b><div class="alt">${partiRozet(kab.cb.parti)} · parlamenter sistemde yürütmeyi Başbakan ve hükümet kullanır.</div></div>` : ""}
     ${siyasiSistemHtml(siyasi)}
     ${cbYardimcilariHtml(cbY,cbmiyim)}
@@ -2535,6 +2538,7 @@ function siyasiSistemHtml(s){
       <p class="alt">${e(er.gerekce)}</p><div class="kv"><span class="k">Kabul</span><span class="v">${er.kabul} / ${er.gerekli}</span></div>
       ${s.ben.vekil_mi?`<div class="oybtn">${["kabul","ret","cekimser"].map(o=>`<button class="${er.benim_oy===o?"sec-"+o:""}" onclick="erkenSecimOy(${er.id},'${o}')">${{kabul:"Kabul",ret:"Ret",cekimser:"Çekimser"}[o]}</button>`).join("")}</div>`:""}</div>`
       :(s.ben.gb_mi?`<button class="btn ikinci" onclick="erkenSecimModal()">Erken seçim kararı / çağrısı başlat</button>`:"")}
+    ${D.durum && D.durum.profil && D.durum.profil.cb_mi ? `<button class="btn tehlike" onclick="cbErkenSecimModal()">Cumhurbaşkanı: Erken seçim kararı al</button>` : ""}
     <button class="btn ikinci" onclick="D.devletSekme='mevzuat';devletEkrani()">Anayasayı ve sistem kurallarını gör</button></div>`;
 }
 async function hukumetTeklifModal(){
@@ -2555,6 +2559,25 @@ async function gensoruOy(id,oy){try{await API.rpc("gensoru_oy",{p_id:id,p_oy:oy}
 function erkenSecimModal(){const m=modal(`<h3 style="font-size:19px;font-weight:800">Erken seçim</h3><p class="alt">İktidar partisiysen erken seçim kararı, muhalefetteysen erken seçim çağrısı olarak Meclis gündemine gelir. Anayasal çoğunluk oluşursa seçim en yakın takvime çekilir.</p><textarea class="alanmetin" id="esgerekce" maxlength="1000" placeholder="Gerekçe"></textarea><button class="btn altin" id="esgonder">TBMM gündemine getir</button>`);
   $("#esgonder",m).onclick=async()=>{try{await API.rpc("erken_secim_teklif",{p_gerekce:$("#esgerekce",m).value});modalKapat();toast("Erken seçim önerisi TBMM gündeminde.");devletEkrani();}catch(err){toast(hataCevir(err.message),true);}};}
 async function erkenSecimOy(id,oy){try{await API.rpc("erken_secim_oy",{p_id:id,p_oy:oy});toast("Oyun kaydedildi.");devletEkrani();}catch(err){toast(hataCevir(err.message),true);}}
+
+function cbErkenSecimModal(){
+  const m=modal(`<h3>Cumhurbaşkanının erken seçim kararı</h3>
+    <p class="alt">Bu karar TBMM oylamasına sunulmaz. Ön seçim ve genel seçim takvimi açılır; yakın tarihte zaten olağan seçim varsa o tarih ve mevcut adaylıklar korunur. Karar tüm oyunculara duyurulur.</p>
+    <textarea class="alanmetin" id="cbegerekce" maxlength="1000" placeholder="Erken seçim gerekçesi (en az 10 karakter)"></textarea>
+    <button class="btn tehlike" id="cbekarar">Erken seçim kararı al</button>`);
+  $("#cbekarar",m).onclick=async()=>{
+    const gerekce=$("#cbegerekce",m).value.trim();
+    if(gerekce.length<10)return toast("En az 10 karakterlik gerekçe yaz.",true);
+    if(!await onayla("Erken seçim kararını onayla",
+      "Karar hemen yürürlüğe girer ve oyun içindeki seçim takvimini değiştirebilir. İşlem geri alınamaz.",
+      "Kararı ilan et",true))return;
+    try{
+      const sonuc=await API.rpc("cb_erken_secim_karar",{p_gerekce:gerekce});
+      modalKapat();toast(sonuc.mesaj||"Erken seçim kararı kaydedildi.");
+      await durumYenile();await yenidenCiz();
+    }catch(err){toast(hataCevir(err.message),true);}
+  };
+}
 
 /* ---------- Meclis rehberi: sandalyeler, başkanlık, gruplar, il il vekiller, yasama ---------- */
 const MECLIS_SEKME = [["genel","Sandalyeler"],["baskanlik","Başkanlık"],["gruplar","Gruplar"],["vekiller","İl il vekiller"],["yasama","Yasama"]];
