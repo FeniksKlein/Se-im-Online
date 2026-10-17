@@ -301,3 +301,9 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - Koruma: mevcut erken seçim tekrarlanmaz, devam eden sandık oylaması bozulmaz, 24 saat içinde ikinci CB kararı engellenir; 7 gün içinde olağan genel seçim varsa mevcut tarihler ve adaylıklar değişmez. Devam eden Meclis önerisi kendi oylamasını tamamlayabilir ama aynı erken seçim ikinci kez kurulmaz.
 - Bu güncelleme **yetkiyi tanımlar**, kendiliğinden erken seçim ilan etmez. Yalnızca Cumhurbaşkanının uygulama içinden açıkça kararı vermesi takvimi değiştirebilir.
 - Yayın HTML'leri `docs/index.html` ve `www/index.html` kaynakla aynı özellikte elle yamalandı; tam derlemenin şu anki farklı kaynakları silmemesi için mevcut dosyaların yerine topluca kopyalanmadı.
+
+## 2026-10-17 · 21 Ekim Çarşamba erken seçim takvimi (canlıda)
+- Kullanıcının son isteği: şu anki TBMM erken seçim önergesi kabul edilirse **20 Ekim 2026 Salı ön seçim**, **21 Ekim 2026 Çarşamba 08.00–22.00 genel ve Cumhurbaşkanlığı seçimi**, 22.30 sonuç açıklaması. Cumhurbaşkanı aynı sürede erken seçim kararı verirse de aynı takvim geçerli.
+- Canlı Supabase'de `oyun.erken_genel_secim_olustur` fonksiyonu değiştirildi (`erken_secim_21_ekim_20261017` migration); kaynak `gelistirici/sql/107_erken_secim_21_ekim.sql`, dağıtım migrasyonu `migrations/20261017_erken_secim_21_ekim.sql`. Öncesi yedek: `yedek_20261017_221117_594880`.
+- Tarih istisnası 17–19 Ekim verilen kararlara ve 20 Ekim ön seçimine en az 8 saat kalması şartına bağlı; diğer tarihlerdeki dinamik erken seçim hesabı korunur. Oylama veya CB kararı olmadan otomatik seçim oluşturulmaz.
+- Canlı doğrulama: fonksiyonda 21 Ekim ayarı var; TBMM 3 numaralı önerge hâlâ oylamada (7 kabul, 2 ret), erken seçim henüz oluşturulmamış.
