@@ -25,7 +25,7 @@ window.AYAR = {
   APP_STORE:   "https://apps.apple.com/",
   GOOGLE_PLAY: "https://play.google.com/store/apps"
 };
-window.UYGULAMA_SURUM = "2026.10.16-2";   // derleme sırasında SURUM dosyasından yazılır
+window.UYGULAMA_SURUM = "2026.10.17-1";   // derleme sırasında SURUM dosyasından yazılır
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -1896,7 +1896,11 @@ async function ilDetay(id){
     <button class="btn ikinci" onclick="modalKapat()">Kapat</button>`;
 }
 async function ilDegistir(id, ucret){
-  if (!await onayla(`${e(ilAd(id))} iline taşın`, `${ucret != null ? `Taşınma ücreti <b>${fmt(ucret)} ₺</b> cüzdanından düşer (ulaşım ve harç indirimleri varsa daha ucuz). ` : "Taşınma ücreti cüzdanından düşer. "}İl en fazla 30 günde bir değiştirilebilir ve seçim dönemlerinde kapalıdır. Görevdeki vekil ve belediye başkanları il değiştiremez. Yeni ilindeki belediye hizmetlerinden yararlanırsın.`, "Taşın")) return;
+  let bilgi;
+  try { bilgi = await API.rpc("il_tasinma_bilgisi", { p_il: id }); }
+  catch (err) { toast(hataCevir(err.message), true); return; }
+  if (!bilgi.uygun) { toast(bilgi.engel || "Şu anda bu ile taşınamazsın.", true); return; }
+  if (!await onayla(`${e(ilAd(id))} iline taşın`, `Kayıtlı ilin <b>${e(bilgi.mevcut_il)}</b> → <b>${e(bilgi.hedef_il)}</b> olarak değişecek. Cüzdanından <b>${fmt(bilgi.ucret)} ₺</b> düşecek. Yeni ilinin belediye hizmetlerinden yararlanacaksın. Bir sonraki taşınman için ${fmt(bilgi.bekleme_gun)} gün beklemen gerekir.`, "Taşın")) return;
   try { await islem(() => API.rpc("il_degistir", { p_il: id }), `Artık ${ilAd(id)} ilindesin.`); await durumYenile(); yenidenCiz(); } catch (_) {}
 }
 
@@ -3298,7 +3302,7 @@ async function benEkrani(){
       <div class="kv"><span class="k">Parti</span><span class="v">${partiRozet(p.parti)}</span></div>
       <div class="kv"><span class="k">Görev</span><span class="v">${e(p.makamlar.map(makamYaz).join(", ")) || (p.gb ? "Genel Başkan" : p.gby ? "GB Yardımcısı" : "—")}</span></div>
       <div class="kv"><span class="k">Katılım</span><span class="v">${tarih(p.olusturma)}</span></div>
-      <button class="btn ikinci" onclick="ilSecModal()">İl değiştir</button>
+<button class="btn altin" onclick="ilSecModal()">Başka ile taşın</button>
       ${p.makamlar.some(x => x.tur === "mv") ? `<button class="btn ikinci" onclick="gorevIstifa('mv')">Milletvekilliğinden istifa et</button>` : ""}
       ${p.makamlar.some(x => x.tur === "bel") ? `<button class="btn ikinci" onclick="gorevIstifa('bel')">Belediye başkanlığından istifa et</button>` : ""}
       ${ekIstifaButonlari(p)}
@@ -3318,10 +3322,36 @@ async function benEkrani(){
     <button class="btn tehlike" onclick="hesapSil()">Hesabımı sil</button>`);
 }
 function ilSecModal(){
-  const iller = [...VERI.iller].sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
-  const m = modal(`<h3 style="font-size:19px;font-weight:800">İl değiştir</h3><div class="alan"><select id="yil">${iller.map(i => `<option value="${i.id}" ${i.id === D.durum.profil.il_id ? "selected" : ""}>${e(i.ad)}</option>`).join("")}</select></div>
-    <button class="btn" id="tasin">Taşın</button>`);
+  const p = D.durum.profil;
+  const iller = VERI.iller.filter(i => i.id !== p.il_id).sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">Şehirler arası taşınma</h3>
+    <p class="alt">Şu an <b>${e(p.il_ad)}</b> ilindesin. 81 il arasından yeni bir şehir seçebilirsin.</p>
+    <div class="alan"><label for="yil">Taşınacağın il</label><select id="yil">${iller.map(i => `<option value="${i.id}">${e(i.ad)}</option>`).join("")}</select></div>
+    <div id="tasinmaBilgi" class="kart kucuk" aria-live="polite">Taşınma koşulları hesaplanıyor…</div>
+    <button class="btn" id="tasin" disabled>Taşınmayı onayla</button>
+    <button class="btn ikinci" id="tasinVazgec">Vazgeç</button>`);
+  let istek = 0;
+  const kontrol = async () => {
+    const sira = ++istek, id = +$("#yil", m).value, buton = $("#tasin", m), alan = $("#tasinmaBilgi", m);
+    buton.disabled = true;
+    alan.textContent = "Taşınma koşulları hesaplanıyor…";
+    try {
+      const bilgi = await API.rpc("il_tasinma_bilgisi", { p_il: id });
+      if (sira !== istek || !m.isConnected) return;
+      if (bilgi.uygun) {
+        alan.innerHTML = `<b>Taşınma ücreti: ${fmt(bilgi.ucret)} ₺</b><div style="margin-top:5px">Bir sonraki taşınma ${fmt(bilgi.bekleme_gun)} gün sonra yapılabilir. Seçim kütüğü şartları yeni ilinde geçerlidir.</div>`;
+        buton.disabled = false;
+      } else {
+        alan.textContent = bilgi.engel || "Bu şehre şu anda taşınamazsın.";
+      }
+    } catch (err) {
+      if (sira === istek && m.isConnected) alan.textContent = hataCevir(err.message);
+    }
+  };
+  $("#yil", m).onchange = kontrol;
   $("#tasin", m).onclick = () => { const id = +$("#yil", m).value; modalKapat(); ilDegistir(id); };
+  $("#tasinVazgec", m).onclick = modalKapat;
+  kontrol();
 }
 async function hesapSil(){
   if (!await onayla("Hesabını sil", "Hesabın, kullanıcı adın ve tüm kişisel verilerin kalıcı olarak silinir. Görevdeki makamların düşer. Kullandığın oylar kimliksiz olarak sayımlarda kalır. Bu işlem geri alınamaz.", "Hesabımı kalıcı olarak sil", true)) return;
