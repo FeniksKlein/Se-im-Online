@@ -25,7 +25,7 @@ window.AYAR = {
   APP_STORE:   "https://apps.apple.com/",
   GOOGLE_PLAY: "https://play.google.com/store/apps"
 };
-window.UYGULAMA_SURUM = "2026.10.17-1";   // derleme sırasında SURUM dosyasından yazılır
+window.UYGULAMA_SURUM = "2026.10.17-3";   // derleme sırasında SURUM dosyasından yazılır
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -2965,16 +2965,19 @@ async function gbUslen(id){
 }
 async function partiAdModal(pid){
   let p; try { p = await API.rpc("parti_detay", { p_parti: pid }); } catch (err) { return toast(hataCevir(err.message), true); }
+  const ozelHak = await API.rpc("parti_ad_ozel_hakki", { p_parti: pid }).catch(() => "yok");
   const m = modal(`<h3 style="font-size:19px;font-weight:800">Parti adını değiştir</h3>
-    <p class="alt">Bunu yalnızca genel başkan yapabilir. Parti adı en fazla 7 günde bir değiştirilebilir; eski adlar kayıt altında tutulur.</p>
+    <p class="alt">Bunu yalnızca genel başkan yapabilir. Normalde parti adı 7 günde bir değiştirilebilir; eski adlar kayıt altında tutulur.</p>
+    ${ozelHak === "hazir" ? `<div class="olay basvuru"><b>Bir defalık özel isim değiştirme hakkı hazır.</b><p class="alt">Bu hakla 7 gün beklemeden adını ve kısa adını şimdi değiştirebilirsin. Başarılı değişiklikten sonra özel hak kalıcı olarak tükenir.</p></div>` : ozelHak === "kullanildi" ? `<p class="alt">Bu partiye verilen tek kullanımlık özel hak kullanıldı. Normal 7 günlük kural geçerlidir.</p>` : ""}
     <div class="alan"><label>Parti adı</label><input id="pad" maxlength="40" value="${e(p.ad)}"></div>
     <div class="alan"><label>Kısa ad</label><input id="pkisa" maxlength="6" value="${e(p.kisa)}" style="text-transform:uppercase"></div>
     <div class="hata-metin" id="pahata"></div><button class="btn altin" id="paok">Adı değiştir</button>`);
   $("#paok",m).onclick = async () => {
     const b=$("#paok",m); b.disabled=true;
+    if (ozelHak === "hazir" && !confirm("Bir defalık özel parti adı değiştirme hakkını kullanmak istediğine emin misin?")) { b.disabled=false; return; }
     try {
       await API.rpc("parti_ad_degistir",{p_ad:$("#pad",m).value,p_kisa:$("#pkisa",m).value.toLocaleUpperCase("tr")});
-      modalKapat(); await durumYenile(); toast("Partinin adı değiştirildi."); partiDetay(pid);
+      modalKapat(); await durumYenile(); toast(ozelHak === "hazir" ? "Partinin adı değiştirildi. Özel hak kullanıldı." : "Partinin adı değiştirildi."); partiDetay(pid);
     } catch(err){ b.disabled=false; $("#pahata",m).textContent=hataCevir(err.message); }
   };
 }
