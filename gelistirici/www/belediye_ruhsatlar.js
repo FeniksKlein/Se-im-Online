@@ -1,4 +1,4 @@
-const BEL_RUHSAT_TURLER = [["kur_fabrika","Fabrika kuruluşu"],["kur_magaza","Market / mağaza kuruluşu"],["kur_insaat","Müteahhitlik şirketi"],["kur_sigorta","Sigorta şirketi"],["kur_pazar","Okul / hastane / market / enerji şirketi"],["kur_sirket","Genel şirket kuruluşu"],["arsa_insaat","Arsa üzerinde inşaat"],["yeni_proje","Yeni konut projesi"],["sube","Mağaza şubesi açılışı"]];
+const BEL_RUHSAT_TURLER = [["kur_fabrika","Fabrika kuruluşu"],["kur_magaza","Market / mağaza kuruluşu"],["kur_insaat","Müteahhitlik şirketi"],["kur_sigorta","Sigorta şirketi"],["kur_pazar","Rekabetçi hizmet şirketi"],["kur_sirket","Genel şirket kuruluşu"],["arsa_insaat","Arsa üzerinde inşaat"],["yeni_proje","Yeni konut projesi"],["sube","Mağaza şubesi açılışı"]];
 function belTurAdi(tur) { return (BEL_RUHSAT_TURLER.find(v=>v[0]===tur)||[])[1]||tur; }
 
 async function belRuhsatMerkeziEkrani(){
