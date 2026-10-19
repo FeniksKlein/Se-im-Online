@@ -21,7 +21,13 @@ const GROUPS=[
  ["pazar:enerji","⚡ Enerji santrali","kur_pazar","service"],
  ["pazar:ozel_hastane","🏥 Özel hastane","kur_pazar","service"],
  ["pazar:ozel_okul","🎓 Özel okul","kur_pazar","service"],
- ["pazar:ulasim","🚌 Ulaşım firması","kur_pazar","service"]
+ ["pazar:ulasim","🚌 Ulaşım firması","kur_pazar","service"],
+ ["pazar:turizm","🏨 Turizm ve otelcilik","kur_pazar","service"],
+ ["pazar:lojistik","📦 Kargo ve lojistik","kur_pazar","service"],
+ ["pazar:oto_servis","🔧 Oto servis ve bakım","kur_pazar","service"],
+ ["pazar:danismanlik","📋 Danışmanlık ofisi","kur_pazar","service"],
+ ["pazar:e_ticaret","🛍️ E-ticaret şirketi","kur_pazar","service"],
+ ["pazar:geri_donusum","♻️ Geri dönüşüm tesisi","kur_pazar","service"]
 ];
 async function sirketTumTurKur(onayli){
   let permits,market;
@@ -34,7 +40,7 @@ async function sirketTumTurKur(onayli){
     '<option value="'+home+'">Kayıtlı il (#'+home+')</option>';
   const m=modal(
    '<h3>🏢 Tüm şirketleri kur</h3>'+
-   '<p class="alt">Şirket türünü seç; belediye ruhsatı, sermaye ve faaliyet alanına göre gerçek şirket kurulsun. Fabrikalarda üretim ve toptan satış; mağazalarda stok ve sanal müşteri satışları; hizmetlerde haftalık gelir-gider hesabı kullanılır.</p>'+
+   '<p class="alt">Şirket türünü seç; belediye ruhsatı, sermaye ve faaliyet alanına göre gerçek şirket kurulsun. Fabrikalarda üretim ve toptan satış; mağazalarda stok ve sanal müşteri satışları; hizmetlerde günlük gelir-gider hesabı kullanılır.</p>'+
    '<div class="alan"><label>Şirket türü</label><select id="stkType">'+GROUPS.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join("")+'</select></div>'+
    '<div class="alan"><label>Şirket adı</label><input id="stkName" maxlength="50" placeholder="3–50 karakter"></div>'+
    '<div class="alan"><label>Faaliyet ili</label><select id="stkCity">'+cityList+'</select></div>'+
@@ -73,7 +79,7 @@ async function sirketTumTurKur(onayli){
       category==="retail"?"Stok satın al veya mutfakta üret → müşteri talebine göre saatlik satış yap → ciro, vergi, gider ve kârı izle.":
       category==="build"?"Arsa al, belediye izniyle inşaat yap, tamamlanan konutları ve dükkânları sat.":
       category==="insurance"?"Poliçe primi, hasar rezervi, tazminat ve şirket kârı.":
-      category==="service"?"Üretim/hizmet kapasitesi, pazar talebi, fiyat, rakipler, haftalık satış geliri ve giderler.":
+      category==="service"?"Günlük hizmet geliri, personel, vergi ve diğer giderler; fiyat, kalite ve rakiplerle değişir. Kâr garanti değildir, zarar da oluşabilir.":
       category==="agency"?"Oyunculara reklam kampanyası ve kamuoyu anketi satar; fiyat ve çalışan kapasitesini yönet.":
       sektor==="banka"?"Mevduat, kredi, faiz, banka kasası ve finans işlemleri.":
       "Sözleşmeler, ortaklıklar ve haftalık faaliyet geliri-gideri.";
@@ -149,9 +155,12 @@ if(typeof originalDetail==="function"){
      if(!s||document.querySelector(".stk-sector-details"))return;
      let html="",description="";
      const sid=Number(id),sector=String(s.sektor||"");
-     if(["ozel_okul","ozel_hastane","ulasim","enerji","market"].includes(sector)){
+     if(["ozel_okul","ozel_hastane","ulasim","enerji","market","turizm","lojistik","oto_servis","danismanlik","e_ticaret","geri_donusum"].includes(sector)){
        const labels={ozel_okul:"Öğrenci kayıtları ve eğitim hizmetleri",ozel_hastane:"Hasta hizmetleri ve sağlık satışı",
-         ulasim:"Yolcu ve sefer gelirleri",enerji:"Enerji üretimi ve satış",market:"Market zinciri satışları"};
+         ulasim:"Yolcu ve sefer gelirleri",enerji:"Enerji üretimi ve satış",market:"Market zinciri satışları",
+         turizm:"Konaklama ve turizm hizmetleri",lojistik:"Kargo, depo ve taşımacılık hizmetleri",
+         oto_servis:"Araç bakım ve onarım hizmetleri",danismanlik:"Müşteri danışmanlığı ve ofis hizmetleri",
+         e_ticaret:"İnternet mağazası ve uzaktan satış",geri_donusum:"Atık toplama ve geri kazanım hizmetleri"};
        const p=s.pazar_tahmin||{};
        description='<p class="alt">'+safe(labels[sector])+': rekabet, kapasite, personel, kalite ve talep haftalık faaliyet sonuçlarını belirler.</p>'+
          '<div class="kv"><span>Tahmini haftalık ciro</span><b>'+cash(p.gelir)+'</b></div>'+

@@ -12,6 +12,7 @@
   const MS_IKON = {
     ekonomi: sv('<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 6-7"/><path d="M16 7h4v4"/>'),
     sirket: sv('<rect x="4" y="3" width="10" height="18" rx="1"/><path d="M14 9h6v12h-6M7 7h4M7 11h4M7 15h4"/>'),
+    gorev: sv('<rect x="4" y="7" width="16" height="14" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M4 13h16M10 13v2h4v-2"/>'),
     ruhsat: sv('<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-7h6v7M9 10h6"/>'),
     dunya: sv('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>'),
     yaris: sv('<path d="M6 20V10M12 20V4M18 20v-7"/>'),
@@ -105,6 +106,7 @@
       </section>
       ${grup("Şirket ve iş", "Kur, yönet, yarış", [
         satir("sirket", "Şirketlerim ve şirket kur", "Ortak olduğun şirketleri yönet, yeni şirket kur", "ekranAc(sirketYonetimEkrani)", "sirketYonetimEkrani"),
+        satir("gorev", "💼 Ek işler", "Kurye, taksi, özel ders, tasarım ve tamirat; çalışıp ücretini al", "ekranAc(ekIslerEkrani)", "ekIslerEkrani"),
         satir("dunya", "🌾 Tarım ve hayvancılık", "Tarla, mevsim, hasat, süt, et ve market tedariki", "ucYeniAc('tarim')", "ucYeniAc"),
         satir("rehber", "📚 Kitap ve yayınevi", "Kitap yaz, yayımla, telif al, yeni baskı yap", "ucYeniAc('kitap')", "ucYeniAc"),
         satir("ajans", "📺 Medya ve yayınevleri", "Millet TV, yayınlanan kitaplar ve bağışlar", "ucYeniAc('medya')", "ucYeniAc"),
