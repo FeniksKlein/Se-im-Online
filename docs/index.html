@@ -8012,7 +8012,16 @@ function gecenZaman(ts){
   if (s < 7 * 86400) return Math.floor(s / 86400) + " g"; return tarih(ts);
 }
 function akisMetinHtml(m){
-  return e(m).replace(/#([\p{L}\p{N}_]{2,30})/gu, (_, t) => `<span class="etk" data-etk="${e(t.toLowerCase())}">#${e(t)}</span>`);
+  // Etiketleri ham metinde bul: önce HTML'e çevirirsek &#39; içindeki #39 da etiket sanılır.
+  const metin = String(m ?? "");
+  let html = "", son = 0;
+  for (const eslesme of metin.matchAll(/#([\p{L}\p{N}_]{2,30})/gu)) {
+    html += e(metin.slice(son, eslesme.index));
+    const t = eslesme[1];
+    html += `<span class="etk" data-etk="${e(t.toLowerCase())}">#${e(t)}</span>`;
+    son = eslesme.index + eslesme[0].length;
+  }
+  return html + e(metin.slice(son));
 }
 function akisSatirHtml(a, opt){
   opt = opt || {};
