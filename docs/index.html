@@ -1582,6 +1582,7 @@ async function gundemEkrani(){
     ${typeof gundemEkAlt === "function" ? gundemEkAlt(EK) : ""}
     ${aktif.some(s => s.asama !== "oy" || !!s.oy_engeli) || ihaleler.length || meclisBekleyen.some(s => s.durum !== "oylama") || refler.some(r => r.asama !== "oy" || !!r.engel) || cbKararKarti() ? `<div class="bolum-bas"><h2>Seçimler ve oylamalar</h2></div>` : ""}
     ${cbKararKarti()}
+    ${typeof cbKampanyaGundemKart === "function" ? cbKampanyaGundemKart(d) : ""}
     ${aktif.filter(s => s.asama !== "oy" || !!s.oy_engeli).map(s => `<div id="sec${s.id}">${olayKarti(s)}</div>`).join("")}
     ${meclisBekleyen.filter(s => s.durum !== "oylama").map(meclisSecimKart).join("")}
     ${ihaleler.map(ihaleKart).join("")}
@@ -9995,6 +9996,7 @@ window.oybKrediMasasiEkrani = oybKrediMasasiEkrani;
 <script src="ekonomi3.js?v=20261015-1"></script>
 <script src="oyuncu_arama.js?v=20261016-1"></script>
 <script src="siyaset_merkezi.js?v=20261016-2"></script>
+<script src="cb_kampanya.js?v=20261019-1"></script>
 <script src="gorunum_cila.js?v=20261016-6"></script>
 </body>
 </html>

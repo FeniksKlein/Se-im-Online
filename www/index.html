@@ -1546,6 +1546,7 @@ async function gundemEkrani(){
     ${typeof gundemEkAlt === "function" ? gundemEkAlt(EK) : ""}
     ${aktif.some(s => s.asama !== "oy" || !!s.oy_engeli) || ihaleler.length || meclisBekleyen.some(s => s.durum !== "oylama") || refler.some(r => r.asama !== "oy" || !!r.engel) || cbKararKarti() ? `<div class="bolum-bas"><h2>Seçimler ve oylamalar</h2></div>` : ""}
     ${cbKararKarti()}
+    ${typeof cbKampanyaGundemKart === "function" ? cbKampanyaGundemKart(d) : ""}
     ${aktif.filter(s => s.asama !== "oy" || !!s.oy_engeli).map(s => `<div id="sec${s.id}">${olayKarti(s)}</div>`).join("")}
     ${meclisBekleyen.filter(s => s.durum !== "oylama").map(meclisSecimKart).join("")}
     ${ihaleler.map(ihaleKart).join("")}
@@ -11161,5 +11162,6 @@ body{letter-spacing:.05px;text-rendering:optimizeLegibility}
   if (document.body) baslat(); else document.addEventListener('DOMContentLoaded', baslat);
 })();
 </script>
+<script src="cb_kampanya.js?v=20261019-1"></script>
 </body>
 </html>
