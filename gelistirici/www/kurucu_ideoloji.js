@@ -35,10 +35,16 @@ async function kurucuDavetModal(){
   try{data=await API.rpc("kurucu_davetlerim");}
   catch(err){toast(hataCevir(err.message),true);return;}
   const gelen=data.gelen||[],b=data.basvurum;
+  const davetSayisi=b?(b.davetler||[]).length:0;
   const m=modal('<h3>Kurucular kurulu</h3><p class="alt">Parti kurmak için başvuran kişinin dışında en az üç ayrı oyuncunun EVET onayı gerekir. Davetliler kabul ederse parti kuruluşunda üye olurlar.</p>'+
     (b?'<div class="kart"><h3>'+e(b.ad)+' · '+e(b.kisa)+'</h3><p class="alt">Kurucu onayı: <b>'+b.onay+'/3</b> · Son: '+e(tarihSaat(b.bit))+'</p>'+
       '<p class="kucuk">'+e(ideolojiYaz(b.ideolojiler))+'</p>'+
       (b.davetler||[]).map(d=>'<div class="kv"><span>'+e(d.kad)+'</span><b>'+e({evet:"Kabul",hayir:"Ret",bekliyor:"Bekliyor"}[d.durum]||d.durum)+'</b></div>').join('')+
+      (davetSayisi<20?'<div class="alan"><label for="kurucuYeniNick">Yeni kurucu adayları ekle</label>'+
+        '<textarea id="kurucuYeniNick" class="alanmetin" rows="3" placeholder="Her satıra bir kullanıcı adı yaz"></textarea>'+
+        '<p class="kucuk">İlk başvurunu iptal etmeden yeni kişilere davet gönderebilirsin. Kalan davet hakkı: '+(20-davetSayisi)+'</p></div>'+
+        '<div class="hata-metin" id="kurucuEkleHata"></div><button class="btn ikinci" id="kurucuEkle">Yeni davetleri gönder</button>':
+        '<p class="kucuk">20 kurucu daveti sınırına ulaştın.</p>')+
       '<button class="btn altin" id="kurucularTamamla" '+(b.onay<3?'disabled':'')+'>Onayları tamamla ve partiyi kur</button>'+
       '<button class="btn ikinci" id="kurucuIptal">Başvuruyu iptal et</button></div>':'')+
     (gelen.length?'<h3>Bana gelen davetler</h3>'+gelen.map(d=>
@@ -58,6 +64,20 @@ async function kurucuDavetModal(){
     }catch(err){x.disabled=false;toast(hataCevir(err.message),true);}
   });
   if(b){
+    const ekle=m.querySelector("#kurucuEkle");
+    if(ekle)ekle.onclick=async()=>{
+      const nickler=m.querySelector("#kurucuYeniNick").value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
+      const hata=m.querySelector("#kurucuEkleHata");
+      if(!nickler.length){hata.textContent="Davet edilecek en az bir kullanıcı adı yaz.";return;}
+      if(nickler.length>20-davetSayisi){hata.textContent="En fazla "+(20-davetSayisi)+" yeni kişi davet edebilirsin.";return;}
+      if(new Set(nickler.map(x=>x.toLocaleLowerCase("tr"))).size!==nickler.length){hata.textContent="Aynı kullanıcı adını iki kez yazma.";return;}
+      hata.textContent="";ekle.disabled=true;
+      try{
+        const sonuc=await API.rpc("kurucu_davet_ekle",{p_basvuru:b.id,p_kadlar:nickler});
+        toast(sonuc.eklenen+" yeni kurucu daveti gönderildi.");
+        kurucuDavetModal();
+      }catch(err){ekle.disabled=false;hata.textContent=hataCevir(err.message);}
+    };
     m.querySelector("#kurucularTamamla").onclick=async()=>{
       const btn=m.querySelector("#kurucularTamamla");btn.disabled=true;
       try{
