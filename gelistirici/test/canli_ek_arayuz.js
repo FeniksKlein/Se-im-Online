@@ -20,7 +20,7 @@ const shot = process.argv[2];
           son_acilan: [{ il_id: 35, ad: 'İzmir', onde: 'ABC' }, { il_id: 16, ad: '<b>Bursa</b>', onde: 'XYZ' }] },
         sonuc: { toplam: 30, dolu: 2, bos: 0, baraj: 7, ulusal: [], iller: zaman ? { 34: { mv: 1, gecerli: 10, partiler: {}, secilen: [], bagimsizlar: [] } } : {}, bagimsiz_sandalye: 0 } });
       window.AKIS_VERI = [{ id: 9, kad: 'Ada', unvan: 'ABC Genel Başkanı', parti: { id: 1, ad: 'A', kisa: 'ABC', renk: '#123456', amblem: 'a_yildiz' }, il: 'İzmir', metin: '<img src=x onerror="window.xss=1"> Bugün #SeçimGecesi çok heyecanlı', zaman: new Date().toISOString(), begeni: 2, begenmeme: 0, yanit: 1, begendim: false, begenmedim: false, benim: false },
-        { id: 8, kad: 'Deniz', unvan: null, parti: null, il: 'Ankara', metin: 'Benim paylaşımım', zaman: new Date().toISOString(), begeni: 0, begenmeme: 0, yanit: 0, begendim: false, begenmedim: false, benim: true }];
+        { id: 8, kad: 'Deniz', unvan: null, parti: null, il: 'Ankara', metin: "Benim paylaşımım: Türkiye'nin gündemi & <b>haber</b>", zaman: new Date().toISOString(), begeni: 0, begenmeme: 0, yanit: 0, begendim: false, begenmedim: false, benim: true }];
       API = { rpc: async (ad, args) => {
         calls.push({ ad, args });
         if (ad === 'secim_detay') return detay();
@@ -73,6 +73,14 @@ const shot = process.argv[2];
     assert.equal(await page.locator('#icerik img, #icerik script').count(), 0);
     assert.equal(await page.evaluate(() => window.xss), undefined);
     assert.equal(await page.locator('.akis-satir .etk').count(), 1);
+    assert.equal(await page.locator('.akis-satir[data-id="8"] .metin').textContent(), "Benim paylaşımım: Türkiye'nin gündemi & <b>haber</b>");
+    assert.equal(await page.locator('.akis-satir[data-id="8"] .etk').count(), 0, 'HTML karakter kodundaki #39 etiket olamaz');
+    const etiketDeneme = await page.evaluate(() => {
+      const el = document.createElement('div');
+      el.innerHTML = akisMetinHtml("Türkiye'nin #Seçim gündemi & <olay>");
+      return { metin: el.textContent, etiket: el.querySelector('.etk')?.dataset.etk, adet: el.querySelectorAll('.etk').length };
+    });
+    assert.deepEqual(etiketDeneme, { metin: "Türkiye'nin #Seçim gündemi & <olay>", etiket: 'seçim', adet: 1 });
     await page.fill('#akisMetin', 'Merhaba #deneme'); await page.click('#akisGonder');
     await page.waitForFunction(() => calls.some(c => c.ad === 'akis_yaz'));
     assert.equal(await page.evaluate(() => calls.find(c => c.ad === 'akis_yaz').args.p_metin), 'Merhaba #deneme');
