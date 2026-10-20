@@ -168,7 +168,7 @@ async function spkEkrani(){
     const v = EK.spk = await API.rpc("spk_ekrani");
     iskelet("Sermaye Piyasası Kurulu", `
       <div class="kart"><div class="pz-bas"><span class="pz-logo">${EK_IKON.spk}</span><div><h2>Borsa gözetimi</h2>
-        <p class="alt">Aynı cihazdan açılmış hesaplar arasında ya da fiyat şişirmek için karşılıklı yapılan hisse işlemlerini SPK yakalar.</p></div></div>
+        <p class="alt">SPK şüpheli işlemleri inceler. Şüphe veya ihbar suçun kanıtı değildir; ceza için gerçek işlem delili ve gerekçeli karar gerekir.</p></div></div>
         <p class="pz-not">${e(v.kural)}</p>
         ${v.yasagim ? `<p class="pz-not" style="color:var(--al2)">Borsa işlem yasağın ${tarihSaat(v.yasagim)} tarihine kadar sürüyor.</p>` : ""}</div>
       ${v.yetkili ? `<div class="kart"><h2>İnceleme başlat</h2><p class="alt">Hazine ve Maliye Bakanı olarak manipülasyon şüphesiyle inceleme açabilirsin. Bedel 0,5 milyar ₺ (bakanlık kasası). Günde en fazla 3.</p>
@@ -176,13 +176,18 @@ async function spkEkrani(){
         <div class="alan"><label>Şüpheli oyuncu</label><input id="ekSpkKad" type="text" autocomplete="off" placeholder="kullanıcı adı"></div>
         <div class="alan ek-alan"><label>İddia</label><textarea id="ekSpkIddia" maxlength="500" placeholder="Ne gördün? Fiyat hareketi, zamanlama…"></textarea></div>
         <button class="btn" onclick="spkAc()">İncelemeyi başlat</button></div>` : ""}
-      <div class="kart"><h2>İncelemeler</h2>${(v.incelemeler || []).map(x => `<div class="pz-satir" style="align-items:flex-start"><span class="sol"><b>${e(x.sirket || "—")} · ${e(x.tur_ad)}</b>
+      <div class="kart"><h2>İncelemeler</h2>${(v.incelemeler || []).map(x => {
+        const delil = x.delil || {};
+        return `<div class="pz-satir" style="align-items:flex-start"><span class="sol"><b>${e(x.sirket || "—")} · ${e(x.tur_ad)}</b>
           <span class="kucuk" style="display:block">${e(x.taraf1)}${x.taraf2 ? " ↔ " + e(x.taraf2) : ""} · ${e(x.acan)} · ${tarihSaat(x.bas)}</span>
-          ${+x.tutar ? `<span class="kucuk" style="display:block">İlgili işlem hacmi ${ekTL(x.tutar)}</span>` : ""}
+          ${+x.tutar ? `<span class="kucuk" style="display:block">İncelenen işlem hacmi ${ekTL(x.tutar)} (tek başına kanıt değildir)</span>` : ""}
           ${x.iddia ? `<span class="kucuk" style="display:block">${e(x.iddia)}</span>` : ""}
-          ${x.durum === "acik" ? `<span class="kucuk" style="display:block">Karar süresi: ${tarihSaat(x.bit)}</span>` : x.karar_not ? `<span class="kucuk" style="display:block">${e(x.karar_not)}</span>` : ""}
-          ${v.yetkili && x.durum === "acik" && !x.taraf_benim ? `<span style="display:flex;gap:6px;margin-top:8px"><button class="btn tehlike yarim" style="margin:0;padding:8px 12px" onclick="spkKarar(${x.id},true)">Ceza ver</button><button class="btn ikinci yarim" style="margin:0;padding:8px 12px" onclick="spkKarar(${x.id},false)">Kapat</button></span>` : ""}</span>
-          <span class="sag">${ekDurum(x.durum)}${+x.ceza ? `<span class="kucuk" style="display:block">${ekTL(x.ceza)}</span>` : ""}</span></div>`).join("")
+          <span class="kucuk" style="display:block;color:${delil.yeterli ? "var(--good)" : "var(--al2)"}">${delil.yeterli ? "Doğrulanmış karşılıklı işlemler var; karar için ayrıca gerekçe gerekir." : "Ceza için somut karşılıklı işlem kanıtı bulunamadı."}</span>
+          ${(delil.islemler || []).map(is => `<span class="kucuk" style="display:block">İşlem #${e(is.id)} · ${tarihSaat(is.zaman)} · ${e(is.satici)} → ${e(is.alici)} · ${ekTL(is.tutar)}</span>`).join("")}
+          ${x.durum === "acik" ? `<span class="kucuk" style="display:block">Karar süresi: ${tarihSaat(x.bit)}</span>` : `<span class="kucuk" style="display:block">Kararı veren: ${e(x.karar_veren || "—")}${x.karar_zaman ? " · " + tarihSaat(x.karar_zaman) : ""}</span><span class="kucuk" style="display:block">Gerekçe: ${e(x.karar_not || "Önceki sistemde gerekçe kaydedilmemiş")}</span>`}
+          ${v.yetkili && x.durum === "acik" && !x.taraf_benim ? `<span style="display:flex;gap:6px;margin-top:8px">${delil.yeterli ? `<button class="btn tehlike yarim" style="margin:0;padding:8px 12px" onclick="spkKarar(${x.id},true)">Gerekçeli ceza</button>` : ""}<button class="btn ikinci yarim" style="margin:0;padding:8px 12px" onclick="spkKarar(${x.id},false)">Cezasız kapat</button></span>` : ""}</span>
+          <span class="sag">${ekDurum(x.durum)}${+x.ceza ? `<span class="kucuk" style="display:block">${ekTL(x.ceza)}</span>` : ""}</span></div>`;
+      }).join("")
         || '<p class="alt">Henüz inceleme yok.</p>'}</div>`, { geri: true });
   } catch (err) { ekHata("SPK", err); }
 }
@@ -194,9 +199,27 @@ async function spkAc(){
   catch (err) { toast(hataCevir(err.message), true); }
 }
 async function spkKarar(id, ceza){
-  if (!await onayla("SPK kararı", ceza ? "Taraflara işlem hacminin %20'si kadar ceza ve 7 gün borsa yasağı verilecek." : "İnceleme ihlal bulunmadan kapatılacak.", ceza ? "Ceza ver" : "Kapat", ceza)) return;
-  try { await API.rpc("spk_karar", { p_id: id, p_ceza: ceza, p_not: null }); toast("Karar verildi."); spkEkrani(); }
-  catch (err) { toast(hataCevir(err.message), true); }
+  const inceleme = ((EK.spk || {}).incelemeler || []).find(x => x.id === id);
+  if (!inceleme) return toast("İnceleme bulunamadı.", true);
+  const delil = inceleme.delil || {};
+  if (ceza && !delil.yeterli) return toast("Somut borsa işlem kanıtı olmadan ceza verilemez.", true);
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">SPK #${id} · ${ceza ? "Ceza kararı" : "Cezasız kapatma"}</h3>
+    <p class="alt" style="margin-top:8px">${e(inceleme.sirket)} · ${e(inceleme.taraf1)}. ${ceza ? "Sunucuda doğrulanan ters yönlü işlemler dışında hiçbir iddia tek başına kanıt sayılmaz. Ceza: doğrulanan hacmin %20'si (en az 10.000 ₺) ve 7 gün borsa yasağı." : "Dosya ceza verilmeksizin kapatılır."}</p>
+    ${ceza ? `<p class="pz-not">İşlem numaraları: ${(delil.islem_idleri || []).map(x => "#" + e(x)).join(" ve ")} · Delil tutarı: ${ekTL(delil.toplam_tutar)}</p>` : ""}
+    <div class="alan ek-alan"><label>Gerekçeli karar (zorunlu, en az 40 karakter)</label><textarea id="ekSpkKararNot" maxlength="500" placeholder="Hangi işlemler ne nedenle manipülasyon sayıldı veya neden ihlal bulunmadı? Somut açıklama yaz."></textarea></div>
+    <p class="kucuk" id="ekSpkKararSayac">0 / 40 karakter</p>
+    <button class="btn ${ceza ? "tehlike" : ""}" id="ekSpkKararOnay">${ceza ? "Gerekçeli ceza ver" : "Gerekçeyle kapat"}</button>
+    <button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
+  const alan = $("#ekSpkKararNot", m), sayac = $("#ekSpkKararSayac", m), btn = $("#ekSpkKararOnay", m);
+  alan.oninput = () => { const n = alan.value.trim().length; sayac.textContent = `${n} / 40 karakter`; btn.disabled = n < 40; };
+  alan.oninput();
+  btn.onclick = async () => {
+    const not = alan.value.trim();
+    if (not.length < 40) return toast("En az 40 karakterlik somut karar gerekçesi yaz.", true);
+    btn.disabled = true;
+    try { await API.rpc("spk_karar", { p_id: id, p_ceza: ceza, p_not: not }); modalKapat(); toast("Gerekçeli karar kaydedildi."); spkEkrani(); }
+    catch (err) { btn.disabled = false; toast(hataCevir(err.message), true); }
+  };
 }
 
 /* ---------------- Konkordato ve iflas ---------------- */
