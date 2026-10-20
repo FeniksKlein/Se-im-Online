@@ -30,7 +30,8 @@
   window.stkFaaliyetEkrani = async function (id) {
     yukleniyor("Dernek faaliyetleri");
     try {
-      var r = await API.rpc("dernek_faaliyetler",{p_dernek:id});
+      var sonuc = await Promise.all([API.rpc("dernek_faaliyetler",{p_dernek:id}),API.rpc("dernek_detay",{p_dernek:id})]);
+      var r = sonuc[0], rolum = sonuc[1] && sonuc[1].rolum;
       var kamp = Array.isArray(r.kampanyalar) ? r.kampanyalar : [];
       var proj = Array.isArray(r.projeler) ? r.projeler : [];
       var etkin = Array.isArray(r.etkinlikler) ? r.etkinlikler : [];
@@ -44,7 +45,10 @@
       if (r.yetkili) h += '<div class="kart"><h2>Yeni faaliyet</h2>' +
         '<div class="vit-dugme"><button class="btn canli" onclick="stkProjeModal(' + id + ')">🌳 Ağaçlandır / Yardım yap</button><button class="btn altin" onclick="stkKampanyaAcModal(' + id + ')">Bağış kampanyası aç</button></div>' +
         '<div class="vit-dugme"><button class="btn ikinci" onclick="stkEtkinlikModal(' + id + ')">Gönüllü etkinliği düzenle</button><button class="btn ikinci" onclick="stkZiyaretModal(' + id + ')">Partiye ziyaret talep et</button></div></div>';
-      h += '<div class="bolum-bas"><h2>Bağış ve yardım kampanyaları</h2><span class="kucuk">' + kamp.length + ' kampanya</span></div>';
+      if (rolum === 'baskan') h += '<div class="kart"><h2>Dernek kasasından para çek</h2><p class="alt">Yalnız serbest kasa çekilebilir. İşlem, gerekçesiyle birlikte dernek hesap hareketlerine ve Gündem\'e kaydedilir.</p>' +
+         '<div class="kv"><span class="k">Çekilebilir tutar</span><b>' + tlYaz(r.serbest) + '</b></div>' +
+         '<button class="btn altin" ' + (Number(r.serbest) < 1 ? 'disabled ' : '') + 'onclick="stkParaCekModal(' + id + ',' + Number(r.serbest) + ')">Kasadan para çek</button></div>';
+       h += '<div class="bolum-bas"><h2>Bağış ve yardım kampanyaları</h2><span class="kucuk">' + kamp.length + ' kampanya</span></div>';
       h += kamp.length ? kamp.map(function(k) {
         var kalan = Math.max(0,Number(k.hedef)-Number(k.toplanan));
         var oran = Math.min(100,Math.round(100*Number(k.toplanan)/Number(k.hedef)));
@@ -78,6 +82,22 @@
       }).join("") : '<div class="kart"><p class="alt">Henüz ziyaret kaydı yok.</p></div>';
       iskelet("Sosyal faaliyetler · " + e(r.ad),h,{geri:true});
     } catch(err) { iskelet("Dernek faaliyetleri",'<div class="kart"><p class="alt">' + e(hataCevir(err.message)) + '</p></div>',{geri:true}); }
+  };
+
+  window.stkParaCekModal = function (id, serbest) {
+    var m = modal('<h3>Dernek kasasından para çek</h3><p class="alt">Başkan olarak yalnız serbest kasadan kişisel cüzdanına para aktarabilirsin. Yardım kampanyalarına ayrılan para korunur. Çekim ve gerekçesi kayıt altındadır.</p>' +
+      '<p class="kucuk">Çekilebilir: ' + tlYaz(serbest) + '</p>' +
+      alan('Tutar (TL)', '<input id="sfParaTutar" type="number" min="1" max="' + Math.floor(serbest) + '" step="1">') +
+      alan('Para çekme gerekçesi', '<textarea id="sfParaGerekce" maxlength="200" placeholder="Örn. Dernek yönetim giderinin karşılanması"></textarea>') +
+      sorun + buton('Parayı cüzdanıma aktar', 'sfParaCek'));
+    islem(m, 'sfParaCek', async function () {
+      var tutar = Number(input(m,'sfParaTutar'));
+      var gerekce = input(m,'sfParaGerekce').trim();
+      if (!Number.isSafeInteger(tutar) || tutar < 1 || tutar > serbest) throw new Error('Tutar serbest kasa bakiyesini aşamaz.');
+      if (gerekce.length < 5) throw new Error('İşlem gerekçesi en az 5 karakter olmalı.');
+      if (!await onayla('Dernek kasasından para çek',tlYaz(tutar) + ' kişisel cüzdanına aktarılacak ve işlem Gündem\'de görülecek. Onaylıyor musun?', 'Parayı çek')) return null;
+      return API.rpc('dernek_para_cek',{p_dernek:id,p_tutar:tutar,p_aciklama:gerekce});
+    },'Dernek kasasından para cüzdanına aktarıldı.',function(){return stkFaaliyetEkrani(id);});
   };
 
   window.stkKampanyaAcModal = function (id) {
