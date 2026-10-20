@@ -5,7 +5,7 @@ async function adliyeEkrani(){
   catch(err){iskelet("Adliye",'<div class="bos">'+e(hataCevir(err.message))+'</div>');}
 }
 const ADL_TURLER={hakaret:"Hakaret",iftira:"İftira",rusvet:"Rüşvet",yolsuzluk:"Yolsuzluk",usulsuzluk:"Usulsüz işlem",dolandiricilik:"Dolandırıcılık",diger:"Diğer"};
-const ADL_CEZALAR={beraat:"Beraat",uyari:"Uyarı",sustur_1s:"1 saat sohbetten susturma",sustur_1g:"1 gün sohbetten susturma",sustur_1h:"1 hafta sohbetten susturma",para_10b:"10.000 ₺ para cezası",para_50b:"50.000 ₺ para cezası",aday_yasagi:"30 gün adaylık yasağı",vekillik_dusur:"Milletvekilliğinin düşürülmesi",parti_para:"Partiye 25.000 ₺ hazine yardımı kesintisi",dusme:"Dava düştü (süre doldu)"};
+const ADL_CEZALAR={beraat:"Beraat",uyari:"Uyarı",sustur_1s:"1 saat sohbetten susturma",sustur_1g:"1 gün sohbetten susturma",sustur_1h:"1 hafta sohbetten susturma",para_10b:"10.000 ₺ para cezası",para_50b:"50.000 ₺ para cezası",aday_yasagi:"30 gün adaylık yasağı",vekillik_dusur:"Milletvekilliğinin düşürülmesi",parti_para:"Partiye 25.000 ₺ hazine yardımı kesintisi",musadere:"Yolsuzluk parası Hazine'ye devredilsin",dusme:"Dava düştü (süre doldu)"};
 const ADL_PARTI_CEZA=["beraat","uyari","parti_para"];
 
 const ADL_SUCLAR={
@@ -252,7 +252,7 @@ async function adliyeDosya(id){
   ADL=await API.rpc("adliye_durum");
   const d=ADL.davalar.find(x=>x.id===id);
   if(!d){iskelet("Adliye",'<div class="bos">Dava bulunamadı veya listede yer almıyor.</div>',{geri:true});return;}
-  const [r,ek,mah]=await Promise.all([API.rpc("adliye_detay",{p_dava:id}),API.rpc("adliye_dava_ek",{p_dava:id}).catch(()=>null),API.rpc("adliye_mahkeme").catch(()=>null)]);
+  const [r,ek,mah,mus]=await Promise.all([API.rpc("adliye_detay",{p_dava:id}),API.rpc("adliye_dava_ek",{p_dava:id}).catch(()=>null),API.rpc("adliye_mahkeme").catch(()=>null),API.rpc("adliye_musadere_durum",{p_dava:id}).catch(()=>null)]);
   ADL.mahkeme=mah;
   const yetki=d.davalimiyim&&ADL.partiler.some(x=>x.id===ADL.parti_id&&x.sozcu);
   const partiYetkim=ADL.partiler.some(x=>(x.gb_miyim||x.sozcu_muyum)&&(x.ad===d.davaci_parti||x.ad===d.davali_parti));
@@ -277,6 +277,7 @@ async function adliyeDosya(id){
    +'</div>';
   const karar=d.durum==="karar"?'<div class="kart"><h3>Gerekçeli karar</h3><b>'+e(ADL_CEZALAR[d.karar]||"—")+'</b>'
    +(ek&&ek.ilk_karar&&ek.ilk_karar!==d.karar?'<p class="kucuk">İlk derece kararı: '+e(ADL_CEZALAR[ek.ilk_karar]||ek.ilk_karar)+' (istinafta bozuldu)</p>':'')
+   +(mus&&d.karar!=="beraat"?'<div class="kart"><b>Hazineye iade / müsadere: '+tlYaz(mus.tutar)+'</b><p class="alt">Sorumlu: '+e(mus.sorumlu)+(mus.sirket?' · Kaynak şirket: '+e(mus.sirket):'')+'</p><p class="alt">Hazineye aktarılan: '+tlYaz(mus.tahsil)+' · Kalan: '+tlYaz(mus.kalan)+' · '+(mus.kesin?'Kesinleşmiş karar':'İstinaf tamamlanınca uygulanacak')+'</p></div>':'')
    +'<p style="white-space:pre-wrap;margin-top:8px">'+e(d.gerekce||"")+'</p><p class="alt">Kararı yazan üye: '+e(d.hakim||"—")+' · '+adlTarih(d.karar_at)+'</p>'
    +(ek&&ek.oylar?'<h3 style="margin-top:10px">Heyet oyları</h3>'+ek.oylar.map(o=>'<div class="liste-satir"><div class="orta"><b>'+e(o.uye)+'</b> · '+e(ADL_CEZALAR[o.karar]||o.karar)+(o.karar!==d.ilk_karar&&o.karar!==d.karar?' <span class="rozet">Karşı oy</span>':'')+'<p class="kucuk" style="white-space:pre-wrap">'+e(o.gerekce)+'</p></div></div>').join(''):'')
    +(d.af_at?'<span class="rozet yesil">Cumhurbaşkanlığı affı · '+adlTarih(d.af_at)+'</span><p class="alt">'+e(d.af_gerekce||"")+'</p>':'')
@@ -332,8 +333,10 @@ async function adlAiOnerModal(id,m){
 
 function adlKararModal(id){
  const dv=(ADL.davalar||[]).find(x=>x.id===id)||{};
- const opts=Object.entries(ADL_CEZALAR).filter(([k])=>k!=="dusme"&&(dv.davali?k!=="parti_para":ADL_PARTI_CEZA.includes(k))).map(([k,v])=>'<option value="'+k+'">'+e(v)+'</option>').join("");
+ const musadereUygun=["yolsuzluk","rusvet","usulsuzluk","dolandiricilik"].includes(dv.tur);
+ const opts=Object.entries(ADL_CEZALAR).filter(([k])=>k!=="dusme"&&(k==="musadere"?musadereUygun:(dv.davali?k!=="parti_para":ADL_PARTI_CEZA.includes(k)))).map(([k,v])=>'<option value="'+k+'">'+e(v)+'</option>').join("");
  const m=modal('<div class="alan"><label>Mahkeme kararı</label><select id="adlCeza">'+opts+'</select></div>'
+  +(musadereUygun?'<div id="adlMusadereKutu" style="display:none"><div class="alan"><label>Kanıtlanan yolsuzluk tutarı (₺)</label><input id="adlMusadereTutar" type="number" min="1" step="1"></div><div class="alan"><label>Sorumlu oyuncunun kullanıcı adı</label><input id="adlMusadereKad" value="'+e(dv.davali||'')+'"></div><div class="alan"><label>Paranın aktarıldığı şirket ID (varsa)</label><input id="adlMusadereSirket" type="number" min="1" step="1"></div><p class="alt">Somut delillerdeki para hareketlerini ve miktarı gerekçenizde belirtin. Karar kesinleştiğinde Hazineye tahsil edilir.</p></div>':'')
   +'<button type="button" class="btn ikinci" id="adlAiOner">Yapay zekâdan ceza önerisi al</button>'
   +'<div id="adlAiSonuc" role="status" class="alt" style="padding:8px 0">Bu öneri mahkeme kararı değildir.</div>'
   +adlAlan("Gerekçeli karar","adlGerekce","textarea")
@@ -341,9 +344,13 @@ function adlKararModal(id){
   +'<button class="btn altin" id="adlKarar">Oyumu ver</button>');
  adlFormBaslik(m,"Yüksek Mahkeme · Dava #"+id);
  m.querySelector("#adlAiOner").onclick=()=>adlAiOnerModal(id,m);
+ if(musadereUygun)m.querySelector("#adlCeza").addEventListener("change",()=>{m.querySelector("#adlMusadereKutu").style.display=m.querySelector("#adlCeza").value==="musadere"?"block":"none";});
  m.querySelector("#adlKarar").onclick=async()=>{
   if(!await onayla("Oyunu ver","Çoğunluk oluşursa karar hemen açıklanır. Ağır cezalar istinaf süresi bitince uygulanır.","Oyumu ver",true))return;
-  adlIslem(()=>API.rpc("adliye_oy_ver",{p_dava:id,p_karar:m.querySelector("#adlCeza").value,p_gerekce:m.querySelector("#adlGerekce").value}),"Oyun kaydedildi.",id);
+  const kararTuru=m.querySelector("#adlCeza").value;
+  adlIslem(()=>kararTuru==="musadere"
+   ?API.rpc("adliye_musadere_oy",{p_dava:id,p_tutar:Number(m.querySelector("#adlMusadereTutar").value),p_sorumlu_kad:m.querySelector("#adlMusadereKad").value,p_sirket_id:Number(m.querySelector("#adlMusadereSirket").value)||null,p_gerekce:m.querySelector("#adlGerekce").value})
+   :API.rpc("adliye_oy_ver",{p_dava:id,p_karar:kararTuru,p_gerekce:m.querySelector("#adlGerekce").value}),"Oyun kaydedildi.",id);
  };
 }
 function adlAfModal(id){
