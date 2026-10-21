@@ -181,6 +181,7 @@
       await islem(function () {
         return API.rpc("adaylik_geri_cek", {p_secim: Number(secimId)});
       }, "Adaylıktan çekildin. Seçim listesi güncellendi.");
+      await durumYenile();
       yenidenCiz();
     } catch (_) {
       // islem() sunucudan gelen hatayı kullanıcıya gösterir.
