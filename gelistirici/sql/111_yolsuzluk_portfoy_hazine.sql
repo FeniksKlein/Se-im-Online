@@ -112,7 +112,7 @@ begin
     p_dava,toplam,kalan),t);
  end if;
  return toplam;
-end $function$
+end $function$;
 
 revoke all on function oyun.adliye_musadere_tahsil(bigint,timestamptz) from public,anon,authenticated;
 

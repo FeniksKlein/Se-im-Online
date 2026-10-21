@@ -1,0 +1,34 @@
+{
+  "appId": "com.feniksklein.secimonline",
+  "appName": "Seçim Online",
+  "webDir": "www",
+  "backgroundColor": "#0E1530",
+  "loggingBehavior": "none",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0E1530",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "android": {
+    "backgroundColor": "#0E1530",
+    "allowMixedContent": false,
+    "captureInput": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 900,
+      "launchAutoHide": true,
+      "backgroundColor": "#0E1530",
+      "showSpinner": false,
+      "androidScaleType": "CENTER_CROP"
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0E1530",
+      "overlaysWebView": false
+    },
+    "SystemBars": {
+      "style": "DARK"
+    }
+  }
+}

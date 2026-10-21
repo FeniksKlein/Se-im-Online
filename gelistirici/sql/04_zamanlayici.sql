@@ -31,3 +31,6 @@ select cron.schedule('ekonomi-2', '*/10 * * * *', 'select oyun.ekonomi2_tick()')
 
 -- 102 Siyaset Merkezi (2026-10-16)
 select cron.schedule('siyaset-merkezi', '1-59/5 * * * *', 'select oyun.siyaset_merkezi_tick()');
+
+-- 113 Zamanlayıcı geçmişi temizliği (2026-10-22): cron.job_run_details günde ~8.000 satır büyüyordu; son 7 gün tutulur
+select cron.schedule('cron-gecmis-temizlik', '23 3 * * *', $$delete from cron.job_run_details where end_time < now() - interval '7 days'$$);

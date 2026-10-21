@@ -13,7 +13,7 @@
 window.AYAR = {
   SUPABASE_URL:  "https://viewlouzlzxteygtnsgd.supabase.co",
   SUPABASE_ANON: "sb_publishable_-xANW6vjh_jLfKk4Xc_Cnw_436849pn",
-  ILETISIM:      "destek@ornek.com",  // oyuncuların ulaşacağı e-posta (gizlilik metninde görünür)
+  ILETISIM:      "feniksklein@gmail.com",  // oyuncuların ulaşacağı e-posta (gizlilik metninde görünür)
   // Ödüllü reklam (AdMob). Varsayılanlar Google'ın test birimleridir; yayından önce kendi birimlerinle değiştir, ADMOB_TEST'i false yap.
   ADMOB_TEST: true,
   ADMOB_ODULLU_IOS:     "ca-app-pub-3940256099942544/1712485313",
@@ -564,7 +564,7 @@ async function partiDisiplinOy(pid,id,oy){
   --acc:var(--ink); --acc2:var(--al2); --gold:var(--ink2); --gold2:var(--ink2);
   --disp:"Kurul Display","Arial Narrow","Roboto Condensed",sans-serif;
   --r:14px; --rBtn:11px;
-  --safeT:env(safe-area-inset-top,0px); --safeB:max(env(safe-area-inset-bottom,0px),12px);
+  --safeT:var(--safe-area-inset-top,env(safe-area-inset-top,0px)); --safeB:max(var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)),12px);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--bg);overscroll-behavior:none}
@@ -10026,5 +10026,7 @@ window.oybKrediMasasiEkrani = oybKrediMasasiEkrani;
 <script src="siyaset_merkezi.js?v=20261016-2"></script>
 <script src="cb_kampanya.js?v=20261019-1"></script>
 <script src="gorunum_cila.js?v=20261016-6"></script>
+<script src="yonetici_kontrol.js?v=20261022-1"></script>
+<script src="mobil_yerel.js?v=20261022-1"></script>
 </body>
 </html>

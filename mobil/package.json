@@ -1,0 +1,27 @@
+{
+  "name": "secim-simulasyonu-online",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Seçim Simülasyonu Online — iOS/Android (Capacitor) paketi. Web uygulaması docs/ klasöründen alınır.",
+  "scripts": {
+    "www": "node ../gelistirici/build/magaza_paketi.js",
+    "hazirla": "node hazirla.mjs"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^8.0.0",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/device": "^8.0.0",
+    "@capacitor/haptics": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0",
+    "@revenuecat/purchases-capacitor": "*",
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.0.0"
+  }
+}
