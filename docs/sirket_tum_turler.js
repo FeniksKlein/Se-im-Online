@@ -48,7 +48,7 @@ async function sirketTumTurKur(onayli){
    '<div class="alan" id="stkProdBox"><label>Fabrika üretim grubu</label><select id="stkProd"><option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option><option value="malzeme">İnşaat malzemeleri</option></select></div>'+
    '<div class="alan" id="stkEnergyBox" style="display:none"><label>Enerji kaynağı</label><select id="stkEnergy"><option value="yenilenebilir">Yenilenebilir</option><option value="dogalgaz">Doğalgaz</option><option value="komur">Kömür</option></select></div>'+
    '<div class="kart" style="margin-top:12px"><p id="stkDescription" class="alt"></p><p id="stkPermit" class="alt"></p></div>'+
-   '<button class="btn ikinci" id="stkLicense">🏛️ Ruhsat başvur / onayları gör</button>'+
+   '<button class="btn ikinci" id="stkLicense">🏛️ Ruhsat ve harç bilgileri</button>'+
    '<button class="btn altin" id="stkCreate">Şirketi kur</button>'+
    '<button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>'
   );
@@ -86,7 +86,7 @@ async function sirketTumTurKur(onayli){
     el("stkDescription").textContent=how+" Asgari sermaye: "+cash(min)+".";
     el("stkPermit").textContent=info[2]==="none"?"Banka türü mevcut kuruluş ve finans kurallarına tabidir.":
       permission(info)?"✅ Onaylı belediye ruhsatı bulundu. Kuruluşta harç kesilir.":
-      "⚠️ "+info[2]+" ruhsatı gerekli. Önce belediye başkanından aynı şirket adı ve il için onay almalısın.";
+      "✅ Şirketi kurduğunda kuruluş ruhsatı sistem tarafından anında onaylanacak. Harç kuruluşta tahsil edilir.";
     el("stkCreate").textContent=category==="factory"?"Fabrikayı kur ve üretimi aç":
       category==="retail"?"Mağazayı kur ve satışa aç":"Şirketi kur ve faaliyete başlat";
   }
@@ -99,10 +99,22 @@ async function sirketTumTurKur(onayli){
     if(!Number.isSafeInteger(capital)||capital<min||capital>100000000){toast("Sermaye "+cash(min)+" ile 100.000.000 ₺ arasında tam sayı olmalı.",true);return;}
     if(!Number.isInteger(loc)||loc<1||loc>81){toast("Geçerli bir faaliyet ili seç.",true);return;}
     if(((category==="factory"&&sector!=="sanayi")||sector==="insaat"||sector==="ajans")&&loc!==home){toast("Bu şirket türü kayıtlı ikamet ilinde açılır. Başka şehirde fabrika açmak için sanayi sektörünü seç.",true);return;}
-    if(!permission(info)){toast("Önce bu şirket ve il için belediyeden onaylı ruhsat al.",true);return;}
     if(!await onayla("Şirket kuruluşu",company+" için "+cash(capital)+" sermaye cüzdanından yatırılacak ve gerekli belediye harcı şirket kasasından kesilecek.","Kur"))return;
     this.disabled=true;
     try{
+      // Kurulus ruhsati belediye baskani karari beklemeden verilir.
+      // Mevcut gecerli ruhsat varsa tekrar basvuru yapilmaz.
+      if(!permission(info)&&info[2]!=="none"){
+        const permitSector=info[2]==="kur_pazar"?sector.split(":")[1]:info[2]==="kur_sirket"?sector:null;
+        const approval=await API.rpc("bel_ruhsat_basvur",{
+          p_tur:info[2],p_il:loc,p_sirket:null,p_hedef:null,
+          p_ad:company,p_sektor:permitSector,p_yatirim:capital
+        });
+        if(approval?.durum!=="onay")throw new Error("Kuruluş ruhsatı otomatik onaylanamadı. Lütfen tekrar dene.");
+        if(!Array.isArray(permits.benim))permits.benim=[];
+        permits.benim.push({tur:info[2],durum:"onay",sirket:company,il_id:loc,
+          sektor:permitSector,karar_zamani:new Date().toISOString()});
+      }
       let result;
       if(category==="service"){
         result=await API.rpc("pazar_sirket_kur",{p_ad:company,p_sektor:sector.split(":")[1],p_sermaye:capital,
