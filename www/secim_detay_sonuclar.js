@@ -113,3 +113,77 @@
   }
   window.ayrintiliSecimSonucGoster = goster;
 })();
+
+/* Adaylıktan çekilme: MV ve CB kesin adaylıkları */
+(function () {
+  "use strict";
+  if (window.SECIM_ADAY_CEKME) return;
+  window.SECIM_ADAY_CEKME = true;
+
+  var oncekiGundemEkAlt = typeof gundemEkAlt === "function" ? gundemEkAlt : null;
+  var adayTurleri = {
+    mv: "Milletvekili adaylığı",
+    cb: "Cumhurbaşkanlığı adaylığı",
+    cb2: "Cumhurbaşkanlığı ikinci tur adaylığı"
+  };
+
+  // Kesin adaylıklar, ön seçim başvurularından ayrı tutulur.
+  // Sunucu saatini ve aday kimliğini RPC tekrar doğrular.
+  function adaylikKartim() {
+    if (typeof D === "undefined" || !D.durum || !Array.isArray(D.durum.takvim)) return "";
+    var t = typeof simdi === "function" ? simdi() : Date.now();
+    var adayliklar = D.durum.takvim.filter(function (s) {
+      return !!adayTurleri[s.tur] && s.adayim === true &&
+        s.oy_bas && Number.isFinite(Date.parse(s.oy_bas)) &&
+        t < Date.parse(s.oy_bas) && s.asama !== "bitti";
+    });
+    if (!adayliklar.length) return "";
+    var satirlar = adayliklar.map(function (s) {
+      return '<div class="liste-satir" style="align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<div class="orta"><b>' + adayTurleri[s.tur] + '</b>' +
+        '<div class="kucuk">' + (s.ara ? 'Erken seçim · ' : '') +
+        'Sandık açılışı: ' + tarihSaat(s.oy_bas) +
+        (s.tur === "mv" && D.durum.profil ? ' · ' + e(D.durum.profil.il_ad || '') : '') +
+        '</div></div>' +
+        '<button type="button" class="btn ikinci" onclick="secimAdayliktanCekil(' +
+        Number(s.id) + ')">Adaylıktan çekil</button></div>';
+    }).join("");
+    return '<div class="bolum-bas"><h2>Adaylıklarım</h2></div>' +
+      '<div class="kart"><p class="alt" style="margin-bottom:8px">' +
+      'Milletvekilliği ve cumhurbaşkanlığı adaylığından sandık açılmadan önce ' +
+      'kendi isteğinle vazgeçebilirsin. Başvuru harcı iade edilmez.</p>' +
+      satirlar + '</div>';
+  }
+
+  window.gundemEkAlt = function () {
+    var mevcut = oncekiGundemEkAlt ? oncekiGundemEkAlt.apply(this, arguments) : "";
+    return adaylikKartim() + (mevcut || "");
+  };
+
+  window.secimAdayliktanCekil = async function (secimId) {
+    var s = typeof D !== "undefined" && D.durum && D.durum.takvim &&
+      D.durum.takvim.find(function (x) { return Number(x.id) === Number(secimId); });
+    if (!s || !adayTurleri[s.tur] || !s.adayim) {
+      toast("Bu seçimde geri çekilebileceğin kesin adaylığın bulunamadı.", true);
+      return;
+    }
+    var t = typeof simdi === "function" ? simdi() : Date.now();
+    if (!s.oy_bas || t >= Date.parse(s.oy_bas)) {
+      toast("Sandık açıldıktan sonra adaylıktan çekilemezsin.", true);
+      return;
+    }
+    var kabul = await onayla("Adaylıktan çekil",
+      adayTurleri[s.tur] + " kaydını sileceksin ve seçim pusulasından çıkarılacaksın. " +
+      "Parti veya makam üyeliğin etkilenmez. Başvuru ücreti iade edilmez. " +
+      "Bu işlemi onaylıyor musun?", "Adaylıktan çekil", true);
+    if (!kabul) return;
+    try {
+      await islem(function () {
+        return API.rpc("adaylik_geri_cek", {p_secim: Number(secimId)});
+      }, "Adaylıktan çekildin. Seçim listesi güncellendi.");
+      yenidenCiz();
+    } catch (_) {
+      // islem() sunucudan gelen hatayı kullanıcıya gösterir.
+    }
+  };
+})();
