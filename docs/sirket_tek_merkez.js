@@ -142,11 +142,11 @@ window.sirketTekSirketEkrani=async function(id,tab){
       (lands.length?lands.map(a=>item('<b>'+safe(a.il)+' · Arsa #'+Number(a.id)+'</b>'+
          kv('Alan',a.m2+' m²')+kv('İmar kapasitesi',a.kapasite+' bağımsız bölüm')+kv('Alış bedeli',money(a.alis_bedeli)))).join(''):'<p class="alt">Yapılaşmaya hazır boş arsa yok.</p>')+
       (manager&&lands.length?'<h3>Yeni inşaat başlat</h3>'+
-       '<div class="alan"><label>Arsa</label><select id="sm_yapi_arsa">'+lands.map(a=>'<option value="'+a.id+'">'+safe(a.il)+' · #'+a.id+' · '+a.kapasite+' bölüm</option>').join('')+'</select></div>'+
+       '<div class="alan"><label>Arsa</label><select id="sm_yapi_arsa" onchange="sirketMerkezInsaatTeklif('+id+')">'+lands.map(a=>'<option value="'+a.id+'">'+safe(a.il)+' · #'+a.id+' · '+a.kapasite+' bölüm</option>').join('')+'</select></div>'+
        '<div class="alan"><label>Proje adı</label><input id="sm_yapi_ad" maxlength="70" placeholder="Örn. Feniks Konutları"></div>'+
-       '<div class="alan"><label>Daire adedi</label><input id="sm_yapi_daire" type="number" inputmode="numeric" min="0" step="1" value="3"></div>'+
-       '<div class="alan"><label>Dükkân adedi</label><input id="sm_yapi_dukkan" type="number" inputmode="numeric" min="0" step="1" value="0"></div>'+
-       '<p class="sm-note">İmar kapasitesi aşılmaz. İnşaat maliyeti işlem sırasında sunucuda hesaplanır ve şirket kasasından kesilir.</p>'+
+       '<div class="alan"><label>Daire adedi</label><input id="sm_yapi_daire" type="number" inputmode="numeric" min="0" step="1" value="3" oninput="sirketMerkezInsaatTeklif('+id+')"></div>'+
+       '<div class="alan"><label>Dükkân adedi</label><input id="sm_yapi_dukkan" type="number" inputmode="numeric" min="0" step="1" value="0" oninput="sirketMerkezInsaatTeklif('+id+')"></div>'+
+       '<p class="sm-note">Daire ve dükkân sayısı değiştikçe kesin yapım bedeli sunucudan hesaplanır. Arsa alım bedeli tekrar ödenmez.</p>'+'<div id="sm_yapi_teklif" aria-live="polite"><p class="alt">Yapım maliyeti hesaplanıyor…</p></div>'+
        action('Seçili arsada inşaata başla','sirketMerkezInsaatBaslat('+id+')','altin'):'')+
       '<h3>Devam eden ve tamamlanan inşaatlar</h3>'+
       (projects.length?projects.map(p=>item('<b>'+safe(p.ad)+'</b><p class="alt">'+safe(p.il)+' · '+safe(p.tamamlandi?'Tamamlandı':'İnşaat devam ediyor')+'</p>'+
@@ -218,6 +218,9 @@ window.sirketTekSirketEkrani=async function(id,tab){
      action('İhaleler','ekranAc(ihaleEkrani)'));
   }
   iskelet(s.ad,html,{geri:true});
+  if(tab==='insaat'&&s.sektor==='insaat'&&manager&&get('sm_yapi_teklif')){
+   Promise.resolve().then(()=>window.sirketMerkezInsaatTeklif(id));
+  }
  }catch(e){iskelet('Şirket paneli',sectionHeader('Şirket açılamadı','<p>'+safe(e.message||e)+'</p>'+
    action('Şirketlerime dön','ekranAc(sirketlerimMerkezi)')),{geri:true});}
 };
@@ -289,11 +292,78 @@ window.sirketMerkezArsaAl=async function(id,aid,fiyat){
  try{await call('eko_emlak_islem',{p_eylem:'arsa_al',p_veri:{arsa:aid,sirket:id}});toast('Arsa şirket adına alındı.');await openCompany(id,'insaat');}
  catch(e){message(e);}
 };
+let smInsaatTeklifSeri=0;
+function smInsaatSecim(){
+ return {arsa:Number(val('sm_yapi_arsa')),daire:Number(val('sm_yapi_daire')),dukkan:Number(val('sm_yapi_dukkan'))};
+}
+function smInsaatSecimGecerli(x){
+ return x.arsa>0&&Number.isSafeInteger(x.daire)&&Number.isSafeInteger(x.dukkan)
+  &&x.daire>=0&&x.dukkan>=0&&x.daire+x.dukkan>=1;
+}
+function smInsaatTeklifEkrani(id,d){
+ const target=get('sm_yapi_teklif');
+ if(!target)return;
+ if(!d.gecerli){target.innerHTML=item('<p class="alt" style="color:var(--warn,#efb25b)">'+safe(d.hata||'İmar kapasitesine uygun daire ve dükkân sayıları seç.')+'</p>');return;}
+ target.innerHTML=item('<h4>🏗️ İnşaat maliyeti ve finansman</h4>'+
+   kv('Daire yapım gideri',money(d.daire_maliyeti))+
+   kv('Dükkân yapım gideri',money(d.dukkan_maliyeti))+
+   kv('Toplam inşaat maliyeti',money(d.toplam_maliyet))+
+   kv('Şirket kasasındaki para',money(d.mevcut_kasa))+
+   (d.uygun?kv('İnşaattan sonra kalan para',money(d.kalan_kasa)):
+    '<p class="sm-note" style="color:var(--warn,#efb25b)"><b>Kasa yetersiz. Eksik tutar: '+money(d.eksik)+'</b></p>'+
+    action('Eksik tutar için şirkete para yatır','sirketTekSirketEkrani('+id+',\'para\')','altin'))+
+   kv('Tahmini yapım süresi',d.sure_saat+' saat')+
+   '<p class="sm-note">Arsa için ödenmiş '+money(d.arsa_alis_bedeli)+
+   ' tutarındaki arsa bedeli tekrar tahsil edilmez; yalnızca yukarıdaki yapım bedeli kesilir.</p>');
+}
+window.sirketMerkezInsaatTeklif=async function(id){
+ const target=get('sm_yapi_teklif');if(!target)return null;
+ const x=smInsaatSecim(),seq=++smInsaatTeklifSeri;
+ if(!smInsaatSecimGecerli(x)){
+  target.innerHTML='<p class="alt">Maliyet için en az 1 daire veya dükkân seç; adetler sıfır ya da pozitif tam sayı olmalı.</p>';return null;
+ }
+ target.innerHTML='<p class="alt">İnşaat maliyeti ve kasa karşılaştırılıyor…</p>';
+ try{
+  const d=await call('sirket_insaat_teklif',{p_sirket:id,p_arsa:x.arsa,p_daire:x.daire,p_dukkan:x.dukkan});
+  if(seq!==smInsaatTeklifSeri||get('sm_yapi_teklif')!==target)return null;
+  smInsaatTeklifEkrani(id,d);return d;
+ }catch(e){
+  if(seq===smInsaatTeklifSeri&&get('sm_yapi_teklif')===target)
+   target.innerHTML=item('<p class="alt">Maliyet hesaplanamadı: '+safe(e.message||e)+'</p>');
+  return null;
+ }
+};
 window.sirketMerkezInsaatBaslat=async function(id){
- const arsa=Number(val('sm_yapi_arsa')),ad=val('sm_yapi_ad').trim(),daire=Number(val('sm_yapi_daire')),dukkan=Number(val('sm_yapi_dukkan'));
- if(!arsa||!ad||ad.length>70||!Number.isSafeInteger(daire)||!Number.isSafeInteger(dukkan)||daire<0||dukkan<0||daire+dukkan<1){toast('Arsa, proje adı, daire ve dükkân adetlerini kontrol et.',true);return;}
- if(!await ask('İnşaatı başlat',ad+' için '+daire+' daire, '+dukkan+' dükkân yapılacak. Sunucunun hesapladığı yapım maliyeti şirket kasasından alınacak. Onaylıyor musun?'))return;
- try{await call('eko_emlak_islem',{p_eylem:'insaata_basla',p_veri:{arsa:arsa,ad:ad,daire:daire,dukkan:dukkan}});toast('İnşaat projesi başlatıldı.');await openCompany(id,'insaat');}catch(e){message(e);}
+ const x=smInsaatSecim(),ad=val('sm_yapi_ad').trim();
+ if(!smInsaatSecimGecerli(x)||!ad||ad.length>70){
+  toast('Arsa, proje adı, daire ve dükkân adetlerini kontrol et.',true);return;
+ }
+ const btn=[...document.querySelectorAll('button')].find(b=>b.getAttribute('onclick')==='sirketMerkezInsaatBaslat('+Number(id)+')');
+ if(btn?.disabled)return;
+ if(btn)btn.disabled=true;
+ try{
+  // Hesap ve kasa işlem anında tekrar sunucudan okunur.
+  const d=await call('sirket_insaat_teklif',{p_sirket:id,p_arsa:x.arsa,p_daire:x.daire,p_dukkan:x.dukkan});
+  smInsaatTeklifEkrani(id,d);
+  if(!d.gecerli){toast(d.hata||'Arsanın imar kapasitesi aşılıyor.',true);return;}
+  if(!d.uygun){
+   toast('İnşaat maliyeti '+money(d.toplam_maliyet)+'. Şirket kasasında '+money(d.mevcut_kasa)+
+    ' var; '+money(d.eksik)+' eksik. Kasa / Sermaye menüsünden para yatır.',true);
+   return;
+  }
+  if(Number(val('sm_yapi_arsa'))!==x.arsa||Number(val('sm_yapi_daire'))!==x.daire||
+    Number(val('sm_yapi_dukkan'))!==x.dukkan||val('sm_yapi_ad').trim()!==ad){
+   toast('Proje bilgileri değişti. Yeni maliyeti kontrol et.',true);return;
+  }
+  if(!await ask('İnşaatı başlat',
+   ad+' · '+x.daire+' daire, '+x.dukkan+' dükkân. Toplam yapım bedeli '+money(d.toplam_maliyet)+
+   ' şirket kasasından kesilecek. Kasada '+money(d.mevcut_kasa)+
+   ' var, ödeme sonrası '+money(d.kalan_kasa)+' kalacak. İnşaatı başlatmayı onaylıyor musun?'))return;
+  const sonuc=await call('eko_emlak_islem',{p_eylem:'insaata_basla',
+    p_veri:{arsa:x.arsa,ad:ad,daire:x.daire,dukkan:x.dukkan}});
+  toast('İnşaat projesi başlatıldı. Tahsil edilen: '+money(sonuc.maliyet));await openCompany(id,'insaat');
+ }catch(e){message(e);}
+ finally{if(btn)btn.disabled=false;}
 };
 window.sirketMerkezBolumFiyat=async function(id,bolum){
  const tutar=Number(val('sm_bolum_'+bolum));
