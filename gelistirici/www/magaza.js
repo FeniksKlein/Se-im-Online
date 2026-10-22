@@ -66,12 +66,21 @@
   async function rozetleriYukle(zorla) {
     if (!zorla && Date.now() - M.rozetZaman < 5 * 60 * 1000) return;
     M.rozetZaman = Date.now();
-    try { M.rozet = (await API.rpc("magaza_rozetler")) || {}; } catch (_) { /* eski sunucu */ }
+    try { M.rozet = (await API.rpc("magaza_rozetler")) || {}; M.rozetYuklendi = true; rozetleriUygula(); } catch (_) { /* eski sunucu */ }
+  }
+  // Ekranda zaten çizilmiş sohbet balonlarına rozet ekle (rozet listesi sonradan geldiyse)
+  function rozetleriUygula() {
+    document.querySelectorAll(".balon[data-kad]").forEach(b => {
+      const kim = b.querySelector(".kim"); if (!kim || kim.querySelector(".mg-rz")) return;
+      const rz = rozetHtml(b.dataset.kad); const ad = kim.querySelector("span");
+      if (rz && ad) ad.insertAdjacentHTML("afterend", rz);
+    });
   }
   if (typeof balonHtml === "function") {
     const eskiBalon = balonHtml;
     window.balonHtml = balonHtml = function (m, ozel) {
       let h = eskiBalon(m, ozel);
+      if (!M.rozetYuklendi && !M._rozetIstek) { M._rozetIstek = true; rozetleriYukle(true).finally(() => { M._rozetIstek = false; }); }
       const rz = m && m.kad ? rozetHtml(m.kad) : "";
       if (rz) { const i = h.indexOf('<div class="kim">'); if (i >= 0) { const j = h.indexOf("</span>", i); if (j > 0) h = h.slice(0, j + 7) + rz + h.slice(j + 7); } }
       return h;
@@ -157,8 +166,8 @@
   const kalanGun = (bitis) => {
     const ms = new Date(bitis).getTime() - (typeof simdi === "function" ? simdi() : Date.now());
     if (ms <= 0) return "süresi doldu";
-    const g = Math.floor(ms / 86400000), s = Math.floor(ms % 86400000 / 3600000);
-    return g >= 1 ? `${g} gün kaldı` : `${s} saat kaldı`;
+    if (ms >= 86400000) return `${Math.ceil(ms / 86400000 - 0.01)} gün kaldı`;
+    return `${Math.max(1, Math.ceil(ms / 3600000))} saat kaldı`;
   };
 
   /* ---------- Mağaza ekranı ---------- */
