@@ -145,3 +145,59 @@ window.sigortaMulkOnarAc=onarModal;
  withAfet._sigAfetBaglandi=true;
  window.sigortaIsletmeEkrani=withAfet;
 })();
+
+
+/* Eski uygulama paketi dahil: kendi sigorta şirketine bağlı farklı işletme de poliçe alabilir.
+   Sunucu da şirket IDsinin aynı olmasını ve teminat sınırını denetler. */
+(function(){
+ "use strict";
+ const format=n=>Math.round(Number(n)||0).toLocaleString("tr-TR")+" ₺";
+ const escapeHtml=t=>String(t??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ function insuranceOffer(offer){
+  if(typeof API==="undefined"||typeof modal!=="function"){if(typeof toast==="function")toast("Sigorta sistemi açılamadı.",true);return;}
+  (async()=>{
+   try{
+    const d=await API.rpc("sigorta_isletme_panel");
+    const companies=d.sirketler||[], insurers=d.sigortacilar||[];
+    if(!companies.length){toast("Önce sigortalatacağın şirketi kur.",true);return;}
+    if(!insurers.length){toast("Sigorta şirketi bulunamadı.",true);return;}
+    const options=a=>a.map(x=>'<option value="'+Number(x.id)+'">'+escapeHtml(x.ad)+'</option>').join("");
+    const popup=modal('<h3>🛡️ İşletmemi sigortala</h3>'+
+      '<p class="alt">Sahibi olduğun ayrı sigorta şirketini de seçebilirsin. Prim şirket kasasından ödenir. Teminat 72 saat sürer.</p>'+
+      '<div class="alan"><label>Sigortalanacak şirket</label><select id="ownInsCompany">'+options(companies)+'</select></div>'+
+      '<div class="alan"><label>Sigorta şirketi</label><select id="ownInsInsurer">'+options(insurers)+'</select></div>'+
+      '<div class="alan"><label>Teminat (₺)</label><input id="ownInsCover" type="number" inputmode="numeric" min="10000" max="500000" step="1000" value="50000"></div>'+
+      '<p id="ownInsInfo" class="alt"></p>'+
+      '<button class="btn altin" id="ownInsBuy" type="button">Poliçe satın al</button>'+
+      '<button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
+    const el=id=>(popup&&typeof popup.querySelector==="function"?popup.querySelector("#"+id):null)||document.getElementById(id);
+    const c=el("ownInsCompany"),i=el("ownInsInsurer"),v=el("ownInsCover"),status=el("ownInsInfo"),buy=el("ownInsBuy");
+    if(!c||!i||!v||!status||!buy)throw Error("Poliçe formu yüklenemedi.");
+    if(insurers.some(s=>Number(s.id)===Number(offer)))i.value=String(offer);
+    function check(){
+      const co=companies.find(s=>Number(s.id)===Number(c.value));
+      const max=Math.min(500000,Math.round(Number(co?.sermaye||0)*1.5));
+      const n=Number(v.value);
+      const ownSelf=Number(c.value)===Number(i.value);
+      const active=(d.policeler||[]).some(p=>p.durum==="aktif"&&Number(p.isletme)===Number(c.value));
+      const valid=!active&&!ownSelf&&Number.isSafeInteger(n)&&n>=10000&&n<=max;
+      status.textContent=active?"Seçili şirketin yürürlükte poliçesi var.":ownSelf?"Bir şirket bizzat kendisine poliçe kesemez. Ayrı sigorta şirketi seç.":"En fazla "+format(max)+" teminat; prim "+format(Math.max(300,Math.round(n*0.02)))+"; muafiyet %10.";
+      v.max=String(max);buy.disabled=!valid;
+    }
+    c.onchange=check;i.onchange=check;v.oninput=check;check();
+    buy.onclick=async()=>{
+      if(buy.disabled)return;buy.disabled=true;
+      try{
+        const policy=await API.rpc("sigorta_isletme_police_al",{
+          p_isletme:Number(c.value),p_sigortaci:Number(i.value),p_teminat:Number(v.value)
+        });
+        modalKapat();toast("İşletme poliçen düzenlendi. Prim: "+format(policy.prim));
+        if(typeof durumYenile==="function")durumYenile().catch(()=>{});
+        if(typeof window.sigortaIsletmeEkrani==="function")await window.sigortaIsletmeEkrani();
+      }catch(err){toast(typeof hataCevir==="function"?hataCevir(err?.message||String(err)):String(err?.message||err),true);check();}
+    };
+   }catch(err){toast(typeof hataCevir==="function"?hataCevir(err?.message||String(err)):String(err?.message||err),true);}
+  })();
+ }
+ window.sigortaPoliceAc=insuranceOffer;
+})();

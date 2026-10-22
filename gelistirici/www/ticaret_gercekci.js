@@ -636,7 +636,7 @@ window.tcKitchen=kitchenPrepare;
  if(window.SIGORTA_AFET_YUKLENIYOR)return;
  window.SIGORTA_AFET_YUKLENIYOR=true;
  const s=document.createElement("script");
- s.src="sigorta_afet.js?v=20261022-8";
+ s.src="sigorta_afet.js?v=20261022-9";
  s.async=false;
  s.onerror=()=>{window.SIGORTA_AFET_YUKLENIYOR=false;console.warn("Sigorta afet modülü yüklenemedi.");};
  document.body.appendChild(s);

@@ -206,13 +206,13 @@ async function sigortaIsletmeEkrani(){
   const data=await API.rpc("sigorta_isletme_panel"); SIG_PANEL=data;
   const cs=data.sirketler||[],ss=data.sigortacilar||[],ps=data.policeler||[],hs=data.hasarlar||[];
   let html='<section class="kart"><h2>🛡️ İşletme sigortaları</h2>'+
-   '<p class="alt">İşletmelerde oyun içi günlük %3 olasılıkla yangın, su baskını, hırsızlık ya da ekipman arızası yaşanır. Hasar şirket kasasından düşer. Poliçe varsa teminat ve muafiyet kurallarıyla gerçek tazminat ödenir. Hasar sistemi 25 Ekim 2026 tarihinde başlayacak.</p>'+
+   '<p class="alt">İşletmelerde oyun içi günlük %0,6 olasılıkla yangın, su baskını, hırsızlık ya da ekipman arızası yaşanır. Hasar şirket kasasından düşer. Poliçe varsa teminat ve muafiyet kurallarıyla gerçek tazminat ödenir. Hasar sistemi 25 Ekim 2026 tarihinde başlayacak.</p>'+
    sigSat("Geçerli poliçeler",String(ps.filter(p=>p.durum==="aktif").length))+
    sigSat("Hasarlardan ödenmiş tazminat",sigPara(hs.reduce((n,h)=>n+Number(h.odenen||0),0)))+
    '<p class="alt">Koruma: 72 saat · Prim: teminatın %2’si (en az 300 ₺) · Muafiyet: zararın %10’u, en az 1.000 ₺.</p>'+
    '<button class="btn altin" onclick="sigortaPoliceAc()">➕ İşletmemi sigortala</button>'+
    '<button class="btn ikinci" onclick="sigortaSirketKur()">🏢 Sigorta şirketi kur</button></section>';
-  if(!ss.length)html+='<section class="kart"><h3>Henüz sigortacı yok</h3><p class="alt">Sigorta şirketi kuran ilk oyuncu teklif vermeye başlayabilir. Kendi sigortacı şirketinden poliçe satın alamazsın.</p></section>';
+  if(!ss.length)html+='<section class="kart"><h3>Henüz sigortacı yok</h3><p class="alt">Sigorta şirketi kuran ilk oyuncu teklif vermeye başlayabilir. Sigorta şirketin üzerinden kendi diğer şirketlerini de sigortalayabilirsin.</p></section>';
   if(!cs.length)html+='<section class="kart"><h3>İşletmen bulunmuyor</h3><p class="alt">Önce Ekonomi → Şirketlerim üzerinden şirket kur.</p></section>';
   html+='<div class="bolum-bas"><h2>Sigorta şirketleri</h2></div>';
   for(const s of ss)html+='<section class="kart"><h3>'+sigEsc(s.ad)+'</h3>'+
@@ -257,11 +257,11 @@ function sigortaPoliceAc(offer){
  const update=()=>{
   const company=cs.find(x=>Number(x.id)===Number(c.value)),max=Math.min(500000,Math.round(Number(company?.sermaye||0)*1.5)),cover=Number(v.value);
   const insured=(d.policeler||[]).some(x=>x.durum==="aktif"&&Number(x.isletme)===Number(company?.id));
-  const own=cs.some(x=>Number(x.id)===Number(s.value));
+  const ayniSirket=Number(company?.id)===Number(s.value);
   v.max=String(max);
-  info.textContent=insured?"Bu işletmenin geçerli bir poliçesi var.":own?"Kendi sigortacı şirketinden poliçe satın alamazsın.":
-   "En fazla "+sigPara(max)+" teminat · Prim "+sigPara(Math.max(300,Math.round(cover*.02)))+" · Süre 72 saat · Muafiyet %10 (en az 1.000 ₺).";
-  btn.disabled=insured||own||!Number.isSafeInteger(cover)||cover<10000||cover>max;
+  info.textContent=insured?"Bu işletmenin geçerli bir poliçesi var.":ayniSirket?"Bir şirket kendi kendisine poliçe kesemez. Ayrı sigorta şirketini seç.":
+   "En fazla "+sigPara(max)+" teminat · Prim "+sigPara(Math.max(300,Math.round(cover*.02)))+" · Süre 72 saat · Muafiyet %10 (en az 1.000 ₺). Kendi sigortacını da seçebilirsin.";
+  btn.disabled=insured||ayniSirket||!Number.isSafeInteger(cover)||cover<10000||cover>max;
  };
  c.onchange=update;s.onchange=update;v.oninput=update;update();
  btn.onclick=async()=>{
