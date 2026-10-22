@@ -345,6 +345,7 @@ window.sirketlerimMerkezi=async function(){
    html+=sectionHeader('Yeni şirket ve ortaklık',
     action('＋ Yeni şirket kur','sirketKurulumFormuAc()','altin')+
     action('🤝 Ortaklarla şirket kur / hisse devri','ekranAc(ortaklikEkrani)')+
+    action('🧾 Çek Merkezi · çek al/ver/tahsil et','cekMerkeziAc()')+
     action('Tüm şirketleri ve satılıkları gör','sirketVitrinEkrani()'));
    if((data.kuruluslar||[]).length||(data.devirler||[]).length)
     html+=sectionHeader('Bekleyen ortaklık işlemleri',
@@ -371,6 +372,7 @@ window.sirketTekSirketEkrani=async function(id,tab){
   if(!s)throw Error('Bu şirket aktif değil veya ortağı değilsin.');
   const manager=!!locations?.yonetici;
   let html=header(s);
+  html+=action('🧾 Bu şirketin çekleri ve çekle ödeme','cekMerkeziAc('+id+')');
   const visible=pages.filter(x=>x[0]!=='insaat'||s.sektor==='insaat');
   html+='<div class="sm-tabs">'+visible.map(p=>'<button class="btn ikinci'+(tab===p[0]?' sm-active':'')+
    '" onclick="sirketTekSirketEkrani('+id+',\''+p[0]+'\')">'+safe(p[1])+'</button>').join('')+'</div>';
@@ -664,4 +666,10 @@ document.addEventListener('click',function(ev){
 },true);
 })();
 
+})();
+
+;(function(){
+ if(document.querySelector('script[data-so-cek]'))return;
+ var s=document.createElement('script');s.src='cek_sistemi.js?v=20261023a';s.setAttribute('data-so-cek','1');
+ document.head.appendChild(s);
 })();
