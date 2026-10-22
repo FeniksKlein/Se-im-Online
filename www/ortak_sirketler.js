@@ -354,8 +354,8 @@ window.sirketlerimMerkezi=async function(){
  } catch(e){iskelet('Şirketlerim',sectionHeader('Bir hata oluştu','<p>'+safe(e.message||e)+'</p>'),{geri:true});}
 };
 window.sirketKurulumFormuAc=function(){
- if(typeof ekranAc==='function')return ekranAc(previous);
- return previous();
+ if(typeof previous==='function')return ekranAc(previous);
+ return window.sirketlerimMerkezi();
 };
 window.sirketTekSirketEkrani=async function(id,tab){
  id=Number(id);tab=tab||'genel';
@@ -630,7 +630,26 @@ window.sirketMerkezNpcIslem=async function(id,eylem,urun,index){
  try{await call('npc_isletme_islem',p);toast(eylem==='al'?'Ürün stoğa alındı.':'Satış fiyatı güncellendi.');await openCompany(id,'faaliyet');}
  catch(e){message(e);}
 };
+// Tek merkez: eski ekonomi/portfoy menulerinin yonetim islevi her zaman sirket secimine gider.
 window.sirketYonetimEkrani=function(){return window.sirketlerimMerkezi();};
+window.sirketYonetimMerkeziAc=function(id){return id?openCompany(id,'genel'):window.sirketlerimMerkezi();};
+// Eski ekranlarda butona basmak veya kartin kendisine dokunmak ayni sirketi acar.
+document.addEventListener('click',function(event){
+ const node=event.target.closest('button,a,[role="button"],.kart');
+ if(!node || node.closest('.sm-company,.sm-tabs'))return;
+ const label=(node.textContent||'').trim().toLocaleLowerCase('tr');
+ const legacy=node.closest('.so-firma');
+ if(legacy){
+   const m=legacy.innerHTML.match(/(?:sirketPortfoyDetay|sirketTekSirketEkrani|sirketKasasiAc)\\((\\d+)\\)/);
+   if(m && (node===legacy || /detaylarini ac|detaylarını aç|sirketin detay|şirketin detay|sirket yonet|şirket yönet|karne/.test(label))){
+      event.preventDefault();event.stopImmediatePropagation();openCompany(Number(m[1]),'genel');return;
+   }
+ }
+ // Mevcut genel ekranlarin ortaklik menusu haric eski 'sirketlerim' girisini sadeleştir.
+ if(/^(şirketlerim ve şirket kur|şirketlerim ve şirket kur ›|tüm şirketleri gör)$/.test(label)){
+    event.preventDefault();event.stopImmediatePropagation();window.sirketlerimMerkezi();
+ }
+},true);
 window.sirketKasasiAc=function(id){return id?openCompany(id,'para'):window.sirketlerimMerkezi();};
 window.sirketPortfoyDetay=function(id){return openCompany(id&&typeof id==='object'?id.id:id,'genel');};
 // Eski portföy kutusunda herhangi bir yere dokunmak şirketi açsın.
