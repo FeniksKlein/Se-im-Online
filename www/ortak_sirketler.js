@@ -70,13 +70,22 @@ window.ortaklikEkrani=async function(){
    '<input id="os_yatir_tutar" type="number" min="1" max="100000000" step="1" inputmode="numeric" placeholder="Örnek: 250000"></div>'+
    '<p class="alt">Bu işlem yalnızca bakiyen kadar yapılabilir. Aynı tutar kişisel hesabından düşer ve seçtiğin şirketin kasasına eklenir. Şirketin sermaye üst limiti 100 milyon ₺.</p>'+
    (cs.length?btn('Şirket kasasına para yatır','ortaklikKasayaYatir()','altin'):'<p class="alt">Para yatırmak için önce bir şirkete ortak olmalısın.</p>')+
-   '</div><div class="kart"><h3>🏢 Ortak olduğum şirketler</h3>';
+   '</div><div class="kart"><h3>🏬 Yeni Şube Yatırım Planlayıcısı</h3>'+
+   '<p class="alt">Şube açmadan önce bulunduğu ildeki talebi, haftalık ciroyu, stok maliyetini, kirayı, çalışanları ve tahmini net kârı gör. Açılış bedeli artık sabit 25.000 ₺ değil. Şirket kasasında hem yatırım bedeli hem de işletme rezervi bulunmalı.</p>'+
+   '<div class="alan"><label>Şube açacak şirket</label><select id="os_sube_sirket" onchange="window.osSonTeklif=null;document.getElementById(\'os_sube_sonuc\').innerHTML=\'\'">'+
+   cs.map(s=>'<option value="'+Number(s.id)+'"'+(secili===Number(s.id)?' selected':'')+'>'+
+     esc(s.ad)+' · '+esc(s.sektor)+'</option>').join('')+'</select></div>'+
+   '<div class="alan"><label>Şubenin açılacağı il</label><select id="os_sube_il" onchange="window.osSonTeklif=null;document.getElementById(\'os_sube_sonuc\').innerHTML=\'\'">'+
+   cities.map((il,i)=>'<option value="'+(i+1)+'"'+(il==='Muğla'?' selected':'')+'>'+esc(il)+'</option>').join('')+'</select></div>'+
+   (cs.length?btn('Şube maliyet ve kâr tahmini hesapla','sirketSubeMaliyetHesapla()','altin'):'<p class="alt">Önce bir şirkete ortak olmalısın.</p>')+
+   '<div id="os_sube_sonuc"></div></div><div class="kart"><h3>🏢 Ortak olduğum şirketler</h3>';
   for(const s of cs){
    html+='<div class="kart"><b>'+esc(s.ad)+'</b>'+
     row('Benim hissem','%'+s.benim_pay)+row('Sermaye',tl(s.sermaye))+
     row('Şirket kasası',tl(s.kasa))+row('Ortaklık yapısı',s.tek_ortak?'Tek ortaklı · %100 benim':'Çok ortaklı')+
     (s.ortaklar||[]).map(a=>row(a.kad,'%'+a.pay)).join('')+
     btn('Kasaya şahsi para yatır','sirketKasasiAc('+Number(s.id)+')','altin')+
+    btn('Yeni şube aç · maliyet hesapla','sirketSubePlanAc('+Number(s.id)+')')+
     btn('Şube gelir/gider raporu','sirketSubeRapor('+Number(s.id)+')')+
     btn('Bu şirketten pay devret / yeni ortak al','ortaklikHisseFormu('+s.id+')')+'</div>';
   }
@@ -109,6 +118,62 @@ window.sirketKasasiAc=function(id){
  window.osSeciliSirket=Number(id)||0;
  if(typeof ekranAc==='function')ekranAc(window.ortaklikEkrani);
  else window.ortaklikEkrani();
+};
+window.sirketSubePlanAc=function(id){
+ window.osSeciliSirket=Number(id)||0;
+ if(typeof ekranAc==='function')ekranAc(window.ortaklikEkrani);
+ else window.ortaklikEkrani();
+};
+window.sirketSubeMaliyetHesapla=async function(){
+ const sid=Number(get('os_sube_sirket')), il=Number(get('os_sube_il'));
+ const div=document.getElementById('os_sube_sonuc');
+ if(!div)return;
+ try{
+  div.innerHTML='<p class="alt">Şehrin pazar şartları hesaplanıyor…</p>';
+  const d=await rpc('sirket_sube_teklif',{p_sirket:sid,p_il:il});
+  window.osSonTeklif=d;
+  let html='<div class="kart"><h3>📊 '+esc(d.il)+' · '+esc(d.sirket)+'</h3>'+
+    row('Dekorasyon, ekipman',tl(d.dekorasyon_donanim))+
+    row('Kira / güvence depozitosu',tl(d.depozito))+
+    row('İlk ürün ve stok alımı',tl(d.ilk_stok||0))+
+    row('Personel hazırlığı',tl(d.personel_hazirlik))+
+    row('Ruhsat ve açılış işlemleri',tl(d.izin_ruhsat))+
+    row('Toplam açılış yatırımı',tl(d.acilis_maliyeti))+
+    row('Kasada korunacak işletme rezervi',tl(d.isletme_rezervi))+
+    row('Gerekli şirket kasası',tl(d.gerekli_kasa))+
+    row('Mevcut şirket kasası',tl(d.mevcut_kasa));
+  if(d.haftalik_ciro!=null){
+   html+=row('Haftalık tahmini ciro',tl(d.haftalik_ciro))+
+     row('Haftalık toplam maliyet ve vergiler',tl(d.haftalik_gider))+
+     row('Haftalık net kâr / zarar',tl(d.haftalik_net))+
+     row('Şube yatırımının tahmini geri dönüşü',d.geri_donus_hafta?
+       esc(d.geri_donus_hafta)+' oyun haftası':'Kârlılık yok · amortisman hesaplanamıyor');
+  }else html+='<p class="alt">Bu sektör için güvenilir şube satış tahmini henüz bulunmuyor.</p>';
+  html+=d.yeterli?
+    '<p class="alt">Şirket kasası yatırım ve rezerv için yeterli.</p>'+
+      btn('Şubeyi bu bütçeyle aç','sirketSubeTeklifiOnayla()','altin'):
+    '<p class="alt">Şirket kasasında '+esc(tl(d.eksik))+' eksik bulunuyor. Kişisel paranı şirkete yatırabilirsin.</p>'+
+      btn('Şirket kasasına para aktar','sirketKasasiAc('+sid+')','altin');
+  html+='</div>';
+  div.innerHTML=html;
+  div.scrollIntoView({behavior:'smooth',block:'nearest'});
+ }catch(e){window.osSonTeklif=null;div.innerHTML='<div class="kart">'+esc(e.message||e)+'</div>';err(e);}
+};
+window.sirketSubeTeklifiOnayla=async function(){
+ try{
+  const d=window.osSonTeklif;
+  const sid=Number(get('os_sube_sirket')),il=Number(get('os_sube_il'));
+  if(!d||Number(d.sirket_id)!==sid||Number(d.il_id)!==il)
+   throw Error('Yatırım şartları değişti. Önce tekrar tahmin hesapla.');
+  const ok=await approve('Şube açılışını onayla',
+    esc(d.il)+' ilinde şube açılacak. Açılış bedeli '+tl(d.acilis_maliyeti)+
+    ' şirket kasasından düşecek; '+tl(d.isletme_rezervi)+
+    ' işletme rezervi kalacak. Onaylıyor musun?');
+  if(!ok)return;
+  const r=await rpc('sirket_sube_ac_ilde',{p_sirket:sid,p_il:il});
+  window.osSonTeklif=null;toast('Şube açıldı. Şirket kasasından '+tl(r.bedel)+' yatırıldı.');
+  await sirketSubeRapor(sid);
+ }catch(e){err(e);}
 };
 window.ortaklikKasayaYatir=async function(){
  try{
