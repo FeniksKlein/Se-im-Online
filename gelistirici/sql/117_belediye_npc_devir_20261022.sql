@@ -363,9 +363,12 @@ begin
     v_lim:=greatest(1,round(st.gunluk_talep*greatest(0.7,least(3,s.sehir_carpani))*
       (1+oyun.belediye_yatirim_oran(s.il_id,'talep'))));
     v_adet:=least(st.adet,greatest(0,v_lim-v_satilan),
-       greatest(0,ceil(st.gunluk_talep*greatest(.7,least(3,s.sehir_carpani))/15*
+       greatest(0,floor(st.gunluk_talep*greatest(.7,least(3,s.sehir_carpani))/15*
        (0.65+random()*.7)/sqrt(greatest(1,v_rakip))*
-       (0.65+s.gelisim/150.0))::integer));
+       (0.65+s.gelisim/150.0)*
+       greatest(0.2,least(1.7,power(
+       oyun.npc_piyasa_fiyati(st.urun,s.il_id,'satis')/greatest(st.satis_fiyati,0.01),3)))
+       +random())::integer));
     if v_adet<=0 then continue; end if;
     v_gelir:=round(st.satis_fiyati*v_adet,2);
     v_maliyet:=round(st.alis_ortalama*v_adet,2);
