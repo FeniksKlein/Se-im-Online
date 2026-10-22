@@ -153,6 +153,117 @@ window.sirketSatisIptal=sirketSatisIptal;
 window.sirketSatinAl=sirketSatinAl;
 window.belediyeYatirimEkonomiEkrani=belediyeYatirimEkonomiEkrani;
 
+
+/* Satilik sirketler: dokunulabilir ilan ve gercek faaliyet/finans detaylari. */
+const SP_SEKTOR={
+ ozel_okul:["Özel okul","Eğitim-öğretim hizmetleri ve öğrenci talebine dayalı gelirler."],
+ akaryakit:["Akaryakıt istasyonu","Akaryakıt perakendeciliği, stok alımı ve istasyon müşteri satışları."],
+ akaryakit_istasyonu:["Akaryakıt istasyonu","Akaryakıt perakendeciliği ve istasyon müşteri satışları."],
+ sanayi:["Sanayi / fabrika","Üretim, hammadde, stok ve toptan ürün satışı."],
+ tarim:["Tarım / gıda","Tarım veya gıda üretimi ve ürün satışı."],
+ teknoloji:["Teknoloji","Teknoloji ürünleri üretimi veya teknoloji hizmetleri."],
+ ticaret:["Ticaret / market","Ürün alım satımı, stok ve perakende müşteri hizmetleri."],
+ fastfood:["Fast food","Gıda hazırlama, stok ve müşteri satışları."],
+ kahve:["Kafe","İçecek ve yiyecek satışı, stok ve müşteri talepleri."],
+ insaat:["İnşaat","Arsa, yapım projeleri ve gayrimenkul satışı."],
+ medya:["Medya","Yayıncılık, basın ve reklam gelirleri."],
+ ajans:["Reklam / anket","Reklam ve anket hizmetleri."],
+ sigorta:["Sigorta","Sigorta ve poliçe hizmetleri."],
+ enerji:["Enerji","Enerji üretimi veya hizmetleri."],
+ turizm:["Turizm","Turizm ve konaklama hizmetleri."],
+ lojistik:["Lojistik","Nakliye ve lojistik hizmetleri."],
+ saglik:["Sağlık","Sağlık hizmetleri."]
+};
+function spSektor(s){return SP_SEKTOR[String(s.sektor||"").toLowerCase()]||
+ [String(s.sektor||"Diğer faaliyet").replace(/_/g," "),"Oyunun bu sektöre ait üretim, ticaret veya hizmet faaliyetleri."];}
+function spTarih(s){
+ const d=new Date(s||"");return isNaN(d.getTime())?"Bilgi yok":d.toLocaleDateString("tr-TR");
+}
+function spIlan(s,benim){
+ const id=tamid(s.id),sektor=spSektor(s)[0];if(!id)return "";
+ const ac="ekranAc(function(){sirketPazarDetay("+id+")})";
+ const tik='<div role="button" tabindex="0" aria-label="Şirket bilgilerini aç" '+
+   'style="cursor:pointer;padding:2px 0 12px" onclick="'+ac+'" '+
+   'onkeydown="if(event.keyCode===13||event.keyCode===32){event.preventDefault();this.click()}">'+
+   satir("Şehir",s.il||"Belirtilmemiş")+
+   satir("Faaliyet",sektor)+satir("Sahip",s.sahip||s.kurucu||"Bilgi yok")+
+   satir("Sermaye",tl(s.sermaye))+satir("Kayıtlı net kazanç",tl(s.net_kazanc))+
+   (s.satilik!=null?satir("Satış fiyatı",tl(s.satilik)):"")+
+   '<p class="alt" style="margin:10px 0 0">Detayları incele →</p></div>';
+ return kart(s.ad,tik+(benim?
+   buton(s.satilik!=null?"İlanı güncelle":"Satışa çıkar","sirketSatisaCikar("+id+")")+
+   (s.satilik!=null?buton("İlanı kaldır","sirketSatisIptal("+id+")",true):""):
+   buton("Şirket detaylarını gör",ac,true)+buton("Satın al","sirketSatinAl("+id+")")));
+}
+async function spPazar(){
+ yukleniyor("Satılık şirketler");
+ try{
+  const [v,m]=await Promise.all([API.rpc("sirket_vitrini"),API.rpc("sirket_liste").catch(()=>({sirketler:[]}))]);
+  const list=v.sirketler||[],benim=new Map((m.sirketler||[]).map(x=>[Number(x.id),Number(x.pay)]));
+  const piyasa=list.filter(x=>x.aktif!==false&&x.satilik!=null&&!benim.has(Number(x.id)));
+  const kendi=list.filter(x=>x.aktif!==false&&benim.get(Number(x.id))===100&&!x.halka_acik);
+  let html=kart("Satılık şirketler",'<p class="alt">İşletmenin adına veya bilgilerine dokunarak nerede, kime ait olduğunu, faaliyetini, sermayesini ve kârını incele.</p>');
+  html+=piyasa.length?piyasa.map(x=>spIlan(x,false)).join(""):
+    kart("Satılık şirket yok",'<p class="alt">Şu an diğer oyunculara ait ilan bulunmuyor.</p>');
+  html+=kart("Kendi şirketlerimin satış ilanları",'<p class="alt">Tam sahibi olduğun şirketlerini satışa çıkarabilir, fiyatını güncelleyebilir veya ilanı kaldırabilirsin.</p>');
+  html+=kendi.length?kendi.map(x=>spIlan(x,true)).join(""):
+    kart("İlan açılabilecek şirket yok",'<p class="alt">Henüz %100 sana ait faal şirket bulunmuyor.</p>');
+  iskelet("Satılık şirketler",html,{geri:true});
+ }catch(err){hataEkrani("Satılık şirketler",err);}
+}
+async function spDetay(sirketId){
+ const id=tamid(sirketId);yukleniyor("Şirket detayları");
+ try{
+  const [v,m]=await Promise.all([API.rpc("sirket_vitrini"),API.rpc("sirket_liste").catch(()=>({sirketler:[]}))]);
+  const s=(v.sirketler||[]).find(x=>Number(x.id)===id);
+  if(!s||s.aktif===false||s.satilik==null){
+   iskelet("Şirket detayları",kart("İlan bulunamadı",'<p class="alt">Bu şirket satılmış veya ilanı kaldırılmış olabilir.</p>'+buton("İlanlara dön","sirketPazarEkrani()",true)),{geri:true});return;
+  }
+  const sektor=spSektor(s),ortaklar=Array.isArray(s.ortaklar)?s.ortaklar:[];
+  const isimler=ortaklar.length?ortaklar.map(o=>String(o.kad||"Ortak")+" (%"+Number(o.pay||0).toLocaleString("tr-TR")+")").join(", "):"Bilgi yok";
+  const benim=(m.sirketler||[]).some(x=>Number(x.id)===id&&Number(x.pay)>0);
+  let html=kart(s.ad,
+   satir("Faaliyet ili",s.il||"Belirtilmemiş")+
+   satir("Şirket türü",sektor[0])+'<p class="alt" style="margin:10px 0">'+guvenli(sektor[1])+'</p>'+
+   satir("Sahibi",s.sahip||s.kurucu||"Bilgi yok")+
+   satir("Kurucusu",s.kurucu||"Bilgi yok")+
+   satir("Ortaklık / paylar",isimler)+
+   satir("Kuruluş tarihi",spTarih(s.kurulus))+
+   satir("Durumu",s.aktif?"Faaliyette":"Pasif"));
+  html+=kart("Mali durumu ve kârlılığı",
+   satir("Sermaye",tl(s.sermaye))+
+   satir("Güncel şirket kasası",tl(s.kasa))+
+   satir("Bugüne kadarki kayıtlı ciro",tl(s.toplam_gelir))+
+   satir("Bugüne kadarki net kazanç",tl(s.net_kazanc))+
+   satir("Kaydedilmiş vergiler",tl(s.vergi))+
+   '<p class="alt">Bu rakamlar bugüne kadar kaydedilmiş oyun içi işlemlerdir. Gelecekte elde edilecek kazancı garanti etmez; şirket kasası kişisel cüzdan değildir.</p>');
+  html+=kart("Satın alma ve devir",
+   satir("Satış fiyatı (şirketin tamamı)",tl(s.satilik))+
+   '<p class="alt">Satın alım bedeli oyuncunun cüzdanından düşer. Şirket kasası, stoklar, diğer varlıklar, mevcut borç ve yükümlülükler şirkette kalır. Devirle ilgili vergiler ve hukuki kısıtlar uygulanır.</p>'+
+   (benim?'<p class="alt">Bu şirkette zaten payın bulunduğu için pay ve satış işlemlerini şirket yönetiminden kontrol et.</p>':
+    buton("Şirketi satın al","sirketSatinAl("+id+")"))+
+   buton("← İlanlara geri dön","sirketPazarEkrani()",true));
+  iskelet("Şirket detayları",html,{geri:true});
+ }catch(err){hataEkrani("Şirket detayları",err);}
+}
+async function spSatinAl(sirketId){
+ const id=tamid(sirketId);
+ try{
+  const v=await API.rpc("sirket_vitrini");
+  const s=(v.sirketler||[]).find(x=>Number(x.id)===id);
+  if(!s||s.satilik==null||s.aktif===false){toast("İlan artık aktif değil.",true);await spPazar();return;}
+  if(!await onayla("Şirket satın al",
+    guvenli(s.ad)+" · "+tl(s.satilik)+". Satış bedeli cüzdanından düşülür. Şirketin stokları, kasası, varlıkları ve mevcut yükümlülükleri birlikte devrolur.",
+    "Satın al"))return;
+  await API.rpc("sirket_satilik_al",{p_sirket:id});
+  toast("Şirket satın alındı. Şirketlerimden yönetebilirsin.");await spPazar();
+ }catch(err){toast(hata(err),true);}
+}
+window.sirketPazarEkrani=spPazar;
+window.sirketAlimSatimEkrani=spPazar;
+window.sirketPazarDetay=spDetay;
+window.sirketSatinAl=spSatinAl;
+
 const oncekiBelediye=window.belediyeEkrani;
 if(typeof oncekiBelediye==="function"){
  window.belediyeEkrani=async function(){
