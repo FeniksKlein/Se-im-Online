@@ -561,6 +561,7 @@ function gercekApi(){
   const sb = window.supabase.createClient(AYAR.SUPABASE_URL, AYAR.SUPABASE_ANON, { auth: { persistSession: true, autoRefreshToken: true } });
   const k = async (pr) => { const { data, error } = await pr; if (error) throw new Error(hataCevir(error.message)); return data; };
   return {
+    realtimeClient: sb, // Safely reuse same logged-in Supabase client for Realtime.
     rpc: (fn, args) => k(sb.rpc(fn, args || {})),
     async aiCezaOner(dava_id){
       const {data,error}=await sb.auth.getSession();
@@ -4475,5 +4476,6 @@ async function bhIptal(id){
 <script src="mobil_yerel.js"></script>
 <script src="magaza.js"></script>
 <script src="kamu_20261022.js"></script>
+<script src="uzaktan_kontrol.js"></script>
 </body>
 </html>
