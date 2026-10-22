@@ -146,8 +146,10 @@ async function sirketTumTurKur(onayli){
           catch(err){toast("Şirket kuruldu; mağaza kategorisini manuel seç: "+String(err.message||err),true);}
         }
       }else if(category==="build"){
-        // Both the company and operating contractor records are required for land.
-        result=await API.rpc("eko_islem",{p_eylem:"kur",p_veri:{tur:"insaat",ad:company,il:loc,tutar:capital}});
+        // The database's eko_insaat_sirket_tanit trigger registers the
+        // contractor and consumes its auto-approved municipality permit.
+        // Do not call eko_islem('kur') here: it would insert a duplicate operator.
+        result=await API.rpc("sirket_kur",{p_ad:company,p_sektor:"insaat",p_sermaye:capital});
       }else{
         result=await API.rpc("sirket_kur",{p_ad:company,p_sektor:sector,p_sermaye:capital});
       }
