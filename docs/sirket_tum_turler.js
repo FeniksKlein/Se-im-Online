@@ -27,6 +27,12 @@ const GROUPS=[
  ["pazar:oto_servis","🔧 Oto servis ve bakım","kur_pazar","service"],
  ["pazar:danismanlik","📋 Danışmanlık ofisi","kur_pazar","service"],
  ["pazar:e_ticaret","🛍️ E-ticaret şirketi","kur_pazar","service"],
+ ["pazar:akaryakit","⛽ Akaryakıt istasyonu","kur_pazar","service"],
+ ["pazar:yapi_market","🧱 Yapı market","kur_pazar","service"],
+ ["pazar:elektronik_magaza","📱 Elektronik mağazası","kur_pazar","service"],
+ ["pazar:tekstil_magaza","👕 Giyim mağazası","kur_pazar","service"],
+ ["pazar:mobilya_magaza","🛋️ Mobilya mağazası","kur_pazar","service"],
+ ["pazar:oto_galeri","🚗 İkinci el oto galeri","kur_pazar","service"],
  ["pazar:geri_donusum","♻️ Geri dönüşüm tesisi","kur_pazar","service"]
 ];
 async function sirketTumTurKur(onayli){
@@ -152,7 +158,8 @@ if(typeof originalList==="function"){
    const root=document.querySelector(".so-buttons");
    if(!root||root.querySelector(".stk-primary"))return;
    root.insertAdjacentHTML("afterbegin",'<button class="btn altin stk-primary" onclick="sirketTumTurKur()">➕ Her tür şirket kur</button>'+
-    '<button class="btn ikinci" onclick="ekranAc(belRuhsatMerkeziEkrani)">🏛️ Belediye ruhsatlarını yönet</button>');
+    '<button class="btn ikinci" onclick="ekranAc(belRuhsatMerkeziEkrani)">🏛️ Belediye ruhsatlarını yönet</button>'+
+    '<button class="btn altin" onclick="sirketAlimSatimEkrani()">🏢 Şirket alım-satım pazarı</button>');
  };
 }
 
@@ -167,7 +174,10 @@ if(typeof originalDetail==="function"){
      if(!s||document.querySelector(".stk-sector-details"))return;
      let html="",description="";
      const sid=Number(id),sector=String(s.sektor||"");
-     if(["ozel_okul","ozel_hastane","ulasim","enerji","market","turizm","lojistik","oto_servis","danismanlik","e_ticaret","geri_donusum"].includes(sector)){
+     if(["akaryakit","yapi_market","elektronik_magaza","tekstil_magaza","mobilya_magaza","oto_galeri"].includes(sector)){
+       description='<p class="alt">Bu işletmede piyasa fiyatıyla stok alırsın, ürün başına fiyat belirler, gün içinde NPC müşterilere gerçek stoktan satış yaparsın. Sermayeden otomatik ikinci gelir yaratılmaz. Şirketin giderleri, satışları ve vergileri kayıt altındadır.</p>';
+       html='<button class="btn altin" onclick="npcIsletmeEkrani('+sid+')">📦 Stok · NPC müşterileri · Fiyatlandırma</button>';
+     }else if(["ozel_okul","ozel_hastane","ulasim","enerji","market","turizm","lojistik","oto_servis","danismanlik","e_ticaret","geri_donusum"].includes(sector)){
        const labels={ozel_okul:"Öğrenci kayıtları ve eğitim hizmetleri",ozel_hastane:"Hasta hizmetleri ve sağlık satışı",
          ulasim:"Yolcu ve sefer gelirleri",enerji:"Enerji üretimi ve satış",market:"Market zinciri satışları",
          turizm:"Konaklama ve turizm hizmetleri",lojistik:"Kargo, depo ve taşımacılık hizmetleri",
@@ -208,4 +218,12 @@ if(typeof originalDetail==="function"){
    }
  };
 }
+})();
+
+/* Belediye ekonomisi, stoklu NPC isletmeleri ve vergili sirket pazari. */
+(function(){
+ if(document.getElementById("npc-isletmeler-modulu"))return;
+ const sc=document.createElement("script");sc.id="npc-isletmeler-modulu";
+ sc.src="npc_isletmeler.js?v=20261022-2";sc.async=false;
+ document.body.appendChild(sc);
 })();
