@@ -37,6 +37,22 @@
   };
   if (typeof IKON === "object" && IKON && !IKON.ekonomi) IKON.ekonomi = MS_IKON.ekonomi;
 
+  // Ortak mobil/web kaynak: yerel kamu modulunu ihtiyac aninda da acabil.
+  let kamuEkYukle=null;
+  for(const ad of ['kamuButceEkrani','kamuToptanEkrani','kamuAtamaEkrani','icraMerkeziEkrani']){
+    if(typeof window[ad]==='function')continue;
+    window[ad]=function(){
+      if(!kamuEkYukle)kamuEkYukle=new Promise((resolve,reject)=>{
+        const script=document.createElement('script');
+        script.src='kamu_20261022.js?v=20261022-4';
+        script.onload=resolve;
+        script.onerror=()=>reject(new Error('Kamu/İcra modülü yüklenemedi'));
+        document.head.appendChild(script);
+      });
+      return kamuEkYukle.then(()=>window[ad]()).catch(err=>{kamuEkYukle=null;toast(err.message,true);});
+    };
+  }
+
   const var_ = ad => typeof window[ad] === "function";
   // [ikon, başlık, açıklama, çağrı, gereken fonksiyon]
   const satir = (ik, bas, alt, cagri, fn) => (fn && !var_(fn)) ? "" :
