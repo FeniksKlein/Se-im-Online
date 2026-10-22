@@ -111,6 +111,7 @@
         satir("rehber", "📚 Kitap ve yayınevi", "Kitap yaz, yayımla, telif al, yeni baskı yap", "ucYeniAc('kitap')", "ucYeniAc"),
         satir("ajans", "🎟️ Biletli organizasyonlar", "Konferans, konser, fuar, sponsor ve bilet satışı", "ucYeniAc('etkinlik')", "ucYeniAc"),
         satir("ruhsat", "Yatırım Ruhsat Merkezi", "Şirket, fabrika, mağaza, inşaat ruhsatlarına başvur; belediye onaylarını takip et", "msRuhsatMerkeziAc()", "msRuhsatMerkeziAc"),
+        satir("dunya", "🏭 Şirketler arası ticaret", "Fabrikadan mağazaya teklifli ve vergili sipariş", "ekranAc(kamuToptanEkrani)", "kamuToptanEkrani"),
         satir("dunya", "İş dünyası", "Üretim, mağaza, inşaat, sigorta, franchise, birleşme", "ekranAc(isDunyasiEkrani)", "isDunyasiEkrani"),
         satir("yaris", "Rekabetçi şirketler", "Okul, hastane, market, ulaşım, enerji; fiyat ve kalite", "ekranAc(pazarMerkezEkrani)", "pazarMerkezEkrani"),
         satir("ihale", "📢 İhale İlan Panosu", "Tüm belediye hizmet ve kamu yapım ilanlarını gör, şirketinle teklif ver", "ekranAc(msIhaleMerkeziAc)", "msIhaleMerkeziAc"),
@@ -135,6 +136,9 @@
         satir("emlak", "Satılık mülkler", "İlanları gör, pazarlık yap, mülkünü ilana koy", "ekranAc(emlakYeniEkrani)", "emlakYeniEkrani")
       ])}
       ${grup("Ekonomi kurumları", "Herkes izleyebilir", [
+        satir("mb", "🏛️ Devlet bütçesi", "Bakanlık ödeneklerini incele ve paylaştır", "ekranAc(kamuButceEkrani)", "kamuButceEkrani"),
+        satir("terazi", "Kamu kurumu atamaları", "Vali, emniyet, SPK, vergi idaresi ve genel sekreter", "ekranAc(kamuAtamaEkrani)", "kamuAtamaEkrani"),
+        satir("terazi", "⚖️ İcra ve haciz", "Ödeme emri, itiraz, e-haciz ve açık artırmalar", "ekranAc(icraMerkeziEkrani)", "icraMerkeziEkrani"),
         satir("mb", "Merkez Bankası", "Politika faizi ve PPK kararları", "ekranAc(merkezBankasiEkrani)", "merkezBankasiEkrani"),
         satir("spk", "Sermaye Piyasası Kurulu", "Borsa gözetimi ve cezalar", "ekranAc(spkEkrani)", "spkEkrani"),
         satir("terazi", "Rekabet Kurumu", "Kartel ve tekel soruşturmaları", "ekranAc(rekabetEkrani)", "rekabetEkrani"),
