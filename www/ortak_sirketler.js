@@ -10,7 +10,16 @@ const row=(a,b)=>'<div class="kv"><span>'+esc(a)+'</span><b>'+esc(b)+'</b></div>
 const btn=(label,fn,css='ikinci')=>'<button class="btn '+css+'" onclick="'+fn+'">'+esc(label)+'</button>';
 const fmt=x=>x?new Date(x).toLocaleString('tr-TR'):'—';
 const cities='Adana,Adıyaman,Afyonkarahisar,Ağrı,Amasya,Ankara,Antalya,Artvin,Aydın,Balıkesir,Bilecik,Bingöl,Bitlis,Bolu,Burdur,Bursa,Çanakkale,Çankırı,Çorum,Denizli,Diyarbakır,Edirne,Elazığ,Erzincan,Erzurum,Eskişehir,Gaziantep,Giresun,Gümüşhane,Hakkâri,Hatay,Isparta,Mersin,İstanbul,İzmir,Kars,Kastamonu,Kayseri,Kırklareli,Kırşehir,Kocaeli,Konya,Kütahya,Malatya,Manisa,Kahramanmaraş,Mardin,Muğla,Muş,Nevşehir,Niğde,Ordu,Rize,Sakarya,Samsun,Siirt,Sinop,Sivas,Tekirdağ,Tokat,Trabzon,Tunceli,Şanlıurfa,Uşak,Van,Yozgat,Zonguldak,Aksaray,Bayburt,Karaman,Kırıkkale,Batman,Şırnak,Bartın,Ardahan,Iğdır,Yalova,Karabük,Kilis,Osmaniye,Düzce'.split(',');
-const sectors=[['ticaret','Ticaret / Mağaza'],['sanayi','Sanayi / Fabrika'],['tarim','Tarım'],['teknoloji','Teknoloji'],['insaat','İnşaat / Müteahhitlik'],['medya','Medya']];
+const sectors=[
+['ticaret','Ticaret / Mağaza'],['sanayi','Sanayi / Fabrika'],['tarim','Tarım ve Hayvancılık'],
+['teknoloji','Teknoloji'],['insaat','İnşaat / Müteahhitlik'],['medya','Medya ve Yayıncılık'],
+['akaryakit','Akaryakıt İstasyonu'],['market','Market Zinciri'],['turizm','Turizm / Otelcilik'],
+['lojistik','Kargo / Lojistik'],['enerji','Enerji Santrali'],['ulasim','Ulaşım Firması'],
+['oto_galeri','Otomobil Galerisi'],['oto_servis','Oto Servis'],['elektronik_magaza','Elektronik Mağazası'],
+['tekstil_magaza','Giyim Mağazası'],['mobilya_magaza','Mobilya Mağazası'],
+['yapi_market','Yapı Market'],['e_ticaret','E-Ticaret Şirketi'],
+['geri_donusum','Geri Dönüşüm'],['danismanlik','Danışmanlık Ofisi'],
+['ozel_okul','Özel Okul'],['ozel_hastane','Özel Hastane']];
 function err(e){toast(typeof hataCevir==='function'?hataCevir(e.message):String(e.message||e),true);}
 async function rpc(name,args){return API.rpc(name,args||{});}
 async function approve(title,body){return typeof onayla==='function'?onayla(title,body,'Onayla'):window.confirm(body);}
@@ -22,9 +31,9 @@ window.ortaklikEkrani=async function(){
    '<p class="alt">Kuruluş için bütün ortakların daveti kabul etmesi ve son onay anında herkesin hesabında taahhüt ettiği paranın bulunması gerekir. Davetler 72 saat geçerlidir.</p></div>';
   html+='<div class="kart"><h3>🏗️ Birlikte yeni şirket kur</h3>'+
    '<div class="alan"><label>Yeni şirketin adı</label><input id="os_ad" maxlength="50" placeholder="Örnek: Ortaklar Ticaret Ltd."></div>'+
-   '<div class="alan"><label>Sektör</label><select id="os_sektor">'+sectors.map(([k,v])=>'<option value="'+k+'">'+esc(v)+'</option>').join('')+'</select></div>'+
+   '<div class="alan"><label>Sektör</label><select id="os_sektor" onchange="ortaklikSektorDegisti()">'+sectors.map(([k,v])=>'<option value="'+k+'">'+esc(v)+'</option>').join('')+'</select></div>'+
    '<div class="alan"><label>Şirket merkezi (il)</label><select id="os_il">'+cities.map((name,i)=>'<option value="'+(i+1)+'"'+(name==='Muğla'?' selected':'')+'>'+esc(name)+'</option>').join('')+'</select></div>'+
-   '<div class="alan"><label>Sanayi üretim grubu (yalnız fabrika için)</label><select id="os_urun"><option value="malzeme">Malzeme</option><option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option></select></div>'+
+   '<div class="alan"><label>Sanayi üretim grubu / enerji santrali kaynağı</label><select id="os_urun"><option value="malzeme">Malzeme</option><option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option></select></div>'+
    '<div class="alan"><label>Benim koyacağım kuruluş sermayesi (₺)</label><input id="os_kendi" type="number" inputmode="numeric" step="1" min="1" value="100000"></div>'+
    '<div class="alan"><label>Davet edilecek ortaklar (her satıra kullanıcı adı, sermaye)</label><textarea id="os_ortaklar" rows="3" placeholder="oyuncu1, 100000\noyuncu2, 50000"></textarea></div>'+
    '<p class="alt">En fazla 7 başka oyuncu. Toplam sermaye 100.000–100.000.000 ₺. Herkesin payı koyduğu sermayeye göre belirlenir. Para, şirket kurulana kadar hesaplardan çekilmez.</p>'+
@@ -82,6 +91,12 @@ window.ortaklikEkrani=async function(){
  }catch(e){iskelet('Şirket Ortaklık Merkezi','<div class="kart">'+esc(e.message||e)+'</div>',{geri:true});}
 };
 const get=id=>document.getElementById(id)?.value||'';
+window.ortaklikSektorDegisti=function(){
+ const sector=get('os_sektor'),select=document.getElementById('os_urun');
+ if(!select)return;
+ if(sector==='enerji')select.innerHTML='<option value="dogalgaz">Doğalgaz</option><option value="komur">Kömür</option><option value="yenilenebilir">Yenilenebilir</option>';
+ else select.innerHTML='<option value="malzeme">Malzeme</option><option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option>';
+};
 window.ortakKurulusDavet=async function(){
  try{
   const rows=get('os_ortaklar').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
