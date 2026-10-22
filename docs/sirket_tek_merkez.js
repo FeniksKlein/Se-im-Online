@@ -204,7 +204,17 @@ window.sirketTekSirketEkrani=async function(id,tab){
           action('Fiyatı değiştir','sirketMerkezNpcIslem('+id+',\'fiyat\','+safe(JSON.stringify(String(u.kod)))+','+j+')'):'')
         )).join('')+'<h3>NPC satış özeti</h3>'+kv('Son 7 gün ciro',money(npc.son_7_gun?.ciro))+
          kv('Satılan adet',npc.son_7_gun?.satilan||0):'')+
-       action('Fiyat / kalite / rekabet yönetimi','sirketMerkezPazarAc('+id+')')+
+       (factory&&manager?stock.filter(x=>/^[a-z0-9_]+$/.test(String(x.urun))).map(x=>
+      action('Kendi mağazama '+x.urun+' sat',"sirketToptanAlModal("+id+",'"+x.urun+"',0)")).join(''):'')+
+     (store&&manager?(company?.kategori==='kahve'||company?.kategori==='fastfood'?
+      action('Mutfakta ürün hazırlama','sirketPortfoyMutfak('+id+')','altin'):
+      action('Gelişmiş toptan alış ve satış','sirketPortfoyTedarik('+id+')','altin')):'')+
+     (company?.tur==='sigorta'?action('Sigorta poliçeleri ve hasarlar','ekranAc(sigortaIsletmeEkrani)','altin'):'')+
+     (['akaryakit','yapi_market','elektronik_magaza','tekstil_magaza','mobilya_magaza','oto_galeri'].includes(s.sektor)?
+      action('Stok al, NPC müşteriye sat','ekranAc(()=>npcIsletmeEkrani('+id+'))','altin'):'')+
+     (s.sektor==='banka'?action('Mevduat ve kredi yönetimi','ekranAc(oyuncuBankaEkrani)'):'')+
+     (s.sektor==='ajans'?action('Reklam ve anket yönetimi','ekranAc(()=>ajansYonetimEkrani('+id+'))'):'')+
+     action('Fiyat / kalite / rekabet yönetimi','sirketMerkezPazarAc('+id+')')+
      action('İhaleler','ekranAc(ihaleEkrani)'));
   }
   iskelet(s.ad,html,{geri:true});
