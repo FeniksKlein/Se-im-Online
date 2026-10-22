@@ -45,8 +45,8 @@ async function sirketTumTurKur(onayli){
   const cityList=allCities.length?allCities.map(x=>'<option value="'+Number(x.id)+'">'+safe(x.ad)+'</option>').join(""):
     '<option value="'+home+'">Kayıtlı il (#'+home+')</option>';
   const m=modal(
-   '<h3>🏢 Tüm şirketleri kur</h3>'+
-   '<p class="alt">Şirket türünü seç; belediye ruhsatı, sermaye ve faaliyet alanına göre gerçek şirket kurulsun. Fabrikalarda üretim ve toptan satış; mağazalarda stok ve sanal müşteri satışları; hizmetlerde günlük gelir-gider hesabı kullanılır.</p>'+
+   '<h3>🏢 Sıfırdan bağımsız şirket kur</h3>'+
+   '<p class="alt">Bu ekrandan mevcut şirketlerinden tamamen bağımsız, yeni bir şirket kurarsın. Yeni şirketin ayrı kasası, ayrı şirket numarası ve başlangıçta %100 sana ait ortaklık payı olur. Başka şirketine şube veya ortaklık olarak bağlanmaz.</p>'+
    '<div class="alan"><label>Şirket türü</label><select id="stkType">'+GROUPS.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join("")+'</select></div>'+
    '<div class="alan"><label>Şirket adı</label><input id="stkName" maxlength="50" placeholder="3–50 karakter"></div>'+
    '<div class="alan"><label>Faaliyet ili</label><select id="stkCity">'+cityList+'</select></div>'+
@@ -72,7 +72,7 @@ async function sirketTumTurKur(onayli){
   const current=()=>GROUPS.find(x=>x[0]===type.value)||GROUPS[0];
   const permission=(info)=>{
     if(info[2]==="none")return true;
-    return (permits.benim||[]).some(p=>p.tur===info[2]&&p.durum==="onay"&&
+    return (permits.benim||[]).some(p=>p.sirket_id==null&&p.tur===info[2]&&p.durum==="onay"&&
       String(p.sirket||"").trim()===name.value.trim()&&Number(p.il_id)===Number(city.value)&&
       (!p.karar_zamani||Date.now()-new Date(p.karar_zamani).getTime()<72*3600000)&&
       (info[3]!=="service"||!p.sektor||p.sektor===info[0].split(":")[1])&&
@@ -110,7 +110,7 @@ async function sirketTumTurKur(onayli){
     if(company.length<3||company.length>50){toast("Şirket adı 3–50 karakter olmalı.",true);return;}
     if(!Number.isSafeInteger(capital)||capital<min||capital>100000000){toast("Sermaye "+cash(min)+" ile 100.000.000 ₺ arasında tam sayı olmalı.",true);return;}
     if(!Number.isInteger(loc)||loc<1||loc>81){toast("Geçerli bir faaliyet ili seç.",true);return;}
-    if(!await onayla("Şirket kuruluşu",company+" için "+cash(capital)+" sermaye cüzdanından yatırılacak ve gerekli belediye harcı şirket kasasından kesilecek.","Kur"))return;
+    if(!await onayla("Sıfırdan bağımsız şirket kurulumu",company+" ayrı bir şirket olarak kurulacak; başka hiçbir şirketine bağlanmayacak. "+cash(capital)+" sermaye cüzdanından yatırılacak ve gerekli belediye harcı yeni şirket kasasından kesilecek.","Kur"))return;
     this.disabled=true;
     try{
       // Kurulus ruhsati belediye baskani karari beklemeden verilir.
@@ -123,7 +123,7 @@ async function sirketTumTurKur(onayli){
         });
         if(approval?.durum!=="onay")throw new Error("Kuruluş ruhsatı otomatik onaylanamadı. Lütfen tekrar dene.");
         if(!Array.isArray(permits.benim))permits.benim=[];
-        permits.benim.push({tur:info[2],durum:"onay",sirket:company,il_id:loc,
+        permits.benim.push({tur:info[2],durum:"onay",sirket_id:null,sirket:company,il_id:loc,
           sektor:permitSector,karar_zamani:new Date().toISOString()});
       }
       let result;
@@ -153,8 +153,9 @@ async function sirketTumTurKur(onayli){
         result=await API.rpc("sirket_kur_ilde",{p_ad:company,p_sektor:sector,p_sermaye:capital,p_il:loc});
       }
       if(!Number.isSafeInteger(Number(result?.id)))throw new Error("Kuruluş sonucu şirket numarası alınamadı. Şirketlerimden kontrol et.");
-      modalKapat();toast(company+" kuruldu. Şirket faaliyetlerini açıyorum.");
-      await window.sirketPortfoyDetay(Number(result.id));
+      modalKapat();toast(company+" ayrı bir şirket olarak kuruldu (#"+Number(result.id)+").");
+      try{await window.sirketPortfoyDetay(Number(result.id));}
+      catch(detailsError){console.error("Yeni şirket detay ekranı:",detailsError);toast("Şirket kuruldu, ancak detay ekranı açılamadı. Şirketlerimden yeni şirketini görebilirsin.",true);if(typeof window.sirketYonetimEkrani==="function")await window.sirketYonetimEkrani();}
     }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message||err),true);}
     finally{this.disabled=false;}
   };
