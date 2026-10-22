@@ -1,6 +1,7 @@
 /* =====================================================================
    MAĞAZA (sunucu: sql/115_magaza.sql)
-   - Hayat › Mağaza ve Profilim › Mağaza: Başlangıç Paketi, Siyaset Kartı (30 gün), ₺ paketleri,
+   - Mağazaya giriş: üst çubuktaki cüzdan (altın +, her ekranda), Gündem'in en üstündeki şerit,
+     Hayat › Mağaza ve Profilim › Mağaza. Ürünler: Başlangıç Paketi, Siyaset Kartı (30 gün), ₺ paketleri,
      Reklamsız Ödüller ve Destekçi Rozeti. Fiyatlar telefonda App Store / Google Play'den gelir;
      web'de yalnız vitrin gösterilir.
    - Siyaset Kartı günlük ödülü (Hayat ve Mağaza ekranında).
@@ -41,6 +42,16 @@
   .mg-not{font-size:12.5px;color:var(--faint);line-height:1.45;margin:10px 2px 0}
   .mg-sahip{color:var(--good);font-weight:800;font-size:14px;white-space:nowrap}
   .mg-not a{color:var(--ink2);font-weight:700}
+  .ust .para-cip.mg-cip{display:inline-flex;align-items:center;gap:6px;padding:0 4px 0 10px}
+  .mg-arti{width:24px;height:24px;border-radius:7px;background:linear-gradient(160deg,#F5D06A,#E0A82E);color:#1a1530;display:grid;place-items:center;flex:none}
+  .mg-arti svg{width:15px;height:15px}
+  .mg-cip .mg-nokta{position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:var(--al);border:2px solid var(--bg)}
+  .mg-serit{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border-radius:16px;padding:12px 14px;margin:0 0 12px;cursor:pointer;color:inherit;font:inherit;
+    background:radial-gradient(120% 140% at 100% 0%,rgba(242,201,76,.30),transparent 62%),linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid rgba(242,201,76,.38)}
+  .mg-serit .mg-ikon{background:rgba(242,201,76,.16);color:#F2C94C}
+  .mg-serit .orta{flex:1;min-width:0} .mg-serit b{display:block;font-size:16px} .mg-serit .kucuk{display:block}
+  .mg-serit .ok{color:#F2C94C;font-size:22px;font-weight:700}
+  .km-band + .serit{margin-top:0}
   `;
   document.head.appendChild(stil);
 
@@ -53,6 +64,8 @@
     para: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
     kart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/></svg>',
     reklam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="13" rx="3"/><path d="M10 9l5 2.5-5 2.5z"/><path d="M4 21L20 3"/></svg>',
+    canta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>',
+    arti: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     hediye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="2"/><path d="M3 13h18M12 9v12"/><path d="M12 9c-2-4-6-4-6-1.5S9 9 12 9zm0 0c2-4 6-4 6-1.5S15 9 12 9z"/></svg>'
   };
 
@@ -106,13 +119,51 @@
         if (rz) govde = govde.replace(`<h3>${e(p.kad)}</h3>`, `<h3>${e(p.kad)}${rz}</h3>`);
         govde = `<button class="giris-satir" onclick="ekranAc(magazaEkrani)" style="margin-bottom:12px"><span class="yik">${SVG.kart}</span><span class="orta"><b>Mağaza</b><span class="kucuk">Siyaset Kartı, ₺ paketleri, Destekçi Rozeti</span></span><span class="ok">›</span></button>` + govde;
       }
-      return eskiIskelet.call(this, baslik, govde, opt);
+      if (baslik === "Gündem" && typeof govde === "string") {
+        // Haber şeridinin hemen altına (şerit yoksa en üste)
+        const sr = gundemSeridi(), i = govde.indexOf('<div class="serit"'), j = i >= 0 ? govde.indexOf("</div></div>", i) : -1;
+        govde = j > 0 ? govde.slice(0, j + 12) + sr + govde.slice(j + 12) : sr + govde;
+      }
+      const r = eskiIskelet.call(this, baslik, govde, opt);
+      try { cipGuncelle(); } catch (_) {}
+      return r;
     };
   }
+  // Üst çubuktaki cüzdan her ekranda mağazayı açar (altın + işareti); Kart ödülü hazırsa kırmızı nokta
+  function cipGuncelle() {
+    const c = document.querySelector(".ust .para-cip"); if (!c) return;
+    if (!c.classList.contains("mg-cip")) {
+      c.classList.add("mg-cip"); c.setAttribute("onclick", "ekranAc(magazaEkrani)");
+      c.setAttribute("aria-label", "Mağaza: cüzdanına ₺ ekle"); c.title = "Mağaza";
+      c.insertAdjacentHTML("beforeend", `<span class="mg-arti">${SVG.arti}</span>`);
+    }
+    const nokta = !!(M.durum && M.durum.kart && M.durum.kart.odul_alinabilir);
+    const n = c.querySelector(".mg-nokta");
+    if (nokta && !n) c.insertAdjacentHTML("beforeend", `<span class="mg-nokta"></span>`); else if (!nokta && n) n.remove();
+  }
+  // Gündem'in en üstünde mağaza şeridi
+  function gundemSeridi() {
+    const d = M.durum;
+    if (d && d.satis_acik === false) return "";
+    const gunluk = d && d.kart ? d.kart.gunluk : 7500;
+    if (d && d.kart && d.kart.aktif && d.kart.odul_alinabilir)
+      return `<div class="mg-serit" id="mgSerit" role="button" onclick="ekranAc(magazaEkrani)"><span class="mg-ikon">${SVG.kart}</span><span class="orta"><b>Kart ödülün hazır</b><span class="kucuk">Bugünkü ${tl(gunluk)} seni bekliyor</span></span><button class="btn altin mg-fiyat" onclick="event.stopPropagation();MGZ.kartOdulAl()">${tl(gunluk)} al</button></div>`;
+    const bas = d && (d.paketler || []).find(p => p.urun_id === "baslangic_paketi" && p.alinabilir);
+    const alt = bas ? `Başlangıç Paketi: ${tl(bas.miktar)} ve ${bas.gun} günlük Siyaset Kartı`
+      : d && d.kart && d.kart.aktif ? `Siyaset Kartın aktif · ${kalanGun(d.kart.bitis)}`
+      : `Siyaset Kartı: her gün ${tl(gunluk)} · ₺ paketleri · Destekçi Rozeti`;
+    return `<div class="mg-serit" id="mgSerit" role="button" onclick="ekranAc(magazaEkrani)"><span class="mg-ikon">${SVG.canta}</span><span class="orta"><b>Mağaza</b><span class="kucuk">${e(alt)}</span></span><span class="ok">›</span></div>`;
+  }
+  function seritTazele() {
+    const s = document.querySelector("#mgSerit"); if (s) { const y = gundemSeridi(); if (y) s.outerHTML = y; else s.remove(); }
+    try { cipGuncelle(); } catch (_) {}
+  }
+  M.seritTazele = seritTazele;
 
   /* ---------- Durum ---------- */
   async function durumYukle() {
     try { M.durum = await API.rpc("magaza_durum"); } catch (_) { M.durum = M.durum || null; }
+    try { seritTazele(); } catch (_) {}
     return M.durum;
   }
   M.durumYukle = durumYukle;
@@ -153,8 +204,10 @@
       toast(`Siyaset Kartı ödülü: +${tl(r.sonuc.odul)}`);
       if (typeof rozetGuncelle === "function") rozetGuncelle();
       if (document.querySelector("#mgEkran")) magazaCiz(); else if (typeof hayatEkrani === "function" && document.querySelector("#hReklam")) hayatEkrani();
+      seritTazele();
     } catch (err) { hata(err); if (b) b.disabled = false; }
   }
+  M.kartOdulAl = kartOdulAl;
   if (typeof hayatCiz === "function") {
     const eskiHayat = hayatCiz;
     window.hayatCiz = hayatCiz = function (h) {

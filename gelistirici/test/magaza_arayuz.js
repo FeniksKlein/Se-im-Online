@@ -98,8 +98,17 @@ const para = (u) => +psql(`select para from oyun.cuzdan where user_id='${u}'`);
   const foto = (p, ad) => p.screenshot({ path: path.join(cikti, ad + '.png') });
   const bekle = (p, ms) => p.waitForTimeout(ms || 700);
   try {
-    // 1) Web: yalnız vitrin, fiyatlar bilgi amaçlı ve düğmeler kapalı
+    // 0) Görünür giriş noktaları: Gündem'in en üstünde şerit, her ekranda üst çubuktaki cüzdan (+)
     const w = await sayfa(ALICI, false);
+    await w.evaluate(() => sekmeAc('gundem')); await w.waitForSelector('#mgSerit'); await w.waitForSelector('.ust .para-cip .mg-arti'); await bekle(w, 400); await foto(w, '00_gundem_serit');
+    const ilk = await w.evaluate(() => { const c = [...document.querySelector('#icerik').children].filter(x => !x.classList.contains('serit') && !x.classList.contains('km-band')); return c[0] && c[0].id; }); esit(ilk, 'mgSerit', 'şerit Gündem\'in en üstünde');
+    for (const sek of ['hayat', 'meclis']) { await w.evaluate((x) => sekmeAc(x), sek); await bekle(w, 900); if (!(await w.$('.ust .para-cip .mg-arti'))) throw new Error(sek + ' ekranında üst çubukta mağaza yok'); }
+    await w.click('.ust .para-cip'); await w.waitForSelector('#mgEkran', { state: 'attached' });
+    await w.evaluate(() => { geriGit(); }); await bekle(w, 500);
+    await w.evaluate(() => sekmeAc('gundem')); await w.click('#mgSerit'); await w.waitForSelector('#mgEkran', { state: 'attached' });
+    ok('Mağaza görünür: Gündem\'in en üstünde şerit ve her ekranda üst çubukta cüzdan (+) mağazayı açıyor');
+
+    // 1) Web: yalnız vitrin, fiyatlar bilgi amaçlı ve düğmeler kapalı
     await w.evaluate(() => magazaModal()); await w.waitForSelector('#mgEkran', { state: 'attached' }); await bekle(w, 600); await foto(w, '01_web_vitrin');
     const webDugme = await w.$$eval('.mg-fiyat', l => l.map(x => [x.textContent.trim(), x.disabled]));
     if (!webDugme.length || webDugme.some(([, d]) => !d)) throw new Error('Web vitrininde satın alma düğmesi açık olmamalı');
@@ -145,6 +154,20 @@ const para = (u) => +psql(`select para from oyun.cuzdan where user_id='${u}'`);
     await foto(d, '06_sohbet_rozet');
     await d.evaluate((k) => oyuncuKart(k), ALICI); await d.waitForSelector('#modal .modal h3 .mg-rz', { timeout: 10000 }); await bekle(d, 300); await foto(d, '07_oyuncu_karti_rozet');
     await d.close(); ok('Destekçi yıldızı ve Kart rozeti başka oyuncunun sohbetinde ve oyuncu kartında görünüyor');
+
+    // 6) Kartı olan oyuncu: Gündem şeridinde ve üst çubukta ödül hatırlatması, şeritten ödül alınıyor
+    psql(`insert into oyun.magaza_hesap(user_id, kart_bitis) values ('${b}', now() + interval '5 days') on conflict (user_id) do update set kart_bitis = excluded.kart_bitis, kart_son_odul = null`);
+    const k = await sayfa(DIGER, false);
+    await k.evaluate(() => sekmeAc('gundem'));
+    await k.waitForFunction(() => /Kart ödülün hazır/.test(document.querySelector('#mgSerit')?.textContent || ''), null, { timeout: 10000 });
+    if (!(await k.$('.ust .para-cip .mg-nokta'))) throw new Error('Üst çubukta ödül noktası yok');
+    await foto(k, '08_gundem_kart_odulu');
+    const pk0 = para(b);
+    await k.click('#mgSerit .mg-fiyat'); await k.waitForFunction(() => /Kartı ödülü/.test(document.querySelector('.toast')?.textContent || ''), null, { timeout: 10000 });
+    esit(para(b), pk0 + 7500, 'şeritten Kart ödülü'); await bekle(k, 600);
+    if (await k.$('.ust .para-cip .mg-nokta')) throw new Error('Ödül alındıktan sonra nokta kalmamalı');
+    if ((await k.textContent('#mgSerit')).includes('Kart ödülün hazır')) throw new Error('Şerit güncellenmedi');
+    await k.close(); ok('Kart sahibine Gündem\'de ve üst çubukta ödül hatırlatması; ödül şeritten alınıyor');
 
     if (hatalar.length) throw new Error('Sayfa hataları:\n' + hatalar.join('\n'));
     console.log('magaza_arayuz: hepsi geçti (ekranlar: ' + cikti + ')');
