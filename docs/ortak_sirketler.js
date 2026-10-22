@@ -307,3 +307,66 @@ if(typeof prevDetail==='function')window.sirketPortfoyDetay=async function(){
 
 
 })();
+
+
+/* Otomatik belediye insaat ruhsati — tek onay / atomik tahsilat, 2026-10-23 */
+;(function(){
+ 'use strict';
+ const running=new Set();
+ const getVal=id=>document.getElementById(id)?.value||'';
+ const fmt=x=>Math.round(Number(x)||0).toLocaleString('tr-TR')+' ₺';
+ const inform=e=>{
+  if(typeof window.toast==='function')window.toast(typeof window.hataCevir==='function'?window.hataCevir(e?.message||String(e)):String(e?.message||e),true);
+ };
+ window.sirketMerkezInsaatBaslat=async function(id){
+  id=Number(id);
+  if(running.has(id))return;
+  const arsa=Number(getVal('sm_yapi_arsa')),
+        ad=getVal('sm_yapi_ad').trim(),
+        daire=Number(getVal('sm_yapi_daire')),
+        dukkan=Number(getVal('sm_yapi_dukkan'));
+  if(!arsa||!ad||ad.length>70||!Number.isSafeInteger(daire)||!Number.isSafeInteger(dukkan)||
+     daire<0||dukkan<0||daire+dukkan<1){
+    if(typeof window.toast==='function')window.toast('Arsa, proje adı, daire ve dükkân adetlerini kontrol et.',true);
+    return;
+  }
+  running.add(id);
+  try{
+    const teklif=await API.rpc('sirket_insaat_ruhsat_teklif',{
+      p_sirket:id,p_arsa:arsa,p_daire:daire,p_dukkan:dukkan
+    });
+    if(!teklif||!teklif.gecerli)throw new Error(teklif?.hata||'Bu inşaat için teklif oluşturulamadı.');
+    const yapim=Number(teklif.toplam_maliyet),
+          ruhsat=Number(teklif.ruhsat_harci),
+          toplam=Number(teklif.toplam_odeme);
+    if(!Number.isFinite(toplam)||!Number.isFinite(ruhsat)||toplam<0)throw new Error('Ücret hesabı geçersiz.');
+    const metin=[
+      ad+' · '+teklif.belediye+' Belediyesi',
+      daire+' daire, '+dukkan+' dükkân',
+      'İnşaat maliyeti: '+fmt(yapim),
+      'Belediye ruhsat harcı: '+fmt(ruhsat),
+      'Toplam ödenecek: '+fmt(toplam),
+      'Şirket kasası: '+fmt(teklif.mevcut_kasa),
+      'Ödeme sonrası şirket kasası: '+fmt(teklif.kalan_kasa),
+      teklif.eksik>0?'Eksik tutar: '+fmt(teklif.eksik):'Ruhsat bedeli şirket kasasından '+teklif.belediye+' Belediyesi kasasına aktarılır.',
+      teklif.eksik>0?'Önce şirket kasasına para aktarmalısın.':'Onaylıyor musun? Onay verirsen ruhsat otomatik düzenlenecek ve inşaat hemen başlayacak.'
+    ].join('\n');
+    if(teklif.eksik>0){
+      if(typeof window.onayla==='function')await window.onayla('İnşaat ve ruhsat maliyetleri',metin,'Tamam');
+      else if(typeof window.alert==='function')window.alert(metin);
+      return;
+    }
+    const ok=typeof window.onayla==='function'
+      ?await window.onayla('İnşaat ve ruhsat ödemesini onayla',metin,'Onayla ve inşaata başla')
+      :window.confirm(metin);
+    if(!ok)return;
+    const sonuc=await API.rpc('sirket_insaat_ruhsatli_baslat',{
+      p_sirket:id,p_arsa:arsa,p_ad:ad,p_daire:daire,p_dukkan:dukkan,
+      p_beklenen_maliyet:yapim,p_beklenen_ruhsat:ruhsat
+    });
+    if(typeof window.toast==='function')window.toast('İnşaat başladı. '+fmt(sonuc.ruhsat_harci)+' ruhsat harcı '+sonuc.belediye+' Belediyesi kasasına aktarıldı.');
+    if(typeof window.sirketTekSirketEkrani==='function')await window.sirketTekSirketEkrani(id,'insaat');
+  }catch(e){inform(e)}
+  finally{running.delete(id)}
+ };
+})();
