@@ -142,7 +142,7 @@
   };
   function girisEkle() {
     var root = document.getElementById('icerik');
-    if (!root || root.querySelector('.yp-giris')) return;
+    if (!root || root.querySelector('.yp-giris') || root.querySelector('#ypDinamik')) return;
     var baslik = root.querySelector('h2');
     if (!baslik || !/(gayrimenkul|emlak pazarı|oyuncudan emlak)/i.test(baslik.textContent)) return;
     var card = baslik.closest('.kart');
