@@ -404,7 +404,7 @@ window.sirketTekSirketEkrani=async function(id,tab){
     let f=null,error='';
     try{f=await call('sirket_finans_ozeti',{p_sirket:id});}catch(e){error=e.message||String(e);}
     html+=sectionHeader('Gelir, gider ve kasa raporu',
-      f?(kv('Güncel kasa',money(f.kasa))+kv('Sermaye',money(f.sermaye))+
+      (f?(kv('Güncel kasa',money(f.kasa))+kv('Sermaye',money(f.sermaye))+
       kv('Dağıtılabilir kâr',money(f.dagitilabilir_kar))+
       kv('Tahmini haftalık gelir',money(f.tahmini_gelir_min)+' – '+money(f.tahmini_gelir_max))+
       kv('Tahmini haftalık gider',money(f.tahmini_gider_min)+' – '+money(f.tahmini_gider_max))+
@@ -477,7 +477,7 @@ window.sirketTekSirketEkrani=async function(id,tab){
      '<h3>Mevcut stok</h3>'+
      (stock.length?stock.map((x,k)=>item('<b>'+safe(x.urun)+'</b>'+kv('Adet',x.adet)+kv('Alış/üretim birim maliyeti',money(x.maliyet))+
        '<div class="alan"><label>Satış fiyatı (₺)</label><input id="sm_fiyat_'+k+'" type="number" step="1" min="1" value="'+Number(x.fiyat||0)+'"></div>'+
-       (manager?action('Satış fiyatını kaydet','sirketMerkezStokFiyat('+id+','+k+','+JSON.stringify(String(x.urun))+')'):'')).join(''):
+       (manager?action('Satış fiyatını kaydet','sirketMerkezStokFiyat('+id+','+k+','+JSON.stringify(String(x.urun))+')'):''))).join(''):
        '<p class="alt">Bu şirket için listelenen stok bulunmuyor.</p>')+
      (factory&&manager?'<h3>Fabrika üretimi</h3>'+
       '<div class="alan"><label>Ürün</label><select id="sm_urun">'+products.map(p=>'<option value="'+safe(p.kod)+'">'+safe(p.ad)+' · Maliyet '+money(p.maliyet)+'</option>').join('')+'</select></div>'+
