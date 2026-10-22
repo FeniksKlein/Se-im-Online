@@ -320,6 +320,18 @@ begin
  return jsonb_build_object('satilan',v_n,'ciro',v_ciro,'zaman',t);
 end $function$;
 
+
+create or replace function public.uzaktan_kontrol_yayin()
+returns jsonb language plpgsql security definer set search_path='' as $
+declare y oyun.profiller; v_rev bigint;
+begin
+ y:=oyun.yk_sahip();
+ v_rev:=oyun.uzaktan_sinyal_yay('yonetici');
+ return jsonb_build_object('tamam',true,'rev',v_rev,'mesaj','Bagli uygulamalara yenileme sinyali gonderildi');
+end $;
+revoke all on function public.uzaktan_kontrol_yayin() from public,anon;
+grant execute on function public.uzaktan_kontrol_yayin() to authenticated;
+
 revoke all on function oyun.uzaktan_sinyal_yay(text) from public,anon,authenticated;
 revoke all on function oyun.uzaktan_sinyal_tetikle() from public,anon,authenticated;
 revoke all on function public.uzaktan_kontrol_durum() from public,anon;
