@@ -4348,7 +4348,10 @@ const REKLAM = {
     let odul = false;
     const dinle = await A.addListener("onRewardedVideoAdReward", () => { odul = true; });
     try {
-      await A.prepareRewardVideoAd({ adId: ios ? AYAR.ADMOB_ODULLU_IOS : AYAR.ADMOB_ODULLU_ANDROID });
+      // Test modunda (Kontrol Merkezi › Ayarlar › admob_test) her zaman Google'ın test reklamı gösterilir; gelir ve geçersiz trafik riski olmaz
+      const test = !!AYAR.ADMOB_TEST;
+      const birim = test ? (ios ? "ca-app-pub-3940256099942544/1712485313" : "ca-app-pub-3940256099942544/5224354917") : (ios ? AYAR.ADMOB_ODULLU_IOS : AYAR.ADMOB_ODULLU_ANDROID);
+      await A.prepareRewardVideoAd({ adId: birim, isTesting: test });
       const r = await A.showRewardVideoAd();
       if (r && (r.amount != null || r.type)) odul = true;
     } finally { try { dinle.remove(); } catch (_) {} }
