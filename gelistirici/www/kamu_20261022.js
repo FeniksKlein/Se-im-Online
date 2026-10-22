@@ -47,7 +47,7 @@ window.kamuToptanEkrani=async function(){
  try{
   const d=await rpc('kamu_toptan_panel'); const my=(d.sirketler||[]).filter(s=>s.tur==='magaza');
   let html='<div class="kart"><h2>🏭 Fabrikadan mağazaya ticaret</h2>'+
-    para('Mağaza teklif verir; fabrikanın yetkilisi kabul ettiğinde ürün stoku, şirket kasaları ve üretici vergisi mevcut ticaret motoruyla aynı işlemde güncellenir.')</div>';
+    para('Mağaza teklif verir; fabrikanın yetkilisi kabul ettiğinde ürün stoku, şirket kasaları ve üretici vergisi mevcut ticaret motoruyla aynı işlemde güncellenir.')+'</div>';
   if(my.length){
    html+='<div class="kart"><h2>Toptan sipariş teklifi oluştur</h2><div class="alan"><label>Alıcı mağazam</label><select id="kt_alici">'+my.map(s=>'<option value="'+Number(s.id)+'">'+esc(s.ad)+'</option>').join('')+'</select></div>';
    html+='<div class="alan"><label>Fabrika ve ürünü</label><select id="kt_stok">'+(d.stoklar||[]).map(s=>
