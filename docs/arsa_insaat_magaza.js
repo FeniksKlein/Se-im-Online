@@ -42,20 +42,61 @@ async function buyLand(id){
 function beginBuild(id){
  const a=(EA.veri.benim_arsalarim||[]).find(x=>Number(x.id)===Number(id));
  if(!a)return;
+ const sid=Number(a.sirket);
+ if(!sid){toast("Arsanın bağlı olduğu müteahhitlik şirketi bulunamadı.",true);return;}
  const m=dialog("İnşaat projesi oluştur",
- '<p class="alt">Bu arsanın toplam imar hakkı '+safe(a.kapasite)+' bağımsız bölüm. Daire ve dükkân sayısı arttıkça maliyet yükselir. Arsa alım bedeli inşaat maliyetine dahil değildir. Yapım süresi 12–96 saattir.</p>'+
+ '<p class="alt">Arsa #'+Number(id)+' · Toplam imar hakkı '+safe(a.kapasite)+' bağımsız bölüm. Daire ve dükkân adedi değişince güncel maliyet otomatik hesaplanır.</p>'+
  '<div class="alan"><label>Proje adı</label><input id="eaName" maxlength="70" placeholder="Örn. Yatağan Yaşam Konutları"></div>'+
  num("eaD","Daire sayısı",Math.min(3,Number(a.kapasite)),0,40)+num("eaK","Dükkân sayısı",0,0,12)+
- '<p id="eaCapacity" class="alt"></p>',
+ '<p id="eaCapacity" class="alt"></p><div id="eaCost" aria-live="polite"><p class="alt">Maliyet hesaplanıyor…</p></div>',
  "İnşaata başla",async el=>{
   const d=Number(get(el,"eaD")),k=Number(get(el,"eaK"));
   const maxShop=Math.max(1,Math.ceil(Number(a.kapasite)*.3));
-  if(!Number.isInteger(d)||!Number.isInteger(k)||d<0||k<0||d+k<1||d+k>Number(a.kapasite)||k>maxShop){toast("İmar hakkı veya dükkân sınırı aşıldı.",true);return;}
-  if(!await onayla("İnşaatı başlat","Yapım maliyeti müteahhitlik şirketinin kasasından tahsil edilecek.","İnşaata başla"))return;
-  await act("insaata_basla",{arsa:id,ad:get(el,"eaName"),daire:d,dukkan:k},"İnşaat başladı.");
+  if(!Number.isSafeInteger(d)||!Number.isSafeInteger(k)||d<0||k<0||d+k<1||d+k>Number(a.kapasite)||k>maxShop){toast("İmar hakkı veya dükkân sınırı aşıldı.",true);return;}
+  try {
+   const teklif=await API.rpc("sirket_insaat_teklif",{p_sirket:sid,p_arsa:id,p_daire:d,p_dukkan:k});
+   if(!teklif.gecerli){toast(teklif.hata||"İmar kapasitesi aşılıyor.",true);return;}
+   if(!teklif.uygun){toast("İnşaat için "+para(teklif.toplam_maliyet)+" gerekiyor; şirket kasasında "+para(teklif.mevcut_kasa)+" var. Eksik: "+para(teklif.eksik),true);return;}
+   if(!await onayla("İnşaatı başlat","Toplam yapım maliyeti "+para(teklif.toplam_maliyet)+
+    ". Şirket kasası "+para(teklif.mevcut_kasa)+
+    "; ödeme sonrası "+para(teklif.kalan_kasa)+
+    " kalacak. Bu tutarın şirketten kesilmesini onaylıyor musun?","İnşaata başla"))return;
+   await act("insaata_basla",{arsa:id,ad:get(el,"eaName"),daire:d,dukkan:k},"İnşaat başladı. Yapım maliyeti: "+para(teklif.toplam_maliyet));
+  }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message),true);}
  });
- const update=()=>{const d=Number(get(m,"eaD")),k=Number(get(m,"eaK")),maxShop=Math.max(1,Math.ceil(Number(a.kapasite)*.3));m.querySelector("#eaCapacity").textContent="Toplam "+(d+k)+" / "+a.kapasite+" · En fazla "+maxShop+" dükkân · Süre "+(d+k<=5?12:d+k<=10?24:d+k<=20?48:96)+" saat";};
- m.querySelector("#eaD").addEventListener("input",update);m.querySelector("#eaK").addEventListener("input",update);update();
+ let serial=0;
+ const update=async()=>{
+  const d=Number(get(m,"eaD")),k=Number(get(m,"eaK")),maxShop=Math.max(1,Math.ceil(Number(a.kapasite)*.3));
+  const count=d+k,seq=++serial,cost=m.querySelector("#eaCost"),go=m.querySelector("#eaGo");
+  m.querySelector("#eaCapacity").textContent="Toplam "+count+" / "+a.kapasite+" · En fazla "+maxShop+" dükkân";
+  if(go)go.disabled=true;
+  if(!Number.isSafeInteger(d)||!Number.isSafeInteger(k)||d<0||k<0||count<1||count>Number(a.kapasite)||k>maxShop){
+   cost.textContent="Daire/dükkân adetleri imar kapasitesine uygun değil.";return;
+  }
+  cost.textContent="Yapım maliyeti hesaplanıyor…";
+  try{
+   const x=await API.rpc("sirket_insaat_teklif",{p_sirket:sid,p_arsa:id,p_daire:d,p_dukkan:k});
+   if(seq!==serial||!m.querySelector("#eaCost"))return;
+   if(!x.gecerli){cost.textContent=x.hata||"Geçersiz adet.";return;}
+   cost.innerHTML='<div class="kart">'+
+    '<div><b>Dairelerin yapım gideri:</b> '+para(x.daire_maliyeti)+'</div>'+
+    '<div><b>Dükkânların yapım gideri:</b> '+para(x.dukkan_maliyeti)+'</div>'+
+    '<div><b>Toplam inşaat maliyeti:</b> '+para(x.toplam_maliyet)+'</div>'+
+    '<div><b>Şirket kasası:</b> '+para(x.mevcut_kasa)+'</div>'+
+    (x.uygun?'<div><b>Ödeme sonrası kalan:</b> '+para(x.kalan_kasa)+'</div>':
+     '<p class="alt"><b>Kasa yetersiz. Eksik tutar:</b> '+para(x.eksik)+'</p>')+
+    '<div><b>Tahmini süre:</b> '+x.sure_saat+' saat</div>'+
+    '<p class="alt">Arsa bedeli daha önce ödenmiştir, yeniden kesilmez.</p>'+
+    (!x.uygun?'<button class="btn ikinci" type="button" id="eaFund">Şirkete para yatır</button>':'')+
+    '</div>';
+   const fund=cost.querySelector("#eaFund");
+   if(fund)fund.onclick=()=>{if(typeof modalKapat==="function")modalKapat();if(typeof window.sirketTekSirketEkrani==="function")window.sirketTekSirketEkrani(sid,"para");};
+   if(go)go.disabled=!x.uygun;
+  }catch(err){if(seq===serial)cost.textContent="Maliyet bilgisi alınamadı: "+String(err.message||err);}
+ };
+ m.querySelector("#eaD").addEventListener("input",update);
+ m.querySelector("#eaK").addEventListener("input",update);
+ update();
 }
 function setPrice(id,current){
  dialog("Bağımsız bölüm satış fiyatı",num("eaMoney","İstediğin satış bedeli ₺",Number(current),100,1000000000)+"<p class='alt'>Yeni fiyat tüm oyuncuların satış listesinde görünür.</p>","Fiyatı kaydet",m=>act("fiyat_belirle",{bolum:id,tutar:Number(get(m,"eaMoney"))},"Fiyat güncellendi."));
