@@ -1,7 +1,8 @@
 -- Seçim Simülasyonu Online · 2026-10-22 · Yönetici Kontrol Merkezi — ONAY GEREKEN BÖLÜM
 -- Bu dosyadaki fonksiyonların içinde "silme" (delete) komutu geçtiği için Supabase onay ister.
 -- İçerik: (1) hata yalıtımlı oyun motoru, (2) veri düzenleyicide satır silme, (3) göreve atama,
--- (4) parti görevinden alma, (5) hesap silmenin düzeltilmesi (App Store/Google Play şartı), (6) zamanlayıcı geçmişi temizliği. Oyuncu verisini değiştirmez; iki kez çalıştırmak güvenlidir.
+-- (4) parti görevinden alma, (5) hesap silmenin düzeltilmesi (App Store/Google Play şartı), (6) zamanlayıcı geçmişi temizliği,
+-- (7) Gündem akışında beğeni çift dokunma hatası. Oyuncu verisini değiştirmez; iki kez çalıştırmak güvenlidir.
 -- Kullanım: Supabase › SQL Editor › New query › bu dosyanın TAMAMINI yapıştır › Run.
 begin;
 
@@ -226,7 +227,43 @@ end $$;
 revoke all on function public.hesabimi_sil() from public, anon;
 grant execute on function public.hesabimi_sil() to authenticated;
 
+-- =====================================================================
+--  119 ek · Gündem akışında beğen / beğenme tepkisi: aynı anda iki kez dokununca
+--  "duplicate key" hatası veriyordu (canlı logda görüldü). Tepki artık çakışmada sessizce tek kalır.
+-- =====================================================================
+CREATE OR REPLACE FUNCTION public.akis_tepki(p_id bigint, p_tepki text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'oyun', 'public', 'pg_temp'
+AS $function$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); onceki text;
+begin
+  if p_tepki is not null and p_tepki not in ('begen', 'begenme') then raise exception 'Geçersiz tepki.'; end if;
+  if not exists (select 1 from oyun.akis where id = p_id and not gizli) then raise exception 'Paylaşım bulunamadı.'; end if;
+  onceki := case when exists (select 1 from oyun.akis_begeni where akis_id = p_id and user_id = p.id) then 'begen'
+                 when exists (select 1 from oyun.akis_begenmeme where akis_id = p_id and user_id = p.id) then 'begenme' end;
+  if p_tepki is not null and p_tepki is distinct from onceki
+     and (select count(*) from oyun.akis_begeni where user_id = p.id and zaman > t - interval '1 minute')
+       + (select count(*) from oyun.akis_begenmeme where user_id = p.id and zaman > t - interval '1 minute') >= 30 then
+    raise exception 'Çok hızlı tepki veriyorsun, biraz bekle.';
+  end if;
+  delete from oyun.akis_begeni where akis_id = p_id and user_id = p.id;
+  delete from oyun.akis_begenmeme where akis_id = p_id and user_id = p.id;
+  if p_tepki = 'begen' and onceki is distinct from 'begen' then
+    insert into oyun.akis_begeni(akis_id, user_id, zaman) values (p_id, p.id, t) on conflict do nothing;
+  elsif p_tepki = 'begenme' and onceki is distinct from 'begenme' then
+    insert into oyun.akis_begenmeme(akis_id, user_id, zaman) values (p_id, p.id, t) on conflict do nothing;
+  end if;
+  return jsonb_build_object(
+    'begeni', (select count(*) from oyun.akis_begeni where akis_id = p_id),
+    'begenmeme', (select count(*) from oyun.akis_begenmeme where akis_id = p_id),
+    'begendim', exists (select 1 from oyun.akis_begeni where akis_id = p_id and user_id = p.id),
+    'begenmedim', exists (select 1 from oyun.akis_begenmeme where akis_id = p_id and user_id = p.id));
+end $function$;
+
 commit;
+
 
 -- Zamanlayıcı geçmişi temizliği (günde bir, son 7 gün tutulur)
 select cron.schedule('cron-gecmis-temizlik', '23 3 * * *', $$delete from cron.job_run_details where end_time < now() - interval '7 days'$$);

@@ -25,7 +25,7 @@ window.AYAR = {
   APP_STORE:   "https://apps.apple.com/",
   GOOGLE_PLAY: "https://play.google.com/store/apps"
 };
-window.UYGULAMA_SURUM = "2026.10.22-6";   // derleme sırasında SURUM dosyasından yazılır
+window.UYGULAMA_SURUM = "2026.10.22-7";   // derleme sırasında SURUM dosyasından yazılır
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
@@ -2148,12 +2148,12 @@ async function cbYardimciIstifa(){
   try{await islem(()=>API.rpc("cb_yardimcisi_istifa"),"Cumhurbaşkanı yardımcılığından istifa ettin.");await durumYenile();yenidenCiz();}catch(_){}
 }
 function politikaKartlari(l){
-  const B = { tl_ay: "₺/ay", tl_gun: "₺/gün", yuzde: "%" };
+  const B = { tl_ay: "₺/ay", tl_gun: "₺/gün", tl: "₺", yuzde: "%", binde: "‰", kat: "×", adet: "adet" };
   return (l || []).map(p2 => { const hazir = !p2.hazir || new Date(p2.hazir).getTime() <= simdi();
     return `<div class="kart" style="margin:10px 0 0;background:var(--panel2)" data-pol="${p2.kod}">
-      <div style="display:flex;justify-content:space-between;gap:8px"><b>${e(p2.ad)}</b><span class="v">${p2.birim === "yuzde" ? "%" + fmt(p2.deger, 1) : fmt(p2.deger) + " " + B[p2.birim]}</span></div>
+      <div style="display:flex;justify-content:space-between;gap:8px"><b>${e(p2.ad)}</b><span class="v">${p2.birim === "yuzde" ? "%" + fmt(p2.deger, 1) : fmt(p2.deger) + " " + (B[p2.birim] || "")}</span></div>
       <div class="kucuk" style="margin-top:2px">${e(p2.aciklama)}</div>
-      <div class="payinput" style="margin-top:6px"><span class="kucuk">Yeni değer (${p2.birim === "yuzde" ? "%" + fmt(p2.alt, 1) + " – %" + fmt(p2.ust, 1) : fmt(p2.alt) + " – " + fmt(p2.ust) + " " + B[p2.birim]})</span>
+      <div class="payinput" style="margin-top:6px"><span class="kucuk">Yeni değer (${p2.birim === "yuzde" ? "%" + fmt(p2.alt, 1) + " – %" + fmt(p2.ust, 1) : fmt(p2.alt) + " – " + fmt(p2.ust) + " " + (B[p2.birim] || "")})</span>
         <input type="number" min="${p2.alt}" max="${p2.ust}" step="${p2.birim === "yuzde" ? 0.5 : p2.kod === "asgari" ? 500 : 10}" value="${p2.deger}" inputmode="decimal" ${hazir ? "" : "disabled"}></div>
       <div class="kucuk pol-etki" style="min-height:1.2em"></div>
       <button class="btn ${hazir ? "altin" : "ikinci"}" ${hazir ? "" : "disabled"}>${hazir ? "Uygula" : "Sonraki değişiklik: " + tarihSaat(p2.hazir)}</button></div>`; }).join("");
@@ -3451,14 +3451,17 @@ async function sohbetListe(){
     yonetim: kik(sv('<path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/>'), "#FF9F0A"),
     ittifak: kik(sv('<path d="M8 12h8M5 8l-3 4 3 4M19 8l3 4-3 4"/>'), "#BF5AF2"),
     meclis: kik(IKON.devlet.replace("<svg", '<svg width="22" height="22"'), "#0A84FF"),
-    kabine: kik(sv('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>'), "#64D2FF") };
+    kabine: kik(sv('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>'), "#64D2FF"),
+    grup: kik(sv('<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 14.5c3 0 6 2 6 5.5"/>'), "#5E5CE6"),
+    divan: kik(sv('<path d="M3 21h18M5 21V11M19 21V11M9.5 21V11M14.5 21V11M2 11l10-7 10 7z"/>'), "#FFD60A") };
   const ALT = { genel: "Tüm oyuncular", il: "Senin ilindeki oyuncular", belediye: "Herkes izler; belediye başkanı ve ilin vekilleri konuşur",
     parti: "Yalnızca parti üyeleri görür", yonetim: "Genel başkan ve yardımcıları", ittifak: "Yalnızca ittifak partilerinin yöneticileri ve milletvekilleri",
-    meclis: "Vekiller, bakanlar ve cumhurbaşkanı konuşur; herkes izler", kabine: "Cumhurbaşkanı, yardımcıları ve bakanlar" };
+    meclis: "Vekiller, bakanlar ve cumhurbaşkanı konuşur; herkes izler", kabine: "Cumhurbaşkanı, yardımcıları ve bakanlar",
+    grup: "Partinin milletvekilleri ve genel başkanı", divan: "TBMM Başkanı, başkanvekilleri ve grup başkanvekilleri" };
   const GRUP = [["Herkese açık", ["genel", "il", "belediye"]], ["Siyasi örgüt", ["parti", "yonetim", "ittifak"]], ["Devlet", ["meclis", "grup", "divan", "kabine"]]];
   const satir = (k) => {
     const kilitli = !!k.kilit;
-    return `<div class="kanal${!kilitli && Number(k.okunmamis) > 0 ? " mesaj-yeni" : ""}" data-sohbet-kanal="${e(k.kanal)}" data-sohbet-alt="${e(ALT[k.kanal] || "")}" ${kilitli ? `style="opacity:.55" onclick="toast('${e(k.kilit)}')"` : `onclick="ekranAc(()=>sohbetEkrani('${k.kanal}'))"`}>${IK[k.kanal]}
+    return `<div class="kanal${!kilitli && Number(k.okunmamis) > 0 ? " mesaj-yeni" : ""}" data-sohbet-kanal="${e(k.kanal)}" data-sohbet-alt="${e(ALT[k.kanal] || "")}" ${kilitli ? `style="opacity:.55" onclick="toast('${e(k.kilit)}')"` : `onclick="ekranAc(()=>sohbetEkrani('${k.kanal}'))"`}>${IK[k.kanal] || kik("•", "#8E8E93")}
       <div style="flex:1;min-width:0"><b>${e(k.baslik)}</b>${kilitli ? ` <span class="kucuk"></span>` : ""}
         <div class="kucuk" data-sohbet-ozet style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${kilitli ? e(k.kilit) : k.son ? `${e(k.son.kad)}: ${e(k.son.metin)}` : e(ALT[k.kanal])}</div>
         ${!kilitli && k.cevrimici != null ? `<div class="kucuk" style="color:var(--good)">● ${k.cevrimici} çevrimiçi${k.yazabilir ? "" : " · yalnızca izleme"}</div>` : !kilitli && !k.yazabilir ? `<div class="kucuk">Yalnızca izleme</div>` : ""}</div>
@@ -3958,14 +3961,14 @@ async function vaatEditor(o){
              kent_vergisi: r(Math.max(0, m - 1)), hemsehri: r(m + 100), aday_ucret: 0.5, kampanya: 10000,
              katilim: 80, teklif: 1, uye: r(Math.max(2, Math.round(m) + 10)), kasa: r(Math.max(10000, Math.round(m * 2 / 1000) * 1000)) }[t.kod];
   };
-  const B = { tl_ay: "₺/ay", tl_gun: "₺/gün", tl: "₺", yuzde: "%", kat: "×", adet: "adet" };
+  const B = { tl_ay: "₺/ay", tl_gun: "₺/gün", tl: "₺", yuzde: "%", binde: "‰", kat: "×", adet: "adet" };
   const birim = sec.birim === "tl" ? "₺/gün" : "milyar ₺/gün";
   const m = modal(`<h3 style="font-size:19px;font-weight:800">${e(o.baslik)}</h3><p class="alt">${e(o.aciklama)}</p>
     <div class="alan"><label>Bildirge <span id="vsay" class="kucuk"></span></label><textarea class="alanmetin" id="vmetin" maxlength="${o.metinMax}" style="min-height:80px" placeholder="Seçmenlere ne söylüyorsun?">${e(o.metin || "")}</textarea></div>
     <div class="kucuk" style="margin-top:10px;font-weight:800;color:var(--txt2)">ÖLÇÜLEBİLİR VAATLER (en fazla ${sec.en_fazla})</div>
     ${sec.turler.map(t => `<div class="secenek ${secili.has(t.kod) ? "secili" : ""}" data-kod="${t.kod}" style="flex-direction:column;align-items:stretch">
-      <div style="display:flex;gap:8px;align-items:flex-start"><div style="flex:1"><b style="font-size:14px">${e(t.ad)}</b><div class="kucuk">${e(t.aciklama)}${t.mevcut != null ? ` Bugün: ${t.birim === "yuzde" ? "%" + fmt(t.mevcut, 1) : t.birim === "kat" ? "×" + fmt(t.mevcut, 2) : fmt(t.mevcut) + " " + B[t.birim]}.` : ""}${t.acik ? " Bu hizmet şu an açık." : ""}</div></div><span class="rozet" data-isaret>${secili.has(t.kod) ? "✓" : "+"}</span></div>
-      ${t.birim !== "yok" ? `<div class="payinput" style="margin-top:6px;${secili.has(t.kod) ? "" : "display:none"}" data-hedef-kutu><span class="kucuk">Hedef (${B[t.birim]})</span><input data-hedef type="number" step="${t.birim === "kat" ? 0.25 : t.birim === "yuzde" ? 0.5 : t.birim === "adet" ? 1 : t.kod === "asgari" ? 500 : t.kod === "kasa" ? 1000 : 10}" value="${secili.get(t.kod) ?? oneri(t)}" inputmode="decimal"></div>` : ""}
+      <div style="display:flex;gap:8px;align-items:flex-start"><div style="flex:1"><b style="font-size:14px">${e(t.ad)}</b><div class="kucuk">${e(t.aciklama)}${t.mevcut != null ? ` Bugün: ${t.birim === "yuzde" ? "%" + fmt(t.mevcut, 1) : t.birim === "kat" ? "×" + fmt(t.mevcut, 2) : fmt(t.mevcut) + " " + (B[t.birim] || "")}.` : ""}${t.acik ? " Bu hizmet şu an açık." : ""}</div></div><span class="rozet" data-isaret>${secili.has(t.kod) ? "✓" : "+"}</span></div>
+      ${t.birim !== "yok" ? `<div class="payinput" style="margin-top:6px;${secili.has(t.kod) ? "" : "display:none"}" data-hedef-kutu><span class="kucuk">Hedef (${(B[t.birim] || "")})</span><input data-hedef type="number" step="${t.birim === "kat" ? 0.25 : t.birim === "yuzde" ? 0.5 : t.birim === "adet" ? 1 : t.kod === "asgari" ? 500 : t.kod === "kasa" ? 1000 : 10}" value="${secili.get(t.kod) ?? oneri(t)}" inputmode="decimal"></div>` : ""}
       <div class="kucuk" data-maliyet></div></div>`).join("")}
     <div class="kart" style="margin:12px 0 0;background:var(--panel2)" id="vhesap"><div class="kucuk">Vaat seçtikçe maliyeti burada görürsün.</div></div>
     <button class="btn altin" id="vkaydet">Kaydet</button>`);
