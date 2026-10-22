@@ -37,6 +37,22 @@
   };
   if (typeof IKON === "object" && IKON && !IKON.ekonomi) IKON.ekonomi = MS_IKON.ekonomi;
 
+  // GitHub Pages: kamu / icra modulunu ihtiyac aninda yukle.
+  let kamuEkYukle=null;
+  for(const ad of ['kamuButceEkrani','kamuToptanEkrani','kamuAtamaEkrani','icraMerkeziEkrani']){
+    if(typeof window[ad]==='function')continue;
+    window[ad]=function(){
+      if(!kamuEkYukle)kamuEkYukle=new Promise((resolve,reject)=>{
+        const script=document.createElement('script');
+        script.src='kamu_20261022.js?v=20261022-4';
+        script.onload=resolve;
+        script.onerror=()=>reject(new Error('Kamu/İcra modülü yüklenemedi'));
+        document.head.appendChild(script);
+      });
+      return kamuEkYukle.then(()=>window[ad]()).catch(err=>{kamuEkYukle=null;toast(err.message,true);});
+    };
+  }
+
   const var_ = ad => typeof window[ad] === "function";
   // [ikon, başlık, açıklama, çağrı, gereken fonksiyon]
   const satir = (ik, bas, alt, cagri, fn) => (fn && !var_(fn)) ? "" :
@@ -112,6 +128,7 @@
         satir("ajans", "📺 Medya ve yayınevleri", "Millet TV, yayınlanan kitaplar ve bağışlar", "ucYeniAc('medya')", "ucYeniAc"),
         satir("ajans", "🎟️ Biletli organizasyonlar", "Konferans, konser, fuar, sponsor ve bilet satışı", "ucYeniAc('etkinlik')", "ucYeniAc"),
         satir("ruhsat", "Yatırım Ruhsat Merkezi", "Şirket, fabrika, mağaza, inşaat ruhsatlarına başvur; belediye onaylarını takip et", "msRuhsatMerkeziAc()", "msRuhsatMerkeziAc"),
+        satir("dunya", "🏭 Şirketler arası ticaret", "Fabrikadan mağazaya teklifli ve vergili sipariş", "ekranAc(kamuToptanEkrani)", "kamuToptanEkrani"),
         satir("dunya", "İş dünyası", "Üretim, mağaza, inşaat, sigorta, franchise, birleşme", "ekranAc(isDunyasiEkrani)", "isDunyasiEkrani"),
         satir("yaris", "Rekabetçi şirketler", "Okul, hastane, market, ulaşım, enerji; fiyat ve kalite", "ekranAc(pazarMerkezEkrani)", "pazarMerkezEkrani"),
         satir("ihale", "📢 İhale İlan Panosu", "Tüm belediye hizmet ve kamu yapım ilanlarını gör, şirketinle teklif ver", "ekranAc(msIhaleMerkeziAc)", "msIhaleMerkeziAc"),
@@ -136,6 +153,9 @@
         satir("emlak", "Şehir Emlak ve İnşaat", "Müteahhitlerin ürettiği daire ve dükkânları incele, arsa ve tapu işlemlerini yönet", "arsaEkrani()", null)
       ])}
       ${grup("Ekonomi kurumları", "Herkes izleyebilir", [
+        satir("mb", "🏛️ Devlet bütçesi", "Bakanlık ödeneklerini incele ve paylaştır", "ekranAc(kamuButceEkrani)", "kamuButceEkrani"),
+        satir("terazi", "Kamu kurumu atamaları", "Vali, emniyet, SPK, vergi idaresi ve genel sekreter", "ekranAc(kamuAtamaEkrani)", "kamuAtamaEkrani"),
+        satir("terazi", "⚖️ İcra ve haciz", "Ödeme emri, itiraz, e-haciz ve açık artırmalar", "ekranAc(icraMerkeziEkrani)", "icraMerkeziEkrani"),
         satir("mb", "Merkez Bankası", "Politika faizi ve PPK kararları", "ekranAc(merkezBankasiEkrani)", "merkezBankasiEkrani"),
         satir("spk", "Sermaye Piyasası Kurulu", "Borsa gözetimi ve cezalar", "ekranAc(spkEkrani)", "spkEkrani"),
         satir("terazi", "Rekabet Kurumu", "Kartel ve tekel soruşturmaları", "ekranAc(rekabetEkrani)", "rekabetEkrani"),
