@@ -48,7 +48,7 @@
         '<span class="kucuk">' + kiraci(x.haftalik_kira) + ' · Stok ' + kalan + ' / ' + kac(x.kota) + '</span>' +
         '<span class="kucuk">Alıcı harcı dahil ' + tl(fiyat * 1.02) + '</span></span>' +
         '<span style="text-align:right"><b>' + tl(fiyat) + '</b><div style="margin-top:7px">' +
-        (kalan ? buton('Satın al', "ypAlimOnay('belediye_al'," + JSON.stringify({il:secIl,tip:tip}) + "," + fiyat + ")", 'altin') : '<span class="rozet">Tükendi</span>') +
+        (kalan ? buton('Satın al', "ypAlimOnay('belediye_al'," + "{il:" + kac(secIl) + ",tip:'" + tip + "'}" + "," + fiyat + ")", 'altin') : '<span class="rozet">Tükendi</span>') +
         '</div></span></div>';
     }).join('') || '<p class="alt">Bu il ve türde belediye satış stoğu bulunmuyor.</p>');
     h += kutu('🤝 Oyunculardan Satılık', ilanlar.length ? ilanlar.map(function (x) {
@@ -103,7 +103,7 @@
     try {
       await API.rpc('yatirim_pazar_islem', {p_eylem:eylem,p_veri:veri});
       if (typeof modalKapat === 'function') modalKapat();
-      msg('Tapu işlemi başarıyla tamamlandı.');
+      msg(eylem === 'ilan_iptal' ? 'Satılık ilanı kaldırıldı.' : 'Tapu işlemi tamamlandı.');
       await window.yatirimPazarEkrani();
     } catch (er) { msg(errtext(er), true); }
   };
