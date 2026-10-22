@@ -846,3 +846,27 @@ BEGIN
  RETURN jsonb_build_object('durum','satildi','tahsil',v,'borcluya_artik',k);
 END $function$
 ;
+
+-- Borc kapaninca teminati gereksiz kilitlememe
+
+CREATE OR REPLACE FUNCTION public.icra_ihale_tem_iade(p_haciz bigint)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE h oyun.icra_haciz_yeni;u uuid:=auth.uid();n numeric;
+BEGIN
+ IF u IS NULL THEN RAISE EXCEPTION 'Giris gerekli';END IF;
+ SELECT * INTO h FROM oyun.icra_haciz_yeni WHERE id=p_haciz FOR UPDATE;
+ IF h.id IS NULL OR h.durum<>'ilan' THEN RAISE EXCEPTION 'Acik ihale bulunamadi';END IF;
+ IF h.teklif_veren IS NULL THEN RAISE EXCEPTION 'Iadeye konu bloke bedel yok';END IF;
+ IF h.teklif_veren<>u THEN RAISE EXCEPTION 'Yalnizca teminati bloke edilmis teklif sahibi iade isteyebilir';END IF;
+ n:=oyun.icra_kalan_hesapla(h.takip_id);
+ IF n>0 AND NOT (h.tur='gayrimenkul' AND
+   EXISTS(SELECT 1 FROM oyun.yatirim_mulkleri WHERE id=h.varlik_id AND vergi_borc>0)
+   AND h.satis_son<oyun.simdi()) THEN
+  RAISE EXCEPTION 'Dosyada halen borc bulunuyor; acik artirma suruyor';END IF;
+ PERFORM oyun.para_islem(h.teklif_veren,h.teklif,'icra_tem_iade',
+  format('Icra ihalesi #%s gecersiz teminat iadesi',h.id),oyun.simdi());
+ UPDATE oyun.icra_haciz_yeni SET durum='iptal' WHERE id=h.id;
+ RETURN jsonb_build_object('durum','iptal','iade',h.teklif);
+END $$;
+REVOKE EXECUTE ON FUNCTION public.icra_ihale_tem_iade(bigint) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.icra_ihale_tem_iade(bigint) TO authenticated;
