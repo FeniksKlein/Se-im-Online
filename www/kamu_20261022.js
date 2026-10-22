@@ -239,3 +239,12 @@ window.icraTemIade=async function(id){
  }catch(err){error(err);}
 };
 })();
+/* GitHub Pages icin ortaklik merkezi modulu (mevcut mobil/oyun sayfasinda otomatik yuklenir). */
+(function(){
+ if(window.ORTAK_SIRKETLER_MODULU||document.getElementById('ortak-sirketler-modulu'))return;
+ const el=document.createElement('script');
+ el.id='ortak-sirketler-modulu';
+ el.src='ortak_sirketler.js?v=20261022-10';
+ el.async=false;
+ document.body.appendChild(el);
+})();
