@@ -50,8 +50,8 @@ window.cekMerkeziAc=async function(companyId){
  if(Number.isSafeInteger(Number(companyId))&&Number(companyId)>0)window.cekSirketSecimi=Number(companyId);
  if(typeof yukleniyor==='function')yukleniyor('Çek Yönetimi');
  try{
-  var fetched=await Promise.all([rpc('cek_panel'),rpc('cek_ek_panel')]);
-  var d=fetched[0],extra=fetched[1],cs=d.sirketler||[],hs=d.hesaplar||[];
+  var fetched=await Promise.all([rpc('cek_panel'),rpc('cek_ek_panel'),rpc('cek_toptan_panel')]);
+  var d=fetched[0],extra=fetched[1],orders=fetched[2]||[],cs=d.sirketler||[],hs=d.hesaplar||[];
   window.cekEkPanel=extra;window.cekPanelVeri=d;
   var own=window.cekSirketSecimi,day=d.bugun;
   var head=box('🧾 Çek Yönetim Merkezi',
@@ -91,7 +91,20 @@ window.cekMerkeziAc=async function(companyId){
     row('Kesinti',('%'+(100*Number(o.oran)).toLocaleString('tr-TR',{maximumFractionDigits:2})))+
     row('Çek tutarı',money(o.cek_tutari))+row('Yazılı tarih',date(o.tarih))+row('Keşideci',o.kesideci)+buttons+'</div>';
   }).join('')||'<p class="alt">Bekleyen iskonto talebi yok.</p>';
-  iskelet('Çek Yönetimi',head+form+issue+box('📥 Aldığım / şirketlerimin aldığı çekler',received)+box('📤 Verdiğim / şirketlerimin verdiği çekler',sent)+box('🏦 Çek iskonto teklifleri',pending)+info,{geri:true});
+  var trades=orders.map(function(o){
+   var controls='',isPending=o.durum==='bekliyor';
+   if(isPending&&o.satici_yetkilisi)controls+=button('✅ Çeki kabul et · malı teslim et','cekToptanKarar("kabul",'+Number(o.id)+')','altin')+
+     button('❌ Teklifi reddet','cekToptanKarar("red",'+Number(o.id)+')');
+   if(isPending&&o.teklif_sahibi)controls+=button('Siparişi iptal et','cekToptanKarar("iptal",'+Number(o.id)+')');
+   if(o.cek_id)controls+='<p class="alt">Düzenlenen çek: #'+Number(o.cek_id)+'</p>';
+   return '<div class="kart"><b>Sipariş #'+Number(o.id)+' · '+esc(o.urun)+'</b>'+
+     row('Alıcı',o.magaza)+row('Satıcı',o.uretici)+row('Adet',o.adet)+
+     row('Fiyat',money(o.toplam))+row('Çek tarihi',date(o.cek_tarih))+
+     row('Durum',o.durum)+controls+'</div>';
+  }).join('')||'<p class="alt">Çekle yapılan şirketler arası sipariş bulunmuyor.</p>';
+  iskelet('Çek Yönetimi',head+form+issue+box('🏭 Çekle toptan mal alışverişi',trades)+
+    box('📥 Aldığım / şirketlerimin aldığı çekler',received)+box('📤 Verdiğim / şirketlerimin verdiği çekler',sent)+
+    box('🏦 Çek iskonto teklifleri',pending)+info,{geri:true});
  }catch(e){iskelet('Çek Yönetimi',box('Hata','<p>'+esc(e.message||e)+'</p>'),{geri:true});}
 };
 window.cekDefterAl=async function(){
@@ -200,4 +213,43 @@ window.cekTazminatOde=async function(id){
    good(money(r.odenen)+' tazminat ödendi.');window.cekMerkeziAc();}
  catch(e){warn(e.message||e);}
 };
+window.cekToptanBasvuru=async function(company){
+ var v=(window.smTedarikciler||[])[Number((document.getElementById('sm_satici')||{}).value||0)];
+ var amount=Number((document.getElementById('sm_adet')||{}).value);
+ if(!v||!Number.isSafeInteger(amount)||amount<1||amount>500){warn('Geçerli satıcı ve 1–500 arası ürün adedi seç.');return;}
+ try{
+  var p=await rpc('cek_panel');
+  var hs=(p.hesaplar||[]).filter(function(h){return Number(h.sirket)===Number(company)&&Number(h.yaprak)>0;});
+  if(!hs.length){warn('Bu şirketin kullanabileceği çek defteri yok. Önce Çek Merkezi üzerinden şirket için çek defteri edin.');return;}
+  var choice=hs[0];
+  if(hs.length>1){var sel=window.prompt('Kullanacağın çek hesabı numarası:\n'+hs.map(function(h,i){return (i+1)+'. #'+h.id+' · '+h.yaprak+' yaprak';}).join('\n'),'1');
+    if(sel===null)return;var idx=Number(sel)-1;if(!Number.isSafeInteger(idx)||idx<0||idx>=hs.length){warn('Geçerli hesap seç.');return;}choice=hs[idx];}
+  var dateValue=new Date();dateValue.setDate(dateValue.getDate()+7);
+  var defaultDate=dateValue.getFullYear()+'-'+String(dateValue.getMonth()+1).padStart(2,'0')+'-'+String(dateValue.getDate()).padStart(2,'0');
+  var dt=window.prompt('Çek tarihi (YYYY-AA-GG). Önerilen 7 gün sonrası:',defaultDate);
+  if(dt===null)return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dt)){warn('Tarihi YYYY-AA-GG biçiminde gir.');return;}
+  var estimate=Number(v.fiyat)*amount;
+  if(!await confirmIt('Çekle toptan alım teklifi',v.ad+' şirketinden '+amount+' adet '+v.urun+
+   ' satın almak üzere yaklaşık '+money(estimate)+' tutarında '+date(dt)+' tarihli şirket çeki teklif edilecek.'+
+   ' Satıcı kabul ederse mal stoğuna geçecek, çek aynı anda düzenlenecek. Onaylıyor musun?'))return;
+  var r=await rpc('cek_toptan_islem',{p_eylem:'teklif',p_veri:{
+    magaza:Number(company),uretici:Number(v.sirket),urun:v.urun,
+    adet:amount,hesap:Number(choice.id),tarih:dt
+  }});
+  good('Çekli toptan alım teklifi #'+r.id+' gönderildi. Bedel: '+money(r.toplam)+'. Satıcının kabulü gerekiyor.');
+  if(typeof sirketTekSirketEkrani==='function')sirketTekSirketEkrani(Number(company),'faaliyet');
+ }catch(e){warn(e.message||e);}
+};
+window.cekToptanKarar=async function(eylem,id){
+ var question=eylem==='kabul'?'Satıcı şirket olarak çeki kabul edip ürünleri alıcıya şimdi teslim etmeyi onaylıyor musun? Kasa tahsilatı çek ödenene kadar bekler.':
+  eylem==='red'?'Bu çekli ticaret teklifini reddetmek istiyor musun?':'Bekleyen teklifini iptal etmek istiyor musun?';
+ if(!await confirmIt('Çekle ticaret kararı',question))return;
+ try{
+  var r=await rpc('cek_toptan_islem',{p_eylem:eylem,p_veri:{id:Number(id)}});
+  good(r.cek_id?'Toptan ticaret tamamlandı. Çek #'+r.cek_id+' düzenlendi.':'Teklif durumu: '+r.durum);
+  window.cekMerkeziAc();
+ }catch(e){warn(e.message||e);}
+};
+
 })();
