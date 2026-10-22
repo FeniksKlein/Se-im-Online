@@ -37,7 +37,7 @@
   };
   if (typeof IKON === "object" && IKON && !IKON.ekonomi) IKON.ekonomi = MS_IKON.ekonomi;
 
-  // Ortak mobil/web kaynak: yerel kamu modulunu ihtiyac aninda da acabil.
+  // GitHub Pages: kamu / icra modulunu ihtiyac aninda yukle.
   let kamuEkYukle=null;
   for(const ad of ['kamuButceEkrani','kamuToptanEkrani','kamuAtamaEkrani','icraMerkeziEkrani']){
     if(typeof window[ad]==='function')continue;
@@ -102,7 +102,7 @@
     if(!ucLoaderPromise){
       ucLoaderPromise=new Promise((resolve,reject)=>{
         const script=document.createElement("script");
-        script.src="uc_ekonomi_yeni.js?v=20261014-1";
+        script.src="uc_ekonomi_yeni.js?v=20261015-medya-1";
         script.onload=resolve;
         script.onerror=()=>reject(new Error("Yeni ekonomi ekranları yüklenemedi"));
         document.body.appendChild(script);
@@ -125,10 +125,12 @@
         satir("gorev", "💼 Ek işler", "Kurye, taksi, özel ders, tasarım ve tamirat; çalışıp ücretini al", "ekranAc(ekIslerEkrani)", "ekIslerEkrani"),
         satir("dunya", "🌾 Tarım ve hayvancılık", "Tarla, mevsim, hasat, süt, et ve market tedariki", "ucYeniAc('tarim')", "ucYeniAc"),
         satir("rehber", "📚 Kitap ve yayınevi", "Kitap yaz, yayımla, telif al, yeni baskı yap", "ucYeniAc('kitap')", "ucYeniAc"),
+        satir("ajans", "📺 Medya ve yayınevleri", "Millet TV, yayınlanan kitaplar ve bağışlar", "ucYeniAc('medya')", "ucYeniAc"),
         satir("ajans", "🎟️ Biletli organizasyonlar", "Konferans, konser, fuar, sponsor ve bilet satışı", "ucYeniAc('etkinlik')", "ucYeniAc"),
         satir("ruhsat", "Yatırım Ruhsat Merkezi", "Şirket, fabrika, mağaza, inşaat ruhsatlarına başvur; belediye onaylarını takip et", "msRuhsatMerkeziAc()", "msRuhsatMerkeziAc"),
         satir("dunya", "🏭 Şirketler arası ticaret", "Fabrikadan mağazaya teklifli ve vergili sipariş", "ekranAc(kamuToptanEkrani)", "kamuToptanEkrani"),
         satir("dunya", "İş dünyası", "Üretim, mağaza, inşaat, sigorta, franchise, birleşme", "ekranAc(isDunyasiEkrani)", "isDunyasiEkrani"),
+        satir("dunya", "🛡️ Sigorta ve risk merkezi", "Şirket poliçesi, hasar ve tazminat kayıtları", "sigortaIsletmeEkrani()", null),
         satir("yaris", "Rekabetçi şirketler", "Okul, hastane, market, ulaşım, enerji; fiyat ve kalite", "ekranAc(pazarMerkezEkrani)", "pazarMerkezEkrani"),
         satir("ihale", "📢 İhale İlan Panosu", "Tüm belediye hizmet ve kamu yapım ilanlarını gör, şirketinle teklif ver", "ekranAc(msIhaleMerkeziAc)", "msIhaleMerkeziAc"),
         satir("ajans", "Reklam ve anket ajansları", "Kampanya reklamı, kamuoyu araştırması", "ekranAc(ajansMerkezEkrani)", "ajansMerkezEkrani"),
@@ -149,7 +151,7 @@
         satir("gecmis", "Alım-satım geçmişim", "Geçmiş işlemlerin", "ekranAc(ticaretGecmisimEkrani)", "ticaretGecmisimEkrani")
       ])}
       ${grup("Emlak", "", [
-        satir("emlak", "Satılık mülkler", "İlanları gör, pazarlık yap, mülkünü ilana koy", "ekranAc(emlakYeniEkrani)", "emlakYeniEkrani")
+        satir("emlak", "Şehir Emlak ve İnşaat", "Müteahhitlerin ürettiği daire ve dükkânları incele, arsa ve tapu işlemlerini yönet", "arsaEkrani()", null)
       ])}
       ${grup("Ekonomi kurumları", "Herkes izleyebilir", [
         satir("mb", "🏛️ Devlet bütçesi", "Bakanlık ödeneklerini incele ve paylaştır", "ekranAc(kamuButceEkrani)", "kamuButceEkrani"),
@@ -324,8 +326,14 @@
 /* Belediye arsasi / gayrimenkul modulu (is dunyasi uzerinde yuklenir). */
 (function(){
  if(document.getElementById("arsaInsaatModul"))return;
- const s=document.createElement("script");s.id="arsaInsaatModul";s.src="arsa_insaat_magaza.js?v=20261013-1";
+ const s=document.createElement("script");s.id="arsaInsaatModul";s.src="arsa_insaat_magaza.js?v=20261013-2";
  s.async=false;document.body.appendChild(s);
+})();
+
+/* Dernek faaliyetlerini GitHub Pages sürümüne ekle. */
+(function(){
+ if(window.STK_FAALIYET_MODUL||document.getElementById("dernekFaaliyetModul"))return;
+ var s=document.createElement("script");s.id="dernekFaaliyetModul";s.src="dernek_faaliyet.js?v=20261013-1";s.async=false;document.body.appendChild(s);
 })();
 
 

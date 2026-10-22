@@ -130,6 +130,7 @@
         satir("ruhsat", "Yatırım Ruhsat Merkezi", "Şirket, fabrika, mağaza, inşaat ruhsatlarına başvur; belediye onaylarını takip et", "msRuhsatMerkeziAc()", "msRuhsatMerkeziAc"),
         satir("dunya", "🏭 Şirketler arası ticaret", "Fabrikadan mağazaya teklifli ve vergili sipariş", "ekranAc(kamuToptanEkrani)", "kamuToptanEkrani"),
         satir("dunya", "İş dünyası", "Üretim, mağaza, inşaat, sigorta, franchise, birleşme", "ekranAc(isDunyasiEkrani)", "isDunyasiEkrani"),
+        satir("dunya", "🛡️ Sigorta ve risk merkezi", "Şirket poliçesi, hasar ve tazminat kayıtları", "sigortaIsletmeEkrani()", null),
         satir("yaris", "Rekabetçi şirketler", "Okul, hastane, market, ulaşım, enerji; fiyat ve kalite", "ekranAc(pazarMerkezEkrani)", "pazarMerkezEkrani"),
         satir("ihale", "📢 İhale İlan Panosu", "Tüm belediye hizmet ve kamu yapım ilanlarını gör, şirketinle teklif ver", "ekranAc(msIhaleMerkeziAc)", "msIhaleMerkeziAc"),
         satir("ajans", "Reklam ve anket ajansları", "Kampanya reklamı, kamuoyu araştırması", "ekranAc(ajansMerkezEkrani)", "ajansMerkezEkrani"),

@@ -1,7 +1,7 @@
 /* Is Dunyasi 2026-10-13 — mevcut ekonomi ekranlarina bagli yeni ticaret paneli. */
 const ID = {veri:null, sekme:"ozet"};
 const ID_BAS = {
- ozet:["🏙️","Genel bakış"], sozlesme:["🤝","Sözleşmeler"], sigorta:["🛡️","Sigorta"], birlesme:["🔗","Birleşmeler"]
+ ozet:["🏙️","Genel bakış"], uretim:["🏭","Fabrikalar"], magaza:["🛍️","Mağazalar"], insaat:["🏗️","İnşaat"], sozlesme:["🤝","Sözleşmeler"], sigorta:["🛡️","Sigorta"], marka:["🏪","Franchise"], birlesme:["🔗","Birleşmeler"]
 };
 const idTL=n=>tlYaz(Math.round(Number(n)||0));
 const idTxt=n=>e(String(n===null||n===undefined?"":n));
@@ -54,11 +54,11 @@ function idAltPanel(){
    }).join("");
  }
  if(k==="sigorta"){
-   out=idKutu("Sigorta sektörü","Oyuncular 3 günlük poliçe satın alır. Prim şirket kasasına gelir; şirket tazminat için yeterli rezerv tutmalıdır. 48 saat sonra sunucu tarafında tek seferlik hasar kontrolü yapılır.","idEskiSirket()","Şirketimi ekonomiye bağla");
-   out+='<div class="bolum-bas"><h2>Sigorta teklifleri</h2></div>'+(d.sigortalar||[]).map(s=>idKutu(idTxt(s.ad),"Sigorta kasası "+idTL(s.kasa)+" · Prim teminatın %12'si","idPoliceModal("+s.id+")","Poliçe satın al")).join("");
-   out+='<div class="bolum-bas"><h2>Poliçelerim</h2></div>'+(d.policeler||[]).map(p=>idKutu(idTxt(p.sirket)+" · "+idTxt(p.durum),"Prim "+idTL(p.prim)+" · Teminat "+idTL(p.teminat)+" · "+idTarih(p.bit),p.durum==="aktif"?"idPoliceKontrol("+p.id+")":null,"Hasar durumunu kontrol et")).join("");
- }
- if(k==="marka"){
+    out=idKutu("Gerçek işletme sigortası","İşletme kasanı yangın, hırsızlık, su baskını ve arızalardan koru. Sigortacıya prim öde, hasarda muafiyet ve teminat sınırları içinde tazminat al.","sigortaIsletmeEkrani()","🛡️ Poliçe · Hasar · Tazminat");
+    out+=idKutu("Sigorta şirketi işlet","Oyunculara teminat sun, prim geliri elde et, yeterli rezerv tut ve hasar dosyalarını incele.","sigortaSirketKur()","Sigorta şirketi kur");
+    if((d.policeler||[]).length)out+='<div class="bolum-bas"><h2>Önceki sistem poliçelerim</h2></div>'+(d.policeler||[]).map(p=>idKutu(idTxt(p.sirket)+" · "+idTxt(p.durum),"Prim "+idTL(p.prim)+" · Teminat "+idTL(p.teminat)+" · "+idTarih(p.bit),p.durum==="aktif"?"idPoliceKontrol("+Number(p.id)+")":null,"Eski poliçeyi kontrol et")).join("");
+  }
+  if(k==="marka"){
    out=idKutu("Markanı zincire dönüştür","Mağazana isim hakkı bedeli ve %1-15 ciro payı belirle. Diğer mağazalar şube olur; her sanal müşteri satışından otomatik ciro payı kazanırsın.","idMarkaModal()","Marka ve franchise ayarları");
    out+='<div class="bolum-bas"><h2>Franchise veren markalar</h2></div>'+(d.markalar||[]).map(s=>idKutu(idTxt(s.ad),"İsim hakkı "+idTL(s.bedel)+" · Ciro payı %"+s.oran,"idFranchiseModal("+s.id+")","Bayilik al")).join("");
    out+=(d.subeler||[]).length?'<div class="kart"><h2>Bayiliklerim</h2>'+(d.subeler||[]).map(s=>sat(idTxt(s.marka),"Ciro payı %"+s.oran)).join("")+'</div>':"";
@@ -86,13 +86,15 @@ async function idIslem(eylem,veri,sonuc){
  catch(err){toast(hataCevir(err.message),true);return null;}
 }
 function idModal(title,body,button,fn){
- const m=modal('<h3>'+idTxt(title)+'</h3>'+body+'<button class="btn altin" id="idKaydet">'+button+'</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
- const b=$("#idKaydet",m);
- b.onclick=async()=>{b.disabled=true;try{await fn(m)}finally{b.disabled=false}};
+ const result=modal('<h3>'+idTxt(title)+'</h3>'+body+'<button type="button" class="btn altin" id="idKaydet">'+button+'</button><button type="button" class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
+ const m=result&&typeof result.querySelector==="function"?result:document.getElementById("modal");
+ const b=m?.querySelector("#idKaydet");
+ if(!b){toast("İşlem penceresi açılamadı. Yeniden dene.",true);return;}
+ b.onclick=async()=>{b.disabled=true;try{await fn(m)}catch(err){toast(hataCevir(err?.message||String(err)),true);}finally{b.disabled=false}};
 }
 const idInput=(id,label,value,min,max)=>'<div class="alan"><label>'+label+'</label><input id="'+id+'" type="number" inputmode="numeric" min="'+(min||0)+'" '+(max?'max="'+max+'"':'')+' step="1" value="'+value+'"></div>';
 const idSelect=(id,label,items)=>'<div class="alan"><label>'+label+'</label><select id="'+id+'">'+items+'</select></div>';
-const idValue=(m,id)=>$("#"+id,m).value;
+const idValue=(m,id)=>(m?.querySelector("#"+id)||document.getElementById(id))?.value||"";
 function idEskiSirket(){
  const mine=(ID.veri.benim||[]).filter(s=>!s.tur&&Number(s.pay)===100&&s.sektor!=="banka");
  if(!mine.length){toast("Uygun şirketin yok. Önce Şirketlerim ekranından şirket kurup ardından ekonomiye bağlamalısın.",true);return;}
@@ -186,6 +188,97 @@ function idBirlesmeModal(){
   await idIslem("birles",{sirket:a,hedef:b},"Şirketler birleştirildi.");
  });
 }
+
+/* Poliçe ve tazminat ekranı; eski piyango benzeri poliçeler korunur. */
+let SIG_PANEL=null;
+const sigEsc=x=>typeof e==="function"?e(String(x??"")):String(x??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const sigPara=x=>tlYaz(Math.round(Number(x)||0));
+const sigTarih=x=>x?new Date(x).toLocaleString("tr-TR",{dateStyle:"short",timeStyle:"short"}):"—";
+const sigSat=(k,v)=>'<div class="kv"><span>'+sigEsc(k)+'</span><b>'+sigEsc(v)+'</b></div>';
+function sigortaSirketKur(){
+ if(typeof window.sirketTumTurKur==="function")return window.sirketTumTurKur({tur:"sigorta"});
+ if(typeof window.sirketYonetimEkrani==="function")return ekranAc(sirketYonetimEkrani);
+ toast("Şirket kurma ekranı yüklenemedi.",true);
+}
+async function sigortaIsletmeEkrani(){
+ yukleniyor("Sigorta ve Risk Merkezi");
+ try{
+  const data=await API.rpc("sigorta_isletme_panel"); SIG_PANEL=data;
+  const cs=data.sirketler||[],ss=data.sigortacilar||[],ps=data.policeler||[],hs=data.hasarlar||[];
+  let html='<section class="kart"><h2>🛡️ İşletme sigortaları</h2>'+
+   '<p class="alt">İşletmelerde oyun içi günlük %3 olasılıkla yangın, su baskını, hırsızlık ya da ekipman arızası yaşanır. Hasar şirket kasasından düşer. Poliçe varsa teminat ve muafiyet kurallarıyla gerçek tazminat ödenir. Hasar sistemi 25 Ekim 2026 tarihinde başlayacak.</p>'+
+   sigSat("Geçerli poliçeler",String(ps.filter(p=>p.durum==="aktif").length))+
+   sigSat("Hasarlardan ödenmiş tazminat",sigPara(hs.reduce((n,h)=>n+Number(h.odenen||0),0)))+
+   '<p class="alt">Koruma: 72 saat · Prim: teminatın %2’si (en az 300 ₺) · Muafiyet: zararın %10’u, en az 1.000 ₺.</p>'+
+   '<button class="btn altin" onclick="sigortaPoliceAc()">➕ İşletmemi sigortala</button>'+
+   '<button class="btn ikinci" onclick="sigortaSirketKur()">🏢 Sigorta şirketi kur</button></section>';
+  if(!ss.length)html+='<section class="kart"><h3>Henüz sigortacı yok</h3><p class="alt">Sigorta şirketi kuran ilk oyuncu teklif vermeye başlayabilir. Kendi sigortacı şirketinden poliçe satın alamazsın.</p></section>';
+  if(!cs.length)html+='<section class="kart"><h3>İşletmen bulunmuyor</h3><p class="alt">Önce Ekonomi → Şirketlerim üzerinden şirket kur.</p></section>';
+  html+='<div class="bolum-bas"><h2>Sigorta şirketleri</h2></div>';
+  for(const s of ss)html+='<section class="kart"><h3>'+sigEsc(s.ad)+'</h3>'+
+   sigSat("Şirket kasası",sigPara(s.kasa))+sigSat("Geçerli teminat",sigPara(s.aktif_teminat))+
+   sigSat("Bekleyen tazminat borcu",sigPara(s.bekleyen_tazminat))+
+   '<button class="btn ikinci" onclick="sigortaPoliceAc('+Number(s.id)+')">Bu sigortacıdan teklif al</button></section>';
+  html+='<div class="bolum-bas"><h2>Poliçeler ve portföyüm</h2></div>';
+  if(!ps.length)html+='<section class="kart"><p class="alt">Henüz poliçe yok.</p></section>';
+  for(const p of ps)html+='<section class="kart"><h3>'+sigEsc(p.isletme_adi)+' · '+sigEsc(p.sigortaci_adi)+'</h3>'+
+   sigSat("Durum",p.durum==="aktif"?"Yürürlükte":"Süresi doldu")+
+   sigSat("Prim / teminat",sigPara(p.prim)+" / "+sigPara(p.teminat))+
+   '<p class="alt">Başlangıç '+sigTarih(p.bas)+' · Bitiş '+sigTarih(p.bit)+' · Muafiyet %'+sigEsc(p.muafiyet)+'</p></section>';
+  html+='<div class="bolum-bas"><h2>Hasar dosyaları</h2></div>';
+  if(!hs.length)html+='<section class="kart"><p class="alt">Henüz hasar kaydı yok. Hasarlar sunucuda otomatik belirlenir; oyuncu isteğiyle oluşturulamaz.</p></section>';
+  for(const h of hs)html+='<section class="kart"><h3>'+sigEsc(h.isletme_adi)+' · '+sigEsc(h.olay)+'</h3>'+
+   '<p class="alt">'+sigEsc(h.gun)+'</p>'+sigSat("Zarar",sigPara(h.zarar))+
+   sigSat("Hak edilen tazminat",sigPara(h.tazminat))+sigSat("Ödenen",sigPara(h.odenen))+
+   (Number(h.tazminat)>Number(h.odenen)?'<p class="alt">Kalan tutar sigortacı kasası yeterli olduğunda ödenecek.</p>':'')+'</section>';
+  html+='<button class="btn ikinci" onclick="ekranAc(isDunyasiEkrani)">İş Dünyasına dön</button>';
+  iskelet("Sigorta ve Risk Merkezi",html,{geri:true});
+ }catch(err){
+  iskelet("Sigorta ve Risk Merkezi",'<section class="kart"><h3>Sigorta ekranı açılmadı</h3><p class="alt">'+sigEsc(hataCevir(err?.message||String(err)))+'</p><button class="btn ikinci" onclick="sigortaIsletmeEkrani()">Tekrar dene</button></section>',{geri:true});
+ }
+}
+function sigortaPoliceAc(offer){
+ const d=SIG_PANEL||{},cs=d.sirketler||[],ss=d.sigortacilar||[];
+ if(!cs.length){toast("Önce bir şirket kur.",true);return;}
+ if(!ss.length){toast("Henüz sigorta sunan şirket yok.",true);return;}
+ const opt=arr=>arr.map(x=>'<option value="'+Number(x.id)+'">'+sigEsc(x.ad)+'</option>').join("");
+ const result=modal('<h3>🛡️ İşletme sigortası satın al</h3>'+
+  '<p class="alt">Prim işletmenin kasasından sigortacıya aktarılır. 72 saat koruma sağlar. Hasarda %10 muafiyet uygulanır.</p>'+
+  '<div class="alan"><label>İşletme</label><select id="sigC">'+opt(cs)+'</select></div>'+
+  '<div class="alan"><label>Sigortacı</label><select id="sigS">'+opt(ss)+'</select></div>'+
+  '<div class="alan"><label>Teminat ₺</label><input id="sigV" type="number" inputmode="numeric" min="10000" max="500000" step="1000" value="50000"></div>'+
+  '<p id="sigInfo" class="alt" role="status"></p>'+
+  '<button class="btn altin" id="sigBuy">Poliçe satın al</button>'+
+  '<button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
+ const m=result&&typeof result.querySelector==="function"?result:document.getElementById("modal");
+ const c=m?.querySelector("#sigC"),s=m?.querySelector("#sigS"),v=m?.querySelector("#sigV"),info=m?.querySelector("#sigInfo"),btn=m?.querySelector("#sigBuy");
+ if(!c||!s||!v||!info||!btn){toast("Poliçe formu yüklenemedi.",true);return;}
+ if(ss.some(x=>Number(x.id)===Number(offer)))s.value=String(offer);
+ const update=()=>{
+  const company=cs.find(x=>Number(x.id)===Number(c.value)),max=Math.min(500000,Math.round(Number(company?.sermaye||0)*1.5)),cover=Number(v.value);
+  const insured=(d.policeler||[]).some(x=>x.durum==="aktif"&&Number(x.isletme)===Number(company?.id));
+  const own=cs.some(x=>Number(x.id)===Number(s.value));
+  v.max=String(max);
+  info.textContent=insured?"Bu işletmenin geçerli bir poliçesi var.":own?"Kendi sigortacı şirketinden poliçe satın alamazsın.":
+   "En fazla "+sigPara(max)+" teminat · Prim "+sigPara(Math.max(300,Math.round(cover*.02)))+" · Süre 72 saat · Muafiyet %10 (en az 1.000 ₺).";
+  btn.disabled=insured||own||!Number.isSafeInteger(cover)||cover<10000||cover>max;
+ };
+ c.onchange=update;s.onchange=update;v.oninput=update;update();
+ btn.onclick=async()=>{
+  if(btn.disabled)return;
+  btn.disabled=true;
+  try{
+   const p=await API.rpc("sigorta_isletme_police_al",{p_isletme:Number(c.value),p_sigortaci:Number(s.value),p_teminat:Number(v.value)});
+   modalKapat();toast("Poliçen düzenlendi. Prim: "+sigPara(p.prim));
+   if(typeof durumYenile==="function")durumYenile().catch(()=>{});
+   await sigortaIsletmeEkrani();
+  }catch(err){toast(hataCevir(err?.message||String(err)),true);btn.disabled=false;}
+ };
+}
+window.sigortaIsletmeEkrani=sigortaIsletmeEkrani;
+window.sigortaPoliceAc=sigortaPoliceAc;
+window.sigortaSirketKur=sigortaSirketKur;
+
 window.isDunyasiEkrani=isDunyasiEkrani;
 (function(){
  if(typeof iskelet!=="function")return;
