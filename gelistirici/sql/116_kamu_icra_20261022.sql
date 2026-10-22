@@ -743,3 +743,106 @@ REVOKE EXECUTE ON FUNCTION oyun.icra_kalan_hesapla(p_id bigint),oyun.icra_tahsil
 REVOKE EXECUTE ON FUNCTION public.kamu_butce_panel(),public.kamu_butce_dagit(p_toplam numeric, p_paylar jsonb),public.kamu_toptan_panel(),public.kamu_toptan_islem(p_eylem text, p_id bigint, p_alici bigint, p_satici bigint, p_urun text, p_adet integer),public.kamu_kurum_panel(),public.kamu_kurum_islem(p_eylem text, p_id bigint, p_gorev text, p_il smallint, p_kad text),public.icra_haczet(p_id bigint, p_tur text, p_varlik bigint, p_kod text),public.icra_takip_ac(p_kaynak text, p_kaynak_id bigint),public.icra_itiraz_et(p_id bigint, p_gerekce text),public.icra_itiraz_karar(p_id bigint, p_ret boolean, p_gerekce text),public.icra_dosya_panel(),public.icra_ihale_teklif(p_haciz bigint, p_tutar numeric),public.icra_ihale_sonuclandir(p_haciz bigint),public.icra_baslatilabilir(),public.icra_varliklar(p_id bigint) FROM PUBLIC,anon;
 
 GRANT EXECUTE ON FUNCTION public.kamu_butce_panel(),public.kamu_butce_dagit(p_toplam numeric, p_paylar jsonb),public.kamu_toptan_panel(),public.kamu_toptan_islem(p_eylem text, p_id bigint, p_alici bigint, p_satici bigint, p_urun text, p_adet integer),public.kamu_kurum_panel(),public.kamu_kurum_islem(p_eylem text, p_id bigint, p_gorev text, p_il smallint, p_kad text),public.icra_haczet(p_id bigint, p_tur text, p_varlik bigint, p_kod text),public.icra_takip_ac(p_kaynak text, p_kaynak_id bigint),public.icra_itiraz_et(p_id bigint, p_gerekce text),public.icra_itiraz_karar(p_id bigint, p_ret boolean, p_gerekce text),public.icra_dosya_panel(),public.icra_ihale_teklif(p_haciz bigint, p_tutar numeric),public.icra_ihale_sonuclandir(p_haciz bigint),public.icra_baslatilabilir(),public.icra_varliklar(p_id bigint) TO authenticated;
+
+-- Son kontroller: tarafsiz iki hakim, ucretin dortte biri, vergili tasinmaz korumasi.
+CREATE TABLE IF NOT EXISTS oyun.icra_itiraz_oy (
+ takip_id bigint NOT NULL REFERENCES oyun.icra_takip(id),
+ uye uuid NOT NULL REFERENCES oyun.profiller(id),
+ ret boolean NOT NULL,
+ gerekce text NOT NULL CHECK(char_length(gerekce)>=12),
+ tarih timestamptz NOT NULL DEFAULT now(),
+ PRIMARY KEY(takip_id,uye)
+);
+ALTER TABLE oyun.icra_itiraz_oy ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON oyun.icra_itiraz_oy FROM PUBLIC,anon,authenticated;
+CREATE OR REPLACE FUNCTION oyun.haciz_uygula(u uuid, p_maas numeric, t timestamp with time zone)
+ RETURNS numeric
+ LANGUAGE plpgsql
+AS $function$
+declare k oyun.krediler; h numeric;
+begin
+  select * into k from oyun.krediler where user_id = u and durum = 'takip' for update;
+  if k.id is null or p_maas < 2 then return 0; end if;
+  h := least(k.kalan, floor(p_maas / 4), (select para from oyun.cuzdan where user_id = u));
+  if h <= 0 then return 0; end if;
+  perform oyun.para_islem(u, -h, 'haciz', 'Maaş haczi: takipteki kredi borcuna', t);
+  update oyun.krediler set kalan = kalan - h, gecikmis = greatest(0, gecikmis - h) where id = k.id returning * into k;
+  perform oyun.banka_kayit(u, 'kredi', -h, 'Maaş haczi', t);
+  if k.kalan <= 0 then perform oyun.kredi_kapat(k, t); end if;
+  return h;
+end $function$
+;
+CREATE OR REPLACE FUNCTION public.icra_itiraz_karar(p_id bigint, p_ret boolean, p_gerekce text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE d oyun.icra_takip;u uuid:=auth.uid();adet int;
+BEGIN
+ IF u IS NULL OR NOT EXISTS(SELECT 1 FROM oyun.mahkeme_uye WHERE user_id=u)
+ THEN RAISE EXCEPTION 'Yetkili mahkeme üyesi olmalısın';END IF;
+ IF p_ret IS NULL OR char_length(trim(coalesce(p_gerekce,'')))<12
+ THEN RAISE EXCEPTION 'Gerekçeli karar zorunlu';END IF;
+ SELECT * INTO d FROM oyun.icra_takip WHERE id=p_id FOR UPDATE;
+ IF d.id IS NULL OR d.durum<>'itiraz' THEN RAISE EXCEPTION 'Karar bekleyen itiraz yok';END IF;
+ IF u=d.borclu OR (d.alacakli_sirket IS NOT NULL AND EXISTS
+   (SELECT 1 FROM oyun.sirket_ortaklari WHERE sirket_id=d.alacakli_sirket AND user_id=u AND pay>0))
+ OR (d.kaynak='emlak_vergisi' AND EXISTS(SELECT 1 FROM oyun.makamlar WHERE user_id=u AND bit IS NULL
+   AND (tur='cb' OR (tur='bakan' AND bakanlik='maliye'))))
+ THEN RAISE EXCEPTION 'Tarafsız olmayan yargıç karar veremez';END IF;
+ INSERT INTO oyun.icra_itiraz_oy(takip_id,uye,ret,gerekce,tarih)
+ VALUES(d.id,u,p_ret,trim(p_gerekce),oyun.simdi())
+ ON CONFLICT(takip_id,uye) DO UPDATE SET ret=excluded.ret,gerekce=excluded.gerekce,tarih=excluded.tarih;
+ SELECT count(*) INTO adet FROM oyun.icra_itiraz_oy WHERE takip_id=d.id AND ret=p_ret;
+ IF adet>=2 THEN
+  UPDATE oyun.icra_takip SET durum=CASE WHEN p_ret THEN 'haciz' ELSE 'iptal' END,
+   karar_gerekce=trim(p_gerekce),karar_tarih=oyun.simdi() WHERE id=d.id;
+ END IF;
+ RETURN jsonb_build_object('oy_kayit',true,'eslesik_oylar',adet,
+   'durum',CASE WHEN adet>=2 THEN CASE WHEN p_ret THEN 'haciz' ELSE 'iptal' END ELSE 'itiraz' END);
+END $function$
+;
+CREATE OR REPLACE FUNCTION public.icra_ihale_sonuclandir(p_haciz bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE h oyun.icra_haciz_yeni;d oyun.icra_takip;v numeric; k numeric; u uuid:=auth.uid();
+BEGIN
+ IF u IS NULL THEN RAISE EXCEPTION 'Giriş yap';END IF;
+ SELECT * INTO h FROM oyun.icra_haciz_yeni WHERE id=p_haciz FOR UPDATE;
+ IF h.id IS NULL OR h.durum<>'ilan' OR h.satis_son>oyun.simdi() THEN RAISE EXCEPTION 'Satış süresi tamamlanmadı'; END IF;
+ SELECT * INTO d FROM oyun.icra_takip WHERE id=h.takip_id FOR UPDATE;
+ IF h.teklif_veren IS NULL OR d.durum NOT IN ('teblig','haciz') OR oyun.icra_kalan_hesapla(d.id)<=0 THEN
+  IF h.teklif_veren IS NOT NULL THEN
+    PERFORM oyun.para_islem(h.teklif_veren,h.teklif,'icra_tem_iade','İcra ihalesi iptal edilerek bedel iade edildi',oyun.simdi());
+  END IF;
+  UPDATE oyun.icra_haciz_yeni SET durum='iptal' WHERE id=h.id;
+  RETURN jsonb_build_object('durum','iptal');
+ END IF;
+ IF h.tur='gayrimenkul' THEN
+  IF EXISTS(SELECT 1 FROM oyun.yatirim_mulkleri WHERE id=h.varlik_id AND vergi_borc>0) THEN
+    RAISE EXCEPTION 'Taşınmazın ödenmemiş vergi borcu var. Önce kamu alacağının tasfiyesi gerekir';
+  END IF;
+  UPDATE oyun.yatirim_mulkleri SET user_id=h.teklif_veren WHERE id=h.varlik_id AND user_id=d.borclu;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Mülkiyet değişmiş, ihale devri yapılamaz';END IF;
+ ELSIF h.tur='sirket_payi' THEN
+  PERFORM 1 FROM oyun.sirket_ortaklari
+   WHERE sirket_id=h.varlik_id AND user_id=d.borclu AND pay=h.haczedilen_pay FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Şirket ortaklık payı değişmiş, satış engellendi';END IF;
+  INSERT INTO oyun.sirket_ortaklari(sirket_id,user_id,pay,kar_kasada)
+   VALUES(h.varlik_id,h.teklif_veren,h.haczedilen_pay,false)
+   ON CONFLICT(sirket_id,user_id) DO UPDATE SET pay=oyun.sirket_ortaklari.pay+excluded.pay;
+  DELETE FROM oyun.sirket_ortaklari WHERE sirket_id=h.varlik_id AND user_id=d.borclu;
+ ELSE RAISE EXCEPTION 'İhale varlık türü uygun değil';END IF;
+ v:=oyun.icra_tahsil_et(d.id,h.teklif,'acik_artirma');
+ k:=h.teklif-v;
+ IF k>0 THEN
+  PERFORM oyun.para_islem(d.borclu,k,'icra_artik','İcra satışından artan bedel iadesi',oyun.simdi());
+ END IF;
+ UPDATE oyun.icra_haciz_yeni SET durum='satildi',satis_at=oyun.simdi() WHERE id=h.id;
+ RETURN jsonb_build_object('durum','satildi','tahsil',v,'borcluya_artik',k);
+END $function$
+;
