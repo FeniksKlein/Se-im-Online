@@ -139,3 +139,115 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)guncelle(f
 window.addEventListener("focus",()=>{guncelle(false);});
 window.addEventListener("online",()=>{guncelle(false);});
 })();
+
+/* Adliye kurum davaları (22.10.2026): Web ve telefon paketinde ortak arayüz. */
+(function(){
+ "use strict";
+ if(window.ADL_KURUM_20261022)return;
+ window.ADL_KURUM_20261022=true;
+ if(typeof ADL_TURLER!=="undefined")ADL_TURLER.tazminat="Tazminat";
+ const eskiKarar=window.adlKararModal;
+ const kurumTurleri={sirket:"Şirket / banka / sigorta",dernek:"Dernek",belediye:"Belediye",makam:"Kamu makamı",bakanlik:"Bakanlık",gazete:"Gazete"};
+ window.adlDavaModal=async function(){
+  let kurumlar=[];
+  try{
+   kurumlar=await API.rpc("adliye_kurum_listesi");
+   if(!Array.isArray(kurumlar))kurumlar=[];
+  }catch(err){toast("Kurum listesi yüklenemedi: "+hataCevir(err.message),true);return;}
+  const partiler=ADL.partiler||[];
+  const ben=partiler.filter(x=>x.gb_miyim||x.sozcu_muyum);
+  const secenek=Object.entries(ADL_TURLER).map(([k,v])=>'<option value="'+e(k)+'">'+e(v)+'</option>').join("");
+  const m=modal('<div class="alan"><label>Davalı türü</label><select id="adlHedefTur">'
+   +'<option value="oyuncu">Oyuncu</option><option value="parti">Siyasi parti</option>'
+   +Object.entries(kurumTurleri).map(([k,v])=>'<option value="'+k+'">'+e(v)+'</option>').join("")+'</select></div>'
+   +'<div class="alan" id="adlOyuncuKutu"><label>Davalı kullanıcı adı</label><input id="adlHedef" placeholder="Kullanıcı adı"></div>'
+   +'<div class="alan" id="adlPartiKutu" style="display:none"><label>Davalı parti</label><select id="adlHedefParti">'
+   +partiler.map(x=>'<option value="'+x.id+'">'+e(x.ad)+'</option>').join("")+'</select></div>'
+   +'<div id="adlKurumKutu" style="display:none">'
+   +'<div class="alan"><label>Kurum ara</label><input id="adlKurumAra" placeholder="Ad, şehir veya makam adı"></div>'
+   +'<div class="alan"><label>Davalı kurum</label><select id="adlKurum"></select></div>'
+   +'<p class="alt">Kurumun yetkilisi davada savunma yapabilir. Mahkemenin para cezaları kurum kasasından tahsil edilir; kişisel cüzdandan değil.</p></div>'
+   +'<div class="alan"><label>Dava türü</label><select id="adlTur">'+secenek+'</select></div>'
+   +'<p class="alt" id="adlSucAciklamasi"></p>'
+   +'<div class="alan" id="adlTazKutu" style="display:none"><label>Talep edilen tazminat (₺)</label>'
+   +'<input id="adlTazTutar" type="number" min="1000" max="500000" step="1" placeholder="1000–500000"></div>'
+   +'<div class="alan"><label>Davacı olarak</label><select id="adlDavaciParti"><option value="">Kendi adıma</option>'
+   +ben.map(x=>'<option value="'+x.id+'">'+e(x.ad)+' adına</option>').join("")+'</select></div>'
+   +adlAlan("İddia (20–1600 karakter)","adlIddia","textarea")
+   +adlAlan("Delil ve işlem kayıtları","adlDelil","textarea","Örn. işlem zamanı, işlem numarası")
+   +'<button class="btn altin" id="adlDavaAc">Davayı aç</button>');
+  adlFormBaslik(m,"Adliyede yeni dava");
+  const hedef=m.querySelector("#adlHedefTur"),turSec=m.querySelector("#adlTur"),ksec=m.querySelector("#adlKurum");
+  function listele(){
+   const arama=m.querySelector("#adlKurumAra").value.trim().toLocaleLowerCase("tr");
+   const liste=kurumlar.filter(x=>x.tur===hedef.value&&(!arama||String(x.ad).toLocaleLowerCase("tr").includes(arama))).slice(0,300);
+   ksec.innerHTML=liste.length?liste.map(x=>'<option value="'+e(String(x.id))+'">'+e(String(x.ad))+'</option>').join(""):'<option value="">Eşleşen kurum bulunamadı</option>';
+  }
+  function guncelle(){
+   const secim=hedef.value;
+   const kurum=Object.prototype.hasOwnProperty.call(kurumTurleri,secim);
+   m.querySelector("#adlOyuncuKutu").style.display=secim==="oyuncu"?"block":"none";
+   m.querySelector("#adlPartiKutu").style.display=secim==="parti"?"block":"none";
+   m.querySelector("#adlKurumKutu").style.display=kurum?"block":"none";
+   const tazOption=turSec.querySelector('option[value="tazminat"]');
+   tazOption.disabled=!kurum||secim==="makam";
+   if(tazOption.disabled&&turSec.value==="tazminat")turSec.value="diger";
+   m.querySelector("#adlTazKutu").style.display=kurum&&turSec.value==="tazminat"?"block":"none";
+   m.querySelector("#adlSucAciklamasi").textContent=turSec.value==="tazminat"
+    ?"Kurumun oyun içinde sebep olduğu kanıtlanabilir zararlar için 1.000–500.000 ₺ talep edilebilir."
+    :(ADL_SUCLAR[turSec.value]||"");
+   if(kurum)listele();
+  }
+  hedef.onchange=guncelle;
+  turSec.onchange=guncelle;
+  m.querySelector("#adlKurumAra").oninput=listele;
+  guncelle();
+  m.querySelector("#adlDavaAc").onclick=async()=>{
+   const secim=hedef.value,kurum=Object.prototype.hasOwnProperty.call(kurumTurleri,secim);
+   const davali=kurum?ksec.value:secim==="parti"?m.querySelector("#adlHedefParti").value:m.querySelector("#adlHedef").value.trim();
+   if(!davali){toast("Davalıyı seçmelisiniz.",true);return;}
+   const taz=turSec.value==="tazminat",tutar=taz?Number(m.querySelector("#adlTazTutar").value):null;
+   if(taz&&(!Number.isInteger(tutar)||tutar<1000||tutar>500000)){toast("Tazminat talebi 1.000–500.000 ₺ arasında olmalıdır.",true);return;}
+   const args={p_hedef_tur:secim,p_hedef:String(davali),p_tur:turSec.value,
+    p_iddia:m.querySelector("#adlIddia").value,p_delil:m.querySelector("#adlDelil").value,
+    p_davaci_parti:m.querySelector("#adlDavaciParti").value||null};
+   if(kurum)args.p_tazminat_talep=taz?tutar:null;
+   try{
+    const v=await API.rpc(kurum?"adliye_kurum_dava_ac":"adliye_dava_ac",args);
+    modalKapat();toast("Dava #"+v.id+" açıldı.");
+    if(D.sekme==="adliye")await adliyeEkrani();else{D.devletSekme="adliye";await devletEkrani();}
+   }catch(err){toast(hataCevir(err.message),true);}
+  };
+ };
+ window.adlKararModal=function(id){
+  const dv=(ADL.davalar||[]).find(x=>x.id===id)||{};
+  if(!dv.davali_kurum_tur)return eskiKarar(id);
+  const secenekler=["beraat","uyari",...(dv.davali_kurum_tur==="makam"?[]:["para_10b","para_50b"]),
+   ...(dv.tur==="tazminat"&&dv.davali_kurum_tur!=="makam"?["tazminat"]:[])];
+  const m=modal('<p class="alt">Davalı: '+e(dv.davali_kurum_ad||"Kurum")
+   +'. Kuruma verilen parasal yaptırımlar kurum kasasından tahsil edilir.</p>'
+   +'<div class="alan"><label>Mahkeme kararı</label><select id="adlCeza">'
+   +secenekler.map(k=>'<option value="'+k+'">'+e(k==="tazminat"?"Kurumdan tazminat":ADL_CEZALAR[k]||k)+'</option>').join("")+'</select></div>'
+   +(secenekler.includes("tazminat")?'<div class="alan" id="adlKurumTazKutu" style="display:none">'
+    +'<label>Hükmedilecek tazminat (üst sınır '+tlYaz(dv.tazminat_talep||500000)+')</label>'
+    +'<input id="adlKararTazTutar" type="number" min="1000" max="'+Number(dv.tazminat_talep||500000)+'" step="1"></div>':"")
+   +adlAlan("Gerekçeli karar (20–2000 karakter)","adlGerekce","textarea")
+   +'<p class="alt">Oy çoğunluğu sağlanırsa karar yayımlanır. İstinaf hakkı ve süresi devam eder.</p>'
+   +'<button class="btn altin" id="adlKarar">Oyumu ver</button>');
+  adlFormBaslik(m,"Yüksek Mahkeme · Kurum Davası #"+id);
+  const karar=m.querySelector("#adlCeza");
+  if(secenekler.includes("tazminat"))karar.onchange=()=>{
+   m.querySelector("#adlKurumTazKutu").style.display=karar.value==="tazminat"?"block":"none";
+  };
+  m.querySelector("#adlKarar").onclick=async()=>{
+   if(!await onayla("Oyunu ver","Heyette çoğunluk sağlanırsa gerekçeli karar açıklanır.","Oyumu ver",true))return;
+   const k=karar.value,tutar=k==="tazminat"?Number(m.querySelector("#adlKararTazTutar").value):null;
+   if(k==="tazminat"&&(!Number.isInteger(tutar)||tutar<1000||tutar>Number(dv.tazminat_talep||500000))){
+    toast("Tazminat miktarı geçerli sınırlar içinde olmalıdır.",true);return;
+   }
+   adlIslem(()=>k==="tazminat"
+    ?API.rpc("adliye_tazminat_oy",{p_dava:id,p_tutar:tutar,p_gerekce:m.querySelector("#adlGerekce").value})
+    :API.rpc("adliye_oy_ver",{p_dava:id,p_karar:k,p_gerekce:m.querySelector("#adlGerekce").value}),"Oyun kaydedildi.",id);
+  };
+ };
+})();
