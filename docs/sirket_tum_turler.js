@@ -110,7 +110,6 @@ async function sirketTumTurKur(onayli){
     if(company.length<3||company.length>50){toast("Şirket adı 3–50 karakter olmalı.",true);return;}
     if(!Number.isSafeInteger(capital)||capital<min||capital>100000000){toast("Sermaye "+cash(min)+" ile 100.000.000 ₺ arasında tam sayı olmalı.",true);return;}
     if(!Number.isInteger(loc)||loc<1||loc>81){toast("Geçerli bir faaliyet ili seç.",true);return;}
-    if(((category==="factory"&&sector!=="sanayi")||sector==="insaat"||sector==="ajans")&&loc!==home){toast("Bu şirket türü kayıtlı ikamet ilinde açılır. Başka şehirde fabrika açmak için sanayi sektörünü seç.",true);return;}
     if(!await onayla("Şirket kuruluşu",company+" için "+cash(capital)+" sermaye cüzdanından yatırılacak ve gerekli belediye harcı şirket kasasından kesilecek.","Kur"))return;
     this.disabled=true;
     try{
@@ -132,10 +131,10 @@ async function sirketTumTurKur(onayli){
         result=await API.rpc("pazar_sirket_kur",{p_ad:company,p_sektor:sector.split(":")[1],p_sermaye:capital,
           p_il:loc,p_kaynak:sector==="pazar:enerji"?el("stkEnergy").value:null});
       }else if(category==="agency"){
-        result=await API.rpc("ajans_kur",{p_ad:company,p_sermaye:capital});
+        result=await API.rpc("ajans_kur_ilde",{p_ad:company,p_sermaye:capital,p_il:loc});
       }else if(category==="factory"&&sector!=="sanayi"){
-        result=await API.rpc("sirket_kur_aktif",{p_ad:company,p_sektor:sector,p_sermaye:capital,
-          p_urun:sector==="tarim"?"gida":"teknoloji"});
+        result=await API.rpc("sirket_kur_aktif_ilde",{p_ad:company,p_sektor:sector,p_sermaye:capital,
+          p_urun:sector==="tarim"?"gida":"teknoloji",p_il:loc});
       }else if(category==="factory"){
         result=await API.rpc("eko_islem",{p_eylem:"kur",p_veri:{tur:"fabrika",ad:company,il:loc,urun:el("stkProd").value,tutar:capital}});
       }else if(category==="retail"||category==="insurance"){
@@ -149,9 +148,9 @@ async function sirketTumTurKur(onayli){
         // The database's eko_insaat_sirket_tanit trigger registers the
         // contractor and consumes its auto-approved municipality permit.
         // Do not call eko_islem('kur') here: it would insert a duplicate operator.
-        result=await API.rpc("sirket_kur",{p_ad:company,p_sektor:"insaat",p_sermaye:capital});
+        result=await API.rpc("sirket_kur_ilde",{p_ad:company,p_sektor:"insaat",p_sermaye:capital,p_il:loc});
       }else{
-        result=await API.rpc("sirket_kur",{p_ad:company,p_sektor:sector,p_sermaye:capital});
+        result=await API.rpc("sirket_kur_ilde",{p_ad:company,p_sektor:sector,p_sermaye:capital,p_il:loc});
       }
       if(!Number.isSafeInteger(Number(result?.id)))throw new Error("Kuruluş sonucu şirket numarası alınamadı. Şirketlerimden kontrol et.");
       modalKapat();toast(company+" kuruldu. Şirket faaliyetlerini açıyorum.");
@@ -166,6 +165,37 @@ async function sirketTumTurKur(onayli){
   }
 }
 window.sirketTumTurKur=sirketTumTurKur;
+
+window.sirketSehirSubesiAc=function(id){
+  id=Number(id);
+  if(!Number.isSafeInteger(id)||id<=0)return;
+  const iller=(Array.isArray(VERI?.iller)?VERI.iller:[]).slice().sort((a,b)=>a.ad.localeCompare(b.ad,"tr"));
+  if(!iller.length){toast("Şehir listesi yüklenmedi. Sayfayı yenileyip tekrar dene.",true);return;}
+  const popup=modal('<h3>🏢 Yeni şirket şubesi</h3>'+
+    '<p class="alt">Şirketin sektörü ve senin ikamet ilin ne olursa olsun Türkiye\'deki 81 ilden birinde şube açabilirsin. '+
+    'Şube açılış bedeli 25.000 ₺ şirket kasasından tahsil edilir. Aynı şehirde ikinci kez şube açılmaz.</p>'+
+    '<div class="alan"><label>Şubenin açılacağı il</label><select id="stkBranchCity">'+
+    iller.map(x=>'<option value="'+Number(x.id)+'">'+safe(x.ad)+'</option>').join("")+'</select></div>'+
+    '<button class="btn altin" id="stkBranchSubmit">Şubeyi aç</button>'+
+    '<button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
+  const root=popup&&typeof popup.querySelector==="function"?popup:document;
+  const btn=root.querySelector("#stkBranchSubmit"),select=root.querySelector("#stkBranchCity");
+  if(!btn||!select){toast("Şube formu açılamadı.",true);return;}
+  btn.onclick=async function(){
+    const il=Number(select.value);
+    if(!Number.isInteger(il)||il<1||il>81)return;
+    if(!await onayla("Şube açılışı","Seçilen ilde şube açmak için şirket kasasından 25.000 ₺ tahsil edilecek.","Aç"))return;
+    btn.disabled=true;
+    try{
+      const r=await API.rpc("sirket_sube_ac_ilde",{p_sirket:id,p_il:il});
+      modalKapat();
+      toast((r.il||"Seçilen il")+" şubesi açıldı.");
+      await window.sirketPortfoyDetay(id);
+    }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message||err),true);}
+    finally{btn.disabled=false;}
+  };
+};
+
 
 const originalList=window.sirketYonetimEkrani;
 if(typeof originalList==="function"){
@@ -227,6 +257,27 @@ if(typeof originalDetail==="function"){
      panel.innerHTML='<h3>⚙️ Sektörel faaliyet ve satış</h3>'+description+html+
        '<button class="btn ikinci" onclick="ekranAc(sirketEskiYonetimEkrani)">Şirket finansmanı ve ortaklıklar</button>';
      base.insertAdjacentElement("afterend",panel);
+
+     // The headquarters and branch registry is common to all company types.
+     // Locations are informational for existing enterprises; new branches
+     // charge the company treasury and are validated by the database.
+     try {
+       const places=await API.rpc("sirket_yerleri",{p_sirket:sid});
+       const out=document.createElement("section");
+       out.className="kart stk-branch-locations";
+       const head=places.merkez||{},branches=places.subeler||[];
+       const rows=branches.length?branches.map(b=>
+         '<div class="kv"><span>🏢 Şube #'+Number(b.id)+'</span><b>'+safe(b.il||"İl #"+b.il_id)+'</b></div>'
+       ).join(""):'<p class="alt">Henüz şube açılmamış.</p>';
+       out.innerHTML='<h3>📍 Şirket merkezi ve şubeler</h3>'+
+         '<div class="kv"><span>Şirket merkezi</span><b>'+safe(head.il||"İl #"+head.il_id)+'</b></div>'+
+         rows+(places.yonetici?
+         '<button class="btn altin" onclick="sirketSehirSubesiAc('+sid+')">🏢 İstediğin ilde şube aç · '+cash(places.acilis_bedeli)+'</button>':'');
+       panel.insertAdjacentElement("afterend",out);
+     }catch(err){
+       console.warn("Şirket şube bilgileri yüklenemedi:",err);
+     }
+
    }catch(err){
      const p=document.createElement("section");p.className="kart stk-sector-details";
      p.textContent="Faaliyet özeti alınamadı: "+String(err.message||err);
