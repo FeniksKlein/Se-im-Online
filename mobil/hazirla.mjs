@@ -67,6 +67,31 @@ if (fs.existsSync(ios)) {
 	</array>`;
     return p.replace(/<dict>/, "<dict>" + ek);
   });
+  // Apple izleme izni (ATT) penceresi: uygulama ön plana geldiğinde, karar verilmemişse 1,5 sn sonra sorulur.
+  // JS tarafı (mobil_yerel.js) pencereyi açmaz, yalnız cevabı bekler (çift istek reklam katmanını kilitleyebiliyor).
+  const attKod = `
+    // Seçim Online: reklam izleme izni (App Tracking Transparency)
+    func attSor() {
+        if #available(iOS 14, *) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                if ATTrackingManager.trackingAuthorizationStatus == .notDetermined {
+                    ATTrackingManager.requestTrackingAuthorization { _ in }
+                }
+            }
+        }
+    }
+`;
+  const sahne = path.join(ios, "App/SceneDelegate.swift"), temsilci = path.join(ios, "App/AppDelegate.swift");
+  const attEkle = (dosya, imza) => degistir(dosya, (s) => {
+    if (s.includes("ATTrackingManager")) return s;
+    s = s.replace(/import Capacitor\n/, "import Capacitor\nimport AppTrackingTransparency\n");
+    if (s.includes(imza)) s = s.replace(new RegExp(`(${imza.replace(/[()]/g, "\\$&")}[^{]*\\{)`), "$1\n        attSor()");
+    else s = s.replace(/\}\s*$/, `\n    ${imza} {\n        attSor()\n    }\n}\n`);
+    return s.replace(/\}\s*$/, attKod + "}\n");
+  });
+  if (fs.existsSync(sahne)) attEkle(sahne, "func sceneDidBecomeActive(_ scene: UIScene)");
+  else attEkle(temsilci, "func applicationDidBecomeActive(_ application: UIApplication)");
+
   const pbx = path.join(ios, "App.xcodeproj/project.pbxproj");
   // Yalnız iPhone (iPad ekran görüntüsü zorunluluğu olmasın), sürüm numaraları
   degistir(pbx, (x) => x.replace(/MARKETING_VERSION = [^;]+;/g, `MARKETING_VERSION = ${surumAdi};`).replace(/CURRENT_PROJECT_VERSION = [^;]+;/g, `CURRENT_PROJECT_VERSION = ${surumKodu};`)
