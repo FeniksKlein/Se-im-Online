@@ -57,14 +57,28 @@ window.ortaklikEkrani=async function(){
    html+='</div>';
   }
   if(!(d.kuruluslar||[]).length)html+='<p class="alt">Bekleyen kuruluş daveti yok.</p>';
-  html+='</div><div class="kart"><h3>🏢 Ortak olduğum şirketler</h3>';
   const cs=d.sirketler||[];
+  const wallet=await rpc('sirket_kasa_bilgi');
+  const secili=Number(window.osSeciliSirket||0);
+  html+='</div><div class="kart"><h3>💰 Kendi paranı şirket kasasına aktar</h3>'+
+   '<p class="alt">Şube, mağaza, arsa, inşaat veya üretim yatırımı için şirket kasasında yeterli para yoksa kişisel cüzdanından yatırabilirsin. Hisse oranların değişmez. Katkı kâr veya satış geliri sayılmaz.</p>'+
+   row('Kişisel cüzdanım',tl(wallet.bakiye))+
+   '<div class="alan"><label>Para yatırılacak şirket</label><select id="os_yatir_sirket">'+
+   cs.map(s=>'<option value="'+Number(s.id)+'"'+(secili===Number(s.id)?' selected':'')+'>'+
+     esc(s.ad)+' · Kasada '+esc(tl(s.kasa))+'</option>').join('')+'</select></div>'+
+   '<div class="alan"><label>Kişisel cüzdanımdan aktarılacak tutar (₺)</label>'+
+   '<input id="os_yatir_tutar" type="number" min="1" max="100000000" step="1" inputmode="numeric" placeholder="Örnek: 250000"></div>'+
+   '<p class="alt">Bu işlem yalnızca bakiyen kadar yapılabilir. Aynı tutar kişisel hesabından düşer ve seçtiğin şirketin kasasına eklenir. Şirketin sermaye üst limiti 100 milyon ₺.</p>'+
+   (cs.length?btn('Şirket kasasına para yatır','ortaklikKasayaYatir()','altin'):'<p class="alt">Para yatırmak için önce bir şirkete ortak olmalısın.</p>')+
+   '</div><div class="kart"><h3>🏢 Ortak olduğum şirketler</h3>';
   for(const s of cs){
    html+='<div class="kart"><b>'+esc(s.ad)+'</b>'+
     row('Benim hissem','%'+s.benim_pay)+row('Sermaye',tl(s.sermaye))+
     row('Şirket kasası',tl(s.kasa))+row('Ortaklık yapısı',s.tek_ortak?'Tek ortaklı · %100 benim':'Çok ortaklı')+
     (s.ortaklar||[]).map(a=>row(a.kad,'%'+a.pay)).join('')+
-    btn('Bu şirketten pay devret / yeni ortak al','ortaklikHisseFormu('+s.id+')','altin')+'</div>';
+    btn('Kasaya şahsi para yatır','sirketKasasiAc('+Number(s.id)+')','altin')+
+    btn('Şube gelir/gider raporu','sirketSubeRapor('+Number(s.id)+')')+
+    btn('Bu şirketten pay devret / yeni ortak al','ortaklikHisseFormu('+s.id+')')+'</div>';
   }
   if(!cs.length)html+='<p class="alt">Henüz ortak olduğun şirket bulunmuyor.</p>';
   html+='</div><div class="kart"><h3>💸 Hisse devri ve yeni ortak kabulü</h3>'+
@@ -91,6 +105,62 @@ window.ortaklikEkrani=async function(){
  }catch(e){iskelet('Şirket Ortaklık Merkezi','<div class="kart">'+esc(e.message||e)+'</div>',{geri:true});}
 };
 const get=id=>document.getElementById(id)?.value||'';
+window.sirketKasasiAc=function(id){
+ window.osSeciliSirket=Number(id)||0;
+ if(typeof ekranAc==='function')ekranAc(window.ortaklikEkrani);
+ else window.ortaklikEkrani();
+};
+window.ortaklikKasayaYatir=async function(){
+ try{
+  const sid=Number(get('os_yatir_sirket'));
+  const raw=get('os_yatir_tutar').trim();
+  if(!/^\d+$/.test(raw))throw Error('Tam sayı para tutarı gir.');
+  const tutar=Number(raw);
+  if(!Number.isSafeInteger(tutar)||tutar<1||tutar>100000000)
+   throw Error('1 ile 100 milyon TL arasında geçerli tutar gir.');
+  const sec=document.getElementById('os_yatir_sirket');
+  const ad=sec?.selectedOptions?.[0]?.textContent||'seçilen şirket';
+  if(!await approve('Şirket kasasına para yatır',
+    tl(tutar)+' kendi cüzdanından düşülüp '+ad+' kasasına eklenecek. Hisse oranın değişmeyecek. Onaylıyor musun?'))return;
+  await rpc('sirket_kasa_yatir',{p_sirket:sid,p_tutar:tutar});
+  window.osSeciliSirket=sid;
+  toast(tl(tutar)+' şirket kasasına aktarıldı.');
+  await ortaklikEkrani();
+ }catch(e){err(e);}
+};
+window.sirketSubeRapor=async function(id){
+ yukleniyor('Şube gelir ve giderleri');
+ try{
+  const d=await rpc('sirket_sube_finans',{p_sirket:Number(id)});
+  let html='<div class="kart"><h2>🏬 '+esc(d.ad)+' – Şube ekonomisi</h2>'+
+   '<p class="alt">Haftalık tahmini rakamlar: her ilde müşteri talebi, rakipler, çalışanlar, kira, enerji ve satış maliyeti dikkate alınır. Gerçekleşen satışlar değişebilir.</p>'+
+   row('Ek şube sayısı',String(d.sube_sayisi))+
+   row('Ek şubelerin haftalık cirosu',tl(d.sube_gelir))+
+   row('Ek şubelerin haftalık gideri',tl(d.sube_gider))+
+   row('Şirket toplam haftalık ciro',tl(d.haftalik_toplam_gelir))+
+   row('Şirket toplam haftalık gider',tl(d.haftalik_toplam_gider))+
+   row('Tahmini toplam net kâr (vergiler sonrası)',tl(d.haftalik_net))+
+   '</div>';
+  for(const s of d.subeler||[]){
+   html+='<div class="kart"><h3>📍 '+esc(s.il)+' şubesi</h3>'+
+    row('Haftalık satış',tl(s.gelir))+
+    row('Satış / ürün maliyeti',tl(s.satis_maliyeti))+
+    row('Personel',tl(s.personel))+
+    row('Kira ve sabit gider',tl(s.kira_enerji))+
+    row('Toplam işletme gideri',tl(s.gider))+
+    row('Vergi öncesi şube katkısı',tl(s.tahmini_net))+
+    row('Tahmini şehir pazar payı','%'+esc(s.pazar_payi))+
+    '</div>';
+  }
+  if(!(d.subeler||[]).length)
+   html+='<div class="kart"><p>Şirketin ek şubesi bulunmuyor. Yeni şube açınca buradaki gelir ve giderler hesaplanacak.</p></div>';
+  html+='<div class="kart">'+
+    btn('Ortaklık merkezine dön','ekranAc(ortaklikEkrani)')+' '+
+    btn('Şirket kasasına para yatır','sirketKasasiAc('+Number(d.id)+')','altin')+
+    '</div>';
+  iskelet('Şube Gelir ve Giderleri',html,{geri:true});
+ }catch(e){iskelet('Şube Gelir ve Giderleri','<div class="kart">'+esc(e.message||e)+'</div>',{geri:true});}
+};
 window.ortaklikSektorDegisti=function(){
  const sector=get('os_sektor'),select=document.getElementById('os_urun');
  if(!select)return;
@@ -151,6 +221,8 @@ if(typeof previous==='function')window.sirketYonetimEkrani=async function(){
  const r=document.querySelector('.so-buttons');
  if(r&&!r.querySelector('.ortak-merkez-btn'))r.insertAdjacentHTML('afterbegin',
   '<button class="btn altin ortak-merkez-btn" onclick="ekranAc(ortaklikEkrani)">🤝 Ortak şirket kur · Hisse devri · Yeni ortak</button>');
+ if(r&&!r.querySelector('.sirket-kasa-menu-btn'))r.insertAdjacentHTML('afterbegin',
+  '<button class="btn altin sirket-kasa-menu-btn" onclick="sirketKasasiAc()">💰 Şirket kasasına kendi paramdan yatır</button>');
 };
 const prevDetail=window.sirketPortfoyDetay;
 if(typeof prevDetail==='function')window.sirketPortfoyDetay=async function(){
@@ -159,5 +231,12 @@ if(typeof prevDetail==='function')window.sirketPortfoyDetay=async function(){
  if(base&&!document.querySelector('.ortak-merkez-detay'))base.insertAdjacentHTML('afterend',
   '<div class="kart ortak-merkez-detay"><h3>🤝 Ortaklık ve hisse yönetimi</h3>'+
   btn('Ortaklar · Hisseler · Bedelsiz veya ücretli devir','ekranAc(ortaklikEkrani)','altin')+'</div>');
+ const pane=document.querySelector('.ortak-merkez-detay');
+ if(pane&&!pane.querySelector('.sirket-kasa-detay-btn')){
+  const item=arguments[0];const sid=Number(item&&typeof item==='object'?item.id:item)||0;
+  pane.insertAdjacentHTML('beforeend','<div class="sirket-kasa-detay-btn">'+
+   btn('💰 Kişisel paramdan şirkete aktar','sirketKasasiAc('+sid+')','altin')+
+   (sid?btn('📊 Şube gelir/gider raporu','sirketSubeRapor('+sid+')'):'')+'</div>');
+ }
 };
 })();
