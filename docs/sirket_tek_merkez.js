@@ -52,6 +52,7 @@ window.sirketlerimMerkezi=async function(){
  } catch(e){iskelet('Şirketlerim',sectionHeader('Bir hata oluştu','<p>'+safe(e.message||e)+'</p>'),{geri:true});}
 };
 window.sirketKurulumFormuAc=function(){
+ if(typeof window.sirketTumTurKur==='function')return window.sirketTumTurKur();
  if(typeof ekranAc==='function')return ekranAc(previous);
  return previous();
 };
