@@ -129,6 +129,15 @@ adliyeDosya=async function(id){
   const [x,s,pazarlik]=await Promise.all([RPC('avukat_dava_durum',{p_dava:id}),RPC('avukat_durum'),RPC('avukat_pazarlik_liste',{p_dava:id}).catch(()=>[])]);
   x.pazarlik=pazarlik;
   if(document.getElementById('icerik')!==root)return;
+  // Eski Adliye etiketleri hukuki savunma ile taraf beyanini ayirmiyordu.
+  for(const button of root.querySelectorAll('button')){
+    if(button.textContent.trim()==='Savunma / beyan ver')button.textContent='Olay beyanı ver (avukat savunması değil)';
+  }
+  const kayit=await RPC('adliye_detay',{p_dava:id}).catch(()=>null);
+  for(const beyan of (kayit?.beyanlar||[]).filter(b=>b.rol==='avukat')){
+    const satir=Array.from(root.querySelectorAll('.liste-satir')).find(n=>n.querySelector('p')?.textContent.trim()===beyan.metin.trim()&&n.querySelector('b')?.textContent.includes(beyan.yazar));
+    if(satir){const bas=satir.querySelector('b');if(bas)bas.textContent='Av. '+beyan.yazar+' · Hukuki savunma';}
+  }
   const host=document.createElement('div');host.innerHTML=davaHukukHtml(x,id,s.ruhsat?.durum==='aktif');
   root.insertAdjacentElement('afterbegin',host);
  }catch(err){console.warn('Hukuk paneli:',err.message);}
