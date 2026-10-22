@@ -81,7 +81,7 @@ async function sirketTumTurKur(onayli){
     el("stkEnergyBox").style.display=sektor==="pazar:enerji"?"":"none";
     if(sektor==="tarim")el("stkProd").value="gida";
     if(sektor==="teknoloji")el("stkProd").value="teknoloji";
-    const how=category==="factory"?"Üretim emri ver → süreyi izle → ürün stoğuna geçsin → oyuncu mağazalarına toptan sat.":
+    const how=["akaryakit","yapi_market","elektronik_magaza","tekstil_magaza","mobilya_magaza","oto_galeri"].includes(sector)?"Önce şirket kasasından toptan stok al; fiyat belirle, NPC müşterilere yalnızca gerçek stoktan sat. Stok bitince satış durur, bakım gideri sürer.":category==="factory"?"Üretim emri ver → süreyi izle → ürün stoğuna geçsin → oyuncu mağazalarına toptan sat.":
       category==="retail"?"Stok satın al veya mutfakta üret → müşteri talebine göre saatlik satış yap → ciro, vergi, gider ve kârı izle.":
       category==="build"?"Arsa al, belediye izniyle inşaat yap, tamamlanan konutları ve dükkânları sat.":
       category==="insurance"?"Poliçe primi, hasar rezervi, tazminat ve şirket kârı.":
