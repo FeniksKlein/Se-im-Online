@@ -29,24 +29,30 @@ function card(c,received,now){
  row('Düzenleyen',c.borclu_ad||c.duzenleyen_ad||'—')+
  row('Hamil',c.hamil_ad||'—')+(c.aciklama?'<p class="alt">'+esc(c.aciklama)+'</p>':'');
  var id=Number(c.id),remain=Number(c.tutar)-Number(c.odenen),out='';
+ var claim=(window.cekEkPanel&&window.cekEkPanel.tazminatlar||[]).find(function(k){return Number(k.cek_id)===id;});
+ if(claim&&Number(claim.kalan)>0)body+=row('Karşılıksız çek tazminatı (%10)',money(claim.kalan));
  if(received && remain>0 && c.durum!=='iade'){
    if(c.durum==='aktif'){
      if(String(now)>=String(c.tarih))out+=button('🏦 Bankaya ibraz et','cekEylem("ibraz",'+id+')','altin');
      else out+='<p class="alt">Yazılı tarihten önce ibraz edilemez. Düzenleyen gönüllü ödeme yapabilir.</p>';
      if(Number(c.odenen)===0)out+=button('↪️ Çeki ciro et','cekCiro('+id+')');
+     if(Number(c.odenen)===0&&String(now)<String(c.tarih))out+=button('🏦 Çeki bankaya iskonto ettir','cekIskontoSec('+id+')');
      if(Number(c.odenen)===0)out+=button('↩ Çeki iade et','cekEylem("iade",'+id+')');
    }
    if(c.durum==='karsiliksiz'&&!c.takip)out+=button('⚖️ İcra takibi aç','cekEylem("takip",'+id+')','altin');
    else if(c.durum==='karsiliksiz'&&c.takip)out+='<p class="alt">İcra takip talebi kaydedildi.</p>';
  }
  if(!received&&remain>0&&c.durum!=='iade')out+=button('💳 Erken veya kalan ödemeyi yap','cekEylem("erken",'+id+')','altin');
+ if(!received&&claim&&Number(claim.kalan)>0)out+=button('⚖️ %10 çek tazminatını öde','cekTazminatOde('+id+')');
  return '<div class="kart" style="border-left:3px solid var(--line2)"><h4>🧾 Çek #'+id+'</h4>'+body+out+'</div>';
 }
 window.cekMerkeziAc=async function(companyId){
  if(Number.isSafeInteger(Number(companyId))&&Number(companyId)>0)window.cekSirketSecimi=Number(companyId);
  if(typeof yukleniyor==='function')yukleniyor('Çek Yönetimi');
  try{
-  var d=await rpc('cek_panel'),cs=d.sirketler||[],hs=d.hesaplar||[];
+  var fetched=await Promise.all([rpc('cek_panel'),rpc('cek_ek_panel')]);
+  var d=fetched[0],extra=fetched[1],cs=d.sirketler||[],hs=d.hesaplar||[];
+  window.cekEkPanel=extra;window.cekPanelVeri=d;
   var own=window.cekSirketSecimi,day=d.bugun;
   var head=box('🧾 Çek Yönetim Merkezi',
    '<p class="alt">Şahsi banka hesabın veya yönettiğin şirket adına çek düzenle, al, ciro et, erken öde ve tahsil et. Hesapta para yokken çek yazılabilir; ödeme zamanı gerçek bakiye kontrol edilir.</p>'+
@@ -77,7 +83,15 @@ window.cekMerkeziAc=async function(companyId){
   var info=box('⚖️ Çek ve hukuki sonuçları',
    '<p class="alt">Çek tarihinden önce ancak düzenleyenin gönüllü ödemesiyle tahsil yapılabilir. Tarihi gelen çek ibraz edildiğinde hesapta bulunan para kısmen veya tamamen tahsil edilir.</p>'+
    '<p class="alt">Karşılıksız çek düzenleyen yeni çek yazamaz; kredi notu olumsuz etkilenir ve hamil icra başvurusu açabilir. Mahkemeye bağlı cezalar otomatik mahkûmiyet değildir.</p>');
-  iskelet('Çek Yönetimi',head+form+issue+box('📥 Aldığım / şirketlerimin aldığı çekler',received)+box('📤 Verdiğim / şirketlerimin verdiği çekler',sent)+info,{geri:true});
+  var pending=(extra.basvurular||[]).map(function(o){
+   var buttons=o.benim?button('Talebi iptal et','cekIskontoKarar("iptal",'+Number(o.id)+')'):'';
+   if(o.banka_yonetici){buttons+=button('✅ Çeki satın al','cekIskontoKarar("kabul",'+Number(o.id)+')','altin')+
+    button('❌ Reddet','cekIskontoKarar("red",'+Number(o.id)+')');}
+   return '<div class="kart"><b>Çek #'+Number(o.cek_id)+' · '+esc(o.banka)+'</b>'+row('İskonto bedeli',money(o.tutar))+
+    row('Kesinti',('%'+(100*Number(o.oran)).toLocaleString('tr-TR',{maximumFractionDigits:2})))+
+    row('Çek tutarı',money(o.cek_tutari))+row('Yazılı tarih',date(o.tarih))+row('Keşideci',o.kesideci)+buttons+'</div>';
+  }).join('')||'<p class="alt">Bekleyen iskonto talebi yok.</p>';
+  iskelet('Çek Yönetimi',head+form+issue+box('📥 Aldığım / şirketlerimin aldığı çekler',received)+box('📤 Verdiğim / şirketlerimin verdiği çekler',sent)+box('🏦 Çek iskonto teklifleri',pending)+info,{geri:true});
  }catch(e){iskelet('Çek Yönetimi',box('Hata','<p>'+esc(e.message||e)+'</p>'),{geri:true});}
 };
 window.cekDefterAl=async function(){
@@ -118,7 +132,8 @@ window.cekEylem=async function(act,id){
  var descriptions={ibraz:'Bankaya ibraz edildiğinde mevcut bakiye kadar tahsilat yapılır. Eksik tutar karşılıksız kaydedilir. Devam?',takip:'Karşılıksız çek için icra talebi kaydedilsin mi?',iade:'Bu çeki düzenleyene iade ederek iptal etmek istiyor musun?'};
  var data={};
  if(act==='erken'){
-  var raw=window.prompt('Ödemek istediğin tutarı yaz (TL). Tam ödeme için çekin kalan tutarını yaz.','');
+  var owned=((window.cekPanelVeri||{}).verdiklerim||[]).find(function(c){return Number(c.id)===Number(id);});
+  var raw=window.prompt('Ödemek istediğin tutarı yaz (TL). Tam ödeme için kalan tutarı kullan.',owned?String(Number(owned.tutar)-Number(owned.odenen)):'');
   if(raw===null)return;
   var n=Number(raw.replace(',','.'));
   if(!Number.isFinite(n)||n<=0||Math.round(n*100)!==n*100){warn('Geçerli ödeme tutarı gir.');return;}
@@ -147,5 +162,42 @@ window.cekCiro=async function(id){
   await rpc('cek_islem',{p_eylem:'ciro',p_id:Number(id),p_veri:a});
   good('Çek '+x.ad+' tarafına ciro edildi.');window.cekMerkeziAc();
  }catch(e){warn(e.message||e);}
+};
+window.cekIskontoSec=async function(cekId){
+ var banks=(window.cekEkPanel&&window.cekEkPanel.bankalar||[]);
+ var c=((window.cekPanelVeri||{}).bende||[]).find(function(x){return Number(x.id)===Number(cekId);});
+ if(!c){warn('Çek bulunamadı.');return;}
+ if(!banks.length){warn('Aktif çek satın alan banka bulunamadı.');return;}
+ var days=Math.max(0,Math.round((new Date(c.tarih+'T12:00:00')-new Date())/86400000));
+ var rate=Math.min(.18,.025+days*.00065),fiyat=Math.round(Number(c.tutar)*(1-rate)*100)/100;
+ var options=banks.map(function(x,i){return (i+1)+') '+x.ad+' · Banka nakdi: '+money(x.kullanilabilir);}).join('\n');
+ var selection=window.prompt('İskonto için banka seç (numarasını yaz):\n'+options,'1');
+ if(selection===null)return;
+ var ix=Number(selection)-1;if(!Number.isSafeInteger(ix)||ix<0||ix>=banks.length){warn('Geçerli banka seç.');return;}
+ if(!await confirmIt('Çek iskonto talebi','Çek bedeli '+money(c.tutar)+'. Tahmini erken nakit '+money(fiyat)+
+  ' (kesinti yaklaşık %'+(rate*100).toFixed(2)+'). Banka yöneticisi onaylarsa çek bankaya geçer. Başvuralım mı?'))return;
+ try{var r=await rpc('cek_iskonto_islem',{p_eylem:'basvur',p_id:Number(cekId),p_banka:Number(banks[ix].id)});
+   good('İskonto başvurusu bankaya iletildi. Teklif: '+money(r.tutar));window.cekMerkeziAc();}
+ catch(e){warn(e.message||e);}
+};
+window.cekIskontoKarar=async function(eylem,id){
+ var label=eylem==='kabul'?'Banka kasasından iskonto bedeli ödenip çek bankaya devredilsin mi?':
+  eylem==='red'?'Bu iskonto başvurusu reddedilsin mi?':'Bu başvuru iptal edilsin mi?';
+ if(!await confirmIt('İskonto kararı',label))return;
+ try{var d=await rpc('cek_iskonto_islem',{p_eylem:eylem,p_id:Number(id)});
+   good(d.nakit?'Banka çek için '+money(d.nakit)+' ödedi.':'İskonto işlemi sonuçlandırıldı.');window.cekMerkeziAc();}
+ catch(e){warn(e.message||e);}
+};
+window.cekTazminatOde=async function(id){
+ var record=(window.cekEkPanel&&window.cekEkPanel.tazminatlar||[]).find(function(x){return Number(x.cek_id)===Number(id);});
+ if(!record||Number(record.kalan)<=0){warn('Ödenmemiş tazminat bulunmuyor.');return;}
+ var raw=window.prompt('Ödenmemiş %10 çek tazminatından ödenecek tutar (TL):',String(record.kalan));
+ if(raw===null)return;
+ var amount=Number(raw.replace(',','.'));
+ if(!Number.isFinite(amount)||amount<=0||amount>Number(record.kalan)){warn('Geçerli tutar gir.');return;}
+ if(!await confirmIt('Çek tazminatı',money(amount)+' karşılıksız çek tazminatı olarak çek hamiline aktarılsın mı?'))return;
+ try{var r=await rpc('cek_tazminat_ode',{p_cek:Number(id),p_tutar:amount});
+   good(money(r.odenen)+' tazminat ödendi.');window.cekMerkeziAc();}
+ catch(e){warn(e.message||e);}
 };
 })();
