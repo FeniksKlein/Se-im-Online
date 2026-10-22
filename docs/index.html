@@ -1073,10 +1073,23 @@ const HATA_CEVIRI = [
   [/failed to fetch|network|load failed/i, "İnternet bağlantısı kurulamadı."],
   [/JWT expired/i, "Oturumun süresi doldu, tekrar giriş yap."]
 ];
+// Sunucudan gelen bazı hata metinleri Türkçe harfsiz yazılmış ("Bu sirketin ortagi degilsin").
+// Metinde hiç Türkçe harf yoksa sık kelimeler düzeltilir; zaten doğru yazılmış metinlere dokunulmaz.
+const TR_HARF = {aciklama:"açıklama",baslik:"başlık",acik:"açık",acikca:"açıkça",aciktir:"açıktır",acilabilir:"açılabilir",adayi:"adayı",adi:"adı",adini:"adını",alacakli:"alacaklı",alamazsin:"alamazsın",alici:"alıcı",alinabilir:"alınabilir",alinir:"alınır",araliginda:"aralığında",arasinda:"arasında",arsalari:"arsaları",artik:"artık",asamaz:"aşamaz",asildi:"aşıldı",asiyor:"aşıyor",atanmis:"atanmış",ayni:"aynı",bagi:"bağı",bakanlik:"bakanlık",bankanin:"bankanın",baska:"başka",baskani:"başkanı",basvuru:"başvuru",birlesemez:"birleşemez",birlesme:"birleşme",birlestirilemez:"birleştirilemez",borc:"borç",borclu:"borçlu",borclunun:"borçlunun",borcluya:"borçluya",bulunamadi:"bulunamadı",butce:"bütçe",cumhurbaskani:"cumhurbaşkanı",dagitilabilir:"dağıtılabilir",degil:"değil",degilsin:"değilsin",degistirilecek:"değiştirilecek",degistirilemez:"değiştirilemez",diger:"diğer",dogrulanamadi:"doğrulanamadı",dolmus:"dolmuş",dukkan:"dükkân",edilmis:"edilmiş",esigi:"eşiği",eslesmiyor:"eşleşmiyor",fiyati:"fiyatı",gecerli:"geçerli",gecersiz:"geçersiz",gerekce:"gerekçe",gerekceli:"gerekçeli",giris:"giriş",gorev:"görev",gorevdeki:"görevdeki",gun:"gün",guncel:"güncel",gunluk:"günlük",haftalik:"haftalık",hakki:"hakkı",hakkin:"hakkın",haklari:"hakları",hazir:"hazır",henuz:"henüz",icin:"için",icindir:"içindir",ilani:"ilanı",imarli:"imarlı",insaat:"inşaat",islem:"işlem",islemi:"işlemi",istisnasi:"istisnası",kapandi:"kapandı",kapatti:"kapattı",kar:"kâr",karari:"kararı",karsilamiyor:"karşılamıyor",kasasi:"kasası",kasasinda:"kasasında",kaydi:"kaydı",kayitli:"kayıtlı",kazanc:"kazanç",kesinlesmis:"kesinleşmiş",kimligi:"kimliği",kisaltmasi:"kısaltması",kullanilabilir:"kullanılabilir",kullanilamaz:"kullanılamaz",kurulus:"kuruluş",kurulusu:"kuruluşu",magaza:"mağaza",musadere:"müsadere",muteahhit:"müteahhit",muteahhitlerin:"müteahhitlerin",muteahhitlik:"müteahhitlik",odeme:"ödeme",oldugun:"olduğun",olmali:"olmalı",olmalisin:"olmalısın",olusmali:"oluşmalı",once:"önce",onceki:"önceki",orani:"oranı",oranlari:"oranları",ortagi:"ortağı",ortaklik:"ortaklık",payi:"payı",police:"poliçe",programi:"programı",ruhsati:"ruhsatı",ruhsatini:"ruhsatını",satici:"satıcı",saticinin:"satıcının",satin:"satın",satis:"satış",satisi:"satışı",sayi:"sayı",sec:"seç",secilemez:"seçilemez",secilen:"seçilen",secme:"seçme",secmelisin:"seçmelisin",sehir:"şehir",sektor:"sektör",sektorde:"sektörde",sektoru:"sektörü",sinir:"sınır",siniri:"sınırı",sinirini:"sınırını",siparis:"sipariş",sirket:"şirket",sirketi:"şirketi",sirketin:"şirketin",sirketlerince:"şirketlerince",sirkette:"şirkette",sozlesme:"sözleşme",sube:"şube",suresi:"süresi",tamamladigi:"tamamladığı",tarafsiz:"tarafsız",turu:"türü",turune:"türüne",tutari:"tutarı",ucret:"ücret",uretici:"üretici",uretim:"üretim",urun:"ürün",urunu:"ürünü",uyesi:"üyesi",uyusmuyor:"uyuşmuyor",varlik:"varlık",yalniz:"yalnız",yalnizca:"yalnızca",yatiramazsin:"yatıramazsın",yoneticisi:"yöneticisi",yonetim:"yönetim",yonetme:"yönetme",yuksek:"yüksek"};
+function turkceHarf(m){
+  if (/[ğüşıöçĞÜŞİÖÇ]/.test(m)) return m;
+  return m.replace(/[A-Za-z]+/g, (k) => {
+    const t = TR_HARF[k.toLowerCase()];
+    if (!t) return k;
+    if (k.length > 1 && k === k.toUpperCase()) return t.toLocaleUpperCase("tr-TR");
+    if (k[0] === k[0].toUpperCase()) return t[0].toLocaleUpperCase("tr-TR") + t.slice(1);
+    return t;
+  });
+}
 function hataCevir(m){
   m = String(m || "Bilinmeyen hata");
   for (const [re, tr] of HATA_CEVIRI) if (re.test(m)) return tr;
-  return m;
+  return turkceHarf(m);
 }
 function gercekApi(){
   if (!window.supabase) return null;
@@ -10026,7 +10039,7 @@ window.oybKrediMasasiEkrani = oybKrediMasasiEkrani;
 <script src="kamu_20261022.js?v=20261022-4"></script>
 <script src="ek_isler.js?v=20261019-1"></script>
 <script src="sirket_operasyon_merkezi.js?v=20261013-6"></script>
-<script src="sirket_tum_turler.js?v=20261022-5"></script>
+<script src="sirket_tum_turler.js?v=20261022-7"></script>
 <script src="belediye_ruhsatlar.js?v=20261019-1"></script>
 <script src="cb_toren_2215.js?v=20261014-2215"></script>
 <script src="ekonomi3.js?v=20261015-1"></script>

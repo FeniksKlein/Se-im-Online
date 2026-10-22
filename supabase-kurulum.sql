@@ -41893,6 +41893,7 @@ create trigger uzaktan_hisse_ilan_kontrol before insert
 --  9) oyun._sonuc_mv            aynı sebep → "Motoru şimdi çalıştır" ile genel seçim sonuçlandırılamıyordu
 -- 10) akis_tepki                çift dokunuşta "duplicate key" (dosyanın sonunda)
 -- 11) 12 oyun tablosunda RLS (ek güvenlik katı)
+-- 12) meclis_rehber hızlandırma (vekil sayısı arttıkça Meclis sekmesi zaman aşımına düşüyordu)
 -- Fonksiyon canlıdaki (veya bu kurulumdaki) son hâlinden okunur, yalnızca hatalı ifade değiştirilir.
 do $duzelt$
 declare r record; d text; adet int;
@@ -42231,6 +42232,104 @@ begin
     if to_regclass('oyun.' || t) is not null then execute format('alter table oyun.%I enable row level security', t); end if;
   end loop;
 end $rls$;
+
+-- 12) Meclis rehberi (Meclis sekmesi, haritada sandalyeler): vekil başına grup başkanı yeniden hesaplanıyor ve görev
+--     listesi il başına (81 kez) tekrar kuruluyordu. 426 vekilde 15 sn → 25 ms; çıktı birebir aynı.
+CREATE OR REPLACE FUNCTION public.meclis_rehber()
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+with v as (
+  select m.user_id, m.il_id, m.bas, m.parti_id as secildigi, pr.kad, pr.parti_id as parti
+  from oyun.makamlar m
+  join oyun.profiller pr on pr.id = m.user_id
+  where m.tur = 'mv' and m.bit is null
+),
+sayi as (select count(*)::int as dolu from v),
+g as (select * from oyun.gruplar()),
+gbas as (select g.parti_id, oyun.grup_baskani(g.parti_id) as uid from g),
+gorev as materialized (
+  select v.user_id, jsonb_agg(x.g order by x.s) as liste
+  from v
+  join lateral (
+    select 1 as s, 'TBMM Başkanı' as g
+      where exists (select 1 from oyun.makamlar m where m.user_id = v.user_id and m.tur = 'tbmm' and m.bit is null)
+    union all
+    select 2, 'TBMM Başkanvekili'
+      where exists (select 1 from oyun.makamlar m where m.user_id = v.user_id and m.tur = 'bskv' and m.bit is null)
+    union all
+    select 3, 'Genel Başkan'
+      where exists (select 1 from oyun.partiler pa where pa.gb = v.user_id and not pa.kapali)
+    union all
+    select 3, 'Grup Başkanı'
+      where exists (select 1 from gbas where gbas.parti_id = v.parti and gbas.uid = v.user_id)
+    union all
+    select 4, 'Grup Başkanvekili'
+      where exists (select 1 from oyun.makamlar m where m.user_id = v.user_id and m.tur = 'grup_bskv' and m.bit is null)
+    union all
+    select 5, coalesce(b.ad, 'Bakan')
+      from oyun.makamlar m left join oyun.bakanliklar b on b.kod = m.bakanlik
+      where m.user_id = v.user_id and m.tur = 'bakan' and m.bit is null
+    union all
+    select 6, 'Genel Başkan Yardımcısı'
+      where exists (select 1 from oyun.parti_gby y where y.user_id = v.user_id)
+  ) x on true
+  group by v.user_id
+),
+partiler as (
+  select v.parti as id, count(*)::int as n from v where v.parti is not null group by v.parti
+)
+select jsonb_build_object(
+  'toplam', coalesce((select sum(i.mv)::int from oyun.iller i), 600),
+  'dolu', (select dolu from sayi),
+  'bagimsiz', (select count(*)::int from v where v.parti is null),
+  'cogunluk', (select dolu / 2 + 1 from sayi),
+  'grup_esigi', oyun.grup_esigi((select dolu from sayi)),
+  'baskan', (select jsonb_build_object('kad', oyun.kad(m.user_id), 'parti', oyun.parti_json(pr.parti_id))
+             from oyun.makamlar m join oyun.profiller pr on pr.id = m.user_id
+             where m.tur = 'tbmm' and m.bit is null limit 1),
+  'gecici', case when oyun.tbmm_baskani() is null then oyun.kad(oyun.gecici_baskan()) end,
+  'baskanvekilleri', coalesce((select jsonb_agg(jsonb_build_object('kad', pr.kad, 'parti', oyun.parti_json(pr.parti_id)) order by m.bas)
+             from oyun.makamlar m join oyun.profiller pr on pr.id = m.user_id
+             where m.tur = 'bskv' and m.bit is null), '[]'::jsonb),
+  'partiler', coalesce((select jsonb_agg(oyun.parti_json(p.id) || jsonb_build_object(
+        'n', p.n,
+        'grup', g.parti_id is not null,
+        'sira', g.sira,
+        'gb', (select pr.kad from oyun.partiler pa join oyun.profiller pr on pr.id = pa.gb where pa.id = p.id),
+        'gb_vekil', exists (select 1 from oyun.partiler pa join v on v.user_id = pa.gb where pa.id = p.id),
+        'baskan', case when g.parti_id is not null then oyun.kad((select gbas.uid from gbas where gbas.parti_id = p.id)) end,
+        'baskan_benim', g.parti_id is not null and (select gbas.uid from gbas where gbas.parti_id = p.id) = auth.uid(),
+        'devir_adaylari', case when g.parti_id is not null and (select gbas.uid from gbas where gbas.parti_id = p.id) = auth.uid()
+           then coalesce((select jsonb_agg(jsonb_build_object('id',pr.id,'kad',pr.kad) order by pr.kad)
+             from oyun.profiller pr join oyun.makamlar mm on mm.user_id=pr.id and mm.tur='mv' and mm.bit is null
+             where pr.parti_id=p.id and pr.id is distinct from (select gb from oyun.partiler where id=p.id)
+                and pr.id<>auth.uid()),'[]'::jsonb)
+           else '[]'::jsonb end,
+        'bskv', coalesce((select jsonb_agg(pr.kad order by m.bas) from oyun.makamlar m join oyun.profiller pr on pr.id = m.user_id
+                          where m.tur = 'grup_bskv' and m.bit is null and m.parti_id = p.id), '[]'::jsonb),
+        'bskv_kota', case when g.parti_id is null then 0 when p.n * 6 > (select dolu from sayi) then 3 else 2 end)
+      order by p.n desc, p.id)
+    from partiler p left join g on g.parti_id = p.id), '[]'::jsonb),
+  'sozluk', coalesce((select jsonb_object_agg(x.id::text, oyun.parti_json(x.id))
+    from (select parti as id from v where parti is not null union select secildigi from v where secildigi is not null) x), '{}'::jsonb),
+  'iller', coalesce((select jsonb_agg(jsonb_build_object(
+        'id', i.id, 'ad', i.ad, 'kontenjan', i.mv,
+        'vekiller', coalesce((select jsonb_agg(jsonb_build_object(
+              'kad', v.kad,
+              'parti_id', v.parti,
+              'secildigi_id', case when v.secildigi is distinct from v.parti then v.secildigi end,
+              'bagimsiz_secildi', v.secildigi is null,
+              'bas', v.bas,
+              'gorevler', coalesce(gr.liste, '[]'::jsonb))
+            order by v.parti nulls last, v.kad)
+          from v left join gorev gr on gr.user_id = v.user_id where v.il_id = i.id), '[]'::jsonb))
+      order by i.id)
+    from oyun.iller i), '[]'::jsonb)
+)
+$function$;
 
 -- =====================================================================
 --  10) Gündem akışında beğen / beğenme tepkisi: aynı anda iki kez dokununca

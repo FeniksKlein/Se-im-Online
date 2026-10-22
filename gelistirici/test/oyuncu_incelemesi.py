@@ -66,4 +66,12 @@ if var("public.kriz_karar_ver") and q("select count(*) from oyun.kriz_sablon") !
 if var("public.akis_tepki"):
     assert tanim("public.akis_tepki").count("on conflict do nothing") == 2
     ok("Beğen/beğenme çift dokunuşa dayanıklı")
+# 5) Meclis rehberi kalabalık Meclis'te de hızlı (önceden 426 vekilde ~15 sn sürüp zaman aşımına düşüyordu)
+mv = int(q("select count(*) from oyun.makamlar where tur='mv' and bit is null"))
+if mv >= 100:
+    import time
+    t0 = time.time(); r = qj("select public.meclis_rehber()", admin); sure = time.time() - t0
+    assert r["dolu"] == mv and len(r["iller"]) == 81, r["dolu"]
+    assert sure < 3, f"meclis_rehber {sure:.1f} sn ({mv} vekil)"
+    ok(f"Meclis rehberi {mv} vekilde {sure*1000:.0f} ms")
 print("oyuncu_incelemesi: tamam")
