@@ -159,8 +159,9 @@ window.sirketTekSirketEkrani=async function(id,tab){
            action('Fiyatı güncelle','sirketMerkezBolumFiyat('+id+','+b.id+')'):'')
         )).join('')+'</details>')).join(''):'<p class="alt">Bu şirkete ait başlayan inşaat bulunmuyor.</p>'));
   }else if(tab==='faaliyet'){
-    let t=null,error='';
-    try{t=await call('eko_ticaret_panel');}catch(e){error=e.message||String(e);}
+    let t=null,error='',npc=null;
+     try{t=await call('eko_ticaret_panel');}catch(e){error=e.message||String(e);}
+     try{npc=await call('npc_isletme_panel',{p_sirket:id});}catch(_){};
     const company=t?.sirketler?.find(x=>Number(x.id)===id);
     const stock=(t?.stok||[]).filter(x=>Number(x.sirket)===id);
     const production=(t?.uretim||[]).filter(x=>Number(x.sirket)===id);
@@ -193,7 +194,17 @@ window.sirketTekSirketEkrani=async function(id,tab){
      '<h3>Gerçekleşen satışlar</h3>'+
      (sales.length?sales.map(x=>item(safe(x.urun)+' · '+x.adet+' adet'+kv('Ciro',money(x.ciro))+
        kv('Net kâr',money(x.kar))+'<p class="alt">'+shortDate(x.zaman)+'</p>')).join(''):'<p class="alt">Henüz kayıtlı satış yok.</p>')+
-     action('Fiyat / kalite / rekabet yönetimi','sirketMerkezPazarAc('+id+')')+
+     ((npc?.urunler||[]).length?
+        '<h3>🛍️ İşletme ürünleri ve mağaza stoğu</h3><p class="sm-note">Şirket kasasıyla ürün al, satış fiyatını belirle. Oyun müşterileri stoktan otomatik satın alır.</p>'+
+        (npc.urunler||[]).map((u,j)=>item('<b>'+safe(u.ad)+'</b>'+kv('Stok',u.stok+' adet')+
+          kv('Alış fiyatı',money(u.alis))+kv('Satış fiyatı',money(u.fiyat))+
+          (manager?'<div class="alan"><label>Mal alım adedi</label><input id="sm_npc_adet_'+j+'" type="number" min="1" max="10000" step="1" value="1"></div>'+
+          action('Şirket kasasından mal al','sirketMerkezNpcIslem('+id+',\'al\','+safe(JSON.stringify(String(u.kod)))+','+j+')','altin')+
+          '<div class="alan"><label>Satış fiyatı</label><input id="sm_npc_fiyat_'+j+'" type="number" min=".01" step=".01" value="'+Number(u.fiyat)+'"></div>'+
+          action('Fiyatı değiştir','sirketMerkezNpcIslem('+id+',\'fiyat\','+safe(JSON.stringify(String(u.kod)))+','+j+')'):'')
+        )).join('')+'<h3>NPC satış özeti</h3>'+kv('Son 7 gün ciro',money(npc.son_7_gun?.ciro))+
+         kv('Satılan adet',npc.son_7_gun?.satilan||0):'')+
+       action('Fiyat / kalite / rekabet yönetimi','sirketMerkezPazarAc('+id+')')+
      action('İhaleler','ekranAc(ihaleEkrani)'));
   }
   iskelet(s.ad,html,{geri:true});
@@ -301,12 +312,28 @@ window.sirketMerkezTicaretYap=async function(id,eylem){
  catch(e){message(e);}
 };
 // Eski, genel şirket ekranlarından bu tekil yönetim paneline ulaş.
+window.sirketMerkezNpcIslem=async function(id,eylem,urun,index){
+ if(!['al','fiyat'].includes(eylem))return;
+ const p={p_eylem:eylem,p_sirket:Number(id),p_urun:String(urun)};
+ if(eylem==='al'){
+  const adet=Number(val('sm_npc_adet_'+index));
+  if(!Number.isSafeInteger(adet)||adet<1||adet>10000){toast('1-10.000 arasında adet gir.',true);return;}
+  p.p_adet=adet;
+  if(!await ask('Şirket kasasından mal al',adet+' adet ürün şirket kasasından alınacak. Onaylıyor musun?'))return;
+ }else{
+  const fiyat=Number(val('sm_npc_fiyat_'+index));
+  if(!Number.isFinite(fiyat)||fiyat<=0||Math.round(fiyat*100)/100!==fiyat){toast('Geçerli satış fiyatı gir.',true);return;}
+  p.p_fiyat=fiyat;
+ }
+ try{await call('npc_isletme_islem',p);toast(eylem==='al'?'Ürün stoğa alındı.':'Satış fiyatı güncellendi.');await openCompany(id,'faaliyet');}
+ catch(e){message(e);}
+};
 window.sirketYonetimEkrani=function(){return window.sirketlerimMerkezi();};
 window.sirketKasasiAc=function(id){return id?openCompany(id,'para'):window.sirketlerimMerkezi();};
 window.sirketPortfoyDetay=function(id){return openCompany(id&&typeof id==='object'?id.id:id,'genel');};
 // Eski portföy kutusunda herhangi bir yere dokunmak şirketi açsın.
 document.addEventListener('click',function(ev){
- if(ev.target.closest('.e3-karne-btn'))return;
+ if(ev.target.closest('button,a,input,select,textarea,label,summary,details'))return;
  const card=ev.target.closest('.so-firma');
  if(!card)return;
  const match=card.innerHTML.match(/sirketPortfoyDetay\((\d+)\)/);
