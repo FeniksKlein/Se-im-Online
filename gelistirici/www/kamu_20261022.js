@@ -176,6 +176,7 @@ window.icraMerkeziEkrani=async function(){
      row('İhale bitişi',new Date(h.son).toLocaleString('tr-TR'))+
     '<div class="alan"><label>Teklif (₺)</label><input id="ic_teklif_'+h.id+'" type="number" min="'+Math.ceil(num(h.deger)*.5)+'" value="'+Math.max(Math.ceil(num(h.deger)*.5),Math.ceil(num(h.teklif)*1.01))+'"></div>'+
     btn('Teminatı bloke et ve teklif ver','icraTeklif('+Number(h.id)+')','altin')+
+    (h.teklif_veren_benim?btn('Dosya kapandıysa teminat iadesi al','icraTemIade('+Number(h.id)+')'):'')+
     (Date.now()>=new Date(h.son).getTime()?btn('İhaleyi sonuçlandır','icraIhaleBitir('+Number(h.id)+')'):'')+
     '</div>';
   });
@@ -192,8 +193,8 @@ window.icraItiraz=async function(id){
  toast('İtiraz kaydedildi; haciz askıya alındı.');icraMerkeziEkrani();}catch(err){error(err);}
 };
 window.icraItirazKarar=async function(id,red){
- try{await rpc('icra_itiraz_karar',{p_id:id,p_ret:red,p_gerekce:document.getElementById('ic_karar_'+id).value});
- toast('İtiraz kararı işlendi.');icraMerkeziEkrani();}catch(err){error(err);}
+ try{const son=await rpc('icra_itiraz_karar',{p_id:id,p_ret:red,p_gerekce:document.getElementById('ic_karar_'+id).value});
+ toast(son.durum==='itiraz'?'Oy kaydedildi: kesin karar için aynı yönde iki yargıç oyu gerekli.':'İtiraz kararı kesinleşti.');icraMerkeziEkrani();}catch(err){error(err);}
 };
 window.icraVarlikSec=async function(id){
  baslik('Haczedilebilir Varlıklar');
@@ -229,5 +230,12 @@ window.icraTeklif=async function(id){
 };
 window.icraIhaleBitir=async function(id){
  try{await rpc('icra_ihale_sonuclandir',{p_haciz:id});toast('İhale sonuçlandırıldı.');icraMerkeziEkrani();}catch(err){error(err);}
+};
+window.icraTemIade=async function(id){
+ try{
+  if(!await onayla('Teminat iadesi','Borç tamamen ödenmiş veya vergi yükü nedeniyle geçersiz olmuşsa bloke ettiğin teklif tutarı iade edilir.','İade iste'))return;
+  const r=await rpc('icra_ihale_tem_iade',{p_haciz:id});
+  toast(money(r.iade)+' teminat iade edildi.');icraMerkeziEkrani();
+ }catch(err){error(err);}
 };
 })();
