@@ -13,11 +13,11 @@ async function act(k,v,msg,reload){
  else if(typeof reload==='number')await adliyeDosya(reload);
  else await adliyeEkrani();return result;}catch(err){error(err);return null;}
 }
-function islemButon(label,fn){return '<button class="btn ikinci" onclick="'+fn+'">'+label+'</button>'}
+function islemButon(label,fn){return '<button class="btn ikinci" onclick='+fn+'>'+label+'</button>'}
 function avukatKart(a){
  return '<div class="liste-satir"><div class="orta"><b>Av. '+h(a.kad)+'</b><div class="kucuk">'+h(a.burosu||'Bağımsız avukat')+' · '+Number(a.tamamlanan)+' sonuçlanan dava · '+Number(a.kazanilan)+' kazanılan</div><div class="kucuk">Başarı: '+(a.oran==null?'Henüz sonuçlanmış dava yok':'%'+h(a.oran))+'</div></div></div>';
 }
-function hukukCiz(s){
+function hukukCiz(s,primler){
  const a=s.akademi||{}, ruh=s.ruhsat||{};
  let z='<div class="kart"><h2>⚖️ Avukatlık ve Hukuk Büroları</h2><p class="alt">B modeli: 7 günlük hesap, 24 saatlik hukuk eğitimi, 20 soruluk sınav (en az 16 doğru), iki uygulamalı vaka ve kontenjan. Hukuki savunma sadece ruhsatlı, dosyaya vekâletli avukatlar tarafından sunulur. Taraflar yine kendi olgu beyanlarını verebilir.</p>';
  z+='<div class="kv"><span class="k">Aktif ruhsat / kontenjan</span><span class="v">'+s.aktif_avukat+' / '+s.kontenjan+'</span></div>';
@@ -44,6 +44,7 @@ function hukukCiz(s){
   z+='<p class="alt">Eğitimi, sınavı ve stajı tamamladın. Kontenjan varsa ruhsat bedeli cüzdanından tahsil edilir; doluysa bekleme listesine girersin.</p>'+islemButon('Baroya ruhsat başvurusu yap','"avukatRuhsat()"');
  }
  z+='</div>';
+ if((primler||[]).length)z+='<div class="kart"><h3>Dava kazanma primi hesaplarım</h3>'+(primler||[]).map(k=>'<div class="liste-satir"><div class="orta"><b>Dava #'+k.dava+' · '+money(k.prim)+' prim</b><div class="kucuk">Ödenen: '+money(k.odenen)+' · Kalan: '+money(k.kalan)+' · '+h(k.muvekkil)+'</div></div>'+(k.ben_avukatim&&k.kalan>0?'<button class="btn ikinci" onclick="avukatPrimTahsil('+k.id+')">Prim tahsil et</button>':'')+'</div>').join('')+'</div>'; 
  if(s.benim_burom)z+='<div class="kart"><h3>Hukuk bürom</h3><b>'+h(s.benim_burom.ad)+'</b>'+islemButon('Avukat davet et','"avukatDavet('+Number(s.benim_burom.id)+')"')+'</div>';
  z+='<div class="kart"><h3>Avukatlar ('+(s.avukatlar||[]).length+')</h3><p class="alt">Kazanma oranı, yalnız kesinleşmiş ve düşmemiş gerçek davalardan hesaplanır; bir sonraki davayı otomatik belirlemez.</p>'
  +(s.avukatlar||[]).map(avukatKart).join('')+(!(s.avukatlar||[]).length?'<p class="alt">Henüz ruhsatlı avukat yok.</p>':'')+'</div>';
@@ -55,7 +56,7 @@ function hukukCiz(s){
 const oncekiHtml=adliyeHtml;
 adliyeHtml=async function(){
  let eski=await oncekiHtml();
- try{const s=await RPC('avukat_durum');return hukukCiz(s)+eski;}
+ try{const [s,prim]=await Promise.all([RPC('avukat_durum'),RPC('avukat_primlerim').catch(()=>[])]);return hukukCiz(s,prim)+eski;}
  catch(err){return '<div class="kart"><h3>Avukatlık</h3><p class="alt">Avukatlık paneli yüklenemedi: '+h(err.message)+'</p></div>'+eski;}
 };
 window.avukatEgitim=()=>act('avukat_akademiye_katil',{},'Hukuk Akademisine kaydoldun; 24 saatlik eğitim başladı.');
@@ -115,7 +116,8 @@ function davaHukukHtml(data,davaId,ruhsat){
  if(ruhsat)html+='<button class="btn altin" onclick="avukatTeklifModal('+davaId+')">Bu davaya avukatlık teklifi ver</button>';
  (data.vekaletler||[]).forEach(v=>{html+='<div class="liste-satir"><div class="orta"><b>'+h(v.avukat)+' · '+h(v.taraf==='davaci'?'Davacı vekili':'Davalı vekili')+'</b><div class="kucuk">'+money(v.ucret)+' · '+(v.aktif?'Aktif vekâlet':'Sona erdi')+'</div></div>'+(v.aktif&&v.benim?'<button class="btn ikinci" onclick="avukatVekaletIptal('+v.id+','+davaId+')">Vekâleti bitir</button>':'')+'</div>';});
  (data.teklifler||[]).forEach(t=>{html+='<div class="liste-satir"><div class="orta"><b>'+h(t.avukat)+' · '+h(t.taraf==='davaci'?'Davacı tarafı':'Davalı tarafı')+'</b><div class="kucuk">Teklif: '+money(t.tutar)+' · Başarı primi: %'+h(t.prim)+' · '+h(t.durum)+'</div>'+(t.aciklama?'<p class="kucuk">'+h(t.aciklama)+'</p>':'')+'</div>'+(t.durum==='bekliyor'&&t.cevaplayabilirim?'<button class="btn altin" onclick="avukatTeklifKarar('+t.id+',true,'+davaId+')">Kabul et</button><button class="btn ikinci" onclick="avukatKarsiTeklifModal('+t.id+','+davaId+')">Pazarlık</button><button class="btn ikinci" onclick="avukatTeklifKarar('+t.id+',false,'+davaId+')">Reddet</button>':'')+'</div>';});
- if((data.vekaletler||[]).some(v=>v.aktif&&v.benim&&v.avukat))html+='<button class="btn altin" onclick="avukatSavunmaModal('+davaId+')">Vekil sıfatıyla hukuki savunma ver</button>';
+ (data.pazarlik||[]).forEach(z=>{html+='<div class="liste-satir"><div class="orta"><b>Karşı teklif: '+h(z.avukat)+'</b><div class="kucuk">'+money(z.tutar)+' · %'+h(z.prim)+' prim · '+h(z.durum)+'</div></div>'+(z.avukat_miyim&&z.durum==='bekliyor'?'<button class="btn altin" onclick="avukatPazarlikKarar('+z.teklif_id+',true,'+davaId+')">Kabul et</button><button class="btn ikinci" onclick="avukatPazarlikKarar('+z.teklif_id+',false,'+davaId+')">Reddet</button>':'')+'</div>';});
+ if((data.vekaletler||[]).some(v=>v.aktif&&v.avukat_miyim))html+='<button class="btn altin" onclick="avukatSavunmaModal('+davaId+')">Vekil sıfatıyla hukuki savunma ver</button>';
  return html+'</div>';
 }
 const oncekiDosya=adliyeDosya;
@@ -124,7 +126,8 @@ adliyeDosya=async function(id){
  try{
   const root=document.getElementById('icerik');
   if(!root||!root.textContent.includes('Dava')&& !root.textContent.includes('#'+id))return;
-  const [x,s]=await Promise.all([RPC('avukat_dava_durum',{p_dava:id}),RPC('avukat_durum')]);
+  const [x,s,pazarlik]=await Promise.all([RPC('avukat_dava_durum',{p_dava:id}),RPC('avukat_durum'),RPC('avukat_pazarlik_liste',{p_dava:id}).catch(()=>[])]);
+  x.pazarlik=pazarlik;
   if(document.getElementById('icerik')!==root)return;
   const host=document.createElement('div');host.innerHTML=davaHukukHtml(x,id,s.ruhsat?.durum==='aktif');
   root.insertAdjacentElement('afterbegin',host);
@@ -150,6 +153,8 @@ window.avukatSavunmaModal=id=>{
  adlFormBaslik(m,'Dava #'+id+' · Avukat savunması');
  m.querySelector('#hukSavGonder').onclick=async()=>{try{await RPC('avukat_savunma_ver',{p_dava:id,p_metin:m.querySelector('#hukSavunma').value});modalKapat();toast('Avukat savunması mahkemeye sunuldu.');await adliyeDosya(id);}catch(err){error(err);}};
 };
+window.avukatPrimTahsil=async id=>{try{const r=await RPC('avukat_prim_tahsil',{p_kayit:id});toast('Prim tahsil: '+money(r.tahsil));await adliyeEkrani();}catch(err){error(err);}};
+window.avukatPazarlikKarar=async(id,kabul,dava)=>{try{await RPC('avukat_pazarlik_karar',{p_teklif:id,p_kabul:kabul});toast(kabul?'Karşı teklifi kabul ettin; müvekkil sözleşmeyi imzalayabilir.':'Karşı teklif reddedildi.');await adliyeDosya(dava);}catch(err){error(err);}};
 window.avukatKarsiTeklifModal=(id,dava)=>{
  const m=modal('<div class="alan"><label>Karşı teklif ücreti (₺)</label><input id="hukKarsiTutar" type="number" min="0" step="1"></div><div class="alan"><label>Başarı primi (%)</label><input id="hukKarsiPrim" type="number" min="0" max="30" step="1" value="0"></div><button class="btn altin" id="hukKarsiGonder">Karşı teklif gönder</button>');
  adlFormBaslik(m,'Avukatla ücret pazarlığı');
