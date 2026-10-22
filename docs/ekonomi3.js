@@ -264,6 +264,7 @@
         <div class="kv"><span>Yönetici (CEO)</span><b>${e(k.yonetici || k.sahip || "—")}${k.yonetici ? "" : " · en büyük ortak"}</b></div>
         ${k.tur !== "as" ? `<p class="e3-not">Halka arz ve borsada işlem için anonim şirket olmak gerekir. Dönüşüm için en az ${tl(k.as_esik)} sermaye ve ${tl(k.as_harc)} ticaret sicili tescil harcı gerekir.</p>
           ${yon ? (n(k.sermaye) >= n(k.as_esik) ? `<button class="btn altin" onclick="e3AsDonustur(${+k.id},${n(k.as_harc)})">Anonim şirkete dönüştür</button>` : `<p class="kucuk">Sermaye yetersiz: önce Şirketlerim ekranından sermaye artır.</p>`) : ""}` : ""}
+        ${k.aktif && typeof halkaArzEkrani === "function" ? `<button class="btn ikinci" onclick="ekranAc(()=>halkaArzEkrani(${+k.id}))">${k.halka_acik ? "Halka arz · ikincil arz ve geçmiş" : "Halka arz · SPK başvurusu"}</button>` : ""}
       </div>
 
       <div class="kart"><h2>Müşterilerin ve tedarikçilerin</h2><p class="alt">Son 7 günde şirketler arası ticaret.</p>

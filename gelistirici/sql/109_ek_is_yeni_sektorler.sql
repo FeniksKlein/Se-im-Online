@@ -35,7 +35,9 @@ alter table oyun.sirketler drop constraint if exists sirketler_sektor_check;
 alter table oyun.sirketler add constraint sirketler_sektor_check check (sektor in
  ('tarim','sanayi','teknoloji','ticaret','insaat','medya','banka',
   'ozel_okul','ozel_hastane','market','ulasim','enerji','ajans',
-  'turizm','lojistik','oto_servis','danismanlik','e_ticaret','geri_donusum'));
+  'turizm','lojistik','oto_servis','danismanlik','e_ticaret','geri_donusum',
+  -- 22.10.2026: NPC stoklu ticaret işletmeleri (117_belediye_npc_devir) listeye eklenmedigi icin kurulamiyordu.
+  'akaryakit','yapi_market','elektronik_magaza','tekstil_magaza','mobilya_magaza','oto_galeri'));
 
 create table if not exists oyun.ek_is_katalog(
  kod text primary key,
