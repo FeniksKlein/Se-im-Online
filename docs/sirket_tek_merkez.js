@@ -304,17 +304,21 @@ function smInsaatTeklifEkrani(id,d){
  const target=get('sm_yapi_teklif');
  if(!target)return;
  if(!d.gecerli){target.innerHTML=item('<p class="alt" style="color:var(--warn,#efb25b)">'+safe(d.hata||'İmar kapasitesine uygun daire ve dükkân sayıları seç.')+'</p>');return;}
- target.innerHTML=item('<h4>🏗️ İnşaat maliyeti ve finansman</h4>'+
+ target.innerHTML=item('<h4>🏗️ İnşaat maliyeti, ruhsat ve finansman</h4>'+
    kv('Daire yapım gideri',money(d.daire_maliyeti))+
    kv('Dükkân yapım gideri',money(d.dukkan_maliyeti))+
    kv('Toplam inşaat maliyeti',money(d.toplam_maliyet))+
+   kv((d.belediye||'Belediye')+' ruhsat harcı',money(d.ruhsat_harci))+
+   kv('İnşaat + ruhsat toplam ödeme',money(d.toplam_odeme))+
    kv('Şirket kasasındaki para',money(d.mevcut_kasa))+
    (d.uygun?kv('İnşaattan sonra kalan para',money(d.kalan_kasa)):
-    '<p class="sm-note" style="color:var(--warn,#efb25b)"><b>Kasa yetersiz. Eksik tutar: '+money(d.eksik)+'</b></p>'+
+    '<p class="sm-note" style="color:var(--warn,#efb25b)"><b>İnşaat ve ruhsat için kasa yetersiz. Eksik: '+money(d.eksik)+'</b></p>'+
     action('Eksik tutar için şirkete para yatır','sirketTekSirketEkrani('+id+',\'para\')','altin'))+
    kv('Tahmini yapım süresi',d.sure_saat+' saat')+
    '<p class="sm-note">Arsa için ödenmiş '+money(d.arsa_alis_bedeli)+
-   ' tutarındaki arsa bedeli tekrar tahsil edilmez; yalnızca yukarıdaki yapım bedeli kesilir.</p>');
+   ' tekrar ödenmez. <b>Onayla ve inşaata başla</b> dediğinde ruhsat harcı şirket kasasından '+
+   safe(d.belediye||'ilgili belediye')+' Belediyesi kasasına aktarılır, inşaat otomatik başlar. '+
+   'Ruhsat Merkezi üzerinden ayrıca başvuru yapman gerekmez.</p>');
 }
 window.sirketMerkezInsaatTeklif=async function(id){
  const target=get('sm_yapi_teklif');if(!target)return null;
@@ -322,9 +326,9 @@ window.sirketMerkezInsaatTeklif=async function(id){
  if(!smInsaatSecimGecerli(x)){
   target.innerHTML='<p class="alt">Maliyet için en az 1 daire veya dükkân seç; adetler sıfır ya da pozitif tam sayı olmalı.</p>';return null;
  }
- target.innerHTML='<p class="alt">İnşaat maliyeti ve kasa karşılaştırılıyor…</p>';
+ target.innerHTML='<p class="alt">İnşaat ve ruhsat maliyeti hesaplanıyor…</p>';
  try{
-  const d=await call('sirket_insaat_teklif',{p_sirket:id,p_arsa:x.arsa,p_daire:x.daire,p_dukkan:x.dukkan});
+  const d=await call('sirket_insaat_ruhsat_teklif',{p_sirket:id,p_arsa:x.arsa,p_daire:x.daire,p_dukkan:x.dukkan});
   if(seq!==smInsaatTeklifSeri||get('sm_yapi_teklif')!==target)return null;
   smInsaatTeklifEkrani(id,d);return d;
  }catch(e){
@@ -342,26 +346,36 @@ window.sirketMerkezInsaatBaslat=async function(id){
  if(btn?.disabled)return;
  if(btn)btn.disabled=true;
  try{
-  // Hesap ve kasa işlem anında tekrar sunucudan okunur.
-  const d=await call('sirket_insaat_teklif',{p_sirket:id,p_arsa:x.arsa,p_daire:x.daire,p_dukkan:x.dukkan});
+  // Değişen tarifeyi ve kasayı işlemin öncesinde tekrar kontrol et.
+  const d=await call('sirket_insaat_ruhsat_teklif',{p_sirket:id,p_arsa:x.arsa,p_daire:x.daire,p_dukkan:x.dukkan});
   smInsaatTeklifEkrani(id,d);
   if(!d.gecerli){toast(d.hata||'Arsanın imar kapasitesi aşılıyor.',true);return;}
   if(!d.uygun){
-   toast('İnşaat maliyeti '+money(d.toplam_maliyet)+'. Şirket kasasında '+money(d.mevcut_kasa)+
-    ' var; '+money(d.eksik)+' eksik. Kasa / Sermaye menüsünden para yatır.',true);
+   toast('İnşaat '+money(d.toplam_maliyet)+' + ruhsat '+money(d.ruhsat_harci)+
+    '. Toplam '+money(d.toplam_odeme)+'; şirket kasasında '+money(d.mevcut_kasa)+
+    ' var, '+money(d.eksik)+' eksik.',true);
    return;
   }
   if(Number(val('sm_yapi_arsa'))!==x.arsa||Number(val('sm_yapi_daire'))!==x.daire||
     Number(val('sm_yapi_dukkan'))!==x.dukkan||val('sm_yapi_ad').trim()!==ad){
    toast('Proje bilgileri değişti. Yeni maliyeti kontrol et.',true);return;
   }
-  if(!await ask('İnşaatı başlat',
-   ad+' · '+x.daire+' daire, '+x.dukkan+' dükkân. Toplam yapım bedeli '+money(d.toplam_maliyet)+
-   ' şirket kasasından kesilecek. Kasada '+money(d.mevcut_kasa)+
-   ' var, ödeme sonrası '+money(d.kalan_kasa)+' kalacak. İnşaatı başlatmayı onaylıyor musun?'))return;
-  const sonuc=await call('eko_emlak_islem',{p_eylem:'insaata_basla',
-    p_veri:{arsa:x.arsa,ad:ad,daire:x.daire,dukkan:x.dukkan}});
-  toast('İnşaat projesi başlatıldı. Tahsil edilen: '+money(sonuc.maliyet));await openCompany(id,'insaat');
+  const messageText=ad+' · '+x.daire+' daire, '+x.dukkan+' dükkân\n'+
+   'İnşaat maliyeti: '+money(d.toplam_maliyet)+'\n'+
+   safe(d.belediye||'Belediye')+' ruhsat harcı: '+money(d.ruhsat_harci)+'\n'+
+   'Toplam şirket kasasından çıkacak: '+money(d.toplam_odeme)+'\n'+
+   'Kasada kalan: '+money(d.kalan_kasa)+'\n'+
+   'Ruhsat harcı belediye kasasına aktarılacak ve inşaat otomatik başlayacak. Onaylıyor musun?';
+  const ok=typeof onayla==='function'
+    ?await onayla('Ruhsatı öde ve inşaata başla',messageText,'Onayla ve inşaata başla')
+    :confirm(messageText);
+  if(!ok)return;
+  const sonuc=await call('sirket_insaat_ruhsatli_baslat',{
+    p_sirket:id,p_arsa:x.arsa,p_ad:ad,p_daire:x.daire,p_dukkan:x.dukkan,
+    p_beklenen_maliyet:Number(d.toplam_maliyet),p_beklenen_ruhsat:Number(d.ruhsat_harci)
+  });
+  toast('İnşaat başladı. '+money(sonuc.ruhsat_harci)+' ruhsat harcı '+safe(sonuc.belediye||'ilgili')+' Belediyesi kasasına aktarıldı.');
+  await openCompany(id,'insaat');
  }catch(e){message(e);}
  finally{if(btn)btn.disabled=false;}
 };
