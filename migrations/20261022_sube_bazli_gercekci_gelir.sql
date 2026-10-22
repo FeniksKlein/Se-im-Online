@@ -50,7 +50,7 @@ begin
       select 1 from oyun.sirket_il_subeleri bs
       where bs.sirket_id=s2.id and bs.il_id=b.il_id and bs.acilis<=v_t));
   v_pay:=v_ben/(k.dis*(0.85+least(greatest(
-      (select kasa from oyun.bakanlik_kasa where kod=k.bakanlik),0),60)/100.0)
+      coalesce((select kasa from oyun.bakanlik_kasa where kod=k.bakanlik),20),0),60)/100.0)
       +v_rakip+v_ben);
   v_talep:=v_pazar*v_pay;
   -- Haftalik bolgesel kapasite: sube yatirimi ve sirket sermayesiyle artar.
