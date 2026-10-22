@@ -78,7 +78,8 @@ async function uzaktanKontrolAdminEkrani(){
    '<div class="kv"><span>Kontrol revizyonu</span><b>'+safe(durum.rev)+'</b></div>'+
    '<div class="kv"><span>Son işlem</span><b>'+safe(durum.tur)+'</b></div>'+
    '<div class="kv"><span>Canlı bağlantı</span><b>'+safe(S.baglandi?"Etkin (yedek sorgulama açık)":"Yedek sorgulama açık")+'</b></div>'+
-   '<button class="btn ikinci" onclick="uzaktanKontrolYenile()">Sunucudan yenile</button></section>'+
+   '<button class="btn ikinci" onclick="uzaktanKontrolYenile()">Sunucudan yenile</button>'+
+   '<button class="btn altin" onclick="uzaktanKontrolYayin()">📣 Tüm açık telefonlara yenileme sinyali gönder</button></section>'+
    v.map(m=>'<section class="kart"><h3>'+safe(m.ad)+'</h3><p class="alt">'+safe(m.aciklama)+'</p>'+
    '<p class="kucuk">Durum: <b>'+(m.acik?"Açık":"Kapalı")+'</b></p>'+
    '<button class="btn '+(m.acik?"ikinci":"altin")+'" onclick="uzaktanModulDegistir(\''+String(m.kod).replace(/[^a-z0-9_]/g,"")+'\','+(!m.acik)+')">'+
@@ -99,6 +100,18 @@ async function uzaktanModulDegistir(kod,acik){
   S.rev=null;await guncelle(true);await uzaktanKontrolAdminEkrani();
  }catch(err){if(typeof toast==="function")toast(String(err.message||err),true);}
 }
+async function uzaktanKontrolYayin(){
+ if(typeof onayla==="function"&&!await onayla("Canlı oyun yenileme",
+   "Sunucu, bağlı oyunculara oyun verilerini yeniden okuma sinyali gönderecek. Bu işlem hesaplara para veya makam vermez.",
+   "Yenileme sinyali gönder"))return;
+ try{
+  await API.rpc("uzaktan_kontrol_yayin");
+  if(typeof toast==="function")toast("Bağlı cihazlara yenileme sinyali gönderildi.");
+  await guncelle(true);
+  await uzaktanKontrolAdminEkrani();
+ }catch(err){if(typeof toast==="function")toast(String(err.message||err),true);}
+}
+window.uzaktanKontrolYayin=uzaktanKontrolYayin;
 window.uzaktanKontrolAdminEkrani=uzaktanKontrolAdminEkrani;
 window.uzaktanModulDegistir=uzaktanModulDegistir;
 // Mevcut yönetici paneli içinde erişilebilir, ancak moderatöre açılmaz.
