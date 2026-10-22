@@ -100,7 +100,7 @@ CREATE OR REPLACE FUNCTION oyun.cek_yetkili(p_user uuid, p_sirket bigint)
 AS $function$
  select case when p_sirket is null then p_user=auth.uid()
  else p_user is null and oyun.sirket_yonetici_mi(p_sirket,auth.uid()) end
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION oyun.cek_takip_tazminat()
  RETURNS trigger
@@ -116,7 +116,7 @@ begin
   new.durum:='baslatildi';
  end if;
  return new;
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION oyun.cek_odeme_aktar(p_id bigint, p_miktar numeric, p_kaynak text)
  RETURNS numeric
@@ -163,7 +163,7 @@ begin
   if v_odenecek>=v_kalan then update oyun.cek_takip set durum='odendi' where cek_id=c.id and durum='baslatildi';end if;
  end if;
  return v_odenecek;
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.cek_panel()
  RETURNS jsonb
@@ -197,7 +197,7 @@ begin
     from oyun.cekler c where c.duzenleyen=u or (c.borclu_sirket is not null and oyun.sirket_yonetici_mi(c.borclu_sirket,u))
     order by c.id desc limit 100) z),'[]'::jsonb)
  );
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.cek_islem(p_eylem text, p_id bigint DEFAULT NULL::bigint, p_veri jsonb DEFAULT '{}'::jsonb)
  RETURNS jsonb
@@ -274,7 +274,7 @@ begin
    update oyun.cekler set durum='iade' where id=c.id;
    return jsonb_build_object('tamam',true);
  elsif p_eylem='erken' then
-   if not (c.duzenleyen=u or (c.borclu_sirket is not null and oyun.sirket_yonetici_mi(c.borclu_sirket,u))) then raise exception 'Yalnızca çeki düzenleyen ödeme yapabilir.';end if;
+   if not ((c.borclu_sirket is null and c.duzenleyen=u) or (c.borclu_sirket is not null and oyun.sirket_yonetici_mi(c.borclu_sirket,u))) then raise exception 'Yalnızca çeki düzenleyen ödeme yapabilir.';end if;
    v_tutar:=coalesce(nullif(p_veri->>'tutar','')::numeric,c.tutar-c.odenen);
    if v_tutar<=0 or v_tutar<>round(v_tutar,2) or v_tutar>c.tutar-c.odenen then raise exception 'Ödeme tutarı geçersiz.';end if;
    v_odenen:=oyun.cek_odeme_aktar(c.id,v_tutar,'erken');
@@ -305,7 +305,7 @@ begin
    return jsonb_build_object('tamam',true,'takip','baslatildi');
  end if;
  raise exception 'Tanımsız çek işlemi.';
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.cek_hedef_ara(p_ara text)
  RETURNS jsonb
@@ -323,7 +323,7 @@ begin
   'sirketler',coalesce((select jsonb_agg(jsonb_build_object('ad',v.ad,'id',v.id))
    from (select id,ad from oyun.sirketler where aktif and ad ilike '%'||replace(replace(q,'%','\%'),'_','\_')||'%' order by ad limit 12)v),'[]'::jsonb)
  );
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.cek_ek_panel()
  RETURNS jsonb
@@ -353,7 +353,7 @@ begin
      join oyun.sirketler s on s.id=b.banka_id
      where b.durum='bekliyor' and (b.basvuran=u or oyun.sirket_yonetici_mi(b.banka_id,u))) z),'[]'::jsonb)
  );
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.cek_tazminat_ode(p_cek bigint, p_tutar numeric)
  RETURNS jsonb
@@ -365,7 +365,7 @@ declare c oyun.cekler; tak oyun.cek_takip; u uuid:=auth.uid(); t timestamptz:=oy
 begin
  if u is null then raise exception 'Oturum gerekli.';end if;
  select * into c from oyun.cekler where id=p_cek for update;
- if c.id is null or not(c.duzenleyen=u or (c.borclu_sirket is not null and oyun.sirket_yonetici_mi(c.borclu_sirket,u)))
+ if c.id is null or not((c.borclu_sirket is null and c.duzenleyen=u) or (c.borclu_sirket is not null and oyun.sirket_yonetici_mi(c.borclu_sirket,u)))
   then raise exception 'Çeki düzenleyen veya şirket yöneticisi olmalısın.';end if;
  select * into tak from oyun.cek_takip where cek_id=c.id for update;
  if tak.id is null then raise exception 'Ödenmemiş çek için tazminat talebi yok.';end if;
@@ -392,7 +392,7 @@ begin
   durum=case when tazminat_kalan-p_tutar<=0 and c.tutar<=c.odenen then 'odendi' else 'baslatildi' end
   where id=tak.id;
  return jsonb_build_object('odenen',p_tutar,'kalan',tak.tazminat_kalan-p_tutar);
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.cek_iskonto_islem(p_eylem text, p_id bigint, p_banka bigint DEFAULT NULL::bigint)
  RETURNS jsonb
@@ -467,7 +467,7 @@ begin
  insert into oyun.bildirimler(user_id,zaman,metin)
    values(o.basvuran,t,'✅ Çek # '||c.id||' iskonto edildi; '||o.teklif_tutar||' TL hesaba aktarıldı.');
  return jsonb_build_object('tamam',true,'cek',c.id,'nakit',o.teklif_tutar);
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.cek_toptan_panel()
  RETURNS jsonb
@@ -490,7 +490,7 @@ begin
    where oyun.sirket_yonetici_mi(a.magaza_id,u)
       or oyun.sirket_yonetici_mi(a.uretici_id,u)
    order by a.id desc limit 60) r),'[]'::jsonb);
-end $function$
+end $function$;
 
 CREATE OR REPLACE FUNCTION public.cek_toptan_islem(p_eylem text, p_veri jsonb DEFAULT '{}'::jsonb)
  RETURNS jsonb
@@ -626,7 +626,7 @@ begin
   values(x.alici_yetkili,t,'✅ Çekli toptan alım #'||x.id||' kabul edildi. Çek # '||checknum||
     ' düzenlendi, mallar stokta. '||num||' TL ödemeyi çek tarihinde karşıla.');
  return jsonb_build_object('tamam',true,'cek_id',checknum,'tutar',num,'urun',x.urun,'adet',x.adet);
-end $function$
+end $function$;
 
 drop trigger if exists tr_cek_takip_tazminat on oyun.cek_takip;
 create trigger tr_cek_takip_tazminat before insert or update on oyun.cek_takip
