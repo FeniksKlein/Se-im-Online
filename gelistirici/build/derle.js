@@ -20,6 +20,7 @@ if (!html.includes('cbYrdDosyaAc')) html=html.replace('</body>',()=>'<script>'+f
 // Yeni ekonomi arayuzunu tek dosyalik iOS/Android paketine gom; internetten ek JS istemesin.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','uc_ekonomi_yeni.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','ihale_ilan_panosu.js'),'utf8')+'</script></body>');
+html=html.replace('<script src="kamu_20261022.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kamu_20261022.js'),'utf8')+'</script>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
