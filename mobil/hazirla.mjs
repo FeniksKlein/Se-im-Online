@@ -30,6 +30,8 @@ if (fs.existsSync(and)) {
       m = m.replace(/(<\/manifest>)/, `    <uses-permission android:name="android.permission.INTERNET" />\n$1`);
     // RevenueCat: banka doğrulaması için uygulama arka plana geçince satın alma iptal olmasın
     m = m.replace(/android:launchMode="singleTask"/g, 'android:launchMode="singleTop"');
+    // Oyun dikey ekran için tasarlandı
+    if (!/android:screenOrientation=/.test(m)) m = m.replace(/(<activity\b)/, '$1 android:screenOrientation="portrait"');
     return m;
   });
   const gradle = path.join(and, "app/build.gradle");
@@ -45,7 +47,7 @@ if (fs.existsSync(ios)) {
   const plist = path.join(ios, "App/Info.plist");
   const anahtarSil = (p, k) => p.replace(new RegExp(`\\s*<key>${k}</key>\\s*(<string>[^<]*</string>|<true/>|<false/>|<array>[\\s\\S]*?</array>)`, "g"), "");
   degistir(plist, (p) => {
-    for (const k of ["GADApplicationIdentifier", "NSUserTrackingUsageDescription", "SKAdNetworkItems", "ITSAppUsesNonExemptEncryption", "CFBundleDisplayName"]) p = anahtarSil(p, k);
+    for (const k of ["GADApplicationIdentifier", "NSUserTrackingUsageDescription", "SKAdNetworkItems", "ITSAppUsesNonExemptEncryption", "CFBundleDisplayName", "UISupportedInterfaceOrientations", "UISupportedInterfaceOrientations~ipad"]) p = anahtarSil(p, k);
     const ek = `
 	<key>CFBundleDisplayName</key>
 	<string>Seçim Online</string>
@@ -55,6 +57,10 @@ if (fs.existsSync(ios)) {
 	<string>${xmlKac(ayar.izlemeAciklamasi)}</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict><key>SKAdNetworkIdentifier</key><string>cstr6suwn9.skadnetwork</string></dict>
@@ -62,6 +68,8 @@ if (fs.existsSync(ios)) {
     return p.replace(/<dict>/, "<dict>" + ek);
   });
   const pbx = path.join(ios, "App.xcodeproj/project.pbxproj");
-  degistir(pbx, (x) => x.replace(/MARKETING_VERSION = [^;]+;/g, `MARKETING_VERSION = ${surumAdi};`).replace(/CURRENT_PROJECT_VERSION = [^;]+;/g, `CURRENT_PROJECT_VERSION = ${surumKodu};`));
+  // Yalnız iPhone (iPad ekran görüntüsü zorunluluğu olmasın), sürüm numaraları
+  degistir(pbx, (x) => x.replace(/MARKETING_VERSION = [^;]+;/g, `MARKETING_VERSION = ${surumAdi};`).replace(/CURRENT_PROJECT_VERSION = [^;]+;/g, `CURRENT_PROJECT_VERSION = ${surumKodu};`)
+    .replace(/TARGETED_DEVICE_FAMILY = [^;]+;/g, "TARGETED_DEVICE_FAMILY = 1;"));
   console.log(`iOS hazır: ${surumAdi} (${surumKodu}) · AdMob ${admobIos}${testMi(admobIos) ? " [TEST KİMLİĞİ]" : ""}`);
 }
