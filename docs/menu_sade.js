@@ -111,6 +111,13 @@
     return ucLoaderPromise.then(()=>window.ucEkonomiEkrani(which)).catch(err=>{ucLoaderPromise=null;toast(err.message,true);});
   };
 
+  // Always show insurance entry; fall back gracefully if an optional module failed to load.
+  window.msSigortaAc=function(){
+    if(typeof window.sigortaIsletmeEkrani==="function")return window.sigortaIsletmeEkrani();
+    if(typeof window.isDunyasiEkrani==="function")return window.isDunyasiEkrani();
+    toast("Sigorta ekranı yüklenemedi. Sayfayı yenileyip tekrar dene.",true);
+  };
+
   /* ---------------- Ekonomi sekmesi ---------------- */
   function ekonomiEkrani(){
     const cz = D.durum && D.durum.profil && D.durum.profil.cuzdan;
@@ -119,6 +126,11 @@
         <div class="ne">Cüzdanın</div>
         <div class="para" style="font-size:34px;margin-top:2px">${cz ? tlYaz(cz.para) : "—"}</div>
         <div class="kucuk" style="margin-top:6px">Şirketler, yatırımlar, bankalar ve emlak tek yerde.</div>
+      </section>
+      <section class="kart" style="margin-bottom:12px;border-color:#a995ff77">
+        <h3>🛡️ Yeni: İşletme sigortası</h3>
+        <p class="alt">Yangın, su baskını, hırsızlık ve arızadan kaynaklanan oyun içi şirket zararını poliçeyle karşıla. Hasar riski 25 Ekim 2026'dan önce başlamayacak; ilk sigortacı kurulduktan sonra da 72 saat hazırlık süresi var.</p>
+        <button type="button" class="btn ikinci" onclick="msSigortaAc()">Poliçe ve hasar merkezini aç</button>
       </section>
       ${grup("Şirket ve iş", "Kur, yönet, yarış", [
         satir("sirket", "Şirketlerim ve şirket kur", "Ortak olduğun şirketleri yönet, yeni şirket kur", "ekranAc(sirketYonetimEkrani)", "sirketYonetimEkrani"),
@@ -130,7 +142,7 @@
         satir("ruhsat", "Yatırım Ruhsat Merkezi", "Şirket, fabrika, mağaza, inşaat ruhsatlarına başvur; belediye onaylarını takip et", "msRuhsatMerkeziAc()", "msRuhsatMerkeziAc"),
         satir("dunya", "🏭 Şirketler arası ticaret", "Fabrikadan mağazaya teklifli ve vergili sipariş", "ekranAc(kamuToptanEkrani)", "kamuToptanEkrani"),
         satir("dunya", "İş dünyası", "Üretim, mağaza, inşaat, sigorta, franchise, birleşme", "ekranAc(isDunyasiEkrani)", "isDunyasiEkrani"),
-        satir("dunya", "🛡️ Sigorta ve risk merkezi", "Şirket poliçesi, hasar ve tazminat kayıtları", "sigortaIsletmeEkrani()", null),
+        satir("dunya", "🛡️ Sigorta ve risk merkezi", "Şirket poliçesi, hasar ve tazminat kayıtları", "msSigortaAc()", "msSigortaAc"),
         satir("yaris", "Rekabetçi şirketler", "Okul, hastane, market, ulaşım, enerji; fiyat ve kalite", "ekranAc(pazarMerkezEkrani)", "pazarMerkezEkrani"),
         satir("ihale", "📢 İhale İlan Panosu", "Tüm belediye hizmet ve kamu yapım ilanlarını gör, şirketinle teklif ver", "ekranAc(msIhaleMerkeziAc)", "msIhaleMerkeziAc"),
         satir("ajans", "Reklam ve anket ajansları", "Kampanya reklamı, kamuoyu araştırması", "ekranAc(ajansMerkezEkrani)", "ajansMerkezEkrani"),
