@@ -489,7 +489,8 @@ window.sirketTekSirketEkrani=async function(id,tab){
      (store&&manager?'<h3>Mal satın al / Toptan tedarik</h3>'+
       '<div class="alan"><label>Satıcı ve ürün</label><select id="sm_satici">'+vendors.map((v,k)=>'<option value="'+k+'">'+safe(v.ad)+' · '+safe(v.urun)+' · '+v.adet+' adet · '+money(v.fiyat)+'/adet</option>').join('')+'</select></div>'+
       '<div class="alan"><label>Alınacak adet</label><input id="sm_adet" type="number" min="1" step="1" value="1"></div>'+
-      (vendors.length?action('Şirket kasasıyla mal al','sirketMerkezTicaretYap('+id+',\'toptan\')','altin'):'<p class="alt">Şu an stoklu tedarikçi bulunmuyor.</p>'):'')+
+      (vendors.length?(action('Şirket kasasıyla mal al','sirketMerkezTicaretYap('+id+',\'toptan\')','altin')+
+        action('🧾 Çekle mal al · satıcıya teklif gönder','cekToptanBasvuru('+id+')')):'<p class="alt">Şu an stoklu tedarikçi bulunmuyor.</p>'):'')+
      '<h3>Üretim emirleri</h3>'+
      (production.length?production.slice(0,8).map(p=>item(safe(p.urun)+' · '+p.adet+' adet'+
        kv('Durum',p.tamam?'Tamamlandı':p.hazir?'Hazır':'Üretimde')+
@@ -670,6 +671,6 @@ document.addEventListener('click',function(ev){
 
 ;(function(){
  if(document.querySelector('script[data-so-cek]'))return;
- var s=document.createElement('script');s.src='cek_sistemi.js?v=20261023a';s.setAttribute('data-so-cek','1');
+ var s=document.createElement('script');s.src='cek_sistemi.js?v=20261023b';s.setAttribute('data-so-cek','1');
  document.head.appendChild(s);
 })();
