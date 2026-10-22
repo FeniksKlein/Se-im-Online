@@ -630,3 +630,14 @@ window.tcFactoryPermit=factoryWithPermit;
 window.tcMarketPermit=marketWithPermit;
 window.tcKitchen=kitchenPrepare;
 })();
+
+/* Sigorta ve doğal afetler canlı ekranı */
+(function(){
+ if(window.SIGORTA_AFET_YUKLENIYOR)return;
+ window.SIGORTA_AFET_YUKLENIYOR=true;
+ const s=document.createElement("script");
+ s.src="sigorta_afet.js?v=20261022-8";
+ s.async=false;
+ s.onerror=()=>{window.SIGORTA_AFET_YUKLENIYOR=false;console.warn("Sigorta afet modülü yüklenemedi.");};
+ document.body.appendChild(s);
+})();

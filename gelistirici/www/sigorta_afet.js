@@ -120,3 +120,28 @@ window.sigortaAfetEkrani=ac;
 window.sigortaMulkPoliceAc=poliModal;
 window.sigortaMulkOnarAc=onarModal;
 })();
+
+
+/* Sigorta menüsünden afet sigortasına geçiş; eski menüler değişmeden kalır. */
+(function(){
+ const previous=window.sigortaIsletmeEkrani;
+ if(typeof previous!=="function" || previous._sigAfetBaglandi)return;
+ async function withAfet(){
+  const result=await previous.apply(this,arguments);
+  try{
+   const header=Array.from(document.querySelectorAll("h2")).find(x=>x.textContent&&x.textContent.includes("İşletme sigortaları"));
+   const section=header&&header.closest("section");
+   if(section&&!section.querySelector(".sigorta-afet-ac")){
+    const button=document.createElement("button");
+    button.className="btn altin sigorta-afet-ac";
+    button.type="button";
+    button.textContent="🏠 Ev, dükkân ve doğal afet sigortası";
+    button.onclick=()=>window.sigortaAfetEkrani();
+    section.appendChild(button);
+   }
+  }catch(err){console.warn("Afet sigortası menü bağlama:",err);}
+  return result;
+ }
+ withAfet._sigAfetBaglandi=true;
+ window.sigortaIsletmeEkrani=withAfet;
+})();
