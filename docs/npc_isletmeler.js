@@ -185,15 +185,16 @@ function spIlan(s,benim){
  const tik='<div role="button" tabindex="0" aria-label="Şirket bilgilerini aç" '+
    'style="cursor:pointer;padding:2px 0 12px" onclick="'+ac+'" '+
    'onkeydown="if(event.keyCode===13||event.keyCode===32){event.preventDefault();this.click()}">'+
+   '<h3>'+guvenli(s.ad)+'</h3>'+
    satir("Şehir",s.il||"Belirtilmemiş")+
    satir("Faaliyet",sektor)+satir("Sahip",s.sahip||s.kurucu||"Bilgi yok")+
    satir("Sermaye",tl(s.sermaye))+satir("Kayıtlı net kazanç",tl(s.net_kazanc))+
    (s.satilik!=null?satir("Satış fiyatı",tl(s.satilik)):"")+
    '<p class="alt" style="margin:10px 0 0">Detayları incele →</p></div>';
- return kart(s.ad,tik+(benim?
+ return '<section class="kart" style="margin-bottom:10px">'+tik+(benim?
    buton(s.satilik!=null?"İlanı güncelle":"Satışa çıkar","sirketSatisaCikar("+id+")")+
    (s.satilik!=null?buton("İlanı kaldır","sirketSatisIptal("+id+")",true):""):
-   buton("Şirket detaylarını gör",ac,true)+buton("Satın al","sirketSatinAl("+id+")")));
+   buton("Şirket detaylarını gör",ac,true)+buton("Satın al","sirketSatinAl("+id+")"))+'</section>';
 }
 async function spPazar(){
  yukleniyor("Satılık şirketler");
