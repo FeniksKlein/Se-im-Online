@@ -58,7 +58,13 @@ async function sirketTumTurKur(onayli){
    '<button class="btn altin" id="stkCreate">Şirketi kur</button>'+
    '<button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>'
   );
-  const el=id=>m.querySelector("#"+id),type=el("stkType"),city=el("stkCity"),name=el("stkName");
+  // Find the visible sheet even if a modal implementation returns no wrapper.
+  const root=m&&typeof m.querySelector==="function"?m:document.getElementById("modal");
+  const el=id=>root?.querySelector?.("#"+id)||document.getElementById(id);
+  const type=el("stkType"),city=el("stkCity"),name=el("stkName");
+  if(!type||!city||!name||!el("stkCreate")||!el("stkLicense")){
+    toast("Şirket kuruluş formu açılamadı. Sayfayı yenileyip tekrar dene.",true);return;
+  }
   city.value=String(onayli?.il||home);
   if(onayli?.tur)type.value=String(onayli.tur);
   if(onayli?.ad)name.value=String(onayli.ad);
@@ -96,7 +102,7 @@ async function sirketTumTurKur(onayli){
     el("stkCreate").textContent=category==="factory"?"Fabrikayı kur ve üretimi aç":
       category==="retail"?"Mağazayı kur ve satışa aç":"Şirketi kur ve faaliyete başlat";
   }
-  type.onchange=update;city.onchange=update;name.oninput=update;update();
+  // Bind actions before rendering secondary information so they remain clickable.
   el("stkLicense").onclick=()=>{modalKapat();ekranAc(belRuhsatMerkeziEkrani);};
   el("stkCreate").onclick=async function(){
     const info=current(),sector=info[0],category=info[3],company=name.value.trim(),capital=Number(el("stkMoney").value),
@@ -139,6 +145,9 @@ async function sirketTumTurKur(onayli){
             kategori:sector==="kahve"?"kahve":"fastfood"}});}
           catch(err){toast("Şirket kuruldu; mağaza kategorisini manuel seç: "+String(err.message||err),true);}
         }
+      }else if(category==="build"){
+        // Both the company and operating contractor records are required for land.
+        result=await API.rpc("eko_islem",{p_eylem:"kur",p_veri:{tur:"insaat",ad:company,il:loc,tutar:capital}});
       }else{
         result=await API.rpc("sirket_kur",{p_ad:company,p_sektor:sector,p_sermaye:capital});
       }
@@ -148,6 +157,11 @@ async function sirketTumTurKur(onayli){
     }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message||err),true);}
     finally{this.disabled=false;}
   };
+  type.onchange=update;city.onchange=update;name.oninput=update;
+  try{update();}catch(err){
+    console.error("Şirket kuruluş görünümü:",err);
+    toast("Şirket ayrıntıları yüklenemedi; kuruluş düğmeleri kullanılabilir.",true);
+  }
 }
 window.sirketTumTurKur=sirketTumTurKur;
 

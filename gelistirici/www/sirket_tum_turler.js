@@ -54,11 +54,17 @@ async function sirketTumTurKur(onayli){
    '<div class="alan" id="stkProdBox"><label>Fabrika üretim grubu</label><select id="stkProd"><option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option><option value="malzeme">İnşaat malzemeleri</option></select></div>'+
    '<div class="alan" id="stkEnergyBox" style="display:none"><label>Enerji kaynağı</label><select id="stkEnergy"><option value="yenilenebilir">Yenilenebilir</option><option value="dogalgaz">Doğalgaz</option><option value="komur">Kömür</option></select></div>'+
    '<div class="kart" style="margin-top:12px"><p id="stkDescription" class="alt"></p><p id="stkPermit" class="alt"></p></div>'+
-   '<button class="btn ikinci" id="stkLicense">🏛️ Ruhsat başvur / onayları gör</button>'+
+   '<button class="btn ikinci" id="stkLicense">🏛️ Ruhsat ve harç bilgileri</button>'+
    '<button class="btn altin" id="stkCreate">Şirketi kur</button>'+
    '<button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>'
   );
-  const el=id=>m.querySelector("#"+id),type=el("stkType"),city=el("stkCity"),name=el("stkName");
+  // Find the visible sheet even if a modal implementation returns no wrapper.
+  const root=m&&typeof m.querySelector==="function"?m:document.getElementById("modal");
+  const el=id=>root?.querySelector?.("#"+id)||document.getElementById(id);
+  const type=el("stkType"),city=el("stkCity"),name=el("stkName");
+  if(!type||!city||!name||!el("stkCreate")||!el("stkLicense")){
+    toast("Şirket kuruluş formu açılamadı. Sayfayı yenileyip tekrar dene.",true);return;
+  }
   city.value=String(onayli?.il||home);
   if(onayli?.tur)type.value=String(onayli.tur);
   if(onayli?.ad)name.value=String(onayli.ad);
@@ -92,11 +98,11 @@ async function sirketTumTurKur(onayli){
     el("stkDescription").textContent=how+" Asgari sermaye: "+cash(min)+".";
     el("stkPermit").textContent=info[2]==="none"?"Banka türü mevcut kuruluş ve finans kurallarına tabidir.":
       permission(info)?"✅ Onaylı belediye ruhsatı bulundu. Kuruluşta harç kesilir.":
-      "⚠️ "+info[2]+" ruhsatı gerekli. Önce belediye başkanından aynı şirket adı ve il için onay almalısın.";
+      "✅ Şirketi kurduğunda kuruluş ruhsatı sistem tarafından anında onaylanacak. Harç kuruluşta tahsil edilir.";
     el("stkCreate").textContent=category==="factory"?"Fabrikayı kur ve üretimi aç":
       category==="retail"?"Mağazayı kur ve satışa aç":"Şirketi kur ve faaliyete başlat";
   }
-  type.onchange=update;city.onchange=update;name.oninput=update;update();
+  // Bind actions before rendering secondary information so they remain clickable.
   el("stkLicense").onclick=()=>{modalKapat();ekranAc(belRuhsatMerkeziEkrani);};
   el("stkCreate").onclick=async function(){
     const info=current(),sector=info[0],category=info[3],company=name.value.trim(),capital=Number(el("stkMoney").value),
@@ -105,10 +111,22 @@ async function sirketTumTurKur(onayli){
     if(!Number.isSafeInteger(capital)||capital<min||capital>100000000){toast("Sermaye "+cash(min)+" ile 100.000.000 ₺ arasında tam sayı olmalı.",true);return;}
     if(!Number.isInteger(loc)||loc<1||loc>81){toast("Geçerli bir faaliyet ili seç.",true);return;}
     if(((category==="factory"&&sector!=="sanayi")||sector==="insaat"||sector==="ajans")&&loc!==home){toast("Bu şirket türü kayıtlı ikamet ilinde açılır. Başka şehirde fabrika açmak için sanayi sektörünü seç.",true);return;}
-    if(!permission(info)){toast("Önce bu şirket ve il için belediyeden onaylı ruhsat al.",true);return;}
     if(!await onayla("Şirket kuruluşu",company+" için "+cash(capital)+" sermaye cüzdanından yatırılacak ve gerekli belediye harcı şirket kasasından kesilecek.","Kur"))return;
     this.disabled=true;
     try{
+      // Kurulus ruhsati belediye baskani karari beklemeden verilir.
+      // Mevcut gecerli ruhsat varsa tekrar basvuru yapilmaz.
+      if(!permission(info)&&info[2]!=="none"){
+        const permitSector=info[2]==="kur_pazar"?sector.split(":")[1]:info[2]==="kur_sirket"?sector:null;
+        const approval=await API.rpc("bel_ruhsat_basvur",{
+          p_tur:info[2],p_il:loc,p_sirket:null,p_hedef:null,
+          p_ad:company,p_sektor:permitSector,p_yatirim:capital
+        });
+        if(approval?.durum!=="onay")throw new Error("Kuruluş ruhsatı otomatik onaylanamadı. Lütfen tekrar dene.");
+        if(!Array.isArray(permits.benim))permits.benim=[];
+        permits.benim.push({tur:info[2],durum:"onay",sirket:company,il_id:loc,
+          sektor:permitSector,karar_zamani:new Date().toISOString()});
+      }
       let result;
       if(category==="service"){
         result=await API.rpc("pazar_sirket_kur",{p_ad:company,p_sektor:sector.split(":")[1],p_sermaye:capital,
@@ -127,6 +145,9 @@ async function sirketTumTurKur(onayli){
             kategori:sector==="kahve"?"kahve":"fastfood"}});}
           catch(err){toast("Şirket kuruldu; mağaza kategorisini manuel seç: "+String(err.message||err),true);}
         }
+      }else if(category==="build"){
+        // Both the company and operating contractor records are required for land.
+        result=await API.rpc("eko_islem",{p_eylem:"kur",p_veri:{tur:"insaat",ad:company,il:loc,tutar:capital}});
       }else{
         result=await API.rpc("sirket_kur",{p_ad:company,p_sektor:sector,p_sermaye:capital});
       }
@@ -136,6 +157,11 @@ async function sirketTumTurKur(onayli){
     }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message||err),true);}
     finally{this.disabled=false;}
   };
+  type.onchange=update;city.onchange=update;name.oninput=update;
+  try{update();}catch(err){
+    console.error("Şirket kuruluş görünümü:",err);
+    toast("Şirket ayrıntıları yüklenemedi; kuruluş düğmeleri kullanılabilir.",true);
+  }
 }
 window.sirketTumTurKur=sirketTumTurKur;
 
@@ -163,7 +189,7 @@ if(typeof originalDetail==="function"){
      let html="",description="";
      const sid=Number(id),sector=String(s.sektor||"");
      if(["akaryakit","yapi_market","elektronik_magaza","tekstil_magaza","mobilya_magaza","oto_galeri"].includes(sector)){
-       description='<p class="alt">Piyasa fiyatıyla stok al, ürün fiyatını belirle, şehrin NPC müşterilerine stoktan satış yap. Giderler ve vergiler günlük kaydedilir.</p>';
+       description='<p class="alt">Bu işletmede piyasa fiyatıyla stok alırsın, ürün başına fiyat belirler, gün içinde NPC müşterilere gerçek stoktan satış yaparsın. Sermayeden otomatik ikinci gelir yaratılmaz. Şirketin giderleri, satışları ve vergileri kayıt altındadır.</p>';
        html='<button class="btn altin" onclick="npcIsletmeEkrani('+sid+')">📦 Stok · NPC müşterileri · Fiyatlandırma</button>';
      }else if(["ozel_okul","ozel_hastane","ulasim","enerji","market","turizm","lojistik","oto_servis","danismanlik","e_ticaret","geri_donusum"].includes(sector)){
        const labels={ozel_okul:"Öğrenci kayıtları ve eğitim hizmetleri",ozel_hastane:"Hasta hizmetleri ve sağlık satışı",
@@ -206,4 +232,12 @@ if(typeof originalDetail==="function"){
    }
  };
 }
+})();
+
+/* Belediye ekonomisi, stoklu NPC isletmeleri ve vergili sirket pazari. */
+(function(){
+ if(document.getElementById("npc-isletmeler-modulu"))return;
+ const sc=document.createElement("script");sc.id="npc-isletmeler-modulu";
+ sc.src="npc_isletmeler.js?v=20261022-3";sc.async=false;
+ document.body.appendChild(sc);
 })();

@@ -29,7 +29,12 @@ function dialog(title,body,label,done){
 function companyOptions(xs){return opts(xs);}
 async function buyLand(id){
  const firms=EA.veri?.muteahhitler||[];
- if(!firms.length){toast("Önce İş Dünyası bölümünden müteahhitlik şirketi kur.",true);return;}
+ if(!firms.length){
+  toast("Arsa almak için faal müteahhitlik şirketi gerekli. Kuruluş ekranı açılıyor.",true);
+  if(typeof window.sirketTumTurKur==="function")await window.sirketTumTurKur({tur:"insaat"});
+  else toast("İş Dünyası → Şirketlerim → Her tür şirket kur → Müteahhitlik bölümünü aç.",true);
+  return;
+ }
  const a=(EA.veri.arsalar||[]).find(x=>Number(x.id)===Number(id));
  dialog("Belediye arsası satın al",'<p class="alt">'+safe(EA.veri.il_adi)+' · '+safe(a?.m2)+' m² · İmar kapasitesi '+safe(a?.kademe)+' bölüm · Bedel '+para(a?.fiyat)+' şirket kasasından ödenir ve belediyeye gelir olur.</p>'+select("eaFirm","Alıcı müteahhitlik şirketi",companyOptions(firms)),
  "Arsayı satın al",async m=>{if(!await onayla("Arsa alımını onayla","Arsa bedeli seçtiğin şirketin kasasından düşecek.","Satın al"))return;await act("arsa_al",{arsa:id,sirket:Number(get(m,"eaFirm"))},"Arsa şirketine geçti.");});
@@ -79,6 +84,9 @@ function body(){
  let html="";
  if(tab==="arsa"){
   html+=box("Belediye arsaları","<b>"+safe(d.il_adi)+"</b> · İl gelişmişliği "+safe(d.gelisim)+" / 100 · Temel daire değeri "+para(d.baz_daire)+". Parsel fiyatları şehir değerlerine ve imar kapasitesine bağlı.");
+  if(!(d.muteahhitler||[]).length)html+=box("Müteahhitlik şirketi gerekli",
+   "Arsa satın almak için müteahhitlik şirketini faaliyete aç. Eski inşaat şirketin varsa İş Dünyası'ndan ekonomiye bağla.",
+   btn("Müteahhitlik şirketi kur","sirketTumTurKur({tur:'insaat'})"));
   for(const a of d.arsalar||[])html+=box(a.kademe+" bölümlük imarlı arsa","Alan: "+safe(a.m2)+" m² · Belediye satış bedeli: <b>"+para(a.fiyat)+"</b><br>Durum: "+(a.durum==="satilik"?"Satılık":"Satıldı"),a.durum==="satilik"?btn("Müteahhitlik şirketiyle satın al","eaArsaAl("+a.id+")"):"");
  }
  if(tab==="insaat"){
