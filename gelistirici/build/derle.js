@@ -20,6 +20,8 @@ if (!html.includes('cbYrdDosyaAc')) html=html.replace('</body>',()=>'<script>'+f
 // Yeni ekonomi arayuzunu tek dosyalik iOS/Android paketine gom; internetten ek JS istemesin.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','uc_ekonomi_yeni.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','ihale_ilan_panosu.js'),'utf8')+'</script></body>');
+// Ortak sermayeli kurulus ve hisse devirleri mobil pakete gomulur.
+html=html.replace('<script src="ortak_sirketler.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','ortak_sirketler.js'),'utf8')+'</script>');
 // Yeni mulk sigortasi da uygulama paketinde calisir.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','sigorta_afet.js'),'utf8')+'</script></body>');
 // NPC isletmeleri ve sirket pazari tek dosyalik iOS/Android paketine dahildir.
