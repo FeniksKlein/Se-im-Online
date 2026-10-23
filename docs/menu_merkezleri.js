@@ -508,6 +508,7 @@
     if(gecerli("ekonomi",no))ciz("ekonomi",ekonomiHero(s)+z);
   }
   window.ekonomiSekmeEkrani=ekonomiYeniEkrani;
+  window.ekonomiEkrani=ekonomiYeniEkrani;
   /* Menüler ekranlar arası geri navigasyonla çalışır: D.yigin ve işlem RPC'leri aynen korunur. */
   window.adliyeEkrani=adliyeEkrani=adliyeYeniEkrani;
   if(typeof EKRAN==="object"&&EKRAN){
