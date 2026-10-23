@@ -122,7 +122,7 @@ begin
   if p_hedef_tur='dernek' then
     update oyun.dernekler set kasa=kasa+tut where id=d.id;
     insert into oyun.dernek_hareket(dernek_id,zaman,tutar,tur,aciklama,user_id)
-       values(d.id,t,tut,'bagis',pa.ad||' tarafından kurumsal bağış',u);
+       values(d.id,t,tut,'bagis',pa.ad||' tarafından kurumsal bağış',null);
     sahib:=d.baskan;
   elsif p_hedef_tur='medya' then
     update oyun.sirketler set kasa=kasa+tut where id=s.id;
