@@ -31,3 +31,10 @@ Bu sürümde mobil uygulamanın içine kod enjekte edilmez. Yalnızca Supabase �
 - Yönetici RPC'si `oyun.yk_sahip()` ile doğrulanır. Yetkisiz oyuncunun modül aç/kapat isteği reddedilmiştir.
 - Rollback içinde NPC modülünü geçici kapatıp motorun çalışmadığı doğrulandı; rollback sonrası modüller açık ve oyuncu verileri değişmeden kaldı.
 - İlk yedek `yedek_20261022_131647_520342` olarak alındı.
+
+## Yük koruması — 23 Ekim 2026 (seçim gecesi çöküşü sonrası)
+- **Periyodik işler tek zamanlayıcıda.** 27 ayrı cron işi pasif; yerine her dakika `oyun-zamanlayici` → `call oyun.zamanlayici_calistir()`. Adımlar `oyun.zamanlayici_adim` tablosunda (periyot, ofset, sıra, son çalışma, son hata). **Yeni periyodik iş eklerken `cron.schedule` kullanma**, bu tabloya satır ekle. Ayrıntı ve geri alma: `migrations/20261023_secim_gecesi_yuk_azaltma.sql`.
+- **Sunucu önbelleği.** `oyun.genel_onbellek` (UNLOGGED). Seçim gecesi canlı ekranının herkese aynı kısmı 5 sn, ana sayfadaki seçim gecesi kartı 10 sn önbellekten gelir.
+- **İstemci yük koruması (`YUK`, docs/index.html).** Sık okunan RPC'ler kısa süre telefonda tutulur (`SURE` listesi), aynı anda giden aynı istek teke iner. Oyuncu dokunduktan sonraki 6 sn içinde yapılan, sunucuda STABLE olmayan her çağrı önbelleği siler (oy, başvuru, mesaj vb. sonrası veri hep taze). 5xx/zaman aşımında zamanlayıcıyla yapılan yenilemeler 5 sn'den 5 dk'ya kadar kademeli bekletilir. Yeni bir **okuma** RPC'si sık çağrılacaksa `SURE` listesine ekle; **yazma** RPC'lerini asla ekleme.
+- **Yenileme aralıkları.** Ana sayfa 2–2,5 dk; seçim gecesi canlı ekranı 15–19 sn; sohbet ve miting 6–7,5 sn; mesaj rozetleri 45–55 sn; uzaktan kontrol yedek sorgusu 90–120 sn. Geri sayım sıfırlanınca ana sayfa 1,5–10 sn arasında rastgele yenilenir (herkes aynı saniyede değil).
+- **Yayın kaynağı `docs/`.** Canlı web ve mağaza paketi `docs/`tan üretilir; `www/index.html` eski geliştirici kopyasıdır, oraya yapılan değişiklik oyunculara ulaşmaz.

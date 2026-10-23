@@ -34,13 +34,18 @@ async function baglan(){
    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"oyun_kontrol_sinyali"},()=>{
      if(Date.now()-S.sonSinyal<450)return;
      S.sonSinyal=Date.now();
-     guncelle(false).catch(()=>{});
+     // Sinyal bütün telefonlara aynı anda gider; sunucuya hep birlikte yüklenmemek için 0-8 sn yay.
+     setTimeout(()=>{guncelle(true).catch(()=>{});},Math.floor(Math.random()*8000));
    }).subscribe();
   S.baglandi=true;
  }catch(err){S.baglandi=false;}
 }
 async function guncelle(zorla){
  if(S.suruyor||!hazir()||document.hidden)return;
+ // Odak/görünürlük/çevrimiçi olayları art arda gelir: zorunlu değilse 15 sn içinde tekrar sorma.
+ // Sunucu zorlanıyorsa (YUK) yedek sorgulamayı beklet; Realtime sinyali yine çalışır.
+ if(!zorla&&(Date.now()-(S.sonSorgu||0)<15000||(window.YUK&&!window.YUK.otomatik())))return;
+ S.sonSorgu=Date.now();
  S.suruyor=true;
  try{
   const oturum=await API.oturum();
@@ -133,7 +138,7 @@ if(typeof window.iskelet==="function"){
 }
 window.addEventListener("load",()=>{
   setTimeout(()=>guncelle(true),1400);
-  setInterval(()=>guncelle(false),45000);
+  setInterval(()=>guncelle(false),90000+Math.floor(Math.random()*30000));
 });
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)guncelle(false);});
 window.addEventListener("focus",()=>{guncelle(false);});
