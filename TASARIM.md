@@ -815,3 +815,24 @@ Kurucu Vatandaş (31.12.2026'ya kadar kayıt olanlar), Sandık Görevlisi, Yol A
 
 ### Yaş ve içerik kuralı
 Oyun 18 yaş ve üzeri içindir. Gerçek kişilere ya da oyunculara hakaret, tehdit, nefret söylemi ve kişisel bilgi paylaşımı yasaktır; şikâyet ve engelleme her profilde açıktır.
+
+## 19. Avukatlık kontenjanı ve Türkiye Barosu (2026-10-23, modül 130)
+
+### Ruhsat yolu
+7 günlük hesap → 24 saatlik Hukuk Akademisi (ders notları açık) → 60 soruluk bankadan her denemede farklı 20 soru (en az 16 doğru; başarısızlıkta 24 saat sonra yeni set) → iki uygulamalı staj vakası → kontenjanlı ruhsat (100.000 ₺ harç, yalnız kontenjana yerleşince) → Türkiye Barosu levhasına kayıt. Mesleği icra etmek (teklif, savunma, büro) için ruhsat + baro kaydı + disiplin yasağı olmaması gerekir.
+
+### Kontenjan
+- Formül: son 7 günde aktif her **10** oyuncuya 1 ruhsat, en az **2**. Yönetici Adliye ekranındaki "Kontenjan ayarı"ndan sabit kontenjan, oran, asgari sayı ve pasiflik süresini değiştirir. Kontenjan düşerse mevcut avukatların ruhsatı alınmaz; yalnız yeni yerleşme durur.
+- Bekleme listesi başvuru sırasıyla işler; 10 dakikada bir boş kontenjan kendiliğinden sıradaki adaya verilir. Son 7 günde oyuna girmeyen ya da engelli aday sırayı tıkamaz (yeri korunur). Harcı olmayan aday atlanır, sırası korunur, günde bir kez bildirim alır.
+- **Pasiflik:** 14 gün oyuna girmeyen (ya da engellenen) avukatın ruhsatı askıya alınır, kontenjanı sıradakine açılır, açık dosyalardaki vekâletleri biter (müvekkile bildirilir). Avukat kendi isteğiyle de ruhsatını askıya alabilir. Dönünce "yeniden etkinleştir" ile harçsız olarak listenin sonuna girer; boş yer varsa hemen açılır ve askı yüzünden düşen baro kaydı kendiliğinden geri gelir.
+- Başarı primi en fazla %25 (Avukatlık Kanunu m.164).
+
+### Türkiye Barosu
+- **Levha:** yalnız aktif ruhsatlı avukat kaydolur (giriş keseneği 10.000 ₺, sicil numarası 1001'den başlar ve ayrılınca da korunur). Baro binasına (pano, davalar, levha, seçim, disiplin, hesabım) yalnız kayıtlı avukatlar girer; diğer oyuncular kilitli kapı ve özet bilgi görür. Yönetici denetim için salt okunur girer.
+- **Aidat:** aylık 5.000 ₺, süresi dolunca cüzdandan otomatik alınır; 7 gün ödenmezse levhadan silinir (ruhsat durur, yeniden kaydolabilir). En fazla 3 ay peşin ödenir.
+- **Kasa:** ruhsat harçlarının %25'i + giriş keseneği + aidat; yalnız adli yardım ücretine harcanır. Hareketler üyelere açıktır.
+- **Başkanlık seçimi:** her ay, adaylık 15'i 00:00 – 20'si 10:00, oylama 20'si 10:00–20:00. Aday: mesleği icra edebilen üye. Seçmen: oylama başlamadan kayıtlı üye, tek oy. Eşitlikte küçük sicilli kazanır. Aday çıkmazsa başkan devam eder. Seçilmiş başkan yoksa (ya da üyeliği/ruhsatı düşerse) en küçük sicilli üye geçici başkandır.
+- **Başkanın yetkileri:** duyuru (bütün üyelere bildirim), panodan mesaj kaldırma, adli yardım görevlendirmesi, disiplin kararı.
+- **Adli yardım:** cüzdanında 50.000 ₺'den az parası olan davanın kişisel tarafı, dosyasından ücretsiz avukat ister. Başkan gönüllü bir avukatı (ya da kendini) görevlendirir; avukata kasadan 20.000 ₺ ödenir, başkan kendini görevlendirirse ücret ödenmez.
+- **Disiplin:** müvekkil ya da dosya tarafı, dosyada vekil olmuş avukatı şikâyet eder (aynı avukata tek bekleyen şikâyet). Başkan ret / uyarma / kınama / 3 ya da 7 gün işten yasaklama verir; kendisi hakkındaki şikâyete karar veremez (yönetici verebilir). İşten yasaklanan avukatın açık dosyalardaki vekâletleri biter. Kararlar ve disiplin sicili üyelere açıktır.
+- **Avukat bekleyen davalar:** açık davalarda vekili olmayan taraflar listesi; avukat dosyayı açıp teklif verir.
