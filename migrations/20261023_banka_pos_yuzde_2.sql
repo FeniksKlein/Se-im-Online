@@ -74,8 +74,12 @@ end $$;
 revoke all on function public.pos_banka_panel() from public,anon;
 grant execute on function public.pos_banka_panel() to authenticated;
 
-create or replace function public.pos_banka_otomatik(p_banka bigint,p_otomatik boolean)
-returns jsonb language plpgsql security definer set search_path='' as $$
+CREATE OR REPLACE FUNCTION public.pos_banka_otomatik(p_banka bigint, p_otomatik boolean)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
 declare u uuid:=auth.uid(); adet integer;
 begin
  if u is null then raise exception 'Oturum gerekli'; end if;
@@ -88,21 +92,27 @@ begin
  on conflict(banka_id) do update set otomatik_onay=excluded.otomatik_onay,guncelleme=now();
  adet:=0;
  if coalesce(p_otomatik,false) then
-   update oyun.sirket_pos set durum='aktif',karar_at=oyun.simdi()
-   where banka_id=p_banka and durum='bekliyor';
-   get diagnostics adet=row_count;
+   with approved as (
+    update oyun.sirket_pos set durum='aktif',karar_at=oyun.simdi()
+    where banka_id=p_banka and durum='bekliyor'
+    returning basvuran
+   )
    insert into oyun.bildirimler(user_id,metin)
-   select p.basvuran, '🏦 POS başvurun otomatik olarak onaylandı; kartlı satış yapabilirsin.'
-   from oyun.sirket_pos p where p.banka_id=p_banka and p.durum='aktif'
-   and p.karar_at>=oyun.simdi()-interval '30 seconds';
+   select basvuran,'🏦 POS başvurun otomatik olarak onaylandı; kartlı satış yapabilirsin.'
+   from approved;
+   get diagnostics adet=row_count;
  end if;
  return jsonb_build_object('ok',true,'otomatik',coalesce(p_otomatik,false),'otomatik_onaylanan',adet);
-end $$;
+end $function$;
 revoke all on function public.pos_banka_otomatik(bigint,boolean) from public,anon;
 grant execute on function public.pos_banka_otomatik(bigint,boolean) to authenticated;
 
-create or replace function public.pos_basvur(p_sirket bigint,p_banka bigint)
-returns jsonb language plpgsql security definer set search_path='' as $$
+CREATE OR REPLACE FUNCTION public.pos_basvur(p_sirket bigint, p_banka bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
 declare u uuid:=auth.uid(); b oyun.sirketler; s oyun.sirketler;
  otomatik boolean; kim bigint; d text;
 begin
@@ -128,13 +138,17 @@ begin
   insert into oyun.bildirimler(user_id,metin)
   values(u,'✅ POS başvurun otomatik onaylandı: '||b.ad||' · komisyon %2, taksit yok.');
  else
+  if b.yonetici is not null then
+    insert into oyun.bildirimler(user_id,metin)
+    values(b.yonetici,'🏦 '||s.ad||' şirketi POS cihazı başvurusu yaptı. Banka POS Yönetimi ekranından karar ver.');
+  end if;
   insert into oyun.bildirimler(user_id,metin)
-  select coalesce(b.yonetici,o.user_id),'🏦 '||s.ad||' şirketi POS cihazı başvurusu yaptı. Banka POS Yönetimi ekranından karar ver.'
+  select o.user_id,'🏦 '||s.ad||' şirketi POS cihazı başvurusu yaptı. Banka POS Yönetimi ekranından karar ver.'
   from oyun.sirket_ortaklari o where o.sirket_id=b.id and o.pay>=50
-  limit 1;
+  and o.user_id is distinct from b.yonetici;
  end if;
  return jsonb_build_object('id',kim,'durum',d,'komisyon',2);
-end $$;
+end $function$;
 revoke all on function public.pos_basvur(bigint,bigint) from public,anon;
 grant execute on function public.pos_basvur(bigint,bigint) to authenticated;
 
@@ -203,8 +217,12 @@ end $$;
 revoke all on function public.kart_pos_talep(bigint,text,numeric,text) from public,anon;
 grant execute on function public.kart_pos_talep(bigint,text,numeric,text) to authenticated;
 
-create or replace function public.kart_pos_yanit(p_pos bigint,p_kart bigint default null)
-returns jsonb language plpgsql security definer set search_path='' as $$
+CREATE OR REPLACE FUNCTION public.kart_pos_yanit(p_pos bigint, p_kart bigint DEFAULT NULL::bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
 declare t oyun.kart_pos_talepleri; pos oyun.sirket_pos; res jsonb;
  fee numeric(18,2); net numeric(18,2); durum text;
 begin
@@ -222,6 +240,8 @@ begin
  then raise exception 'POS bankasi aktif degil';end if;
  -- Atomik tek cekim: kart bankasi brüt bedeli öder, %2 komisyonu POS bankasi alir.
  res:=oyun.kart_harca(p_kart,t.tutar,null,t.sirket_id,'POS #'||t.id||': '||t.aciklama);
+ insert into oyun.sirket_hareket(sirket_id,tutar,aciklama,faaliyet_gelir)
+ values(t.sirket_id,t.tutar,'POS #'||t.id||' kartli satis (tek cekim, brut)',t.tutar);
  fee:=round(t.tutar*0.02,2);
  net:=t.tutar-fee;
  if fee>0 then
@@ -239,12 +259,16 @@ begin
  insert into oyun.bildirimler(user_id,metin) values(t.talep_eden,
  format('✅ POS #%s tek cekim %s TL tahsil edildi; %s TL POS komisyonu, %s TL sirket kasana gecti.',t.id,t.tutar,fee,net));
  return res||jsonb_build_object('pos',t.id,'brut',t.tutar,'net',net,'komisyon',fee,'pos_banka',pos.banka_id);
-end $$;
+end $function$;
 revoke all on function public.kart_pos_yanit(bigint,bigint) from public,anon;
 grant execute on function public.kart_pos_yanit(bigint,bigint) to authenticated;
 
-create or replace function public.kart_pos_iade(p_pos bigint)
-returns jsonb language plpgsql security definer set search_path='' as $$
+CREATE OR REPLACE FUNCTION public.kart_pos_iade(p_pos bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
 declare u uuid:=auth.uid(); t oyun.kart_pos_talepleri; k oyun.kredi_kartlari;
  s oyun.sirketler; pos oyun.sirket_pos; fee numeric; gross numeric; karta numeric; wallet numeric;
 begin
@@ -282,12 +306,14 @@ begin
  end if;
  update oyun.kredi_kartlari set borc=borc-karta,
  nakit_avans_bakiye=least(nakit_avans_bakiye,greatest(0,borc-karta)) where id=k.id;
+ insert into oyun.sirket_hareket(sirket_id,tutar,aciklama,faaliyet_gelir)
+ values(s.id,-gross,'POS #'||t.id||' tam kartli satis iadesi',-gross);
  update oyun.kart_pos_talepleri set durum='iade' where id=t.id;
  insert into oyun.kart_hareketler(kart_id,tur,tutar,sirket_id,aciklama)
  values(k.id,'iade',gross,s.id,'POS #'||t.id||' tek cekim satis iadesi');
  insert into oyun.bildirimler(user_id,metin)
  values(k.user_id,format('💳 POS #%s iadesi %s TL. Kart borcuna %s TL, cuzdanina %s TL.',t.id,gross,karta,wallet));
  return jsonb_build_object('ok',true,'iade',gross,'komisyon_iade',fee,'kart_borcu_azaldi',karta,'cuzdana_iade',wallet);
-end $$;
+end $function$;
 revoke all on function public.kart_pos_iade(bigint) from public,anon;
 grant execute on function public.kart_pos_iade(bigint) to authenticated;
