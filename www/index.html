@@ -5057,6 +5057,8 @@ function kayitDurumuEkrani(durum){
     <button class="btn ikinci" onclick="cikisYap()">Çıkış yap</button></div>`;
 }
 async function basla(){
+  // Eski otomatik yeniden bağlanma denemesini geçersiz kıl.
+  const baglantiDenemeKimligi = window._baglantiDenemeKimligi = (window._baglantiDenemeKimligi || 0) + 1;
   if (!await surumKontrol()) return;
   const o = await API.oturum();
   if (!o) return karsilama();
@@ -5072,7 +5074,13 @@ async function basla(){
       }
     }
   } catch (err) {
-    $("#app").innerHTML = `<div class="karsila"><h1>Bağlantı sorunu</h1><p class="giris">${e(hataCevir(err.message))}</p><button class="btn" onclick="basla()">Tekrar dene</button><button class="btn ikinci" onclick="cikisYap()">Çıkış</button></div>`;
+    $("#app").innerHTML = `<div class="karsila"><h1>Bağlantı sorunu</h1><p class="giris">${e(hataCevir(err.message))}</p><p class="giris">Bağlantı düzelince otomatik tekrar denenecek. İstersen şimdi de deneyebilirsin.</p><button class="btn" onclick="basla()">Tekrar dene</button><button class="btn ikinci" onclick="cikisYap()">Çıkış</button></div>`;
+    // Tüm kullanıcılar aynı saniyede yük bindirmesin diye 20-40 saniye arasında rastgele gecikme.
+    setTimeout(() => {
+      if (document.hidden || window._baglantiDenemeKimligi !== baglantiDenemeKimligi) return;
+      const baslik = document.querySelector(".karsila h1");
+      if (baslik && baslik.textContent === "Bağlantı sorunu") basla();
+    }, 20000 + Math.floor(Math.random() * 20000));
     return;
   }
   if (!D.durum.profil) {
