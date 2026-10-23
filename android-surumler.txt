@@ -1,0 +1,15 @@
+secim-simulasyonu-online@1.0.0 /home/runner/work/Se-im-Online/Se-im-Online/mobil
+├── @capacitor-community/admob@8.2.1
+├── @capacitor/android@8.5.3
+├── @capacitor/app@8.1.2
+├── @capacitor/assets@3.0.5
+├── @capacitor/cli@8.5.3
+├── @capacitor/core@8.5.3
+├── @capacitor/device@8.0.3
+├── @capacitor/haptics@8.0.2
+├── @capacitor/ios@8.5.3
+├── @capacitor/splash-screen@8.0.2
+├── @capacitor/status-bar@8.0.4
+├── @revenuecat/purchases-capacitor@13.7.6
+└── @supabase/supabase-js@2.118.0
+
