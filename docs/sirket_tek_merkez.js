@@ -15,7 +15,7 @@ const item=(body)=>'<div class="kart" style="margin:10px 0">'+body+'</div>';
 const message=e=>toast(typeof hataCevir==='function'?hataCevir(e.message||String(e)):String(e.message||e),true);
 const call=(name,args)=>API.rpc(name,args||{});
 const ask=(a,b)=>typeof onayla==='function'?onayla(a,b,'Onayla'):Promise.resolve(confirm(b));
-const pages=[['genel','Özet'],['para','Kasa / Sermaye'],['faaliyet','Mal / Faaliyet'],['sube','Şubeler'],['insaat','Arsa / İnşaat'],['ortak','Ortaklık'],['finans','Finans']];
+const pages=[['genel','Özet'],['para','Kasa / Sermaye'],['faaliyet','Mal / Faaliyet'],['sube','Şubeler'],['insaat','Arsa / İnşaat'],['ortak','Ortaklık'],['finans','Finans'],['pos','POS']];
 function header(s){return '<div class="kart"><h2>'+safe(s.ad)+'</h2><p class="alt">'+safe(s.sektor)+' · Hissen %'+safe(s.benim_pay)+'</p>'+
   kv('Şirket kasası',money(s.kasa))+kv('Kayıtlı sermaye',money(s.sermaye))+
   '<button class="btn ikinci" onclick="ekranAc(sirketlerimMerkezi)">← Şirketlerime dön</button></div>';}
@@ -82,7 +82,18 @@ window.sirketTekSirketEkrani=async function(id,tab){
      (s.sektor==='insaat'?action('🏗️ Arsa ve inşaatlarım','sirketTekSirketEkrani('+id+',\'insaat\')'):'')+
      action('📦 Mal ve faaliyet işlemleri','sirketTekSirketEkrani('+id+',\'faaliyet\')')+
      action('🏬 Şubelerimi yönet','sirketTekSirketEkrani('+id+',\'sube\')')+
-     action('📊 Finans ve hareketler','sirketTekSirketEkrani('+id+',\'finans\')'));
+     action('📊 Finans ve hareketler','sirketTekSirketEkrani('+id+',\'finans\')')+
+     action('💳 POS cihazları / kartlı satış','sirketTekSirketEkrani('+id+',\'pos\')','altin'));
+  }else if(tab==='pos'){
+    let info=null;
+    try{info=await call('pos_banka_panel');}catch(_){}
+    const devices=(info?.poslar||[]).filter(x=>Number(x.sirket_id)===id);
+    html+=sectionHeader('💳 POS Cihazları ve Kartlı Tahsilat',
+     '<p class="sm-note">Şirketin için oyuncu bankasından POS cihazı al. Banka otomatik onay veriyorsa hemen kullanıma açılır; aksi halde banka sahibinin onayı gerekir. Taksit yok; komisyon %2.</p>'+
+     (devices.length?devices.map(p=>item('<b>'+safe(p.banka)+'</b>'+kv('POS durumu',p.durum)+kv('Satış hacmi',money(p.hacim))+kv('Kesilen %2 komisyon',money(p.kesilen_komisyon)))).join(''):
+       '<p class="alt">Bu şirket adına henüz POS başvurusu yapılmamış.</p>')+
+     action('POS için bankaya başvur / cihazlarını yönet','ekranAc(posBankaEkrani)','altin')+
+     (devices.some(x=>x.durum==='aktif')?action('Tek çekim kartlı satış yap','ekranAc(kartPosEkrani)'):''));
   }else if(tab==='para'){
     const room=Math.max(0,100000000-Number(s.sermaye||0));
     html+=sectionHeader('💰 Cüzdanımdan şirketime para aktar',
