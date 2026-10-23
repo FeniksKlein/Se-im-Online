@@ -19,6 +19,8 @@
   var secim = { adliye:"mahkeme", ekonomi:"genel" };
   var istek = { adliye:0, ekonomi:0 };
   var adlVeri = null;
+  var adlCache={html:null,data:null,at:0};
+  var istCache={html:null,at:0};
   var esc = function(x){ return String(x == null ? "" : x).replace(/[&<>"']/g,function(y){
     return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[y];
   }); };
@@ -173,7 +175,7 @@
     var dizi=grup==="adliye"?adliyeSekmeleri:ekonomiSekmeleri;
     if(!dizi.some(function(x){return x[0]===sekme;}))return;
     secim[grup]=sekme;
-    if(grup==="adliye")window.adliyeEkrani();else window.ekonomiSekmeEkrani();
+    if(grup==="adliye")window.adliyeEkrani(true);else window.ekonomiSekmeEkrani();
   };
   window.soMenuGit=function(ad){
     var direk=["cekMerkeziAc","baroAc","sirketKurulumFormuAc","paraGonderModal","msSigortaAc","msRuhsatMerkeziAc"];
@@ -238,6 +240,7 @@
       +(l.length?ara+'<div id="so-dava-liste">'+satir+'</div>':bos("Bu bölümde henüz dava bulunmuyor."));
   }
   async function itirazHtml(){
+    if(istCache.html && Date.now()-istCache.at<15000)return istCache.html;
     var list=(adlVeri&&adlVeri.davalar||[]).filter(function(d){return d.durum==="karar";}).slice(0,100);
     var hepsi=[],hatalar=0;
     for(var i=0;i<list.length;i+=8){
@@ -253,6 +256,7 @@
         "İtiraz eden: "+(x.i.basvuran||"—")+" · Durum: "+(x.i.durum||"—"),
         "ekranAc(function(){adliyeDosya("+Number(x.d.id)+")})");
       }).join("")||'<p class="alt">Şu anda istinaf başvurusu görünen dava yok.</p>'));
+    istCache={html:z,at:Date.now()};
     return z;
   }
   async function icraHtml(){
@@ -280,7 +284,7 @@
     try{await API.rpc("icra_ihale_teklif",{p_haciz:id,p_tutar:tutar});toast("Teklif kaydedildi.");window.adliyeEkrani();}
     catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):err.message,true);}
   };
-  async function adliyeYeniEkrani(){
+  async function adliyeYeniEkrani(kisaOnbellek){
     // Eylem sonrası menü yeniden açılıyorsa eski alt ekran geçmişini temizle.
     if(D.yigin.length)D.yigin=[];
     var no=++istek.adliye,s=secim.adliye;
@@ -292,9 +296,19 @@
         if(gecerli("adliye",no))ciz("adliye",'<div class="so-menu-hero"><h2>İcradan Satılıklar</h2><p>İhale, teklif, dosya ve haciz işlemleri.</p></div>'+ic);
         return;
       }
-      var html=await adliyeHtml();
+      var html;
+      if(kisaOnbellek && adlCache.html && Date.now()-adlCache.at<15000){
+        html=adlCache.html;
+        adlVeri=adlCache.data;
+        if(adlVeri)ADL=adlVeri;
+      }else{
+        html=await adliyeHtml();
+        if(!gecerli("adliye",no))return;
+        adlVeri=typeof ADL!=="undefined"?ADL:null;
+        adlCache={html:html,data:adlVeri,at:Date.now()};
+        istCache.at=0;
+      }
       if(!gecerli("adliye",no))return;
-      adlVeri=typeof ADL!=="undefined"?ADL:null;
       var blok=grupla(html),d=adlVeri||{davalar:[]},l=d.davalar||[];
       var acik=l.filter(function(x){return x.durum==="acik";});
       var biten=l.filter(function(x){return x.durum!=="acik";});
