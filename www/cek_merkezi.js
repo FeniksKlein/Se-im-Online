@@ -252,7 +252,7 @@ if(typeof oncekiIskelet==='function'){
   if(baslik==='Hayat'){
    var kisayol='<div class="kart" id="cek-bank-quick"><h2>🏦 Bankacılık ve Çekler</h2>'+
     '<p class="alt">Banka hesabı · çek defteri · verdiğim/aldığım çekler · nakit + çek teklifleri</p>'+
-    buton('🏦 Banka hesabım','ekranAc(bankaEkrani)','altin')+
+    buton('🌐 İnternet Bankacılığı','ekranAc(internetBankaciligiEkrani)','altin')+
     buton('📒 Çek Defterim ve Çek Merkezi','cekMerkeziAc()','altin')+
     buton('🤝 Çek teklifleri','cekMerkeziAc()')+
     '</div>';
