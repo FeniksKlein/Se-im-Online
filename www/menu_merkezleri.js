@@ -102,7 +102,7 @@
     var dizi=grup==="adliye"?adliyeSekmeleri:ekonomiSekmeleri;
     if(!dizi.some(function(x){return x[0]===sekme;}))return;
     secim[grup]=sekme;
-    if(grup==="adliye")adliyeEkrani();else ekonomiSekmeEkrani();
+    if(grup==="adliye")window.adliyeEkrani();else window.ekonomiSekmeEkrani();
   };
   window.soMenuGit=function(ad){
     var direk=["cekMerkeziAc","baroAc","sirketKurulumFormuAc","paraGonderModal","avukatBuroPanel"];
@@ -202,7 +202,7 @@
     var inp=document.getElementById("ic_teklif_"+id),tutar=Number(inp&&inp.value);
     if(!Number.isFinite(tutar)||tutar<=0)return toast("Geçerli teklif tutarı gir.",true);
     if(!await onayla("İcra e-satış","Teklifin için "+trPara(tutar)+" teminat bloke edilecek. Onaylıyor musun?","Teklif ver"))return;
-    try{await API.rpc("icra_ihale_teklif",{p_haciz:id,p_tutar:tutar});toast("Teklif kaydedildi.");adliyeEkrani();}
+    try{await API.rpc("icra_ihale_teklif",{p_haciz:id,p_tutar:tutar});toast("Teklif kaydedildi.");window.adliyeEkrani();}
     catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):err.message,true);}
   };
   async function adliyeYeniEkrani(){
@@ -408,8 +408,8 @@
   /* Menüler ekranlar arası geri navigasyonla çalışır: D.yigin ve işlem RPC'leri aynen korunur. */
   window.adliyeEkrani=adliyeEkrani=adliyeYeniEkrani;
   if(typeof EKRAN==="object"&&EKRAN){
-    EKRAN.adliye=function(){return adliyeEkrani();};
-    EKRAN.ekonomi=function(){return ekonomiSekmeEkrani();};
+    EKRAN.adliye=function(){return window.adliyeEkrani();};
+    EKRAN.ekonomi=function(){return window.ekonomiSekmeEkrani();};
   }
   stil();
 })();
