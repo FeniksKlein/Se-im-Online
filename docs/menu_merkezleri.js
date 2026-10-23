@@ -54,7 +54,7 @@
     ],
     ekonomi:[
       ["🏢","Şirketlerim","Kasaya para, şubelerim, inşaat ve finans","soMenuSec('ekonomi','sirketlerim')","müteahhit firma kasa sermaye"],
-      ["🏛️","Devlet Bankası","Vadeli ve vadesiz hesaplar","soMenuGit('bankaEkrani')","devlet bankası mevduat"],
+      ["🏛️","İnternet Bankacılığı","Tüm hesaplar, kartlar ve borçlar","soMenuGit('internetBankaciligiEkrani')","devlet bankası mevduat"],
       ["🏦","Oyuncu bankaları","Özel bankalar, kredi ve faizler","soMenuGit('bankaRehberiEkrani')","özel banka kredi"],
       ["💳","Kredi kartlarım","Kart limitleri, ekstre, hesap kesimi, borç","soMenuGit('kartlarimEkrani')","kredi kartı borç"],
       ["🏪","POS ve kartlı satış","Şirketime POS, kartla ödeme","soMenuGit('kartPosEkrani')","pos cihazı komisyon"],
@@ -383,7 +383,7 @@
   function bankalarGenel(){
     return baslik("Banka hesapları","Devlet bankasıyla oyuncu bankaları ayrı yönetilir.")
       +grids([
-        link("🏛️","Devlet Bankası","Vadeli / vadesiz hesap, para yatırma ve çekme.","soMenuGit('bankaEkrani')"),
+        link("🏛️","İnternet Bankacılığı","Tüm bankalar, vadeli ve vadesiz hesaplar.","soMenuGit('internetBankaciligiEkrani')"),
         link("🏦","Oyuncu bankaları","Faizleri karşılaştır, mevduat yatır, kredi başvur.","soMenuGit('bankaRehberiEkrani')"),
         link("📒","Mevduat ve kredilerim","Özel bankalardaki vadeler, geri ödemeler ve başvurular.","soMenuGit('bankaPortfoyEkrani')"),
         link("➕","Yeni banka kur","Yeni özel banka kur, sermayesini belirle.","soMenuGit('bankaKurEkrani')")
