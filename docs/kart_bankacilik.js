@@ -36,7 +36,7 @@
    if(!(p.kartlar||[]).length)html+=card("Aktif kartın yok","<p class='alt'>Aşağıdan devlet ya da oyuncu bankasına kredi kartı başvurusu yap.</p>");
    (p.kartlar||[]).forEach(function(k){
     var acik=(k.ekstreler||[]).filter(function(x){return x.durum==="acik";}).sort(function(a,b){return a.id-b.id;})[0];
-    var st=k.durum==="aktif"?"Aktif":k.durum==="nakit_kapali"?"Nakit avansa kapalı":k.durum==="takip"?"Yasal takip":"Kullanıma kapalı";
+    var st=k.durum==="aktif"?"Aktif":k.durum==="donduruldu"?"Geçici olarak donduruldu":k.durum==="nakit_kapali"?"Nakit avansa kapalı":k.durum==="takip"?"Yasal takip":"Kullanıma kapalı";
     var body='<div class="kart" style="background:linear-gradient(140deg,#283657,#151d33);color:white;border-radius:16px;margin:9px 0 13px;padding:17px"><div style="opacity:.75;font-size:12px">'+esc(k.banka)+'</div>'+
       '<div style="font-weight:800;font-size:25px;letter-spacing:2px;margin:15px 0">•••• •••• •••• '+esc(k.son_dort)+'</div><div>'+st+'</div></div>';
     body+=fld("Kart limiti",money(k.limit))+fld("Kullanılabilir limit",money(k.kullanilabilir))+fld("Güncel toplam borç",money(k.borc))+fld("Sonraki hesap kesimi",tarih(k.kesim_at));
@@ -48,14 +48,19 @@
             btn("İstediğim Tutarı Öde","kartOdemeYap("+k.id+",'diger')",true);
     }
     if(Number(k.borc)>0)body+=btn("Borcun Tamamını Öde","kartOdemeYap("+k.id+",'tam')",!acik);
-    if(k.durum==="aktif")body+=btn("Nakit Avans Çek","kartAvansYap("+k.id+")",true);
+    if(k.durum==="aktif"){
+      body+=btn("Nakit Avans Çek","kartAvansYap("+k.id+")",true);
+      body+=btn("Kartımı Dondur","kartDondurYap("+k.id+",true)",true);
+    }else if(k.durum==="donduruldu"){
+      body+=btn("Kartımı Yeniden Aç","kartDondurYap("+k.id+",false)");
+    }
     if((k.ekstreler||[]).length){
       body+='<h3 style="margin-top:16px">Hesap özetleri</h3>';
       (k.ekstreler||[]).forEach(function(a){body+='<div class="kart">'+fld("Kesim",tarih(a.kesim))+fld("Son ödeme",tarih(a.son_odeme))+fld("Dönem borcu",money(a.toplam))+fld("Asgari",money(a.asgari))+fld("Ödenen",money(a.odenen))+fld("Durum",esc(a.durum))+'</div>';});
     }
     if((k.hareketler||[]).length){
       body+='<h3 style="margin-top:16px">Hareketler</h3>';
-      (k.hareketler||[]).forEach(function(h){body+='<div class="kv"><span style="max-width:65%;overflow-wrap:anywhere">'+esc(h.aciklama||h.tur)+'<small style="display:block">'+tarih(h.zaman)+'</small></span><b>'+((h.tur==="odeme")?"-":"+")+money(h.tutar)+'</b></div>';});
+      (k.hareketler||[]).forEach(function(h){body+='<div class="kv"><span style="max-width:65%;overflow-wrap:anywhere">'+esc(h.aciklama||h.tur)+'<small style="display:block">'+tarih(h.zaman)+'</small></span><b>'+((h.tur==="odeme"||h.tur==="iade")?"-":"+")+money(h.tutar)+'</b></div>';});
     }
     html+=card("💳 "+esc(k.banka)+" · #"+k.id,body);
    });
@@ -153,7 +158,7 @@
     '<div class="alan"><label>Mal / hizmet açıklaması</label><input id="bkPosAciklama" placeholder="Satılan ürün veya hizmet"></div>'+
     btn("Alıcıya POS Ödeme İsteği Gönder","kartPosTalepYap()"));
    }
-   (p.giden||[]).forEach(function(t){html+=card("Gönderdiğim talep · "+esc(t.musteri),fld("Tutar",money(t.tutar))+fld("Satış",esc(t.aciklama))+fld("Durum",esc(t.durum)));});
+   (p.giden||[]).forEach(function(t){html+=card("Gönderdiğim talep · "+esc(t.musteri),fld("Tutar",money(t.tutar))+fld("Satış",esc(t.aciklama))+fld("Durum",esc(t.durum))+(t.durum==="odendi"?btn("Kartlı Satışı İade Et","kartPosIadeYap("+t.id+")",true):""));});
    html+=btn("Kredi Kartlarıma Dön","ekranAc(kartlarimEkrani)",true);
    app("POS ve Kartla Ödeme",html);
   }catch(ex){app("POS",card("Bağlantı hatası",esc(ex.message)));}
@@ -168,6 +173,14 @@
   if(onay&&!kim){toast("Uygun limitli aktif kartın yok",true);return;}
   if(onay&&!confirm("POS ödemesini kartınla onaylıyor musun?"))return;
   await API.rpc("kart_pos_yanit",{p_pos:id,p_kart:onay?kim:null});
-  toast(onay?"Kartla ödeme tamamlandı":"POS talebi reddedildi");kartPosEkrani();
+  toast(onay?"Kartla ödeme tamamlandı":"POS talebi reddedildi");state.panel=null;kartPosEkrani();
  }catch(ex){err(ex);}};
+ window.kartDondurYap=async function(id,freeze){
+  if(!confirm(freeze?"Kartını geçici olarak alışverişe ve nakit avansa kapatmak istiyor musun?":"Kartı tekrar kullanıma açmak istiyor musun?"))return;
+  try{await API.rpc("kart_dondur",{p_kart:id,p_dondur:freeze});toast(freeze?"Kart donduruldu":"Kart tekrar açıldı");kartlarimEkrani();}catch(ex){err(ex);}
+ };
+ window.kartPosIadeYap=async function(id){
+  if(!confirm("Satış bedeli şirket kasasından geri ödenecek; kart borcu veya müşteri bakiyesi düzeltilecek. İadeyi onaylıyor musun?"))return;
+  try{await API.rpc("kart_pos_iade",{p_pos:id});toast("POS satışı iade edildi");state.panel=null;kartPosEkrani();}catch(ex){err(ex);}
+ };
 })();
