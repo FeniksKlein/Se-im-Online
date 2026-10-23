@@ -29,7 +29,10 @@ function render(){
  }
  if(S.tab==='musteri')h+=box('Müşteriler · '+i.musteri,(d.musteriler.length?d.musteriler.map(function(x){return box(x.kad,row('Hesap açılışı',dt(x.acilis))+row('Aktif kredi',x.aktif_kredi)+row('Aktif kart',x.aktif_kart)+row('Vadeli mevduat',tl(x.mevduat)))}).join(''):'Aktif müşteri yok'));
  if(S.tab==='islem')h+=box('Banka kasa hareketleri',(d.hareketler.length?d.hareketler.map(function(x){return row(dt(x.zaman),tl(x.tutar))+'<p class="alt">'+e(x.aciklama)+'</p>'}).join(''):'Hareket yok'))+
- box('POS işlemleri',(d.pos_islemler.length?d.pos_islemler.map(function(x){return row(x.sirket,tl(x.tutar))+row('Komisyon',tl(x.komisyon))}).join(''):'POS tahsilatı yok'));
+ box('POS işlemleri',(d.pos_islemler.length?d.pos_islemler.map(function(x){return row(x.sirket,tl(x.tutar))+row('Komisyon',tl(x.komisyon))}).join(''):'POS tahsilatı yok'))+
+ box('Banka hesap işlemleri',(d.banka_islemler&&d.banka_islemler.length?d.banka_islemler.map(function(x){
+ return row(dt(x.zaman)+' · '+x.oyuncu,tl(x.tutar))+'<p class="alt">'+e(x.aciklama)+'</p>'
+ }).join(''):'Banka hesap işlemi yok'));
  if(S.tab==='ayar'){var select=function(id,v){return '<select id="'+id+'" class="alan"><option value="false"'+(!v?' selected':'')+'>Manuel karar</option><option value="true"'+(v?' selected':'')+'>Otomatik karar</option></select>'};
  h+=box('Banka onay politikaları','<p class="alt">Otomatik modda limit, kredi notu ve banka likiditesi değerlendirilir.</p>'+
  '<p>POS</p>'+select('bypos',a.pos)+'<p>Kredi kartı</p>'+select('bykart',a.kart)+'<p>Kredi</p>'+select('bykredi',a.kredi)+
