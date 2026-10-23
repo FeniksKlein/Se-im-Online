@@ -111,6 +111,14 @@ function bodyFor(b){
  }
  if(t==='kart'){
   var ks=cardsOf(b);
+  var pending=((S.data.cards||{}).basvurular||[]).filter(function(z){return b.id==='devlet'?z.banka_id==null:Number(z.banka_id)===Number(b.id);});
+  pending.forEach(function(z){
+    if(z.durum!=='bekliyor')return;
+    var info=row('Talep edilen limit',para(z.istek))+row('Durum','Değerlendirme bekliyor');
+    if(b.id==='devlet')info+=notice('Devlet Bankası kredi notunu ve geliri otomatik değerlendirir. Mevcut başvurunu sonuçlandırmak için finansal bilgi kullanımına izin vermen gerekir.')+btn('Başvurumu değerlendir','ibKartBilgiIzni('+Number(z.id)+')');
+    else info+=btn('Özel banka başvurumu aç','ibGit("kartlarimEkrani")','alt');
+    h+=kart('Bekleyen kredi kartı başvurum',info);
+  });
   if(!ks.length)h+='<div class="ib-empty">Bu bankaya ait kredi kartın henüz bulunmuyor.</div>';
   ks.forEach(function(k){
    var e=openStatement(k),remain=e?Math.max(0,Number(e.toplam||0)-Number(e.odenen||0)):0,min=e?Math.max(0,Number(e.asgari||0)-Number(e.odenen||0)):0;
@@ -195,6 +203,10 @@ window.ibVadeliCek=function(id){if(!confirm('Mevduatı şimdi tahsil etmek/erken
 window.ibKrediBasvur=function(){var b=bankNow(),a=say('ibKrediIstek'),v=say('ibKrediVade');if(!b||a<1000)return toast('En az 1.000 TL kredi tutarı yaz',true);if(!confirm(para(a)+' tutarında kredi başvurusu gönderilsin mi?'))return;action(API.rpc('oyb_kredi_basvur',{p_banka:Number(b.id),p_tutar:a,p_saat:v}),'Kredi başvurusu gönderildi');};
 window.ibKrediOde=function(id){var a=say('ibKrediTutar'+id);if(!(a>0))return toast('Ödenecek tutarı gir',true);if(!confirm(para(a)+' kredi borcuna ödensin mi?'))return;action(API.rpc('oyb_kredi_ode',{p_id:id,p_tutar:a}),'Kredi borcu ödendi');};
 window.ibKartBasvur=function(){var b=bankNow(),a=say('ibLimit');if(!b||!(a>=1000))return toast('En az 1.000 TL limit iste',true);action(API.rpc('kart_basvur',{p_banka:b.id==='devlet'?null:Number(b.id),p_limit:a}),'Kart başvurusu bankaya iletildi');};
+window.ibKartBilgiIzni=async function(id){
+ if(!confirm('Devlet Bankasının oyun içindeki kredi notu, gelir ve nakit verilerini değerlendirmesine izin veriyor musun? Mevcut sistem, uygun gördüğü limit talebinden düşük olsa bile kartı doğrudan açabilir.'))return;
+ try{var x=await API.rpc('kart_belge_yanit',{p_basvuru:id,p_onay:true});toast(x&&x.kart_id?'Kredi kartı değerlendirildi ve oluşturuldu':'Finansal bilgiler onaylandı');await load();}catch(e){err(e);}
+};
 window.ibKartOde=function(id,a){if(!(a>0))a=say('ibKartTutar'+id);if(!(a>0))return toast('Ödeme tutarı gir',true);if(!confirm(para(a)+' kart borcu ödemesi cüzdanından yapılsın mı?'))return;action(API.rpc('kart_ode',{p_kart:id,p_tutar:a}),'Kart borcu ödendi');};
 window.ibPosNakitOde=function(id){if(!confirm('Bu alışverişi cüzdan bakiyenle nakit ödemek istiyor musun?'))return;action(API.rpc('ib_pos_nakit_ode',{p_talep:id}),'Nakit ödeme tamamlandı');};
 window.ibPosKartOde=function(id){var a=say('ibPosKart'+id);if(!a)return toast('Kart seç',true);if(!confirm('Ödeme seçtiğin kredi kartına tek çekim yansıtılacak. Onaylıyor musun?'))return;action(API.rpc('kart_pos_yanit',{p_pos:id,p_kart:a}),'Kartlı ödeme tamamlandı');};
