@@ -557,7 +557,7 @@
    if(k==="akis")return go(typeof akisEkrani==="function"?akisEkrani:window.akisEkrani);
    if(k==="basin")return go(typeof basinEkrani==="function"?basinEkrani:window.basinEkrani);
    if(k==="turkiye")return go(typeof otomatikGazeteEkrani==="function"?function(){return otomatikGazeteEkrani();}:window.otomatikGazeteEkrani);
-   if(k==="kitap")return go(typeof window.ucEkonomiEkrani==="function"?function(){return window.ucEkonomiEkrani("kitap");}:null);
+   if(k==="kitap")return go(window.soKitapVitriniAc);
  };
  window.soAkisDaha=async function(){
    var dugme=document.getElementById("so-akis-daha");
@@ -684,8 +684,9 @@
    }
    var yayin=bul(".so-gundem-kisa");
    var akis=bul(".so-canli-akis");
-   // Ekranda Akış yalnızca bir kez bulunsun; alt menüdeki tam akış bağlantısı aynen kalır.
-   var ust=[magaza].concat(reklamlar,[kayan,secim,yayin,akis]).filter(Boolean);
+   var hafta=bul(".sm-gundem");
+   // Akış her zaman Siyasi hafta kartından önce gelir; ikisi farklı zamanlarda yüklenebilir.
+   var ust=[magaza].concat(reklamlar,[kayan,secim,yayin,akis,hafta]).filter(Boolean);
    if(ust.every(function(el,i){return icerik.children[i]===el;}))return;
    soSiralamada=true;
    try{
