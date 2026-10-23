@@ -112,9 +112,14 @@
       const ic = $("#icerik");
       if (!ic || D.sekme !== "gundem" || D.yigin.length || ic.querySelector(".sm-gundem")) return;
       stil();
-      const hedef = ic.querySelector(".bolum-bas");
+      // Siyasi hafta Akış'ın ARKASINDA olmalı. Gündem'deki diğer dinamik
+      // bileşenlerin yeniden sıralama yapmasını beklemeden doğru yere ekle.
+      const akis = ic.querySelector(".so-canli-akis") || ic.querySelector(".akis-kart");
+      const hedef = akis ? (akis.closest(".so-canli-akis") || akis) : ic.querySelector(".bolum-bas");
       const html = gundemKarti(o, h);
-      if (hedef) hedef.insertAdjacentHTML("beforebegin", html); else ic.insertAdjacentHTML("beforeend", html);
+      if (akis) hedef.insertAdjacentHTML("afterend", html);
+      else if (hedef) hedef.insertAdjacentHTML("beforebegin", html);
+      else ic.insertAdjacentHTML("beforeend", html);
     } catch (_) { /* sunucu modülü kurulmadıysa sessizce geç */ }
   }
   if (typeof gundemEkrani === "function") {
