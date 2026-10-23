@@ -127,6 +127,15 @@
         <div class="para" style="font-size:34px;margin-top:2px">${cz ? tlYaz(cz.para) : "—"}</div>
         <div class="kucuk" style="margin-top:6px">Şirketler, yatırımlar, bankalar ve emlak tek yerde.</div>
       </section>
+
+      <section class="kart" style="margin-bottom:14px;border:2px solid var(--ink2,#a995ff)">
+        <h2>🏦 Bankacılık Merkezi</h2>
+        <p class="alt">Devlet bankası ve oyuncu bankaları ayrı menülerde. Kredi kartı, POS, haftalık ekstre ve borç ödeme burada.</p>
+        <div class="satir">
+          <button type="button" class="btn altin" onclick="ekranAc(bankacilikMerkeziEkrani)">🏦 Bankacılık</button>
+          <button type="button" class="btn ikinci" onclick="ekranAc(kartlarimEkrani)">💳 Kredi Kartlarım</button>
+        </div>
+      </section>
       <section class="kart" style="margin-bottom:12px;border-color:#a995ff77">
         <h3>🛡️ Yeni: İşletme sigortası</h3>
         <p class="alt">Yangın, su baskını, hırsızlık ve arızadan kaynaklanan oyun içi şirket zararını poliçeyle karşıla. Hasar riski 25 Ekim 2026'dan önce başlamayacak; ilk sigortacı kurulduktan sonra da 72 saat hazırlık süresi var.</p>
@@ -156,11 +165,20 @@
         satir("altin", "Altın ve döviz", "Emtia ve döviz piyasaları", "ekranAc(piyasaEkrani)", "piyasaEkrani"),
         satir("tahvil", "Belediye tahvilleri", "Belediyelere borç ver, faiz kazan", "ekranAc(belediyeTahvilEkrani)", "belediyeTahvilEkrani")
       ])}
-      ${grup("Banka ve para", "", [
-        satir("banka", "Devlet bankası", "Vadeli ve vadesiz hesap, kredi", "ekranAc(bankaEkrani)", "bankaEkrani"),
-        satir("oyb", "Oyuncu bankaları", "Mevduat ve kredi fırsatları", "ekranAc(bankaRehberiEkrani)", "bankaRehberiEkrani"),
-        satir("gonder", "Para gönder", "Başka oyuncuya havale", "paraGonderModal()", "paraGonderModal"),
-        satir("gecmis", "Alım-satım geçmişim", "Geçmiş işlemlerin", "ekranAc(ticaretGecmisimEkrani)", "ticaretGecmisimEkrani")
+      ${grup("🏛️ DEVLET BANKASI", "Kamu bankacılığı", [
+        satir("banka", "Devlet bankasına gir", "Vadeli ve vadesiz hesap, kredi ve borç ödemesi", "ekranAc(bankaEkrani)", "bankaEkrani"),
+        satir("banka", "Devlet bankası kredi kartı", "Kart başvurusu, limit ve haftalık hesap özeti", "ekranAc(kartlarimEkrani)", "kartlarimEkrani")
+      ])}
+      ${grup("🏦 OYUNCU BANKALARI", "Özel bankalar ve banka yönetimi", [
+        satir("oyb", "Oyuncu bankaları listesi", "Bankaları karşılaştır, hesap aç, kredi kullan", "ekranAc(bankaRehberiEkrani)", "bankaRehberiEkrani"),
+        satir("oyb", "Özel banka kredi kartları", "Banka başvuruları, yönetici limit onayları", "ekranAc(kartlarimEkrani)", "kartlarimEkrani")
+      ])}
+      ${grup("💳 KREDİ KARTLARI VE ÖDEMELER", "Borç, ekstre ve POS", [
+        satir("banka", "Kredi kartlarım", "Hareketler, dönem borcu, asgari ve tam ödeme", "ekranAc(kartlarimEkrani)", "kartlarimEkrani"),
+        satir("banka", "POS · kartla alışveriş", "Mal/hizmet ödeme talepleri", "ekranAc(kartPosEkrani)", "kartPosEkrani"),
+        satir("cek", "Çek defterim ve çekli ticaret", "Çek karnesi, vadeler ve gelen teklifler", "cekMerkeziAc()", "cekMerkeziAc"),
+        satir("gonder", "Para gönder", "Banka havalesi", "paraGonderModal()", "paraGonderModal"),
+        satir("gecmis", "Alım-satım geçmişim", "Geçmiş işlemler", "ekranAc(ticaretGecmisimEkrani)", "ticaretGecmisimEkrani")
       ])}
       ${grup("Emlak", "", [
         satir("emlak", "Şehir Emlak ve İnşaat", "Müteahhitlerin ürettiği daire ve dükkânları incele, arsa ve tapu işlemlerini yönet", "arsaEkrani()", null)
@@ -404,3 +422,6 @@
     };
   }
 })();
+
+/* Dinamik bankacılık modülü, docs ve mobil için ortak. */
+(function(){if(document.getElementById("kartBankacilikModul"))return;var s=document.createElement("script");s.id="kartBankacilikModul";s.src="kart_bankacilik.js?v=20261023-1";s.async=false;document.body.appendChild(s);})();
