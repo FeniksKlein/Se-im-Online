@@ -735,7 +735,7 @@
    }
    var eklenen=new Set();
    Array.from(kok.querySelectorAll('[id^="sec"]')).forEach(function(el){
-     if(!/^sec\\d+$/.test(el.id)||el.closest(".so-canli-oylama"))return;
+     if(!/^sec\d+$/.test(el.id)||el.closest(".so-canli-oylama"))return;
      var id=Number(el.id.slice(3));
      var kayit=takvim.find(function(s){return Number(s.id)===id;});
      if(!kayit)return;
@@ -754,7 +754,7 @@
      });
    var takvimBas=null;
    Array.from(kok.querySelectorAll(".bolum-bas")).some(function(el){
-     if(/^\\s*Seçim takvimi\\s*$/i.test((el.querySelector("h2")||{}).textContent||"")){takvimBas=el;return true;}
+     if(/^\s*Seçim takvimi\s*$/i.test((el.querySelector("h2")||{}).textContent||"")){takvimBas=el;return true;}
      return false;
    });
    if(takvimBas){
@@ -779,7 +779,7 @@
        el.setAttribute("onclick","soGundemTakvimAc()");
    });
    var secimBas=Array.from(kok.querySelectorAll(".bolum-bas")).find(function(el){
-     return /^\\s*Seçimler ve oylamalar\\s*$/i.test((el.querySelector("h2")||{}).textContent||"");
+     return /^\s*Seçimler ve oylamalar\s*$/i.test((el.querySelector("h2")||{}).textContent||"");
    });
    if(secimBas&&(!secimBas.nextElementSibling||secimBas.nextElementSibling.classList.contains("bolum-bas")))secimBas.remove();
    return kok.innerHTML;
