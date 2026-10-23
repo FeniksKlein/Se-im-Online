@@ -890,3 +890,236 @@ begin
  values(k.user_id,format('💳 POS #%s iadesi yapildi. %s TL iade edildi; kart borcuna %s TL, cuzdanina %s TL.',t.id,n,karta,wallet));
  return jsonb_build_object('ok',true,'kart_borcu_azaldi',karta,'cuzdana_iade',wallet);
 end $function$;
+
+
+-- Gecikme takibi borcun tamamına değil, gecikmiş asgari yükümlülüğe dayanır.
+ALTER TABLE oyun.kredi_kartlari ADD COLUMN IF NOT EXISTS gecikmis_asgari numeric(18,2) NOT NULL DEFAULT 0;
+
+CREATE OR REPLACE FUNCTION oyun.kart_donem_isle(p_kart bigint DEFAULT NULL::bigint)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare c oyun.kredi_kartlari; e oyun.kart_ekstreler; zaman timestamptz:=oyun.simdi(); kalan numeric;
+ a numeric; f numeric; gc numeric; tarihsayi integer:=0;
+begin
+ for c in select * from oyun.kredi_kartlari where (p_kart is null or id=p_kart)
+ order by id for update loop
+   tarihsayi:=0;
+   if c.yil<>extract(year from zaman)::int then
+     update oyun.kredi_kartlari set yil=extract(year from zaman)::int,yil_eksik=0 where id=c.id;
+     c.yil_eksik:=0;
+   end if;
+   -- Nakit avans: islem tarihinden itibaren gunluk akdi faiz biriktirilir.
+   if c.nakit_avans_bakiye>0 and c.nakit_faiz_at is not null and zaman>=c.nakit_faiz_at+interval '1 day' then
+     a:=round(c.nakit_avans_bakiye*4.25/100*floor(extract(epoch from (zaman-c.nakit_faiz_at))/86400)/30,2);
+     update oyun.kredi_kartlari set borc=borc+a, nakit_faiz_at=c.nakit_faiz_at+
+       (floor(extract(epoch from (zaman-c.nakit_faiz_at))/86400)*interval '1 day') where id=c.id;
+     if a>0 then insert into oyun.kart_hareketler(kart_id,tur,tutar,aciklama,zaman)
+       values(c.id,'faiz',a,'Nakit avans gunluk akdi faizi',zaman);end if;
+   end if;
+   -- Birikmis son odeme tarihini kapat; kart limiti / asgari hesabini ekstre aninda dondur.
+   for e in select * from oyun.kart_ekstreler
+    where kart_id=c.id and durum='acik' and son_odeme<=zaman order by son_odeme for update loop
+     if e.odenen<e.asgari and e.toplam>e.odenen then
+       update oyun.kredi_kartlari set ust_uste=ust_uste+1, yil_eksik=yil_eksik+1,
+       gecikme_bas=coalesce(gecikme_bas,e.son_odeme),
+       gecikmis_asgari=greatest(gecikmis_asgari,greatest(0,e.asgari-e.odenen)),
+       durum=case when ust_uste+1>=3 then 'kapali'
+                    when yil_eksik+1>=3 then 'nakit_kapali' else durum end
+       where id=c.id;
+       -- Gecikmeye dusen asgari kisma gecikme faizi, kalan kisma akdi faiz.
+       kalan:=greatest(0,e.toplam-e.odenen-coalesce(c.nakit_avans_bakiye,0));
+       f:=case when e.toplam<30000 then 3.25 when e.toplam<=180000 then 3.75 else 4.25 end;
+       gc:=f+0.30;
+       a:=round((least(kalan,greatest(0,e.asgari-e.odenen))*gc+
+                  greatest(0,kalan-greatest(0,e.asgari-e.odenen))*f)*7/3000,2);
+       if a>0 then
+         update oyun.kredi_kartlari set borc=borc+a where id=c.id;
+         insert into oyun.kart_hareketler(kart_id,tur,tutar,aciklama,zaman)
+         values(c.id,'gecikme',a,'Haftalik akdi/gecikme faizi (aylik tavanin 7/30 oranli karsiligi)',zaman);
+       end if;
+       insert into oyun.bildirimler(user_id,metin)
+       values(c.user_id,format('💳 Asgari kart odemen gecikti. Eksik %s TL. Kredi notun etkilenir; kart kisitlanabilir.',greatest(0,e.asgari-e.odenen)));
+       update oyun.banka_musteri set kredi_notu=greatest(0,coalesce(kredi_notu,1100)-35) where user_id=c.user_id;
+     else
+       update oyun.kredi_kartlari set ust_uste=0 where id=c.id;
+       if e.toplam>e.odenen then
+         kalan:=greatest(0,e.toplam-e.odenen-coalesce(c.nakit_avans_bakiye,0));
+         f:=case when e.toplam<30000 then 3.25 when e.toplam<=180000 then 3.75 else 4.25 end;
+         a:=round(kalan*f*7/3000,2);
+         if a>0 then
+           update oyun.kredi_kartlari set borc=borc+a where id=c.id;
+           insert into oyun.kart_hareketler(kart_id,tur,tutar,aciklama,zaman)
+             values(c.id,'faiz',a,'Asgari odendi; kalan borca 7 gunluk akdi faiz',zaman);
+         end if;
+       end if;
+     end if;
+     update oyun.kart_ekstreler set durum=case when toplam<=odenen then 'odendi' else 'devretti' end where id=e.id;
+   end loop;
+   -- Yasal takip ancak uzun sureli odenmeyen borc ve odeme firsati sonrasi.
+   select * into c from oyun.kredi_kartlari where id=c.id;
+   if c.gecikme_bas is not null and c.gecikme_bas<=zaman-interval '90 days' and c.gecikmis_asgari>0 and c.borc>0 then
+     update oyun.kredi_kartlari set durum='takip' where id=c.id;
+     insert into oyun.icra_takip(kaynak,kaynak_id,borclu,alacakli_sirket,durum,baslangic_borc,teblig,odeme_son)
+     values('kredi_karti',c.id,c.user_id,c.banka_id,'teblig',c.borc,zaman,zaman+interval '7 days')
+     on conflict (kaynak,kaynak_id) do nothing;
+   end if;
+   -- Gecmis hafta ekstrelerini olustur (idempotent) ve devir borcunu tek bir yeni ekstreye tasir.
+   while c.kesim_at<=zaman and tarihsayi<60 loop
+     select borc into kalan from oyun.kredi_kartlari where id=c.id;
+     if kalan>0 then
+       insert into oyun.kart_ekstreler(kart_id,kesim,son_odeme,toplam,asgari)
+       values(c.id,c.kesim_at,c.kesim_at+interval '7 days',kalan,
+         round(kalan*case when c.limit_tl<=100000 then 0.20 else 0.40 end,2))
+       on conflict do nothing;
+     end if;
+     c.kesim_at:=c.kesim_at+interval '7 days';
+     update oyun.kredi_kartlari set kesim_at=c.kesim_at where id=c.id;
+     tarihsayi:=tarihsayi+1;
+   end loop;
+ end loop;
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.kart_nakit_avans(p_kart bigint, p_tutar numeric)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare u uuid:=auth.uid(); k oyun.kredi_kartlari; n numeric; masraf numeric;
+begin
+ if u is null or p_tutar is null or p_tutar<100 then raise exception 'Nakit avans en az 100 TL';end if;
+ perform oyun.kart_donem_isle(p_kart);
+ select * into k from oyun.kredi_kartlari where id=p_kart and user_id=u for update;
+ if not found or k.durum<>'aktif' or k.yil_eksik>=3 then raise exception 'Kart nakit avansa kapali';end if;
+ n:=round(p_tutar,2); masraf:=round(n*0.02,2);
+ if k.limit_tl-k.borc<n+masraf then raise exception 'Limit yetersiz';end if;
+ if k.banka_id is null then update oyun.ulke set hazine=hazine-n where id=1 and hazine>=n;
+ else update oyun.sirketler set kasa=kasa-n where id=k.banka_id and kasa>=n;end if;
+ if not found then raise exception 'Bankanin nakit kaynagi yetersiz';end if;
+ update oyun.cuzdan set para=para+n where user_id=u;
+ update oyun.kredi_kartlari set borc=borc+n+masraf,nakit_avans_bakiye=nakit_avans_bakiye+n,nakit_faiz_at=coalesce(nakit_faiz_at,oyun.simdi()) where id=k.id;
+ insert into oyun.kart_hareketler(kart_id,tur,tutar,aciklama)
+ values(k.id,'nakit_avans',n,'Nakit avans - kullanim anindan faiz uygulamasi baslar'),
+ (k.id,'avans_masraf',masraf,'Nakit avans %2 islem masrafi');
+ return jsonb_build_object('ok',true,'nakit',n,'masraf',masraf);
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.kart_ode(p_kart bigint, p_tutar numeric)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare u uuid:=auth.uid(); k oyun.kredi_kartlari; o numeric; tak oyun.kart_ekstreler; karsilanan numeric; dis numeric;
+begin
+ if u is null or p_tutar is null or p_tutar<=0 then raise exception 'Gecersiz tutar';end if;
+ perform oyun.kart_donem_isle(p_kart);
+ select * into k from oyun.kredi_kartlari where id=p_kart and user_id=u for update;
+ if not found then raise exception 'Kart bulunamadi';end if;
+ o:=least(round(p_tutar,2),k.borc);
+ if o<=0 then raise exception 'Odenecek kart borcu bulunmuyor';end if;
+ update oyun.cuzdan set para=para-o where user_id=u and para>=o;
+ if not found then raise exception 'Sahsi cuzdan bakiyesi yetersiz';end if;
+ if k.banka_id is null then
+   update oyun.ulke set hazine=hazine+o where id=1;
+ else
+   update oyun.sirketler set kasa=kasa+o where id=k.banka_id;
+ end if;
+ update oyun.kredi_kartlari set borc=greatest(0,borc-o),gecikmis_asgari=greatest(0,gecikmis_asgari-o),nakit_avans_bakiye=greatest(0,nakit_avans_bakiye-o),nakit_faiz_at=case when nakit_avans_bakiye<=o then null else nakit_faiz_at end where id=k.id;
+ dis:=o;
+ for tak in select * from oyun.kart_ekstreler where kart_id=k.id and durum='acik' order by id asc for update loop
+   karsilanan:=least(dis,greatest(0,tak.toplam-tak.odenen));
+   update oyun.kart_ekstreler set odenen=odenen+karsilanan,
+     durum=case when odenen+karsilanan>=toplam then 'odendi' else durum end where id=tak.id;
+   dis:=dis-karsilanan;
+   if dis<=0 then exit;end if;
+ end loop;
+ update oyun.kredi_kartlari set ust_uste=case when borc=0 then 0 else ust_uste end,
+   gecikme_bas=case when gecikmis_asgari<=o then null else gecikme_bas end,
+   durum=case when borc=0 and durum in ('kapali','nakit_kapali') then 'aktif' else durum end
+ where id=k.id;
+ insert into oyun.kart_hareketler(kart_id,tur,tutar,aciklama,zaman)
+ values(k.id,'odeme',o,'Kart borc odemesi',oyun.simdi());
+ return jsonb_build_object('ok',true,'odenen',o,'kalan',k.borc-o);
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.kart_panel()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare u uuid:=auth.uid(); j jsonb; liste jsonb; kart oyun.kredi_kartlari;
+begin
+ if u is null then raise exception 'Oturum gerekli';end if;
+ for kart in select * from oyun.kredi_kartlari where user_id=u loop
+   perform oyun.kart_donem_isle(kart.id);
+ end loop;
+ select coalesce(jsonb_agg(jsonb_build_object('id',k.id,'banka_id',k.banka_id,
+ 'banka',coalesce(s.ad,'Devlet Bankasi'),'limit',k.limit_tl,'borc',k.borc,
+ 'kullanilabilir',greatest(k.limit_tl-k.borc,0),'durum',k.durum,'kesim_at',k.kesim_at,
+ 'gecikme_bas',k.gecikme_bas,'gecikmis_asgari',k.gecikmis_asgari,'son_dort',lpad((k.id%10000)::text,4,'0'),
+ 'ekstreler',coalesce((select jsonb_agg(jsonb_build_object('id',a.id,'kesim',a.kesim,
+ 'son_odeme',a.son_odeme,'toplam',a.toplam,'asgari',a.asgari,'odenen',a.odenen,'durum',a.durum)
+ order by a.id desc) from (select * from oyun.kart_ekstreler where kart_id=k.id order by id desc limit 10)a),'[]'::jsonb),
+ 'hareketler',coalesce((select jsonb_agg(jsonb_build_object('tur',a.tur,'tutar',a.tutar,
+ 'aciklama',a.aciklama,'zaman',a.zaman) order by a.id desc)
+ from (select * from oyun.kart_hareketler where kart_id=k.id order by id desc limit 30)a),'[]'::jsonb)
+ ) order by k.id desc),'[]'::jsonb) into liste
+ from oyun.kredi_kartlari k left join oyun.sirketler s on s.id=k.banka_id where k.user_id=u;
+ select jsonb_build_object(
+ 'kartlar',liste,
+ 'basvurular',coalesce((select jsonb_agg(jsonb_build_object('id',b.id,'banka_id',b.banka_id,
+ 'banka',coalesce(s.ad,'Devlet Bankasi'),'istek',b.istek,'durum',b.durum,'istenen',b.istenen,
+ 'izin',b.izin,'teklif_limit',b.teklif_limit,'basvuru',b.basvuru) order by b.id desc)
+ from oyun.kart_basvurular b left join oyun.sirketler s on s.id=b.banka_id where b.user_id=u),'[]'::jsonb),
+ 'bankalar',coalesce((select jsonb_agg(jsonb_build_object('id',id,'ad',ad,'kasa',kasa)
+ order by id) from oyun.sirketler where sektor='banka' and aktif),'[]'::jsonb),
+ 'yonetilen',coalesce((select jsonb_agg(jsonb_build_object('id',b.id,'banka_id',b.banka_id,
+ 'banka',s.ad,'oyuncu',p.kad,'istek',b.istek,'istenen',b.istenen,'izin',b.izin,
+ 'bilgi',case when b.izin<>'[]'::jsonb then b.bilgi else '{}'::jsonb end)
+ order by b.id desc)
+ from oyun.kart_basvurular b join oyun.sirketler s on s.id=b.banka_id
+ left join oyun.profiller p on p.id=b.user_id
+ where b.durum='bekliyor' and
+ (s.yonetici=u or exists(select 1 from oyun.sirket_ortaklari o where o.sirket_id=s.id and o.user_id=u and o.pay>=50))),'[]'::jsonb)) into j;
+ return j;
+end $function$;
+
+CREATE OR REPLACE FUNCTION public.kart_pos_iade(p_pos bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare u uuid:=auth.uid(); t oyun.kart_pos_talepleri; k oyun.kredi_kartlari; s oyun.sirketler;
+  n numeric; karta numeric; wallet numeric;
+begin
+ if u is null then raise exception 'Oturum acik degil';end if;
+ select * into t from oyun.kart_pos_talepleri where id=p_pos and durum='odendi' for update;
+ if not found then raise exception 'Iade edilebilecek odenmis POS bulunamadi';end if;
+ select * into s from oyun.sirketler where id=t.sirket_id and aktif for update;
+ if not found then raise exception 'Satici sirket aktif degil';end if;
+ if s.yonetici is distinct from u and
+ not exists(select 1 from oyun.sirket_ortaklari where sirket_id=s.id and user_id=u and pay>=50)
+ then raise exception 'Iadeye sirket yetkisi gerekli';end if;
+ n:=t.tutar;
+ if s.kasa<n then raise exception 'Saticinin kasasi iadeyi karsilamiyor';end if;
+ select * into k from oyun.kredi_kartlari where id=t.kart_id for update;
+ karta:=least(k.borc,n);
+ wallet:=n-karta;
+ update oyun.sirketler set kasa=kasa-n where id=s.id;
+ if k.banka_id is null then update oyun.ulke set hazine=hazine+karta where id=1;
+ else update oyun.sirketler set kasa=kasa+karta where id=k.banka_id;end if;
+ if wallet>0 then update oyun.cuzdan set para=para+wallet where user_id=k.user_id;end if;
+ update oyun.kredi_kartlari set borc=borc-karta,nakit_avans_bakiye=least(nakit_avans_bakiye,greatest(0,borc-karta)) where id=k.id;
+ update oyun.kart_pos_talepleri set durum='iade' where id=t.id;
+ insert into oyun.kart_hareketler(kart_id,tur,tutar,sirket_id,aciklama)
+ values(k.id,'iade',n,s.id,'POS #'||t.id||' kartli satis iadesi');
+ insert into oyun.bildirimler(user_id,metin)
+ values(k.user_id,format('💳 POS #%s iadesi yapildi. %s TL iade edildi; kart borcuna %s TL, cuzdanina %s TL.',t.id,n,karta,wallet));
+ return jsonb_build_object('ok',true,'kart_borcu_azaldi',karta,'cuzdana_iade',wallet);
+end $function$;
