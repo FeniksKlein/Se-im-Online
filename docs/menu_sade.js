@@ -156,7 +156,8 @@
         satir("altin", "Altın ve döviz", "Emtia ve döviz piyasaları", "ekranAc(piyasaEkrani)", "piyasaEkrani"),
         satir("tahvil", "Belediye tahvilleri", "Belediyelere borç ver, faiz kazan", "ekranAc(belediyeTahvilEkrani)", "belediyeTahvilEkrani")
       ])}
-      ${grup("Banka ve para", "", [
+      ${grup("Banka ve para", "Hesaplar, çek karnesi ve çekli ödeme", [
+        satir("cek", "Çek defterim ve çekli ticaret", "Çek karnesi al, vadeleri ve gelen teklifleri yönet", "cekMerkeziAc()", "cekMerkeziAc"),
         satir("banka", "Devlet bankası", "Vadeli ve vadesiz hesap, kredi", "ekranAc(bankaEkrani)", "bankaEkrani"),
         satir("oyb", "Oyuncu bankaları", "Mevduat ve kredi fırsatları", "ekranAc(bankaRehberiEkrani)", "bankaRehberiEkrani"),
         satir("gonder", "Para gönder", "Başka oyuncuya havale", "paraGonderModal()", "paraGonderModal"),
