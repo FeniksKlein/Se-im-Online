@@ -1500,7 +1500,22 @@ async function gundemEkrani(){
   let DUR; try { DUR = await durumYenile(); } catch (err) { iskelet("Gündem", `<div class="bos">${e(hataCevir(err.message))}</div>`); return; }
   const pp = DUR.profil, mvMi = pp.makamlar.some(x => x.tur === "mv"), cbMi = pp.makamlar.some(x => x.tur === "cb");
   // Bütün veriler paralel yüklenir; biri hata verirse ekranın geri kalanı yine çizilir
-  const iste = (fn, args, varsay) => API.rpc(fn, args).catch(() => varsay);
+  // Gündem çok sayıda RPC çağırıyor. Aynı anda en fazla 4 istek gönder:
+  // düşük kapasiteli veritabanında ani sorgu yığılmasını önler.
+  let calisanRpc = 0;
+  const bekleyenRpc = [];
+  const iste = (fn, args, varsay) => new Promise(resolve => {
+    const calistir = () => {
+      if (calisanRpc >= 4) { bekleyenRpc.push(calistir); return; }
+      calisanRpc++;
+      Promise.resolve().then(() => API.rpc(fn, args)).then(resolve, () => resolve(varsay)).finally(() => {
+        calisanRpc--;
+        const sonraki = bekleyenRpc.shift();
+        if (sonraki) sonraki();
+      });
+    };
+    calistir();
+  });
   const [ihaleR, haber, reflerR, kanunlar, dv, itt, ia, mitingler, haklar, meclis, stk, dernekSecimleri, EK] = await Promise.all([
     iste("ihaleler", undefined, { acik: [] }), iste("haberler", { p_limit: 15 }, []), iste("referandumlar", { p_limit: 5 }, []),
     mvMi || cbMi ? iste("kanunlar", { p_limit: 40 }, []) : [], mvMi ? iste("meclis_baskanlik", undefined, null) : null,
@@ -5046,7 +5061,17 @@ async function basla(){
   const o = await API.oturum();
   if (!o) return karsilama();
   await oturumKaydet();
-  try { await durumYenile(); } catch (err) {
+  try {
+    // Anlık 500/504 ya da bağlantı zaman aşımında en fazla 3 deneme.
+    // Yetki ve iş kuralı hatalarında gereksiz tekrar yok.
+    for (let deneme = 0; deneme < 3; deneme++) {
+      try { await durumYenile(); break; }
+      catch (err) {
+        if (deneme === 2 || !/sunucu|timeout|timed out|network|fetch|gateway|zaman aşımı|bağlantı|500|502|503|504/i.test(String(err && err.message))) throw err;
+        await new Promise(tamam => setTimeout(tamam, 900 + deneme * 1100 + Math.floor(Math.random() * 400)));
+      }
+    }
+  } catch (err) {
     $("#app").innerHTML = `<div class="karsila"><h1>Bağlantı sorunu</h1><p class="giris">${e(hataCevir(err.message))}</p><button class="btn" onclick="basla()">Tekrar dene</button><button class="btn ikinci" onclick="cikisYap()">Çıkış</button></div>`;
     return;
   }
@@ -5069,7 +5094,7 @@ setInterval(() => {
     if (ms < 0 && ms > -1500 && D.sekme === "gundem" && !D.yigin.length && !$("#modal")) setTimeout(gundemEkrani, 1500);
   });
 }, 1000);
-setInterval(() => { if (D.durum && D.sekme === "gundem" && !D.yigin.length && !$("#modal") && !document.hidden) gundemEkrani(); }, 60000);
+setInterval(() => { if (D.durum && D.sekme === "gundem" && !D.yigin.length && !$("#modal") && !document.hidden) gundemEkrani(); }, 120000);
 // Oyun açıkken tüm sohbet rozetleri ve konuşma listeleri yaklaşık 8 saniyede güncellenir.
 let mesajKontroluSuruyor = false;
 async function mesajBildirimKontrol(){
@@ -5081,7 +5106,8 @@ async function mesajBildirimKontrol(){
   } catch (_) { /* Bağlantı geri gelince devam eder. */ }
   finally { mesajKontroluSuruyor = false; }
 }
-setInterval(mesajBildirimKontrol, 8000);
+// Mesaj rozetlerini yoğun trafik altında 30 saniyede bir kontrol et.
+setInterval(mesajBildirimKontrol, 30000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden && D.durum && !D.yigin.length && !$("#modal")) EKRAN[D.sekme](); });
 window.addEventListener("load", () => {
   API = window.API_TEST || gercekApi();
@@ -7866,7 +7892,7 @@ function geceKancasi(s){
     }
     const benimAcik = !!(s.sonuc && s.sonuc.iller && s.sonuc.iller[String(s.benim_il || "")]);
     GECE.durum[s.id] = { acilan_il: g.acilan_il || 0, aktif: true, benimAcik };
-    D.canli = setInterval(() => { if (!document.hidden) secimEkrani(s.id, true); }, 5000);
+    D.canli = setInterval(() => { if (!document.hidden) secimEkrani(s.id, true); }, 15000);
   } else if (onceki && onceki.aktif) {
     GECE.durum[s.id] = { aktif: false };
     HAPTIK.guclu(); SES.fanfar(); toast("Sayım tamamlandı. Kesin sonuçlar açıklandı.");
