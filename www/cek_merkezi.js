@@ -88,7 +88,7 @@ window.cekMerkeziEkrani=async function(){
   var bulk=(CACHE.toptan||[]).filter(function(x){return x.durum==='bekliyor';});
   var bulkHtml=bulk.length?kart('🏭 Şirketler arası çekli mal teklifleri',bulk.map(function(x){
    return '<div class="kart"><b>#'+x.id+' · '+esc(x.magaza)+' → '+esc(x.uretici)+'</b>'+
-     '<p class="alt">'+esc(x.adet)+' × '+esc(x.urun)+' · '+para(x.toplam)+' · '+tarih(x.cek_tarih)+'</p>'+
+     '<p class="alt">'+esc(x.adet)+' × '+esc(x.urun)+' · Toplam '+para(x.toplam)+' · Nakit '+para(x.nakit||0)+' + Çek '+para(Number(x.toplam)-Number(x.nakit||0))+' · '+tarih(x.cek_tarih)+'</p>'+
      (x.satici_yetkilisi?buton('Satışı kabul et','cekToptanKarar('+x.id+',"kabul")','altin')+buton('Reddet','cekToptanKarar('+x.id+',"red")'):'')+
      (x.teklif_sahibi?buton('Teklifi iptal et','cekToptanKarar('+x.id+',"iptal")'):'')+'</div>';
   }).join('')):'';
@@ -261,4 +261,49 @@ if(typeof oncekiIskelet==='function'){
   return oncekiIskelet.call(this,baslik,govde,opt);
  };
 }
+
+window.cekToptanTeklifModal=async function(){
+ var ma=Number(document.getElementById('kt_alici')?.value);
+ var stokRaw=String(document.getElementById('kt_stok')?.value||'').split('|');
+ var ad=Number(document.getElementById('kt_adet')?.value);
+ if(!ma||stokRaw.length!==2||!Number.isInteger(ad)||ad<1||ad>500)return toast('Önce mağazanı, ürününü ve geçerli adet seç.',true);
+ try{
+  var res=await Promise.all([API.rpc('cek_panel'),API.rpc('kamu_toptan_panel')]);
+  var panel=res[0],data=res[1];
+  var hs=(panel.hesaplar||[]).filter(function(h){return Number(h.sirket)===ma&&Number(h.yaprak)>0;});
+  if(!hs.length){toast('Mağazan adına çek defteri almalısın. Bankacılık ve Çek Merkezinden şirket defteri al.',true);return window.cekDefterModal();}
+  var urun=(data.stoklar||[]).find(function(s){return Number(s.sirket)===Number(stokRaw[0])&&s.urun===stokRaw[1];});
+  if(!urun)return toast('Bu stok artık satışta değil. Listeyi yenile.',true);
+  if(Number(urun.adet)<ad)return toast('Satıcının stoğu yeterli değil.',true);
+  var toplam=Math.round(Number(urun.fiyat)*ad);
+  if(!Number.isSafeInteger(toplam)||toplam<100||toplam>1000000000) return toast('Çekli satış için tutar en az 100 ₺ olmalı.',true);
+  var pesin=Math.round(toplam*0.6);
+  var m=modal('<h3>Mal ticareti · nakit + çek</h3>'+
+   '<p class="alt">'+esc(urun.ad)+' · '+esc(stokRaw[1])+' · '+ad+' adet</p>'+
+   satir('Alışveriş toplamı',para(toplam))+
+   '<p class="kucuk">Satıcıya kabul veya ret bildirimi gönderilecek. Kabul edilirse mağaza kasasından peşinat çıkacak, kalan tutara vadeli çek düzenlenecek ve mallar teslim edilecek.</p>'+
+   '<div class="alan"><label>Peşin nakit (mağaza kasasından)</label><input id="ckMalNakit" type="number" min="0" max="'+(toplam-100)+'" step="0.01" value="'+pesin+'"></div>'+
+   '<p class="alt" id="ckMalKalan">Vadeli çek: '+para(toplam-pesin)+'</p>'+
+   '<div class="alan"><label>Mağazanın çek defteri</label><select id="ckMalDefter">'+hs.map(function(h){return '<option value="'+h.id+'">Defter #'+h.id+' · '+h.yaprak+' yaprak</option>';}).join('')+'</select></div>'+
+   '<div class="alan"><label>Çek ödeme tarihi</label><input id="ckMalVade" type="date" min="'+panel.bugun+'" max="'+bugunArtir(panel.bugun,365)+'" value="'+bugunArtir(panel.bugun,7)+'"></div>'+
+   '<button id="ckMalGonder" class="btn altin">Satıcıya ödeme teklifini gönder</button>');
+  var input=m.querySelector('#ckMalNakit');
+  input.oninput=function(){m.querySelector('#ckMalKalan').textContent='Vadeli çek: '+para(toplam-Number(input.value||0));};
+  m.querySelector('#ckMalGonder').onclick=async function(){
+   var n=Number(input.value);
+   if(!Number.isFinite(n)||n<0||n!==Math.round(n*100)/100||toplam-n<100){
+    return toast('Peşinat 0–'+para(toplam-100)+' aralığında olmalı. Çek en az 100 ₺.',true);
+   }
+   this.disabled=true;
+   try{
+    var sonuc=await API.rpc('cek_toptan_islem',{p_eylem:'teklif',p_veri:{
+     magaza:ma,uretici:Number(stokRaw[0]),urun:stokRaw[1],adet:ad,
+     hesap:Number(m.querySelector('#ckMalDefter').value),tarih:m.querySelector('#ckMalVade').value,nakit:n
+    }});
+    modalKapat();toast('Nakit + çek teklifi (#'+sonuc.id+') satıcıya gönderildi. Satıcı Çek Merkezinden kabul veya ret verebilir.');
+    window.kamuToptanEkrani();
+   }catch(er){hata(er);this.disabled=false;}
+  };
+ }catch(er){hata(er);}
+};
 })();
