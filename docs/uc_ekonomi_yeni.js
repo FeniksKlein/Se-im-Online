@@ -328,6 +328,16 @@ async function eventAct(mode,id,data){
   await open("etkinlik");
  }catch(err){toast(err.message||String(err),true);}
 }
+window.ucEtkinlikIptal=async function(id){
+ const ev=(cache?.etkinlikler||[]).find(x=>Number(x.id)===Number(id));
+ if(!ev||ev.durum!=="planlandi")return;
+ if(!confirm("Etkinliği iptal etmek istiyor musun? Biletler ve sponsorluklar iade edilecek; salon gideri iade edilmez."))return;
+ try{
+  await API.rpc("uc_etkinlik_iptal",{p_id:Number(id),p_neden:"Organizatör talebi"});
+  toast("Etkinlik iptal edildi; iadeler yapıldı.");
+  await open("etkinlik");
+ }catch(ex){toast(ex.message||String(ex),true);}
+};
 window.ucEventModal=eventDialog;window.ucEventDo=eventAct;
 function renderEvents(){
  let out=card("🎟️ Konferans, konser ve fuarlar","Oyuncular kendi medya veya ajans şirketleriyle etkinlik düzenleyebilir. Mekân kirasını öder, bilet fiyatını ve salon kapasitesini seçer; gerçek oyuncular ile sınırlı sayıdaki sanal ziyaretçiler bilet alır. Bitişte vergiler ve personel gideri düşülür.",
@@ -344,7 +354,8 @@ function renderEvents(){
    (ev.durum==="bitti"?"<b>Net sonuç: "+TL(ev.kar)+"</b>":"⏳ Etkinlik günü sanal katılım da hesaplanacak."),
    (openSale&&!ev.biletim?btn("🎟️ Bilet al","ucEventDo('bilet_al',"+ev.id+")"):"")+
    (ev.biletim?note("✅ Biletin var"):"")+
-   (ev.durum==="planlandi"?btn("Sponsor ol","ucEventModal('sponsor',"+ev.id+")",true):""));
+   (ev.durum==="planlandi"?btn("Sponsor ol","ucEventModal('sponsor',"+ev.id+")",true):"")+
+   (ev.durum==="planlandi" && (cache?.sirketler||[]).some(s=>Number(s.id)===Number(ev.sirket))?btn("Etkinliği İptal Et","ucEtkinlikIptal("+ev.id+")",true):""));
  }
  if(!list.length)out+=card("Henüz organizasyon yok","İlk konferansı, konseri veya fuarı sen düzenleyebilirsin.");
  return out;
