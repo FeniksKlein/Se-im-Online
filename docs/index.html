@@ -5029,7 +5029,7 @@ const EKRAN = { yonetim: () => window.yonetimEkrani(), belediye: () => window.be
 function surumKucuk(a, b){ return /^\d/.test(a) && /^\d/.test(b) && a.localeCompare(b, "en", { numeric: true }) < 0; }
 async function surumKontrol(){
   try {
-    const s = await API.rpc("surum");
+    const s = await Promise.race([API.rpc("surum"), new Promise(resolve => setTimeout(() => resolve(null), 6000))]);
     if (s && surumKucuk(window.UYGULAMA_SURUM, s.min_uygulama)) {
       const ios = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === "ios";
       $("#app").innerHTML = `<div class="karsila"><h1>Güncelleme gerekli</h1><p class="giris">Oyunun yeni sürümü yayında. Devam etmek için uygulamayı güncelle. Hesabın, makamın, paran ve bütün geçmişin sunucuda güvende; güncelleyince kaldığın yerden devam edersin.</p>
@@ -5050,8 +5050,9 @@ async function basla(){
   if (!await surumKontrol()) return;
   const o = await API.oturum();
   if (!o) return karsilama();
-  await oturumKaydet();
-  try { await durumYenile(); } catch (err) {
+  // Oturum kaydı destekleyici bir işlemdir; gecikirse girişin önünü kesmesin.
+  oturumKaydet().catch(() => {});
+  try { await Promise.race([durumYenile(), new Promise((_, reject) => setTimeout(() => reject(new Error("Sunucu yanıt vermedi. Yeniden bağlanmayı deneyin.")), 11000))]); } catch (err) {
     $("#app").innerHTML = `<div class="karsila"><h1>Bağlantı sorunu</h1><p class="giris">${e(hataCevir(err.message))}</p><button class="btn" onclick="basla()">Tekrar dene</button><button class="btn ikinci" onclick="cikisYap()">Çıkış</button></div>`;
     return;
   }
@@ -5059,8 +5060,8 @@ async function basla(){
     if (D.durum.kayit_durumu === "reddedildi" || (D.durum.kayit_durumu === "beklemede" && D.durum.kayit_basvuru_at)) return kayitDurumuEkrani(D.durum.kayit_durumu);
     return profilOlusturEkrani();
   }
-  try { PARTI_ON = await API.rpc("partiler"); } catch (_) {}
-  if (typeof kimlikYukle === "function") await kimlikYukle([D.durum.profil.kad]);
+  try { PARTI_ON = await Promise.race([API.rpc("partiler"), new Promise(resolve => setTimeout(() => resolve(PARTI_ON), 3500))]); } catch (_) {}
+  if (typeof kimlikYukle === "function") await Promise.race([kimlikYukle([D.durum.profil.kad]), new Promise(resolve => setTimeout(resolve, 2500))]);
   const adliyeBaglantisi = new URLSearchParams(window.location.search).get("ekran")==="adliye";
   sekmeAc(adliyeBaglantisi ? "adliye" : "gundem");
   PUSH.baslat();
@@ -9419,7 +9420,8 @@ async function ajansAnketCevap(id, parti){
     window.gundemEkrani = gundemEkrani = async function(){
       const r = await eskiG.apply(this, arguments);
       try {
-        const g = await API.rpc("ajans_gundem");
+        const g = await Promise.race([API.rpc("ajans_gundem"), new Promise(resolve => setTimeout(() => resolve(null), 4500))]);
+        if (!g) return r;
         const ic = $("#icerik");
         if (ic && D.sekme === "gundem" && !ic.querySelector(".aj-ek")) ic.insertAdjacentHTML("afterbegin", ajansGundemHtml(g));
       } catch (_) {}
