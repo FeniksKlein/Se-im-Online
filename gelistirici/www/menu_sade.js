@@ -171,10 +171,12 @@
       ])}
       ${grup("🏦 OYUNCU BANKALARI", "Özel bankalar ve banka yönetimi", [
         satir("oyb", "Oyuncu bankaları listesi", "Bankaları karşılaştır, hesap aç, kredi kullan", "ekranAc(bankaRehberiEkrani)", "bankaRehberiEkrani"),
-        satir("oyb", "Özel banka kredi kartları", "Banka başvuruları, yönetici limit onayları", "ekranAc(kartlarimEkrani)", "kartlarimEkrani")
+        satir("oyb", "Özel banka kredi kartları", "Banka başvuruları, yönetici limit onayları", "ekranAc(kartlarimEkrani)", "kartlarimEkrani"),
+        satir("oyb", "🏦 Banka POS Yönetimi", "POS başvurularını onayla, otomatik onayı aç, %2 gelirini incele", "ekranAc(posBankaEkrani)", "posBankaEkrani")
       ])}
       ${grup("💳 KREDİ KARTLARI VE ÖDEMELER", "Borç, ekstre ve POS", [
         satir("banka", "Kredi kartlarım", "Hareketler, dönem borcu, asgari ve tam ödeme", "ekranAc(kartlarimEkrani)", "kartlarimEkrani"),
+        satir("banka", "POS Cihazlarım · başvurularım", "Şirketine POS al, banka onayını ve cihazları yönet", "ekranAc(posBankaEkrani)", "posBankaEkrani"),
         satir("banka", "POS · kartla alışveriş", "Mal/hizmet ödeme talepleri", "ekranAc(kartPosEkrani)", "kartPosEkrani"),
         satir("cek", "Çek defterim ve çekli ticaret", "Çek karnesi, vadeler ve gelen teklifler", "cekMerkeziAc()", "cekMerkeziAc"),
         satir("gonder", "Para gönder", "Banka havalesi", "paraGonderModal()", "paraGonderModal"),
@@ -424,4 +426,4 @@
 })();
 
 /* Dinamik bankacılık modülü, docs ve mobil için ortak. */
-(function(){if(document.getElementById("kartBankacilikModul"))return;var s=document.createElement("script");s.id="kartBankacilikModul";s.src="kart_bankacilik.js?v=20261023-2";s.async=false;document.body.appendChild(s);})();
+(function(){if(document.getElementById("kartBankacilikModul"))return;var s=document.createElement("script");s.id="kartBankacilikModul";s.src="kart_bankacilik.js?v=20261023-3";s.async=false;document.body.appendChild(s);})();
