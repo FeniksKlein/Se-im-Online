@@ -36,10 +36,15 @@ function baroKart(d){
  }
  return z+'</div>';
 }
+// Baro kartı mahkeme bölümünün (ve "Dava aç"ın) hemen altına, Parti Sözcüleri'nin üstüne yerleşir.
+const BARO_YER=['<div class="kart"><h3>Parti Sözcüleri','<div class="bolum-bas"><h2>Açık davalar'];
 const oncekiHtml=adliyeHtml;
 adliyeHtml=async function(){
  const [govde,d]=await Promise.all([oncekiHtml(),RPC('baro_durum').catch(()=>null)]);
- return (d?baroKart(d):'')+govde;
+ if(!d)return govde;
+ const kart=baroKart(d);
+ for(const y of BARO_YER){const i=govde.indexOf(y);if(i>=0)return govde.slice(0,i)+kart+govde.slice(i);}
+ return govde+kart;
 };
 
 /* ---------- Eylemler ---------- */
