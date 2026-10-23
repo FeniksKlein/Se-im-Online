@@ -6,6 +6,15 @@
   var TUR = {agac:"Ağaçlandırma / hatıra ormanı", gida:"Gıda yardımı", burs:"Öğrenci bursu", hayvan:"Sokak hayvanları", temizlik:"Çevre temizliği", kultur:"Kültür ve sanat"};
   var GON = {fidan:"Fidan dikimi", temizlik:"Çevre temizliği", gida:"Yardım dağıtımı", egitim:"Eğitim gönüllülüğü", hayvan:"Hayvan bakımı", kultur:"Kültür buluşması"};
   var PROGRAM = {asevi:"Aşevi ve sıcak yemek", etut:"Ücretsiz etüt merkezi", afet:"Afet hazırlık merkezi", hayvanbakim:"Hayvan bakım noktası", kulturmerkezi:"Kültür ve sanat atölyesi", meslek:"Meslek edindirme kursu", saglik:"Koruyucu sağlık etkinliği"};
+  var UYE_DESTEK = {ihtiyac:"İhtiyaç yardımı",tasinma:"Taşınma desteği",hukuk:"Dava harcı desteği",egitim:"Eğitim katılım bursu",gonullu:"Gönüllü emeği desteği"};
+  var UYE_MAX = {ihtiyac:2000,tasinma:1500,hukuk:4000,egitim:1800,gonullu:1200};
+  var UYE_ACIK = {
+    ihtiyac:"Cüzdan + banka toplamı 12.000 TL veya az, mülkü ve yatırımı olmayan üyeler için.",
+    tasinma:"Son 14 günde şehir değiştiren üyeler için.",
+    hukuk:"Son 14 günde gerçekten ödediğin dava harcının en fazla %60'ı.",
+    egitim:"Derneğin eğitim / meslek programına en az 2 saat önce katılmış üyeler için.",
+    gonullu:"Son 14 gün içinde tamamlanan dernek gönüllü etkinliğine katılan üyeler için."
+  };
   var durumAd = {bekliyor:"Yanıt bekliyor", kabul:"Kabul edildi", red:"Reddedildi", tamam:"Gerçekleşti"};
   var tarihGir = function (ekGun) {
     var t = trParca(new Date(simdi() + (ekGun || 1) * 86400000));
@@ -47,6 +56,10 @@
         '<div class="vit-dugme"><button class="btn canli" onclick="stkProjeModal(' + id + ')">🌳 Ağaçlandır / Yardım yap</button><button class="btn altin" onclick="stkKampanyaAcModal(' + id + ')">Bağış kampanyası aç</button></div>' +
         '<div class="vit-dugme"><button class="btn ikinci" onclick="stkEtkinlikModal(' + id + ')">Gönüllü etkinliği düzenle</button><button class="btn ikinci" onclick="stkZiyaretModal(' + id + ')">Partiye ziyaret talep et</button></div></div>';
       var etki = program.etki || {}, programlar = program.programlar || [], etkiKayit = program.etkiler || [];
+      h += '<div class="kart"><h2>🤝 Gerçek oyunculara / üyelere destek</h2>' +
+        '<p class="alt">Dernek, kendi üyelerine oyun içinde karşılığı olan ihtiyaç, taşınma, dava harcı, eğitim ve gönüllülük yardımı ödeyebilir. Üye başvurur, yönetim onaylar, ödeme doğrudan oyun cüzdanına aktarılır.</p>' +
+        '<button class="btn canli" onclick="stkUyeDestekEkrani(' + id + ')">Üye yardımları · başvurular · onaylar</button>' +
+        '<p class="kucuk">Yardımlar yalnız serbest kasadan ödenir. Dernek yönetimi kendi başvurusunu onaylayamaz.</p></div>';
       h += '<div class="bolum-bas"><h2>🏘️ Sosyal hizmetler ve şehir etkisi</h2></div>' +
         '<div class="kart"><p class="alt">Derneğin parasını 7 günlük gerçekçi hizmetlere ayır. Oyuncular gönüllü katılabilir; şehir gelişimi ve memnuniyet küçük ama kalıcı katkılar alır.</p>' +
         '<div class="kv"><span class="k">Dernek etki puanı</span><b>' + Number(etki.puan||0).toLocaleString("tr-TR") + '</b></div>' +
@@ -110,6 +123,106 @@
       }).join("") : '<div class="kart"><p class="alt">Henüz ziyaret kaydı yok.</p></div>';
       iskelet("Sosyal faaliyetler · " + e(r.ad),h,{geri:true});
     } catch(err) { iskelet("Dernek faaliyetleri",'<div class="kart"><p class="alt">' + e(hataCevir(err.message)) + '</p></div>',{geri:true}); }
+  };
+
+  // Üyeye doğrudan ödenen, oyun içi kanıta dayalı sosyal destek ekranı.
+  window.stkUyeDestekEkrani = async function(id) {
+    yukleniyor("Dernek üye destekleri");
+    try {
+      var r=await API.rpc("dernek_uye_destek_liste",{p_dernek:id});
+      var talepler=Array.isArray(r.talepler)?r.talepler:[],
+          benim=talepler.filter(function(z){return z.benim;}),
+          bekleyen=talepler.filter(function(z){return z.durum==="bekliyor";});
+      var h='<div class="kart"><h2>🤝 Dernek üyelerine doğrudan yardım</h2>' +
+        '<p class="alt">Bu yardımlar NPC yerine doğrudan oyundaki gerçek üyelere yarar sağlar. Onaylanan tutar dernek kasasından çıkar, üyenin oyun cüzdanına yatar. Kampanyalara ayrılmış bağışlar kullanılamaz.</p>' +
+        '<div class="kv"><span class="k">Serbest dernek bütçesi</span><b>'+tlYaz(r.serbest)+'</b></div>' +
+        '<div class="kv"><span class="k">Bekleyen destek talebi</span><b>'+bekleyen.length+'</b></div>' +
+        '<button class="btn altin" onclick="stkUyeDestekBasvurModal('+id+')">+ Yardım başvurusu yap</button>' +
+        '</div>';
+      h+='<div class="bolum-bas"><h2>Yardım türleri</h2></div>';
+      h+='<div class="kart">'+Object.keys(UYE_DESTEK).map(function(k){
+        return '<div class="kv"><span class="k"><b>'+e(UYE_DESTEK[k])+'</b><span class="kucuk">'+e(UYE_ACIK[k])+'</span></span><b>≤ '+tlYaz(UYE_MAX[k])+'</b></div>';
+      }).join("")+
+      '<p class="kucuk">Hesap en az 48 saatlik, üyelik en az 24 saatlik olmalı. Son 7 günde yardım alan yeniden alamaz; aynı tür için 21 gün beklenir.</p></div>';
+      if(r.yetkili) h+='<div class="bolum-bas"><h2>Yönetim · destek talepleri</h2><span class="kucuk">'+bekleyen.length+' bekleyen</span></div>';
+      else h+='<div class="bolum-bas"><h2>Başvurularım</h2><span class="kucuk">'+benim.length+'</span></div>';
+      var gorunen=r.yetkili?talepler:benim;
+      h+=gorunen.length?gorunen.map(function(z){
+        var st=z.durum==="onay"?"Onaylandı":z.durum==="red"?"Reddedildi":z.durum==="iptal"?"İptal":"Yönetim kararı bekliyor";
+        return '<div class="kart"><span class="rozet">'+st+'</span>'+
+          '<h3>'+e(UYE_DESTEK[z.tur]||z.tur)+' · '+tlYaz(z.tutar)+'</h3>'+
+          (r.yetkili?'<p class="kucuk">Başvuran: '+e(z.uye)+'</p>':'')+
+          '<p>'+e(z.aciklama)+'</p><p class="kucuk">Başvuru: '+tarihSaat(z.basvuru)+'</p>'+
+          (z.ret_gerekcesi?'<p class="kucuk">Gerekçe: '+e(z.ret_gerekcesi)+'</p>':'')+
+          (z.degerlendirebilirim?'<div class="vit-dugme">'+
+            '<button class="btn altin" onclick="stkUyeDestekKarar('+z.id+','+id+',true)">Onayla ve öde</button>'+
+            '<button class="btn ikinci" onclick="stkUyeDestekKarar('+z.id+','+id+',false)">Reddet</button></div>':
+            z.durum==="bekliyor"&&z.benim&&r.yetkili?'<p class="kucuk">Kendi başvurunu değerlendiremezsin; diğer yönetici onaylamalı.</p>':'')+
+          '</div>';
+      }).join(""):'<div class="kart"><p class="alt">Henüz kayıtlı destek başvurusu bulunmuyor.</p></div>';
+      iskelet("Dernek üye yardımları",h,{geri:true});
+    }catch(err){iskelet("Dernek üye yardımları",'<div class="kart"><p class="alt">'+e(hataCevir(err.message||String(err)))+'</p></div>',{geri:true});}
+  };
+
+  window.stkUyeDestekBasvurModal=async function(id){
+    try {
+      var bilgi=await API.rpc("dernek_uye_destek_liste",{p_dernek:id});
+      var kanit=bilgi.kanitlar||{};
+      var m=modal('<h3>Üyelik yardım başvurusu</h3>'+
+        '<p class="alt">Yönetim onaylarsa tutar doğrudan oyun cüzdanına geçer. Başvurmak ödeme garantisi değildir.</p>'+
+        alan("Yardım türü",'<select id="udTur">'+turOps(UYE_DESTEK)+'</select>')+
+        '<p class="kucuk" id="udAcik"></p>'+
+        alan("Katılım / ödeme kaydı",'<select id="udKanit"></select>')+
+        alan("Başvuru tutarı (oyun TL)",'<input type="number" id="udTutar" min="100" max="4000" step="1" value="1000">')+
+        '<p class="kucuk" id="udLimit"></p>'+
+        alan("Başvuru gerekçesi",'<textarea id="udGerekce" class="alanmetin" maxlength="350" placeholder="Yardıma neden ihtiyacın var? (en az 5 karakter)"></textarea>')+
+        sorun+buton("Başvuruyu yönetim kuruluna ilet","udBasvur"));
+      var yenile=function(){
+        var tur=input(m,"udTur"),sec=m.querySelector("#udKanit"),opt=Array.isArray(kanit[tur])?kanit[tur]:[];
+        m.querySelector("#udAcik").textContent=UYE_ACIK[tur]||"";
+        var gerekli=tur==="hukuk"||tur==="egitim"||tur==="gonullu";
+        var satir=m.querySelector("#udKanit").parentNode;
+        satir.style.display=gerekli?"":"none";
+        sec.innerHTML=gerekli?
+          '<option value="">Kanıt kaydı seç</option>'+opt.map(function(x){return '<option value="'+Number(x.id)+'">'+
+             e(x.ad||"Katılım kaydı")+(x.tutar?' · '+tlYaz(x.tutar):'')+'</option>';}).join(""):
+          '<option value="">Ek kayıt gerekmiyor</option>';
+        var ust=UYE_MAX[tur]||1000;
+        if(tur==="hukuk"&&Number(sec.value)>0){
+          var oz=opt.find(function(z){return Number(z.id)===Number(sec.value);});
+          if(oz)ust=Math.min(ust,Math.floor(Number(oz.tutar)*.60));
+        }
+        m.querySelector("#udLimit").textContent="Başvuru üst sınırı: "+tlYaz(ust)+
+          (gerekli&&!opt.length?" · Uygun kanıtın henüz yok.":"")+
+          " · Diğer üyelik ve bakiye şartları sunucuda kontrol edilir.";
+        m.querySelector("#udTutar").max=ust;
+        if(Number(input(m,"udTutar"))>ust||!Number(input(m,"udTutar")))
+          m.querySelector("#udTutar").value=Math.max(100,Math.min(ust,1000));
+      };
+      m.querySelector("#udTur").onchange=yenile;
+      m.querySelector("#udKanit").onchange=yenile;
+      yenile();
+      islem(m,"udBasvur",async function(){
+        var tur=input(m,"udTur"),ref=input(m,"udKanit");
+        if(["hukuk","egitim","gonullu"].includes(tur)&&!ref)throw new Error("Önce kanıtlanan harcamayı veya katılımı seç.");
+        return API.rpc("dernek_uye_destek_basvur",{
+          p_dernek:id,p_tur:tur,p_tutar:Number(input(m,"udTutar")),
+          p_aciklama:input(m,"udGerekce"),p_referans:ref?Number(ref):null
+        });
+      },"Başvurun yönetim kuruluna iletildi.",function(){return stkUyeDestekEkrani(id);});
+    }catch(err){toast(hataCevir(err.message||String(err)),true);}
+  };
+
+  window.stkUyeDestekKarar=async function(talep,id,onay){
+    try{
+      if(!await onayla(onay?"Dernek bütçesinden ödeme":"Başvuruyu reddet",
+        onay?"Bu onay gerçek bir oyuncunun cüzdanına oyun TL aktarır. Yalnızca serbest dernek kasası kullanılacak. Devam edilsin mi?":
+          "Üyenin bu yardım başvurusunu reddetmek istiyor musun?",
+        onay?"Onayla ve aktar":"Reddet"))return;
+      await API.rpc("dernek_uye_destek_karar",{p_basvuru:talep,p_onay:!!onay,p_gerekce:onay?null:"Dernek yönetimi tarafından uygun görülmedi."});
+      toast(onay?"Yardım cüzdana aktarıldı ve muhasebeleştirildi.":"Başvuru reddedildi.");
+      await stkUyeDestekEkrani(id);
+    }catch(err){toast(hataCevir(err.message||String(err)),true);}
   };
 
   window.stkKampanyaAcModal = function (id) {
@@ -293,8 +406,10 @@
           govde = '<div class="kart"><h2>🌱 Sosyal etki ve yardım merkezi</h2><p class="alt">Bağış kampanyaları, gönüllü etkinlikleri ve partilere gelen ziyaret talepleri.</p><button class="btn altin" onclick="ekranAc(stkSosyalVitrin)">Kampanyaları ve ziyaret taleplerini aç</button></div>' + govde;
         }
         if(window.D && D._stk && opt && opt.geri && baslik===e(D._stk.ad) && !D._stk.kapali) {
-          govde = '<div class="kart"><h2>🌳 Dernek faaliyetleri</h2><p class="alt">Hatıra ormanı oluştur, yardım kampanyası aç, gönüllüleri topla, siyasi partilerle görüş.</p>' +
-            '<button class="btn altin" onclick="ekranAc(()=>stkFaaliyetEkrani(' + Number(D._stk.id) + '))">Sosyal faaliyetler ve kampanyalar</button></div>' + govde;
+          govde = '<div class="kart"><h2>🌳 Dernek faaliyetleri ve üyelik destekleri</h2><p class="alt">Projeler, yardım kampanyaları, gönüllüler ve doğrudan üyelerin oyun cüzdanlarına ödenen yardımlar.</p>' +
+            '<div class="vit-dugme"><button class="btn altin" onclick="ekranAc(()=>stkFaaliyetEkrani(' + Number(D._stk.id) + '))">Sosyal faaliyetler</button>' +
+            (D._stk.rolum?'<button class="btn canli" onclick="ekranAc(()=>stkUyeDestekEkrani(' + Number(D._stk.id) + '))">Üye destekleri</button>':'') +
+            '</div></div>' + govde;
         }
       }
       return eski.call(this,baslik,govde,opt);
