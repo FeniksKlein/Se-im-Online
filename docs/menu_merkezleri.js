@@ -579,6 +579,15 @@
      if(typeof D!=="undefined")D._belediyeSehirMod="ozet";
      return go(typeof belediyeSehirYonetimEkrani==="function"?belediyeSehirYonetimEkrani:window.belediyeSehirYonetimEkrani);
    }
+   if(tur==="bakan"){
+     var bolumler=document.querySelectorAll(".ynt-bolum");
+     for(var i=0;i<bolumler.length;i++){
+       if(/Bakanlık yönetim masası/.test(bolumler[i].textContent||"")){
+         bolumler[i].scrollIntoView({behavior:"smooth",block:"start"});return;
+       }
+     }
+     return go(typeof yonetimEkrani==="function"?yonetimEkrani:window.yonetimEkrani);
+   }
    if(["tbmm","bskv","grup_bskv","mv"].indexOf(tur)!==-1)return sekmeAc("meclis");
    if(["cb","cb_yardimcisi","bakan"].indexOf(tur)!==-1){
      D.devletSekme="hukumet";
