@@ -105,6 +105,16 @@
    var arsiv=document.createElement("details");arsiv.id="so-secim-arsiv";arsiv.className="kart so-secim-arsiv";
    arsiv.innerHTML='<summary><span style="font-size:24px">🗳️</span><span style="flex:1"><b>Seçim takvimi ve sonuçları</b><small>İleri tarihli seçimler ve biten oylamalar burada</small></span><span class="so-kisa-ok">⌄</span></summary><div class="so-secim-arsiv-govde"></div>';
    var alan=arsiv.querySelector(".so-secim-arsiv-govde"), biten=0;
+   // Haftalar sonra gerçekleşecek seçim için kocaman ana geri sayım alanı kaplamasın.
+   // Yakın (72 saat içindeki) seçimler ise Gündem başında görünmeye devam eder.
+   var sahneSaat=kok.querySelector(".sahne .geri-sayim[data-an]");
+   if(sahneSaat){
+     var hedefAn=Number(sahneSaat.getAttribute("data-an"));
+     if(Number.isFinite(hedefAn)&&hedefAn-Date.now()>72*3600000){
+       var sahneKart=sahneSaat.closest(".sahne");
+       if(sahneKart)alan.appendChild(sahneKart);
+     }
+   }
    var takvim=(typeof D!=="undefined"&&D.durum&&D.durum.takvim)||[];
    Array.from(kok.querySelectorAll('[id^="sec"]')).forEach(function(el){
      if(!/^sec\d+$/.test(el.id))return;
