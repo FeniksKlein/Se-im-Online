@@ -5,6 +5,12 @@
   "use strict";
   if (window.SO_MENU_MERKEZLERI_V1) return;
   window.SO_MENU_MERKEZLERI_V1 = true;
+  if (!document.getElementById('banka-yonetim-loader')) {
+    var bankScript = document.createElement('script');
+    bankScript.id = 'banka-yonetim-loader';
+    bankScript.src = './banka_yonetim.js?v=20261023b';
+    document.head.appendChild(bankScript);
+  }
 
   var adliyeSekmeleri = [
     ["mahkeme", "Mahkeme"], ["avukatlar", "Avukatlar"], ["ofisler", "Avukat Ofisleri"],
@@ -399,8 +405,7 @@
   async function bankalarHtml(){
     var z=bankalarGenel();
     try{
-      var veri=await API.rpc("oyb_liste");
-      var b=(veri.bankalar||[]).filter(function(x){return x.bankam;});
+      var b=(await API.rpc("banka_yonetilen_liste"))||[];
       if(b.length)z+=baslik("Benim bankalarım","Bankanın adına dokunarak kredi, mevduat ve yönetim işlemlerini aç.")
         +grids(b.map(function(x){
           return link("🏦",x.ad,"Banka kasası: "+trPara(x.kasa),"soMenuBanka("+Number(x.id)+")","Yönetim");
@@ -409,8 +414,8 @@
     return z;
   }
   window.soMenuBanka=function(id){
-    if(typeof window.bankaDetayEkrani!=="function")return toast("Banka ekranı yüklenmedi.",true);
-    return ekranAc(function(){return bankaDetayEkrani(Number(id));});
+    if(typeof window.bankaYonetimEkrani!=="function")return toast("Banka yönetimi yüklenmedi. Sayfayı yenile.",true);
+    return ekranAc(function(){return bankaYonetimEkrani(Number(id));});
   };
   async function sirketlerimHtml(){
     try{
