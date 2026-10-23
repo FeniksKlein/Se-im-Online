@@ -230,9 +230,7 @@ begin
    update oyun.sirketler set kasa=kasa+fee where id=pos.banka_id and aktif and sektor='banka';
    if not found then raise exception 'POS bankasi bulunamadi';end if;
    insert into oyun.sirket_hareket(sirket_id,tutar,aciklama,faaliyet_gider)
-   values(t.sirket_id,-fee,'POS #%s %2 banka komisyonu'::text,fee);
-   update oyun.sirket_hareket set aciklama='POS #'||t.id||' %2 banka komisyonu'
-   where id=(select max(id) from oyun.sirket_hareket where sirket_id=t.sirket_id and tutar=-fee and aciklama='POS #%s %2 banka komisyonu');
+   values(t.sirket_id,-fee,'POS #'||t.id||' %2 banka komisyonu',fee);
    insert into oyun.sirket_hareket(sirket_id,tutar,aciklama,faaliyet_gelir)
    values(pos.banka_id,fee,'POS #'||t.id||' komisyon geliri (%2)',fee);
  end if;
