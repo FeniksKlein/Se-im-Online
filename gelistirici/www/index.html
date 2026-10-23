@@ -3475,12 +3475,7 @@ function hayatCiz(h){
     <div class="satir" style="margin-bottom:12px">
       <button class="btn yarim ikinci" style="margin:0" id="hReklam" ${reklamHazir ? "" : "disabled"}>Reklam izle<br><span class="kucuk">+${tlYaz(kb.reklam_odul)} · ${h.reklam.kalan}/5</span></button>
       <button class="btn yarim ikinci" style="margin:0" id="hMagaza">Mağaza<br><span class="kucuk">₺ paketleri</span></button></div>
-    <div class="bolum-bas"><h2>Şans oyunları</h2><span class="kucuk">Sanal para; gerçek para kazanılmaz</span></div>
-    <div class="kart">
-      <button class="giris-satir" onclick="ekranAc(piyangoEkrani)"><span class="yik">${IKON.bilet}</span><span class="orta"><b>Milli Piyango</b><span class="kucuk">Haftalık çekiliş; bilet bedelinin %30’u hazineye</span></span><span class="ok">›</span></button>
-      <button class="giris-satir" onclick="ekranAc(kazikazanEkrani)"><span class="yik">${IKON.bilet}</span><span class="orta"><b>Kazı kazan · 100 ₺</b><span class="kucuk">Anında sonuç; hazine etkilenir</span></span><span class="ok">›</span></button>
-    </div>
-    \n    <div class="kart"><h2>Statü</h2>
+    <div class="kart"><h2>Statü</h2>
       <div style="display:flex;justify-content:space-between"><b>${e(st.ad)}</b><span class="kucuk">${st.puan} kıdem puanı${st.sonraki_esik ? ` · ${e(st.sonraki_ad)}: ${st.sonraki_esik}` : ""}</span></div>
       <div class="bar"><i style="width:${stOran}%;background:var(--gold)"></i></div>
       <div style="margin-top:6px">${STATU.map(([a, p2], i) => `<span class="taahhut ${i <= STATU.findIndex(x => x[0] === st.ad) ? "" : "yok"}">${a}</span>`).join("")}</div>
@@ -3681,30 +3676,6 @@ async function mulkAl(tur,il,bedel){
     mulkStok = (await API.rpc("mulk_il_stok").catch(()=>mulkStok)).slice().sort((a,b)=>a.il.localeCompare(b.il,"tr"));
     mulkCiz(d); bildir("Mülk satın alındı.");
   } catch(err){ bildir(hataCevir(err.message),true); }
-}
-async function piyangoEkrani(){
-  yukleniyor("Milli Piyango");
-  try{piyangoCiz(await API.rpc("piyango_durum"));}catch(err){iskelet("Milli Piyango",`<div class="bos">${e(hataCevir(err.message))}</div>`,{geri:true});}
-}
-function piyangoCiz(d){
-  iskelet("Milli Piyango",`
-  <div class="kart cizgili">
-    <h2>Milli Piyango</h2><div class="kucuk">Büyük ikramiye</div><div class="para">${tlYaz(d.ikramiye)}</div>
-    <p class="alt">Haftalık çekiliş · 6 haneli numara · Biletin son 2 hanesi, çekiliş numarasının son 2 hanesiyle eşleşirse kazanır (%1, yaklaşık 100 bilette 1). Birden fazla kazanan çıkarsa ikramiye bölünür.</p>
-    <div class="kv"><span>Bilet bedeli</span><b>${tlYaz(d.bilet_bedeli)}</b></div>
-    <div class="kv"><span>Çekiliş</span><b>${new Date(d.bitis).toLocaleString('tr-TR')}</b></div>
-    <div class="kv"><span>Satılan bilet</span><b>${fmt(d.bilet_sayisi)}</b></div>
-    <button class="btn altin" onclick="piyangoAl()">1 bilet satın al</button>
-  </div>
-  <div class="kart"><h2>Biletlerim (${d.biletler.length})</h2>
-    ${d.biletler.length?d.biletler.map(b=>`<div class="kv"><span>Bilet #${b.id}</span><b>${e(b.numara)}</b></div>`).join(''):'<p class="alt">Henüz biletin yok.</p>'}
-  </div>
-  ${d.sonuc?`<div class="kart"><h2>Son çekiliş</h2><div class="para">${e(d.sonuc.kazanan_no)}</div><p class="alt">${d.sonuc.devretti?'Kazanan yok, büyük ikramiye devretti.':fmt(d.sonuc.kazanan_adet)+' bilet kazandı, büyük ikramiye paylaşıldı!'}${d.sonuc.kazancim>0?' Senin kazancın: '+tlYaz(d.sonuc.kazancim):''}</p></div>`:''}
-  <div class="kucuk">Bilet gelirinin %30'u devlet hazinesine, %70'i ikramiye havuzuna aktarılır. Yalnızca oyun içi sanal paradır.</div>`,{geri:true});
-}
-async function piyangoAl(){
- if(!await onayla("Milli Piyango bileti","1.000 ₺ karşılığında rastgele 6 haneli bir piyango bileti almak istiyor musun? Kazanma ihtimali %1, birden fazla kazanan çıkarsa ikramiye paylaşılır.","Bilet al"))return;
- try{piyangoCiz(await API.rpc("piyango_bilet_al",{p_adet:1}));}catch(err){bildir(hataCevir(err.message),true);}
 }
 let _sirketEkonomi={asgari:NaN,normal:100000,banka:1000000};
 let _sirketSonMin=100000;
