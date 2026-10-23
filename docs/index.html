@@ -1536,7 +1536,11 @@ async function gundemEkrani(){
   let DUR; try { DUR = await durumYenile(); } catch (err) { iskelet("Gündem", `<div class="bos">${e(hataCevir(err.message))}</div>`); return; }
   const pp = DUR.profil, mvMi = pp.makamlar.some(x => x.tur === "mv"), cbMi = pp.makamlar.some(x => x.tur === "cb");
   // Bütün veriler paralel yüklenir; biri hata verirse ekranın geri kalanı yine çizilir
-  const iste = (fn, args, varsay) => API.rpc(fn, args).catch(() => varsay);
+  // Seçim gecesi: tek bir yavaş servis ana sayfanın tamamını kilitlemesin.
+  const iste = (fn, args, varsay) => Promise.race([
+    API.rpc(fn, args).catch(() => varsay),
+    new Promise(resolve => setTimeout(() => resolve(varsay), 11000))
+  ]);
   const [ihaleR, haber, reflerR, kanunlar, dv, itt, ia, mitingler, haklar, meclis, stk, dernekSecimleri, EK] = await Promise.all([
     iste("ihaleler", undefined, { acik: [] }), iste("haberler", { p_limit: 15 }, []), iste("referandumlar", { p_limit: 5 }, []),
     mvMi || cbMi ? iste("kanunlar", { p_limit: 40 }, []) : [], mvMi ? iste("meclis_baskanlik", undefined, null) : null,
@@ -5070,7 +5074,7 @@ setInterval(() => {
     if (ms < 0 && ms > -1500 && D.sekme === "gundem" && !D.yigin.length && !$("#modal")) setTimeout(gundemEkrani, 1500);
   });
 }, 1000);
-setInterval(() => { if (D.durum && D.sekme === "gundem" && !D.yigin.length && !$("#modal") && !document.hidden) gundemEkrani(); }, 60000);
+setInterval(() => { if (D.durum && D.sekme === "gundem" && !D.yigin.length && !$("#modal") && !document.hidden) gundemEkrani(); }, 120000);
 // Oyun açıkken tüm sohbet rozetleri ve konuşma listeleri yaklaşık 8 saniyede güncellenir.
 let mesajKontroluSuruyor = false;
 async function mesajBildirimKontrol(){
@@ -5082,7 +5086,7 @@ async function mesajBildirimKontrol(){
   } catch (_) { /* Bağlantı geri gelince devam eder. */ }
   finally { mesajKontroluSuruyor = false; }
 }
-setInterval(mesajBildirimKontrol, 8000);
+setInterval(mesajBildirimKontrol, 20000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden && D.durum && !D.yigin.length && !$("#modal")) EKRAN[D.sekme](); });
 window.addEventListener("load", () => {
   API = window.API_TEST || gercekApi();
@@ -5090,7 +5094,17 @@ window.addEventListener("load", () => {
     $("#app").innerHTML = `<div class="karsila"><h1>İnternet gerekli</h1><p class="giris">Oyun sunucusuna bağlanılamadı. İnternet bağlantını kontrol edip tekrar dene.</p><button class="btn" onclick="location.reload()">Tekrar dene</button></div>`;
     return;
   }
-  basla();
+  // Giriş / sürüm / Supabase yavaşladığında sonsuz yükleme ekranını önle.
+  const koruma = setTimeout(() => {
+    const kok = document.getElementById("app");
+    if (kok && kok.querySelector(":scope > .yukleniyor")) {
+      kok.innerHTML = '<div class="karsila"><h1>Bağlantı yoğunluğu</h1><p class="giris">Seçim gecesi sunucu yanıtı gecikiyor. Oylar ve seçim kayıtları korunuyor. Lütfen yeniden bağlanmayı dene.</p><button class="btn" onclick="location.reload()">Yeniden bağlan</button></div>';
+    }
+  }, 13000);
+  Promise.resolve().then(() => basla()).catch(err => {
+    const kok = document.getElementById("app");
+    if (kok) kok.innerHTML = '<div class="karsila"><h1>Bağlantı sorunu</h1><p class="giris">'+e(hataCevir(err && err.message))+'</p><button class="btn" onclick="location.reload()">Yeniden bağlan</button></div>';
+  }).finally(() => clearTimeout(koruma));
 });
 </script>
 <script>
