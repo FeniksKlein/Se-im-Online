@@ -355,7 +355,7 @@ function renderEvents(){
    (openSale&&!ev.biletim?btn("🎟️ Bilet al","ucEventDo('bilet_al',"+ev.id+")"):"")+
    (ev.biletim?note("✅ Biletin var"):"")+
    (ev.durum==="planlandi"?btn("Sponsor ol","ucEventModal('sponsor',"+ev.id+")",true):"")+
-   (ev.durum==="planlandi" && (cache?.sirketler||[]).some(s=>Number(s.id)===Number(ev.sirket))?btn("Etkinliği İptal Et","ucEtkinlikIptal("+ev.id+")",true):""));
+   (ev.durum==="planlandi" && new Date(ev.zaman)>new Date() && (cache?.sirketler||[]).some(s=>Number(s.id)===Number(ev.sirket))?btn("Etkinliği İptal Et","ucEtkinlikIptal("+ev.id+")",true):""));
  }
  if(!list.length)out+=card("Henüz organizasyon yok","İlk konferansı, konseri veya fuarı sen düzenleyebilirsin.");
  return out;
