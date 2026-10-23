@@ -617,3 +617,86 @@ GRANT EXECUTE ON FUNCTION public."kart_pos_yanit"(p_pos bigint, p_kart bigint) T
 -- pg_cron was configured in live DB as job #39:
 
 -- SELECT cron.schedule('oyun-kredi-karti-donem-kontrol','5 * * * *','select oyun.kart_donem_isle(null);');
+
+
+-- Security status and refunds (2026-10-23, incremental).
+
+ALTER TABLE oyun.kredi_kartlari DROP CONSTRAINT IF EXISTS kredi_kartlari_durum_check;
+
+ALTER TABLE oyun.kredi_kartlari ADD CONSTRAINT kredi_kartlari_durum_check CHECK (durum IN ('aktif','donduruldu','nakit_kapali','kapali','takip'));
+
+ALTER TABLE oyun.kart_hareketler DROP CONSTRAINT IF EXISTS kart_hareketler_tur_check;
+
+ALTER TABLE oyun.kart_hareketler ADD CONSTRAINT kart_hareketler_tur_check CHECK (tur IN ('alisveris','odeme','faiz','gecikme','nakit_avans','avans_masraf','iade'));
+
+ALTER TABLE oyun.kart_pos_talepleri DROP CONSTRAINT IF EXISTS kart_pos_talepleri_durum_check;
+
+ALTER TABLE oyun.kart_pos_talepleri ADD CONSTRAINT kart_pos_talepleri_durum_check CHECK (durum IN ('bekliyor','odendi','reddedildi','iptal','iade'));
+
+CREATE OR REPLACE FUNCTION public.kart_dondur(p_kart bigint, p_dondur boolean)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare k oyun.kredi_kartlari;
+begin
+ select * into k from oyun.kredi_kartlari where id=p_kart and user_id=auth.uid() for update;
+ if not found then raise exception 'Kart bulunamadi';end if;
+ if p_dondur then
+   if k.durum<>'aktif' then raise exception 'Kart zaten kullanima kapali';end if;
+   update oyun.kredi_kartlari set durum='donduruldu' where id=p_kart;
+ else
+   if k.durum<>'donduruldu' then raise exception 'Kart dondurulmus degil';end if;
+   perform oyun.kart_donem_isle(p_kart);
+   select * into k from oyun.kredi_kartlari where id=p_kart;
+   if k.ust_uste>=3 or k.yil_eksik>=3 or
+     (k.gecikme_bas is not null and k.gecikme_bas<oyun.simdi()-interval '90 days')
+   then raise exception 'Gecikme nedeniyle kart yeniden acilamiyor';end if;
+   update oyun.kredi_kartlari set durum='aktif' where id=p_kart;
+ end if;
+ return jsonb_build_object('ok',true,'durum',case when p_dondur then 'donduruldu' else 'aktif' end);
+end $function$;
+
+REVOKE ALL ON FUNCTION public."kart_dondur"(p_kart bigint, p_dondur boolean) FROM public,anon,authenticated;
+
+GRANT EXECUTE ON FUNCTION public."kart_dondur"(p_kart bigint, p_dondur boolean) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.kart_pos_iade(p_pos bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare u uuid:=auth.uid(); t oyun.kart_pos_talepleri; k oyun.kredi_kartlari; s oyun.sirketler;
+  n numeric; karta numeric; wallet numeric;
+begin
+ if u is null then raise exception 'Oturum acik degil';end if;
+ select * into t from oyun.kart_pos_talepleri where id=p_pos and durum='odendi' for update;
+ if not found then raise exception 'Iade edilebilecek odenmis POS bulunamadi';end if;
+ select * into s from oyun.sirketler where id=t.sirket_id and aktif for update;
+ if not found then raise exception 'Satici sirket aktif degil';end if;
+ if s.yonetici is distinct from u and
+ not exists(select 1 from oyun.sirket_ortaklari where sirket_id=s.id and user_id=u and pay>=50)
+ then raise exception 'Iadeye sirket yetkisi gerekli';end if;
+ n:=t.tutar;
+ if s.kasa<n then raise exception 'Saticinin kasasi iadeyi karsilamiyor';end if;
+ select * into k from oyun.kredi_kartlari where id=t.kart_id for update;
+ karta:=least(k.borc,n);
+ wallet:=n-karta;
+ update oyun.sirketler set kasa=kasa-n where id=s.id;
+ if k.banka_id is null then update oyun.ulke set hazine=hazine+karta where id=1;
+ else update oyun.sirketler set kasa=kasa+karta where id=k.banka_id;end if;
+ if wallet>0 then update oyun.cuzdan set para=para+wallet where user_id=k.user_id;end if;
+ update oyun.kredi_kartlari set borc=borc-karta where id=k.id;
+ update oyun.kart_pos_talepleri set durum='iade' where id=t.id;
+ insert into oyun.kart_hareketler(kart_id,tur,tutar,sirket_id,aciklama)
+ values(k.id,'iade',n,s.id,'POS #'||t.id||' kartli satis iadesi');
+ insert into oyun.bildirimler(user_id,metin)
+ values(k.user_id,format('💳 POS #%s iadesi yapildi. %s TL iade edildi; kart borcuna %s TL, cuzdanina %s TL.',t.id,n,karta,wallet));
+ return jsonb_build_object('ok',true,'kart_borcu_azaldi',karta,'cuzdana_iade',wallet);
+end $function$;
+
+REVOKE ALL ON FUNCTION public."kart_pos_iade"(p_pos bigint) FROM public,anon,authenticated;
+
+GRANT EXECUTE ON FUNCTION public."kart_pos_iade"(p_pos bigint) TO authenticated;
