@@ -177,8 +177,11 @@
         '<p class="kucuk" id="udLimit"></p>'+
         alan("Başvuru gerekçesi",'<textarea id="udGerekce" class="alanmetin" maxlength="350" placeholder="Yardıma neden ihtiyacın var? (en az 5 karakter)"></textarea>')+
         sorun+buton("Başvuruyu yönetim kuruluna ilet","udBasvur"));
+      var sonTur="";
       var yenile=function(){
         var tur=input(m,"udTur"),sec=m.querySelector("#udKanit"),opt=Array.isArray(kanit[tur])?kanit[tur]:[];
+        var eskiSecim=sonTur===tur?sec.value:"";
+        sonTur=tur;
         m.querySelector("#udAcik").textContent=UYE_ACIK[tur]||"";
         var gerekli=tur==="hukuk"||tur==="egitim"||tur==="gonullu";
         var satir=m.querySelector("#udKanit").parentNode;
@@ -187,6 +190,7 @@
           '<option value="">Kanıt kaydı seç</option>'+opt.map(function(x){return '<option value="'+Number(x.id)+'">'+
              e(x.ad||"Katılım kaydı")+(x.tutar?' · '+tlYaz(x.tutar):'')+'</option>';}).join(""):
           '<option value="">Ek kayıt gerekmiyor</option>';
+        if (eskiSecim && Array.from(sec.options).some(function(o){return o.value===eskiSecim;}))sec.value=eskiSecim;
         var ust=UYE_MAX[tur]||1000;
         if(tur==="hukuk"&&Number(sec.value)>0){
           var oz=opt.find(function(z){return Number(z.id)===Number(sec.value);});
