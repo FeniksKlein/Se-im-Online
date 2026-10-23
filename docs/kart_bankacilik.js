@@ -270,3 +270,13 @@
   try{await API.rpc("kart_pos_iade",{p_pos:id});toast("POS satışı iade edildi");state.panel=null;kartPosEkrani();}catch(ex){err(ex);}
  };
 })();
+
+/* 2026-10-23: Mobil internet bankaciligi modulu - mevcut bankacilik islemlerini korur. */
+(function(){
+ if(document.querySelector('script[data-so-internet-bankaciligi]'))return;
+ var s=document.createElement('script');
+ s.src='internet_bankaciligi.js?v=20261023-2';
+ s.defer=true;
+ s.dataset.soInternetBankaciligi='1';
+ document.head.appendChild(s);
+})();
