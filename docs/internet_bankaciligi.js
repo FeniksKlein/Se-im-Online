@@ -76,7 +76,7 @@ function initial(){
 }
 function bankRow(b,dev){
  var acik=b.hesabim, id=dev?'devlet':Number(b.id),name=esc(b.ad);
- return '<button type="button" class="ib-bank" onclick="ibBankaSec('+JSON.stringify(id)+')"><div class="ib-bank-top"><div class="ib-logo">'+(dev?'🏛':'🏦')+'</div><div style="flex:1;min-width:0"><b>'+name+'</b><small>'+(acik?'Hesabım · Mobil şubeye gir':'Hesabın yok · Hesap aç')+'</small></div><span style="font-size:20px">›</span></div>'+
+ return '<button type="button" class="ib-bank" onclick="ibBankaSec('+esc(JSON.stringify(id))+')"><div class="ib-bank-top"><div class="ib-logo">'+(dev?'🏛':'🏦')+'</div><div style="flex:1;min-width:0"><b>'+name+'</b><small>'+(acik?'Hesabım · Mobil şubeye gir':'Hesabın yok · Hesap aç')+'</small></div><span style="font-size:20px">›</span></div>'+
  (acik?'<div class="ib-balance">'+para(Number(b.vadesiz||0)+Number(b.mevduat||0))+'</div><div class="ib-minitext">Vadesiz + vadeli toplam</div><div class="ib-mini"><span>Kredi: '+para(b.kredi_borcu)+'</span><span>Kart borcu: '+para(b.kart_borcu)+'</span></div>':'<div class="ib-minitext" style="margin-top:11px">Bu bankadan kredi, kart, POS veya mevduat hizmeti almak için hesap aç.</div>')+'</button>';
 }
 function bankNow(){if(S.bank==='devlet')return {id:'devlet',ad:'Devlet Bankası',hesabim:true,vadesiz:(S.data.devlet||{}).vadesiz||0,mevduat:0,kredi_borcu:(S.data.devlet||{}).kredi_borcu||0,kart_borcu:(S.data.devlet||{}).kart_borcu||0};return (S.data.banks||[]).find(function(x){return Number(x.id)===Number(S.bank);});}
