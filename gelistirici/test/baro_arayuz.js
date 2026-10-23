@@ -88,8 +88,8 @@ const BARO_DIS = { ad: 'Türkiye Barosu', uye_sayi: 2, baskan: 'Celal', gecici: 
   assert.match(t, /Türkiye Barosu/); assert.match(t, /Celal \(geçici/); assert.match(t, /Baro binasına gir/);
   assert.match(t, /Kontenjan \(dolu \/ toplam\)3 \/ 4 · 1 boş/); assert.match(t, /Her 10 aktif oyuncuya 1 ruhsat/); assert.match(t, /Baro sicil 1001/);
   assert.match(t, /Baro kaydı yok/); assert.match(t, /Disiplin: 1 uyarı, 1 işten yasaklama/);
-  const yerler = await page.evaluate(() => { const x = document.querySelector('#icerik').textContent; return [x.indexOf('Yüksek Yargı'), x.indexOf('Levhaya kayıtlı avukat'), x.indexOf('Parti Sözcüleri')]; });
-  assert.ok(yerler[0] >= 0 && yerler[0] < yerler[1] && yerler[1] < yerler[2], 'Baro kartı mahkemenin altında, sözcülerin üstünde olmalı: ' + yerler);
+  const yerler = await page.evaluate(() => { const x = document.querySelector('#icerik').textContent; return [x.indexOf('Yüksek Yargı'), x.indexOf('Levhaya kayıtlı avukat'), x.indexOf('Açık davalar')]; });
+  assert.ok(yerler[0] >= 0 && yerler[0] < yerler[1] && yerler[1] < yerler[2], 'Baro kartı mahkemenin altında, açık davaların üstünde olmalı: ' + yerler);
   await page.evaluate(() => { const k = [...document.querySelectorAll('#icerik .kart')].find(n => n.textContent.includes('Levhaya kayıtlı avukat')); k.scrollIntoView({ block: 'center' }); });
   await yaz(page, '1_adliye');
   await page.getByRole('button', { name: /Baro binasına gir/ }).first().click();

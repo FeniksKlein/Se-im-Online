@@ -836,3 +836,23 @@ Oyun 18 yaş ve üzeri içindir. Gerçek kişilere ya da oyunculara hakaret, teh
 - **Adli yardım:** cüzdanında 50.000 ₺'den az parası olan davanın kişisel tarafı, dosyasından ücretsiz avukat ister. Başkan gönüllü bir avukatı (ya da kendini) görevlendirir; avukata kasadan 20.000 ₺ ödenir, başkan kendini görevlendirirse ücret ödenmez.
 - **Disiplin:** müvekkil ya da dosya tarafı, dosyada vekil olmuş avukatı şikâyet eder (aynı avukata tek bekleyen şikâyet). Başkan ret / uyarma / kınama / 3 ya da 7 gün işten yasaklama verir; kendisi hakkındaki şikâyete karar veremez (yönetici verebilir). İşten yasaklanan avukatın açık dosyalardaki vekâletleri biter. Kararlar ve disiplin sicili üyelere açıktır.
 - **Avukat bekleyen davalar:** açık davalarda vekili olmayan taraflar listesi; avukat dosyayı açıp teklif verir.
+
+## 20. Mahkemede avukat zorunluluğu ve Parti Sözcüsü (2026-10-23, modül 131)
+
+### Kim mahkemeye ne yapabilir?
+- **Dava açmak, savunma ve beyan sunmak, istinafa başvurmak, seçim sonucuna itiraz etmek ve parti kapatma davasında savunma vermek yalnız avukat eliyle yapılır.** Oyuncu kendi adına, parti genel başkanı partisi adına, şirket/dernek/belediye/bakanlık/gazete yetkilisi kurumu adına avukat tutar.
+- Yargıcın davaya çağırdığı **ilgili taraf** tanık olarak kendi beyanını verebilir; bu savunma sayılmaz.
+- Geçişten (23.10.2026) önce açılmış davaların istinafı eski usulle (sözcü hariç) sürer; o tarihte açık dava yoktu.
+
+### Hukuki iş talebi (dava açma, seçim itirazı, parti kapatma savunması)
+1. Müvekkil Adliye > "Avukatla dava aç" (ya da seçim itirazı) ile talebi yayımlar; iddia, delil, davalı ve tazminat talebi yazılır. Aynı anda en fazla 3 açık iş.
+2. Baroya kayıtlı avukatlar Türkiye Barosu > Davalar > "Avukat arayan hukuki işler"den ücret teklif eder (tazminat davasında en fazla %25 başarı primi). Müvekkil belirli bir avukatı davet edebilir.
+3. Müvekkil bir teklifi kabul edince ücret cüzdanından **emanete** alınır.
+4. Avukat dilekçeyi düzenleyip "mahkemeye sun"ar: dava müvekkilin adına açılır (harç müvekkilden), avukat dosyada davacı vekili olur ve emanetteki ücret ona geçer.
+5. Sunulmadan önce müvekkil talebi geri çekebilir, avukat vekâletten çekilebilir; emanet müvekkile iade edilir.
+- Davalı tarafa yeni davalarda savunma süresi **24 saattir** (avukat bulma süresi için; `ayarlar.avukat_savunma_saat`).
+
+### Parti Sözcüsü
+- Mahkemede hiçbir yetkisi yoktur (temsil izni, parti davasında beyan, istinaf ve seçim itirazı kaldırıldı).
+- Görevi **parti adına resmî açıklama**dır: parti sayfasındaki "Resmî açıklamalar" bölümünden başlık + metin yayımlar; açıklama Gündem akışına düşer ve bütün üyelere bildirilir. Genel başkan da açıklama yapabilir. 15 dakikada bir açıklama; yazar ya da genel başkan kaldırabilir.
+- Sözcüyü yalnız genel başkan atar ve görevden alır.

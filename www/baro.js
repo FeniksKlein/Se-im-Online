@@ -37,7 +37,7 @@ function baroKart(d){
  return z+'</div>';
 }
 // Baro kartı mahkeme bölümünün (ve "Dava aç"ın) hemen altına, Parti Sözcüleri'nin üstüne yerleşir.
-const BARO_YER=['<div class="kart"><h3>Parti Sözcüleri','<div class="bolum-bas"><h2>Açık davalar'];
+const BARO_YER=['<div id="adlSozcuYeri"></div>','<div class="kart"><h3>Parti Sözcüleri','<div class="bolum-bas"><h2>Açık davalar'];
 const oncekiHtml=adliyeHtml;
 adliyeHtml=async function(){
  const [govde,d]=await Promise.all([oncekiHtml(),RPC('baro_durum').catch(()=>null)]);
@@ -61,12 +61,13 @@ window.baroAc=()=>ekranAc(baroEkrani);
 async function baroEkrani(){
  yukleniyor('Türkiye Barosu');
  let d;
- try{d=await RPC('baro_durum');SON=d;}catch(err){iskelet('Türkiye Barosu','<div class="bos">'+h(typeof hataCevir==='function'?hataCevir(err.message):err.message)+'</div>',{geri:true});return;}
+ try{const [x,isl]=await Promise.all([RPC('baro_durum'),RPC('hukuk_islerim').catch(()=>null)]);d=x;d.isler=isl;if(isl)window.HUKUK_ISLER=isl;SON=d;}catch(err){iskelet('Türkiye Barosu','<div class="bos">'+h(typeof hataCevir==='function'?hataCevir(err.message):err.message)+'</div>',{geri:true});return;}
  if(!d.icerde){iskelet('Türkiye Barosu','<div class="kart"><h2>🔒 Kapı kapalı</h2><p class="alt">Bu binaya yalnız ruhsatlı ve Türkiye Barosu levhasına kayıtlı avukatlar girebilir.</p>'
   +(d.kayit_olabilir?'<button class="btn altin" onclick="baroKaydol()">Levhaya kaydol</button>':'<button class="btn ikinci" onclick="geriGit()">Adliye\'ye dön</button>')+'</div>',{geri:true});return;}
  const sek=[['pano','Pano'],['davalar','Davalar'],['levha','Levha'],['secim','Seçim'],['disiplin','Disiplin'],['hesap','Hesabım']];
  const bekAdli=(d.adli_yardim||[]).filter(x=>x.durum==='bekliyor').length, bekDis=(d.disiplin||[]).filter(x=>x.karar_verebilirim).length;
- const rozet=k=>k==='davalar'&&bekAdli&&d.baskanim?' ('+bekAdli+')':k==='disiplin'&&bekDis?' ('+bekDis+')':'';
+ const bekIs=((d.isler||{}).acik||[]).length+((d.isler||{}).ustlendigim||[]).filter(j=>j.durum==='vekil_atandi').length;
+ const rozet=k=>k==='davalar'&&(bekIs||(bekAdli&&d.baskanim))?' ('+(bekIs+(d.baskanim?bekAdli:0))+')':k==='disiplin'&&bekDis?' ('+bekDis+')':'';
  let z='<div class="kart"><div class="baslik"><b>🏛️ '+h(d.ad)+'</b>'+(d.baskanim?'<span class="rozet altin">Baro başkanısın'+(d.gecici?' (geçici)':'')+'</span>':d.gozlemci?'<span class="rozet sari">Yönetici gözlemi</span>':'')+'</div>'
   +'<div class="kv"><span class="k">Başkan</span><span class="v">'+(d.baskan?'Av. '+h(d.baskan)+(d.gecici?' · geçici (en kıdemli üye)':''):'—')+'</span></div>'
   +'<div class="kv"><span class="k">Üye</span><span class="v">'+Number(d.uye_sayi)+' avukat</span></div>'
@@ -99,9 +100,17 @@ window.baroMesajSil=async id=>{
  try{await RPC('baro_mesaj_sil',{p_mesaj:id});toast('Mesaj silindi.');yenile();}catch(err){error(err);}
 };
 
+function islerHtml(d){
+ const v=d.isler||{},kart=window.hukukIsKart;
+ if(typeof kart!=='function')return '';
+ const ust=(v.ustlendigim||[]),acik=(v.acik||[]);
+ return '<div class="kart"><h3>📂 Avukat arayan hukuki işler ('+acik.length+')</h3><p class="alt">Dava açmak, seçim sonucuna itiraz etmek ya da parti kapatma davasında savunma vermek isteyenlerin talepleri. Teklifin kabul edilirse ücret emanete alınır; dilekçeyi mahkemeye sunduğunda sana geçer.</p>'
+  +(acik.length?acik.map(j=>kart(j,'acik')).join(''):'<p class="alt">Şu an avukat arayan iş yok.</p>')+'</div>'
+  +(ust.length?'<div class="kart"><h3>🗂️ Üstlendiğim işler</h3>'+ust.map(j=>kart(j,'avukat')).join('')+'</div>':'');
+}
 function davalarHtml(d){
  const ben=d.ben||{};
- let z='<div class="kart"><h3>🔎 Avukat bekleyen davalar ('+(d.bekleyen_davalar||[]).length+')</h3><p class="alt">Açık davalarda vekili olmayan taraflar. Dosyayı açıp ilgili tarafa ücret teklifi verebilirsin.'+(ben.calisabilir===false&&ben.engel?' <b style="color:var(--warn)">'+h(ben.engel)+'</b>':'')+'</p>'
+ let z=islerHtml(d)+'<div class="kart"><h3>🔎 Avukat bekleyen davalar ('+(d.bekleyen_davalar||[]).length+')</h3><p class="alt">Açık davalarda vekili olmayan taraflar. Dosyayı açıp ilgili tarafa ücret teklifi verebilirsin.'+(ben.calisabilir===false&&ben.engel?' <b style="color:var(--warn)">'+h(ben.engel)+'</b>':'')+'</p>'
   +(d.bekleyen_davalar||[]).map(x=>'<div class="liste-satir"><div class="orta"><b>Dosya #'+x.id+' · '+h(TURLER[x.tur]||x.tur)+'</b><div class="kucuk">'+h(x.davaci||'—')+' → '+h(x.davali||'—')+'</div>'
    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px">'+(x.davaci_bos?'<span class="rozet">Davacı vekili aranıyor</span>':'')+(x.davali_bos?'<span class="rozet">Davalı vekili aranıyor</span>':'')
    +(x.adli_yardim?'<span class="rozet sari">Adli yardım talebi</span>':'')+(x.teklif?'<span class="rozet">'+x.teklif+' bekleyen teklif</span>':'')+(x.taraf_miyim?'<span class="rozet kirmizi">Tarafısın</span>':'')+'</div>'
