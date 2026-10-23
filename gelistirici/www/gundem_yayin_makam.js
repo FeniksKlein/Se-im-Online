@@ -49,11 +49,13 @@
      akisBagla(kutu,function(){return AKIS.gundemListe;},window.soAkisYenile);
    }catch(_){}
  };
+ var soTakvimSayfaHtml="";
+ window.soSecimTakvimiEkrani=function(){
+   var govde=soTakvimSayfaHtml||'<div class="kart"><p class="alt">Seçim bilgileri henüz yüklenmedi. Gündem sayfasından yeniden açabilirsin.</p></div>';
+   return iskelet("Seçim takvimi",'<div class="so-menu-hero"><h2>🗳️ Seçim takvimi ve sonuçlar</h2><p>Seçim aşamaları, yaklaşan tarihler, adaylık işlemleri ve sonuçlar tek ekranda.</p></div>'+govde,{geri:true});
+ };
  window.soGundemTakvimAc=function(){
-   var detay=document.getElementById("so-secim-arsiv");
-   if(!detay){if(typeof sekmeAc==="function")sekmeAc("gundem");return;}
-   detay.open=true;
-   detay.scrollIntoView({behavior:"smooth",block:"start"});
+   return go(window.soSecimTakvimiEkrani);
  };
  window.soMakamGit=function(tur){
    var p=profil();
@@ -108,6 +110,38 @@
  }
  var kaynakIskelet=window.iskelet;
  if(typeof kaynakIskelet!=="function")return;
+
+ // Mağaza HTML'ye, sponsorlu kart ise ayrı bir asenkron cevapla sonradan ekleniyor.
+ // Bu yüzden sıra yalnızca ilk HTML üzerinde değil, canlı DOM'da da sabitlenir.
+ var soGundemGozlemci=null;
+ function soGundemDomSirala(icerik){
+   if(!icerik||!icerik.isConnected)return;
+   var ogeler=Array.from(icerik.children);
+   var bul=function(css){return ogeler.find(function(el){return el.matches(css);})||null;};
+   var magaza=bul("#mgSerit, .mg-serit");
+   var reklamlar=ogeler.filter(function(el){return el.matches(".aj-ek");});
+   var vitrin=bul(".serit");
+   var oy=bul(".so-canli-oylama");
+   var yayin=bul(".so-gundem-kisa");
+   var akis=bul(".so-canli-akis");
+   var ust=[magaza].concat(reklamlar,[vitrin,oy,yayin,akis]).filter(Boolean);
+   if(ust.every(function(el,i){return icerik.children[i]===el;}))return;
+   // Yalnızca bu altı grubun sırasını düzelt; "Bugün", fırsatlar ve devamı yer değiştirmez.
+   for(var i=ust.length-1;i>=0;i--)icerik.insertBefore(ust[i],icerik.firstChild);
+ }
+ function soGundemSiralamayiBagla(){
+   if(soGundemGozlemci){soGundemGozlemci.disconnect();soGundemGozlemci=null;}
+   var icerik=document.getElementById("icerik");
+   if(!icerik)return;
+   soGundemDomSirala(icerik);
+   if(typeof MutationObserver==="function"){
+     soGundemGozlemci=new MutationObserver(function(){
+       if(document.getElementById("icerik")!==icerik){soGundemGozlemci.disconnect();return;}
+       soGundemDomSirala(icerik);
+     });
+     soGundemGozlemci.observe(icerik,{childList:true});
+   }
+ }
  function gundemYenile(html){
    var kok=document.createElement("div");kok.innerHTML=html;
    var eskigaz=kok.querySelector(".vit-gazete");if(eskigaz)eskigaz.remove();
@@ -119,7 +153,7 @@
        '<button type="button" class="so-kisa-kart" onclick="soYayinGit(\'kitap\')"><span class="so-kisa-simge">📚</span><span class="so-kisa-metin"><b>Kitaplar ve yayınevleri</b><small>Yayınları oku, satın al veya eser yayımla</small></span><span class="so-kisa-ok">›</span></button>'+
        '<button type="button" class="so-kisa-kart" onclick="soGundemTakvimAc()"><span class="so-kisa-simge">🗳️</span><span class="so-kisa-metin"><b>Seçim takvimi</b><small>Yaklaşan tarihler ve eski sonuçlar</small></span><span class="so-kisa-ok">›</span></button>'+
      '</div>';
-   // Gündemin ilk ekranında Akış ve basın/yayın bağlantıları kaydırmadan görünür.
+   // Basın ve yayın kısayolları Akıştan önce gelir; diğer Gündem kartları kendi sırasında kalır.
    kok.insertBefore(hizli,kok.firstChild);
    // Mevcut çalışan Akış kartını alt bölgeden al ve Basın-Yayın'ın üzerine taşı.
    // Orijinal textarea, beğeni, yanıt ve etiket bağlayıcıları yerinde kalır.
@@ -141,7 +175,7 @@
        daha.textContent="Daha fazla paylaşım yükle";daha.setAttribute("onclick","soAkisDaha()");
        akisKart.appendChild(daha);
      }
-     kok.insertBefore(akisBolumu,hizli);
+     hizli.insertAdjacentElement("afterend",akisBolumu);
    }
    // Sandık gerçekten açık olduğu müddetçe oy kartlarını Akış'ın önüne taşı.
    // Adaylıklar, ileri tarihli seçimler, sayımlar ve bitenler burada gösterilmez.
@@ -160,7 +194,7 @@
        var node=kok.querySelector('[id="sec'+Number(s.id)+'"]');
        if(node&&node.querySelector(".olay.oy"))oyBolumu.appendChild(node);
      });
-     if(oyBolumu.querySelector('[id^="sec"]'))kok.insertBefore(oyBolumu,akisBolumu||hizli);
+     if(oyBolumu.querySelector('[id^="sec"]'))kok.insertBefore(oyBolumu,hizli);
    }
    // Belediye yönetimi yalnız Devlet > Makamlarım alanında yer alsın.
    var silindi=0;
@@ -180,28 +214,37 @@
        }
      });
    }
-   var arsiv=document.createElement("details");arsiv.id="so-secim-arsiv";arsiv.className="kart so-secim-arsiv";
-   arsiv.innerHTML='<summary><span style="font-size:24px">🗳️</span><span style="flex:1"><b>Seçim takvimi ve sonuçları</b><small>İleri tarihli seçimler ve biten oylamalar burada</small></span><span class="so-kisa-ok">⌄</span></summary><div class="so-secim-arsiv-govde"></div>';
-   var alan=arsiv.querySelector(".so-secim-arsiv-govde"), biten=0;
-   // Haftalar sonra gerçekleşecek seçim için kocaman ana geri sayım alanı kaplamasın.
-   // Yakın (72 saat içindeki) seçimler ise Gündem başında görünmeye devam eder.
+   // Takvimin eski uzun kartlarını Gündem'den çıkar: kısayol artık ayrı ekran açar.
+   // Mevcut seçim düğmeleri ve yetkiler aynen kullanılır; sunucu verisine dokunulmaz.
+   var takvim=typeof D!=="undefined"&&D.durum&&Array.isArray(D.durum.takvim)?D.durum.takvim:[];
+   var devam=document.createElement("div"),sonuclar=document.createElement("div"),gelecek=document.createElement("div");
    var sahneSaat=kok.querySelector(".sahne .geri-sayim[data-an]");
    if(sahneSaat){
      var hedefAn=Number(sahneSaat.getAttribute("data-an"));
      if(Number.isFinite(hedefAn)&&hedefAn-Date.now()>72*3600000){
        var sahneKart=sahneSaat.closest(".sahne");
-       if(sahneKart)alan.appendChild(sahneKart);
+       if(sahneKart)gelecek.appendChild(sahneKart);
      }
    }
-   var takvim=(typeof D!=="undefined"&&D.durum&&D.durum.takvim)||[];
+   var eklenen=new Set();
    Array.from(kok.querySelectorAll('[id^="sec"]')).forEach(function(el){
-     if(!/^sec\d+$/.test(el.id))return;
+     if(!/^sec\d+$/.test(el.id)||el.closest(".so-canli-oylama"))return;
      var id=Number(el.id.slice(3));
-     var kayit=Array.isArray(takvim)?takvim.find(function(s){return Number(s.id)===id;}):null;
-     var rozet=el.querySelector(".rozet");
-     var tamam=kayit?kayit.asama==="bitti":!!(rozet&&/Sonuçlandı/.test(rozet.textContent||""));
-     if(tamam){alan.appendChild(el);biten++;}
+     var kayit=takvim.find(function(s){return Number(s.id)===id;});
+     if(!kayit)return;
+     eklenen.add(id);
+     if(kayit.asama==="bitti")sonuclar.appendChild(el);
+     else devam.appendChild(el);
    });
+   // 36 saatlik ana sayfa sınırını aşmış geçmiş sonuçlar da kendi ekranında kalır.
+   takvim.filter(function(s){return s.asama==="bitti"&&!eklenen.has(Number(s.id));})
+     .sort(function(x,y){return Date.parse(y.sonuc_at||y.oy_bit)-Date.parse(x.sonuc_at||x.oy_bit);})
+     .slice(0,30).forEach(function(s){
+       if(typeof olayKarti!=="function")return;
+       var kart=document.createElement("div");
+       kart.id="sec"+Number(s.id);kart.innerHTML=olayKarti(s);
+       if(kart.firstElementChild)sonuclar.appendChild(kart);
+     });
    var takvimBas=null;
    Array.from(kok.querySelectorAll(".bolum-bas")).some(function(el){
      if(/^\s*Seçim takvimi\s*$/i.test((el.querySelector("h2")||{}).textContent||"")){takvimBas=el;return true;}
@@ -209,21 +252,29 @@
    });
    if(takvimBas){
      var siradaki=takvimBas.nextElementSibling;
-     if(siradaki&&siradaki.classList.contains("kart")){alan.appendChild(siradaki);}
+     if(siradaki&&siradaki.classList.contains("kart"))gelecek.appendChild(siradaki);
      takvimBas.remove();
    }
-   if(biten||alan.children.length){
-     var ozet=arsiv.querySelector("summary small");
-     ozet.textContent=(biten?biten+" sonuçlandı · ":"")+"Gelecek seçimler ve tüm sonuçlar";
-     var bugun=Array.from(kok.querySelectorAll(".bolum-bas")).find(function(el){return (el.querySelector("h2")||{}).textContent==="Bugün";});
-     var bugunKarti=bugun&&bugun.nextElementSibling;
-     if(bugunKarti&&bugunKarti.parentNode===kok)bugunKarti.insertAdjacentElement("afterend",arsiv);
-     else kok.appendChild(arsiv);
-   }else{
-     // Seçim verisi henüz gelmediyse kısayol yine de açıklayıcı kalır.
-     arsiv.querySelector(".so-secim-arsiv-govde").innerHTML='<div class="bos">Şu an kaydedilmiş gelecek seçim veya sonuç bulunmuyor.</div>';
-     kok.appendChild(arsiv);
-   }
+   // Oylama açıkken Gündem'in en üstündeki sandıklar korunur; takvimde de erişilir.
+   var acik=kok.querySelector(".secim-ust"),canli=kok.querySelector(".so-canli-oylama");
+   var bolum=function(bas,kutu){
+     return kutu.children.length?'<div class="bolum-bas"><h2>'+bas+'</h2></div>'+kutu.innerHTML:"";
+   };
+   soTakvimSayfaHtml=(acik?acik.outerHTML:canli?canli.outerHTML:"")
+     +bolum("Başvurular ve devam eden seçimler",devam)
+     +bolum("Yaklaşan seçim takvimi",gelecek)
+     +bolum("Sonuçlanan seçimler",sonuclar);
+   if(!soTakvimSayfaHtml)soTakvimSayfaHtml='<div class="kart"><div class="bos">Şu an takvimde seçim veya sonuç bulunmuyor.</div></div>';
+   // Gündem'deki başvuru/fırsat bağlantıları artık aşağı kaydırmak yerine bu ekranı açar.
+   Array.from(kok.querySelectorAll("[onclick]")).forEach(function(el){
+     var hedef=el.getAttribute("onclick")||"";
+     if(hedef.indexOf("scrollIntoView")!==-1&&(hedef.indexOf("getElementById('sec")!==-1||hedef.indexOf("id^=sec")!==-1))
+       el.setAttribute("onclick","soGundemTakvimAc()");
+   });
+   var secimBas=Array.from(kok.querySelectorAll(".bolum-bas")).find(function(el){
+     return /^\s*Seçimler ve oylamalar\s*$/i.test((el.querySelector("h2")||{}).textContent||"");
+   });
+   if(secimBas&&(!secimBas.nextElementSibling||secimBas.nextElementSibling.classList.contains("bolum-bas")))secimBas.remove();
    return kok.innerHTML;
  }
  function makamDetay(tur){
@@ -286,7 +337,10 @@
        else if(baslik==="Devlet"||baslik==="Yönetim")govde=devletYenile(govde);
      }catch(err){if(window.console&&console.warn)console.warn("Gündem/Makam kısayolları:",err);}
    }
-   return kaynakIskelet.call(this,baslik,govde,opt);
+   var sonuc=kaynakIskelet.call(this,baslik,govde,opt);
+   if(baslik==="Gündem")soGundemSiralamayiBagla();
+   else if(soGundemGozlemci){soGundemGozlemci.disconnect();soGundemGozlemci=null;}
+   return sonuc;
  };
  stiller();
 })();
