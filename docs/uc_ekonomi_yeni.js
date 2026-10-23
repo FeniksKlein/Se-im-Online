@@ -351,7 +351,7 @@ function renderEvents(){
    "<p>Organizatör: "+E(ev.sirket_ad)+"</p>"+
    "<b>"+TL(ev.bilet)+"</b> / bilet · "+ev.satilan+"/"+ev.kapasite+" satıldı"+
    "<p>Sponsor: "+TL(ev.sponsor)+" · Bilet cirosu: "+TL(ev.ciro)+" · Salon gideri: "+TL(ev.mekan)+"</p>"+
-   (ev.durum==="bitti"?"<b>Net sonuç: "+TL(ev.kar)+"</b>":"⏳ Etkinlik günü sanal katılım da hesaplanacak."),
+   (ev.durum==="bitti"?"<b>Net sonuç: "+TL(ev.kar)+"</b>":ev.durum==="iptal"?"<b>Etkinlik iptal edildi · İadeler yapıldı.</b>":"⏳ Etkinlik günü sanal katılım da hesaplanacak."),
    (openSale&&!ev.biletim?btn("🎟️ Bilet al","ucEventDo('bilet_al',"+ev.id+")"):"")+
    (ev.biletim?note("✅ Biletin var"):"")+
    (ev.durum==="planlandi"?btn("Sponsor ol","ucEventModal('sponsor',"+ev.id+")",true):"")+
