@@ -386,3 +386,23 @@ commit;
 -- select cron.alter_job(jobid, active := false) from cron.job where jobname = 'oyun-zamanlayici';
 --
 -- İZLEME: select adim, son_calisma, son_sure_ms, hata_sayisi, son_hata from oyun.zamanlayici_adim order by sira;
+
+-- ---------------------------------------------------------------------
+-- 9) meclis_baskanlik(): okuma yolunda genel kilit beklemesin (migration: meclis_baskanlik_kilitsiz_tick)
+--    Önceden her çağrı oyun.meclis_tick() içindeki pg_advisory_xact_lock ile sıraya giriyordu; seçim gecesi
+--    milletvekillerinin ana sayfası 8 sn bekleyip 500 alıyordu. oyun.tick() her dakika meclis_tick'i zaten çalıştırır.
+-- ---------------------------------------------------------------------
+do $$
+declare d text := pg_get_functiondef('public.meclis_baskanlik()'::regprocedure);
+begin
+  if position('  perform oyun.meclis_tick(t);' in d) > 0 then
+    d := replace(d, '  perform oyun.meclis_tick(t);',
+'  if oyun.onbellek_oku(''meclis_tick_okuma'') is null and pg_try_advisory_xact_lock(hashtext(''oyun.meclis_tick'')) then
+    perform oyun.meclis_tick(t);
+    perform oyun.onbellek_yaz(''meclis_tick_okuma'', ''true''::jsonb, interval ''15 seconds'');
+  end if;');
+    execute d;
+  end if;
+end $$;
+-- Not: yük testinde kullanılan geçici "yuk_testi" şeması zararsızdır (yalnız postgres çağırabilir); silmek için:
+-- drop schema if exists yuk_testi cascade;
