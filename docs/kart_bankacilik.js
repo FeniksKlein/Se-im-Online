@@ -40,6 +40,7 @@
     var body='<div class="kart" style="background:linear-gradient(140deg,#283657,#151d33);color:white;border-radius:16px;margin:9px 0 13px;padding:17px"><div style="opacity:.75;font-size:12px">'+esc(k.banka)+'</div>'+
       '<div style="font-weight:800;font-size:25px;letter-spacing:2px;margin:15px 0">•••• •••• •••• '+esc(k.son_dort)+'</div><div>'+st+'</div></div>';
     body+=fld("Kart limiti",money(k.limit))+fld("Kullanılabilir limit",money(k.kullanilabilir))+fld("Güncel toplam borç",money(k.borc))+fld("Sonraki hesap kesimi",tarih(k.kesim_at));
+    if(Number(k.gecikmis_asgari)>0)body+=fld("Gecikmiş asgari ödeme",money(k.gecikmis_asgari))+"<p class=\"alt\">Gecikmiş asgari tutarı ödersen gecikme sayacı durur; kalan borcunu ödemeye devam edebilirsin.</p>";
     if(acik){
       body+=fld("Ödenmesi gereken ekstre",money(Math.max(0,acik.toplam-acik.odenen)))+
         fld("Kalan asgari tutar",money(Math.max(0,acik.asgari-acik.odenen)))+
