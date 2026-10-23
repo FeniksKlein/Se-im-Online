@@ -649,6 +649,38 @@
  }
  var kaynakIskelet=window.iskelet;
  if(typeof kaynakIskelet!=="function")return;
+
+ // Mağaza HTML'ye, sponsorlu kart ise ayrı bir asenkron cevapla sonradan ekleniyor.
+ // Bu yüzden sıra yalnızca ilk HTML üzerinde değil, canlı DOM'da da sabitlenir.
+ var soGundemGozlemci=null;
+ function soGundemDomSirala(icerik){
+   if(!icerik||!icerik.isConnected)return;
+   var ogeler=Array.from(icerik.children);
+   var bul=function(css){return ogeler.find(function(el){return el.matches(css);})||null;};
+   var magaza=bul("#mgSerit, .mg-serit");
+   var reklamlar=ogeler.filter(function(el){return el.matches(".aj-ek");});
+   var vitrin=bul(".serit");
+   var oy=bul(".so-canli-oylama");
+   var yayin=bul(".so-gundem-kisa");
+   var akis=bul(".so-canli-akis");
+   var ust=[magaza].concat(reklamlar,[vitrin,oy,yayin,akis]).filter(Boolean);
+   if(ust.every(function(el,i){return icerik.children[i]===el;}))return;
+   // Yalnızca bu altı grubun sırasını düzelt; "Bugün", fırsatlar ve devamı yer değiştirmez.
+   for(var i=ust.length-1;i>=0;i--)icerik.insertBefore(ust[i],icerik.firstChild);
+ }
+ function soGundemSiralamayiBagla(){
+   if(soGundemGozlemci){soGundemGozlemci.disconnect();soGundemGozlemci=null;}
+   var icerik=document.getElementById("icerik");
+   if(!icerik)return;
+   soGundemDomSirala(icerik);
+   if(typeof MutationObserver==="function"){
+     soGundemGozlemci=new MutationObserver(function(){
+       if(document.getElementById("icerik")!==icerik){soGundemGozlemci.disconnect();return;}
+       soGundemDomSirala(icerik);
+     });
+     soGundemGozlemci.observe(icerik,{childList:true});
+   }
+ }
  function gundemYenile(html){
    var kok=document.createElement("div");kok.innerHTML=html;
    var eskigaz=kok.querySelector(".vit-gazete");if(eskigaz)eskigaz.remove();
@@ -660,7 +692,7 @@
        '<button type="button" class="so-kisa-kart" onclick="soYayinGit(\'kitap\')"><span class="so-kisa-simge">📚</span><span class="so-kisa-metin"><b>Kitaplar ve yayınevleri</b><small>Yayınları oku, satın al veya eser yayımla</small></span><span class="so-kisa-ok">›</span></button>'+
        '<button type="button" class="so-kisa-kart" onclick="soGundemTakvimAc()"><span class="so-kisa-simge">🗳️</span><span class="so-kisa-metin"><b>Seçim takvimi</b><small>Yaklaşan tarihler ve eski sonuçlar</small></span><span class="so-kisa-ok">›</span></button>'+
      '</div>';
-   // Gündemin ilk ekranında Akış ve basın/yayın bağlantıları kaydırmadan görünür.
+   // Basın ve yayın kısayolları Akıştan önce gelir; diğer Gündem kartları kendi sırasında kalır.
    kok.insertBefore(hizli,kok.firstChild);
    // Mevcut çalışan Akış kartını alt bölgeden al ve Basın-Yayın'ın üzerine taşı.
    // Orijinal textarea, beğeni, yanıt ve etiket bağlayıcıları yerinde kalır.
@@ -682,7 +714,7 @@
        daha.textContent="Daha fazla paylaşım yükle";daha.setAttribute("onclick","soAkisDaha()");
        akisKart.appendChild(daha);
      }
-     kok.insertBefore(akisBolumu,hizli);
+     hizli.insertAdjacentElement("afterend",akisBolumu);
    }
    // Sandık gerçekten açık olduğu müddetçe oy kartlarını Akış'ın önüne taşı.
    // Adaylıklar, ileri tarihli seçimler, sayımlar ve bitenler burada gösterilmez.
@@ -701,7 +733,7 @@
        var node=kok.querySelector('[id="sec'+Number(s.id)+'"]');
        if(node&&node.querySelector(".olay.oy"))oyBolumu.appendChild(node);
      });
-     if(oyBolumu.querySelector('[id^="sec"]'))kok.insertBefore(oyBolumu,akisBolumu||hizli);
+     if(oyBolumu.querySelector('[id^="sec"]'))kok.insertBefore(oyBolumu,hizli);
    }
    // Belediye yönetimi yalnız Devlet > Makamlarım alanında yer alsın.
    var silindi=0;
@@ -844,7 +876,10 @@
        else if(baslik==="Devlet"||baslik==="Yönetim")govde=devletYenile(govde);
      }catch(err){if(window.console&&console.warn)console.warn("Gündem/Makam kısayolları:",err);}
    }
-   return kaynakIskelet.call(this,baslik,govde,opt);
+   var sonuc=kaynakIskelet.call(this,baslik,govde,opt);
+   if(baslik==="Gündem")soGundemSiralamayiBagla();
+   else if(soGundemGozlemci){soGundemGozlemci.disconnect();soGundemGozlemci=null;}
+   return sonuc;
  };
  stiller();
 })();
