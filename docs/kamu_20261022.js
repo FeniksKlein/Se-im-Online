@@ -53,7 +53,9 @@ window.kamuToptanEkrani=async function(){
    html+='<div class="alan"><label>Fabrika ve ürünü</label><select id="kt_stok">'+(d.stoklar||[]).map(s=>
       '<option value="'+Number(s.sirket)+'|'+esc(s.urun)+'">'+esc(s.ad)+' · '+esc(s.urun)+' · '+s.adet+' adet · '+money(s.fiyat)+'</option>').join('')+'</select></div>';
    html+='<div class="alan"><label>Sipariş miktarı</label><input id="kt_adet" type="number" min="1" max="500" value="1"></div>'+
-       btn('Teklif gönder','kamuToptanTeklif()','altin')+'</div>';
+       btn('Teklif gönder','kamuToptanTeklif()','altin')+
+       btn('Nakit + çekle ödeme teklif et','cekToptanTeklifModal()','ikinci')+
+       '<p class="alt">Çekli ödemede satıcı kabul etmeden şirket kasasından para çıkmaz ve çek düzenlenmez. Peşin miktarı ve vadeyi sen belirlersin.</p></div>';
   }
   html+='<div class="kart"><h2>Gelen ve giden teklifler</h2>';
   (d.teklifler||[]).forEach(o=>{
