@@ -3,6 +3,17 @@
 'use strict';
 if(window.CEK_BANKA_MERKEZI_V1)return;
 window.CEK_BANKA_MERKEZI_V1=true;
+var style=document.getElementById('cek-merkezi-kontrast');
+if(!style){
+ style=document.createElement('style');style.id='cek-merkezi-kontrast';
+ style.textContent=[
+  '.cek-bank-ui .btn{color:#f7f9ff!important;-webkit-text-fill-color:#f7f9ff!important;opacity:1!important;font-weight:650!important;}',
+  '.cek-bank-ui .btn.altin{background:#33477d!important;border:1px solid #7791db!important;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;}',
+  '.cek-bank-ui .kart .kv b{color:#fff!important;-webkit-text-fill-color:#fff!important;}'
+ ].join('');
+ document.head.appendChild(style);
+}
+
 var CACHE={panel:null,teklifler:[],toptan:[],ek:null,iptaller:[],sirket:null};
 var esc=function(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 var para=function(v){return Number(v||0).toLocaleString('tr-TR',{maximumFractionDigits:2})+' ₺';};
@@ -135,7 +146,7 @@ window.cekMerkeziEkrani=async function(){
     return satir('Çek #'+x.cek_id+' takip tazminatı',para(x.kalan))+
       buton('Tazminat ödemesi','cekTazminat('+x.cek_id+')');
    }).join(''):''));
-  iskelet('Bankacılık ve Çek Merkezi',first+defter+trade+bulkHtml+issued+received+legal,{geri:true});
+  iskelet('Bankacılık ve Çek Merkezi','<div class="cek-bank-ui">'+first+defter+trade+bulkHtml+issued+received+legal+'</div>',{geri:true});
  }catch(er){iskelet('Bankacılık ve Çek Merkezi',kart('Bağlantı hatası','<p>'+esc(er.message||String(er))+'</p>'+buton('Tekrar dene','cekMerkeziEkrani()')),{geri:true});}
 };
 
