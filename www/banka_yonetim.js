@@ -1,6 +1,26 @@
 (function(){
 'use strict';
 if(window.BANKA_YONETIM_V1)return;window.BANKA_YONETIM_V1=true;
+var byStyle=document.getElementById('banka-yonetim-contrast');
+if(!byStyle){
+ byStyle=document.createElement('style');
+ byStyle.id='banka-yonetim-contrast';
+ byStyle.textContent=[
+  '.by-ui .by-ayar{display:grid;gap:16px;max-width:560px;}',
+  '.by-ui .by-note{margin:0 0 4px;color:#bfcbed;line-height:1.5;font-size:0.94rem;}',
+  '.by-ui .by-field{display:flex;flex-direction:column;gap:7px;min-width:0;}',
+  '.by-ui .by-label{display:block;color:#f0f4ff;font-size:0.96rem;font-weight:650;line-height:1.4;}',
+  '.by-ui .alan{display:block;box-sizing:border-box;width:100%;max-width:560px;min-height:48px;padding:11px 14px;border:1px solid #7d8eb9 !important;border-radius:11px !important;background:#182547 !important;color:#f8faff !important;-webkit-text-fill-color:#f8faff !important;opacity:1 !important;caret-color:#fff;font-size:16px !important;font-weight:500;line-height:1.45;box-shadow:none !important;color-scheme:dark;}',
+  '.by-ui select.alan{appearance:auto;-webkit-appearance:menulist;cursor:pointer;}',
+  '.by-ui select.alan option{background:#182547;color:#f8faff;}',
+  '.by-ui .alan:focus{outline:2px solid #9cb5ff !important;outline-offset:2px;}',
+  '.by-ui .alan::placeholder{color:#c2cce1 !important;-webkit-text-fill-color:#c2cce1 !important;opacity:1;}',
+  '.by-ui .by-ayar .btn{min-height:48px;font-size:1rem;}',
+  '@media (max-width:600px){.by-ui .by-ayar{gap:14px;}.by-ui .alan{max-width:100%;}}'
+ ].join('');
+ document.head.appendChild(byStyle);
+}
+
 var S={id:0,tab:'ozet',data:null};
 function e(x){return String(x==null?'':x).replace(/[&<>"']/g,function(a){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[a]})}
 function tl(x){return (Number(x)||0).toLocaleString('tr-TR',{maximumFractionDigits:2})+' ₺'}
@@ -33,12 +53,19 @@ function render(){
  box('Banka hesap işlemleri',(d.banka_islemler&&d.banka_islemler.length?d.banka_islemler.map(function(x){
  return row(dt(x.zaman)+' · '+x.oyuncu,tl(x.tutar))+'<p class="alt">'+e(x.aciklama)+'</p>'
  }).join(''):'Banka hesap işlemi yok'));
- if(S.tab==='ayar'){var select=function(id,v){return '<select id="'+id+'" class="alan"><option value="false"'+(!v?' selected':'')+'>Manuel karar</option><option value="true"'+(v?' selected':'')+'>Otomatik karar</option></select>'};
- h+=box('Banka onay politikaları','<p class="alt">Otomatik modda limit, kredi notu ve banka likiditesi değerlendirilir.</p>'+
- '<p>POS</p>'+select('bypos',a.pos)+'<p>Kredi kartı</p>'+select('bykart',a.kart)+'<p>Kredi</p>'+select('bykredi',a.kredi)+
- '<p>Asgari kredi notu</p><input class="alan" type="number" id="bynot" value="'+a.min_not+'">'+
- '<p>Otomatik azami kart limiti (₺)</p><input class="alan" type="number" id="bykartmax" value="'+a.kart_max+'">'+
- '<p>Otomatik azami kredi (₺)</p><input class="alan" type="number" id="bykredimax" value="'+a.kredi_max+'">'+b('Politikayı kaydet','bankaYonetimAyarKaydet()'))}
+ if(S.tab==='ayar'){
+  var select=function(id,v){return '<select id="'+id+'" class="alan" aria-label="'+id+'"><option value="false"'+(!v?' selected':'')+'>Manuel karar</option><option value="true"'+(v?' selected':'')+'>Otomatik karar</option></select>'};
+  var field=function(id,label,control){return '<div class="by-field"><label class="by-label" for="'+id+'">'+label+'</label>'+control+'</div>'};
+  h+=box('Banka onay politikaları','<div class="by-ayar"><p class="by-note">Otomatik modda limit, kredi notu ve banka likiditesi değerlendirilir.</p>'+
+   field('bypos','POS başvuruları',select('bypos',a.pos))+
+   field('bykart','Kredi kartı başvuruları',select('bykart',a.kart))+
+   field('bykredi','Kredi başvuruları',select('bykredi',a.kredi))+
+   field('bynot','Asgari kredi notu','<input class="alan" type="number" inputmode="numeric" id="bynot" min="0" step="1" value="'+a.min_not+'">')+
+   field('bykartmax','Otomatik azami kart limiti (₺)','<input class="alan" type="number" inputmode="numeric" id="bykartmax" min="0" step="1" value="'+a.kart_max+'">')+
+   field('bykredimax','Otomatik azami kredi (₺)','<input class="alan" type="number" inputmode="numeric" id="bykredimax" min="0" step="1" value="'+a.kredi_max+'">')+
+   b('Politikayı kaydet','bankaYonetimAyarKaydet()')+'</div>');
+ }
+ h='<div class="by-ui">'+h+'</div>';
  iskelet(d.banka.ad+' · Banka Yönetimi',h,{geri:true});
 }
 window.bankaYonetimEkrani=async function(id,tab){try{
