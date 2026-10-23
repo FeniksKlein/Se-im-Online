@@ -245,11 +245,11 @@ if(typeof oncekiTapu==='function'){
     function(){oncekiTapu(eylem,veri,fiyat);});
  };
 }
-// Ekonomi sayfalarının EN ÜSTÜNE kısa yollar: menüleri aramak gerekmiyor.
+// Bankacılık ve Çekler kişisel kısayolları sadece Hayat ana sayfasında gösterilir.
 var oncekiIskelet=window.iskelet;
 if(typeof oncekiIskelet==='function'){
  window.iskelet=function(baslik,govde,opt){
-  if(['Ekonomi','Hayat','Şirketlerim','Ekonomi merkezi','Banka'].indexOf(baslik)!==-1){
+  if(baslik==='Hayat'){
    var kisayol='<div class="kart" id="cek-bank-quick"><h2>🏦 Bankacılık ve Çekler</h2>'+
     '<p class="alt">Banka hesabı · çek defteri · verdiğim/aldığım çekler · nakit + çek teklifleri</p>'+
     buton('🏦 Banka hesabım','ekranAc(bankaEkrani)','altin')+
