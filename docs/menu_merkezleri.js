@@ -5,6 +5,12 @@
   "use strict";
   if (window.SO_MENU_MERKEZLERI_V1) return;
   window.SO_MENU_MERKEZLERI_V1 = true;
+  if (!document.getElementById('banka-yonetim-loader')) {
+    var s=document.createElement('script');
+    s.id='banka-yonetim-loader';
+    s.src='./banka_yonetim.js?v=20261023b';
+    document.head.appendChild(s);
+  }
 
   var adliyeSekmeleri = [
     ["mahkeme", "Mahkeme"], ["avukatlar", "Avukatlar"], ["ofisler", "Avukat Ofisleri"],
@@ -409,8 +415,8 @@
     return z;
   }
   window.soMenuBanka=function(id){
-    if(typeof window.bankaDetayEkrani!=="function")return toast("Banka ekranı yüklenmedi.",true);
-    return ekranAc(function(){return bankaDetayEkrani(Number(id));});
+    if(typeof window.bankaYonetimEkrani!=="function")return toast("Banka yönetimi henüz yüklenmedi. Sayfayı yenile.",true);
+    return ekranAc(function(){return bankaYonetimEkrani(Number(id));});
   };
   async function sirketlerimHtml(){
     try{
