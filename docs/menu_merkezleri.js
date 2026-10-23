@@ -281,6 +281,8 @@
     catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):err.message,true);}
   };
   async function adliyeYeniEkrani(){
+    // Eylem sonrası menü yeniden açılıyorsa eski alt ekran geçmişini temizle.
+    if(D.yigin.length)D.yigin=[];
     var no=++istek.adliye,s=secim.adliye;
     ciz("adliye",'<div class="so-menu-hero"><h2>⚖️ Adliye</h2><p>Mahkeme, avukatlar, dava süreçleri ve icra satışları tek merkezde.</p></div>'
       +'<div class="yukleniyor">Yükleniyor…</div>');
@@ -494,6 +496,8 @@
       ]);
   }
   async function ekonomiYeniEkrani(){
+    // Eylem sonrası menü yeniden açılıyorsa eski alt ekran geçmişini temizle.
+    if(D.yigin.length)D.yigin=[];
     var no=++istek.ekonomi, s=secim.ekonomi;
     ciz("ekonomi",ekonomiHero(s)+'<div class="yukleniyor">Yükleniyor…</div>');
     var z="";
