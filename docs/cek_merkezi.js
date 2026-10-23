@@ -50,7 +50,7 @@ window.cekMerkeziEkrani=async function(){
   }).join(''):'<p class="alt">Henüz çek defterin yok. Banka hesabın varsa üstteki düğmeden alabilirsin.</p>');
   var trade=kart('🤝 Çekli ticaret teklifleri · Satıcı onayı',
    '<p class="alt">Bir ilanı nakit + çekle satın almak için ödeme ekranında “Çekle ödeme teklif et” seç. Teklifin satıcı kabul etmeden ne para gider ne de çek kesilir. Onaydan sonra devir ve ödeme birlikte yapılır.</p>'+
-   buton('Satılık hisseler','ekranAc(sirketHissePazariEkrani)')+
+   buton('Satılık hisseler',typeof window.sirketHissePazariEkrani==='function'?'ekranAc(sirketHissePazariEkrani)':'ekranAc(cekHissePazariEkrani)')+
    (typeof yatirimPazarEkrani==='function'?buton('Gayrimenkul pazarı','ekranAc(yatirimPazarEkrani)'):'')+
    (typeof kamuToptanEkrani==='function'?buton('Şirketlerin mal ticareti','ekranAc(kamuToptanEkrani)'):'')+
    (CACHE.teklifler.length?CACHE.teklifler.map(function(o){
@@ -306,4 +306,32 @@ window.cekToptanTeklifModal=async function(){
   };
  }catch(er){hata(er);}
 };
+
+// Web sürümünde eski hisse pazar sayfası bulunmayabilir; çekli alım için doğrudan pazar.
+window.cekHissePazariEkrani=async function(){
+ if(typeof yukleniyor==='function')yukleniyor('Hisse Pazarı · Nakit ve Çek');
+ try{
+  var p=await API.rpc('sirket_hisse_pazar'),l=p.ilanlar||[];
+  var html=kart('🏢 Satılık şirket hisseleri',
+   '<p class="alt">Hisseyi doğrudan nakitle alabilir veya satıcıya nakit + çek teklif edebilirsin. Çekli teklifte hisseler yalnızca satıcı onaylayınca devredilir.</p>'+
+   buton('Çek tekliflerini ve defterimi aç','cekMerkeziAc()'));
+  html+=kart('Hisse ilanları',l.length?l.map(function(i){
+   var id=Number(i.id),bedel=Number(i.bedel);
+   return '<div class="kart" style="margin:9px 0;background:var(--panel2)">'+
+    '<h3>'+esc(i.ad)+' · %'+esc(i.pay)+' hisse</h3>'+
+    satir('Satıcı',i.satici)+satir('Sektör',i.sektor)+satir('İlan bedeli',para(bedel))+
+    (i.benim?'<p class="alt">Bu ilan sana ait.</p>':
+      buton('Nakit satın al','cekHisseNakitleAl('+id+')','altin')+
+      buton('Nakit + çek teklif et','cekTicaretTeklifModal("hisse",'+id+','+bedel+',"Hisse ilanı #'+id+'")'))+
+    '</div>';
+  }).join(''):'<p class="alt">Satılık şirket hissesi bulunmuyor.</p>');
+  iskelet('Hisse Pazarı · Nakit ve Çek',html,{geri:true});
+ }catch(er){iskelet('Hisse Pazarı · Nakit ve Çek',kart('İşlem yapılamadı','<p>'+esc(er.message)+'</p>'),{geri:true});}
+};
+window.cekHisseNakitleAl=async function(id){
+ if(!await onayla('Hisseyi nakit satın al','İlandaki tüm satış bedeli nakit olarak cüzdanından tahsil edilecek. Devam edilsin mi?','Nakit satın al'))return;
+ try{await API.rpc('sirket_hisse_ilan_al',{p_ilan:id});toast('Hisse satın alındı.');window.cekHissePazariEkrani();}
+ catch(er){hata(er);}
+};
+
 })();
