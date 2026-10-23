@@ -68,6 +68,69 @@ function islerimHtml(v){
   +(benim.length?'<h3 style="font-size:16px;margin-top:8px">Müvekkili olduğum işler</h3>'+benim.map(j=>isKart(j,'muvekkil')).join(''):'')
   +(ust.length?'<h3 style="font-size:16px;margin-top:8px">Avukatı olduğum işler</h3>'+ust.map(j=>isKart(j,'avukat')).join(''):'')+'</div>';
 }
+
+// Adliye girişindeki menü sırası: mahkeme → avukatlar / bürolar / baro → davalar → icra.
+// Var olan mahkeme, baro ve icra işlemleri değiştirilmez; yalnız kartların görünme sırası düzenlenir.
+function adliyeListeDuzeni(html){
+ if(typeof document==='undefined')return html;
+ const kutu=document.createElement('div');kutu.innerHTML=html;
+ const baslik=el=>el.querySelector(':scope > h3')?.textContent.trim()||'';
+ const bolum=el=>el.querySelector(':scope > h2')?.textContent.trim()||'';
+ const diger=[...kutu.children].filter(el=>{
+  const t=baslik(el);
+  return t==='Anayasa Mahkemesi'||t==='Yüksek Yargıç aday önerileri'
+   ||t==='Seçim sonuçlarına itiraz'
+   ||!!el.querySelector(':scope > details > summary')?.textContent.includes('Adliye ne işe yarar?');
+ });
+ const kararBas=[...kutu.children].find(el=>bolum(el).startsWith('Karara bağlanan davalar'));
+ if(kararBas){
+  const bas=document.createElement('div');bas.className='bolum-bas';
+  bas.innerHTML='<h2>İtiraz edilen davalar</h2>';
+  const kart=document.createElement('div');kart.className='kart';
+  kart.innerHTML='<p class="alt">İstinaf başvurusu yapılan dosyaları, incelemede olanları ve itiraz kararlarını görüntüle.</p>'
+   +'<button class="btn ikinci" onclick="adliyeItirazListesiAc()">İtiraz edilen davaları göster</button>';
+  kutu.insertBefore(bas,kararBas);kutu.insertBefore(kart,kararBas);
+  kararBas.querySelector('h2').textContent='Karara bağlanan davalar';
+ }
+ const icra=[...kutu.children].find(el=>el.querySelector(':scope > details > summary')?.textContent.includes('Kredi icra mahkemesi'));
+ if(icra){
+  const bas=document.createElement('div');bas.className='bolum-bas';
+  bas.innerHTML='<h2>İcradan satılıklar ve haciz ihaleleri</h2>';
+  const digerBas=[...kutu.children].find(el=>/^(Af kararları|Yargıç atama ve görevden almalar)/.test(bolum(el)));
+  if(digerBas){kutu.insertBefore(bas,digerBas);kutu.insertBefore(icra,digerBas);}
+  else kutu.insertBefore(bas,icra);
+ }
+ // İlgili işlemler kaybolmaz; yoğun dosya listelerini bölmemesi için listenin ardından sunulur.
+ diger.forEach(el=>kutu.appendChild(el));
+ return kutu.innerHTML;
+}
+window.adliyeItirazListesiAc=()=>ekranAc(async function(){
+ yukleniyor('İtiraz edilen davalar');
+ const davalar=((typeof ADL!=='undefined'&&ADL.davalar)||[]).filter(x=>x.durum==='karar').slice(0,100);
+ const dosyalar=[];let hata=0;
+ // İtiraz bilgisi dava listesindeki özetten ayrı olduğu için yalnız bu ekran açılınca sorgulanır.
+ for(let n=0;n<davalar.length;n+=8){
+  const grup=davalar.slice(n,n+8);
+  const cevap=await Promise.allSettled(grup.map(d=>API.rpc('adliye_dava_ek',{p_dava:d.id})));
+  cevap.forEach((son,i)=>{
+   if(son.status!=='fulfilled'){hata++;return;}
+   if(son.value&&son.value.istinaf)dosyalar.push({dava:grup[i],ek:son.value});
+  });
+ }
+ const kartlar=dosyalar.map(k=>{
+  const d=k.dava,ist=k.ek.istinaf;
+  return '<div class="kart"><div class="baslik"><b>Dosya #'+Number(d.id)+' · '+e(ADL_TURLER[d.tur]||d.tur)+'</b>'
+   +'<span class="rozet">'+e(adlEtiket(d,k.ek))+'</span></div>'
+   +'<p class="alt">İtiraz eden: '+e(ist.basvuran||'—')+' · Durum: '+e(ist.durum||'—')+'</p>'
+   +'<button class="btn ikinci" onclick="ekranAc(()=>adliyeDosya('+Number(d.id)+'))">Dava ve itiraz dosyasını aç</button></div>';
+ }).join('');
+ iskelet('İtiraz edilen davalar',
+  '<div class="kart"><p class="alt">Adliye kayıtlarındaki son '+davalar.length+' karar dosyası kontrol edildi.</p>'
+  +(hata?'<p class="alt">Bazı dosyaların itiraz bilgisi alınamadı ('+hata+').</p>':'')+'</div>'
+  +(kartlar||'<div class="kart"><p class="alt">Görüntülenebilen kayıtlar arasında itiraz edilen dava yok.</p></div>'),
+  {geri:true});
+});
+
 const oncekiHtml=adliyeHtml;
 adliyeHtml=async function(){
  const [govde,v]=await Promise.all([oncekiHtml(),RPC('hukuk_islerim').catch(()=>null)]);
@@ -77,9 +140,9 @@ adliyeHtml=async function(){
  const kart=v?islerimHtml(v):'';
  if(kart){
   const yer='<div id="adlSozcuYeri"></div>';
-  z=z.includes(yer)?z.replace(yer,yer+kart):kart+z;
+  z=z.includes(yer)?z.replace(yer,yer+kart):z+kart;
  }
- return z;
+ return adliyeListeDuzeni(z);
 };
 
 /* ---------- Dava talebi (eski "Dava aç" yerine) ---------- */
