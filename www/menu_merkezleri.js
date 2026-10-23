@@ -35,6 +35,65 @@
   var grids = function(dizi){ return '<div class="so-grid">'+dizi.join("")+'</div>'; };
   var baslik = function(bas, acik){ return '<div class="so-bas"><b>'+bas+'</b><p>'+acik+'</p></div>'; };
 
+
+  /* İşlem Bul: kullanıcı hangi sekmede olduğuna bakmadan doğru işleme ulaşır. */
+  var aramaIndeksi = {
+    adliye:[
+      ["⚖️","Dava aç","Avukatla dava başvurusu, delil ve davalı","adlDavaModal()","mahkeme hukuk dava aç"],
+      ["📂","Açık davalar","Devam eden yargılama ve duruşmalar","soMenuSec('adliye','acik')","dava dosya duruşma"],
+      ["📜","Biten davalar","Kararlar ve kapanan dosyalar","soMenuSec('adliye','biten')","sonuç kesin hüküm"],
+      ["📝","İtiraz edilen davalar","İstinaf, jüri ve seçim itirazları","soMenuSec('adliye','itiraz')","istinaf şikayet"],
+      ["👩‍⚖️","Avukatlar","Ruhsat, kontenjan ve başarı yüzdeleri","soMenuSec('adliye','avukatlar')","hukuk akademi sınav staj"],
+      ["🏢","Avukat ofisleri","Hukuk büroları, vekalet ve ücretler","soMenuSec('adliye','ofisler')","büro vekil avukat"],
+      ["🏛️","Türkiye Barosu","Levhaya kayıt, disiplin ve üyelik","soMenuSec('adliye','baro')","baro adli yardım aidat"],
+      ["🔨","İcradan satılıklar","Elektronik haciz satışları, açık artırmalar","soMenuSec('adliye','icra')","haciz e-satış mal"],
+      ["📁","İcra dosyaları","Ödeme emirleri, alacak ve itiraz","soMenuGit('icraMerkeziEkrani')","icra takip borç"],
+      ["⚖️","Yüksek Mahkeme","Yargıçlar ve yargı yönetimi","soMenuSec('adliye','mahkeme')","mahkeme hakim"]
+    ],
+    ekonomi:[
+      ["🏢","Şirketlerim","Kasaya para, şubelerim, inşaat ve finans","soMenuSec('ekonomi','sirketlerim')","müteahhit firma kasa sermaye"],
+      ["🏛️","Devlet Bankası","Vadeli ve vadesiz hesaplar","soMenuGit('bankaEkrani')","devlet bankası mevduat"],
+      ["🏦","Oyuncu bankaları","Özel bankalar, kredi ve faizler","soMenuGit('bankaRehberiEkrani')","özel banka kredi"],
+      ["💳","Kredi kartlarım","Kart limitleri, ekstre, hesap kesimi, borç","soMenuGit('kartlarimEkrani')","kredi kartı borç"],
+      ["🏪","POS ve kartlı satış","Şirketime POS, kartla ödeme","soMenuGit('kartPosEkrani')","pos cihazı komisyon"],
+      ["🧾","Çek defteri","Çek al, yaz, ciro et, öde","soMenuGit('cekMerkeziAc')","çek karnesi vadeli çek"],
+      ["💸","Para gönder","Banka havalesi ve oyuncuya ödeme","soMenuGit('paraGonderModal')","havale transfer"],
+      ["💰","Şirket kasasına para yatır","Şirketini seçerek sermaye ve nakit ekle","soMenuSec('ekonomi','sirketlerim')","para koy kasa"],
+      ["🏗️","İnşaat ve şube yönetimi","Arsa, ruhsat, projeler ve şube açma","soMenuSec('ekonomi','sirketlerim')","müteahhit bina maliyet"],
+      ["📒","Kredilerim ve mevduatlarım","Özel banka borçlarım ve hesaplarım","soMenuGit('bankaPortfoyEkrani')","vadeli borç faiz"],
+      ["➕","Yeni şirket kur","Sektör, şehir ve kuruluş sermayesi","soMenuGit('sirketKurulumFormuAc')","şirket işletme"],
+      ["🤝","Şirket ortaklıkları","Ortak ekle, çıkar, hisse devret","soMenuGit('ortaklikEkrani')","ortaklık"],
+      ["📈","Hisse pazarı","Hisse al, sat ve yatırım yap","soMenuGit('sirketHissePazariEkrani')","borsa"],
+      ["🚀","Halka arzlar","Yeni hisse alımları ve sonuçlar","soMenuGit('halkaArzPazarEkrani')","halka arz"],
+      ["🏡","Gayrimenkul pazarı","Arsa, daire ve dükkan tapuları","soMenuGit('yatirimPazarEkrani')","mülk tapu kira"],
+      ["🏪","Toptan ticaret","Şirketler arası ürün ve mal alım satımı","soMenuGit('kamuToptanEkrani')","mal stok"],
+      ["🧾","İşlem geçmişim","Alım satım hareketlerim","soMenuGit('ticaretGecmisimEkrani')","rapor fatura"],
+      ["📋","Kamu ihaleleri","Belediye ve devlet ihaleleri","soMenuGit('ihaleEkrani')","ihale teklif"]
+    ]
+  };
+  function norm(s){return String(s||"").toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ı/g,"i");}
+  function aramaKutusu(grup){
+    return '<div class="so-menu-arama"><span aria-hidden="true">⌕</span><input type="search"'
+      +' aria-label="Menülerde işlem ara" placeholder="'+(grup==="adliye"?"Dava, avukat, istinaf, icra ara…":"Şirket, POS, çek, kredi, inşaat ara…")+'"'
+      +' autocomplete="off" oninput="soMenuIslemAra(this.value,\''+grup+'\')" /></div>'
+      +'<div id="so-menu-sonuclar" class="so-menu-sonuclar" aria-live="polite" hidden></div>';
+  }
+  window.soMenuIslemAra=function(yazi,grup){
+    var kutu=document.getElementById("so-menu-sonuclar");if(!kutu)return;
+    var q=norm(String(yazi||"").trim());if(!q){kutu.innerHTML="";kutu.hidden=true;return;}
+    var liste=(aramaIndeksi[grup]||[]).filter(function(x){return norm(x[1]+" "+x[2]+" "+x[4]).includes(q);}).slice(0,7);
+    kutu.hidden=false;
+    kutu.innerHTML='<div class="so-arama-bas">Arama sonuçları · '+liste.length+'</div>'
+      +(liste.map(function(x){return link(x[0],x[1],x[2],x[3]);}).join("")
+        ||'<div class="so-bos">Buna uygun işlem bulunamadı. Başka bir kelime dene.</div>');
+  };
+  window.soMenuSirketAra=function(yazi){
+    var q=norm(yazi);
+    document.querySelectorAll("#so-sirket-liste .so-company").forEach(function(b){
+      b.style.display=norm(b.textContent).includes(q)?"":"none";
+    });
+  };
+
   function stil(){
     if(document.getElementById("so-menu-style"))return;
     var s=document.createElement("style");s.id="so-menu-style";
@@ -80,6 +139,17 @@
       +'border:1px solid var(--line2,#3b456e);border-radius:16px;color:var(--txt,#fff);padding:15px;margin:8px 0;cursor:pointer}'
       +'.so-company b{display:block;font-size:16px}.so-company small{display:block;color:var(--txt2);margin-top:5px}'
       +'.so-company strong{display:block;margin-top:12px;font-size:14px}'
+      +'.so-menu-arama{display:flex;align-items:center;gap:10px;margin:-2px 0 14px;padding:0 12px;'
+      +'border:1px solid var(--line2,#394365);border-radius:12px;background:var(--panel,#202948);color:var(--txt2,#abb3ce)}'
+      +'.so-menu-arama span{font-size:25px;line-height:1}'
+      +'.so-menu-arama input{flex:1;min-width:0;padding:12px 0;color:var(--txt,#fff);background:transparent;'
+      +'border:0;outline:none;font-size:15px}'
+      +'.so-menu-arama:focus-within{border-color:var(--ink2,#a291ff)}'
+      +'.so-menu-sonuclar{padding:10px;margin:-6px 0 14px;border:1px solid var(--line2,#394365);'
+      +'border-radius:12px;background:var(--panel2,#182243)}'
+      +'.so-menu-sonuclar[hidden]{display:none}.so-menu-sonuclar .so-link{margin-top:7px}'
+      +'.so-arama-bas{font-size:12px;font-weight:800;color:var(--txt2);padding:4px}'
+
       +'@media(min-width:620px){.so-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
       +'@media(max-width:360px){.so-stats{gap:5px}.so-stat b{font-size:17px}.so-tabs button{padding:8px 10px}}';
     document.head.appendChild(s);
@@ -93,7 +163,7 @@
   function ciz(grup,icerik){
     var bas=grup==="adliye"?"Adliye":"Ekonomi";
     if(D.sekme!==grup || D.yigin.length) return;
-    iskelet(bas,tablar(grup)+icerik);
+    iskelet(bas,tablar(grup)+aramaKutusu(grup)+icerik);
     var nav=document.querySelector(".so-tabs"),aktif=nav&&nav.querySelector('[aria-selected="true"]');
     if(nav&&aktif)nav.scrollLeft=Math.max(0,aktif.offsetLeft-nav.offsetLeft-nav.clientWidth/3);
   }
@@ -325,13 +395,13 @@
       var list=(d.sirketler||[]).slice().sort(function(a,b){return String(a.ad).localeCompare(String(b.ad),"tr");});
       var z=baslik("Ortak olduğum şirketler","Aşağıdan bir şirkete dokun, o şirkete ait tüm bölümlere gir.");
       if(!list.length)z+=bos("Henüz şirketin yok. Aşağıdaki Yeni Şirket Kur düğmesini kullanabilirsin.");
-      else z+=list.map(function(s){
+      else z+='<input type="search" class="so-ara" aria-label="Şirketlerim içinde ara" placeholder="Şirket adı veya sektör ara..." oninput="soMenuSirketAra(this.value)" /><div id="so-sirket-liste">' + list.map(function(s){
         return '<button type="button" class="so-company" onclick="soMenuSirket('+Number(s.id)+')">'
           +'<b>🏢 '+esc(s.ad)+' <span style="float:right">›</span></b>'
           +'<small>'+esc(s.sektor)+' · Hissen %'+esc(s.benim_pay)+'</small>'
           +'<strong>Kasa: '+trPara(s.kasa)+' · Sermaye: '+trPara(s.sermaye)+'</strong>'
           +'<small>Detaylar, kasaya para koyma, mal, şube, inşaat, ortaklık, finans</small></button>';
-      }).join("");
+      }).join("") + "</div>";
       if((d.kuruluslar||[]).length||(d.devirler||[]).length)
         z+=kart("Bekleyen ortaklık işlemleri",'<p class="alt">Kuruluş daveti: '+(d.kuruluslar||[]).length
          +' · Hisse devri: '+(d.devirler||[]).length+'</p>'
