@@ -469,3 +469,160 @@
     };
   }
 })();
+
+
+/* Parti finans yönetimi — kurumsal kasadan kişisel cüzdana aktarım yapılamaz. */
+(function () {
+  "use strict";
+  const esc = v => typeof e === "function" ? e(String(v == null ? "" : v)) : String(v == null ? "" : v).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const para = v => typeof tlYaz === "function" ? tlYaz(Number(v) || 0) : (Number(v) || 0).toLocaleString("tr-TR") + " ₺";
+  const fmtDate = v => typeof tarihSaat === "function" ? tarihSaat(v) : new Date(v).toLocaleString("tr-TR");
+  const api = (name, params) => API.rpc(name,params);
+  let current = null, active = "kampanya";
+  function refresh() { return current && window.pfnAc(current.pid, true); }
+  window.pfnAc = async function (pid, keepTab) {
+    if (!keepTab) active = "kampanya";
+    if (typeof yukleniyor === "function") yukleniyor("Parti Finans Yönetimi");
+    try {
+      const data = await api("parti_finans_durum",{p_parti:pid});
+      current = {pid:Number(pid),data};
+      draw();
+    } catch(err) {
+      iskelet("Parti Finans Yönetimi",'<div class="kart">'+esc(err.message)+'</div>',{geri:true});
+    }
+  };
+  function draw() {
+    if (!current) return;
+    const {pid,data:d}=current;
+    const portfolio=d.portfoy||[], ledger=d.hareketler||[];
+    const total=(Number(d.kasa)||0)+(Number(d.yatirim_degeri)||0);
+    let h='<div class="kart"><h2>'+esc(d.parti)+' · Parti Finans Yönetimi</h2>'
+      +'<p class="alt">Bu kasa partinin tüzel hesabıdır. Genel başkan veya yetkili yardımcısı kendi cüzdanına para çekemez; yatırımları ve satış gelirlerini yalnızca parti hesabında tutar.</p>'
+      +'<div class="kv"><span>Harcanabilir parti kasası</span><b>'+para(d.kasa)+'</b></div>'
+      +'<div class="kv"><span>Yatırım portföyü</span><b>'+para(d.yatirim_degeri)+'</b></div>'
+      +'<div class="kv"><span>Toplam parti varlığı</span><b>'+para(total)+'</b></div>'
+      +'<div class="kucuk" style="margin-top:8px">İşlem yetkisi: '+(d.yetkili?'Genel başkan / mali işler yetkisi aktif':'Harcama yapamazsın; kasa bilgileri görüntülenebilir')+'</div></div>';
+    const tabs=[["kampanya","Seçim ve reklam"],["bagis","Kurum bağışı"],["yatirim","Altın, hisse, döviz"],["hareket","Kasa defteri"]];
+    h+='<div class="kart" style="display:flex;flex-wrap:wrap;gap:6px">'+tabs.map(([code,label])=>'<button class="btn '+(active===code?'altin':'ikinci')+'" data-pfn-tab="'+code+'" style="flex:1 1 42%;font-size:12px">'+label+'</button>').join("")+'</div>';
+    if(active==="kampanya") {
+      h+='<div class="kart"><h2>Seçim ve rutin faaliyetler</h2>'
+        +'<p class="alt">Genel, yerel, Cumhurbaşkanlığı seçimleri ve rutin tanıtım harcamaları parti kasasına kaydedilir. Açıklama ve masraf defterde görünür; oyuncuya doğrudan ödeme yapılmaz.</p>';
+      if(d.yetkili) h+='<button class="btn altin" id="pfnKampanyaBtn">Reklam / tanıtım harcaması yap</button>';
+      h+='<p class="kucuk" style="margin-top:10px">Gerçek oyun içi ajans reklamı ve anket hizmeti için ajans merkezinden “Parti kasası” ödeme kaynağını seçebilirsin.</p>';
+      if(d.yetkili&&typeof ajansMerkezEkrani==="function") h+='<button class="btn ikinci" id="pfnAjansBtn">Reklam ve anket ajanslarını aç</button>';
+      h+='<p class="kucuk" style="margin-top:6px">Miting ve stant harcamaları mevcut miting / saha çalışma ekranlarından parti kasasına işlenir.</p></div>';
+    } else if(active==="bagis") {
+      h+='<div class="kart"><h2>Dernek ve medya kuruluşlarına bağış</h2><p class="alt">Bağış doğrudan ilgili kurumun kasasına geçer. Genel başkanın veya işlemi yapanın yönettiği kurumlara bağış yapılamaz.</p>';
+      if(d.yetkili) h+='<button class="btn altin" id="pfnBagisBtn">Kurumsal bağış yap</button>';
+      h+='</div>';
+    } else if(active==="yatirim") {
+      h+='<div class="kart"><h2>Partiye ait yatırım hesabı</h2><p class="alt">Emirler kişisel portföye yazılmaz. Satış geliri, kâr veya zarar doğrudan partinin kasasına yansır. Komisyon %0,3 (en az 1 ₺).</p></div>';
+      for(const a of portfolio) {
+        h+='<div class="kart"><div class="kv"><span><b>'+esc(a.ad)+'</b><span class="kucuk"> · '+esc(a.kod)+' / '+esc(a.sinif)+'</span></span><b>'+para(a.fiyat)+'</b></div>'
+          +'<div class="kv"><span>Partiye ait miktar</span><b>'+Number(a.miktar||0).toLocaleString("tr-TR",{maximumFractionDigits:8})+'</b></div>'
+          +'<div class="kv"><span>Güncel toplam değer</span><b>'+para(a.deger)+'</b></div>'
+          +'<div class="kv"><span>Alış maliyeti</span><b>'+para(a.maliyet)+'</b></div>';
+        if(d.yetkili) h+='<div class="satir"><button class="btn yarim altin" data-pfn-code="'+esc(a.kod)+'" data-pfn-yon="al">Parti adına al</button>'
+                         +'<button class="btn yarim ikinci" data-pfn-code="'+esc(a.kod)+'" data-pfn-yon="sat" '+(Number(a.miktar)<=0?'disabled':'')+'>Parti adına sat</button></div>';
+        h+='</div>';
+      }
+      if(!portfolio.length) h+='<div class="kart alt">İşleme açık varlık bulunamadı.</div>';
+    } else {
+      h+='<div class="kart"><h2>Şeffaf parti kasa defteri</h2><p class="alt">Kasa girişleri, kampanya giderleri, bağışlar, alış ve satışlar kayıt altındadır.</p>';
+      for(const x of ledger) h+='<div class="hareket"><div style="min-width:0"><b>'+esc(x.aciklama)+'</b><div class="kucuk">'+fmtDate(x.zaman)+' · '+esc(x.tur)+'</div></div><span class="t '+(Number(x.tutar)>=0?'iyi':'kotu')+'">'+(Number(x.tutar)>=0?'+':'')+para(x.tutar)+'</span></div>';
+      if(!ledger.length) h+='<div class="alt">Henüz kayıt yok.</div>';
+      h+='</div>';
+    }
+    iskelet("Parti Finans Yönetimi",h,{geri:true});
+    document.querySelectorAll("[data-pfn-tab]").forEach(b=>b.onclick=()=>{active=b.dataset.pfnTab;draw();});
+    const c=document.querySelector("#pfnKampanyaBtn");if(c)c.onclick=()=>window.pfnKampanya();
+    const g=document.querySelector("#pfnBagisBtn");if(g)g.onclick=()=>window.pfnBagis();
+    const j=document.querySelector("#pfnAjansBtn");if(j)j.onclick=()=>ajansMerkezEkrani();
+    document.querySelectorAll("[data-pfn-code]").forEach(b=>b.onclick=()=>window.pfnEmir(b.dataset.pfnCode,b.dataset.pfnYon));
+  }
+  const options = (rows,code) => (rows||[]).map(v=>'<option value="'+code+':'+Number(v.id)+'">'+esc(v.ad)+'</option>').join("");
+  window.pfnBagis = function () {
+    if(!current||!current.data.yetkili)return;
+    const d=current.data;
+    const all=options(d.dernekler,"dernek")+options(d.medya,"medya")+options(d.gazeteler,"gazete");
+    if(!all){toast("Bağış kabul eden kurum bulunamadı.",true);return;}
+    const m=modal('<h3>Parti hesabından kurumsal bağış</h3><p class="alt">Bağış parti kasasından doğrudan kurumun kasasına gider. Kişisel cüzdana ödeme yapılmaz.</p>'
+      +'<div class="alan"><label>Alıcı kurum</label><select id="pfnHedef">'+all+'</select></div>'
+      +'<div class="alan"><label>Bağış tutarı (₺)</label><input id="pfnTutar" type="number" min="100" step="100" value="1000"></div>'
+      +'<button class="btn altin" id="pfnOnay">Kuruma bağış yap</button>');
+    m.querySelector("#pfnOnay").onclick=async()=> {
+      const b=m.querySelector("#pfnOnay"),v=m.querySelector("#pfnHedef").value.split(":");
+      const amount=Number(m.querySelector("#pfnTutar").value);
+      if(!Number.isInteger(amount)||amount<100||amount>Number(d.kasa)){toast("Tutarı ve parti kasası bakiyesini kontrol et.",true);return;}
+      b.disabled=true;
+      try {
+        await api("parti_finans_bagis",{p_hedef_tur:v[0],p_hedef_id:Number(v[1]),p_tutar:amount});
+        modalKapat();toast("Bağış kurum hesabına aktarıldı.");await refresh();
+      } catch(err){b.disabled=false;toast(hataCevir(err.message),true);}
+    };
+  };
+  window.pfnEmir=function (kod,yon) {
+    if(!current||!current.data.yetkili)return;
+    const d=current.data, a=(d.portfoy||[]).find(v=>v.kod===kod);
+    if(!a)return;
+    const max=yon==="al"?Math.floor(Number(d.kasa)/1.003):Math.floor(Number(a.deger));
+    const m=modal('<h3>'+esc(a.ad)+' · Parti adına '+(yon==="al"?"alış":"satış")+'</h3>'
+      +'<p class="alt">Varlık yalnızca '+esc(d.parti)+' portföyüne aittir. Satışın net bedeli parti kasasına döner.</p>'
+      +'<p class="kucuk">Güncel fiyat '+para(a.fiyat)+' · yaklaşık işlem üst sınırı '+para(max)+'</p>'
+      +'<div class="alan"><label>Tutar (₺)</label><input id="pfnYatTutar" type="number" min="100" step="100" value="'+Math.max(100,Math.min(1000,max))+'"></div>'
+      +'<button class="btn altin" id="pfnYatOk">Emri onayla</button>');
+    m.querySelector("#pfnYatOk").onclick=async()=>{
+      const b=m.querySelector("#pfnYatOk"),v=Number(m.querySelector("#pfnYatTutar").value);
+      if(!Number.isInteger(v)||v<100||v>max){toast("İşlem tutarı veya parti bakiyesi uygun değil.",true);return;}
+      b.disabled=true;
+      try{
+        await api("parti_finans_emir",{p_parti:current.pid,p_kod:kod,p_yon:yon,p_tutar:v});
+        modalKapat();toast("Parti portföyü işlemi tamamlandı.");await refresh();
+      }catch(err){b.disabled=false;toast(hataCevir(err.message),true);}
+    };
+  };
+  window.pfnKampanya=function(){
+    if(!current||!current.data.yetkili)return;
+    const d=current.data,pid=current.pid;
+    const cities=(typeof VERI!=="undefined"&&Array.isArray(VERI.iller)?VERI.iller:[]);
+    const m=modal('<h3>Parti reklam ve tanıtım gideri</h3><p class="alt">Ödeme kişilere aktarılmaz; parti adına faaliyet ve maliyet kaydı oluşturulur.</p>'
+      +'<div class="alan"><label>Harcama amacı</label><select id="pfnAmac"><option value="genel_secim">Genel seçim</option><option value="yerel_secim">Yerel seçim</option><option value="cumhurbaskanligi">Cumhurbaşkanlığı seçimi</option><option value="rutin">Rutin parti faaliyeti</option></select></div>'
+      +'<div class="alan"><label>Faaliyet türü</label><select id="pfnKanal"><option value="reklam">Reklam</option><option value="tanitim">Tanıtım</option></select></div>'
+      +'<div class="alan"><label>Hedef il</label><select id="pfnIl"><option value="">Türkiye geneli</option>'+cities.map(c=>'<option value="'+Number(c.id)+'">'+esc(c.ad)+'</option>').join("")+'</select></div>'
+      +'<div class="alan"><label>Başlık ve açıklama</label><input id="pfnBaslik" maxlength="120" placeholder="Örn. Belediye seçimleri tanıtım çalışması"></div>'
+      +'<div class="alan"><label>Gider (₺)</label><input id="pfnHarcamaTutar" type="number" min="100" step="100" value="1000"></div>'
+      +'<p class="kucuk">Tüm işlemler kasa defterinde görüntülenir. Ajans reklamı yaptırmak için ayrıca Reklam ve Anket Ajansları ekranını kullan.</p>'
+      +'<button class="btn altin" id="pfnHarcamaOk">Parti kasasından harca</button>');
+    m.querySelector("#pfnHarcamaOk").onclick=async()=>{
+      const b=m.querySelector("#pfnHarcamaOk"),v=Number(m.querySelector("#pfnHarcamaTutar").value);
+      if(!Number.isInteger(v)||v<100||v>Number(d.kasa)){toast("Gider tutarını ve parti kasasını kontrol et.",true);return;}
+      b.disabled=true;
+      try{
+        await api("parti_finans_kampanya",{p_parti:pid,p_amac:m.querySelector("#pfnAmac").value,p_kanal:m.querySelector("#pfnKanal").value,p_tutar:v,p_baslik:m.querySelector("#pfnBaslik").value,p_il:m.querySelector("#pfnIl").value?Number(m.querySelector("#pfnIl").value):null});
+        modalKapat();toast("Gider parti kasasına kaydedildi.");await refresh();
+      }catch(err){b.disabled=false;toast(hataCevir(err.message),true);}
+    };
+  };
+  if(typeof partiKasaCiz==="function"){
+    const old=partiKasaCiz;
+    window.partiKasaCiz=partiKasaCiz=async function(pid){
+      const result=await old.apply(this,arguments);
+      const el=document.querySelector("#kasaKart");
+      if(el){
+        const oldBtn=el.querySelector('button[onclick*="destekModal"]');
+        if(oldBtn)oldBtn.remove();
+        const oldText=Array.from(el.querySelectorAll("p")).find(p=>p.textContent.includes("Genel başkan kasadan üyelere kampanya desteği verir"));
+        if(oldText)oldText.textContent="Parti kasası yalnız seçim, reklam, miting, rutin parti giderleri, kurumsal bağış ve parti adına yatırımlar için kullanılır. Kişisel cüzdana para aktarılamaz.";
+        if(!el.querySelector(".pfn-open")){
+          const last=el.querySelector(".kart:last-child")||el;
+          const btn=document.createElement("button");
+          btn.className="btn altin pfn-open";
+          btn.textContent="Parti Finans Yönetimi · Harcamalar, bağışlar, yatırımlar";
+          btn.onclick=()=>window.pfnAc(pid);
+          last.appendChild(btn);
+        }
+      }
+      return result;
+    };
+  }
+})();
