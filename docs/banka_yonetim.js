@@ -15,6 +15,10 @@ if(!byStyle){
   '.by-ui select.alan option{background:#182547;color:#f8faff;}',
   '.by-ui .alan:focus{outline:2px solid #9cb5ff !important;outline-offset:2px;}',
   '.by-ui .alan::placeholder{color:#c2cce1 !important;-webkit-text-fill-color:#c2cce1 !important;opacity:1;}',
+  '.by-ui .by-ayar input.alan,.by-ui .by-ayar select.alan{display:block!important;width:100%!important;min-width:0!important;box-sizing:border-box!important;min-height:52px!important;padding:13px 18px!important;opacity:1!important;background-color:#111d3b!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:2px solid #8094c7!important;border-radius:12px!important;font-size:17px!important;font-weight:650!important;color-scheme:dark!important;-webkit-appearance:none!important;appearance:none!important;}',
+  '.by-ui .by-ayar select.alan{cursor:pointer!important;padding-right:42px!important;background-image:linear-gradient(45deg,transparent 50%,#dbe6ff 50%),linear-gradient(135deg,#dbe6ff 50%,transparent 50%)!important;background-position:calc(100% - 23px) 23px,calc(100% - 16px) 23px!important;background-size:7px 7px!important;background-repeat:no-repeat!important;}',
+  '.by-ui .by-ayar select.alan option{color:#fff!important;background-color:#111d3b!important;}',
+  '.by-ui .by-ayar .by-help{font-size:.84rem;color:#c1cbed;line-height:1.4;}',
   '.by-ui .by-ayar .btn{min-height:48px;font-size:1rem;}',
   '@media (max-width:600px){.by-ui .by-ayar{gap:14px;}.by-ui .alan{max-width:100%;}}'
  ].join('');
@@ -28,7 +32,7 @@ function dt(x){return x?new Date(x).toLocaleString('tr-TR'):'—'}
 function b(t,a){return '<button class="btn ikinci" style="width:100%;margin-top:9px" onclick="'+a+'">'+e(t)+'</button>'}
 function row(k,v){return '<div class="kv"><span>'+e(k)+'</span><b>'+e(v)+'</b></div>'}
 function box(t,c){return '<section class="kart"><h2>'+e(t)+'</h2>'+c+'</section>'}
-function error(x){toast(typeof hataCevir==='function'?hataCevir(x.message||String(x)):String(x.message||x),true)}
+function error(x){toast('İşlem gerçekleştirilemedi: '+String(x.message||x),true)}
 function render(){
  var d=S.data,i=d.istatistik,a=d.ayar,h=box('🏦 '+d.banka.ad,
  row('Kasa',tl(d.banka.kasa))+row('Sermaye',tl(d.banka.sermaye))+
@@ -60,9 +64,9 @@ function render(){
    field('bypos','POS başvuruları',select('bypos',a.pos))+
    field('bykart','Kredi kartı başvuruları',select('bykart',a.kart))+
    field('bykredi','Kredi başvuruları',select('bykredi',a.kredi))+
-   field('bynot','Asgari kredi notu','<input class="alan" type="number" inputmode="numeric" id="bynot" min="0" step="1" value="'+a.min_not+'">')+
-   field('bykartmax','Otomatik azami kart limiti (₺)','<input class="alan" type="number" inputmode="numeric" id="bykartmax" min="0" step="1" value="'+a.kart_max+'">')+
-   field('bykredimax','Otomatik azami kredi (₺)','<input class="alan" type="number" inputmode="numeric" id="bykredimax" min="0" step="1" value="'+a.kredi_max+'">')+
+   field('bynot','Asgari kredi notu (650–1.900)','<input class="alan" type="number" inputmode="numeric" id="bynot" min="650" max="1900" step="1" value="'+a.min_not+'">')+
+   field('bykartmax','Otomatik azami kart limiti (1.000–50.000.000 ₺)','<input class="alan" type="number" inputmode="numeric" id="bykartmax" min="1000" max="50000000" step="1" value="'+a.kart_max+'">')+
+   field('bykredimax','Otomatik azami kredi (1.000–50.000.000 ₺)','<input class="alan" type="number" inputmode="numeric" id="bykredimax" min="1000" max="50000000" step="1" value="'+a.kredi_max+'">')+
    b('Politikayı kaydet','bankaYonetimAyarKaydet()')+'</div>');
  }
  h='<div class="by-ui">'+h+'</div>';
@@ -80,7 +84,23 @@ window.bankaYonetimKarar=async function(t,id,yes){if(!confirm((yes?'Başvuruyu o
  await API.rpc(f,args);toast(yes?'Başvuru onaylandı':'Başvuru reddedildi');bankaYonetimEkrani(S.id,S.tab);
 }catch(x){error(x)}};
 window.bankaYonetimAyarKaydet=async function(){try{
- var val=function(id){return document.getElementById(id).value};
+ var val=function(id){return document.getElementById(id).value;};
+ var kurallar=[
+  ['bynot','Asgari kredi notu',650,1900],
+  ['bykartmax','Otomatik azami kart limiti (₺)',1000,50000000],
+  ['bykredimax','Otomatik azami kredi (₺)',1000,50000000]
+ ];
+ for(var j=0;j<kurallar.length;j++){
+  var k=kurallar[j],el=document.getElementById(k[0]),raw=el.value.trim(),n=Number(raw);
+  el.setCustomValidity('');
+  if(!raw||!Number.isFinite(n)||!Number.isInteger(n)||n<k[2]||n>k[3]){
+   var msg=k[1]+' için '+k[2].toLocaleString('tr-TR')+' ile '+k[3].toLocaleString('tr-TR')+
+   ' arasında tam sayı girilmelidir. Girdiğin: '+(raw||'boş')+'.';
+   el.setCustomValidity(msg);el.reportValidity();el.focus();
+   toast('Banka politikası kaydedilemedi: '+msg,true);return;
+  }
+ }
+
  await API.rpc('banka_yonetim_ayar_kaydet',{p_banka:S.id,p_pos:val('bypos')==='true',p_kart:val('bykart')==='true',p_kredi:val('bykredi')==='true',
  p_min_not:Number(val('bynot')),p_kart_max:Number(val('bykartmax')),p_kredi_max:Number(val('bykredimax'))});
  toast('Banka politikası kaydedildi');bankaYonetimEkrani(S.id,'ayar');
