@@ -919,3 +919,51 @@
  stiller();
  soGundemKaliciGozlemci();
 })();
+
+
+/* 2026-10-23 — Milli Piyango ve Kazı Kazan oyundan çıkarıldı.
+   Eski ekranlar yeniden çizildiğinde de bağlantılar gizlenir.
+   Sunucu RPC'leri ayrıca kapatılır; bu katman yalnızca arayüzdür. */
+(function () {
+  "use strict";
+  if (window.SO_SANS_OYUNLARI_KALDIRILDI) return;
+  window.SO_SANS_OYUNLARI_KALDIRILDI = true;
+  function kaldirildi() {
+    if (typeof window.bildir === "function") window.bildir("Bu şans oyunu kaldırıldı.");
+    else if (typeof window.toast === "function") window.toast("Bu şans oyunu kaldırıldı.");
+  }
+  window.piyangoEkrani = kaldirildi;
+  window.piyangoAl = kaldirildi;
+  window.kazikazanEkrani = kaldirildi;
+  window.kazikazanOyna = kaldirildi;
+  function temizle() {
+    var kok = document.getElementById("icerik");
+    if (!kok) return;
+    kok.querySelectorAll("button[onclick], a[onclick]").forEach(function (el) {
+      var cagri = el.getAttribute("onclick") || "";
+      var ad = (el.textContent || "").trim();
+      if (/\b(?:piyangoEkrani|piyangoAl|kazikazanEkrani|kazikazanOyna)\b/.test(cagri) ||
+          /^(?:Milli Piyango|Kazı Kazan|Kazı kazan)(?:\s|·|$)/i.test(ad)) el.remove();
+    });
+    kok.querySelectorAll("h2").forEach(function (baslik) {
+      if (baslik.textContent.trim().toLocaleLowerCase("tr-TR") !== "şans oyunları") return;
+      var ust = baslik.closest(".bolum-bas");
+      if (!ust) return;
+      var kart = ust.nextElementSibling;
+      if (kart && kart.classList.contains("kart") && !kart.querySelector("button,a")) kart.remove();
+      ust.remove();
+    });
+  }
+  function baslat() {
+    temizle();
+    if (typeof MutationObserver !== "function" || !document.body) return;
+    var sirada = false;
+    new MutationObserver(function () {
+      if (sirada) return;
+      sirada = true;
+      Promise.resolve().then(function () { sirada = false; temizle(); });
+    }).observe(document.body, {childList:true, subtree:true});
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", baslat, {once:true});
+  else baslat();
+})();
