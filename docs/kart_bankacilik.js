@@ -275,7 +275,7 @@
 (function(){
  if(document.querySelector('script[data-so-internet-bankaciligi]'))return;
  var s=document.createElement('script');
- s.src='internet_bankaciligi.js?v=20261023-2';
+ s.src='internet_bankaciligi.js?v=20261023-3';
  s.defer=true;
  s.dataset.soInternetBankaciligi='1';
  document.head.appendChild(s);
