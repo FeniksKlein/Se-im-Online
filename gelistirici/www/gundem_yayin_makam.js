@@ -111,36 +111,63 @@
  var kaynakIskelet=window.iskelet;
  if(typeof kaynakIskelet!=="function")return;
 
- // Mağaza HTML'ye, sponsorlu kart ise ayrı bir asenkron cevapla sonradan ekleniyor.
- // Bu yüzden sıra yalnızca ilk HTML üzerinde değil, canlı DOM'da da sabitlenir.
- var soGundemGozlemci=null;
+ // Gündem sıralaması için TEK KAYNAK: Mağaza > Sponsorlu > kayan VTR >
+ // canlı oy verme > Basın/Yayın > gerçek Akış. Diğer Gündem blokları bu altılının arkasında.
+ // Mağaza / sponsor / siyaset merkezi farklı async ekran oluşturuculardan geldiği için,
+ // önceki sırayı bozan DOM eklemeleri ve yeni #icerik oluşumları birlikte izlenir.
+ var soGundemGozlemci=null,soSiralamada=false;
  function soGundemDomSirala(icerik){
-   if(!icerik||!icerik.isConnected)return;
-   var ogeler=Array.from(icerik.children);
-   var bul=function(css){return ogeler.find(function(el){return el.matches(css);})||null;};
-   var magaza=bul("#mgSerit, .mg-serit");
-   var reklamlar=ogeler.filter(function(el){return el.matches(".aj-ek");});
-   var vitrin=bul(".serit");
-   var oy=bul(".so-canli-oylama");
+   if(!icerik||!icerik.isConnected||soSiralamada)return;
+   var baslik=document.querySelector(".ust h1");
+   if(!baslik||baslik.textContent.trim()!=="Gündem")return;
+   var cocuklar=Array.from(icerik.children);
+   function bul(sel){return cocuklar.find(function(x){return x.matches(sel);})||null;}
+   var magaza=bul("#mgSerit,.mg-serit");
+   var reklamlar=cocuklar.filter(function(x){return x.matches(".aj-sponsor,.aj-ek");});
+   var kayan=bul(".serit");
+   var secim=bul(".secim-ust,.so-canli-oylama");
+   // Canlı seçim farklı modülden geldiğinde, içerikte görünen "Aktif Seçimler"
+   // üst başlığından da tespit edilir (HTML sınıfı değişse bile).
+   var asil=bul(".secim-ust");
+   if(!asil){
+     asil=cocuklar.find(function(x){
+       return x!==secim && x.querySelector &&
+         Array.from(x.querySelectorAll("h2,h3")).some(function(h){
+           return /^Aktif Seçimler$/i.test((h.textContent||"").trim());
+         }) && /Sandık açık/i.test(x.textContent||"");
+     })||null;
+   }
+   if(asil){
+     if(secim&&secim!==asil&&secim.classList.contains("so-canli-oylama")){
+       secim.remove(); // Aynı açık sandık iki kez gösterilmesin.
+     }
+     secim=asil;
+   }
    var yayin=bul(".so-gundem-kisa");
    var akis=bul(".so-canli-akis");
-   var ust=[magaza].concat(reklamlar,[vitrin,oy,yayin,akis]).filter(Boolean);
+   // Ekranda Akış yalnızca bir kez bulunsun; alt menüdeki tam akış bağlantısı aynen kalır.
+   var ust=[magaza].concat(reklamlar,[kayan,secim,yayin,akis]).filter(Boolean);
    if(ust.every(function(el,i){return icerik.children[i]===el;}))return;
-   // Yalnızca bu altı grubun sırasını düzelt; "Bugün", fırsatlar ve devamı yer değiştirmez.
-   for(var i=ust.length-1;i>=0;i--)icerik.insertBefore(ust[i],icerik.firstChild);
+   soSiralamada=true;
+   try{
+     var sonrakiler=icerik.firstChild;
+     // Var olan öğeleri yeniden oluşturmadan taşı: veri, event ve içerik bozulmaz.
+     for(var i=ust.length-1;i>=0;i--)icerik.insertBefore(ust[i],icerik.firstChild);
+   }finally{soSiralamada=false;}
  }
  function soGundemSiralamayiBagla(){
-   if(soGundemGozlemci){soGundemGozlemci.disconnect();soGundemGozlemci=null;}
    var icerik=document.getElementById("icerik");
-   if(!icerik)return;
-   soGundemDomSirala(icerik);
-   if(typeof MutationObserver==="function"){
-     soGundemGozlemci=new MutationObserver(function(){
-       if(document.getElementById("icerik")!==icerik){soGundemGozlemci.disconnect();return;}
-       soGundemDomSirala(icerik);
-     });
-     soGundemGozlemci.observe(icerik,{childList:true});
-   }
+   if(icerik)soGundemDomSirala(icerik);
+ }
+ function soGundemKaliciGozlemci(){
+   if(soGundemGozlemci||typeof MutationObserver!=="function")return;
+   // Tüm #app izlenir: iskelet #icerik'i baştan oluşturduğunda önceki gözlemci kaybolmasın.
+   var app=document.getElementById("app")||document.body;
+   soGundemGozlemci=new MutationObserver(function(){
+     soGundemSiralamayiBagla();
+   });
+   soGundemGozlemci.observe(app,{childList:true,subtree:true});
+   soGundemSiralamayiBagla();
  }
  function gundemYenile(html){
    var kok=document.createElement("div");kok.innerHTML=html;
@@ -338,9 +365,12 @@
      }catch(err){if(window.console&&console.warn)console.warn("Gündem/Makam kısayolları:",err);}
    }
    var sonuc=kaynakIskelet.call(this,baslik,govde,opt);
-   if(baslik==="Gündem")soGundemSiralamayiBagla();
-   else if(soGundemGozlemci){soGundemGozlemci.disconnect();soGundemGozlemci=null;}
+   if(baslik==="Gündem"){
+     soGundemKaliciGozlemci();
+     soGundemSiralamayiBagla();
+   }
    return sonuc;
  };
  stiller();
+ soGundemKaliciGozlemci();
 })();
