@@ -54,7 +54,7 @@
     ],
     ekonomi:[
       ["🏢","Şirketlerim","Kasaya para, şubelerim, inşaat ve finans","soMenuSec('ekonomi','sirketlerim')","müteahhit firma kasa sermaye"],
-      ["🏛️","Devlet Bankası","Vadeli ve vadesiz hesaplar","soMenuGit('bankaEkrani')","devlet bankası mevduat"],
+      ["🏛️","İnternet Bankacılığı","Tüm hesaplarım, kart ve krediler","soMenuGit('internetBankaciligiEkrani')","devlet bankası mevduat"],
       ["🏦","Oyuncu bankaları","Özel bankalar, kredi ve faizler","soMenuGit('bankaRehberiEkrani')","özel banka kredi"],
       ["💳","Kredi kartlarım","Kart limitleri, ekstre, hesap kesimi, borç","soMenuGit('kartlarimEkrani')","kredi kartı borç"],
       ["🏪","POS ve kartlı satış","Şirketime POS, kartla ödeme","soMenuGit('kartPosEkrani')","pos cihazı komisyon"],
@@ -62,7 +62,7 @@
       ["💸","Para gönder","Banka havalesi ve oyuncuya ödeme","soMenuGit('paraGonderModal')","havale transfer"],
       ["💰","Şirket kasasına para yatır","Şirketini seçerek sermaye ve nakit ekle","soMenuSec('ekonomi','sirketlerim')","para koy kasa"],
       ["🏗️","İnşaat ve şube yönetimi","Arsa, ruhsat, projeler ve şube açma","soMenuSec('ekonomi','sirketlerim')","müteahhit bina maliyet"],
-      ["📒","Kredilerim ve mevduatlarım","Özel banka borçlarım ve hesaplarım","soMenuGit('bankaPortfoyEkrani')","vadeli borç faiz"],
+      ["📒","Tüm Banka Hesaplarım","Banka hesapları ve borçlarım","soMenuGit('internetBankaciligiEkrani')","vadeli borç faiz"],
       ["➕","Yeni şirket kur","Sektör, şehir ve kuruluş sermayesi","soMenuGit('sirketKurulumFormuAc')","şirket işletme"],
       ["🤝","Şirket ortaklıkları","Ortak ekle, çıkar, hisse devret","soMenuGit('ortaklikEkrani')","ortaklık"],
       ["📈","Hisse pazarı","Hisse al, sat ve yatırım yap","soMenuGit('sirketHissePazariEkrani')","borsa"],
