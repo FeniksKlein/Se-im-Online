@@ -345,10 +345,30 @@ end $function$;
 grant execute on function public.secim_gecesi_aktif() to authenticated;
 grant execute on function public.secim_detay(bigint) to authenticated;
 
+-- ---------------------------------------------------------------------
+-- 7) cuzdan_ozet: durum() her çağrıda cüzdan satırını FOR UPDATE ile kilitliyordu (cuzdanim üzerinden).
+--    Cüzdan bugün açılmışsa kilitsiz okunur; günün ilk çağrısında ya da cüzdan yoksa eskisi gibi cuzdanim çalışır.
+--    44 oyuncuda çıktı birebir aynı (migration: cuzdan_ozet_kilitsiz_okuma).
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION oyun.cuzdan_ozet(u uuid, t timestamp with time zone)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+AS $function$
+declare c oyun.cuzdan; g jsonb;
+begin
+  select * into c from oyun.cuzdan where user_id = u;
+  if c.user_id is null or c.gun is distinct from (oyun.simdi() at time zone 'Europe/Istanbul')::date then
+    c := oyun.cuzdanim(u);
+  end if;
+  g := oyun.gelir_hesap(u, t);
+  return jsonb_build_object('para', c.para, 'birikmis', g -> 'birikmis', 'dolu', g -> 'dolu',
+                            'gunun_ilki', c.seri_gun is distinct from (t at time zone 'Europe/Istanbul')::date);
+end $function$;
+
 commit;
 
 -- ---------------------------------------------------------------------
--- 7) Cron geçişi (bir kez, ayrı çalıştırılır; tekrar çalıştırmak zararsızdır)
+-- 8) Cron geçişi (bir kez, ayrı çalıştırılır; tekrar çalıştırmak zararsızdır)
 -- ---------------------------------------------------------------------
 -- update oyun.zamanlayici_adim z set son_calisma =
 --   date_trunc('minute', now()) - make_interval(mins => (((extract(minute from now())::int - z.ofset_dk) % z.periyot_dk) + z.periyot_dk) % z.periyot_dk)
