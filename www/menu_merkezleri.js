@@ -14,7 +14,7 @@
   var ekonomiSekmeleri = [
     ["genel", "Genel Bakış"], ["sirketlerim", "Şirketlerim"],
     ["bankalar", "Bankalar"], ["sirketler", "Şirketler"],
-    ["piyasalar", "Piyasalar"], ["emlak", "Gayrimenkul"], ["islemler", "İşlemler"]
+    ["piyasalar", "Piyasalar"], ["emlak", "Gayrimenkul"], ["giris","İş Dünyası"], ["islemler", "İşlemler"]
   ];
   var secim = { adliye:"mahkeme", ekonomi:"genel" };
   var istek = { adliye:0, ekonomi:0 };
@@ -68,7 +68,8 @@
       ["🏡","Gayrimenkul pazarı","Arsa, daire ve dükkan tapuları","soMenuGit('yatirimPazarEkrani')","mülk tapu kira"],
       ["🏪","Toptan ticaret","Şirketler arası ürün ve mal alım satımı","soMenuGit('kamuToptanEkrani')","mal stok"],
       ["🧾","İşlem geçmişim","Alım satım hareketlerim","soMenuGit('ticaretGecmisimEkrani')","rapor fatura"],
-      ["📋","Kamu ihaleleri","Belediye ve devlet ihaleleri","soMenuGit('ihaleEkrani')","ihale teklif"]
+      ["📋","Kamu ihaleleri","Belediye ve devlet ihaleleri","soMenuGit('ihaleEkrani')","ihale teklif"],
+      ["🛡️","Sigorta ve hasar","Poliçe, hasar ve işyeri sigortası","soMenuGit('msSigortaAc')","sigorta"]
     ]
   };
   function norm(s){return String(s||"").toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ı/g,"i");}
@@ -175,11 +176,15 @@
     if(grup==="adliye")window.adliyeEkrani();else window.ekonomiSekmeEkrani();
   };
   window.soMenuGit=function(ad){
-    var direk=["cekMerkeziAc","baroAc","sirketKurulumFormuAc","paraGonderModal"];
+    var direk=["cekMerkeziAc","baroAc","sirketKurulumFormuAc","paraGonderModal","msSigortaAc","msRuhsatMerkeziAc"];
     var fn=window[ad];
     if(typeof fn!=="function"){toast("Bu işlem henüz kullanılamıyor: "+ad,true);return;}
     if(direk.indexOf(ad)>=0)return fn();
     return ekranAc(fn);
+  };
+  window.soMenuUc=function(tur){
+    if(typeof window.ucYeniAc==="function")return window.ucYeniAc(tur);
+    toast("Bu iş kolunun ekranı yüklenemedi.",true);
   };
   window.soMenuSirket=function(id,tab){
     if(typeof window.sirketTekSirketEkrani!=="function")return toast("Şirket yönetimi açılmadı.",true);
@@ -338,6 +343,7 @@
       sirketler:["Şirket Pazarı","Şirketleri, ortaklıkları, satış ilanlarını ve halka arzları keşfet."],
       piyasalar:["Piyasalar","Borsa, yatırım araçları, ekonomik gelişmeler ve fiyatlar."],
       emlak:["Gayrimenkul","Arsa, ev, dükkân, kira ve yatırım fırsatları."],
+      giris:["İş Dünyası","Sigorta, ajanslar, ruhsatlar, yeni iş kolları ve ek gelir yolları."],
       islemler:["İşlem Merkezi","Havale, alım-satım geçmişi, ihale ve ödeme işlemleri."]
     };
     var d=map[s]||map.genel;
@@ -354,7 +360,8 @@
       +baslik("Diğer merkezler","Alım-satım ve ödeme işlemleri de ayrı bölümlerde.")
       +grids([
         link("🏬","Şirketler ve ilanlar","Yeni şirket kur, şirket satın al, halka arza katıl.","soMenuSec('ekonomi','sirketler')"),
-        link("💸","Para ve ticaret işlemleri","Para gönderme, çek, ihale ve işlem geçmişi.","soMenuSec('ekonomi','islemler')")
+        link("💸","Para ve ticaret işlemleri","Para gönderme, çek, ihale ve işlem geçmişi.","soMenuSec('ekonomi','islemler')"),
+        link("🛡️","İş Dünyası","Sigorta, iş kolları, ruhsat ve ek işler.","soMenuSec('ekonomi','giris')")
       ]);
   }
   function bankalarGenel(){
@@ -428,16 +435,23 @@
         link("🚀","Halka arzlar","Şirket halka arzları ve yatırım başvuruları.","soMenuGit('halkaArzPazarEkrani')"),
         link("🏬","Rekabetçi işletmeler","Market, okul, hastane, fabrika ve ticaret.","soMenuGit('pazarMerkezEkrani')"),
         link("📦","Toptan ticaret","Şirketler arasında mal alım-satımı.","soMenuGit('kamuToptanEkrani')"),
-        link("📋","Kamu ihaleleri","Devlet ve belediye işlerine teklif ver.","soMenuGit('ihaleEkrani')")
+        link("📋","Kamu ihaleleri","Devlet ve belediye işlerine teklif ver.","soMenuGit('ihaleEkrani')"),
+        link("🛡️","Sigorta şirketleri","Şirket sigortası, poliçe ve hasar işlemleri.","soMenuGit('msSigortaAc')"),
+        link("🏭","İş dünyası","Üretim, fabrika, mağaza, franchise ve işletmeler.","soMenuGit('isDunyasiEkrani')")
       ]);
   }
   function piyasalarHtml(){
     return baslik("Yatırım ve ekonomi","Canlı işlem yapılabilen yatırım pazarları.")
       +grids([
         link("📈","Altın, döviz ve hisseler","Piyasa fiyatlarını incele, yatırım al veya sat.","soMenuGit('piyasaEkrani')"),
+        link("📊","Borsa","Borsa işlemleri ve hisse hareketleri.","soMenuGit('borsaEkrani')"),
+        link("🧾","Belediye tahvilleri","Belediyelere yatırım yap, faiz getirilerini incele.","soMenuGit('belediyeTahvilEkrani')"),
         link("📊","Ekonomi merkezi","Piyasa raporu, büyüme, rekabet ve veriler.","soMenuGit('ekonomiMerkeziEkrani')"),
         link("🚀","Halka arzlar","Yeni şirket hisseleri ve sonuçları.","soMenuGit('halkaArzPazarEkrani')"),
-        link("🏦","Mevduat fırsatları","Banka vadelerini ve oranlarını karşılaştır.","soMenuSec('ekonomi','bankalar')")
+        link("🏦","Mevduat fırsatları","Banka vadelerini ve oranlarını karşılaştır.","soMenuSec('ekonomi','bankalar')"),
+        link("🏛️","Merkez Bankası","Politika faizini ve PPK kararlarını incele.","soMenuGit('merkezBankasiEkrani')"),
+        link("⚖️","Sermaye Piyasası Kurulu","Borsa denetimi ve piyasa düzeni.","soMenuGit('spkEkrani')"),
+        link("📉","Rekabet Kurumu","Piyasa ve şirket rekabeti soruşturmaları.","soMenuGit('rekabetEkrani')")
       ]);
   }
   function emlakHtml(){
@@ -449,6 +463,24 @@
         link("💼","Şirketler ve şubeler","İşyerlerini ve büyüyen işletmelerini yönet.","soMenuSec('ekonomi','sirketlerim')")
       ]);
   }
+  function girisHtml(){
+    return baslik("İşletmeler ve ek kazanç","Şirket türü, ruhsat, sigorta ve yeni faaliyet alanları.")
+      +grids([
+        link("🛡️","Sigorta ve risk merkezi","Poliçe yaptır, hasar ve sigorta şirketlerini yönet.","soMenuGit('msSigortaAc')"),
+        link("💼","Ek işler","Kurye, taksi, özel ders, tasarım ve tamirat.","soMenuGit('ekIslerEkrani')"),
+        link("🏛️","Ruhsat merkezi","İşyeri, fabrika, mağaza ve inşaat ruhsatları.","soMenuGit('msRuhsatMerkeziAc')"),
+        link("📦","Üretim ve iş dünyası","Fabrika, mağaza, inşaat, franchise ve ticaret.","soMenuGit('isDunyasiEkrani')"),
+        link("🌾","Tarım ve hayvancılık","Tarlalar, hasat, hayvancılık ve tedarik.","soMenuUc('tarim')"),
+        link("📚","Kitap ve yayınevi","Kitap yaz, baskı yap ve telif kazan.","soMenuUc('kitap')"),
+        link("📺","Medya ve yayıncılık","Televizyon, gazete ve medya faaliyetleri.","soMenuUc('medya')"),
+        link("🎟️","Etkinlik ve organizasyon","Konser, konferans, fuar, bilet ve sponsor.","soMenuUc('etkinlik')"),
+        link("📢","Reklam ve anket ajansı","Reklam kampanyaları ve kamuoyu araştırmaları.","soMenuGit('ajansMerkezEkrani')"),
+        link("⚖️","Konkordato ve iflas","Zor durumdaki işletmelerin süreçleri.","soMenuGit('konkordatoEkrani')"),
+        link("📢","İhale İlan Panosu","Bütün kamu hizmeti ve yapım ilanları.","soMenuGit('msIhaleMerkeziAc')"),
+        link("🤝","Siyasi bağışlar","Şirketlerin partilere bağış işlemleri.","soMenuGit('siyasiBagisEkrani')")
+      ]);
+  }
+
   function islemlerHtml(){
     return baslik("Ödeme ve işlem kayıtları","Bankacılık ve ticaret işlemleri kendi yerlerinde.")
       +grids([
@@ -471,6 +503,7 @@
     else if(s==="sirketler")z=sirketlerHtml();
     else if(s==="piyasalar")z=piyasalarHtml();
     else if(s==="emlak")z=emlakHtml();
+    else if(s==="giris")z=girisHtml();
     else if(s==="islemler")z=islemlerHtml();
     if(gecerli("ekonomi",no))ciz("ekonomi",ekonomiHero(s)+z);
   }
