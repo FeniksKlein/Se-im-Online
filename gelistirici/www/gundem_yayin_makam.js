@@ -15,6 +15,7 @@
    return f();
  }
  window.soYayinGit=function(k){
+   if(k==="akis")return go(typeof akisEkrani==="function"?akisEkrani:window.akisEkrani);
    if(k==="basin")return go(typeof basinEkrani==="function"?basinEkrani:window.basinEkrani);
    if(k==="turkiye")return go(typeof otomatikGazeteEkrani==="function"?function(){return otomatikGazeteEkrani();}:window.otomatikGazeteEkrani);
    if(k==="kitap")return go(typeof window.ucEkonomiEkrani==="function"?function(){return window.ucEkonomiEkrani("kitap");}:null);
