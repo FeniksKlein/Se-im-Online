@@ -424,4 +424,4 @@
 })();
 
 /* Dinamik bankacılık modülü, docs ve mobil için ortak. */
-(function(){if(document.getElementById("kartBankacilikModul"))return;var s=document.createElement("script");s.id="kartBankacilikModul";s.src="kart_bankacilik.js?v=20261023-1";s.async=false;document.body.appendChild(s);})();
+(function(){if(document.getElementById("kartBankacilikModul"))return;var s=document.createElement("script");s.id="kartBankacilikModul";s.src="kart_bankacilik.js?v=20261023-2";s.async=false;document.body.appendChild(s);})();
