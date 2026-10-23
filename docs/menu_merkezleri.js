@@ -405,8 +405,7 @@
   async function bankalarHtml(){
     var z=bankalarGenel();
     try{
-      var veri=await API.rpc("oyb_liste");
-      var b=(veri.bankalar||[]).filter(function(x){return x.bankam;});
+      var b=(await API.rpc("banka_yonetilen_liste"))||[];
       if(b.length)z+=baslik("Benim bankalarım","Bankanın adına dokunarak kredi, mevduat ve yönetim işlemlerini aç.")
         +grids(b.map(function(x){
           return link("🏦",x.ad,"Banka kasası: "+trPara(x.kasa),"soMenuBanka("+Number(x.id)+")","Yönetim");
