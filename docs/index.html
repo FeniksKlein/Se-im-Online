@@ -5151,7 +5151,7 @@ setInterval(() => {
   document.querySelectorAll("[data-an]").forEach(el => {
     const ms = +el.dataset.an - simdi();
     el.textContent = kalan(ms);
-    if (ms < 0 && ms > -1500 && D.sekme === "gundem" && !D.yigin.length && !$("#modal")) setTimeout(() => { if (D.sekme === "gundem" && !D.yigin.length && !$("#modal")) gundemEkrani(); }, 1500 + Math.floor(Math.random() * 8500));
+    if (ms < 0 && ms > -1500 && D.sekme === "gundem" && !D.yigin.length && !$("#modal")) setTimeout(() => { if (D.sekme === "gundem" && !D.yigin.length && !$("#modal")) gundemEkrani(); }, 2000 + Math.floor(Math.random() * 28000));
   });
 }, 1000);
 setInterval(() => { if (D.durum && D.sekme === "gundem" && !D.yigin.length && !$("#modal") && !document.hidden && YUK.otomatik()) gundemEkrani(); }, 120000 + Math.floor(Math.random() * 30000));
