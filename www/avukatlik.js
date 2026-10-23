@@ -94,18 +94,26 @@ function hukukCiz(s,primler){
  z+='</div>';
  if((primler||[]).length)z+='<div class="kart"><h3>Dava kazanma primi hesaplarım</h3>'+(primler||[]).map(k=>'<div class="liste-satir"><div class="orta"><b>Dava #'+k.dava+' · '+money(k.prim)+' prim</b><div class="kucuk">Ödenen: '+money(k.odenen)+' · Kalan: '+money(k.kalan)+' · '+h(k.muvekkil)+'</div></div>'+(k.ben_avukatim&&k.kalan>0?'<button class="btn ikinci" style="width:auto" onclick="avukatPrimTahsil('+k.id+')">Prim tahsil et</button>':'')+'</div>').join('')+'</div>';
  if(s.benim_burom)z+='<div class="kart"><h3>Hukuk bürom</h3><b>'+h(s.benim_burom.ad)+'</b>'+islemButon('Avukat davet et','"avukatDavet('+Number(s.benim_burom.id)+')"')+'</div>';
- z+='<div class="kart"><h3>Avukatlar ('+(s.avukatlar||[]).length+')</h3><p class="alt">Başarı oranı yalnız kesinleşmiş, düşmemiş gerçek davalardan hesaplanır. Disiplin cezaları Türkiye Barosu kararlarıdır.</p>'
+ const avukatlarHtml='<div class="kart"><h3>Avukatlar ('+(s.avukatlar||[]).length+')</h3><p class="alt">Başarı oranı yalnız kesinleşmiş, düşmemiş gerçek davalardan hesaplanır. Disiplin cezaları Türkiye Barosu kararlarıdır.</p>'
  +(s.avukatlar||[]).map(avukatKart).join('')+(!(s.avukatlar||[]).length?'<p class="alt">Henüz ruhsatlı avukat yok.</p>':'')+'</div>';
- z+='<div class="kart"><h3>Hukuk büroları</h3>'
+ const burolarHtml='<div class="kart"><h3>Hukuk büroları</h3>'
  +(s.burolar||[]).map(b=>'<div class="liste-satir"><div class="orta"><b>'+h(b.ad)+'</b><div class="kucuk">'+h(b.sehir)+' · Kurucu: '+h(b.kurucu)+' · '+b.uye_sayi+' avukat</div></div></div>').join('')
  +(!(s.burolar||[]).length?'<p class="alt">Henüz hukuk bürosu açılmamış.</p>':'')+'</div>';
- return z;
+ return avukatlarHtml+burolarHtml+z;
+}
+// Mahkeme ve dava açma düğmesi en üstte kalır; meslek bölümü tam onların altına girer.
+function meslekYerlestir(govde,panel){
+ const yer='<div id="adlSozcuYeri"></div>';
+ if(govde.includes(yer))return govde.replace(yer,panel+yer);
+ const acik='<div class="bolum-bas"><h2>Açık davalar';
+ const i=govde.indexOf(acik);
+ return i<0?govde+panel:govde.slice(0,i)+panel+govde.slice(i);
 }
 const oncekiHtml=adliyeHtml;
 adliyeHtml=async function(){
- let eski=await oncekiHtml();
- try{const [s,prim]=await Promise.all([RPC('avukat_durum'),RPC('avukat_primlerim').catch(()=>[])]);window.AVUKAT_DURUM=s;return hukukCiz(s,prim)+eski;}
- catch(err){return '<div class="kart"><h3>Avukatlık</h3><p class="alt">Avukatlık paneli yüklenemedi: '+h(err.message)+'</p></div>'+eski;}
+ const eski=await oncekiHtml();
+ try{const [s,prim]=await Promise.all([RPC('avukat_durum'),RPC('avukat_primlerim').catch(()=>[])]);window.AVUKAT_DURUM=s;return meslekYerlestir(eski,hukukCiz(s,prim));}
+ catch(err){return meslekYerlestir(eski,'<div class="kart"><h3>Avukatlık</h3><p class="alt">Avukatlık paneli yüklenemedi: '+h(err.message)+'</p></div>');}
 };
 const DERS=[
  ['Avukatlık mesleği','Türkiye\'de meslek 1136 sayılı Avukatlık Kanunu ile düzenlenir. Avukat olmak için staj (gerçekte bir yıl) ve bir baronun levhasına yazılmak gerekir. Oyunda bunun karşılığı akademi + sınav + staj vakaları + kontenjanlı ruhsat + Türkiye Barosu kaydıdır.'],
