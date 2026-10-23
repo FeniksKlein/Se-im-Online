@@ -8,7 +8,7 @@
   if (!document.getElementById('banka-yonetim-loader')) {
     var s=document.createElement('script');
     s.id='banka-yonetim-loader';
-    s.src='./banka_yonetim.js?v=20261023b';
+    s.src='./banka_yonetim.js?v=20261023c';
     document.head.appendChild(s);
   }
 
