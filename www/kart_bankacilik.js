@@ -23,7 +23,7 @@
      btn("Oyuncu Bankalarını Aç","ekranAc(bankaRehberiEkrani)"));
   html+=card("💳 Kredi Kartlarım","<p class='alt'>Kart limitim, dönem borcum, hesap kesim tarihi, asgari ödeme, tüm hareketler ve POS talepleri.</p>"+
      btn("Kredi Kartlarımı Gör","ekranAc(kartlarimEkrani)"));
-  html+=card("💸 Diğer bankacılık işlemleri",btn("Çek defterim","cekMerkeziAc()",true)+btn("Havale / para gönder","paraGonderModal()",true)+btn("POS / Kartla ödeme","ekranAc(kartPosEkrani)",true));
+  html+=card("💸 Diğer bankacılık işlemleri",btn("Çek defterim","cekMerkeziAc()",true)+btn("Havale / para gönder","paraGonderModal()",true)+btn("POS / Kartla ödeme","ekranAc(kartPosEkrani)",true)+btn("POS Cihazı Başvuruları ve Banka POS Yönetimi","ekranAc(posBankaEkrani)",true));
   app("Bankacılık",html);
  };
  window.kartlarimEkrani=async function(){
@@ -133,41 +133,126 @@
    if(!confirm("Nakit avans "+money(tutar)+" + işlem ücreti ile cüzdanına aktarılsın mı?"))return;
    try{await API.rpc("kart_nakit_avans",{p_kart:id,p_tutar:tutar});toast("Nakit avans yatırıldı");kartlarimEkrani();}catch(ex){err(ex);}
  };
+
+ window.posBankaEkrani=async function(){
+  yukleniyor("POS cihazları ve banka yönetimi");
+  try{
+   var d=await API.rpc("pos_banka_panel");state.posBanks=d||{};
+   var html=card("🏦 POS Cihazı ve Banka Yönetimi",
+     "<p class='alt'>Şirketin için bir oyuncu bankasına başvur. Banka otomatik onayı açmışsa POS hemen aktif olur; kapalıysa banka yetkilisi onaylar. Komisyon her tek çekim kartlı satışın %2'sidir. Taksit yoktur.</p>"+
+     btn("Kartlı satış ekranı","ekranAc(kartPosEkrani)",true));
+   if((d.sirketler||[]).length){
+     (d.sirketler||[]).forEach(function(f){
+       var owned=(d.poslar||[]).filter(function(p){return p.sirket_id===f.id;});
+       var options=(d.bankalar||[]).filter(function(b){return !owned.some(function(p){return p.banka_id===b.id && ["aktif","bekliyor"].includes(p.durum);});})
+         .map(function(b){return '<option value="'+b.id+'">'+esc(b.ad)+' · '+(b.otomatik?"Anında onay":"Banka onayı")+' · %2</option>';}).join("");
+       var body='<p class="alt">Bankalara başvurarak tek çekim POS cihazı edinebilirsin.</p>';
+       owned.forEach(function(p){
+         var color=p.durum==="aktif"?"✅ ":p.durum==="bekliyor"?"⏳ ":"";
+         body+=card(color+esc(p.banka),fld("Durum",esc(p.durum))+fld("Komisyon","%2")+
+           fld("Aktif satış hacmi",money(p.hacim))+fld("Komisyon toplamı",money(p.kesilen_komisyon)));
+       });
+       if(options){
+         body+='<div class="alan"><label>POS başvurusu yapılacak banka</label><select id="pbBank'+f.id+'">'+options+'</select></div>'+
+           btn("Bankaya POS Başvurusu Gönder","posBasvurYap("+f.id+")");
+       }else if(!(d.bankalar||[]).length)body+='<p class="alt">Henüz oyuncu bankası bulunmuyor.</p>';
+       html+=card("🏢 "+esc(f.ad)+" · POS cihazları",body);
+     });
+   }else html+=card("Şirket hesabı","<p class='alt'>Başvuru yapmak için kendi şirketini kurmalı veya yönetim yetkisi almalısın.</p>");
+   (d.yonetilen_bankalar||[]).forEach(function(b){
+     var body=fld("Kasa",money(b.kasa))+fld("POS satış hacmi",money(b.satis_hacmi))+
+         fld("Tahsil edilmiş net POS komisyonu",money(b.toplam_komisyon))+
+         '<p class="alt">Banka otomatik başvuruları kabul edebilir veya başvuruları tek tek değerlendirebilir. Komisyon %2 sabittir.</p>'+
+         '<div class="alan"><label>Başvuru onay sistemi</label><select id="pbAuto'+b.id+'">'+
+         '<option value="false" '+(!b.otomatik?"selected":"")+'>Manuel — banka yönetimi onaylar</option>'+
+         '<option value="true" '+(b.otomatik?"selected":"")+'>Otomatik — başvurular anında kabul</option>'+
+         '</select></div>'+btn("Başvuru Politikasını Kaydet","posOtomatikKaydet("+b.id+")");
+     var applications=b.basvurular||[];
+     if(!applications.length)body+='<p class="alt">Bu bankada henüz POS başvurusu yok.</p>';
+     applications.forEach(function(p){
+       var actions=p.durum==="bekliyor"?
+         btn("POS'u Onayla","posBankadanKarar("+p.id+",true)")+
+         btn("Reddet","posBankadanKarar("+p.id+",false)",true)
+         :p.durum==="aktif"?btn("POS'u İptal Et","posBankadanKarar("+p.id+",false)",true):"";
+       body+=card(esc(p.sirket),fld("Başvuru",tarih(p.basvuru))+fld("Durum",esc(p.durum))+actions);
+     });
+     html+=card("🏦 "+esc(b.ad)+" · POS yönetimi",body);
+   });
+   html+=btn("Bankacılığa Dön","ekranAc(bankacilikMerkeziEkrani)",true);
+   app("POS Cihazları",html);
+  }catch(ex){app("POS Cihazları",card("Sistem uyarısı",esc(ex.message)));}
+ };
+ window.posBasvurYap=async function(sirket){
+  try{
+   var el=sec("pbBank"+sirket);
+   if(!el||!el.value){toast("Başvuru yapılacak bankayı seç",true);return;}
+   var data=await API.rpc("pos_basvur",{p_sirket:sirket,p_banka:Number(el.value)});
+   toast(data.durum==="aktif"?"POS cihazın otomatik onaylandı":"Başvurun bankaya gönderildi");
+   posBankaEkrani();
+  }catch(ex){err(ex);}
+ };
+ window.posOtomatikKaydet=async function(banka){
+  try{
+   var otomatik=sec("pbAuto"+banka).value==="true";
+   if(!confirm(otomatik?"Bekleyen POS başvurularını da otomatik onaylamak istiyor musun?":"Yeni POS başvuruları manuel incelemeye alınsın mı?"))return;
+   await API.rpc("pos_banka_otomatik",{p_banka:banka,p_otomatik:otomatik});
+   toast("POS onay modu değişti");posBankaEkrani();
+  }catch(ex){err(ex);}
+ };
+ window.posBankadanKarar=async function(pos,onay){
+  if(!confirm(onay?"POS cihazı %2 komisyonla etkinleştirilsin mi?":"Bu POS başvurusu/cihazı reddedilsin veya kapatılsın mı?"))return;
+  try{await API.rpc("pos_basvuru_karar",{p_pos:pos,p_onay:onay});toast("Banka POS kararı işlendi");posBankaEkrani();}catch(ex){err(ex);}
+ };
+
  window.kartPosEkrani=async function(){
   yukleniyor("POS ve kartla ödeme");
   try{
-   state.pos=await API.rpc("kart_pos_bekleyen");
-   var p=state.pos, k=(state.panel&&state.panel.kartlar)||[];
-   if(!state.panel){state.panel=await API.rpc("kart_panel");k=state.panel.kartlar||[];}
-   var html=card("🏪 POS · Kartla ödeme",
-   "<p class='alt'>POS ödemesi sadece satıcının gönderdiği gerçek bir mal/hizmet talebi üzerinden yapılır. Kartla doğrudan oyuncuya nakit aktarımı yoktur.</p>");
+   var results=await Promise.all([API.rpc("kart_pos_bekleyen"),API.rpc("kart_panel"),API.rpc("pos_banka_panel")]);
+   state.pos=results[0]||{};state.panel=results[1]||{};state.posBanks=results[2]||{};
+   var p=state.pos,k=state.panel.kartlar||[],pd=state.posBanks;
+   var html=card("🏪 POS · Tek Çekim Kartla Ödeme",
+   "<p class='alt'>Satıcı şirketin bankadan onaylı POS cihazı olmalı. Karttan tam satış bedeli çekilir; satıcıya %98 net tutar geçer, POS bankası %2 komisyon kazanır. Taksit yok.</p>"+
+   btn("POS cihazım ve başvurular","ekranAc(posBankaEkrani)",true));
    (p.gelen||[]).forEach(function(t){
-      var o=k.filter(function(a){return a.durum==="aktif"&&a.kullanilabilir>=t.tutar;})
-      .map(function(x){return '<option value="'+x.id+'">'+esc(x.banka)+' · '+esc(x.son_dort)+' ('+money(x.kullanilabilir)+')</option>';}).join("");
-      html+=card("Gelen POS talebi · "+esc(t.sirket),fld("Tutar",money(t.tutar))+fld("Satış / hizmet",esc(t.aciklama))+
-      '<div class="alan"><label>Ödeme kartın</label><select id="bkPosKart'+t.id+'">'+o+'</select></div>'+
-      btn("Kartla Öde","kartPosYanit("+t.id+",true)")+
+      var options=k.filter(function(a){return a.durum==="aktif"&&Number(a.kullanilabilir)>=Number(t.tutar);})
+      .map(function(a){return '<option value="'+a.id+'">'+esc(a.banka)+' · '+esc(a.son_dort)+' ('+money(a.kullanilabilir)+')</option>';}).join("");
+      html+=card("Gelen POS isteği · "+esc(t.sirket),
+      fld("Tek çekim",money(t.tutar))+fld("Mal / hizmet",esc(t.aciklama))+
+      '<div class="alan"><label>Ödeme kartın</label><select id="bkPosKart'+t.id+'">'+options+'</select></div>'+
+      (options?btn("Tek Çekim Kartla Öde","kartPosYanit("+t.id+",true)"):'<p class="alt">Yeterli limitli kartın bulunmuyor.</p>')+
       btn("Talebi Reddet","kartPosYanit("+t.id+",false)",true));
    });
-   if(!(p.gelen||[]).length)html+=card("Gelen talepler","<p class='alt'>Şu anda ödenmeyi bekleyen POS talebin yok.</p>");
-   if((p.sirketler||[]).length){
-    var opt=(p.sirketler||[]).map(function(s){return '<option value="'+s.id+'">'+esc(s.ad)+'</option>';}).join("");
-    html+=card("Şirketimden POS talebi oluştur",
-    '<div class="alan"><label>Satış yapan şirket</label><select id="bkPosSirket">'+opt+'</select></div>'+
-    '<div class="alan"><label>Alıcı kullanıcı adı</label><input id="bkPosMusteri" placeholder="Kullanıcı adı"></div>'+
-    '<div class="alan"><label>Satış bedeli (TL)</label><input type="number" id="bkPosTutar" min="1"></div>'+
-    '<div class="alan"><label>Mal / hizmet açıklaması</label><input id="bkPosAciklama" placeholder="Satılan ürün veya hizmet"></div>'+
-    btn("Alıcıya POS Ödeme İsteği Gönder","kartPosTalepYap()"));
-   }
+   if(!(p.gelen||[]).length)html+=card("Gelen talepler","<p class='alt'>Şu anda bekleyen ödeme talebin bulunmuyor.</p>");
+   (p.sirketler||[]).forEach(function(f){
+      var options=(pd.poslar||[]).filter(function(x){return x.sirket_id===f.id && x.durum==="aktif";})
+        .map(function(x){return '<option value="'+x.id+'">'+esc(x.banka)+' · %2 komisyon</option>';}).join("");
+      if(!options){
+        html+=card(esc(f.ad)+" · POS alınmadı",'<p class="alt">Kartlı satış yapmak için bir oyuncu bankasından POS cihazı al.</p>'+
+         btn("POS başvurusu yap","ekranAc(posBankaEkrani)"));
+        return;
+      }
+      html+=card("🏢 "+esc(f.ad)+" · Yeni Kartlı Satış",
+       '<p class="alt">Müşterinin kartına tek çekim uygulanır. Net tahsilat satışın %98’idir.</p>'+
+       '<div class="alan"><label>POS cihazı / bankası</label><select id="bkPosDevice'+f.id+'">'+options+'</select></div>'+
+       '<div class="alan"><label>Alıcı kullanıcı adı</label><input id="bkPosMusteri'+f.id+'" placeholder="Kullanıcı adı"></div>'+
+       '<div class="alan"><label>Satış bedeli (TL)</label><input type="number" min="1" step="0.01" id="bkPosTutar'+f.id+'"></div>'+
+       '<div class="alan"><label>Mal / hizmet açıklaması</label><input id="bkPosAciklama'+f.id+'" placeholder="Satılan ürün veya hizmet"></div>'+
+       '<p class="alt">Örnek: 10.000 TL satış → 9.800 TL şirkete, 200 TL POS bankasına.</p>'+
+       btn("Tek Çekim POS Talebi Gönder","kartPosTalepYap("+f.id+")"));
+   });
    (p.giden||[]).forEach(function(t){html+=card("Gönderdiğim talep · "+esc(t.musteri),fld("Tutar",money(t.tutar))+fld("Satış",esc(t.aciklama))+fld("Durum",esc(t.durum))+(t.durum==="odendi"?btn("Kartlı Satışı İade Et","kartPosIadeYap("+t.id+")",true):""));});
    html+=btn("Kredi Kartlarıma Dön","ekranAc(kartlarimEkrani)",true);
    app("POS ve Kartla Ödeme",html);
   }catch(ex){app("POS",card("Bağlantı hatası",esc(ex.message)));}
  };
- window.kartPosTalepYap=async function(){try{
-  await API.rpc("kart_pos_talep",{p_sirket:asNumber("bkPosSirket"),p_oyuncu:sec("bkPosMusteri").value,
-   p_tutar:asNumber("bkPosTutar"),p_aciklama:sec("bkPosAciklama").value});
-  toast("POS talebi gönderildi");kartPosEkrani();
+ window.kartPosTalepYap=async function(sirket){try{
+  var id=Number(sirket)||asNumber("bkPosSirket");
+  var device=sec("bkPosDevice"+id);
+  if(!device||!device.value){toast("Onaylı POS cihazını seç",true);return;}
+  await API.rpc("pos_satis_talep",{p_sirket:id,p_pos:Number(device.value),
+    p_oyuncu:sec("bkPosMusteri"+id).value,
+    p_tutar:asNumber("bkPosTutar"+id),p_aciklama:sec("bkPosAciklama"+id).value});
+  toast("Tek çekim POS talebi gönderildi");kartPosEkrani();
  }catch(ex){err(ex);}};
  window.kartPosYanit=async function(id,onay){try{
   var kart=sec("bkPosKart"+id), kim=kart&&kart.value?Number(kart.value):null;
