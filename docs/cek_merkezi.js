@@ -3,7 +3,7 @@
 'use strict';
 if(window.CEK_BANKA_MERKEZI_V1)return;
 window.CEK_BANKA_MERKEZI_V1=true;
-var CACHE={panel:null,teklifler:[],toptan:[],ek:null,sirket:null};
+var CACHE={panel:null,teklifler:[],toptan:[],ek:null,iptaller:[],sirket:null};
 var esc=function(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 var para=function(v){return Number(v||0).toLocaleString('tr-TR',{maximumFractionDigits:2})+' ₺';};
 var tarih=function(v){if(!v)return '—';var d=new Date(String(v).length===10?String(v)+'T12:00:00':v);return isNaN(d.getTime())?esc(v):d.toLocaleDateString('tr-TR');};
@@ -14,6 +14,40 @@ var hata=function(err){toast(typeof hataCevir==='function'?hataCevir(err.message
 var kim=function(id){return Number(id)||0;};
 function yenile(){CACHE.panel=null;return window.cekMerkeziEkrani();}
 function kisaDurum(c){var s={aktif:'Dolaşımda',odendi:'Ödendi',iade:'İade edildi',karsiliksiz:'Karşılıksız',bekliyor:'Satıcının onayında',kabul:'Kabul edildi',red:'Reddedildi',iptal:'İptal edildi',gecersiz:'Süresi doldu'};return s[c]||c||'—';}
+
+function iptalKontrol(c,rol){
+ if(c.durum==='iptal')return '<p class="alt">✅ Bu çek iki tarafın onayıyla iptal edilmiştir; artık geçersizdir.</p>';
+ if(c.durum!=='aktif'||Number(c.odenen||0)>0)return '';
+ var kayit=(CACHE.iptaller||[]).find(function(x){return Number(x.cek_id)===Number(c.id);});
+ var bekliyor=kayit&&kayit.durum==='bekliyor'&&!kayit.hamil_degisikligi;
+ var benimOnayim=bekliyor&&(rol==='veren'?kayit.veren_onay:kayit.hamil_onay);
+ if(bekliyor){
+  var h='<p class="alt" style="color:#e6ecff;font-weight:600">İptal isteği bekliyor · Veren: '+(kayit.veren_onay?'Onayladı':'Bekleniyor')+
+   ' · Hamil: '+(kayit.hamil_onay?'Onayladı':'Bekleniyor')+'</p>';
+  if(!benimOnayim)h+=buton('İptali onayla','cekIptalKarar('+c.id+',"onay")','altin')+
+      buton('İptali reddet','cekIptalKarar('+c.id+',"reddet")');
+  else if(kayit.talep_eden_benim)h+=buton('İptal talebimi geri al','cekIptalKarar('+c.id+',"vazgec")');
+  return h;
+ }
+ return buton('Karşılıklı iptal talebi gönder','cekIptalKarar('+c.id+',"talep")');
+}
+window.cekIptalKarar=async function(id,eylem){
+ var msgs={
+  talep:'İptal talebin karşı tarafa gidecek. Çek ancak veren ve mevcut hamil ayrı ayrı onayladığında geçersiz olacaktır.',
+  onay:'Bu iptal isteğini onaylıyor musun? İki tarafın onayı tamamlanırsa çek geçersiz olacaktır.',
+  reddet:'İptal isteğini reddetmek istiyor musun? Çek geçerli kalacak.',
+  vazgec:'Gönderdiğin iptal isteğini geri almak istiyor musun? Çek geçerli kalacak.'
+ };
+ if(!await onayla('Çek #'+id+' · İptal işlemi',msgs[eylem]||'İşlemi onaylıyor musun?','Onayla'))return;
+ try{
+  var r=await API.rpc('cek_iptal_islem',{p_cek:Number(id),p_eylem:eylem});
+  toast(r.durum==='onaylandi'?'Çek iki tarafın onayıyla iptal edildi ve geçersiz.':
+    r.durum==='bekliyor'?'Talep kaydedildi. Karşı tarafın onayı bekleniyor.':
+    r.durum==='reddedildi'?'İptal reddedildi; çek geçerliliğini koruyor.':'İptal talebi geri alındı.');
+  await yenile();
+ }catch(err){hata(err);}
+};
+
 function bugunArtir(ymd,days){var d=new Date((ymd||new Date().toISOString().slice(0,10))+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
 
 window.cekMerkeziAc=function(sirket){
@@ -28,9 +62,10 @@ window.cekMerkeziEkrani=async function(){
    API.rpc('cek_panel'),
    API.rpc('cek_ticaret_panel'),
    API.rpc('cek_toptan_panel').catch(function(){return [];}),
-   API.rpc('cek_ek_panel').catch(function(){return null;})
+   API.rpc('cek_ek_panel').catch(function(){return null;}),
+   API.rpc('cek_iptal_panel')
   ]);
-  CACHE.panel=r[0]; CACHE.teklifler=r[1]||[]; CACHE.toptan=r[2]||[]; CACHE.ek=r[3];
+  CACHE.panel=r[0]; CACHE.teklifler=r[1]||[]; CACHE.toptan=r[2]||[]; CACHE.ek=r[3]; CACHE.iptaller=r[4]||[];
   var p=r[0],hesap=p.hesaplar||[],sirketler=p.sirketler||[];
   var gelecek=(p.verdiklerim||[]).filter(function(c){return c.durum==='aktif' || c.durum==='karsiliksiz';});
   var bekleyen=(CACHE.teklifler||[]).filter(function(t){return t.durum==='bekliyor';});
@@ -70,6 +105,7 @@ window.cekMerkeziEkrani=async function(){
     satir('Çek tutarı',para(c.tutar))+satir('Kalan borç',para(kalan))+satir('Ödeme tarihi',tarih(c.tarih))+
     satir('Durum',kisaDurum(c.durum));
    if(kalan>0&&(c.durum==='aktif'||c.durum==='karsiliksiz')) html+=buton('Şimdi öde / erken öde','cekHareket('+c.id+',"erken")','altin');
+   html+=iptalKontrol(c,'veren');
    return html+'</div>';
   }).join(''):'<p class="alt">Verdiğin çek bulunmuyor.</p>');
   var received=kart('📥 Aldığım çekler',(p.bende||[]).length?(p.bende||[]).map(function(c){
@@ -80,9 +116,10 @@ window.cekMerkeziEkrani=async function(){
     if(c.durum==='aktif'&&kalan>0){
       h+=buton('Çeki bankaya ibraz et','cekHareket('+c.id+',"ibraz")')+
         buton('Çeki ciro et','cekHareket('+c.id+',"ciro")')+
-        buton('Çeki iade et','cekHareket('+c.id+',"iade")');
+        '';
     }
     if(c.durum==='karsiliksiz'&&kalan>0&&!c.takip)h+=buton('İcra takibini başlat','cekHareket('+c.id+',"takip")','altin');
+    h+=iptalKontrol(c,'hamil');
     return h+'</div>';
   }).join(''):'<p class="alt">Aldığın çek bulunmuyor.</p>');
   var bulk=(CACHE.toptan||[]).filter(function(x){return x.durum==='bekliyor';});
