@@ -29,6 +29,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('<script src="kamu_20261022.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kamu_20261022.js'),'utf8')+'</script>');
 // Gündem, basın-yayın, kitaplar ve makamlar için kaynakla eşit mobil menü düzeni.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','gundem_yayin_makam.js'),'utf8')+'</script></body>');
+// Kitap vitrini, en çok satanlar, kitaplığı ve güvenli satın almayı çevrimdışı paket koduna ekle.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kitap_vitrini.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
