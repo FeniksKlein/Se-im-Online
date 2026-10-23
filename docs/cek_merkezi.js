@@ -36,7 +36,7 @@ window.cekMerkeziEkrani=async function(){
   var bekleyen=(CACHE.teklifler||[]).filter(function(t){return t.durum==='bekliyor';});
   var first=kart('🏦 Banka ve çek işlemleri',
    '<p class="alt">Çek defterini buradan al; aldığın ve verdiğin çekleri, vade tarihlerini ve teklifleri tek sayfadan yönet.</p>'+
-   buton('Devlet Bankası · hesaplarım','ekranAc(bankaEkrani)','altin')+
+   buton('İnternet Bankacılığı · tüm hesaplarım','ekranAc(internetBankaciligiEkrani)','altin')+
    buton('Oyuncu bankaları','ekranAc(oyuncuBankaEkrani)')+
    buton('Yeni çek defteri al','cekDefterModal()','altin')+
    buton('Çek düzenle / çek ver','cekDuzenleModal()')+
@@ -252,7 +252,7 @@ if(typeof oncekiIskelet==='function'){
   if(baslik==='Hayat'){
    var kisayol='<div class="kart" id="cek-bank-quick"><h2>🏦 Bankacılık ve Çekler</h2>'+
     '<p class="alt">Banka hesabı · çek defteri · verdiğim/aldığım çekler · nakit + çek teklifleri</p>'+
-    buton('🏦 Banka hesabım','ekranAc(bankaEkrani)','altin')+
+    buton('🌐 İnternet Bankacılığı','ekranAc(internetBankaciligiEkrani)','altin')+
     buton('📒 Çek Defterim ve Çek Merkezi','cekMerkeziAc()','altin')+
     buton('🤝 Çek teklifleri','cekMerkeziAc()')+
     '</div>';
