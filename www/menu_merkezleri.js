@@ -105,7 +105,7 @@
     if(grup==="adliye")window.adliyeEkrani();else window.ekonomiSekmeEkrani();
   };
   window.soMenuGit=function(ad){
-    var direk=["cekMerkeziAc","baroAc","sirketKurulumFormuAc","paraGonderModal","avukatBuroPanel"];
+    var direk=["cekMerkeziAc","baroAc","sirketKurulumFormuAc","paraGonderModal"];
     var fn=window[ad];
     if(typeof fn!=="function"){toast("Bu işlem henüz kullanılamıyor: "+ad,true);return;}
     if(direk.indexOf(ad)>=0)return fn();
@@ -140,7 +140,7 @@
         grup.mahkeme.push(el.outerHTML);return;
       }
       if(el.id==="hukukIslerimKart"){grup.mahkeme.push(el.outerHTML);return;}
-      if(/^(Avukatlar\s*\(|Avukatlık ve Kontenjan|Dava kazanma primi hesaplarım)/i.test(h)){grup.avukatlar.push(el.outerHTML);return;}
+      if(/(Avukatlar\s*\(|Avukatlık ve Kontenjan|Dava kazanma primi hesaplarım)/i.test(h)){grup.avukatlar.push(el.outerHTML);return;}
       if(/^(Hukuk büroları|Hukuk bürom)/i.test(h)){grup.ofisler.push(el.outerHTML);return;}
       if(/Türkiye Barosu/i.test(h)){grup.baro.push(el.outerHTML);return;}
       if(/^(Seçim sonuçlarına itiraz|İtiraz dosyaları)/i.test(h)){grup.itiraz.push(el.outerHTML);return;}
@@ -293,7 +293,7 @@
         link("🏛️","Devlet Bankası","Vadeli / vadesiz hesap, para yatırma ve çekme.","soMenuGit('bankaEkrani')"),
         link("🏦","Oyuncu bankaları","Faizleri karşılaştır, mevduat yatır, kredi başvur.","soMenuGit('bankaRehberiEkrani')"),
         link("📒","Mevduat ve kredilerim","Özel bankalardaki vadeler, geri ödemeler ve başvurular.","soMenuGit('bankaPortfoyEkrani')"),
-        link("🏦","Banka kur / Bankamı yönet","Banka kur veya kendi bankana rehberden gir.","soMenuGit('bankaRehberiEkrani')")
+        link("➕","Yeni banka kur","Yeni özel banka kur, sermayesini belirle.","soMenuGit('bankaKurEkrani')")
       ])
       +baslik("Kartlar ve ticari ödemeler","Kredi kartın, POS, çek defteri ve kart borçların.")
       +grids([
@@ -341,7 +341,7 @@
           link("➕","Yeni şirket kur","Şehir, sektör ve kuruluş sermayesi belirle.","soMenuGit('sirketKurulumFormuAc')"),
           link("🤝","Ortaklık merkezi","Birlikte şirket kur, hisse devret, pay satın al.","soMenuGit('ortaklikEkrani')"),
           link("📊","Şirketlerimin gelirleri","Kâr, zarar ve finansal raporlarını incele.","soMenuGit('sirketlerimMerkezi')"),
-          link("🏗️","İnşaat ve şubelerim","Şirketini seçerek arsa, proje ve şubelerine gir.","soMenuSec('ekonomi','sirketlerim')")
+          link("🏗️","İnşaat ve şubelerim","Şirket merkezinde kasa, arsalar, inşaat ve şubeler.","soMenuGit('sirketlerimMerkezi')")
         ]);
     }catch(err){
       return kart("Şirketlerim",'<p class="alt">Şirket listesi alınamadı: '+esc(err.message)+'</p>'
@@ -374,7 +374,7 @@
     return baslik("Gayrimenkul ve yatırımlar","Şehirlerde satılık ve kiralık taşınmazları yönet.")
       +grids([
         link("🏠","Gayrimenkul pazarı","Arsa, ev ve dükkân satın al.","soMenuGit('emlakYeniEkrani')"),
-        link("🏡","Yatırım pazarı","Yatırımlık taşınmaz ve ticari mülk ilanları.","soMenuGit('yatirimPazariEkrani')"),
+        link("🏡","Yatırım pazarı","Yatırımlık taşınmaz ve ticari mülk ilanları.","soMenuGit('yatirimPazarEkrani')"),
         link("🏗️","İnşaat şirketlerim","Şirketi seçip arsa ve inşaatlarına gir.","soMenuSec('ekonomi','sirketlerim')"),
         link("💼","Şirketler ve şubeler","İşyerlerini ve büyüyen işletmelerini yönet.","soMenuSec('ekonomi','sirketlerim')")
       ]);
