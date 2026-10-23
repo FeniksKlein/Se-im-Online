@@ -184,7 +184,7 @@ window.ibYenile=load;
 window.ibBankaSec=function(id){S.bank=id==='liste'?null:id;S.tab='ozet'; if(S.data){if(S.bank==null)initial();else detail();}else load();};
 window.ibSekmeSec=function(tab){S.tab=tab;detail();};
 window.ibGit=rt;
-window.ibCekAc=function(){rt('cekMerkeziAc');};
+window.ibCekAc=function(){if(typeof window.cekMerkeziAc==='function')window.cekMerkeziAc();};
 window.ibHesapAc=function(){var b=bankNow();if(!b||b.id==='devlet')return;action(API.rpc('oyb_hesap_ac',{p_banka:Number(b.id)}),'Bankanda hesabın açıldı');};
 window.ibParaIslem=function(tur){var b=bankNow(),a=say('ibVal');if(!b||!(a>0))return toast('Geçerli tutar gir',true);if(!confirm(para(a)+' '+(tur==='yatir'?'yatırılsın mı?':'çekilsin mi?')))return;action(API.rpc('ib_vadesiz_islem',{p_banka:Number(b.id),p_tutar:a,p_islem:tur}),'Banka işlemin tamamlandı');};
 window.ibHavaleYap=function(){var b=bankNow(),u=q('ibAlici'),a=say('ibHavaleTutar');if(!b||!u||!u.value.trim()||!(a>0))return toast('Alıcı ve tutarı doldur',true);if(!confirm(esc(u.value.trim())+' kullanıcısına '+para(a)+' havale yapılsın mı?'))return;action(API.rpc('ib_havale',{p_banka:Number(b.id),p_alici:u.value.trim(),p_tutar:a}),'Havale gönderildi');};
@@ -198,7 +198,7 @@ window.ibPosNakitOde=function(id){if(!confirm('Bu alışverişi cüzdan bakiyenl
 window.ibPosKartOde=function(id){var a=say('ibPosKart'+id);if(!a)return toast('Kart seç',true);if(!confirm('Ödeme seçtiğin kredi kartına tek çekim yansıtılacak. Onaylıyor musun?'))return;action(API.rpc('kart_pos_yanit',{p_pos:id,p_kart:a}),'Kartlı ödeme tamamlandı');};
 window.ibPosReddet=function(id){if(!confirm('Ödeme talebini reddetmek istiyor musun?'))return;action(API.rpc('kart_pos_yanit',{p_pos:id,p_kart:null}),'POS talebi reddedildi');};
 window.ibDevletIslem=function(){rt('ibDevletEskiEkran');};
-window.ibDevletTransfer=function(){rt('paraGonderModal');};
+window.ibDevletTransfer=function(){if(typeof window.paraGonderModal==='function')window.paraGonderModal();};
 function install(){
  if(typeof window.bankaEkrani==='function' && window.bankaEkrani!==window.internetBankaciligiEkrani){window.ibDevletEskiEkran=window.bankaEkrani;window.bankaEkrani=window.internetBankaciligiEkrani;}
  window.bankacilikMerkeziEkrani=window.internetBankaciligiEkrani;
