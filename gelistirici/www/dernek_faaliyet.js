@@ -5,6 +5,7 @@
 
   var TUR = {agac:"Ağaçlandırma / hatıra ormanı", gida:"Gıda yardımı", burs:"Öğrenci bursu", hayvan:"Sokak hayvanları", temizlik:"Çevre temizliği", kultur:"Kültür ve sanat"};
   var GON = {fidan:"Fidan dikimi", temizlik:"Çevre temizliği", gida:"Yardım dağıtımı", egitim:"Eğitim gönüllülüğü", hayvan:"Hayvan bakımı", kultur:"Kültür buluşması"};
+  var PROGRAM = {asevi:"Aşevi ve sıcak yemek", etut:"Ücretsiz etüt merkezi", afet:"Afet hazırlık merkezi", hayvanbakim:"Hayvan bakım noktası", kulturmerkezi:"Kültür ve sanat atölyesi", meslek:"Meslek edindirme kursu", saglik:"Koruyucu sağlık etkinliği"};
   var durumAd = {bekliyor:"Yanıt bekliyor", kabul:"Kabul edildi", red:"Reddedildi", tamam:"Gerçekleşti"};
   var tarihGir = function (ekGun) {
     var t = trParca(new Date(simdi() + (ekGun || 1) * 86400000));
@@ -30,7 +31,8 @@
   window.stkFaaliyetEkrani = async function (id) {
     yukleniyor("Dernek faaliyetleri");
     try {
-      var r = await API.rpc("dernek_faaliyetler",{p_dernek:id});
+      var res = await Promise.all([API.rpc("dernek_faaliyetler",{p_dernek:id}), API.rpc("dernek_program_ozet",{p_dernek:id})]);
+      var r = res[0], program = res[1] || {};
       var kamp = Array.isArray(r.kampanyalar) ? r.kampanyalar : [];
       var proj = Array.isArray(r.projeler) ? r.projeler : [];
       var etkin = Array.isArray(r.etkinlikler) ? r.etkinlikler : [];
@@ -44,6 +46,36 @@
       if (r.yetkili) h += '<div class="kart"><h2>Yeni faaliyet</h2>' +
         '<div class="vit-dugme"><button class="btn canli" onclick="stkProjeModal(' + id + ')">🌳 Ağaçlandır / Yardım yap</button><button class="btn altin" onclick="stkKampanyaAcModal(' + id + ')">Bağış kampanyası aç</button></div>' +
         '<div class="vit-dugme"><button class="btn ikinci" onclick="stkEtkinlikModal(' + id + ')">Gönüllü etkinliği düzenle</button><button class="btn ikinci" onclick="stkZiyaretModal(' + id + ')">Partiye ziyaret talep et</button></div></div>';
+      var etki = program.etki || {}, programlar = program.programlar || [], etkiKayit = program.etkiler || [];
+      h += '<div class="bolum-bas"><h2>🏘️ Sosyal hizmetler ve şehir etkisi</h2></div>' +
+        '<div class="kart"><p class="alt">Derneğin parasını 7 günlük gerçekçi hizmetlere ayır. Oyuncular gönüllü katılabilir; şehir gelişimi ve memnuniyet küçük ama kalıcı katkılar alır.</p>' +
+        '<div class="kv"><span class="k">Dernek etki puanı</span><b>' + Number(etki.puan||0).toLocaleString("tr-TR") + '</b></div>' +
+        '<div class="kv"><span class="k">Toplam sosyal harcama</span><b>' + tlYaz(etki.toplam_harcama||0) + '</b></div>' +
+        '<div class="kv"><span class="k">Hizmet verilen NPC / hedef</span><b>' + Number(etki.erisim||0).toLocaleString("tr-TR") + '</b></div>' +
+        '<div class="kv"><span class="k">Faaliyet / gönüllü katılımı</span><b>' + Number(etki.faaliyet_sayisi||0) + ' / ' + Number(etki.gonullu_sayisi||0) + '</b></div>' +
+        (r.yetkili ? '<button class="btn altin" onclick="stkProgramModal(' + id + ')">+ Dernek bütçesiyle hizmet başlat</button>' : '') +
+        '</div>';
+      h += '<div class="bolum-bas"><h2>Aktif ve geçmiş hizmetler</h2><span class="kucuk">' + programlar.length + ' kayıt</span></div>';
+      h += programlar.length ? programlar.map(function(z) {
+        var aktif = new Date(z.bit).getTime() > simdi();
+        return '<div class="kart"><span class="rozet ' + (aktif?'altin':'') + '">' + (aktif?'Hizmet devam ediyor':'Tamamlandı') + '</span>' +
+          '<h3>' + e(PROGRAM[z.tur]||z.tur) + '</h3><p class="kucuk">' + e(z.il) + ' · Paket ' + Number(z.paket) +
+          ' · Bitiş: ' + tarihSaat(z.bit) + '</p>' +
+          '<div class="kv"><span class="k">7 günlük dernek gideri</span><b>' + tlYaz(z.ucret) + '</b></div>' +
+          '<div class="kv"><span class="k">Hedef hizmet kapasitesi</span><b>' + Number(z.hedef).toLocaleString("tr-TR") + ' kişi</b></div>' +
+          '<div class="kv"><span class="k">Gönüllüler</span><b>' + Number(z.gonullu||0) + '</b></div>' +
+          (aktif && z.benim_ilim && !z.katildim ? '<button class="btn ikinci" onclick="stkProgramGonulluKatil(' + z.id + ',' + id + ')">Gönüllü destek ver</button>' :
+            z.katildim ? '<span class="rozet">Gönüllü katıldın</span>' : '') + '</div>';
+      }).join("") : '<div class="kart"><p class="alt">Henüz bütçeden finanse edilen bir sosyal hizmet yok.</p></div>';
+      if (etkiKayit.length) h += '<div class="bolum-bas"><h2>Harcamanın somut karşılığı</h2></div>' +
+        etkiKayit.slice(0,12).map(function(x) {
+          return '<div class="kart"><b>' + e(PROGRAM[x.tur]||TUR[x.tur]||x.tur) + '</b>' +
+            '<p class="kucuk">' + e(x.il) + ' · ' + tarihSaat(x.zaman) + ' · ' + (x.kaynak==='program'?'7 günlük hizmet':'Sosyal proje') + '</p>' +
+            '<div class="kv"><span class="k">Harcanan / hedef kapasite</span><b>' + tlYaz(x.tutar) + ' / ' + Number(x.erisim||0) + ' kişi</b></div>' +
+            '<div class="kv"><span class="k">Şehir gelişimi / memnuniyet katkısı</span><b>+' +
+            Number(x.gelisim||0).toLocaleString("tr-TR",{maximumFractionDigits:3}) + ' / +' +
+            Number(x.memnuniyet||0).toLocaleString("tr-TR",{maximumFractionDigits:3}) + '</b></div></div>';
+        }).join("");
       h += '<div class="bolum-bas"><h2>Bağış ve yardım kampanyaları</h2><span class="kucuk">' + kamp.length + ' kampanya</span></div>';
       h += kamp.length ? kamp.map(function(k) {
         var kalan = Math.max(0,Number(k.hedef)-Number(k.toplanan));
@@ -136,6 +168,54 @@
       return API.rpc("dernek_proje_yap",{p_dernek:id,p_tur:tur,p_il:Number(input(m,"sfIl")),p_adet:adet,p_baslik:input(m,"sfBaslik"),
         p_kampanya:input(m,"sfKaynak")?Number(input(m,"sfKaynak")):null});
     },"Sosyal proje gerçekleştirildi.",function(r){if(r) return stkFaaliyetEkrani(id);});
+  };
+  window.stkProgramModal = async function (id) {
+    try {
+      var sonuc = await Promise.all([API.rpc("dernek_faaliyetler",{p_dernek:id}),API.rpc("dernek_program_katalog")]);
+      var dernek = sonuc[0], katalog = Array.isArray(sonuc[1]) ? sonuc[1] : [];
+      var iller = Array.isArray(dernek.subeler) ? dernek.subeler : [];
+      if(!dernek.yetkili) throw new Error("Bu harcamayı sadece dernek yönetimi yapabilir.");
+      if(!iller.length || !katalog.length) throw new Error("Hizmet seçeneği ya da dernek şubesi bulunamadı.");
+      var m = modal('<h3>Dernek sosyal hizmet programı</h3>' +
+        '<p class="alt">Seçtiğin şehirde 7 gün süren hizmet başlatılır. Para yalnız serbest dernek kasasından düşer; kampanyalara tahsisli bağışlara dokunulmaz. Aynı anda en fazla 4 hizmet yürütülebilir.</p>' +
+        '<div class="kv"><span class="k">Serbest dernek bütçesi</span><b>' + tlYaz(dernek.serbest) + '</b></div>' +
+        alan("Hizmet ve bütçe paketi",'<select id="sfProgramTur">' + katalog.map(function(x,i){
+          return '<option value="' + i + '">' + e(x.ad) + ' · ' + (x.paket===1?'Küçük':x.paket===2?'Orta':'Büyük') + ' paket</option>';
+        }).join("") + '</select>') +
+        alan("Hizmet verilecek il",'<select id="sfProgramIl">' + iller.map(function(x){
+          return '<option value="' + Number(x.id) + '">' + e(x.ad) + '</option>';
+        }).join("") + '</select>') +
+        '<p class="alt" id="sfProgramAciklama"></p>' +
+        '<div class="kv"><span class="k">7 günlük toplam gider</span><b id="sfProgramUcret"></b></div>' +
+        '<div class="kv"><span class="k">Hizmet kapasitesi</span><b id="sfProgramKapasite"></b></div>' +
+        '<div class="kv"><span class="k">Tahmini şehir gelişimi / memnuniyet katkısı</span><b id="sfProgramEtki"></b></div>' +
+        '<p class="kucuk">Şehir üzerindeki gerçek etki tekrar edilen faaliyetlerde azalır. Program ücretleri oyun ekonomisine göre hesaplanır. Gönüllüler ayrıca katılabilir.</p>' +
+        sorun + buton("Bütçeden karşıla ve başlat","sfProgramBaslat"));
+      var secili = function(){return katalog[Number(input(m,"sfProgramTur"))];};
+      var yenile = function(){
+        var z=secili(); if(!z) return;
+        m.querySelector("#sfProgramAciklama").textContent=z.aciklama;
+        m.querySelector("#sfProgramUcret").textContent=tlYaz(z.ucret);
+        m.querySelector("#sfProgramKapasite").textContent=Number(z.hedef).toLocaleString("tr-TR")+" kişi";
+        m.querySelector("#sfProgramEtki").textContent="+"+z.gelisim+" / +"+z.memnuniyet;
+        m.querySelector("#sfProgramBaslat").disabled=Number(z.ucret)>Number(dernek.serbest);
+      };
+      m.querySelector("#sfProgramTur").onchange=yenile;
+      yenile();
+      islem(m,"sfProgramBaslat",async function(){
+        var z=secili();
+        if(!z) throw new Error("Hizmet seçimi geçersiz.");
+        if(!await onayla("Dernek bütçesinden hizmet",e(z.ad)+" için "+tlYaz(z.ucret)+" harcanacak. Program 7 gün sürecek. Onaylıyor musun?","Harca ve başlat")) return null;
+        return API.rpc("dernek_program_baslat",{p_dernek:id,p_tur:z.tur,p_paket:Number(z.paket),p_il:Number(input(m,"sfProgramIl"))});
+      },"Sosyal hizmet başlatıldı. Şehir etkisi kaydedildi.",function(){return stkFaaliyetEkrani(id);});
+    }catch(err){toast(hataCevir(err.message||String(err)),true);}
+  };
+  window.stkProgramGonulluKatil = async function(programId,dernekId){
+    try{
+      await API.rpc("dernek_program_katil",{p_program:programId});
+      toast("Gönüllü katılımın kaydedildi. Derneğin etki puanı arttı.");
+      return stkFaaliyetEkrani(dernekId);
+    }catch(err){toast(hataCevir(err.message||String(err)),true);}
   };
   window.stkEtkinlikModal = function (id) {
     var d = D._stk;
