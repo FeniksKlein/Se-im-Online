@@ -15,7 +15,7 @@ const item=(body)=>'<div class="kart" style="margin:10px 0">'+body+'</div>';
 const message=e=>toast(typeof hataCevir==='function'?hataCevir(e.message||String(e)):String(e.message||e),true);
 const call=(name,args)=>API.rpc(name,args||{});
 const ask=(a,b)=>typeof onayla==='function'?onayla(a,b,'Onayla'):Promise.resolve(confirm(b));
-const pages=[['genel','Özet'],['para','Kasa / Sermaye'],['faaliyet','Mal / Faaliyet'],['sube','Şubeler'],['insaat','Arsa / İnşaat'],['ortak','Ortaklık'],['finans','Finans'],['pos','POS']];
+const pages=[['genel','Özet'],['para','Kasa / Sermaye'],['faaliyet','Mal / Faaliyet'],['sube','Şubeler'],['insaat','Arsa / İnşaat'],['ortak','Ortaklık'],['finans','Finans'],['pos','POS'],['banka','🏦 Banka Yönetimi']];
 function header(s){return '<div class="kart"><h2>'+safe(s.ad)+'</h2><p class="alt">'+safe(s.sektor)+' · Hissen %'+safe(s.benim_pay)+'</p>'+
   kv('Şirket kasası',money(s.kasa))+kv('Kayıtlı sermaye',money(s.sermaye))+
   '<button class="btn ikinci" onclick="ekranAc(sirketlerimMerkezi)">← Şirketlerime dön</button></div>';}
@@ -58,6 +58,8 @@ window.sirketKurulumFormuAc=function(){
 };
 window.sirketTekSirketEkrani=async function(id,tab){
  id=Number(id);tab=tab||'genel';
+ if(tab==='banka' && typeof window.bankaYonetimEkrani==='function')return window.bankaYonetimEkrani(id);
+
  if(!Number.isSafeInteger(id)||id<1){toast('Geçerli şirket seç.',true);return;}
  yukleniyor('Şirket paneli');
  try {
@@ -70,7 +72,8 @@ window.sirketTekSirketEkrani=async function(id,tab){
   if(!s)throw Error('Bu şirket aktif değil veya ortağı değilsin.');
   const manager=!!locations?.yonetici;
   let html=header(s);
-  const visible=pages.filter(x=>x[0]!=='insaat'||s.sektor==='insaat');
+  const visible=pages.filter(x=>(x[0]!=='insaat'||s.sektor==='insaat')&&(x[0]!=='banka'||s.sektor==='banka'));
+  if(tab==='banka')return window.bankaYonetimEkrani(id);
   html+='<div class="sm-tabs">'+visible.map(p=>'<button class="btn ikinci'+(tab===p[0]?' sm-active':'')+
    '" onclick="sirketTekSirketEkrani('+id+',\''+p[0]+'\')">'+safe(p[1])+'</button>').join('')+'</div>';
   if(tab==='genel'){
@@ -83,6 +86,7 @@ window.sirketTekSirketEkrani=async function(id,tab){
      action('📦 Mal ve faaliyet işlemleri','sirketTekSirketEkrani('+id+',\'faaliyet\')')+
      action('🏬 Şubelerimi yönet','sirketTekSirketEkrani('+id+',\'sube\')')+
      action('📊 Finans ve hareketler','sirketTekSirketEkrani('+id+',\'finans\')')+
+     (s.sektor==='banka'?action('🏦 Banka Yönetim Merkezi · POS / Kart / Kredi','sirketTekSirketEkrani('+id+',\'banka\')','altin'):'')+
      action('💳 POS cihazları / kartlı satış','sirketTekSirketEkrani('+id+',\'pos\')','altin'));
   }else if(tab==='pos'){
     let info=null;
