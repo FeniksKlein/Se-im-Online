@@ -126,8 +126,8 @@ begin
     sahib:=d.baskan;
   elsif p_hedef_tur='medya' then
     update oyun.sirketler set kasa=kasa+tut where id=s.id;
-    insert into oyun.sirket_hareket(sirket_id,zaman,tutar,tur,aciklama)
-       values(s.id,t,tut,'bagis',pa.ad||' tarafından kurumsal bağış');
+    insert into oyun.sirket_hareket(sirket_id,zaman,tutar,aciklama)
+       values(s.id,t,tut,pa.ad||' tarafından kurumsal bağış');
     sahib:=oyun.sirket_sahibi(s.id);
   else
     update oyun.oyuncu_gazeteleri set kasa=kasa+tut where id=g.id;
