@@ -20,6 +20,13 @@ if(!byStyle){
   '.by-ui .by-ayar select.alan option{color:#fff!important;background-color:#111d3b!important;}',
   '.by-ui .by-ayar .by-help{font-size:.84rem;color:#c1cbed;line-height:1.4;}',
   '.by-ui .by-ayar .btn{min-height:48px;font-size:1rem;}',
+  '.by-ui .by-pos-bar{display:grid;gap:9px;padding:14px;border:1px solid #6579ad;border-radius:13px;background:#162343;margin-bottom:6px;}',
+  '.by-ui .by-pos-bar .alan{width:100%;max-width:none;min-height:50px;}',
+  '.by-ui .by-pos-status{font-size:1.04rem;font-weight:750;color:#f3f7ff;margin:0;}',
+  '.by-ui .by-pos-explain{font-size:.92rem;color:#c4d2ed;line-height:1.55;margin:6px 0;}',
+  '.by-ui .by-pos-stamp{font-size:.88rem;color:#bcd9ce;line-height:1.45;}',
+  '.by-ui .by-pos-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}',
+  '.by-ui .by-pos-actions .btn{min-width:0;min-height:48px;}',
   '@media (max-width:600px){.by-ui .by-ayar{gap:14px;}.by-ui .alan{max-width:100%;}}'
  ].join('');
  document.head.appendChild(byStyle);
@@ -32,6 +39,16 @@ function dt(x){return x?new Date(x).toLocaleString('tr-TR'):'—'}
 function b(t,a){return '<button class="btn ikinci" style="width:100%;margin-top:9px" onclick="'+a+'">'+e(t)+'</button>'}
 function row(k,v){return '<div class="kv"><span>'+e(k)+'</span><b>'+e(v)+'</b></div>'}
 function box(t,c){return '<section class="kart"><h2>'+e(t)+'</h2>'+c+'</section>'}
+function posKart(x){
+ var durum=x.durum==='bekliyor'?'Onay bekliyor':x.durum==='aktif'?'Aktif / onaylandı':x.durum==='red'?'Reddedildi':x.durum==='kapali'?'Kapatıldı':x.durum;
+ var body=row('Başvuran',x.oyuncu)+row('Durum',durum)+row('Başvuru tarihi',dt(x.basvuru));
+ if(x.durum==='bekliyor')body+='<div class="by-pos-actions">'+
+  b('Onayla','bankaYonetimKarar("pos",'+Number(x.id)+',true)')+
+  b('Reddet','bankaYonetimKarar("pos",'+Number(x.id)+',false)')+'</div>';
+ if(x.durum==='aktif')body+='<p class="by-pos-stamp">Bu POS onaylanmış ve kartlı satışa açıktır.</p>'+
+  b('POS cihazını kapat','bankaYonetimKarar("pos",'+Number(x.id)+',false)');
+ return box(x.sirket,body);
+}
 function error(x){toast('İşlem gerçekleştirilemedi: '+String(x.message||x),true)}
 function render(){
  var d=S.data,i=d.istatistik,a=d.ayar,h=box('🏦 '+d.banka.ad,
@@ -43,7 +60,32 @@ function render(){
  row('Bekleyen POS',i.bekleyen_pos)+row('Bekleyen kart',i.bekleyen_kart)+row('Bekleyen kredi',i.bekleyen_kredi)+row('POS komisyon geliri',tl(i.pos_komisyon))+
  row('Mevduat',tl(i.mevduat))+row('Kredilerden alacak',tl(i.kredi_alacak))+b('Başvuruları aç','bankaYonetimSekme("basvuru")'));
  if(S.tab==='basvuru'){
- h+=box('POS başvuruları',(d.poslar.length?d.poslar.map(function(x){return box(x.sirket,row('Başvuran',x.oyuncu)+row('Durum',x.durum)+(x.durum==='bekliyor'?b('Onayla','bankaYonetimKarar("pos",'+x.id+',true)')+b('Reddet','bankaYonetimKarar("pos",'+x.id+',false)'):''))}).join(''):'Başvuru yok'));
+  var poslar=Array.isArray(d.poslar)?d.poslar:[];
+  var bekleyen=poslar.filter(function(x){return x.durum==='bekliyor'});
+  var aktif=poslar.filter(function(x){return x.durum==='aktif'});
+  var gecmis=poslar.filter(function(x){return x.durum!=='bekliyor'&&x.durum!=='aktif'});
+  var otomatik=!!a.pos;
+  h+=box('POS onay yönetimi',
+    '<div class="by-pos-bar">'+
+    '<p class="by-pos-status">Onay yöntemi: '+(otomatik?'Otomatik onay açık':'Manuel onay açık')+'</p>'+
+    '<p class="by-pos-explain">'+(otomatik?
+      'Yeni POS başvuruları anında onaylanır; bekleyen başvurular otomatiğe geçince onaylanır. Bu yüzden aktif POS cihazlarında Onayla / Reddet düğmesi bulunmaz.':
+      'Yeni POS başvuruları önce beklemeye alınır. Aşağıdaki listeden tek tek Onayla veya Reddet seçebilirsin.')+'</p>'+
+    '<label class="by-label" for="byposhizli">POS başvurularını onaylama biçimi</label>'+
+    '<select class="alan" id="byposhizli" aria-label="POS onay yöntemi">'+
+     '<option value="false"'+(!otomatik?' selected':'')+'>Manuel: Banka sahibi onaylar veya reddeder</option>'+
+     '<option value="true"'+(otomatik?' selected':'')+'>Otomatik: Başvurular anında onaylanır</option>'+
+    '</select>'+b('POS onay ayarını kaydet','bankaYonetimPOSAyarKaydet()')+
+    '</div>');
+  h+=box('Bekleyen POS başvuruları · '+bekleyen.length,
+   bekleyen.length?bekleyen.map(function(x){return posKart(x)}).join(''):
+   '<p class="by-pos-explain">Şu anda onay bekleyen POS başvurusu yok.'+
+   (otomatik?' Otomatik onay açık olduğu için yeni başvurular doğrudan aktifleşir.':'')+'</p>');
+  h+=box('Aktif POS cihazları · '+aktif.length,
+   aktif.length?aktif.map(function(x){return posKart(x)}).join(''):
+   '<p class="by-pos-explain">Aktif POS cihazı bulunmuyor.</p>');
+  if(gecmis.length)h+=box('Reddedilen ve kapatılan POS kayıtları · '+gecmis.length,
+   gecmis.map(function(x){return posKart(x)}).join(''));
  h+=box('Kredi kartı başvuruları',(d.kartlar.length?d.kartlar.map(function(x){var izin=(x.izin||[]).indexOf('kredi_notu')>=0;var details=izin?Object.keys(x.bilgi||{}).map(function(k){return row(k,JSON.stringify(x.bilgi[k]))}).join(''):'Müşterinin bilgi paylaşım izni bekleniyor';
  return box(x.oyuncu,row('İstenen limit',tl(x.istek))+row('Durum',x.durum)+details+(x.durum==='bekliyor'?
  (izin?'<input class="alan" id="bylimit'+x.id+'" type="number" min="1000" value="'+x.istek+'">'+b('Onayla','bankaYonetimKarar("kart",'+x.id+',true)'):b('Mali bilgi izni iste','bankaYonetimBilgi('+x.id+')'))+
@@ -78,11 +120,29 @@ window.bankaYonetimEkrani=async function(id,tab){try{
 }catch(x){iskelet('Banka Yönetimi',box('Erişim hatası',e(x.message)),{geri:true});error(x)}};
 window.bankaYonetimSekme=function(t){S.tab=t;render()};
 window.bankaYonetimBilgi=async function(id){try{await API.rpc('kart_belge_iste',{p_basvuru:id,p_alanlar:['kredi_notu','maas','nakit']});toast('Bilgi paylaşma izni istendi');bankaYonetimEkrani(S.id,S.tab)}catch(x){error(x)}};
-window.bankaYonetimKarar=async function(t,id,yes){if(!confirm((yes?'Başvuruyu onayla':'Başvuruyu reddet')+'?'))return;try{
+window.bankaYonetimKarar=async function(t,id,yes){
+ var pos=S.data&&S.data.poslar&&S.data.poslar.find(function(x){return Number(x.id)===Number(id)});
+ var kapanis=t==='pos'&&!yes&&pos&&pos.durum==='aktif';
+ var soru=kapanis?'Aktif POS cihazı kapatılsın mı? Şirket bu POS ile yeni ödeme alamayacak.':
+ (yes?'Başvuruyu onayla':'Başvuruyu reddet')+'?';
+ if(!confirm(soru))return;
+ try{
  var f=t==='pos'?'pos_basvuru_karar':t==='kart'?'kart_basvuru_karar':'oyb_kredi_karar';
  var args=t==='pos'?{p_pos:id,p_onay:yes}:t==='kart'?{p_basvuru:id,p_onay:yes,p_limit:yes?Number(document.getElementById('bylimit'+id).value):null}:{p_id:id,p_onay:yes};
- await API.rpc(f,args);toast(yes?'Başvuru onaylandı':'Başvuru reddedildi');bankaYonetimEkrani(S.id,S.tab);
+ await API.rpc(f,args);toast(kapanis?'POS cihazı kapatıldı':yes?'Başvuru onaylandı':'Başvuru reddedildi');await bankaYonetimEkrani(S.id,S.tab);
 }catch(x){error(x)}};
+window.bankaYonetimPOSAyarKaydet=async function(){
+ var el=document.getElementById('byposhizli');if(!el)return;
+ var otomatik=el.value==='true';
+ if(otomatik&&!S.data.ayar.pos&&Number(S.data.istatistik.bekleyen_pos)>0&&
+  !confirm('Otomatik onay açılınca şu an bekleyen '+S.data.istatistik.bekleyen_pos+' POS başvurusu da onaylanacak. Devam edilsin mi?'))return;
+ try{
+  var sonuc=await API.rpc('pos_banka_otomatik',{p_banka:S.id,p_otomatik:otomatik});
+  toast('POS onay yöntemi '+(otomatik?'otomatik':'manuel')+' olarak kaydedildi.'+
+   (Number(sonuc&&sonuc.otomatik_onaylanan)>0?' '+sonuc.otomatik_onaylanan+' başvuru onaylandı.':''));
+  await bankaYonetimEkrani(S.id,'basvuru');
+ }catch(x){error(x)}
+};
 window.bankaYonetimAyarKaydet=async function(){try{
  var val=function(id){return document.getElementById(id).value;};
  var kurallar=[
