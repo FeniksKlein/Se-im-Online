@@ -16944,6 +16944,7 @@ return '<div class="segment" style="display:flex;overflow-x:auto;gap:6px;margin:
 }
 function quote(d,k,yon){
 var price=n(k.fiyat)*(yon==="al"?1+n(d.makas)/100:1-n(d.makas)/100);
+price*=yon==="al"?1+n(d.komisyon)/100:1-n(d.komisyon)/100;
 return price;
 }
 function priceTable(){
@@ -16961,7 +16962,7 @@ out+=card("Oyuncu dükkânları",'<p class="alt">Müşteri olarak kuyumcu ve dö
  var ks=(data.kurlar||[]).filter(function(k){return allowed(d,k.kod);});
  return '<div style="border-top:1px solid var(--line);padding:12px 0">'+
  '<b>'+h(d.tur==="kuyumcu"?"Kuyumcu · ":"Döviz bürosu · ")+h(d.ad)+'</b>'+
- '<div class="kucuk">Alış-satış makası ±%'+h(d.makas)+' · İl kodu '+h(d.il_id||"—")+'</div>'+
+ '<div class="kucuk">Alış-satış makası ±%'+h(d.makas)+' · Komisyon %'+h(d.komisyon)+' · İl kodu '+h(d.il_id||"—")+'</div>'+
  ks.map(function(k){var avail=n((d.stok||{})[k.kod]);return '<div class="kv"><span>'+h(names[k.kod])+'<span class="kucuk" style="display:block">Stok: '+h(amt(avail))+'</span></span>'+
  '<span style="text-align:right"><b>'+money(quote(d,k,"sat"))+' alış</b><span class="kucuk" style="display:block">'+money(quote(d,k,"al"))+' satış</span></span></div>'+
  '<div class="satir">'+btn("Satın al","meslekTicaretModal("+d.id+",\'"+k.kod+"\',\'al\')","altin")+
@@ -16974,10 +16975,11 @@ var list=(data.dukkanlar||[]).filter(isMyShop);
 var body='<p class="alt">İşletmeni kendi paranla aç; gerçek kurdan toptan stok tedarik et. Müşterilerle yapılan işlemler ve kasa hareketleri sunucuda kayıtlıdır.</p>';
 body+=list.map(function(d){
  var codes=d.tur==="kuyumcu"?["ALTIN"]:["USD","EUR","GBP","CHF"];
- var content=row("Kasa",money(d.kasa))+row("Alış-satış makası (tek yön)", "%"+n(d.makas).toLocaleString("tr-TR"));
+ var content=row("Kasa",money(d.kasa))+row("Alış-satış makası (tek yön)", "%"+n(d.makas).toLocaleString("tr-TR"))+row("İşlem komisyonu", "%"+n(d.komisyon).toLocaleString("tr-TR"));
  content+='<div class="satir">'+btn("Kasaya para yatır","meslekKasaModal("+d.id+",\'yatir\')","altin")+
  btn("Kasadan para çek","meslekKasaModal("+d.id+",\'cek\')")+
- btn("Makas ayarla","meslekMakasModal("+d.id+")")+'</div>';
+ btn("Makas ayarla","meslekMakasModal("+d.id+")")+
+ btn("Komisyon ayarla","meslekKomisyonModal("+d.id+")")+'</div>';
  content+=codes.map(function(k){var cur=getK(k);return '<div class="kv"><span>'+h(names[k])+'</span><b>'+amt((d.stok||{})[k])+'</b></div>'+
  btn("Stok tedarik et · "+k,"meslekTedarikModal("+d.id+",\'"+k+"\')");}).join("");
  return card((d.tur==="kuyumcu"?"Kuyumcum: ":"Döviz bürom: ")+d.ad,content);
@@ -17038,6 +17040,12 @@ window.meslekMakasModal=function(id){
  var d=(data.dukkanlar||[]).find(function(x){return x.id===id&&x.benim;});if(!d)return;
  dialog("Alış-satış makası","Oran her iki yöne ayrı uygulanır. Döviz %0,25–3, kuyumcu %0,5–6.",numberField("mzSpread","Tek yön makas (%)",d.makas,0.05),async function(el){
  await run("meslek_makas_ayarla",{p_dukkan:id,p_makas:Number(el.querySelector("#mzSpread").value)});
+ });
+};
+window.meslekKomisyonModal=function(id){
+ var d=(data.dukkanlar||[]).find(function(x){return x.id===id&&x.benim;});if(!d)return;
+ dialog("İşlem komisyonunu ayarla","Müşteri işlemlerinin tutarına eklenen veya tutardan kesilen komisyon. Sınır %0–2.",numberField("mzFee","İşlem komisyonu (%)",d.komisyon,0.05),async function(el){
+  await run("meslek_komisyon_ayarla",{p_dukkan:id,p_oran:Number(el.querySelector("#mzFee").value)});
  });
 };
 window.meslekKasaModal=function(id,yon){
