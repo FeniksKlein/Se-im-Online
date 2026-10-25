@@ -1,0 +1,51 @@
+name: Oyun web surumu derle
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gelistirici/**"
+      - ".github/workflows/oyun-web-derle.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: oyun-web-derle
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: JavaScript sozdizimi
+        run: |
+          node --check gelistirici/www/hesap_duzeltmeleri_20261025.js
+          node --check gelistirici/www/menu_sade.js
+          node --check gelistirici/build/derle.js
+          node --check gelistirici/build/sql_birlestir.js
+      - name: Web ve SQL derle
+        run: |
+          node gelistirici/build/derle.js
+          node gelistirici/build/sql_birlestir.js
+          cp gelistirici/dist/index.html docs/index.html
+          cp gelistirici/dist/index.html www/index.html
+          cp gelistirici/dist/supabase-kurulum.sql supabase-kurulum.sql
+          grep -q "window.internetBankaciligiEkrani" docs/index.html
+          grep -q "window.sirketKarTercihEkrani" docs/index.html
+      - name: Derlenmis dosyalari depoya kaydet
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html www/index.html supabase-kurulum.sql
+          if ! git diff --cached --quiet; then
+            git commit -m "build: banka ve sirket kar duzeltmeleri [skip ci]"
+            git push origin HEAD:main
+          fi
