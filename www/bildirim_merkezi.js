@@ -50,6 +50,7 @@
     // Müşteriden mali belge izni isteyen mesajlar ise müşteri ekranında kalır.
     if (/banka pos yonetimi|pos cihazi basvurusu yapti|pos basvurusuna karar ver|banka yonetim ekranindan karar ver|banka yonetim paneli|banka yonetimi|bankana (?:pos|kredi|kart) basvurusu/.test(t))
       return "banka_yonetim";
+    if (/kredi karti basvurun icin mali belge izni|mali belge izni istedi|kart basvurun icin (?:bilgi|izin)/.test(t)) return "kart_basvuru";
     if (/kredi|taksit|vadesiz|banka/.test(t)) return "banka";
     if (/devlet > hukumet|devlet › hukumet/.test(t)) return "devlet";
     if (/meclis|tbmm|kanun teklifi|oylama gunu|anayasa degisikligi|grup karari/.test(t)) return "meclis";
@@ -80,6 +81,7 @@
       ac: () => window.soBankaYonetimGit("basvuru"),
       var: () => typeof window.soBankaYonetimGit === "function"
     },
+    kart_basvuru: { ad: "Kart başvuruma git", ac: () => ekranAc(kartlarimEkrani), var: () => typeof kartlarimEkrani === "function" },
     banka:   { ad: "Bankaya git", ac: () => ekranAc(bankaEkrani), var: () => typeof bankaEkrani === "function" },
     meclis:  { ad: "Meclis'e git", ac: () => sekmeAc("meclis"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.meclis === "function" },
     parti:   { ad: "Partilere git", ac: () => sekmeAc("parti"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.parti === "function" },
