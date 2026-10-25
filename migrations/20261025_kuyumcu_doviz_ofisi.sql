@@ -64,7 +64,7 @@ begin
  on conflict(kod) do update set fiyat=excluded.fiyat,kaynak=excluded.kaynak,
  veri_tarihi=excluded.veri_tarihi,guncelleme=now();
  return jsonb_build_object('kod',p_kod,'ok',true);
-end; $;
+end; $$;
 revoke all on function public.meslek_kur_kaydet(text,numeric,text,timestamptz) from public,anon,authenticated;
 grant execute on function public.meslek_kur_kaydet(text,numeric,text,timestamptz) to service_role;
 
@@ -76,7 +76,7 @@ begin
  if not found then raise exception 'Piyasa kuru henuz baglanmadi. Kur guncelle butonunu kullan.';end if;
  if r.guncelleme<now()-interval '20 minutes' then raise exception 'Piyasa kuru eski. Islemden once kuru yenile.';end if;
  return r.fiyat;
-end; $;
+end; $$;
 
 create or replace function public.meslek_panel()
 returns jsonb language plpgsql security definer set search_path='' as $$
@@ -90,7 +90,7 @@ begin
   'dukkanlar',coalesce((select jsonb_agg(jsonb_build_object('id',d.id,'ad',d.ad,'tur',d.tur,'il_id',d.il_id,'makas',d.makas,'benim',d.sahibi=u,'kasa',case when d.sahibi=u then d.kasa else null end,'stok',(select coalesce(jsonb_object_agg(st.kod,st.miktar),'{}'::jsonb) from oyun.meslek_stok st where st.dukkan_id=d.id)) order by d.id desc) from oyun.meslek_dukkan d where d.aktif),'[]'::jsonb),
   'portfoy',coalesce((select jsonb_object_agg(kod,miktar) from oyun.meslek_portfoy where user_id=u),'{}'::jsonb),
   'islemler',coalesce((select jsonb_agg(jsonb_build_object('id',q.id,'dukkan_id',q.dukkan_id,'kod',q.kod,'yon',q.yon,'tutar',q.tutar,'miktar',q.miktar,'tarih',q.tarih)) from (select * from oyun.meslek_islemler where user_id=u or dukkan_id in(select id from oyun.meslek_dukkan where sahibi=u) order by tarih desc limit 30) q),'[]'::jsonb));
-end; $;
+end; $$;
 revoke all on function public.meslek_panel() from public,anon;
 grant execute on function public.meslek_panel() to authenticated;
 
@@ -107,7 +107,7 @@ begin
  insert into oyun.meslek_dukkan(sahibi,tur,ad,il_id,kasa,makas) values(u,p_tur,btrim(p_ad),il,p_sermaye-bedel,case when p_tur='doviz' then 0.7 else 1.5 end) returning id into did;
  update oyun.ulke set hazine=hazine+bedel/oyun.pazar_tl_milyar() where id=1;
  return jsonb_build_object('id',did,'kasa',p_sermaye-bedel,'ruhsat',bedel);
-end; $;
+end; $$;
 revoke all on function public.meslek_dukkan_ac(text,text,numeric) from public,anon;
 grant execute on function public.meslek_dukkan_ac(text,text,numeric) to authenticated;
 
@@ -121,7 +121,7 @@ begin
  or p_makas>case when d.tur='doviz' then 3 else 6 end then raise exception 'Bu dukkan icin makas siniri disinda';end if;
  update oyun.meslek_dukkan set makas=round(p_makas,3) where id=p_dukkan;
  return jsonb_build_object('makas',round(p_makas,3));
-end; $;
+end; $$;
 revoke all on function public.meslek_makas_ayarla(bigint,numeric) from public,anon;
 grant execute on function public.meslek_makas_ayarla(bigint,numeric) to authenticated;
 
@@ -141,7 +141,7 @@ begin
   perform oyun.para_islem(auth.uid(),p_tutar,'meslek','Dukkan kasasindan aktarim',now());
  end if;
  return jsonb_build_object('kasa',(select kasa from oyun.meslek_dukkan where id=d.id));
-end; $;
+end; $$;
 revoke all on function public.meslek_kasa(bigint,text,numeric) from public,anon;
 grant execute on function public.meslek_kasa(bigint,text,numeric) to authenticated;
 
@@ -161,7 +161,7 @@ begin
  on conflict(dukkan_id,kod) do update set miktar=oyun.meslek_stok.miktar+excluded.miktar;
  insert into oyun.meslek_islemler(dukkan_id,user_id,kod,yon,miktar,birim_fiyat,tutar) values(d.id,auth.uid(),p_kod,'tedarik',p_miktar,fiyat,tutar);
  return jsonb_build_object('stok',p_miktar,'odenen',tutar);
-end; $;
+end; $$;
 revoke all on function public.meslek_stok_tedarik(bigint,text,numeric) from public,anon;
 grant execute on function public.meslek_stok_tedarik(bigint,text,numeric) to authenticated;
 
@@ -199,6 +199,6 @@ begin
  end if;
  insert into oyun.meslek_islemler(dukkan_id,user_id,kod,yon,miktar,birim_fiyat,tutar) values(d.id,u,p_kod,p_yon,p_miktar,birim,tutar);
  return jsonb_build_object('yon',p_yon,'kod',p_kod,'miktar',p_miktar,'birim',birim,'tutar',tutar,'dukkan',d.ad);
-end; $;
+end; $$;
 revoke all on function public.meslek_ticaret(bigint,text,text,numeric) from public,anon;
 grant execute on function public.meslek_ticaret(bigint,text,text,numeric) to authenticated;
