@@ -70,7 +70,41 @@
     kapat: sv('<path d="M6 6l12 12M18 6L6 18"/>'),
     ok: sv('<path d="M9 6l6 6-6 6"/>'),
     ekonomi: sv('<path d="M3 20h18"/><path d="M5 16l4.5-5 3.5 3 6-7"/><path d="M15 7h4v4"/>'),
-    sandik: sv('<path d="M4 11h16v9H4zM8 11l3-6h6l-3 6M9 15h6"/>')
+    sandik: sv('<path d="M4 11h16v9H4zM8 11l3-6h6l-3 6M9 15h6"/>'),
+    arti: sv('<path d="M12 5v14M5 12h14"/>'),
+    grafik: sv('<path d="M4 20h16"/><rect x="5.5" y="11" width="3" height="6" rx="1"/><rect x="10.5" y="6" width="3" height="11" rx="1"/><rect x="15.5" y="9" width="3" height="8" rx="1"/>'),
+    canta: sv('<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 13h18"/>'),
+    bina: sv('<path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18"/><path d="M8 8h3M8 12h3M8 16h3"/>'),
+    fis: sv('<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>'),
+    tabela: sv('<path d="M12 3v3M5 6h14l2 4-2 4H5z"/><path d="M12 14v7"/>'),
+    dukkan: sv('<path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0M10 20v-5h4v5"/>'),
+    liste: sv('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/>'),
+    klasor: sv('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+    belge: sv('<path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>'),
+    terazi: sv('<path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z"/>'),
+    insaat: sv('<path d="M3 21h18M6 21V10l6-4 6 4v11"/><path d="M4 6l8-3 8 3M10 21v-5h4v5"/>'),
+    trend: sv('<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>'),
+    dusus: sv('<path d="M3 7l6 6 4-4 8 8"/><path d="M15 17h6v-6"/>'),
+    roket: sv('<path d="M12 15l-3-3a13 13 0 0 1 9-8.5c.4 4-1.3 7-6 11.5z"/><path d="M9 12H5l2-4h4M12 15v4l4-2v-4M6 18c-1 1-1.5 2.5-1.5 2.5S6 20 7 19"/>'),
+    ev: sv('<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>'),
+    kitap: sv('<path d="M4 5a2 2 0 0 1 2-2h12v15H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 1h12v-3M9 7h5"/>'),
+    hilal: sv('<path d="M14.5 4.5A8 8 0 1 0 14.5 19.5 6.5 6.5 0 1 1 14.5 4.5z"/><path d="M17 9.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z"/>'),
+    cekic: sv('<path d="M14 6l4 4M12.5 7.5l4-4 4 4-4 4zM12.5 7.5L4 16a1.5 1.5 0 0 0 0 2l2 2a1.5 1.5 0 0 0 2 0l8.5-8.5"/>'),
+    kart: sv('<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/>'),
+    etiket: sv('<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.3"/>'),
+    fabrika: sv('<path d="M3 21V10l5 3V10l5 3V10l5 3V4h3v17z"/><path d="M7 17h2M12 17h2M17 17h1"/>'),
+    kutu: sv('<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5L12 12l8-4.5M12 12v9"/>'),
+    doviz: sv('<path d="M4 8h13l-3-3M20 16H7l3 3"/>'),
+    anahtar: sv('<circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M14 9l2 2"/>'),
+    basak: sv('<path d="M12 21V9"/><path d="M12 9c-2-1-3-3-3-5 2 1 3 3 3 5zM12 9c2-1 3-3 3-5-2 1-3 3-3 5zM12 14c-2-1-4-2.5-4.5-5 2.5.5 4 2.5 4.5 5zM12 14c2-1 4-2.5 4.5-5-2.5.5-4 2.5-4.5 5z"/>'),
+    tv: sv('<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 21h8M9 2l3 4 3-4"/>'),
+    bilet: sv('<path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/>'),
+    sehir: sv('<path d="M3 21h18M5 21V10h5v11M10 21V4h6v17M16 21v-8h3v8"/><path d="M13 8h.01M13 12h.01M13 16h.01"/>'),
+    madalya: sv('<circle cx="12" cy="15" r="5"/><path d="M8.5 11.5L6 3h4l2 5 2-5h4l-2.5 8.5"/><path d="M12 13v4"/>'),
+    sepet: sv('<path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h9.2a1 1 0 0 0 1-.8L20 8H6.2"/><circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/>'),
+    ozet: sv('<path d="M12 3l9 9-9 9-9-9z"/><path d="M12 8l4 4-4 4-4-4z"/>'),
+    diger: sv('<circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/>'),
+    bayrak: sv('<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>')
   };
   function ikon(k) {
     if (IK[k]) return IK[k];
@@ -298,6 +332,28 @@
     '#icerik .ynt-bolum>.btn.altin:first-of-type{background:linear-gradient(135deg,rgba(123,97,255,.30),rgba(123,97,255,.12))!important;box-shadow:inset 0 0 0 1px rgba(168,149,255,.32)!important}',
     '#icerik .so-gundem-kisa .so-kisa-metin{min-width:0}',
     '#icerik .so-gundem-kisa>.pa-hizli{margin-bottom:18px}',
+    /* simge kareleri */
+    '#icerik .pa-ik{display:grid!important;place-items:center;flex:none;color:#fff!important;font-size:0!important;line-height:0;border-radius:14px!important;background:linear-gradient(145deg,var(--ik),var(--ik2))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.26),0 8px 16px -10px var(--ik)!important;border:0!important}',
+    '#icerik .pa-ik svg{width:21px!important;height:21px!important;display:block;max-width:none!important;flex:none}',
+    '#icerik .so-ms-front-icon.pa-ik svg{width:28px!important;height:28px!important}',
+    '#icerik .so-link-ikon.pa-ik{width:44px!important;height:44px!important;min-width:44px}',
+    '#icerik .so-econ-tile-icon.pa-ik{width:40px!important;height:40px!important}',
+    '#icerik .so-makam-emoji.pa-ik{width:44px!important;height:44px!important}',
+    '#icerik .so-kisa-simge.pa-ik{width:40px!important;height:40px!important;border-radius:13px!important}',
+    '#icerik .so-ms-front-icon.pa-ik{width:58px!important;height:58px!important;border-radius:18px!important}',
+    '#icerik .giris-satir>.yik.pa-ik{width:40px!important;height:40px!important}',
+    /* satır kartları: Mobil Şube listeleri gibi */
+    '#icerik .so-link,#icerik .so-makam-btn{border-radius:18px!important;background:linear-gradient(170deg,#1d2650,#151c3b)!important;border:0!important;box-shadow:inset 0 0 0 1px rgba(164,184,255,.10),0 8px 18px -16px rgba(0,0,0,.9)!important;transition:transform .14s}',
+    '#icerik .so-link:active,#icerik .so-makam-btn:active{transform:scale(.985)}',
+    '#icerik .so-link b,#icerik .so-makam-btn b{color:#f2f5ff}',
+    /* Ekonomi üst sekmeleri: simgeli karo şerit, yapışkan ve tam genişlik */
+    '#icerik .so-ekonomi>.so-tabs{position:sticky!important;top:0!important;z-index:9!important;display:flex!important;gap:4px!important;overflow-x:auto!important;scrollbar-width:none;margin:14px -16px 12px!important;padding:8px 12px 9px!important;border-radius:0!important;border:0!important;border-bottom:1px solid rgba(164,184,255,.10)!important;background:rgba(11,16,38,.94)!important;-webkit-backdrop-filter:saturate(160%) blur(16px);backdrop-filter:saturate(160%) blur(16px);box-shadow:0 -14px 0 0 #0d1431,0 12px 20px -18px rgba(0,0,0,.9)!important}',
+    '#icerik .so-ekonomi>.so-tabs::-webkit-scrollbar{display:none}',
+    '#icerik .so-ekonomi>.so-tabs>button{flex:0 0 auto!important;display:flex!important;flex-direction:column!important;align-items:center!important;gap:6px!important;min-width:72px!important;min-height:0!important;padding:6px 6px 7px!important;border-radius:16px!important;background:transparent!important;border:0!important;box-shadow:none!important;color:#9aa6c8!important;font-size:12px!important;font-weight:650!important;transform:none!important}',
+    '#icerik .so-ekonomi>.so-tabs>button[aria-selected="true"]{background:rgba(255,255,255,.06)!important;color:#fff!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)!important}',
+    '#icerik .so-ekonomi>.so-tabs .so-econ-tab-icon.pa-ik{width:40px!important;height:40px!important;margin:0!important;background:var(--ikt)!important;color:var(--ikc)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)!important;transition:background .2s,box-shadow .2s}',
+    '#icerik .so-ekonomi>.so-tabs>button[aria-selected="true"] .so-econ-tab-icon.pa-ik{background:linear-gradient(145deg,var(--ik),var(--ik2))!important;color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 8px 18px -8px var(--ik)!important}',
+    '#icerik .so-ekonomi>.so-tabs>button:active .so-econ-tab-icon{transform:scale(.92)}',
     '@media (prefers-reduced-motion:reduce){.pa-hero.pa-giris,.pa-kimlik.pa-giris,.pa-hero .pa-isilti,#paMenu .pa-cekmece,#paMenu .pa-perde{animation:none!important}}',
     '@media (max-width:360px){.ust h1{font-size:22px!important}.pa-hero{padding:15px 14px 14px}.pa-hero .pa-veri>div{padding:7px 8px 8px}.pa-hero .pa-veri b{font-size:16px}.pa-hero .pa-ust b{font-size:24px}.pa-hero .pa-ust b.buyuk{font-size:34px}.pa-hizli{gap:6px}.pa-hizli b{font-size:11px}.pa-kimlik .pa-kf{width:64px;height:80px}.pa-kimlik .pa-kalan b{font-size:12.5px}.pa-kimlik .pa-kalan b.ad{font-size:17px}#paMenu .pa-izgara{gap:7px}#paMenu .pa-karo{padding:10px 9px;min-height:96px}}'
   ].join('\n');
@@ -360,6 +416,39 @@
   };
   window.soPa = function (ad) { var a = [].slice.call(arguments, 1); try { menuKapat(true); if (EYLEM[ad]) EYLEM[ad].apply(null, a); } catch (e) { if (window.console) console.warn('Premium arayüz:', e); hata(); } };
   function on(ad) { var a = [].slice.call(arguments, 1).map(function (x) { return JSON.stringify(x).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }); return 'soPa(&quot;' + ad + '&quot;' + (a.length ? ',' + a.join(',') : '') + ')'; }
+
+  /* ---------- emoji simgeler → çizgi simge + renkli kare (Mobil Şube / Menü dili) ---------- */
+  var R = { para: '#1f9e86', is: '#d9932b', mulk: '#df7f45', devlet: '#4469dc', kisi: '#8a68f2', medya: '#d8425e', mavi: '#2e86de', pembe: '#c03a6b', gri: '#7b8bb8', yesil: '#2f9e64', bordo: '#b33a5c' };
+  var EMO = {
+    '➕': ['arti', R.kisi], '🤝': ['el', R.kisi], '📊': ['grafik', R.mavi], '💼': ['canta', R.para], '🏢': ['bina', R.is], '🏬': ['bina', R.is],
+    '🏦': ['banka', R.bordo], '🏛': ['devlet', R.devlet], '🧾': ['fis', R.para], '📄': ['belge', R.devlet], '📒': ['kitap', R.para], '🪧': ['tabela', R.mulk],
+    '🏪': ['dukkan', R.is], '🛍': ['magaza', R.is], '📋': ['liste', R.devlet], '📝': ['kalem', R.devlet], '💸': ['para', R.para], '📂': ['klasor', R.devlet],
+    '📁': ['klasor', R.devlet], '📥': ['klasor', R.mavi], '📜': ['belge', R.devlet], '⚖': ['terazi', '#c18a3e'], '👩‍⚖': ['terazi', '#c18a3e'], '🧑‍⚖': ['terazi', '#c18a3e'],
+    '🏗': ['insaat', R.mulk], '📈': ['trend', R.yesil], '📉': ['dusus', R.bordo], '🚀': ['roket', R.pembe], '🏡': ['ev', R.mulk], '🏠': ['ev', R.mulk],
+    '🛡': ['kalkan', R.devlet], '⚙': ['ayar', R.gri], '📢': ['megafon', R.medya], '📣': ['megafon', R.medya], '📚': ['kitap', R.medya], '🇹🇷': ['hilal', '#d8425e'],
+    '🗳': ['sandik', '#16a0a6'], '🔨': ['cekic', R.is], '💳': ['kart', R.bordo], '💰': ['para', R.para], '💵': ['para', R.para], '🪙': ['para', '#c9a227'],
+    '🏷': ['etiket', R.is], '🏭': ['fabrika', R.is], '📦': ['kutu', R.is], '💱': ['doviz', R.para], '🔑': ['anahtar', R.mulk], '🌾': ['basak', R.yesil],
+    '📺': ['tv', R.medya], '🎟': ['bilet', R.pembe], '🏙': ['sehir', '#2f9e64'], '🏅': ['madalya', '#c9a227'], '📰': ['gazete', R.medya], '🏳': ['bayrak', null],
+    '🛒': ['sepet', R.is], '◈': ['ozet', R.kisi], '✦': ['diger', R.gri], '🔍': ['ara', R.mavi], '🔎': ['ara', R.mavi], '🔔': ['zil', R.medya], '⚠': ['kriz', '#e0565b'],
+    '🚨': ['kriz', '#e0565b'], '👥': ['kisiler', R.kisi], '👤': ['kisi', R.kisi], '🗺': ['harita', '#3a9fd6'], '💬': ['sohbet', R.mavi], '❤': ['kalp', R.pembe]
+  };
+  var TAB_RENK = { 'Özet': R.kisi, 'Şirketlerim': '#1f9e86', 'Ticaret': R.is, 'Bankalar': R.bordo, 'Yatırım': R.yesil, 'Emlak': R.mulk, 'Diğer': R.gri };
+  var IK_SEC = '.so-econ-tab-icon,.so-econ-tile-icon,.so-link-ikon,.so-makam-emoji,.so-kisa-simge,.so-ms-front-icon,.giris-satir>.yik';
+  function ikonlastir(kok) {
+    if (!kok) return;
+    var p = profil(), partiRenk = p && p.parti && /^#[0-9a-f]{6}$/i.test(p.parti.renk || '') ? p.parti.renk : '#8a68f2';
+    kok.querySelectorAll(IK_SEC).forEach(function (el) {
+      if (el.getAttribute('data-pa-ik')) return;
+      if (el.querySelector('svg,img')) { el.setAttribute('data-pa-ik', 'svg'); return; }
+      var t = (el.textContent || '').replace(/[\uFE0F\u200D\s]/g, function (c) { return c === '\u200D' ? '\u200D' : ''; }).trim();
+      var e = EMO[t] || EMO[t.replace(/\u200D/g, '')] || EMO[Array.from(t)[0]];
+      if (!e) return;
+      var renk = e[1] || partiRenk;
+      if (el.classList.contains('so-econ-tab-icon')) { var lb = el.parentElement && el.parentElement.getAttribute('aria-label'); if (lb && TAB_RENK[lb]) renk = TAB_RENK[lb]; }
+      el.innerHTML = ikon(e[0]); el.setAttribute('data-pa-ik', e[0]); el.classList.add('pa-ik');
+      el.style.setProperty('--ik', renk); el.style.setProperty('--ik2', karis(renk, '#0b1130', .55)); el.style.setProperty('--ikt', rgba(renk, .17)); el.style.setProperty('--ikc', karis(renk, '#ffffff', .5));
+    });
+  }
 
   /* ---------- kurum kartı parçaları ---------- */
   function veri(ls) { ls = ls.filter(function (x) { return x && x[1] != null && x[1] !== ''; }); return ls.length ? '<div class="pa-veri">' + ls.map(function (x) { return '<div><small>' + esc(x[0]) + '</small><b' + (x[2] != null ? ' data-pa-say="' + x[2] + '"' + (x[3] ? ' data-pa-tur="' + x[3] + '"' : '') : '') + '>' + esc(x[1]) + '</b></div>'; }).join('') + '</div>' : ''; }
@@ -718,15 +807,22 @@
       var app = document.getElementById('app'); if (!app) return;
       var nav = app.querySelector(':scope>nav.sekmeler:not(.pa-nav)'); if (nav) navKur(nav);
       var ic = app.querySelector('#icerik');
-      if (ic) { heroKur(ic); icIzle(ic); }
+      if (ic) { heroKur(ic); ikonlastir(ic); icIzle(ic); }
     } finally { calisiyor = false; }
   }
   var icGozcu = null, izlenen = null;
   function icIzle(ic) {
     if (izlenen === ic) return; izlenen = ic;
     if (icGozcu) icGozcu.disconnect();
-    icGozcu = new MutationObserver(function () { if (!calisiyor) isle(); });
-    icGozcu.observe(ic, { childList: true });
+    var bekliyor = false;
+    icGozcu = new MutationObserver(function (ms) {
+      if (calisiyor) return;
+      var dogrudan = ms.some(function (m) { return m.target === ic; });
+      if (dogrudan) { isle(); return; }
+      if (bekliyor) return; bekliyor = true;      // iç güncellemelerde yalnız simgeleri yenile (kare başına bir kez)
+      requestAnimationFrame(function () { bekliyor = false; try { ikonlastir(ic); } catch (e) {} });
+    });
+    icGozcu.observe(ic, { childList: true, subtree: true });
   }
   function basla() {
     stilKur();

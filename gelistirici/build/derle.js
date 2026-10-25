@@ -26,6 +26,8 @@ html=html.replace('<script src="ortak_sirketler.js"></script>',()=>'<script>'+fs
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','sigorta_afet.js'),'utf8')+'</script></body>');
 // NPC isletmeleri ve sirket pazari tek dosyalik iOS/Android paketine dahildir.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','npc_isletmeler.js'),'utf8')+'</script></body>');
+// Eski kart/POS modülü: şirket POS ekranı (kartPosEkrani, posBankaEkrani) için; Bankacılık 2.0'dan ÖNCE yüklenir ki çakışan adları 2.0 kazansın.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kart_bankacilik.js'),'utf8')+'</script></body>');
 // Bankacılık 2.0 (Mobil Şube, Banka Genel Müdürlüğü, kasa gizliliği) mobil pakete gömülür.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','bankacilik.js'),'utf8')+'</script></body>');
 // Ülke Kriz Merkezi (Gündem kartı ve karar ekranı) web ve mobil pakete gömülür.
@@ -48,6 +50,9 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 // Premium Ekonomi: ekranlar ve Mobil Şube birlikteliği (eklentiyi en son yükle).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','premium_ekonomi.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','yatirim_kasasi.js'),'utf8')+'</script></body>');
+// Şirket tek merkez, çek/bankacılık merkezi ve Şirketlerim gelir raporu (docs/*.js artık yüklenmediği için pakete gömülür).
+for (const m of ['cb_toren_2215.js','cb_kampanya.js','yatirim_pazari.js','sirket_tek_merkez.js','cek_merkezi.js','ekonomi_menu_onarim.js'])
+  html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www',m),'utf8')+'</script></body>');
 // Premium arayüz katmanı: 5'li alt menü + Menü çekmecesi, bölüm kurum kartları, kimlik kartı (en son yüklenir).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','premium_arayuz.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();

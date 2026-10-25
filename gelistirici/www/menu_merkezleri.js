@@ -552,8 +552,8 @@
         +grids([
           link("➕","Yeni şirket kur","Şehir, sektör ve kuruluş sermayesi belirle.","soMenuGit('sirketKurulumFormuAc')"),
           link("🤝","Ortaklık merkezi","Birlikte şirket kur, hisse devret, pay satın al.","soMenuGit('ortaklikEkrani')"),
-          link("📊","Şirketlerimin gelirleri","Kâr, zarar ve finansal raporlarını incele.","soMenuGit('sirketlerimMerkezi')"),
-          link("💼","Finans ve kazanç","Şirket gelirlerini incele, finansı yönet.","soMenuGit('sirketlerimMerkezi')")
+          link("📊","Şirketlerimin gelirleri","Kâr, zarar ve finansal raporlarını incele.","soSirketGelirRaporlari()"),
+          link("💼","Finans ve kazanç","Şirket gelirlerini incele, finansı yönet.","soSirketGelirRaporlari()")
         ]);
     }catch(err){
       return kart("Şirketlerim",'<p class="alt">Şirket listesi alınamadı: '+esc(err.message)+'</p>'
