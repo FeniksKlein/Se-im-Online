@@ -69,16 +69,18 @@ window.cekMerkeziAc=function(sirket){
 window.cekMerkeziEkrani=async function(){
  if(typeof yukleniyor==='function')yukleniyor('Bankacılık ve Çek Merkezi');
  try{
+  // Yardimci servislerden biri gecici hata verirse tum cek sayfasini kapatma.
+  // Temel cek paneli zorunludur; digerleri bolum bazinda bos gosterilebilir.
   var r=await Promise.all([
    API.rpc('cek_panel'),
-   API.rpc('cek_ticaret_panel'),
+   API.rpc('cek_ticaret_panel').catch(function(er){console.warn('Cek teklif paneli:',er);return [];}),
    API.rpc('cek_toptan_panel').catch(function(){return [];}),
    API.rpc('cek_ek_panel').catch(function(){return null;}),
-   API.rpc('cek_iptal_panel')
+   API.rpc('cek_iptal_panel').catch(function(er){console.warn('Cek iptal paneli:',er);return [];})
   ]);
-  CACHE.panel=r[0]; CACHE.teklifler=r[1]||[]; CACHE.toptan=r[2]||[]; CACHE.ek=r[3]; CACHE.iptaller=r[4]||[];
-  var p=r[0],hesap=p.hesaplar||[],sirketler=p.sirketler||[];
-  var gelecek=(p.verdiklerim||[]).filter(function(c){return c.durum==='aktif' || c.durum==='karsiliksiz';});
+  CACHE.panel=r[0]; CACHE.teklifler=Array.isArray(r[1])?r[1]:[]; CACHE.toptan=Array.isArray(r[2])?r[2]:[]; CACHE.ek=r[3]; CACHE.iptaller=Array.isArray(r[4])?r[4]:[];
+  var p=r[0]||{},hesap=Array.isArray(p.hesaplar)?p.hesaplar:[],sirketler=Array.isArray(p.sirketler)?p.sirketler:[];
+  var gelecek=(Array.isArray(p.verdiklerim)?p.verdiklerim:[]).filter(function(c){return c.durum==='aktif' || c.durum==='karsiliksiz';});
   var bekleyen=(CACHE.teklifler||[]).filter(function(t){return t.durum==='bekliyor';});
   var first=kart('🏦 Banka ve çek işlemleri',
    '<p class="alt">Çek defterini buradan al; aldığın ve verdiğin çekleri, vade tarihlerini ve teklifleri tek sayfadan yönet.</p>'+
