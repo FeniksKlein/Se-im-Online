@@ -677,11 +677,14 @@
       // Ustte orijinal sekmelerin calisan bir kopyasi. Butonlar zaten
       // soMenuSec'e yonlenir, piyasa karti yerinden koparilmaz.
       if(!nav.dataset.soNavId)nav.dataset.soNavId=String(Date.now())+String(Math.random());
+      const sarmal=document.createElement('div');
+      sarmal.className='so-ekonomi';sarmal.id='so-tabs-piyasa-ust';
+      sarmal.dataset.from=nav.dataset.soNavId;
+      sarmal.style.cssText='margin:0 0 4px;padding:0;';
       const yeni=nav.cloneNode(true);
-      yeni.id='so-tabs-piyasa-ust';
-      yeni.dataset.from=nav.dataset.soNavId;
       yeni.style.cssText='position:relative;top:auto;z-index:8;margin:8px 0 12px;width:100%;';
-      pano.parentNode.insertBefore(yeni,pano);
+      sarmal.appendChild(yeni);
+      pano.parentNode.insertBefore(sarmal,pano);
       nav.style.display='none';
     }
     const obs=new MutationObserver(()=>{
