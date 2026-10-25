@@ -35,6 +35,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kitap_vitrini.js'),'utf8')+'</script></body>');
 // Bankacilik ve sirket kârı tercihlerinin web ve mobil paketlerde aynı olması için göm.
 html=html.replace('<script src="hesap_duzeltmeleri_20261025.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','hesap_duzeltmeleri_20261025.js'),'utf8')+'</script>');
+// Kuyumcu ve doviz ofisi; web/mobil icin ortak dahili modül.
+html=html.replace('<script src="meslek_carsi.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','meslek_carsi.js'),'utf8')+'</script>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
