@@ -23,8 +23,8 @@
     ["icra", "İcradan Satılıklar"], ["baro", "Baro"]
   ];
   var ekonomiSekmeleri = [
-    ["genel", "Genel Bakış"], ["sirketlerim", "Şirketlerim"],
-    ["bankalar", "Bankalar"], ["sirketler", "Şirketler"],
+    ["genel", "Genel Bakış"], ["bankalar", "🏦 Bankalar"],
+    ["sirketlerim", "Şirketlerim"], ["sirketler", "Şirketler"],
     ["piyasalar", "Piyasalar"], ["emlak", "Gayrimenkul"], ["giris","İş Dünyası"], ["islemler", "İşlemler"]
   ];
   var secim = { adliye:"mahkeme", ekonomi:"genel" };
@@ -376,17 +376,19 @@
     var d=map[s]||map.genel;
     return '<div class="so-menu-hero"><h2>'+esc(d[0])+'</h2><p>'+esc(d[1])+'</p></div>';
   }
-  async function ekonomiGenel(){
-    var sahipKartlari="";
-    try{
-      var yonetilen=(await API.rpc("banka_yonetilen_liste"))||[];
-      if(yonetilen.length) sahipKartlari=baslik("🏦 Banka Sahibi Yönetimi","Sana ait bankaların başvurularını, müşterilerini ve otomatik onay ayarlarını buradan yönet.")
-        +grids([link("🏦","Banka Yönetim Panelim","POS · kredi kartı · kredi başvuruları / onay ve ret","soBankaYonetimGit('basvuru')","Yönetim")]);
-    }catch(_){/* Kişisel banka erişimi hata verse de ekonomi ekranı açılır. */}
-    return sahipKartlari+baslik("En çok kullanılan işlemler","Bir dokunuşla işleminin olduğu bölüme git.")
+  function ekonomiGenel(){
+    // Doğrudan bankaya erişim her oyuncuda görünür; yetki sunucu RPC'sinde denetlenir.
+    // Banka sahibi kimse banka rehberine yönelir, müşteri gibi yönetim ekranı açılmaz.
+    return baslik("🏦 Banka ve Finans Merkezi","Banka sahibiysen tek dokunuşla bankanı yönet, değilse bankaları görüntüle.")
+      +grids([
+        link("🏦","BANKAMI YÖNET","Banka kasasına para yatır, POS ve kart başvurularını onayla/reddet, otomatik kararları değiştir.",
+             "soBankaYonetimGit('ozet')","Banka Sahibi"),
+        link("💳","Bankalar ve Hesaplar","Devlet bankası, özel bankalar, kredi kartları ve mevduat.",
+             "soMenuSec('ekonomi','bankalar')")
+      ])
+      +baslik("En çok kullanılan işlemler","Bir dokunuşla işleminin olduğu bölüme git.")
       +grids([
         link("🏢","Şirketlerim","Kasalarım, şubeler, projeler ve hisse ortaklıkları.","soMenuSec('ekonomi','sirketlerim')"),
-        link("🏦","Bankalar","Hesaplarım, mevduat, kredi ve kredi kartı.","soMenuSec('ekonomi','bankalar')"),
         link("🏡","Gayrimenkul","Arsa, ev, dükkân ve kiralık mülkler.","soMenuSec('ekonomi','emlak')"),
         link("📈","Piyasalar","Borsa, altın, döviz ve ekonomik veriler.","soMenuSec('ekonomi','piyasalar')")
       ])
@@ -545,7 +547,7 @@
     var no=++istek.ekonomi, s=secim.ekonomi;
     ciz("ekonomi",ekonomiHero(s)+'<div class="yukleniyor">Yükleniyor…</div>');
     var z="";
-    if(s==="genel")z=await ekonomiGenel();
+    if(s==="genel")z=ekonomiGenel();
     else if(s==="sirketlerim")z=await sirketlerimHtml();
     else if(s==="bankalar")z=await bankalarHtml();
     else if(s==="sirketler")z=sirketlerHtml();
