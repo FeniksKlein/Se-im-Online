@@ -17003,6 +17003,11 @@ async function render(tab){
   var html='<section class="sahne"><div class="ne">EKONOMİ · MESLEKLER</div><h2 style="font-size:25px;margin:8px 0">Kuyumcu ve Döviz Çarşısı</h2><p class="alt">Gerçek referans kurlar, gerçek stok ve gerçek oyuncu işlemleri.</p></section>'+tabs();
   html+=page==="pazar"?marketplace():page==="dukkan"?management():portfolio();
   iskelet("Kuyumcu ve Döviz Çarşısı",html,{geri:true});
+  // Ekran acilinca eski/eksik kurlari oturum sahibinin yetkisiyle sunucuda yenile.
+  // Arka arkaya gelen talepler Edge Function onbellegine takilir.
+  if(!busy&&((data.kurlar||[]).length<5||(data.kurlar||[]).some(function(k){return !fresh(k);}))){
+   Promise.resolve().then(function(){if(!busy)window.meslekKurYenile();});
+  }
  }catch(err){iskelet("Kuyumcu ve Döviz Çarşısı",card("Erişim hatası",'<p>'+h(err.message||err)+'</p>'+btn("Tekrar dene","meslekOfisEkrani()")),{geri:true});}
 }
 window.meslekOfisEkrani=render;
