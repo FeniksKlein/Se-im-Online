@@ -412,3 +412,9 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - **Düzeltme:** bu dosyalar `gelistirici/www`'ye taşındı ve `derle.js` ile gömülüyor; 84b947e'deki gelir raporu `gelistirici/www/ekonomi_menu_onarim.js` (+ eksik kısayol hedefleri: `kartlarimEkrani` → Mobil Şube › Kartlar, `sirketHissePazariEkrani` → çek merkezi hisse pazarı, `arsaEkrani` → İlan Meydanı › Arsa). `kart_bankacilik.js` (şirket POS ekranı) Bankacılık 2.0'dan ÖNCE gömülür; çakışan adları 2.0 kazanır. Menü merkezlerindeki bütün `soMenuGit` hedefleri derlenen pakette tanımlı (otomatik denetlendi).
 - **Kural:** `docs/index.html`'e elle yazılan hiçbir şey kalıcı değildir; her değişiklik `gelistirici/www` + `derle.js` üzerinden yapılmalı.
 - **Arayüz:** `premium_arayuz.js` menü simgelerindeki emojileri (`.so-link-ikon`, `.so-econ-tab-icon`, `.so-econ-tile-icon`, `.so-makam-emoji`, `.so-kisa-simge`, `.so-ms-front-icon`) renkli kare içinde çizgi simgeye çevirir; Ekonomi üst sekmeleri yapışkan, tam genişlik simgeli karo şerit (eski üst üste binme düzeldi).
+
+## 2026-10-25 · 2026.10.25-8 Maaş kumbarası öne çıktı
+- **İstek (Ercan):** "Kumbarayı daha görünür bir yere al." (Aynı mesajdaki "şirket kurma / gelirler açılmıyor" ekranları 17:59'daki eski sürümdendi; -7 ile düzelmişti, canlı RPC'ler `bel_ruhsat_merkezi`, `pazar_katalog`, `ortak_sirket_panel` Ercan hesabıyla doğrulandı.)
+- **Gündem:** kurum kartının hemen altında "Maaş kumbarası" şeridi (birikmiş tutar, doluluk çubuğu, tek dokunuşla **Topla** → `topla` RPC, ardından `durumYenile` + yeniden çizim). Dolunca yeşile döner ve nabız gibi parlar.
+- **Hayat:** asıl kumbara kartı (`#hTopla` düğmeli `.olay`) kurum kartının hemen altına taşınır ve büyütülür; Kasam/Bankacılık kartları altta kalır.
+- **Üst çubuk:** kumbara dolunca cüzdan çipinde yeşil nokta.

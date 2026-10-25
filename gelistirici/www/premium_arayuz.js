@@ -332,6 +332,40 @@
     '#icerik .ynt-bolum>.btn.altin:first-of-type{background:linear-gradient(135deg,rgba(123,97,255,.30),rgba(123,97,255,.12))!important;box-shadow:inset 0 0 0 1px rgba(168,149,255,.32)!important}',
     '#icerik .so-gundem-kisa .so-kisa-metin{min-width:0}',
     '#icerik .so-gundem-kisa>.pa-hizli{margin-bottom:18px}',
+    /* maaş kumbarası şeridi (Gündem) */
+    '.pa-kumbara{position:relative;display:flex;align-items:center;gap:12px;margin:0 0 12px;padding:13px 14px;border-radius:20px;background:linear-gradient(135deg,#2a2160,#1a1d45 70%);box-shadow:inset 0 0 0 1px rgba(168,149,255,.22),0 14px 28px -20px #7b61ff;overflow:hidden}',
+    '.pa-kumbara::before{content:"";position:absolute;inset:0;background:var(--pa-gilos) right -150px top -60px/420px auto no-repeat;opacity:.12;pointer-events:none}',
+    '.pa-kumbara.dolu{background:linear-gradient(135deg,#136b55,#14324a 75%);box-shadow:inset 0 0 0 1px rgba(125,255,191,.35),0 16px 30px -18px #21c08b;animation:paKumbaraNabiz 2.4s ease-in-out infinite}',
+    '@keyframes paKumbaraNabiz{50%{box-shadow:inset 0 0 0 1px rgba(125,255,191,.55),0 16px 34px -14px #2fe0a2}}',
+    '.pa-kumbara .pa-kk{position:relative;flex:none;display:grid;place-items:center;width:48px;height:48px;border-radius:16px;color:#fff;background:linear-gradient(145deg,#9b7dff,#5a3fd6);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 8px 18px -10px #7b61ff}',
+    '.pa-kumbara.dolu .pa-kk{background:linear-gradient(145deg,#3fe0a6,#12936d);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 8px 18px -8px #21c08b}',
+    '.pa-kumbara .pa-kk svg{width:26px;height:26px}',
+    '.pa-kumbara .pa-km{position:relative;flex:1;min-width:0}',
+    '.pa-kumbara .pa-km small{display:block;font-size:12px;font-weight:650;color:rgba(255,255,255,.75)}',
+    '.pa-kumbara .pa-km b{display:block;margin-top:1px;font:700 24px/1.1 var(--disp);color:#fff;letter-spacing:-.3px;font-variant-numeric:tabular-nums}',
+    '.pa-kumbara .pa-kbar{height:6px;margin-top:6px;border-radius:6px;background:rgba(255,255,255,.14);overflow:hidden}',
+    '.pa-kumbara .pa-kbar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#a895ff,#ffffff)}',
+    '.pa-kumbara.dolu .pa-kbar i{background:linear-gradient(90deg,#3fe0a6,#c8ffe9)}',
+    '.pa-kumbara .pa-kalt{display:block;margin-top:5px;font-size:11.5px;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.pa-kumbara .pa-topla{all:unset;box-sizing:border-box;position:relative;flex:none;cursor:pointer;padding:12px 18px;border-radius:14px;background:#fff;color:#2a1f6b;font-weight:800;font-size:15px;box-shadow:0 8px 18px -10px rgba(255,255,255,.7)}',
+    '.pa-kumbara.dolu .pa-topla{background:linear-gradient(180deg,#5cf0bb,#22c48f);color:#06301f}',
+    '.pa-kumbara .pa-topla:active{transform:scale(.95)}',
+    '.pa-kumbara .pa-topla:disabled{opacity:.45;cursor:default;box-shadow:none}',
+    '.pa-kumbara .pa-topla:focus-visible{outline:2px solid #fff;outline-offset:2px}',
+    /* Hayat: asıl kumbara kartı kurum kartının hemen altında, büyük */
+    '#icerik .olay.pa-kumbara-buyuk{margin:0 0 12px!important;padding:16px!important;border:0!important;border-radius:22px!important;background:linear-gradient(135deg,#2a2160,#181c44 75%)!important;box-shadow:inset 0 0 0 1px rgba(168,149,255,.22),0 16px 30px -22px #7b61ff!important}',
+    '#icerik .olay.oy.pa-kumbara-buyuk{background:linear-gradient(135deg,#136b55,#14324a 75%)!important;box-shadow:inset 0 0 0 1px rgba(125,255,191,.35),0 16px 30px -18px #21c08b!important}',
+    '#icerik .olay.pa-kumbara-buyuk .baslik b{font:700 19px/1.2 var(--disp)}',
+    '#icerik .olay.pa-kumbara-buyuk .sayac{font:700 38px/1.1 var(--disp)!important;letter-spacing:-.6px;color:#fff}',
+    '#icerik .olay.pa-kumbara-buyuk .bar{height:9px;border-radius:9px;background:rgba(255,255,255,.14)}',
+    '#icerik .olay.pa-kumbara-buyuk .bar i{border-radius:9px;background:linear-gradient(90deg,#a895ff,#fff)!important}',
+    '#icerik .olay.oy.pa-kumbara-buyuk .bar i{background:linear-gradient(90deg,#3fe0a6,#c8ffe9)!important}',
+    '#icerik .olay.pa-kumbara-buyuk #hTopla{margin-top:12px;min-height:52px;font-size:17px;font-weight:800;border-radius:15px;background:#fff!important;color:#2a1f6b!important;box-shadow:0 10px 22px -12px rgba(255,255,255,.7)!important}',
+    '#icerik .olay.oy.pa-kumbara-buyuk #hTopla{background:linear-gradient(180deg,#5cf0bb,#22c48f)!important;color:#06301f!important}',
+    '#icerik .olay.pa-kumbara-buyuk #hTopla:disabled{opacity:.45}',
+    /* cüzdan çipi: kumbara dolunca yeşil nokta */
+    '.ust .para-cip.pa-kumbara-dolu{position:relative}',
+    '.ust .para-cip.pa-kumbara-dolu::after{content:"";position:absolute;top:-3px;right:-3px;width:11px;height:11px;border-radius:50%;background:#34c98a;border:2px solid #0b1026;box-shadow:0 0 0 3px rgba(52,201,138,.28)}',
     /* simge kareleri */
     '#icerik .pa-ik{display:grid!important;place-items:center;flex:none;color:#fff!important;font-size:0!important;line-height:0;border-radius:14px!important;background:linear-gradient(145deg,var(--ik),var(--ik2))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.26),0 8px 16px -10px var(--ik)!important;border:0!important}',
     '#icerik .pa-ik svg{width:21px!important;height:21px!important;display:block;max-width:none!important;flex:none}',
@@ -354,7 +388,7 @@
     '#icerik .so-ekonomi>.so-tabs .so-econ-tab-icon.pa-ik{width:40px!important;height:40px!important;margin:0!important;background:var(--ikt)!important;color:var(--ikc)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)!important;transition:background .2s,box-shadow .2s}',
     '#icerik .so-ekonomi>.so-tabs>button[aria-selected="true"] .so-econ-tab-icon.pa-ik{background:linear-gradient(145deg,var(--ik),var(--ik2))!important;color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 8px 18px -8px var(--ik)!important}',
     '#icerik .so-ekonomi>.so-tabs>button:active .so-econ-tab-icon{transform:scale(.92)}',
-    '@media (prefers-reduced-motion:reduce){.pa-hero.pa-giris,.pa-kimlik.pa-giris,.pa-hero .pa-isilti,#paMenu .pa-cekmece,#paMenu .pa-perde{animation:none!important}}',
+    '@media (prefers-reduced-motion:reduce){.pa-kumbara.dolu,.pa-hero.pa-giris,.pa-kimlik.pa-giris,.pa-hero .pa-isilti,#paMenu .pa-cekmece,#paMenu .pa-perde{animation:none!important}}',
     '@media (max-width:360px){.ust h1{font-size:22px!important}.pa-hero{padding:15px 14px 14px}.pa-hero .pa-veri>div{padding:7px 8px 8px}.pa-hero .pa-veri b{font-size:16px}.pa-hero .pa-ust b{font-size:24px}.pa-hero .pa-ust b.buyuk{font-size:34px}.pa-hizli{gap:6px}.pa-hizli b{font-size:11px}.pa-kimlik .pa-kf{width:64px;height:80px}.pa-kimlik .pa-kalan b{font-size:12.5px}.pa-kimlik .pa-kalan b.ad{font-size:17px}#paMenu .pa-izgara{gap:7px}#paMenu .pa-karo{padding:10px 9px;min-height:96px}}'
   ].join('\n');
 
@@ -412,6 +446,7 @@
     gorev: function () { var f = g('gorevEkrani'); f ? ac(f) : hata(); },
     tikla: function (id) { var el = document.getElementById(id); if (el && !el.disabled) el.click(); else if (el) { var t = g('toast'); if (t) t('Şu an kullanılamıyor.'); } },
     kaydir: function (sec) { var el = document.querySelector(sec); if (el) el.scrollIntoView({ behavior: azHareket() ? 'auto' : 'smooth', block: 'start' }); },
+    topla: function () { toplaEylem(); },
     akis: function () { var f = g('akisEkrani'); f ? ac(function () { return f(); }) : hata(); }
   };
   window.soPa = function (ad) { var a = [].slice.call(arguments, 1); try { menuKapat(true); if (EYLEM[ad]) EYLEM[ad].apply(null, a); } catch (e) { if (window.console) console.warn('Premium arayüz:', e); hata(); } };
@@ -490,6 +525,50 @@
     return '';
   }
 
+  /* ---------- maaş kumbarası (her zaman göz önünde) ---------- */
+  function kumbaraBilgi(p) {
+    var h = SON.hayat, kb = h && h.kumbara, cz = (p && p.cuzdan) || {};
+    var bir = kb && kb.birikmis != null ? sayi(kb.birikmis) : sayi(cz.birikmis);
+    var kap = kb ? sayi(kb.kapasite) || 24 : 0, saat = kb ? sayi(kb.saat) : 0;
+    var dolu = !!cz.dolu || (kap > 0 && saat >= kap);
+    var toplanabilir = bir >= 1 || !!cz.gunun_ilki || (h && h.bugun_toplandi === false);
+    return { bir: bir, kap: kap, saat: saat, dolu: dolu, toplanabilir: toplanabilir, oran: kap ? Math.min(1, saat / kap) : (dolu ? 1 : null) };
+  }
+  function kumbaraSerit(p) {
+    var k = kumbaraBilgi(p);
+    var alt = k.dolu ? 'Kumbara doldu, birikme durdu. Hemen topla!' : (k.kap ? tr(k.saat, 1) + ' / ' + k.kap + ' saat doldu' : 'Maaşın saat saat birikiyor');
+    return '<section class="pa-kumbara' + (k.dolu ? ' dolu' : '') + '" data-pa-kumbara aria-label="Maaş kumbarası">' +
+      '<span class="pa-kk">' + IK.kumbara + '</span>' +
+      '<div class="pa-km"><small>Maaş kumbarası</small><b>' + esc(tl(k.bir)) + '</b>' +
+      (k.oran != null ? '<div class="pa-kbar"><i style="width:' + Math.round(k.oran * 100) + '%"></i></div>' : '') +
+      '<span class="pa-kalt">' + esc(alt) + '</span></div>' +
+      '<button type="button" class="pa-topla" onclick="soPa(&quot;topla&quot;)"' + (k.toplanabilir ? '' : ' disabled') + '>Topla</button></section>';
+  }
+  var toplaniyor = false;
+  function toplaEylem() {
+    var b = document.getElementById('hTopla');
+    if (b) { if (!b.disabled) b.click(); return; }
+    if (toplaniyor || typeof API === 'undefined' || !API) return; toplaniyor = true;
+    document.querySelectorAll('.pa-topla').forEach(function (x) { x.disabled = true; x.textContent = 'Toplanıyor…'; });
+    API.rpc('topla').then(function (r) {
+      var s2 = (r && r.sonuc) || {}, t = g('toast'), tly = function (n) { return tl(n); };
+      if (t) t('+' + tly(s2.maas || 0) + ' maaş' + (s2.destek ? ' + ' + tly(s2.destek) + ' destek' : '') + (s2.ilk && s2.seri > 1 ? ' · ' + s2.seri + '. gün' : '') + (s2.statu_atladi ? ' · Statün yükseldi!' : ''));
+      if (r && typeof r === 'object') SON.hayat = r;
+      var dy = g('durumYenile');
+      return (dy ? dy() : Promise.resolve()).then(function () { var y = g('yenidenCiz'); if (y) y(); var rg = g('rozetGuncelle'); if (rg) try { rg(); } catch (e) {} });
+    }).catch(function (err) {
+      var t = g('toast'), hc = g('hataCevir'); if (t) t(hc ? hc(err && err.message) : 'Toplanamadı.', true);
+      document.querySelectorAll('.pa-topla').forEach(function (x) { x.disabled = false; x.textContent = 'Topla'; });
+    }).then(function () { toplaniyor = false; });
+  }
+  function ekleriSirala(ic, k, var_) {               // kartın hemen altına: kumbara, sonra hızlı işlemler
+    var son = var_, tasindi = false;
+    var kum = k === 'hayat' ? (function () { var b = ic.querySelector('#hTopla'); var o = b && b.closest('.olay'); if (o) o.classList.add('pa-kumbara-buyuk'); return o; })() : (var_.parentElement || ic).querySelector('[data-pa-kumbara]');
+    var hz = (var_.parentElement || ic).querySelector('[data-pa-hizli]') || ic.querySelector('[data-pa-hizli]');
+    [kum, hz].forEach(function (el) { if (!el) return; if (son.nextElementSibling !== el) { son.after(el); tasindi = true; } son = el; });
+    return tasindi;
+  }
+
   /* ---------- bölüm başına kurum kartı + sadeleştirme ---------- */
   function gizle(ic, sec) { try { ic.querySelectorAll(sec).forEach(function (x) { x.classList.add('pa-gizli'); }); } catch (e) {} }
   function kartIle(ic, sec) { try { ic.querySelectorAll(':scope>.kart').forEach(function (k) { if (k.querySelector(sec)) k.classList.add('pa-gizli'); }); } catch (e) {} }
@@ -502,10 +581,10 @@
       var tarih = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' });
       return hero('gundem', {
         ust: tarih, baslik: selam() + ', ' + p.kad, alt: rolYaz(p) + ' · ' + parti,
-        cip: cipler([siradakiSecim(d), cz.dolu ? cip('Maaş kumbaran doldu', 'yesil') : '']),
-        veri: veri([['Cüzdan', kisaTl(cz.para), cz.para, 'kisa'], ['Kumbarada', tl(cz.birikmis), cz.birikmis, 'tl'], ['Okunmamış', tr(sayi(ok.sohbet) + sayi(ok.ozel)), sayi(ok.sohbet) + sayi(ok.ozel)]])
-      }) + hizli('gundem', [
-        ['kumbara', 'Maaşım', on('sekme', 'hayat'), cz.dolu ? 'Topla' : ''],
+        cip: cipler([siradakiSecim(d)]),
+        veri: veri([['Cüzdan', kisaTl(cz.para), cz.para, 'kisa'], ['Okunmamış', tr(sayi(ok.sohbet) + sayi(ok.ozel)), sayi(ok.sohbet) + sayi(ok.ozel)]])
+      }) + kumbaraSerit(p) + hizli('gundem', [
+        ['hayat', 'Hayat', on('sekme', 'hayat')],
         ['meclis', 'Meclis', on('sekme', 'meclis')],
         ['banka', 'Mobil Şube', on('mobilSube')],
         ['magaza', 'Mağaza', on('magaza')]
@@ -531,18 +610,17 @@
       gizle(ic, ':scope>.sahne:first-child'); kartIle(ic, 'button[onclick*="gorevEkrani"]'); gizle(ic, ':scope>#mgHayat');
       var rk = document.getElementById('hReklam'), rkAlt = rk ? (rk.querySelector('.kucuk') || {}).textContent : '';
       if (rk && rk.parentElement && rk.parentElement.parentElement === ic) rk.parentElement.classList.add('pa-gizli');
-      var topla = document.getElementById('hTopla');
       var kap = sayi(kb.kapasite) || 24, saat = sayi(kb.saat);
       return hero('hayat', {
         ust: 'Cüzdanın', baslik: tl(h.para != null ? h.para : cz.para), sayac: h.para != null ? h.para : cz.para, buyuk: true,
         sag: kb.kapasite ? halka(saat / kap, tr(saat, 1), '/ ' + kap + ' saat') : '',
         cip: cipler([st.ad ? cip(st.ad) : '', kb.seri ? cip(kb.seri + ' günlük seri') : '']),
-        veri: veri([['Kumbarada', tl(kb.birikmis != null ? kb.birikmis : cz.birikmis)], ['Saatlik net', kb.saatlik ? tl(kb.saatlik.net) : null], ['Günlük net', kb.gunluk_net ? tl(kb.gunluk_net) : null]])
+        veri: veri([['Saatlik net', kb.saatlik ? tl(kb.saatlik.net) : null], ['Günlük net', kb.gunluk_net ? tl(kb.gunluk_net) : null]])
       }) + hizli('hayat', [
-        ['kumbara', 'Maaşı topla', topla ? on('tikla', 'hTopla') : on('kaydir', '#icerik .olay'), '', topla ? !!topla.disabled : false],
         ['gorev', 'Görevler', on('gorev')],
         rk ? ['oynat', 'Reklam izle', on('tikla', 'hReklam'), (rkAlt || '').trim()] : null,
-        ['banka', 'Mobil Şube', on('mobilSube')]
+        ['banka', 'Mobil Şube', on('mobilSube')],
+        ['magaza', 'Mağaza', on('magaza')]
       ]);
     },
     sohbet: function (ic, d, p) {
@@ -669,18 +747,18 @@
     if (var_) {                                   // sonradan eklenen bölümler kartın üstüne çıkmasın; gizlemeleri tazele
       try { HERO[k](ic, d, p); } catch (e) {}
       if (k === 'gundem') {                       // Gündem'in sıralamasını kendi modülü yönetir: kart, basın kısayollarının başında durur
-        var kisa = ic.querySelector(':scope>.so-gundem-kisa'), hz0 = ic.querySelector('[data-pa-hizli]');
-        if (kisa && var_.parentElement !== kisa) { kisa.insertBefore(var_, kisa.firstChild); if (hz0) var_.after(hz0); }
+        var kisa = ic.querySelector(':scope>.so-gundem-kisa'), kum0 = ic.querySelector('[data-pa-kumbara]'), hz0 = ic.querySelector('[data-pa-hizli]');
+        if (kisa && var_.parentElement !== kisa) { kisa.insertBefore(var_, kisa.firstChild); if (kum0) var_.after(kum0); if (hz0) (kum0 || var_).after(hz0); }
         return;
       }
       if (var_.parentElement !== ic) return;
       var anah = k + '|' + (d._ekranNo || 0);
       if (tasimaAnahtar !== anah) { tasimaAnahtar = anah; tasimaSay = 0; }
       if (tasimaSay > 4) return;                  // başka bir modülle sıralama yarışına girme
-      var hz = ic.querySelector(':scope>[data-pa-hizli]'), once = var_.previousElementSibling, tasindi = false;
+      var once = var_.previousElementSibling, tasindi = false;
       while (once && once.classList.contains('pa-gizli')) once = once.previousElementSibling;
       if (once) { ic.insertBefore(var_, ic.firstChild); tasindi = true; }
-      if (hz && var_.nextElementSibling !== hz) { var_.after(hz); tasindi = true; }
+      if (ekleriSirala(ic, k, var_)) tasindi = true;
       if (tasindi) tasimaSay++;
       return;
     }
@@ -694,6 +772,7 @@
     else ic.insertAdjacentHTML('afterbegin', html);
     var anahtar = k + '|' + (d._ekranNo || 0);
     var kart = ic.querySelector('[data-pa-hero]');
+    if (kart && k !== 'gundem') ekleriSirala(ic, k, kart);
     if (kart && anahtar !== sonGiris && !azHareket()) { sonGiris = anahtar; kart.classList.add('pa-giris'); sayacOynat(kart); }
     else sonGiris = anahtar;
   }
@@ -806,6 +885,8 @@
       apiSar(); ortam();
       var app = document.getElementById('app'); if (!app) return;
       var nav = app.querySelector(':scope>nav.sekmeler:not(.pa-nav)'); if (nav) navKur(nav);
+      var cip0 = app.querySelector('.ust .para-cip'), pp = profil();
+      if (cip0) cip0.classList.toggle('pa-kumbara-dolu', !!(pp && pp.cuzdan && (pp.cuzdan.dolu || pp.cuzdan.gunun_ilki)));
       var ic = app.querySelector('#icerik');
       if (ic) { heroKur(ic); ikonlastir(ic); icIzle(ic); }
     } finally { calisiyor = false; }
