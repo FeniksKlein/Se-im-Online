@@ -7,7 +7,7 @@ alter table oyun.meslek_islemler add column if not exists komisyon numeric(24,2)
 create or replace function public.meslek_komisyon_ayarla(p_dukkan bigint,p_oran numeric)
 returns jsonb language plpgsql security definer set search_path='' as $$
 begin
- if p_oran is null or p_oran<0 or p_oran>2 then raise exception 'Komisyon orani %0 ile %2 arasinda olmali';end if;
+ if p_oran is null or p_oran<0 or p_oran>2 then raise exception 'Komisyon orani 0 ile 2 yuzde arasinda olmali';end if;
  update oyun.meslek_dukkan set komisyon_orani=round(p_oran,3)
  where id=p_dukkan and sahibi=auth.uid() and aktif;
  if not found then raise exception 'Bu dukkan sana ait degil';end if;
