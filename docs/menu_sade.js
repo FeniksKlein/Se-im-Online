@@ -118,6 +118,25 @@
     toast("Sigorta ekranı yüklenemedi. Sayfayı yenileyip tekrar dene.",true);
   };
 
+  /* Banka sahibi yönetimine, hangi Ekonomi menüsü etkin olursa olsun ulaş. */
+  window.msBankaSahibiGit=async function(){
+    try{
+      if(typeof window.soBankaYonetimGit==='function')return window.soBankaYonetimGit('ozet');
+      var banks=(await API.rpc('banka_yonetilen_liste'))||[];
+      if(!banks.length)return toast('Yönetebileceğin banka bulunamadı.',true);
+      if(typeof window.bankaYonetimEkrani!=='function'){
+        await new Promise(function(resolve,reject){
+          var el=document.createElement('script');
+          el.src='./banka_yonetim.js?v=20261025b';
+          el.onload=resolve;el.onerror=function(){reject(new Error('Banka paneli yüklenemedi'))};
+          document.head.appendChild(el);
+        });
+      }
+      var id=Number(banks[0].id);
+      return ekranAc(function(){return window.bankaYonetimEkrani(id,'ozet')});
+    }catch(ex){toast('Banka yönetimi açılamadı: '+String(ex.message||ex),true)}
+  };
+
   /* ---------------- Ekonomi sekmesi ---------------- */
   function ekonomiEkrani(){
     const cz = D.durum && D.durum.profil && D.durum.profil.cuzdan;
@@ -128,6 +147,11 @@
         <div class="kucuk" style="margin-top:6px">Şirketler, yatırımlar, bankalar ve emlak tek yerde.</div>
       </section>
 
+      <section class="kart" style="margin-bottom:12px;border:2px solid #91baff;background:linear-gradient(135deg,#172749,#253d68)">
+        <h2>🏦 BANKAMI YÖNET</h2>
+        <p class="alt">Banka sahibinin kasa, sermaye, POS, kredi kartı, kredi ve otomatik onay yönetimi. Bankalara göz atmana gerek yok.</p>
+        <button type="button" class="btn altin" style="width:100%;min-height:50px;font-weight:800" onclick="msBankaSahibiGit()">🏦 Bankamın Yönetim Ekranını Aç</button>
+      </section>
       <section class="kart" style="margin-bottom:14px;border:2px solid var(--ink2,#a995ff)">
         <h2>🏦 Bankacılık Merkezi</h2>
         <p class="alt">Devlet bankası ve oyuncu bankaları ayrı menülerde. Kredi kartı, POS, haftalık ekstre ve borç ödeme burada.</p>
