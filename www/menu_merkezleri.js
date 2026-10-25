@@ -371,8 +371,14 @@
     var d=map[s]||map.genel;
     return '<div class="so-menu-hero"><h2>'+esc(d[0])+'</h2><p>'+esc(d[1])+'</p></div>';
   }
-  function ekonomiGenel(){
-    return baslik("En çok kullanılan işlemler","Bir dokunuşla işleminin olduğu bölüme git.")
+  async function ekonomiGenel(){
+    var sahipKartlari="";
+    try{
+      var yonetilen=(await API.rpc("banka_yonetilen_liste"))||[];
+      if(yonetilen.length) sahipKartlari=baslik("🏦 Banka Sahibi Yönetimi","Sana ait bankaların başvurularını, müşterilerini ve otomatik onay ayarlarını buradan yönet.")
+        +grids([link("🏦","Banka Yönetim Panelim","POS · kredi kartı · kredi başvuruları / onay ve ret","soBankaYonetimGit('basvuru')","Yönetim")]);
+    }catch(_){/* Kişisel banka erişimi hata verse de ekonomi ekranı açılır. */}
+    return sahipKartlari+baslik("En çok kullanılan işlemler","Bir dokunuşla işleminin olduğu bölüme git.")
       +grids([
         link("🏢","Şirketlerim","Kasalarım, şubeler, projeler ve hisse ortaklıkları.","soMenuSec('ekonomi','sirketlerim')"),
         link("🏦","Bankalar","Hesaplarım, mevduat, kredi ve kredi kartı.","soMenuSec('ekonomi','bankalar')"),
@@ -403,19 +409,33 @@
       ]);
   }
   async function bankalarHtml(){
-    var z=bankalarGenel();
+    var z="";
     try{
       var b=(await API.rpc("banka_yonetilen_liste"))||[];
-      if(b.length)z+=baslik("Benim bankalarım","Bankanın adına dokunarak kredi, mevduat ve yönetim işlemlerini aç.")
-        +grids(b.map(function(x){
-          return link("🏦",x.ad,"Banka kasası: "+trPara(x.kasa),"soMenuBanka("+Number(x.id)+")","Yönetim");
-        }));
-    }catch(_){/* Banka rehberi yine açılabilir; tek veri çağrısı tüm menüyü engellemez. */}
-    return z;
+      if(b.length)z+=baslik("🏦 Banka Sahibi Yönetimi","Banka sahibiysen tüm onay/ret işlemlerin burada. Müşteri bankacılığıyla karışmaz.")
+        +grids([
+          link("📥","Başvuruları Yönet","POS, kredi kartı ve kredi başvurularını gör, onayla veya reddet.","soBankaYonetimGit('basvuru')","Yönetim"),
+          link("⚙️","Otomatik Karar Ayarları","POS, kredi kartı ve kredi için otomatik / manuel kurallar.","soBankaYonetimGit('ayar')","Yönetim")
+        ])
+        +baslik("Benim bankalarım","Bankanın adına dokunarak yönetimini aç.")
+        +grids(b.map(function(x){return link("🏦",x.ad,"Banka kasası: "+trPara(x.kasa),"soMenuBanka("+Number(x.id)+",'basvuru')","Yönetim");}));
+    }catch(_){/* Oyuncu müşteri olarak bankacılığı kullanmaya devam edebilir. */}
+    return z+bankalarGenel();
   }
-  window.soMenuBanka=function(id){
+  window.soMenuBanka=function(id,tab){
     if(typeof window.bankaYonetimEkrani!=="function")return toast("Banka yönetimi yüklenmedi. Sayfayı yenile.",true);
-    return ekranAc(function(){return bankaYonetimEkrani(Number(id));});
+    return ekranAc(function(){return bankaYonetimEkrani(Number(id),tab||'basvuru');});
+  };
+  window.soBankaYonetimGit=async function(tab){
+    try{
+      var list=(await API.rpc("banka_yonetilen_liste"))||[];
+      if(!list.length)return toast("Yönetim yetkin olan banka bulunamadı.",true);
+      if(list.length>1){
+        soMenuSec('ekonomi','bankalar');
+        return toast("Yöneteceğin bankayı 'Benim bankalarım' bölümünden seç.",false);
+      }
+      return window.soMenuBanka(Number(list[0].id),tab||'basvuru');
+    }catch(err){return toast("Banka yönetimi açılamadı: "+String(err&&err.message||err),true);}
   };
   async function sirketlerimHtml(){
     try{
@@ -520,7 +540,7 @@
     var no=++istek.ekonomi, s=secim.ekonomi;
     ciz("ekonomi",ekonomiHero(s)+'<div class="yukleniyor">Yükleniyor…</div>');
     var z="";
-    if(s==="genel")z=ekonomiGenel();
+    if(s==="genel")z=await ekonomiGenel();
     else if(s==="sirketlerim")z=await sirketlerimHtml();
     else if(s==="bankalar")z=await bankalarHtml();
     else if(s==="sirketler")z=sirketlerHtml();
