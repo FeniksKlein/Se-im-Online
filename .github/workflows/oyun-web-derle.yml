@@ -1,10 +1,18 @@
 name: Oyun web surumu derle
 
+# 25.10.2026: Bu iş artık canlı web dosyalarını (docs/index.html, www/index.html) EZMEZ.
+# Sebep: canlıdaki docs/index.html, gelistirici/www/index.html'de olmayan parçalar içeriyor
+# (seçim gecesi yük koruması, kriz merkezi, banka/çek merkezi yükleyicileri...). Sabah bu iş
+# docs/index.html'i eski kaynaktan yeniden üretince bu bölümler canlıdan kayboldu.
+# Şimdi yalnızca: sözdizimi kontrolü + deneme derlemesi + supabase-kurulum.sql üretimi
+# + canlı web dosyasının temel modülleri hâlâ yüklediğinin kontrolü.
+
 on:
   push:
     branches: [main]
     paths:
       - "gelistirici/**"
+      - "docs/**"
       - ".github/workflows/oyun-web-derle.yml"
   workflow_dispatch:
 
@@ -27,25 +35,25 @@ jobs:
           node-version: 22
       - name: JavaScript sozdizimi
         run: |
-          node --check gelistirici/www/hesap_duzeltmeleri_20261025.js
-          node --check gelistirici/www/menu_sade.js
-          node --check gelistirici/build/derle.js
-          node --check gelistirici/build/sql_birlestir.js
-      - name: Web ve SQL derle
+          for f in docs/*.js gelistirici/build/derle.js gelistirici/build/sql_birlestir.js; do node --check "$f"; done
+      - name: Deneme derlemesi ve SQL
         run: |
           node gelistirici/build/derle.js
           node gelistirici/build/sql_birlestir.js
-          cp gelistirici/dist/index.html docs/index.html
-          cp gelistirici/dist/index.html www/index.html
           cp gelistirici/dist/supabase-kurulum.sql supabase-kurulum.sql
-          grep -q "window.internetBankaciligiEkrani" docs/index.html
-          grep -q "window.sirketKarTercihEkrani" docs/index.html
-      - name: Derlenmis dosyalari depoya kaydet
+      - name: Canli web dosyasi temel modulleri yukluyor mu
+        run: |
+          for m in menu_sade.js menu_merkezleri.js bildirim_merkezi.js cek_merkezi.js uzaktan_kontrol.js magaza.js; do
+            grep -q "src=\"$m" docs/index.html || { echo "docs/index.html $m yuklemiyor"; exit 1; }
+          done
+          grep -q "window.YUK" docs/index.html
+          grep -q "krizMerkeziEkrani" docs/index.html
+      - name: SQL kurulum dosyasini kaydet
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/index.html www/index.html supabase-kurulum.sql
+          git add supabase-kurulum.sql
           if ! git diff --cached --quiet; then
-            git commit -m "build: banka ve sirket kar duzeltmeleri [skip ci]"
+            git commit -m "build: supabase-kurulum.sql [skip ci]"
             git push origin HEAD:main
           fi
