@@ -6,10 +6,17 @@
   if (window.SO_MENU_MERKEZLERI_V1) return;
   window.SO_MENU_MERKEZLERI_V1 = true;
   if (!document.getElementById('banka-yonetim-loader')) {
-    var s=document.createElement('script');
-    s.id='banka-yonetim-loader';
-    s.src='./banka_yonetim.js?v=20261023e';
-    document.head.appendChild(s);
+    var bankScript=document.createElement('script');
+    bankScript.id='banka-yonetim-loader';
+    bankScript.src='./banka_yonetim.js?v=20261025b';
+    bankScript.onload=function(){
+      if(document.getElementById('banka-sahibi-iyilestirme'))return;
+      var ui=document.createElement('script');
+      ui.id='banka-sahibi-iyilestirme';
+      ui.src='./banka_sahibi_paneli.js?v=20261025b';
+      document.head.appendChild(ui);
+    };
+    document.head.appendChild(bankScript);
   }
 
   var adliyeSekmeleri = [
@@ -18,8 +25,8 @@
     ["icra", "İcradan Satılıklar"], ["baro", "Baro"]
   ];
   var ekonomiSekmeleri = [
-    ["genel", "Genel Bakış"], ["sirketlerim", "Şirketlerim"],
-    ["bankalar", "Bankalar"], ["sirketler", "Şirketler"],
+    ["genel", "Genel Bakış"], ["bankalar", "🏦 Bankalar"],
+    ["sirketlerim", "Şirketlerim"], ["sirketler", "Şirketler"],
     ["piyasalar", "Piyasalar"], ["emlak", "Gayrimenkul"], ["giris","İş Dünyası"], ["islemler", "İşlemler"]
   ];
   var secim = { adliye:"mahkeme", ekonomi:"genel" };
@@ -372,10 +379,18 @@
     return '<div class="so-menu-hero"><h2>'+esc(d[0])+'</h2><p>'+esc(d[1])+'</p></div>';
   }
   function ekonomiGenel(){
-    return baslik("En çok kullanılan işlemler","Bir dokunuşla işleminin olduğu bölüme git.")
+    // Banka sahibi kısayolu gizli sekmeye bağlı olmadan ilk ekranda görünür.
+    // Yetki kontrolü sunucudaki banka_yonetilen_liste RPC'sindedir.
+    return baslik("🏦 Bankalar ve Bankamı Yönet","Banka sahibiysen kasanı, POS ve kart başvurularını doğrudan buradan yönet.")
+      +grids([
+        link("🏦","BANKAMI YÖNET","Banka kasasına şahsi para aktar, POS / kredi / kart başvurularını yönet.",
+          "soBankaYonetimGit('ozet')","Banka sahibi"),
+        link("💳","Bankalar ve Hesaplar","Devlet bankası, özel bankalar, kredi kartları ve mevduat.",
+          "soMenuSec('ekonomi','bankalar')")
+      ])
+      +baslik("En çok kullanılan işlemler","Bir dokunuşla işleminin olduğu bölüme git.")
       +grids([
         link("🏢","Şirketlerim","Kasalarım, şubeler, projeler ve hisse ortaklıkları.","soMenuSec('ekonomi','sirketlerim')"),
-        link("🏦","Bankalar","Hesaplarım, mevduat, kredi ve kredi kartı.","soMenuSec('ekonomi','bankalar')"),
         link("🏡","Gayrimenkul","Arsa, ev, dükkân ve kiralık mülkler.","soMenuSec('ekonomi','emlak')"),
         link("📈","Piyasalar","Borsa, altın, döviz ve ekonomik veriler.","soMenuSec('ekonomi','piyasalar')")
       ])
@@ -403,19 +418,41 @@
       ]);
   }
   async function bankalarHtml(){
-    var z=bankalarGenel();
+    var z=baslik("🏦 Banka Sahibi Yönetimi","Bankanın başvurularına ve kasasına tek dokunuşla git.")
+      +grids([
+        link("🏦","BANKAMI YÖNET","Banka kasası, sermaye, müşteri ve risk yönetimi.",
+          "soBankaYonetimGit('ozet')","Banka Sahibi"),
+        link("📥","Başvuruları Yönet","POS, kart ve kredileri onayla veya reddet.",
+          "soBankaYonetimGit('basvuru')","Yönetim"),
+        link("⚙️","Otomatik Onay Ayarları","POS, kart ve krediler için otomatik/manuel karar.",
+          "soBankaYonetimGit('ayar')","Yönetim")
+      ]);
     try{
-      var b=(await API.rpc("banka_yonetilen_liste"))||[];
-      if(b.length)z+=baslik("Benim bankalarım","Bankanın adına dokunarak kredi, mevduat ve yönetim işlemlerini aç.")
-        +grids(b.map(function(x){
-          return link("🏦",x.ad,"Banka kasası: "+trPara(x.kasa),"soMenuBanka("+Number(x.id)+")","Yönetim");
+      var own=(await API.rpc("banka_yonetilen_liste"))||[];
+      if(own.length)z+=baslik("Benim Bankalarım","Banka adına dokunarak doğrudan bankanın yönetimini aç.")
+        +grids(own.map(function(x){
+          return link("🏦",x.ad,"Banka kasası: "+trPara(x.kasa),
+            "soMenuBanka("+Number(x.id)+",'ozet')","Yönetim");
         }));
-    }catch(_){/* Banka rehberi yine açılabilir; tek veri çağrısı tüm menüyü engellemez. */}
-    return z;
+    }catch(_){/* Müşteri bankacılığı erişimi korunur. */}
+    return z+bankalarGenel();
   }
-  window.soMenuBanka=function(id){
-    if(typeof window.bankaYonetimEkrani!=="function")return toast("Banka yönetimi henüz yüklenmedi. Sayfayı yenile.",true);
-    return ekranAc(function(){return bankaYonetimEkrani(Number(id));});
+  window.soMenuBanka=function(id,tab){
+    if(typeof window.bankaYonetimEkrani!=="function"){
+      toast("Banka yönetimi yükleniyor. Sayfayı yenileyip yeniden dene.",true);return;
+    }
+    return ekranAc(function(){return bankaYonetimEkrani(Number(id),tab||'ozet');});
+  };
+  window.soBankaYonetimGit=async function(tab){
+    try{
+      var own=(await API.rpc("banka_yonetilen_liste"))||[];
+      if(!own.length)return toast("Yönetim yetkin olan bir banka bulunamadı.",true);
+      if(own.length>1){
+        soMenuSec('ekonomi','bankalar');
+        toast("Yöneteceğin bankayı 'Benim Bankalarım' alanından seç.");return;
+      }
+      return window.soMenuBanka(Number(own[0].id),tab||'ozet');
+    }catch(err){toast("Banka yönetimi açılamadı: "+String(err&&err.message||err),true);}
   };
   async function sirketlerimHtml(){
     try{
