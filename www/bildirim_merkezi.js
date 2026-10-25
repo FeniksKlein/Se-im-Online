@@ -48,7 +48,7 @@
     // Banka sahibine gelen POS/başvuru karar talepleri müşteri bankacılığına değil
     // doğrudan bankanın Başvurular yönetim sekmesine gider.
     // Müşteriden mali belge izni isteyen mesajlar ise müşteri ekranında kalır.
-    if (/banka pos yonetimi|pos cihazi basvurusu yapti|pos basvurusuna karar ver|banka yonetim ekranindan karar ver|banka yonetim paneli|bankana (?:pos|kredi|kart) basvurusu/.test(t))
+    if (/banka pos yonetimi|pos cihazi basvurusu yapti|pos basvurusuna karar ver|banka yonetim ekranindan karar ver|banka yonetim paneli|banka yonetimi|bankana (?:pos|kredi|kart) basvurusu/.test(t))
       return "banka_yonetim";
     if (/kredi|taksit|vadesiz|banka/.test(t)) return "banka";
     if (/devlet > hukumet|devlet › hukumet/.test(t)) return "devlet";
