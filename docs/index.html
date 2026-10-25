@@ -1075,13 +1075,92 @@ function hataCevir(m){
   for (const [re, tr] of HATA_CEVIRI) if (re.test(m)) return tr;
   return turkceHarf(m);
 }
+/* Yük koruması (23.10.2026 seçim gecesi çöküşü sonrası).
+   - Sık okunan ekran verileri kısa süre telefonda tutulur; aynı anda giden aynı istek tek isteğe indirilir.
+   - Oyuncu bir işlem yaptığında (oy, başvuru, mesaj...) önbellek tamamen silinir; sonraki okuma tazedir.
+   - Sunucu 5xx / zaman aşımı verirse otomatik yenilemeler kademeli olarak bekletilir (oyuncunun kendi tıklamaları etkilenmez). */
+const YUK = window.YUK = (function(){
+  const SURE = { // milisaniye
+    durum: 4000, secim_detay: 4000, secim_gecesi_aktif: 10000, sohbet_ozet: 10000, rozetler: 20000, hayat: 15000,
+    meclis_baskanlik: 15000, kanunlar: 20000, akis_liste: 20000, mitingler: 30000, piyasa_panosu: 30000, ittifak_bilgi: 30000,
+    uzaktan_kontrol_durum: 30000, haberler: 60000, referandumlar: 60000, ihaleler: 60000, meclis: 60000, ilk_adimlar: 60000,
+    miting_haklarim: 60000, dernek_akis: 60000, gundem_dernek_secimler: 60000, akis_gundem: 60000, cimer: 60000,
+    siyaset_merkezi_ozet: 60000, kriz_merkezi: 60000, partiler: 120000, bos_makam_firsatlari: 120000, gun_ozeti: 120000,
+    siyasi_hafta: 120000, uygulama_ayar: 300000, surum: 300000
+  };
+  const GECIR = { ajans_gundem: 1 }; // önbelleğe alınmaz ama önbelleği de silmez (gösterim sayar)
+  // Sunucuda salt-okunur (STABLE) tanımlı fonksiyonlar: veri değiştiremezler, önbelleği silmeleri gerekmez.
+  const OKU = new Set("adayliklarim,adliye_dava_ek,adliye_detay,adliye_durum,adliye_kurum_listesi,adliye_mahkeme,adliye_musadere_durum,adliye_siyasi_bilgi,akis_gundem,akis_konu,akis_liste,avukat_buro_davetler,avukat_dava_durum,avukat_durum,avukat_iller,avukat_pazarlik_liste,avukat_primlerim,bakanlik_panellerim,bakanlik_teklif_durumlari,balkon_durum,baro_dava_bilgi,baro_durum,bel_ruhsat_merkezi,belediye_detay_paneli,belediye_emlak_ozet,belediye_is_pazar,belediye_karnesi,belediye_sehir_paneli,belediye_yatirim_ekonomi_panel,bildirim_hedefleri,bildirim_yayin_ozet,bos_makam_firsatlari,canli_yayin_detay,canli_yayinlar,cb_kampanya_bilgi,cb_seslenisler,cb_toren_durum,cb_yardimcilari,cb_yardimcisi_adaylari,cb_yardimcisi_bakan_denetim,cb_yardimcisi_tekliflerim,cb_yrd_panel,cek_iptal_panel,cimer,cimer_karne,dernek_akis,dernek_eylem_oku,dernek_faaliyetler,dernek_kampanya_vitrin,dernek_program_katalog,dernek_program_ozet,dernek_proje_fiyatlar,dernek_uye_destek_liste,dernek_ziyaret_taleplerim,dernekler,emlak_pazarliklarim,gby_gorevleri,gun_ozeti,gundem_dernek_secimler,haftanin_ozeti,hukuk_islerim,ideoloji_durum,kapi_kapi_haklarim,kimlikler,koalisyon_durum,kurucu_davetlerim,magaza_rozetler,meclis_projeksiyon,meclis_rehber,mentor_durum,miting_haklarim,miting_meydan,mitingler,mulk_il_stok,mulk_pazar,musahit_paneli,mv_ortak_liste_gorunum,oyuncu_arama,oyuncu_parti_gecmisi,parti_aciklamalari,parti_ad_ozel_hakki,parti_gecisleri,parti_il_uyeleri,parti_kimlikleri,parti_sozcu_bilgi,parti_yetkilerim,resmi_gunler,secim_ayrintili_sonuclar,secim_gecesi,sigorta_afet_panel,sigorta_isletme_panel,sirket_vitrini,siyaset_merkezi_ozet,siyasi_hafta,stantlar,tarih_arsivi,uygulama_ayar,uzaktan_kontrol_durum".split(","));
+  const onb = new Map(), ucusta = new Map();
+  let hataSay = 0, bekleSon = 0, nesil = 0, sonEtkilesim = 0;
+  const sil = () => { onb.clear(); nesil++; };
+  // Oyuncunun kendi dokunuşundan sonraki 6 sn içinde yapılan yazma olabilecek çağrılar önbelleği siler.
+  // Zamanlayıcıyla yapılan arka plan okumaları silmez (yoksa önbellek hiç işe yaramaz).
+  try { ["pointerdown","keydown","submit","click","touchstart"].forEach(ev => document.addEventListener(ev, () => { sonEtkilesim = Date.now(); }, true)); } catch (_) {}
+  const yazmaOlabilir = (fn) => !OKU.has(fn) && !GECIR[fn] && Date.now() - sonEtkilesim < 6000;
+  const kopya = (v) => v == null || typeof v !== "object" ? v : (typeof structuredClone === "function" ? structuredClone(v) : JSON.parse(JSON.stringify(v)));
+  function gecici(err){ return !!(err && err.gecici); }
+  function basari(){ hataSay = 0; bekleSon = 0; }
+  function hata(err){
+    if (!gecici(err)) return;
+    hataSay = Math.min(hataSay + 1, 7);
+    const sure = Math.min(300000, 5000 * Math.pow(2, hataSay - 1));
+    bekleSon = Date.now() + sure * (0.75 + Math.random() * 0.5);
+  }
+  async function cagir(fn, args, gonder){
+    const ttl = SURE[fn];
+    if (!ttl) {
+      const yaz = yazmaOlabilir(fn);
+      if (yaz) sil();
+      try { const r = await gonder(); basari(); if (yaz) sil(); return r; }
+      catch (err) { hata(err); if (yaz) sil(); throw err; }
+    }
+    const anahtar = fn + "|" + JSON.stringify(args || {});
+    const kayit = onb.get(anahtar);
+    if (kayit && kayit.bitis > Date.now()) return kopya(kayit.veri);
+    const ucusAnahtari = nesil + "|" + anahtar;
+    if (ucusta.has(ucusAnahtari)) return kopya(await ucusta.get(ucusAnahtari));
+    const baslangicNesli = nesil;
+    const p = (async () => {
+      try {
+        const v = await gonder(); basari();
+        if (baslangicNesli === nesil) onb.set(anahtar, { veri: v, bitis: Date.now() + ttl });
+        return v;
+      } catch (err) { hata(err); throw err; }
+      finally { ucusta.delete(ucusAnahtari); }
+    })();
+    ucusta.set(ucusAnahtari, p);
+    return kopya(await p);
+  }
+  return {
+    cagir,
+    temizle: sil,
+    // Zamanlayıcıyla yapılan arka plan yenilemeleri bunu sorar; sunucu zorlanıyorsa bekler.
+    otomatik(){ return Date.now() >= bekleSon; },
+    durumBilgi(){ return { hataSay, bekleMs: Math.max(0, bekleSon - Date.now()), kayit: onb.size }; }
+  };
+})();
 function gercekApi(){
   if (!window.supabase) return null;
   const sb = window.supabase.createClient(AYAR.SUPABASE_URL, AYAR.SUPABASE_ANON, { auth: { persistSession: true, autoRefreshToken: true } });
   const k = async (pr) => { const { data, error } = await pr; if (error) throw new Error(hataCevir(error.message)); return data; };
+  // Hesap değişince (giriş/çıkış) önceki oyuncunun önbelleği kullanılmasın.
+  try { sb.auth.onAuthStateChange((olay) => { if (olay !== "TOKEN_REFRESHED") YUK.temizle(); }); } catch (_) {}
+  const rpcGonder = async (fn, args) => {
+    let r;
+    try { r = await sb.rpc(fn, args || {}); }
+    catch (err) { const e2 = new Error(hataCevir(err && err.message)); e2.gecici = true; throw e2; }
+    if (r.error) {
+      const ham = String(r.error.message || "");
+      const e2 = new Error(hataCevir(ham));
+      e2.gecici = !r.status || r.status >= 500 || r.error.code === "57014" || /timeout|timed out|fetch|network|gateway|upstream/i.test(ham);
+      throw e2;
+    }
+    return r.data;
+  };
   return {
     realtimeClient: sb, // Safely reuse same logged-in Supabase client for Realtime.
-    rpc: (fn, args) => k(sb.rpc(fn, args || {})),
+    rpc: (fn, args) => YUK.cagir(fn, args, () => rpcGonder(fn, args)),
     async aiCezaOner(dava_id){
       const {data,error}=await sb.auth.getSession();
       if(error||!data.session||!data.session.access_token)throw new Error("Oyuncu oturumu gerekli.");
@@ -3277,7 +3356,7 @@ async function sohbetEkrani(kanal){
   };
   const g = $("#gonder"); if (g) g.onclick = gonder;
   const ta = $("#yaz"); if (ta) ta.addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.shiftKey && window.innerWidth > 700) { ev.preventDefault(); gonder(); } });
-  D.canli = setInterval(() => { if (!document.hidden) yeniGetir(); }, 4000);
+  D.canli = setInterval(() => { if (!document.hidden && YUK.otomatik()) yeniGetir(); }, 6000 + Math.floor(Math.random() * 1500));
 }
 async function ozelEkrani(kad){
   const akis = sohbetCati(e(kad), `<button class="ikon" id="dmMenu" aria-label="Seçenekler" style="font-weight:900">⋯</button>`);
@@ -3303,7 +3382,7 @@ async function ozelEkrani(kad){
     const b = $("#gonder"); if (b) b.disabled = false;
   };
   const g = $("#gonder"); if (g) g.onclick = gonder;
-  D.canli = setInterval(() => { if (!document.hidden) yeniGetir(); }, 4000);
+  D.canli = setInterval(() => { if (!document.hidden && YUK.otomatik()) yeniGetir(); }, 6000 + Math.floor(Math.random() * 1500));
 }
 function mesajMenu(tur, id, kad, el){
   const m = modal(`<h3 style="font-size:18px;font-weight:800">${e(kad)}</h3>
@@ -4752,11 +4831,11 @@ setInterval(() => {
     if (ms < 0 && ms > -1500 && D.sekme === "gundem" && !D.yigin.length && !$("#modal")) setTimeout(gundemEkrani, 1500);
   });
 }, 1000);
-setInterval(() => { if (D.durum && D.sekme === "gundem" && !D.yigin.length && !$("#modal") && !document.hidden) gundemEkrani(); }, 60000);
+setInterval(() => { if (D.durum && D.sekme === "gundem" && !D.yigin.length && !$("#modal") && !document.hidden && YUK.otomatik()) gundemEkrani(); }, 120000 + Math.floor(Math.random() * 30000));
 // Oyun açıkken tüm sohbet rozetleri ve konuşma listeleri yaklaşık 8 saniyede güncellenir.
 let mesajKontroluSuruyor = false;
 async function mesajBildirimKontrol(){
-  if (mesajKontroluSuruyor || !API || !D.durum || !D.durum.profil || document.hidden) return;
+  if (mesajKontroluSuruyor || !API || !D.durum || !D.durum.profil || document.hidden || !YUK.otomatik()) return;
   mesajKontroluSuruyor = true;
   try {
     rozetGuncelle(await API.rpc("rozetler"));
@@ -4764,8 +4843,8 @@ async function mesajBildirimKontrol(){
   } catch (_) { /* Bağlantı geri gelince devam eder. */ }
   finally { mesajKontroluSuruyor = false; }
 }
-setInterval(mesajBildirimKontrol, 8000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden && D.durum && !D.yigin.length && !$("#modal")) EKRAN[D.sekme](); });
+setInterval(mesajBildirimKontrol, 45000 + Math.floor(Math.random() * 10000));
+document.addEventListener("visibilitychange", () => { if (!document.hidden && D.durum && !D.yigin.length && !$("#modal") && YUK.otomatik()) EKRAN[D.sekme](); });
 window.addEventListener("load", () => {
   API = window.API_TEST || gercekApi();
   if (!API) {
@@ -5398,7 +5477,7 @@ async function mitingMeydanEkrani(id) {
     </div>`, { geri: true });
   mtBagla(id);
   portreleriTazele($("#mtSahne"));
-  if (!d.bitti) D.canli = setInterval(() => { if (!document.hidden) mtTazele(id); }, 4000);
+  if (!d.bitti) D.canli = setInterval(() => { if (!document.hidden && (!window.YUK || YUK.otomatik())) mtTazele(id); }, 6000 + Math.floor(Math.random() * 1500));
 }
 function mtSure(d) {
   const t = simdi(), bas = new Date(d.bas).getTime(), bit = new Date(d.bit).getTime();
@@ -7725,7 +7804,7 @@ function geceKancasi(s){
     }
     const benimAcik = !!(s.sonuc && s.sonuc.iller && s.sonuc.iller[String(s.benim_il || "")]);
     GECE.durum[s.id] = { acilan_il: g.acilan_il || 0, aktif: true, benimAcik };
-    D.canli = setInterval(() => { if (!document.hidden) secimEkrani(s.id, true); }, 5000);
+    D.canli = setInterval(() => { if (!document.hidden && (!window.YUK || YUK.otomatik())) secimEkrani(s.id, true); }, 15000 + Math.floor(Math.random() * 4000));
   } else if (onceki && onceki.aktif) {
     GECE.durum[s.id] = { aktif: false };
     HAPTIK.guclu(); SES.fanfar(); toast("Sayım tamamlandı. Kesin sonuçlar açıklandı.");
@@ -13378,7 +13457,7 @@ if(typeof originalDetail==="function"){
     };
     if (d.durum === "canli" || d.durum === "yakinda") {
       D.canli = setInterval(async () => {
-        if (!document.getElementById("smOda") || document.hidden || $("#modal")) return;
+        if (!document.getElementById("smOda") || document.hidden || $("#modal") || (window.YUK && !YUK.otomatik())) return;
         const ta = $("#smYaz"); if (ta && ta.value.trim()) return;   // yazarken ekranı yenileme
         try { const y = await rpc("canli_yayin_detay", { p_yayin: id, p_son_id: 0 });
           if (y.durum !== d.durum || y.mesajlar.length !== d.mesajlar.length || y.alkis !== d.alkis || y.yuh !== d.yuh) window.smYayinEkrani(id); } catch (_) {}
