@@ -1,8 +1,9 @@
 // Bankacılık 2.0 arayüz testi (Mobil Şube, Genel Müdürlük, kasa gizliliği). Ağ yok; sahte RPC; docs/ sunulur.
 // NODE_PATH=/opt/npm-tools/node_modules node gelistirici/test/bankacilik_arayuz.js [ekran-klasoru]
+// Derlenmiş paketi denemek için: KOK_DIZIN=gelistirici/dist (önce node gelistirici/build/derle.js)
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path'), assert = require('assert/strict');
-const KOK = path.join(__dirname, '../../docs');
+const KOK = process.env.KOK_DIZIN || path.join(__dirname, '../../docs');
 const shot = process.argv[2];
 const S = (h) => new Date(Date.now() + h * 3600e3).toISOString();
 
@@ -93,7 +94,7 @@ const GIZ = { sirketler: [{ id: 203, ad: 'Feniks Bank', sektor: 'banka', kasa: 1
     window.calls = [];
     API = { rpc: async (ad, args) => {
       calls.push({ ad, args });
-      const sabit = { banka_sube: SUBE, banka_yonettiklerim: YON, banka_genel_mudurluk: GM, kasa_gizlilik_listem: GIZ,
+      const sabit = { banka_sube: SUBE, banka_yonettiklerim: YON, banka_yonetilen_liste: [{ id: 203, ad: 'Feniks Bank', kasa: 1279000 }], banka_genel_mudurluk: GM, kasa_gizlilik_listem: GIZ,
         banka_alici: { kad: 'Ayşe', yasakli: false, hesaplar: [{ hedef: 'devlet', ad: 'Devlet Bankası', renk: 'devlet' }, { hedef: 'b:12', ad: 'Anadolu Katılım', renk: 'zumrut' }] },
         banka_fast: { tamam: true, yol: 'fast', tutar: 2500, alici: 'Ayşe' }, banka_kar_dagit: { tamam: true, brut: 100000, stopaj: 15000, net: 85000 },
         banka_dibs_al: { tamam: true, getiri: 847.7 }, kasa_gizlilik_ayarla: { tamam: true }, oyb_kredi_karar: { id: 31 } };

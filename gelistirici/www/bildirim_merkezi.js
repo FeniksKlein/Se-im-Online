@@ -39,10 +39,11 @@
   const HISSEDAR = /genel kuruluna onerge geldi/;
   const ACIL = /saat icinde|gun icinde|karar ver|savunma|jurisine|istinafa basv|davada hakkinizda|davalidir|odenemedi|gecikmede|gecikme|yasal takip|haciz|icra takib|icra satis|girmezsen|gorevden alinacak|davet etti|davet ediyor|teklif etti|yanitla(?!nd)|yanitini .{0,40}ver|ruhsat merkezi|onayini bekliyor|onay bekliyor|yanitini bekliyor|iflas edebilir|zarar ediyor|mitingin basladi|teslim etmeniz/;
   const SEN = /(^|[\s"'(])(sen|seni|sana|senin|sizi|size|sizin|hakkinizda|partiniz|partinizin|partin|goreviniz|cezanizi|cezaniz|yetkiniz|sirketiniz|ittifakiniza|adayligin|kredin|kredini|hesabina|hesabin|cuzdan\w*|maasin|statun|payina|uyeligin|makamin|sirketin|paran|gorevin|teklifin|talebin|basvurun|basvurunu)(?=[\s.,;:!?)"'»]|$)|[a-z](din|dun|tin|tun|digin|dugun|tigin|tugun)(?=[\s.,;:!?)"'»]|$)/;
-  const OZEL = /genel kurul|temettu|halka arz|bilanco|ihale|karari kesinlesti|mahkeme kararini|basarim|kredi|miting yetkisi|tahsil edildi|yeni siparis|paylasimina yanit verdi|cimer|spk|rekabet kurumu|affetti|cekilmen|kurucu davetine|genel baskansiz|kadrosunda .{0,20}bos|atayabilirsin/;
+  const OZEL = /genel kurul|temettu|halka arz|bilanco|ihale|karari kesinlesti|mahkeme kararini|basarim|kredi|miting yetkisi|tahsil edildi|yeni siparis|paylasimina yanit verdi|cimer|spk|rekabet kurumu|affetti|cekilmen|kurucu davetine|genel baskansiz|kadrosunda .{0,20}bos|atayabilirsin|satis tamamlandi|ilan meydani/;
   const MECLIS = /grup karari|kanun teklifi|vergi kanunu|anayasa degisikligi|oylama|meclis|tbmm|veto|yasama|grup konusmasi|grup gunu|grup toplantisi|tuzuk|partimize katildi|partimizden ayrildi|birlesti|kurultay|on secim|grup baskanvekil|partisinin adi|genel baskani yeni|teskilatli/;
 
   function rotaBul(t) {
+    if (/ilan meydani|ilanina .{0,40}teklif|ilani icin karsi teklif|ilani baska bir aliciya|ilani yayindan kalkti|ilaninin 30 gunluk|ilanin oyun yonetimi|^satis tamamlandi: |artik senin \(/.test(t)) return "ilan";
     if (/kriz masasi|yonetim ›|yonetim >|ruhsat merkezi/.test(t)) return "yonetim";
     if (/adliye|dava|juri|istinaf|savunma|mahkeme/.test(t)) return "adliye";
     if (/kredi|taksit|vadesiz|banka/.test(t)) return "banka";
@@ -71,6 +72,7 @@
     yonetim: { ad: "Yönetime git", ac: () => sekmeAc("yonetim"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.yonetim === "function" },
     adliye:  { ad: "Adliye'ye git", ac: () => sekmeAc("adliye"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.adliye === "function" },
     banka:   { ad: "Bankaya git", ac: () => ekranAc(bankaEkrani), var: () => typeof bankaEkrani === "function" },
+    ilan:    { ad: "İlan Meydanı’na git", ac: () => ekranAc(ilanMeydaniEkrani), var: () => typeof ilanMeydaniEkrani === "function" },
     meclis:  { ad: "Meclis'e git", ac: () => sekmeAc("meclis"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.meclis === "function" },
     parti:   { ad: "Partilere git", ac: () => sekmeAc("parti"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.parti === "function" },
     devlet:  { ad: "Devlet'e git", ac: () => sekmeAc("devlet"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.devlet === "function" },

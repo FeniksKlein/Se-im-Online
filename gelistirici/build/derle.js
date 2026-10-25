@@ -28,6 +28,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','npc_isletmeler.js'),'utf8')+'</script></body>');
 // Bankacılık 2.0 (Mobil Şube, Banka Genel Müdürlüğü, kasa gizliliği) mobil pakete gömülür.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','bankacilik.js'),'utf8')+'</script></body>');
+// İlan Meydanı (oyuncudan oyuncuya ev, dükkân, arsa, şirket ve hisse ilanları) web ve mobil pakete gömülür.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','ilan_meydani.js'),'utf8')+'</script></body>');
 html=html.replace('<script src="kamu_20261022.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kamu_20261022.js'),'utf8')+'</script>');
 // Gündem, basın-yayın, kitaplar ve makamlar için kaynakla eşit mobil menü düzeni.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','gundem_yayin_makam.js'),'utf8')+'</script></body>');

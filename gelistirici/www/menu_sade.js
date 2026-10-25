@@ -210,6 +210,7 @@
         satir("gecmis", "Alım-satım geçmişim", "Geçmiş işlemler", "ekranAc(ticaretGecmisimEkrani)", "ticaretGecmisimEkrani")
       ])}
       ${grup("Emlak", "", [
+        satir("emlak", "🪧 İlan Meydanı", "Satılık ev, dükkân, arsa, şirket ve hisse ilanları; teklif ver, pazarlık yap, ilan ver", "ekranAc(ilanMeydaniEkrani)", "ilanMeydaniEkrani"),
         satir("emlak", "Şehir Emlak ve İnşaat", "Müteahhitlerin ürettiği daire ve dükkânları incele, arsa ve tapu işlemlerini yönet", "arsaEkrani()", null)
       ])}
       ${grup("Ekonomi kurumları", "Herkes izleyebilir", [

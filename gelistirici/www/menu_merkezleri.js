@@ -66,6 +66,8 @@
       ["⚖️","Yüksek Mahkeme","Yargıçlar ve yargı yönetimi","soMenuSec('adliye','mahkeme')","mahkeme hakim"]
     ],
     ekonomi:[
+      ["🪧","İlan Meydanı","Satılık ev, dükkân, arsa, şirket ve hisse ilanları","soMenuGit('ilanMeydaniEkrani')","ilan sahibinden satılık ev daire konut dükkan işyeri arsa tapu emlak şirket hisse teklif pazarlık vitrin"],
+      ["📝","İlan ver","Evini, dükkânını, şirketini ya da hisseni sat","ilanVerEkrani()","ilan ver sat satış satmak öne çıkar"],
       ["🏢","Şirketlerim","Kasaya para, şubelerim, inşaat ve finans","soMenuSec('ekonomi','sirketlerim')","müteahhit firma kasa sermaye"],
       ["🏛️","İnternet Bankacılığı","Tüm hesaplarım, kart ve krediler","soMenuGit('internetBankaciligiEkrani')","devlet bankası mevduat"],
       ["🏦","Oyuncu bankaları","Özel bankalar, kredi ve faizler","soMenuGit('bankaRehberiEkrani')","özel banka kredi"],
@@ -468,6 +470,7 @@
     var durum=kisisel.length?eKpiBolum("Benim ekonomik durumum","Kişisel şirket performansım",kisisel):"";
     var islemler=eBolum("Hemen işlem yap","Kategoriler değil, doğrudan işlemler",[
       eTile("➕","Şirket kur","Yeni şirket kuruluşu","soMenuGit('sirketKurulumFormuAc')",true),
+      eTile("🪧","İlan Meydanı","Satılık ev, dükkân, arsa, şirket ve hisse","soMenuGit('ilanMeydaniEkrani')"),
       eTile("💸","Para gönder","Oyuncuya banka transferi","soMenuGit('paraGonderModal')"),
       eTile("🤝","Ortaklık işlemleri","Davetler, ortaklık, hisse devri","soMenuGit('ortaklikEkrani')"),
       eTile("📋","İhaleye katıl","Kamu ihalesine teklif ver","soMenuGit('ihaleEkrani')")
@@ -561,8 +564,9 @@
     return eBolum("Şirket kur ve keşfet","Şirket pazarı",[
       eTile("➕","Yeni şirket kur","Sektör, şehir, sermaye seç","soMenuGit('sirketKurulumFormuAc')",true),
       eTile("🏢","Tüm şirketler","Şirketleri ve sahiplerini keşfet","soMenuGit('sirketVitrinEkrani')"),
-      eTile("🏷️","Satılık şirketler","İlanları incele ve şirket satın al","soMenuGit('sirketPazarEkrani')"),
-      eTile("🤝","Hisse ve ortaklık","Şirket hisseleri ve ortaklıklar","soMenuGit('sirketHissePazariEkrani')")
+      eTile("🏷️","Satılık şirketler","İlan Meydanı’nda devren satılık şirketler","imKategori('sirket')"),
+      eTile("🤝","Hisse ilanları","Şirket hisselerine teklif ver, satın al","imKategori('hisse')"),
+      eTile("🪧","Şirketini ya da hisseni sat","İlan Meydanı’nda ilan ver","ilanVerEkrani()")
     ])
     +eBolum("Üretim ve ticaret","İşletmeler ve satış",[
       eTile("🏭","İş dünyası","Fabrika, franchise ve üretim","soMenuGit('isDunyasiEkrani')"),
@@ -597,7 +601,9 @@
   }
   function emlakHtml(){
     return eBolum("Gayrimenkul piyasası","Satın al, sat, kiraya ver",[
-      eTile("🏠","Emlak pazarı","Ev, işyeri ve arsa ilanları","soMenuGit('emlakYeniEkrani')",true),
+      eTile("🪧","İlan Meydanı","Satılık daire, dükkân, arsa; teklif ver, pazarlık yap","soMenuGit('ilanMeydaniEkrani')",true),
+      eTile("📝","İlan ver","Tapunu sat, öne çıkar","ilanVerEkrani()"),
+      eTile("🔑","Müteahhitten sıfır","Yeni projelerden konut ve dükkân","imKategori('muteahhit')"),
       eTile("🏡","Yatırım pazarı","Ticari mülk ve kira getirisi","soMenuGit('yatirimPazarEkrani')"),
       eTile("🏗️","İnşaatlarım","Şirketimi açıp projeleri yönet","soMenuSec('ekonomi','sirketlerim')"),
       eTile("🏬","İşyerlerim","Şube ve dükkân yönetimi","soMenuSec('ekonomi','sirketlerim')")
