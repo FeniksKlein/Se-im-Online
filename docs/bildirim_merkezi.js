@@ -248,6 +248,48 @@
       <div class="bm-cipler" role="tablist" aria-label="Bildirim türü"></div>
       <div class="bm-liste"></div>`;
     ic.insertBefore(kap, dugumler[0]);
+    // Bekleyen hisse devirleri: teklif sahibi iptal eder, alici kabul/reddeder.
+    // Bildirim metninden kimlik tahmin etmeyiz: yetkili sunucu panelini kullaniriz.
+    (async function(){
+      try {
+        const d = await API.rpc('ortak_sirket_panel');
+        if(!kap.isConnected || !ekranBizimMi()) return;
+        const teklifler = (Array.isArray(d && d.devirler) ? d.devirler : [])
+          .filter(x => x.benim_gelen || x.benim_teklifim);
+        if(!teklifler.length) return;
+        const alan = document.createElement('section');
+        alan.className = 'kart bm-devir-kararlar';
+        alan.innerHTML = '<h2>🤝 Yanıt bekleyen hisse devirleri <span class="rozet">'+teklifler.length+'</span></h2>'+
+          '<p class="alt">Gelen teklifleri kabul et veya reddet; gönderdiğin bekleyen teklifleri geri çek.</p>'+
+          teklifler.map(x => '<div class="bm-d-oge" data-devir-id="'+Number(x.id)+'"><b>'+kac(x.sirket)+'</b>'+
+            '<p class="alt">Satıcı: '+kac(x.satici)+' · Alıcı: '+kac(x.alici)+'</p>'+
+            '<p>Pay: %'+Number(x.pay).toLocaleString('tr-TR')+' · Bedel: '+Number(x.bedel||0).toLocaleString('tr-TR')+' ₺</p>'+
+            '<div class="bm-d-alt">'+(x.benim_gelen
+              ? '<button class="bm-dugme" data-devir-karar="kabul">Kabul et</button><button class="bm-dugme sade" data-devir-karar="red">Reddet</button>'
+              : '')+(x.benim_teklifim ? '<button class="bm-dugme sade" data-devir-karar="iptal">Teklifi geri çek</button>' : '')+
+            '</div></div>').join('');
+        kap.insertBefore(alan, kap.firstChild);
+        alan.querySelectorAll('[data-devir-karar]').forEach(b => b.onclick = async function(){
+          if(b.disabled)return;
+          const id = Number(b.closest('[data-devir-id]').dataset.devirId);
+          const eylem = b.dataset.devirKarar;
+          const m = eylem==='kabul'?'Hisse devrini kabul edersen bedel hesabından çekilir ve hisseler sana geçer. Onaylıyor musun?':
+            eylem==='red'?'Bu hisse devir teklifini reddetmek istiyor musun?':'Gönderdiğin teklifi geri çekmek istiyor musun?';
+          if(typeof onayla==='function' && !await onayla('Hisse devir teklifi',m,'Onayla'))return;
+          const grup=b.closest('[data-devir-id]');
+          grup.querySelectorAll('button').forEach(t=>t.disabled=true);
+          try{
+            if(eylem==='iptal')await API.rpc('ortak_sirket_devir_iptal',{p_id:id});
+            else await API.rpc('ortak_sirket_devir_karar',{p_id:id,p_kabul:eylem==='kabul'});
+            if(typeof toast==='function')toast('Teklif kararı kaydedildi.');
+            if(kap.isConnected && typeof window.bildirimEkrani==='function')await window.bildirimEkrani();
+          }catch(err){
+            grup.querySelectorAll('button').forEach(t=>t.disabled=false);
+            if(typeof toast==='function')toast(err.message||String(err),true);
+          }
+        });
+      }catch(err){console.warn('Hisse teklifleri bildirime eklenemedi:',err);}
+    })();
     const liEl = kap.querySelector(".bm-liste"), cipEl = kap.querySelector(".bm-cipler");
 
     kap.querySelectorAll("[data-gordum]").forEach(b => b.onclick = () => {
