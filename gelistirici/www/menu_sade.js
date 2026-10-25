@@ -143,6 +143,7 @@
       </section>
       ${grup("Şirket ve iş", "Kur, yönet, yarış", [
         satir("sirket", "Şirketlerim ve şirket kur", "Ortak olduğun şirketleri yönet, yeni şirket kur", "ekranAc(sirketYonetimEkrani)", "sirketYonetimEkrani"),
+        satir("sirket", "Şirket kârı tercihleri", "Kâr şirket kasasında mı biriksin, cüzdana mı geçsin? Her şirket için seç", "ekranAc(sirketKarTercihEkrani)", "sirketKarTercihEkrani"),
         satir("gorev", "💼 Ek işler", "Kurye, taksi, özel ders, tasarım ve tamirat; çalışıp ücretini al", "ekranAc(ekIslerEkrani)", "ekIslerEkrani"),
         satir("dunya", "🌾 Tarım ve hayvancılık", "Tarla, mevsim, hasat, süt, et ve market tedariki", "ucYeniAc('tarim')", "ucYeniAc"),
         satir("rehber", "📚 Kitap ve yayınevi", "Kitap yaz, yayımla, telif al, yeni baskı yap", "ucYeniAc('kitap')", "ucYeniAc"),
