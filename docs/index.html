@@ -19308,6 +19308,7 @@ if(typeof oncekiBelediye==="function"){
       ic += '<div class="bk-dugmeler">' + (b.bankam ? '<button class="btn" onclick="bankaGenelMudurlukEkrani(' + Number(b.id) + ')">Genel Müdürlük</button>' :
         b.hesabim ? '<span class="bk-rozet y" style="align-self:center">Hesabın var</span>' + dugme("Kredi paketleri", "msKrediBanka(" + Number(b.id) + ")") :
           dugme("Hesap aç", "msHesapAc(" + Number(b.id) + ")", "altin")) + '</div>';
+      ic += '<div class="bk-dugmeler">' + dugme("Mevduat, kredi ve şube işlemleri", "ekranAc(function(){return bankaDetayEkrani(" + Number(b.id) + ")})", "ikinci") + '</div>';
       h += kutu("", ic);
     });
     if (!(v.bankalar || []).length) h += '<div class="bk-bos">Henüz oyuncuların kurduğu banka yok.</div>';
