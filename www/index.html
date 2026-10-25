@@ -10916,6 +10916,31 @@ async function belRuhsatTarife(tur,sira){
 
   /* ---------------- Ekonomi sekmesi ---------------- */
   function ekonomiEkrani(){
+    // 25.10.2026: Yeni üst sekmeli ekonomi ekranı asıl menüdür.
+    // Eski uzun menü yalnızca yeni modül gerçekten yüklenemezse yedek olarak kalır.
+    if (typeof window.ekonomiSekmeEkrani === "function" &&
+        window.ekonomiSekmeEkrani !== ekonomiEkrani) {
+      return window.ekonomiSekmeEkrani();
+    }
+    // Dosyalar eş zamanlı veya ters sırayla yüklenirse menüyü ayrıca hazırla.
+    if (!window.SO_MENU_MERKEZLERI_V1 && !window.__soEkonomiMenuGetiriliyor) {
+      window.__soEkonomiMenuGetiriliyor = true;
+      var yeniMenu = document.createElement("script");
+      yeniMenu.src = "./menu_merkezleri.js?v=20261025-ustsekme-restore";
+      yeniMenu.onload = function () {
+        window.__soEkonomiMenuGetiriliyor = false;
+        if (typeof window.ekonomiSekmeEkrani === "function") {
+          window.ekonomiSekmeEkrani();
+        }
+      };
+      yeniMenu.onerror = function () {
+        window.__soEkonomiMenuGetiriliyor = false;
+        if (typeof window.toast === "function") window.toast("Yeni ekonomi menüsü yüklenemedi. Sayfayı yenile.", true);
+      };
+      document.head.appendChild(yeniMenu);
+      if (typeof iskelet === "function") iskelet("Ekonomi", '<div class="yukleniyor">Ekonomi menüsü yükleniyor…</div>');
+      return;
+    }
     const cz = D.durum && D.durum.profil && D.durum.profil.cuzdan;
     const h = `
       <section class="sahne" style="margin-bottom:12px">
