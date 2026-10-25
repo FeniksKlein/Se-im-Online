@@ -165,6 +165,7 @@
         satir("borsa", "Borsa", "Şirket hisselerini al, sat", "ekranAc(borsaEkrani)", "borsaEkrani"),
         satir("arz", "Halka arzlar", "Arzlara talep ver, ortak ol", "ekranAc(halkaArzPazarEkrani)", "halkaArzPazarEkrani"),
         satir("altin", "Altın ve döviz", "Emtia ve döviz piyasaları", "ekranAc(piyasaEkrani)", "piyasaEkrani"),
+        satir("altin", "Kuyumcu ve Döviz Çarşısı", "Gerçek kur · oyuncu dükkânları · meslek edin", "ekranAc(meslekOfisEkrani)", "meslekOfisEkrani"),
         satir("tahvil", "Belediye tahvilleri", "Belediyelere borç ver, faiz kazan", "ekranAc(belediyeTahvilEkrani)", "belediyeTahvilEkrani")
       ])}
       ${grup("Bankacılık", "Bütün bankalar tek uygulamada", [
