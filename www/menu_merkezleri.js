@@ -9,6 +9,11 @@
     var bankScript = document.createElement('script');
     bankScript.id = 'banka-yonetim-loader';
     bankScript.src = './banka_yonetim.js?v=20261025a';
+    bankScript.onload = function(){
+      if(document.getElementById('banka-sahibi-iyilestirme'))return;
+      var ui=document.createElement('script');ui.id='banka-sahibi-iyilestirme';
+      ui.src='./banka_sahibi_paneli.js?v=20261025a';document.head.appendChild(ui);
+    };
     document.head.appendChild(bankScript);
   }
 
