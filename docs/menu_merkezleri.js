@@ -170,6 +170,7 @@
       +'@media(min-width:620px){.so-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
       +'@media(max-width:360px){.so-stats{gap:5px}.so-stat b{font-size:17px}.so-tabs button{padding:8px 10px}}';
     s.textContent+="\n.so-ekonomi{--econ-accent:#78d2c7;--econ-gold:#efd399;min-width:0;padding-bottom:12px}\n.so-ekonomi .so-tabs{position:sticky;top:0;z-index:8;gap:7px;background:var(--bg,#0c1428);border:0;border-bottom:1px solid var(--line,#303a56);border-radius:0;padding:9px 2px 11px;margin:0 -2px 14px;scroll-snap-type:x proximity}\n.so-ekonomi .so-tabs button{min-height:58px;padding:8px 13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;scroll-snap-align:start;border:1px solid var(--line2,#354463);border-radius:13px;background:var(--panel2,#141f35);font-weight:750;color:var(--txt2,#bac4d6);min-width:75px}\n.so-ekonomi .so-tabs button[aria-selected=\"true\"]{color:#f3fffe;border-color:#46988f;background:linear-gradient(145deg,#224f54,#193346);box-shadow:inset 0 -2px 0 #78d2c7,0 3px 12px #09182b55}\n.so-econ-tab-icon{font-size:18px;line-height:1.1}\n.so-ekonomi .so-menu-arama{margin:2px 0 12px;border-radius:14px;background:var(--panel2,#162039)}\n.so-econ-banner{position:relative;overflow:hidden;padding:21px 18px;border-radius:19px;background:linear-gradient(125deg,#143a43,#173149 55%,#293b5e);border:1px solid #41737c;margin-bottom:16px;box-shadow:0 9px 24px #0002;color:#f3f9fd}\n.so-econ-banner:after{content:\"\";position:absolute;right:-29px;top:-44px;width:145px;height:145px;border-radius:100%;background:radial-gradient(circle,#89e0bf39,transparent 72%);pointer-events:none}\n.so-econ-eyebrow{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:1.5px;font-weight:850;color:#a3f1dc;margin-bottom:8px}\n.so-econ-banner h2{font-size:clamp(21px,5vw,27px);line-height:1.18;letter-spacing:-.4px;color:#fff;margin:0 0 8px}\n.so-econ-banner p{font-size:13px;max-width:520px;line-height:1.55;color:#c9e1e9;margin:0}\n.so-econ-quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}\n.so-econ-quick button{min-height:38px;border:1px solid #88d7c5;border-radius:10px;background:#8be2c8;color:#0d2b34;padding:8px 12px;font-weight:800;cursor:pointer}\n.so-econ-quick button + button{background:#ffffff16;color:#effefa;border-color:#ffffff70}\n.so-econ-section{margin:16px 0}\n.so-econ-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}\n.so-econ-section-head h3{font-size:16px;color:var(--txt,#fff);margin:0;line-height:1.3}\n.so-econ-section-head small{font-size:11px;color:var(--txt2,#aebacf);text-align:right}\n.so-econ-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}\n.so-econ-tile{display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0;min-height:126px;padding:14px 12px;background:var(--panel,#19253e);color:var(--txt,#fff);border:1px solid var(--line2,#374a66);border-radius:16px;text-align:left;cursor:pointer}\n.so-econ-tile:active{transform:scale(.985);border-color:#78d2c7}\n.so-econ-tile b{font-size:14px;line-height:1.25}\n.so-econ-tile small{color:var(--txt2,#b3bfd3);font-size:11.5px;line-height:1.35}\n.so-econ-tile .so-econ-tile-icon{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:#569b9730;font-size:19px;margin-bottom:2px}\n.so-econ-tile.featured{background:linear-gradient(145deg,#1b4749,#1b3945);border-color:#4daca5}\n.so-econ-utility{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}\n.so-econ-utility button{flex:1 1 130px;min-height:44px;padding:9px 10px;border:1px solid var(--line2,#43526c);border-radius:12px;background:var(--panel,#1d2944);color:var(--txt,#fff);font-weight:750}\n.so-econ-metrics{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}\n.so-econ-metric{flex:1 1 100px;padding:11px 12px;background:var(--panel2,#14233a);border:1px solid var(--line2,#35506a);border-radius:13px}\n.so-econ-metric strong{display:block;font-size:18px;color:var(--txt,#fff)}\n.so-econ-metric span{display:block;font-size:11px;color:var(--txt2,#bec6d6);margin-top:3px}\n.so-econ-intro{font-size:12px;line-height:1.5;color:var(--txt2,#bfcee0);margin:3px 1px 11px}\n.so-econ-more{margin:14px 0;border:1px solid var(--line2,#37465f);border-radius:14px;padding:12px;background:var(--panel2,#142038)}\n.so-econ-more summary{cursor:pointer;color:var(--txt,#fff);font-size:13px;font-weight:800;list-style-position:inside;min-height:28px}\n.so-econ-more .so-grid{margin-top:12px}\n.so-ekonomi .so-company{border-radius:15px;transition:border-color .16s;background:var(--panel,#202b46)}\n.so-ekonomi .so-company:hover,.so-ekonomi .so-company:focus-visible{border-color:#78d2c7}\n.so-ekonomi .so-menu-hero{display:none}\n@media(min-width:700px){.so-econ-tiles{grid-template-columns:repeat(4,minmax(0,1fr))}.so-ekonomi .so-tabs{justify-content:space-around}.so-ekonomi .so-tabs button{flex:1}}\n@media(max-width:360px){.so-econ-tiles{gap:7px}.so-econ-tile{padding:12px 10px;min-height:125px}.so-econ-banner{padding:18px 14px}}\n@media(prefers-reduced-motion:reduce){.so-econ-tile:active{transform:none}}\n";
+    s.textContent+="\n/* Ozette ust sekmelerin kopyasi yerine kisa ekonomik veriler. */\n.so-ekonomi .so-econ-banner{padding:17px 17px 16px;margin-bottom:14px}\n.so-ekonomi .so-econ-banner h2{font-size:22px;margin-bottom:5px}\n.so-ekonomi .so-econ-banner p{font-size:12.5px}\n.so-econ-overview .so-econ-section{margin:14px 0 18px}\n.so-econ-kpi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}\n.so-econ-kpi{position:relative;min-width:0;padding:13px 12px;border:1px solid var(--line2,#37465c);background:var(--panel,#182341);border-radius:15px;overflow:hidden}\n.so-econ-kpi strong{display:block;color:var(--txt,#fff);font-size:clamp(19px,4.3vw,25px);font-variant-numeric:tabular-nums;line-height:1.2;overflow-wrap:anywhere;margin:5px 0}\n.so-econ-kpi span{color:var(--txt2,#c1cbe0);font-size:12px;font-weight:700}\n.so-econ-kpi small{display:block;color:var(--txt2,#b1bdd1);font-size:10.5px;line-height:1.35}\n.so-econ-kpi.accent{background:linear-gradient(140deg,#173e47,#1c344b);border-color:#448e88}\n.so-econ-kpi .up{color:#80dfb9}.so-econ-kpi .down{color:#f3a5a5}\n.so-econ-overview-note{margin:8px 2px 12px;color:var(--txt2,#b6c6d5);font-size:11px;line-height:1.45}\n.so-econ-overview-link{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;background:var(--panel2,#1b2841);border:1px solid var(--line2,#364762);border-radius:12px;color:var(--txt,#fff);text-align:left;cursor:pointer;min-height:44px;padding:10px 13px;font-size:12.5px;font-weight:750}\n.so-econ-overview .so-econ-tiles{gap:9px}\n.so-econ-overview .so-econ-tile{min-height:101px;padding:12px 11px;gap:5px}\n.so-econ-overview .so-econ-tile .so-econ-tile-icon{width:29px;height:29px;font-size:17px}\n.so-econ-overview .so-econ-tile b{font-size:13.5px}\n.so-econ-overview .so-econ-tile small{font-size:11px}\n@media(min-width:700px){.so-econ-kpi-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}\n";
     document.head.appendChild(s);
   }
   function tablar(grup){
@@ -382,7 +383,7 @@
   }
   function ekonomiHero(s){
     var map={
-      genel:["Ekonomi, kontrol sende.","Şirketlerin, yatırımların ve ticaretin tek bir merkezde."],
+      genel:["Ekonominin nabzı","Ekonomik göstergeler, şirket getirilerin ve önemli işlemlerin tek ekranda."],
       sirketlerim:["Şirketlerim","Kasalarını, şubelerini, projelerini ve ortaklıklarını yönet."],
       sirketler:["Ticaret merkezi","Şirket kur, iş yap, mal al-sat ve ticari işlemlerini izle."],
       bankalar:["Bankalar","Banka sahibi yönetimi ve banka kuruluş işlemleri."],
@@ -393,40 +394,79 @@
     var d=map[s]||map.genel;
     return '<header class="so-econ-banner"><div class="so-econ-eyebrow">◆ EKONOMİ MERKEZİ</div>'
       +'<h2>'+esc(d[0])+'</h2><p>'+esc(d[1])+'</p>'
-      +(s==="genel"?'<div class="so-econ-quick">'
-        +'<button type="button" onclick="soMenuSec(\'ekonomi\',\'sirketlerim\')">🏢 Şirketlerime Git</button>'
-        +'<button type="button" onclick="soMenuSec(\'ekonomi\',\'bankalar\')">🏦 Bankalar</button></div>':'')
+
       +'</header>';
   }
+  /* Özet bir kategori listesi değildir: canlı göstergeler + kişisel durum + işlem kısayolları. */
+  function eGercekSayi(x){
+    if(x===null||x===undefined||x==="")return null;
+    var n=Number(x);return Number.isFinite(n)?n:null;
+  }
+  function eYuzde(x,ondalik){
+    var n=eGercekSayi(x);
+    return n===null?"—":"%"+n.toLocaleString("tr-TR",{maximumFractionDigits:ondalik===undefined?1:ondalik});
+  }
+  function eKisaPara(x){
+    var n=eGercekSayi(x);if(n===null)return "—";
+    var a=Math.abs(n), eksi=n<0?"−":"";
+    if(a>=1e9)return eksi+(a/1e9).toLocaleString("tr-TR",{maximumFractionDigits:2})+" Mr ₺";
+    if(a>=1e6)return eksi+(a/1e6).toLocaleString("tr-TR",{maximumFractionDigits:2})+" Mn ₺";
+    if(a>=1e4)return eksi+(a/1e3).toLocaleString("tr-TR",{maximumFractionDigits:1})+" bin ₺";
+    return eksi+Math.round(a).toLocaleString("tr-TR")+" ₺";
+  }
+  function eKpi(ad,deger,aciklama,renk){
+    return '<div class="so-econ-kpi'+(renk?' accent':'')+'"><span>'+esc(ad)+'</span>'
+      +'<strong>'+esc(deger)+'</strong>'+(aciklama?'<small>'+esc(aciklama)+'</small>':'')+'</div>';
+  }
+  function eKpiBolum(bas,acik,kartlar){
+    return '<section class="so-econ-section"><div class="so-econ-section-head"><h3>'+esc(bas)+'</h3>'
+      +'<small>'+esc(acik)+'</small></div><div class="so-econ-kpi-grid">'+kartlar.join("")+'</div></section>';
+  }
   async function ekonomiGenel(){
-    var sirketSayisi=null,bankalar=[];
-    try{var d=await API.rpc("ortak_sirket_panel");if(d&&Array.isArray(d.sirketler))sirketSayisi=d.sirketler.length;}catch(_){}
-    try{var b=await API.rpc("banka_yonetilen_liste");if(Array.isArray(b))bankalar=b;}catch(_){}
-    var o=(sirketSayisi!==null||bankalar.length)
-      ?'<div class="so-econ-metrics">'
-         +(sirketSayisi!==null?'<div class="so-econ-metric"><strong>'+sirketSayisi+'</strong><span>Şirketim / ortaklığım</span></div>':'')
-         +(bankalar.length?'<div class="so-econ-metric"><strong>'+bankalar.length+'</strong><span>Yönettiğim banka</span></div>':'')
-        +'</div>':'';
-    var yonet=bankalar.length?eBolum("Banka sahibi işlemleri","Yalnız banka sahipleri",[
-      eTile("🏦","Bankamı yönet","Kasa, sermaye ve banka performansı","soBankaYonetimGit('ozet')",true),
-      eTile("📥","Başvuruları incele","Kredi, POS ve kart onayları","soBankaYonetimGit('basvuru')"),
-      eTile("⚙️","Otomatik kararlar","Onay ve ret kurallarını yönet","soBankaYonetimGit('ayar')")
+    // Üç sorgu aynı anda çalışır. Eksik yanıtlar göstergeye hayali 0 olarak yazılmaz.
+    var sonuclar=await Promise.allSettled([
+      API.rpc("piyasa_panosu"),API.rpc("merkez_bankasi"),API.rpc("banka_yonetilen_liste")
+    ]);
+    var p=sonuclar[0].status==="fulfilled"?sonuclar[0].value:null;
+    var m=sonuclar[1].status==="fulfilled"?sonuclar[1].value:null;
+    var b=sonuclar[2].status==="fulfilled"?sonuclar[2].value:null;
+    var bankalar=Array.isArray(b)?b:[];
+    var endeks=p&&p.endeks?p.endeks:{};
+    var benim=p&&p.benim?p.benim:{};
+    var göstergeler=[];
+    if(eGercekSayi(endeks.deger)!==null){
+      var dg=eGercekSayi(endeks.degisim),detay="Şirketler endeksi";
+      if(dg!==null)detay="Dünkü kapanışa göre "+(dg>0?"▲ ":dg<0?"▼ ":"= ")+eYuzde(Math.abs(dg),1);
+      göstergeler.push(eKpi("Şirketler endeksi",Number(endeks.deger).toLocaleString("tr-TR",{maximumFractionDigits:2}),detay,true));
+    }
+    if(m&&eGercekSayi(m.enflasyon)!==null)göstergeler.push(eKpi("Enflasyon",eYuzde(m.enflasyon,1),"Oyundaki güncel oran"));
+    if(m&&eGercekSayi(m.politika_faiz)!==null)göstergeler.push(eKpi("Politika faizi",eYuzde(m.politika_faiz,2),"Yıllık"));
+    if(m&&eGercekSayi(m.buyume)!==null)göstergeler.push(eKpi("Ekonomik büyüme",eYuzde(m.buyume,1),"Oyundaki güncel oran"));
+    var gosterge='<section class="so-econ-section"><div class="so-econ-section-head"><h3>Türkiye ekonomisi</h3>'
+      +'<small>Canlı oyun verileri</small></div>'
+      +(göstergeler.length?'<div class="so-econ-kpi-grid">'+göstergeler.join("")+'</div>'
+        :'<p class="so-econ-overview-note">Ekonomik göstergeler şu anda alınamıyor. Detaylı piyasa panosundan tekrar deneyebilirsin.</p>')
+      +'<button type="button" class="so-econ-overview-link" onclick="soMenuGit(\'piyasaPanosuEkrani\')">'
+      +'<span>📊 Detaylı piyasa panosu ve şirketler endeksi</span><span aria-hidden="true">›</span></button></section>';
+    var kisisel=[];
+    if(Array.isArray(benim.sirketler))kisisel.push(eKpi("Ortak olduğum şirket",String(benim.sirketler.length),"Şirket portföyüm"));
+    if(eGercekSayi(benim.portfoy)!==null)kisisel.push(eKpi("Şirket paylarımın değeri",eKisaPara(benim.portfoy),"Tahmini portföy değeri"));
+    if(eGercekSayi(benim.bugun)!==null)kisisel.push(eKpi("Bugünkü kâr payım",eKisaPara(benim.bugun),"Bugünkü şirket getirisi"));
+    if(eGercekSayi(benim.hafta)!==null)kisisel.push(eKpi("Son 7 günlük kâr",eKisaPara(benim.hafta),"Şirket paylarımdan"));
+    if(bankalar.length)kisisel.push(eKpi("Yönettiğim banka",String(bankalar.length),"Banka sahipliği"));
+    var durum=kisisel.length?eKpiBolum("Benim ekonomik durumum","Kişisel şirket performansım",kisisel):"";
+    var islemler=eBolum("Hemen işlem yap","Kategoriler değil, doğrudan işlemler",[
+      eTile("➕","Şirket kur","Yeni şirket kuruluşu","soMenuGit('sirketKurulumFormuAc')",true),
+      eTile("💸","Para gönder","Oyuncuya banka transferi","soMenuGit('paraGonderModal')"),
+      eTile("🤝","Ortaklık işlemleri","Davetler, ortaklık, hisse devri","soMenuGit('ortaklikEkrani')"),
+      eTile("📋","İhaleye katıl","Kamu ihalesine teklif ver","soMenuGit('ihaleEkrani')")
+    ]);
+    var yonet=bankalar.length?eBolum("Banka sahibi işlemlerim","Doğrudan yönetim",[
+      eTile("🏦","Bankamı yönet","Kasa ve banka yönetimi","soBankaYonetimGit('ozet')",true),
+      eTile("📥","Başvuruları incele","Kredi, POS ve kart başvuruları","soBankaYonetimGit('basvuru')"),
+      eTile("⚙️","Otomatik kararlar","Onay ve ret kuralları","soBankaYonetimGit('ayar')")
     ]):"";
-    return o+yonet
-      +eBolum("Hızlı erişim","En sık kullanılan",[
-        eTile("🏢","Şirketlerim","Kasalar, şubeler, inşaatlar","soMenuSec('ekonomi','sirketlerim')",true),
-        eTile("🛒","Ticaret","Şirket pazarı, satış ve ihaleler","soMenuSec('ekonomi','sirketler')"),
-        eTile("🏦","Bankalar","Özel bankalar ve bankacılık","soMenuSec('ekonomi','bankalar')"),
-        eTile("📈","Yatırımlar","Borsa, altın, döviz ve arzlar","soMenuSec('ekonomi','piyasalar')"),
-        eTile("🏠","Gayrimenkul","Arsa, daire, dükkân, kiralar","soMenuSec('ekonomi','emlak')"),
-        eTile("🧰","Diğer işler","Ruhsat, sigorta, iş kolları","soMenuSec('ekonomi','giris')")
-      ])
-      +eBolum("Hemen işlem yap","Kısa yollar",[
-        eTile("➕","Şirket kur","Yeni bir işletme aç","soMenuGit('sirketKurulumFormuAc')"),
-        eTile("🤝","Ortaklıklar","Ortak ol, hisse devret","soMenuGit('ortaklikEkrani')"),
-        eTile("📦","Toptan ticaret","Ürün ve stok işlemleri","soMenuGit('kamuToptanEkrani')"),
-        eTile("📋","İhaleler","Devlet ve belediye teklifleri","soMenuGit('ihaleEkrani')")
-      ]);
+    return '<div class="so-econ-overview">'+gosterge+durum+islemler+yonet+'</div>';
   }
   function bankalarGenel(){
     return eBolum("Bankalar ve kuruluş","Müşteri hesapları Hayat bölümünde",[
