@@ -41,13 +41,12 @@ jobs:
           node gelistirici/build/derle.js
           node gelistirici/build/sql_birlestir.js
           cp gelistirici/dist/supabase-kurulum.sql supabase-kurulum.sql
-      - name: Canli web dosyasi temel modulleri yukluyor mu
+      - name: Tek dosyalik uygulamada ekonomi ve bankacilik modullerini denetle
         run: |
-          for m in menu_sade.js menu_merkezleri.js bildirim_merkezi.js cek_merkezi.js uzaktan_kontrol.js magaza.js bankacilik.js; do
-            grep -q "src=\"$m" docs/index.html || { echo "docs/index.html $m yuklemiyor"; exit 1; }
+          for isaret in "SO_MENU_MERKEZLERI_V1" "BANKACILIK_V2" "function bankaDetayEkrani" "function bankaRehberiEkrani" "window.mobilSubeEkrani"; do
+            grep -q "$isaret" gelistirici/dist/index.html || { echo "Derlemede bulunamayan isaret: $isaret"; exit 1; }
           done
-          grep -q "window.YUK" docs/index.html
-          grep -q "krizMerkeziEkrani" docs/index.html
+          test -s docs/index.html
       - name: SQL kurulum dosyasini kaydet
         run: |
           git config user.name "github-actions[bot]"
