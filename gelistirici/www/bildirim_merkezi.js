@@ -43,6 +43,7 @@
   const MECLIS = /grup karari|kanun teklifi|vergi kanunu|anayasa degisikligi|oylama|meclis|tbmm|veto|yasama|grup konusmasi|grup gunu|grup toplantisi|tuzuk|partimize katildi|partimizden ayrildi|birlesti|kurultay|on secim|grup baskanvekil|partisinin adi|genel baskani yeni|teskilatli/;
 
   function rotaBul(t) {
+    if (/^muzayede:/.test(t)) return "muzayede";
     if (/ilan meydani|ilanina .{0,40}teklif|ilani icin karsi teklif|ilani baska bir aliciya|ilani yayindan kalkti|ilaninin 30 gunluk|ilanin oyun yonetimi|^satis tamamlandi: |artik senin \(/.test(t)) return "ilan";
     if (/kriz masasi|yonetim ›|yonetim >|ruhsat merkezi/.test(t)) return "yonetim";
     if (/adliye|dava|juri|istinaf|savunma|mahkeme/.test(t)) return "adliye";
@@ -72,6 +73,7 @@
     yonetim: { ad: "Yönetime git", ac: () => sekmeAc("yonetim"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.yonetim === "function" },
     adliye:  { ad: "Adliye'ye git", ac: () => sekmeAc("adliye"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.adliye === "function" },
     banka:   { ad: "Bankaya git", ac: () => ekranAc(bankaEkrani), var: () => typeof bankaEkrani === "function" },
+    muzayede:{ ad: "Müzayede’ye git", ac: () => ekranAc(muzayedeEkrani), var: () => typeof muzayedeEkrani === "function" },
     ilan:    { ad: "İlan Meydanı’na git", ac: () => ekranAc(ilanMeydaniEkrani), var: () => typeof ilanMeydaniEkrani === "function" },
     meclis:  { ad: "Meclis'e git", ac: () => sekmeAc("meclis"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.meclis === "function" },
     parti:   { ad: "Partilere git", ac: () => sekmeAc("parti"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.parti === "function" },

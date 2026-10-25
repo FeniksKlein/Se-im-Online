@@ -89,7 +89,7 @@
     ev: sv('<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>'),
     kitap: sv('<path d="M4 5a2 2 0 0 1 2-2h12v15H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 1h12v-3M9 7h5"/>'),
     hilal: sv('<path d="M14.5 4.5A8 8 0 1 0 14.5 19.5 6.5 6.5 0 1 1 14.5 4.5z"/><path d="M17 9.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z"/>'),
-    cekic: sv('<path d="M14 6l4 4M12.5 7.5l4-4 4 4-4 4zM12.5 7.5L4 16a1.5 1.5 0 0 0 0 2l2 2a1.5 1.5 0 0 0 2 0l8.5-8.5"/>'),
+    cekic: sv('<rect x="10.2" y="2.6" width="6" height="10" rx="1.6" transform="rotate(45 13.2 7.6)"/><path d="M8.4 9.6l3.9 3.9M11.6 11.4L4 19"/><path d="M13 21.2h8M14.5 18.4h5"/>'),
     kart: sv('<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/>'),
     etiket: sv('<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.3"/>'),
     fabrika: sv('<path d="M3 21V10l5 3V10l5 3V10l5 3V4h3v17z"/><path d="M7 17h2M12 17h2M17 17h1"/>'),
@@ -445,6 +445,7 @@
     mobilSube: function () { var f = g('mobilSubeEkrani'); f ? ac(function () { return f(); }) : hata(); },
     ilan: function () { var f = g('ilanMeydaniEkrani'); f ? ac(f) : hata(); },
     magaza: function () { var f = g('magazaEkrani'); f ? ac(f) : hata(); },
+    muzayede: function () { var f = g('muzayedeEkrani'); f ? ac(f) : hata(); },
     bildirim: function () { var f = g('bildirimEkrani'); f ? ac(f) : hata(); },
     yonetici: function () { var f = g('yoneticiEkrani'); f ? ac(f) : hata(); },
     ara: function () { var f = g('oyuncuAramaAc'); f ? f() : hata(); },
@@ -832,9 +833,9 @@
   /* ---------- Menü çekmecesi ---------- */
   function karo(k, ad, alt, eylem, rz) {
     var b = bolum(k === '@banka' ? 'hayat' : k), ak = aktifSekme() === k;
-    var renk = { '@banka': ['#b33a5c', '#3b1832'], '@ilan': ['#d99a2b', '#45301a'], '@magaza': ['#7a5af0', '#2a1f5e'], '@bildirim': ['#e0565b', '#45182a'], '@yonetici': ['#7b8bb8', '#232b4c'] }[k];
+    var renk = { '@banka': ['#b33a5c', '#3b1832'], '@ilan': ['#d99a2b', '#45301a'], '@muzayede': ['#c99a3a', '#4a1a2e'], '@magaza': ['#7a5af0', '#2a1f5e'], '@bildirim': ['#e0565b', '#45182a'], '@yonetici': ['#7b8bb8', '#232b4c'] }[k];
     var a1 = renk ? renk[0] : b.a1, a2 = renk ? renk[1] : b.a2;
-    var ik = { '@banka': 'banka', '@ilan': 'ilan', '@magaza': 'magaza', '@bildirim': 'zil', '@yonetici': 'ayar' }[k] || (B[k] && B[k].ik) || k;
+    var ik = { '@banka': 'banka', '@ilan': 'ilan', '@muzayede': 'cekic', '@magaza': 'magaza', '@bildirim': 'zil', '@yonetici': 'ayar' }[k] || (B[k] && B[k].ik) || k;
     return '<button type="button" class="pa-karo' + (ak ? ' aktif' : '') + '" style="--k1:' + a1 + ';--k2:' + a2 + '" onclick="' + eylem + '"><span class="pa-ki">' + ikon(ik) + '</span><span><b>' + esc(ad) + '</b><small>' + esc(alt) + '</small></span>' + (rz || '') + '</button>';
   }
   function menuHtml() {
@@ -857,6 +858,7 @@
         karo('hayat', 'Hayat', 'Maaş, görev, statü', on('sekme', 'hayat'), cz.dolu ? '<span class="pa-rz yesil">Topla</span>' : ''),
         karo('@banka', 'Mobil Şube', 'Hesap, kart, kredi', on('mobilSube')),
         karo('@ilan', 'İlan Meydanı', 'Ev, dükkân, hisse', on('ilan')),
+        karo('@muzayede', 'Müzayede', 'Pey ver, koleksiyon yap', on('muzayede')),
         karo('ekonomi', 'Ekonomi', 'Şirket ve piyasa', on('sekme', 'ekonomi')),
         karo('@magaza', 'Mağaza', 'Kart ve paketler', on('magaza'))
       ]],
@@ -895,6 +897,7 @@
     e('banka', '#b33a5c', 'Mobil Şube', 'Hesap, kredi kartı, kredi, birikim, FAST', ['mobilSube'], 'banka hesap kredi kart mevduat faiz fast eft havale iban', 'Para');
     e('para', '#1f9e86', 'Para gönder', 'Başka bir oyuncuya para gönder', ['kod', 'paraGonderModal()'], 'para gönder transfer havale fast', 'Para');
     e('ilan', '#d99a2b', 'İlan Meydanı', 'Satılık ev, dükkân, arsa, şirket, hisse', ['ilan'], 'ilan satılık ev daire dükkan arsa emlak tapu şirket hisse sahibinden', 'Para');
+    if (g('muzayedeEkrani')) e('cekic', '#c99a3a', 'Müzayede Evi', 'Koleksiyon eserlerine pey ver, sergile, sat', ['muzayede'], 'müzayede açık artırma pey koleksiyon eser tablo sikke pul antika saat mücevher halı otomobil sergi müze', 'Para');
     e('magaza', '#7a5af0', 'Mağaza', 'Siyaset Kartı ve ₺ paketleri', ['magaza'], 'mağaza satın al paket siyaset kartı rozet', 'Para');
     e('gorev', '#8a68f2', 'Görevler', 'Günlük, haftalık ve kalıcı görevler', ['gorev'], 'görev ödül', 'Hayat');
     e('kanun', B.meclis.a1, 'Kanun teklifi ver', 'Meclis\'e yeni kanun teklifi sun', ['kanun'], 'kanun teklif yasa önerge', 'Meclis');

@@ -43,7 +43,7 @@ jobs:
           cp gelistirici/dist/supabase-kurulum.sql supabase-kurulum.sql
       - name: Tek dosyalik uygulamada ekonomi ve bankacilik modullerini denetle
         run: |
-          for isaret in "SO_MENU_MERKEZLERI_V1" "BANKACILIK_V2" "function bankaDetayEkrani" "function bankaRehberiEkrani" "window.mobilSubeEkrani" "ILAN_MEYDANI" "window.YUK" "YUK.otomatik" "async function krizMerkeziEkrani" "SO_PREMIUM_ARAYUZ_V1"; do
+          for isaret in "SO_MENU_MERKEZLERI_V1" "BANKACILIK_V2" "function bankaDetayEkrani" "function bankaRehberiEkrani" "window.mobilSubeEkrani" "ILAN_MEYDANI" "window.YUK" "YUK.otomatik" "async function krizMerkeziEkrani" "SO_PREMIUM_ARAYUZ_V1" "window.muzayedeEkrani"; do
             grep -q "$isaret" gelistirici/dist/index.html || { echo "Derlemede bulunamayan isaret: $isaret"; exit 1; }
           done
           test -s docs/index.html

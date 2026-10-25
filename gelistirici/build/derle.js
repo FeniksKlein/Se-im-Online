@@ -51,7 +51,7 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','premium_ekonomi.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','yatirim_kasasi.js'),'utf8')+'</script></body>');
 // Şirket tek merkez, çek/bankacılık merkezi ve Şirketlerim gelir raporu (docs/*.js artık yüklenmediği için pakete gömülür).
-for (const m of ['cb_toren_2215.js','cb_kampanya.js','yatirim_pazari.js','sirket_tek_merkez.js','cek_merkezi.js','ekonomi_menu_onarim.js'])
+for (const m of ['cb_toren_2215.js','cb_kampanya.js','yatirim_pazari.js','sirket_tek_merkez.js','cek_merkezi.js','ekonomi_menu_onarim.js','muzayede.js'])
   html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www',m),'utf8')+'</script></body>');
 // Premium arayüz katmanı: 5'li alt menü + Menü çekmecesi, bölüm kurum kartları, kimlik kartı (en son yüklenir).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','premium_arayuz.js'),'utf8')+'</script></body>');
