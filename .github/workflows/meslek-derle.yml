@@ -1,0 +1,40 @@
+name: Uygulama derle ve web'e yayinla
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'gelistirici/www/**'
+      - 'gelistirici/build/derle.js'
+      - 'gelistirici/SURUM'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: secim-online-web-build
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Derle
+        run: |
+          node gelistirici/build/derle.js
+          cp gelistirici/dist/index.html docs/index.html
+          cp gelistirici/dist/index.html www/index.html
+      - name: Surumu yayinla
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html www/index.html
+          if git diff --cached --quiet; then
+            echo "Yeni derleme degisikligi yok"
+          else
+            git commit -m "build: guncel oyuncu arayuzunu yayinla [skip ci]"
+            git push origin HEAD:main
+          fi
