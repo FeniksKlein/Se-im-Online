@@ -89,6 +89,7 @@
     ev: sv('<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>'),
     kitap: sv('<path d="M4 5a2 2 0 0 1 2-2h12v15H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 1h12v-3M9 7h5"/>'),
     hilal: sv('<path d="M14.5 4.5A8 8 0 1 0 14.5 19.5 6.5 6.5 0 1 1 14.5 4.5z"/><path d="M17 9.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z"/>'),
+    kursu: sv('<path d="M7.5 20.5h9l-1.2-7.2H8.7z"/><path d="M6 13.3h12"/><path d="M12 13.3v-2.6"/><circle cx="12" cy="7.6" r="2.3"/><path d="M6.6 4.6a6.4 6.4 0 0 0 0 6M17.4 4.6a6.4 6.4 0 0 1 0 6"/>'),
     cekic: sv('<rect x="10.2" y="2.6" width="6" height="10" rx="1.6" transform="rotate(45 13.2 7.6)"/><path d="M8.4 9.6l3.9 3.9M11.6 11.4L4 19"/><path d="M13 21.2h8M14.5 18.4h5"/>'),
     kart: sv('<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/>'),
     etiket: sv('<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.3"/>'),
@@ -235,6 +236,8 @@
     '#paMenu .pa-grup>h3{margin:0 2px 9px;font-size:13px;font-weight:650;color:#8f9bc0;letter-spacing:.1px}',
     '#paMenu .pa-izgara{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}',
     '#paMenu .pa-karo{all:unset;box-sizing:border-box;cursor:pointer;position:relative;display:flex;flex-direction:column;gap:9px;min-height:104px;padding:12px 11px 11px;border-radius:18px;background:linear-gradient(160deg,#1f2950,#161e3e);box-shadow:inset 0 0 0 1px rgba(164,184,255,.09);transition:transform .15s,box-shadow .15s;overflow:hidden}',
+    '#paMenu .pa-karo.pa-karo-genis{grid-column:1/-1;min-height:0!important;flex-direction:row;align-items:center;gap:12px;padding:12px 14px!important;background:radial-gradient(120% 160% at 100% 0%,rgba(255,79,139,.55),rgba(255,79,139,0) 60%),linear-gradient(120deg,#3b2a8f,#6b4ae6)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 14px 30px -18px rgba(139,108,255,.9)!important}',
+    '#paMenu .pa-karo.pa-karo-genis small{color:rgba(255,255,255,.82)!important}',
     '#paMenu .pa-karo::after{content:"";position:absolute;right:-26px;bottom:-26px;width:74px;height:74px;border-radius:50%;background:radial-gradient(circle,var(--k1),transparent 70%);opacity:.22}',
     '#paMenu .pa-karo:active{transform:scale(.96)}',
     '#paMenu .pa-karo:focus-visible{box-shadow:inset 0 0 0 2px #a895ff}',
@@ -469,7 +472,8 @@
     tikla: function (id) { var el = document.getElementById(id); if (el && !el.disabled) el.click(); else if (el) { var t = g('toast'); if (t) t('Şu an kullanılamıyor.'); } },
     kaydir: function (sec) { var el = document.querySelector(sec); if (el) el.scrollIntoView({ behavior: azHareket() ? 'auto' : 'smooth', block: 'start' }); },
     topla: function () { toplaEylem(); },
-    akis: function () { var f = g('akisEkrani'); f ? ac(function () { return f(); }) : hata(); }
+    kursu: function (alt) { var f = g('kursuEkrani'); f ? ac(function () { return f(alt); }) : hata(); },
+    akis: function () { var f = g('kursuEkrani') || g('akisEkrani'); f ? ac(function () { return f(); }) : hata(); }
   };
   window.soPa = function (ad) { var a = [].slice.call(arguments, 1); try { menuKapat(true); if (EYLEM[ad]) EYLEM[ad].apply(null, a); } catch (e) { if (window.console) console.warn('Premium arayüz:', e); hata(); } };
   function on(ad) { var a = [].slice.call(arguments, 1).map(function (x) { return JSON.stringify(x).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }); return 'soPa(&quot;' + ad + '&quot;' + (a.length ? ',' + a.join(',') : '') + ')'; }
@@ -607,7 +611,7 @@
         veri: veri([['Cüzdan', kisaTl(cz.para), cz.para, 'kisa'], ['Okunmamış', tr(sayi(ok.sohbet) + sayi(ok.ozel)), sayi(ok.sohbet) + sayi(ok.ozel)]])
       }) + kumbaraSerit(p) + hizli('gundem', [
         ['hayat', 'Hayat', on('sekme', 'hayat')],
-        ['meclis', 'Meclis', on('sekme', 'meclis')],
+        g('kursuEkrani') ? ['kursu', 'Kürsü', on('kursu')] : ['meclis', 'Meclis', on('sekme', 'meclis')],
         ['banka', 'Mobil Şube', on('mobilSube')],
         ['magaza', 'Mağaza', on('magaza')]
       ]);
@@ -833,10 +837,10 @@
   /* ---------- Menü çekmecesi ---------- */
   function karo(k, ad, alt, eylem, rz) {
     var b = bolum(k === '@banka' ? 'hayat' : k), ak = aktifSekme() === k;
-    var renk = { '@banka': ['#b33a5c', '#3b1832'], '@ilan': ['#d99a2b', '#45301a'], '@muzayede': ['#c99a3a', '#4a1a2e'], '@magaza': ['#7a5af0', '#2a1f5e'], '@bildirim': ['#e0565b', '#45182a'], '@yonetici': ['#7b8bb8', '#232b4c'] }[k];
+    var renk = { '@banka': ['#b33a5c', '#3b1832'], '@ilan': ['#d99a2b', '#45301a'], '@muzayede': ['#c99a3a', '#4a1a2e'], '@kursu': ['#8b6cff', '#3d1650'], '@magaza': ['#7a5af0', '#2a1f5e'], '@bildirim': ['#e0565b', '#45182a'], '@yonetici': ['#7b8bb8', '#232b4c'] }[k];
     var a1 = renk ? renk[0] : b.a1, a2 = renk ? renk[1] : b.a2;
-    var ik = { '@banka': 'banka', '@ilan': 'ilan', '@muzayede': 'cekic', '@magaza': 'magaza', '@bildirim': 'zil', '@yonetici': 'ayar' }[k] || (B[k] && B[k].ik) || k;
-    return '<button type="button" class="pa-karo' + (ak ? ' aktif' : '') + '" style="--k1:' + a1 + ';--k2:' + a2 + '" onclick="' + eylem + '"><span class="pa-ki">' + ikon(ik) + '</span><span><b>' + esc(ad) + '</b><small>' + esc(alt) + '</small></span>' + (rz || '') + '</button>';
+    var ik = { '@banka': 'banka', '@ilan': 'ilan', '@muzayede': 'cekic', '@kursu': 'kursu', '@magaza': 'magaza', '@bildirim': 'zil', '@yonetici': 'ayar' }[k] || (B[k] && B[k].ik) || k;
+    return '<button type="button" class="pa-karo' + (ak ? ' aktif' : '') + (k === '@kursu' ? ' pa-karo-genis' : '') + '" style="--k1:' + a1 + ';--k2:' + a2 + '" onclick="' + eylem + '"><span class="pa-ki">' + ikon(ik) + '</span><span><b>' + esc(ad) + '</b><small>' + esc(alt) + '</small></span>' + (rz || '') + '</button>';
   }
   function menuHtml() {
     var p = profil() || {}, cz = p.cuzdan || {}, ok = okunmamis(), d = Dx();
@@ -847,6 +851,7 @@
     var kb = bolum('ben');
     var gruplar = [
       ['Siyaset', [
+        g('kursuEkrani') ? karo('@kursu', 'Kürsü', 'Takip et, paylaş, gündem', on('kursu')) : '',
         karo('meclis', 'Meclis', m && m.dolu != null ? m.dolu + '/' + (m.toplam || 600) + ' sandalye' : 'Kanun ve oylama', on('sekme', 'meclis')),
         karo('parti', 'Partiler', p.parti ? p.parti.kisa + ' ve ittifaklar' : 'Katıl ya da kur', on('sekme', 'parti')),
         karo('adliye', 'Adliye', 'Dava ve avukat', on('sekme', 'adliye')),
@@ -882,6 +887,11 @@
   function aramaDizini() {
     var p = profil() || {}, ls = [];
     var e = function (ik, renk, ad, alt, ey, kel, grp) { ls.push({ ik: ik, renk: renk, ad: ad, alt: alt, ey: ey, kel: kel || '', grp: grp }); };
+    if (g('kursuEkrani')) {
+      e('kursu', '#8b6cff', 'Kürsü', 'Oyuncuların sosyal ağı: takip et, paylaş, yeniden paylaş', ['kursu'], 'kürsü akış sosyal medya tweet gönderi paylaşım takip takipçi yeniden paylaş alıntı beğen yorum yanıt hashtag etiket gündem trend biyografi profil', 'Bölüm');
+      e('kursu', '#ff4f8b', 'Türkiye gündemi', 'En çok konuşulan etiketler, kişiler, partiler', ['kursu', 'kesfet'], 'gündem trend hashtag etiket en çok konuşulan keşfet ara', 'Kürsü');
+      e('zil', '#ff4f8b', 'Kürsü bildirimleri', 'Takipçiler, yanıtlar, yeniden paylaşımlar', ['kursu', 'bildirim'], 'takipçi yanıt bahsetti anma beğeni bildirim', 'Kürsü');
+    }
     e('gundem', B.gundem.a1, 'Gündem', 'Akış, haberler, seçim takvimi', ['sekme', 'gundem'], 'ana sayfa haber akış paylaşım', 'Bölüm');
     e('devlet', B.devlet.a1, 'Devlet', 'Makamım, hükümet, mevzuat, gazete, tarih', ['sekme', 'devlet'], 'hükümet kabine bakanlık makam yönetim belediye cumhurbaşkanı', 'Bölüm');
     e('meclis', B.meclis.a1, 'Meclis', 'Sandalyeler, kanunlar, oylamalar', ['sekme', 'meclis'], 'tbmm milletvekili kanun yasa oylama grup başkanlık', 'Bölüm');
