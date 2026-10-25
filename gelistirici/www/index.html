@@ -1064,10 +1064,12 @@ async function gundemEkrani(){
   if (p.hesap_engeli) is.push({ ikon: IKON.uyari, bas: "Seçmen kartın henüz hazır değil", alt: e(p.hesap_engeli), git: "vatandaslikModal()" });
   if (!p.parti) is.push({ ikon: IKON.parti, bas: "Partilerin ideolojilerini incele", alt: "Partilerin ideolojilerini gör, bir partiye katıl", git: "sekmeAc(\'parti\')" });
 
+  const krizBilgi = typeof krizGundemHtml === "function" ? await iste("kriz_merkezi", undefined, null) : null;
   const cb = d.cb, ms = meclis && meclis.partiler ? meclis.partiler.filter(x => x.n > 0) : [];
   const govde = `
     ${seritHtml(haber)}
     ${typeof gundemEkUst === "function" ? gundemEkUst(EK) : ""}
+    ${typeof krizGundemHtml === "function" ? krizGundemHtml(krizBilgi) : ""}
     ${sahneHtml(d.takvim)}
     <div class="kart vit-gazete"><h2>📰 Gazeteler</h2>
       <div class="vit-dugme"><button class="btn altin" onclick="ekranAc(basinEkrani)">Oyuncu gazeteleri</button><button class="btn ikinci" onclick="otomatikGazeteEkrani()">Türkiye Gündem</button></div>
@@ -1420,7 +1422,7 @@ async function devletEkrani(){
     `<button class="${D.devletSekme === k ? "aktif" : ""}" onclick="D.devletSekme='${k}';devletEkrani()">${a}</button>`).join("")}</div>`;
   try {
     await durumYenile();
-    if (D.devletSekme === "hukumet") { iskelet("Devlet", seg + `<div class="kart"><button class="btn ikinci" onclick="aliciBagisModal('devlet',1,'Türkiye Cumhuriyeti Hazinesi')">Devlet hazinesine bağış yap</button></div>` + await hukumetHtml()); politikaBagla(); return; }
+    if (D.devletSekme === "hukumet") { iskelet("Devlet", seg + `<div class="kart"><button class="btn ikinci" onclick="aliciBagisModal('devlet',1,'Türkiye Cumhuriyeti Hazinesi')">Devlet hazinesine bağış yap</button>${typeof krizMerkeziEkrani === "function" ? `<button class="btn ikinci" style="margin-top:8px" onclick="ekranAc(krizMerkeziEkrani)">Ülke Kriz Merkezi ve arşiv</button>` : ""}</div>` + await hukumetHtml()); politikaBagla(); return; }
     if (D.devletSekme === "meclis") return iskelet("Devlet", seg + await meclisHtml());
     if (D.devletSekme === "adliye") return iskelet("Devlet", seg + await adliyeHtml());
     if (D.devletSekme === "mevzuat") { iskelet("Devlet", seg + await mevzuatHtml()); kuralBagla(); return; }
