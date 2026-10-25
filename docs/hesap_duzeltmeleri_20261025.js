@@ -48,7 +48,7 @@
     if(banks.length){
       var bhtml='<p class="alt">Özel bankalarda hesap açmadan kart, POS ve kredi başvurusu yapılamaz.</p>';
       banks.forEach(function(b){
-        bhtml+='<div class="kv"><span><b>'+safe(b.ad)+'</b><span class="kucuk" style="display:block">Banka kasası '+para(b.kasa)+'</span></span><button class="btn ikinci" type="button" onclick="ibHesapAc('+Number(b.id)+')">Hesap aç</button></div>';
+        bhtml+='<div class="kv"><span><b>'+safe(b.ad)+'</b><span class="kucuk" style="display:block">'+(b.kasa==null?'Kasa bilgisi gizli':'Banka kasası '+para(b.kasa))+'</span></span><button class="btn ikinci" type="button" onclick="ibHesapAc('+Number(b.id)+')">Hesap aç</button></div>';
       });
       html+=kutu("Hesap açabileceğin bankalar",bhtml);
     }

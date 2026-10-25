@@ -48,9 +48,9 @@
       var ziyaret = Array.isArray(r.ziyaretler) ? r.ziyaretler : [];
       var acik = kamp.filter(function(k) {return k.acik;}).length;
       var h = '<div class="kart"><h2>Dernek sosyal faaliyet merkezi</h2><p class="alt">' + e(r.ad) + ' · Sanal oyun dünyasındaki faaliyetler, gerçek dünyada dikim veya yardım yapıldığı anlamına gelmez.</p>' +
-        '<div class="kv"><span class="k">Toplam kasa</span><b>' + tlYaz(r.kasa) + '</b></div>' +
+        '<div class="kv"><span class="k">Toplam kasa</span><b>' + (typeof gizliTL==='function'?gizliTL(r.kasa,tlYaz):tlYaz(r.kasa)) + '</b></div>' +
         '<div class="kv"><span class="k">Serbest harcama bütçesi</span><b>' + tlYaz(r.serbest) + '</b></div>' +
-        '<div class="kv"><span class="k">Amaçlı kampanyalara ayrılan</span><b>' + tlYaz(Math.max(0,Number(r.kasa)-Number(r.serbest))) + '</b></div>' +
+        '<div class="kv"><span class="k">Amaçlı kampanyalara ayrılan</span><b>' + (r.kasa==null?(typeof gizliTL==='function'?gizliTL(null,tlYaz):tlYaz(null)):tlYaz(Math.max(0,Number(r.kasa)-Number(r.serbest)))) + '</b></div>' +
         '<div class="kv"><span class="k">Açık kampanya</span><b>' + acik + '</b></div></div>';
       if (r.yetkili) h += '<div class="kart"><h2>Yeni faaliyet</h2>' +
         '<div class="vit-dugme"><button class="btn canli" onclick="stkProjeModal(' + id + ')">🌳 Ağaçlandır / Yardım yap</button><button class="btn altin" onclick="stkKampanyaAcModal(' + id + ')">Bağış kampanyası aç</button></div>' +

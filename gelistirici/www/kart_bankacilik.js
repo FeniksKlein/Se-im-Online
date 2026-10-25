@@ -66,7 +66,7 @@
     html+=card("💳 "+esc(k.banka)+" · #"+k.id,body);
    });
    var banks=(p.bankalar||[]);
-   var options='<option value="">Devlet Bankası</option>'+banks.map(function(b){return '<option value="'+b.id+'">'+esc(b.ad)+' · Kasa '+money(b.kasa)+'</option>';}).join("");
+   var options='<option value="">Devlet Bankası</option>'+banks.map(function(b){return '<option value="'+b.id+'">'+esc(b.ad)+(b.kasa==null?'':' · Kasa '+money(b.kasa))+'</option>';}).join("");
    html+=card("Yeni kredi kartı başvurusu",
       '<p class="alt">Kart limiti talebin, kredi notun, gelirin ve bankanın kasasındaki kullanılabilir para birlikte değerlendirilir. Banka mali belgelerini ancak onay verirsen inceler.</p>'+
       '<div class="alan"><label>Banka</label><select id="bkBasvBanka">'+options+'</select></div>'+
@@ -160,7 +160,7 @@
      });
    }else html+=card("Şirket hesabı","<p class='alt'>Başvuru yapmak için kendi şirketini kurmalı veya yönetim yetkisi almalısın.</p>");
    (d.yonetilen_bankalar||[]).forEach(function(b){
-     var body=fld("Kasa",money(b.kasa))+fld("POS satış hacmi",money(b.satis_hacmi))+
+     var body=fld("Kasa",(typeof gizliTL==='function'?gizliTL(b.kasa,money):money(b.kasa)))+fld("POS satış hacmi",money(b.satis_hacmi))+
          fld("Tahsil edilmiş net POS komisyonu",money(b.toplam_komisyon))+
          '<p class="alt">Banka otomatik başvuruları kabul edebilir veya başvuruları tek tek değerlendirebilir. Komisyon %2 sabittir.</p>'+
          '<div class="alan"><label>Başvuru onay sistemi</label><select id="pbAuto'+b.id+'">'+

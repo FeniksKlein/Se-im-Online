@@ -85,7 +85,7 @@ async function sirketAlimSatimEkrani(){
    '<p class="alt">Devlet devir vergisi oyun içi damga tarifesiyle hesaplanır (şu anda %1). Alıcı satış bedelini, satıcı devir vergisini öder. Stoklar, şirket kasası ve faaliyet kayıtları şirkette kalır. İcra haczi ve konkordato devirleri sınırlar.</p>');
   const sahipler=vitrindeki.filter(x=>payim.get(Number(x.id))===100&&!x.halka_acik);
   html+=kart("Satışa çıkarabileceğim şirketler",sahipler.length?
-   sahipler.map(s=>'<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>'+guvenli(s.ad)+'</b>'+satir("Sektör",s.sektor)+satir("Şirket kasası",tl(s.kasa))+
+   sahipler.map(s=>'<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>'+guvenli(s.ad)+'</b>'+satir("Sektör",s.sektor)+satir("Şirket kasası",(typeof gizliTL==='function'?gizliTL(s.kasa,tl):tl(s.kasa)))+
      (s.satilik!=null?satir("İlan fiyatı",tl(s.satilik)):"")+
      buton(s.satilik!=null?"İlanı güncelle":"Satışa çıkar","sirketSatisaCikar("+tamid(s.id)+")")+
      (s.satilik!=null?buton("İlanı kaldır","sirketSatisIptal("+tamid(s.id)+")",true):"")+'</div>').join(""):
@@ -93,7 +93,7 @@ async function sirketAlimSatimEkrani(){
   const piyasa=satilik.filter(x=>!payim.has(Number(x.id)));
   html+=kart("Diğer oyuncuların satış ilanları",
     piyasa.length?piyasa.map(s=>'<div style="padding:10px 0;border-bottom:1px solid var(--line)"><b>'+guvenli(s.ad)+'</b>'+
-       satir("Satıcı",s.sahip||s.kurucu)+satir("Sektör",s.sektor)+satir("Kasa",tl(s.kasa))+
+       satir("Satıcı",s.sahip||s.kurucu)+satir("Sektör",s.sektor)+satir("Kasa",(typeof gizliTL==='function'?gizliTL(s.kasa,tl):tl(s.kasa)))+
        satir("Satış bedeli",tl(s.satilik))+
        buton("Şirketi satın al","sirketSatinAl("+tamid(s.id)+")")+'</div>').join(""):
        '<p class="alt">Şimdilik başka oyuncunun satılık şirketi yok.</p>');

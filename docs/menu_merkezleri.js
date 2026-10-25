@@ -68,8 +68,9 @@
     ],
     ekonomi:[
       ["🏢","Şirketlerim","Kasaya para, şubelerim, inşaat ve finans","soMenuSec('ekonomi','sirketlerim')","müteahhit firma kasa sermaye"],
-      ["🏛️","İnternet Bankacılığı","Tüm hesaplar, kartlar ve borçlar","soMenuGit('internetBankaciligiEkrani')","devlet bankası mevduat"],
-      ["🏦","Oyuncu bankaları","Özel bankalar, kredi ve faizler","soMenuGit('bankaRehberiEkrani')","özel banka kredi"],
+      ["🏦","Mobil Şube","Bütün hesaplar, kartlar, krediler, birikim ve para gönderme","soMenuGit('mobilSubeEkrani')","banka devlet bankası mevduat havale eft fast internet bankacılığı"],
+      ["🏛️","Banka Genel Müdürlüğü","Bankanın kasası, başvurular, faizler, kâr payı ve DİBS","soMenuGit('bankaYonetimMerkezi')","banka sahibi yönetim kasa"],
+      ["🔒","Kasa gizliliği","Şirket, banka, dernek ve gazete kasasını kim görsün","soMenuGit('kasaGizlilikEkrani')","gizli kasa görünürlük"],
       ["💳","Kredi kartlarım","Kart limitleri, ekstre, hesap kesimi, borç","soMenuGit('kartlarimEkrani')","kredi kartı borç"],
       ["🏪","POS ve kartlı satış","Şirketime POS, kartla ödeme","soMenuGit('kartPosEkrani')","pos cihazı komisyon"],
       ["🧾","Çek defteri","Çek al, yaz, ciro et, öde","soMenuGit('cekMerkeziAc')","çek karnesi vadeli çek"],
@@ -386,7 +387,7 @@
       genel:["Ekonominin nabzı","Ekonomik göstergeler, şirket getirilerin ve önemli işlemlerin tek ekranda."],
       sirketlerim:["Şirketlerim","Kasalarını, şubelerini, projelerini ve ortaklıklarını yönet."],
       sirketler:["Ticaret merkezi","Şirket kur, iş yap, mal al-sat ve ticari işlemlerini izle."],
-      bankalar:["Bankalar","Banka sahibi yönetimi ve banka kuruluş işlemleri."],
+      bankalar:["Bankalar","Hesapların, kartların, para transferi ve banka yönetimi tek yerde."],
       piyasalar:["Yatırımlar","Borsa, altın, döviz ve halka arz fırsatları."],
       emlak:["Gayrimenkul","Arsa, konut, işyeri, kira ve inşaat yatırımları."],
       giris:["Diğer ekonomik faaliyetler","İş kolları, sigorta, ruhsat ve uzmanlık hizmetleri."]
@@ -469,12 +470,14 @@
     return '<div class="so-econ-overview">'+gosterge+durum+islemler+yonet+'</div>';
   }
   function bankalarGenel(){
-    return eBolum("Bankalar ve kuruluş","Müşteri hesapları Hayat bölümünde",[
+    return eBolum("Bankalar ve kuruluş","Bankaları keşfet, karşılaştır ya da kendi bankanı kur",[
         eTile("🏦","Oyuncu bankaları","Bankaları ve hizmetlerini keşfet","soMenuGit('bankaRehberiEkrani')",true),
+        eTile("📊","Bankaları karşılaştır","Güven notu, mevduat faizi, kredi paketleri","ekranAc(function(){return mobilSubeEkrani('bankalar')})"),
         eTile("➕","Özel banka kur","Sermaye belirleyip banka kur","soMenuGit('bankaKurEkrani')")
       ])
       +eBolum("Banka hesaplarım","Kişisel bankacılığa doğrudan bağlantı",[
-        eTile("📒","Tüm hesaplarım","Banka, kredi ve mevduat portföyü","soMenuGit('internetBankaciligiEkrani')"),
+        eTile("📱","Mobil Şube","Bütün hesap, kart, kredi ve birikimin tek yerde","soMenuGit('mobilSubeEkrani')",true),
+        eTile("💸","Para gönder","Havale, EFT ve FAST ile her bankaya","paraGonderModal()"),
         eTile("💳","Kredi kartlarım","Limitler, ekstre ve ödemeler","soMenuGit('kartlarimEkrani')"),
         eTile("🧾","Çek defterim","Çek düzenle, öde ve tahsil et","soMenuGit('cekMerkeziAc')"),
         eTile("🏪","POS işlemleri","Şirket POS ve kartlı satışlar","soMenuGit('kartPosEkrani')")
@@ -482,19 +485,17 @@
   }
   async function bankalarHtml(){
     var z="",b=[];
-    try{var r=await API.rpc("banka_yonetilen_liste");if(Array.isArray(r))b=r;}catch(err){
-      z+='<p class="so-econ-intro">Banka yönetim bilgileri şu an yüklenemedi: '+esc(err.message||err)+'</p>';
+    try{var r=await API.rpc("banka_yonettiklerim");if(Array.isArray(r))b=r;}catch(_){
+      try{var r2=await API.rpc("banka_yonetilen_liste");if(Array.isArray(r2))b=r2;}catch(err){
+        z+='<p class="so-econ-intro">Banka yönetim bilgileri şu an yüklenemedi: '+esc(err.message||err)+'</p>';
+      }
     }
     if(b.length){
-      z+=eBolum("Benim bankalarım","Banka sahipleri için yönetim",[
-        eTile("🏦","Bankamı yönet","Banka özeti ve kasa yönetimi","soBankaYonetimGit('ozet')",true),
-        eTile("📥","Başvuruları yönet","POS, kredi ve kart başvuruları","soBankaYonetimGit('basvuru')"),
-        eTile("⚙️","Otomatik kararlar","Onay, ret ve limit kuralları","soBankaYonetimGit('ayar')")
-      ]);
-      z+='<section class="so-econ-section"><div class="so-econ-section-head"><h3>Banka seç</h3><small>'+b.length+' banka</small></div>'
-        +'<div class="so-grid">'+b.map(function(x){
-          return link("🏦",x.ad||"Banka","Kasa: "+trPara(x.kasa),"soMenuBanka("+Number(x.id)+",'ozet')","Yönet");
-        }).join("")+'</div></section>';
+      z+=eBolum("Benim bankalarım","Genel Müdürlük: kasa, başvurular, faizler, kâr payı ve DİBS",b.map(function(x,i){
+        var bek=Number(x.bekleyen)||0;
+        var alt=(x.not?"Güven notu "+x.not+" · ":"")+(bek?bek+" başvuru bekliyor":"Bekleyen başvuru yok");
+        return eTile("🏛️",x.ad||"Banka",alt,"bankaGenelMudurlukEkrani("+Number(x.id)+")",i===0);
+      }));
     }
     return z+bankalarGenel();
   }

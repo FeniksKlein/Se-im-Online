@@ -43,7 +43,7 @@ jobs:
           cp gelistirici/dist/supabase-kurulum.sql supabase-kurulum.sql
       - name: Canli web dosyasi temel modulleri yukluyor mu
         run: |
-          for m in menu_sade.js menu_merkezleri.js bildirim_merkezi.js cek_merkezi.js uzaktan_kontrol.js magaza.js; do
+          for m in menu_sade.js menu_merkezleri.js bildirim_merkezi.js cek_merkezi.js uzaktan_kontrol.js magaza.js bankacilik.js; do
             grep -q "src=\"$m" docs/index.html || { echo "docs/index.html $m yuklemiyor"; exit 1; }
           done
           grep -q "window.YUK" docs/index.html

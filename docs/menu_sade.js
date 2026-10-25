@@ -153,11 +153,11 @@
         <button type="button" class="btn altin" style="width:100%;min-height:50px;font-weight:800" onclick="msBankaSahibiGit()">🏦 Bankamın Yönetim Ekranını Aç</button>
       </section>
       <section class="kart" style="margin-bottom:14px;border:2px solid var(--ink2,#a995ff)">
-        <h2>🏦 Bankacılık Merkezi</h2>
-        <p class="alt">Devlet bankası ve oyuncu bankaları ayrı menülerde. Kredi kartı, POS, haftalık ekstre ve borç ödeme burada.</p>
+        <h2>🏦 Mobil Şube</h2>
+        <p class="alt">Devlet Bankası ve oyuncu bankalarındaki bütün hesapların, kartların, kredilerin ve birikimin tek uygulamada. Para gönder, borç öde, kredi çek.</p>
         <div class="satir">
-          <button type="button" class="btn altin" onclick="ekranAc(bankacilikMerkeziEkrani)">🏦 Bankacılık</button>
-          <button type="button" class="btn ikinci" onclick="ekranAc(kartlarimEkrani)">💳 Kredi Kartlarım</button>
+          <button type="button" class="btn altin" onclick="ekranAc(mobilSubeEkrani)">🏦 Mobil Şube</button>
+          <button type="button" class="btn ikinci" onclick="paraGonderModal()">💸 Para gönder</button>
         </div>
       </section>
       <section class="kart" style="margin-bottom:12px;border-color:#a995ff77">
@@ -167,6 +167,7 @@
       </section>
       ${grup("Şirket ve iş", "Kur, yönet, yarış", [
         satir("sirket", "Şirketlerim ve şirket kur", "Şirketine dokun; kasa, sermaye, mal alım-satımı ve projelerini yönet", "ekranAc(sirketlerimMerkezi)", "sirketlerimMerkezi"),
+        satir("sirket", "🔒 Kasa gizliliği", "Şirket, banka, dernek ve gazete kasan kime görünsün", "ekranAc(kasaGizlilikEkrani)", "kasaGizlilikEkrani"),
         satir("sirket", "Şirket kârı tercihleri", "Kâr şirket kasasında mı biriksin, cüzdana mı geçsin? Her şirket için seç", "ekranAc(sirketKarTercihEkrani)", "sirketKarTercihEkrani"),
         satir("gorev", "💼 Ek işler", "Kurye, taksi, özel ders, tasarım ve tamirat; çalışıp ücretini al", "ekranAc(ekIslerEkrani)", "ekIslerEkrani"),
         satir("dunya", "🌾 Tarım ve hayvancılık", "Tarla, mevsim, hasat, süt, et ve market tedariki", "ucYeniAc('tarim')", "ucYeniAc"),
@@ -190,21 +191,20 @@
         satir("altin", "Altın ve döviz", "Emtia ve döviz piyasaları", "ekranAc(piyasaEkrani)", "piyasaEkrani"),
         satir("tahvil", "Belediye tahvilleri", "Belediyelere borç ver, faiz kazan", "ekranAc(belediyeTahvilEkrani)", "belediyeTahvilEkrani")
       ])}
-      ${grup("🏛️ DEVLET BANKASI", "Kamu bankacılığı", [
-        satir("banka", "Devlet bankasına gir", "Vadeli ve vadesiz hesap, kredi ve borç ödemesi", "ekranAc(bankaEkrani)", "bankaEkrani"),
-        satir("banka", "Devlet bankası kredi kartı", "Kart başvurusu, limit ve haftalık hesap özeti", "ekranAc(kartlarimEkrani)", "kartlarimEkrani")
+      ${grup("Bankacılık", "Bütün bankalar tek uygulamada", [
+        satir("banka", "Mobil Şube", "Hesaplarım, kartlar, krediler, birikim ve son hareketler", "ekranAc(mobilSubeEkrani)", "mobilSubeEkrani"),
+        satir("banka", "Kredi kartlarım", "Limit, dönem borcu, asgari ödeme ve nakit avans", "ekranAc(function(){return mobilSubeEkrani('kartlar')})", "mobilSubeEkrani"),
+        satir("banka", "Kredi çek", "Banka paketlerini karşılaştır, planı gör, anında çek", "ekranAc(function(){return mobilSubeEkrani('krediler')})", "mobilSubeEkrani"),
+        satir("banka", "Birikim ve faiz", "Vadeli hesap aç, bankaların faizlerini karşılaştır", "ekranAc(function(){return mobilSubeEkrani('birikim')})", "mobilSubeEkrani"),
+        satir("oyb", "Bankaları karşılaştır", "Güven notu, faizler, paketler; hesap aç", "ekranAc(function(){return mobilSubeEkrani('bankalar')})", "mobilSubeEkrani"),
+        satir("oyb", "Banka Genel Müdürlüğü", "Bankanın sahibiysen: kasa, başvurular, faizler, kâr payı, DİBS", "ekranAc(bankaYonetimMerkezi)", "bankaYonetimMerkezi"),
+        satir("banka", "Devlet Bankası (klasik ekran)", "Eski devlet bankası ekranı", "ekranAc(bankaEkrani)", "bankaEkrani")
       ])}
-      ${grup("🏦 OYUNCU BANKALARI", "Özel bankalar ve banka yönetimi", [
-        satir("oyb", "Oyuncu bankaları listesi", "Bankaları karşılaştır, hesap aç, kredi kullan", "ekranAc(bankaRehberiEkrani)", "bankaRehberiEkrani"),
-        satir("oyb", "Özel banka kredi kartları", "Banka başvuruları, yönetici limit onayları", "ekranAc(kartlarimEkrani)", "kartlarimEkrani"),
-        satir("oyb", "🏦 Banka POS Yönetimi", "POS başvurularını onayla, otomatik onayı aç, %2 gelirini incele", "ekranAc(posBankaEkrani)", "posBankaEkrani")
-      ])}
-      ${grup("💳 KREDİ KARTLARI VE ÖDEMELER", "Borç, ekstre ve POS", [
-        satir("banka", "Kredi kartlarım", "Hareketler, dönem borcu, asgari ve tam ödeme", "ekranAc(kartlarimEkrani)", "kartlarimEkrani"),
+      ${grup("💳 ÖDEMELER", "POS, çek ve transfer", [
         satir("banka", "POS Cihazlarım · başvurularım", "Şirketine POS al, banka onayını ve cihazları yönet", "ekranAc(posBankaEkrani)", "posBankaEkrani"),
         satir("banka", "POS · kartla alışveriş", "Mal/hizmet ödeme talepleri", "ekranAc(kartPosEkrani)", "kartPosEkrani"),
         satir("cek", "Çek defterim ve çekli ticaret", "Çek karnesi, vadeler ve gelen teklifler", "cekMerkeziAc()", "cekMerkeziAc"),
-        satir("gonder", "Para gönder", "Banka havalesi", "paraGonderModal()", "paraGonderModal"),
+        satir("gonder", "Para gönder", "Havale, EFT ve FAST ile her bankaya", "paraGonderModal()", "paraGonderModal"),
         satir("gecmis", "Alım-satım geçmişim", "Geçmiş işlemler", "ekranAc(ticaretGecmisimEkrani)", "ticaretGecmisimEkrani")
       ])}
       ${grup("Emlak", "", [
@@ -390,7 +390,7 @@
 /* Dernek faaliyetlerini GitHub Pages sürümüne ekle. */
 (function(){
  if(window.STK_FAALIYET_MODUL||document.getElementById("dernekFaaliyetModul"))return;
- var s=document.createElement("script");s.id="dernekFaaliyetModul";s.src="dernek_faaliyet.js?v=20261013-1";s.async=false;document.body.appendChild(s);
+ var s=document.createElement("script");s.id="dernekFaaliyetModul";s.src="dernek_faaliyet.js?v=20261025-2";s.async=false;document.body.appendChild(s);
 })();
 
 
@@ -451,4 +451,4 @@
 })();
 
 /* Dinamik bankacılık modülü, docs ve mobil için ortak. */
-(function(){if(document.getElementById("kartBankacilikModul"))return;var s=document.createElement("script");s.id="kartBankacilikModul";s.src="kart_bankacilik.js?v=20261023-3";s.async=false;document.body.appendChild(s);})();
+(function(){if(document.getElementById("kartBankacilikModul"))return;var s=document.createElement("script");s.id="kartBankacilikModul";s.src="kart_bankacilik.js?v=20261025-2";s.async=false;document.body.appendChild(s);})();

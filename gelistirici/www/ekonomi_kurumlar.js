@@ -214,7 +214,7 @@ async function konkordatoEkrani(){
         <p class="pz-not">Kasayı artıya çekmek için Şirketlerim ekranından sermaye artırımı yap.</p>
         <button class="btn ikinci" onclick="ekranAc(sirketYonetimEkrani)">Şirketlerim</button></div>` : ""}
       <div class="kart"><h2>Süreçler</h2>${(v.surecler || []).map(k => `<div class="pz-satir"><span class="sol"><b>${e(k.sirket)}</b>
-          <span class="kucuk" style="display:block">${k.durum === "surec" ? `Son gün ${tarihSaat(k.bit)} · kasa ${ekTL(k.kasa)}` : `${tarihSaat(k.sonuc_zaman || k.bit)} · başlangıç açığı ${ekTL(k.baslangic_kasa)}`}</span></span>
+          <span class="kucuk" style="display:block">${k.durum === "surec" ? `Son gün ${tarihSaat(k.bit)} · kasa ${(typeof gizliTL==='function'?gizliTL(k.kasa,ekTL):ekTL(k.kasa))}` : `${tarihSaat(k.sonuc_zaman || k.bit)} · başlangıç açığı ${ekTL(k.baslangic_kasa)}`}</span></span>
           <span class="sag">${ekDurum(k.durum)}</span></div>`).join("") || '<p class="alt">Şu an konkordatoda şirket yok.</p>'}</div>`, { geri: true });
   } catch (err) { ekHata("Konkordato ve iflas", err); }
 }
