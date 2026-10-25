@@ -143,6 +143,7 @@
       </section>
       ${grup("Şirket ve iş", "Kur, yönet, yarış", [
         satir("sirket", "Şirketlerim ve şirket kur", "Ortak olduğun şirketleri yönet, yeni şirket kur", "ekranAc(sirketYonetimEkrani)", "sirketYonetimEkrani"),
+        satir("altin", "Kuyumcu ve Döviz Çarşısı", "Gerçek kur · oyuncu dükkânları · meslek edin", "ekranAc(meslekOfisEkrani)", "meslekOfisEkrani"),
         satir("sirket", "🔒 Kasa gizliliği", "Şirket, banka, dernek ve gazete kasan kime görünsün", "ekranAc(kasaGizlilikEkrani)", "kasaGizlilikEkrani"),
         satir("sirket", "Şirket kârı tercihleri", "Kâr şirket kasasında mı biriksin, cüzdana mı geçsin? Her şirket için seç", "ekranAc(sirketKarTercihEkrani)", "sirketKarTercihEkrani"),
         satir("gorev", "💼 Ek işler", "Kurye, taksi, özel ders, tasarım ve tamirat; çalışıp ücretini al", "ekranAc(ekIslerEkrani)", "ekIslerEkrani"),
@@ -165,7 +166,6 @@
         satir("borsa", "Borsa", "Şirket hisselerini al, sat", "ekranAc(borsaEkrani)", "borsaEkrani"),
         satir("arz", "Halka arzlar", "Arzlara talep ver, ortak ol", "ekranAc(halkaArzPazarEkrani)", "halkaArzPazarEkrani"),
         satir("altin", "Altın ve döviz", "Emtia ve döviz piyasaları", "ekranAc(piyasaEkrani)", "piyasaEkrani"),
-        satir("altin", "Kuyumcu ve Döviz Çarşısı", "Gerçek kur · oyuncu dükkânları · meslek edin", "ekranAc(meslekOfisEkrani)", "meslekOfisEkrani"),
         satir("tahvil", "Belediye tahvilleri", "Belediyelere borç ver, faiz kazan", "ekranAc(belediyeTahvilEkrani)", "belediyeTahvilEkrani")
       ])}
       ${grup("Bankacılık", "Bütün bankalar tek uygulamada", [
