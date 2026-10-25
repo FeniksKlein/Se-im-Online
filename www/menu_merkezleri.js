@@ -22,10 +22,12 @@
     ["acik", "Açık Davalar"], ["itiraz", "İtirazlar"], ["biten", "Biten Davalar"],
     ["icra", "İcradan Satılıklar"], ["baro", "Baro"]
   ];
+  /* Ekonomi: tek sıra üst menü, ayrıntılar ilgili bölümün içinde. */
   var ekonomiSekmeleri = [
-    ["genel", "Genel Bakış"], ["bankalar", "🏦 Bankalar"],
-    ["sirketlerim", "Şirketlerim"], ["sirketler", "Şirketler"],
-    ["piyasalar", "Piyasalar"], ["emlak", "Gayrimenkul"], ["giris","İş Dünyası"], ["islemler", "İşlemler"]
+    ["genel", "Özet", "◈"], ["sirketlerim", "Şirketlerim", "🏢"],
+    ["sirketler", "Ticaret", "🛒"], ["bankalar", "Bankalar", "🏦"],
+    ["piyasalar", "Yatırım", "📈"], ["emlak", "Emlak", "🏠"],
+    ["giris", "Diğer", "✦"]
   ];
   var secim = { adliye:"mahkeme", ekonomi:"genel" };
   var istek = { adliye:0, ekonomi:0 };
@@ -166,24 +168,30 @@
 
       +'@media(min-width:620px){.so-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}'
       +'@media(max-width:360px){.so-stats{gap:5px}.so-stat b{font-size:17px}.so-tabs button{padding:8px 10px}}';
+    s.textContent+="\n.so-ekonomi{--econ-accent:#78d2c7;--econ-gold:#efd399;min-width:0;padding-bottom:12px}\n.so-ekonomi .so-tabs{position:sticky;top:0;z-index:8;gap:7px;background:var(--bg,#0c1428);border:0;border-bottom:1px solid var(--line,#303a56);border-radius:0;padding:9px 2px 11px;margin:0 -2px 14px;scroll-snap-type:x proximity}\n.so-ekonomi .so-tabs button{min-height:58px;padding:8px 13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;scroll-snap-align:start;border:1px solid var(--line2,#354463);border-radius:13px;background:var(--panel2,#141f35);font-weight:750;color:var(--txt2,#bac4d6);min-width:75px}\n.so-ekonomi .so-tabs button[aria-selected=\"true\"]{color:#f3fffe;border-color:#46988f;background:linear-gradient(145deg,#224f54,#193346);box-shadow:inset 0 -2px 0 #78d2c7,0 3px 12px #09182b55}\n.so-econ-tab-icon{font-size:18px;line-height:1.1}\n.so-ekonomi .so-menu-arama{margin:2px 0 12px;border-radius:14px;background:var(--panel2,#162039)}\n.so-econ-banner{position:relative;overflow:hidden;padding:21px 18px;border-radius:19px;background:linear-gradient(125deg,#143a43,#173149 55%,#293b5e);border:1px solid #41737c;margin-bottom:16px;box-shadow:0 9px 24px #0002;color:#f3f9fd}\n.so-econ-banner:after{content:\"\";position:absolute;right:-29px;top:-44px;width:145px;height:145px;border-radius:100%;background:radial-gradient(circle,#89e0bf39,transparent 72%);pointer-events:none}\n.so-econ-eyebrow{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:1.5px;font-weight:850;color:#a3f1dc;margin-bottom:8px}\n.so-econ-banner h2{font-size:clamp(21px,5vw,27px);line-height:1.18;letter-spacing:-.4px;color:#fff;margin:0 0 8px}\n.so-econ-banner p{font-size:13px;max-width:520px;line-height:1.55;color:#c9e1e9;margin:0}\n.so-econ-quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}\n.so-econ-quick button{min-height:38px;border:1px solid #88d7c5;border-radius:10px;background:#8be2c8;color:#0d2b34;padding:8px 12px;font-weight:800;cursor:pointer}\n.so-econ-quick button + button{background:#ffffff16;color:#effefa;border-color:#ffffff70}\n.so-econ-section{margin:16px 0}\n.so-econ-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}\n.so-econ-section-head h3{font-size:16px;color:var(--txt,#fff);margin:0;line-height:1.3}\n.so-econ-section-head small{font-size:11px;color:var(--txt2,#aebacf);text-align:right}\n.so-econ-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}\n.so-econ-tile{display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0;min-height:126px;padding:14px 12px;background:var(--panel,#19253e);color:var(--txt,#fff);border:1px solid var(--line2,#374a66);border-radius:16px;text-align:left;cursor:pointer}\n.so-econ-tile:active{transform:scale(.985);border-color:#78d2c7}\n.so-econ-tile b{font-size:14px;line-height:1.25}\n.so-econ-tile small{color:var(--txt2,#b3bfd3);font-size:11.5px;line-height:1.35}\n.so-econ-tile .so-econ-tile-icon{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:#569b9730;font-size:19px;margin-bottom:2px}\n.so-econ-tile.featured{background:linear-gradient(145deg,#1b4749,#1b3945);border-color:#4daca5}\n.so-econ-utility{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}\n.so-econ-utility button{flex:1 1 130px;min-height:44px;padding:9px 10px;border:1px solid var(--line2,#43526c);border-radius:12px;background:var(--panel,#1d2944);color:var(--txt,#fff);font-weight:750}\n.so-econ-metrics{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}\n.so-econ-metric{flex:1 1 100px;padding:11px 12px;background:var(--panel2,#14233a);border:1px solid var(--line2,#35506a);border-radius:13px}\n.so-econ-metric strong{display:block;font-size:18px;color:var(--txt,#fff)}\n.so-econ-metric span{display:block;font-size:11px;color:var(--txt2,#bec6d6);margin-top:3px}\n.so-econ-intro{font-size:12px;line-height:1.5;color:var(--txt2,#bfcee0);margin:3px 1px 11px}\n.so-econ-more{margin:14px 0;border:1px solid var(--line2,#37465f);border-radius:14px;padding:12px;background:var(--panel2,#142038)}\n.so-econ-more summary{cursor:pointer;color:var(--txt,#fff);font-size:13px;font-weight:800;list-style-position:inside;min-height:28px}\n.so-econ-more .so-grid{margin-top:12px}\n.so-ekonomi .so-company{border-radius:15px;transition:border-color .16s;background:var(--panel,#202b46)}\n.so-ekonomi .so-company:hover,.so-ekonomi .so-company:focus-visible{border-color:#78d2c7}\n.so-ekonomi .so-menu-hero{display:none}\n@media(min-width:700px){.so-econ-tiles{grid-template-columns:repeat(4,minmax(0,1fr))}.so-ekonomi .so-tabs{justify-content:space-around}.so-ekonomi .so-tabs button{flex:1}}\n@media(max-width:360px){.so-econ-tiles{gap:7px}.so-econ-tile{padding:12px 10px;min-height:125px}.so-econ-banner{padding:18px 14px}}\n@media(prefers-reduced-motion:reduce){.so-econ-tile:active{transform:none}}\n";
     document.head.appendChild(s);
   }
   function tablar(grup){
-    var dizi = grup==="adliye" ? adliyeSekmeleri : ekonomiSekmeleri;
+    var dizi=grup==="adliye"?adliyeSekmeleri:ekonomiSekmeleri;
     return '<nav class="so-tabs" role="tablist" aria-label="'+(grup==="adliye"?"Adliye bölümleri":"Ekonomi bölümleri")+'">'
-      +dizi.map(function(x){return '<button type="button" role="tab" aria-selected="'+(secim[grup]===x[0])+'"'
-      +' onclick="soMenuSec(\''+grup+'\',\''+x[0]+'\')">'+esc(x[1])+'</button>';}).join("")+'</nav>';
+      +dizi.map(function(x){var aktif=secim[grup]===x[0];
+        return '<button type="button" role="tab" aria-selected="'+aktif+'" aria-label="'+esc(x[1])+'"'
+          +' onclick="soMenuSec(\''+grup+'\',\''+x[0]+'\')">'
+          +(grup==="ekonomi"?'<span class="so-econ-tab-icon" aria-hidden="true">'+x[2]+'</span>':'')
+          +'<span>'+esc(x[1])+'</span></button>';
+      }).join("")+'</nav>';
   }
   function ciz(grup,icerik){
     var bas=grup==="adliye"?"Adliye":"Ekonomi";
     if(D.sekme!==grup || D.yigin.length) return;
-    iskelet(bas,tablar(grup)+aramaKutusu(grup)+icerik);
+    iskelet(bas,(grup==="ekonomi"?'<div class="so-ekonomi">':"")+tablar(grup)+aramaKutusu(grup)+icerik+(grup==="ekonomi"?"</div>":""));
     var nav=document.querySelector(".so-tabs"),aktif=nav&&nav.querySelector('[aria-selected="true"]');
     if(nav&&aktif)nav.scrollLeft=Math.max(0,aktif.offsetLeft-nav.offsetLeft-nav.clientWidth/3);
   }
   function gecerli(grup,no){return no===istek[grup]&&D.sekme===grup&&!D.yigin.length;}
   window.soMenuSec=function(grup,sekme){
     var dizi=grup==="adliye"?adliyeSekmeleri:ekonomiSekmeleri;
+    if(grup==="ekonomi"&&sekme==="islemler")sekme="sirketler";
     if(!dizi.some(function(x){return x[0]===sekme;}))return;
     secim[grup]=sekme;
     if(grup==="adliye")window.adliyeEkrani(true);else window.ekonomiSekmeEkrani();
@@ -361,72 +369,92 @@
     }
   }
 
-  /* Ekonomi: Hayat ekranındaki maaş ve kişisel yaşam korunur, ticaret ayrı sekmededir. */
+  /* Ekonomi vitrini: özet -> tek dokunuşla ilgili üst sekme. */
+  function eTile(ikon,bas,alt,hedef,featured){
+    return '<button type="button" class="so-econ-tile'+(featured?' featured':'')+'" onclick="'+hedef+'">'
+      +'<span class="so-econ-tile-icon" aria-hidden="true">'+ikon+'</span>'
+      +'<b>'+esc(bas)+'</b><small>'+esc(alt)+'</small></button>';
+  }
+  function eBolum(bas,alt,liste){
+    return '<section class="so-econ-section"><div class="so-econ-section-head"><h3>'+esc(bas)+'</h3>'
+      +(alt?'<small>'+esc(alt)+'</small>':'')+'</div><div class="so-econ-tiles">'+liste.join("")+'</div></section>';
+  }
   function ekonomiHero(s){
     var map={
-      genel:["Ekonomi Merkezi","Şirketlerin, bankaların, piyasaların ve mülklerin için hızlı erişim."],
-      sirketlerim:["Şirketlerim","Ortak olduğun şirkete dokun: kasa, mal, şube, inşaat, ortaklık ve finans tek ekranda."],
-      bankalar:["Bankalar ve Finans","Devlet bankası, özel bankalar, kart, POS, çek ve kredi hesapları."],
-      sirketler:["Şirket Pazarı","Şirketleri, ortaklıkları, satış ilanlarını ve halka arzları keşfet."],
-      piyasalar:["Piyasalar","Borsa, yatırım araçları, ekonomik gelişmeler ve fiyatlar."],
-      emlak:["Gayrimenkul","Arsa, ev, dükkân, kira ve yatırım fırsatları."],
-      giris:["İş Dünyası","Sigorta, ajanslar, ruhsatlar, yeni iş kolları ve ek gelir yolları."],
-      islemler:["İşlem Merkezi","Havale, alım-satım geçmişi, ihale ve ödeme işlemleri."]
+      genel:["Ekonomi, kontrol sende.","Şirketlerin, yatırımların ve ticaretin tek bir merkezde."],
+      sirketlerim:["Şirketlerim","Kasalarını, şubelerini, projelerini ve ortaklıklarını yönet."],
+      sirketler:["Ticaret merkezi","Şirket kur, iş yap, mal al-sat ve ticari işlemlerini izle."],
+      bankalar:["Bankalar","Banka sahibi yönetimi ve banka kuruluş işlemleri."],
+      piyasalar:["Yatırımlar","Borsa, altın, döviz ve halka arz fırsatları."],
+      emlak:["Gayrimenkul","Arsa, konut, işyeri, kira ve inşaat yatırımları."],
+      giris:["Diğer ekonomik faaliyetler","İş kolları, sigorta, ruhsat ve uzmanlık hizmetleri."]
     };
     var d=map[s]||map.genel;
-    return '<div class="so-menu-hero"><h2>'+esc(d[0])+'</h2><p>'+esc(d[1])+'</p></div>';
+    return '<header class="so-econ-banner"><div class="so-econ-eyebrow">◆ EKONOMİ MERKEZİ</div>'
+      +'<h2>'+esc(d[0])+'</h2><p>'+esc(d[1])+'</p>'
+      +(s==="genel"?'<div class="so-econ-quick">'
+        +'<button type="button" onclick="soMenuSec(\'ekonomi\',\'sirketlerim\')">🏢 Şirketlerime Git</button>'
+        +'<button type="button" onclick="soMenuSec(\'ekonomi\',\'bankalar\')">🏦 Bankalar</button></div>':'')
+      +'</header>';
   }
-  function ekonomiGenel(){
-    // Doğrudan bankaya erişim her oyuncuda görünür; yetki sunucu RPC'sinde denetlenir.
-    // Banka sahibi kimse banka rehberine yönelir, müşteri gibi yönetim ekranı açılmaz.
-    return baslik("🏦 Banka ve Finans Merkezi","Banka sahibiysen tek dokunuşla bankanı yönet, değilse bankaları görüntüle.")
-      +grids([
-        link("🏦","BANKAMI YÖNET","Banka kasasına para yatır, POS ve kart başvurularını onayla/reddet, otomatik kararları değiştir.",
-             "soBankaYonetimGit('ozet')","Banka Sahibi"),
-        link("💳","Bankalar ve Hesaplar","Devlet bankası, özel bankalar, kredi kartları ve mevduat.",
-             "soMenuSec('ekonomi','bankalar')")
+  async function ekonomiGenel(){
+    var sirketSayisi=null,bankalar=[];
+    try{var d=await API.rpc("ortak_sirket_panel");if(d&&Array.isArray(d.sirketler))sirketSayisi=d.sirketler.length;}catch(_){}
+    try{var b=await API.rpc("banka_yonetilen_liste");if(Array.isArray(b))bankalar=b;}catch(_){}
+    var o=(sirketSayisi!==null||bankalar.length)
+      ?'<div class="so-econ-metrics">'
+         +(sirketSayisi!==null?'<div class="so-econ-metric"><strong>'+sirketSayisi+'</strong><span>Şirketim / ortaklığım</span></div>':'')
+         +(bankalar.length?'<div class="so-econ-metric"><strong>'+bankalar.length+'</strong><span>Yönettiğim banka</span></div>':'')
+        +'</div>':'';
+    var yonet=bankalar.length?eBolum("Banka sahibi işlemleri","Yalnız banka sahipleri",[
+      eTile("🏦","Bankamı yönet","Kasa, sermaye ve banka performansı","soBankaYonetimGit('ozet')",true),
+      eTile("📥","Başvuruları incele","Kredi, POS ve kart onayları","soBankaYonetimGit('basvuru')"),
+      eTile("⚙️","Otomatik kararlar","Onay ve ret kurallarını yönet","soBankaYonetimGit('ayar')")
+    ]):"";
+    return o+yonet
+      +eBolum("Hızlı erişim","En sık kullanılan",[
+        eTile("🏢","Şirketlerim","Kasalar, şubeler, inşaatlar","soMenuSec('ekonomi','sirketlerim')",true),
+        eTile("🛒","Ticaret","Şirket pazarı, satış ve ihaleler","soMenuSec('ekonomi','sirketler')"),
+        eTile("🏦","Bankalar","Özel bankalar ve bankacılık","soMenuSec('ekonomi','bankalar')"),
+        eTile("📈","Yatırımlar","Borsa, altın, döviz ve arzlar","soMenuSec('ekonomi','piyasalar')"),
+        eTile("🏠","Gayrimenkul","Arsa, daire, dükkân, kiralar","soMenuSec('ekonomi','emlak')"),
+        eTile("🧰","Diğer işler","Ruhsat, sigorta, iş kolları","soMenuSec('ekonomi','giris')")
       ])
-      +baslik("En çok kullanılan işlemler","Bir dokunuşla işleminin olduğu bölüme git.")
-      +grids([
-        link("🏢","Şirketlerim","Kasalarım, şubeler, projeler ve hisse ortaklıkları.","soMenuSec('ekonomi','sirketlerim')"),
-        link("🏡","Gayrimenkul","Arsa, ev, dükkân ve kiralık mülkler.","soMenuSec('ekonomi','emlak')"),
-        link("📈","Piyasalar","Borsa, altın, döviz ve ekonomik veriler.","soMenuSec('ekonomi','piyasalar')")
-      ])
-      +baslik("Diğer merkezler","Alım-satım ve ödeme işlemleri de ayrı bölümlerde.")
-      +grids([
-        link("🏬","Şirketler ve ilanlar","Yeni şirket kur, şirket satın al, halka arza katıl.","soMenuSec('ekonomi','sirketler')"),
-        link("💸","Para ve ticaret işlemleri","Para gönderme, çek, ihale ve işlem geçmişi.","soMenuSec('ekonomi','islemler')"),
-        link("🛡️","İş Dünyası","Sigorta, iş kolları, ruhsat ve ek işler.","soMenuSec('ekonomi','giris')")
+      +eBolum("Hemen işlem yap","Kısa yollar",[
+        eTile("➕","Şirket kur","Yeni bir işletme aç","soMenuGit('sirketKurulumFormuAc')"),
+        eTile("🤝","Ortaklıklar","Ortak ol, hisse devret","soMenuGit('ortaklikEkrani')"),
+        eTile("📦","Toptan ticaret","Ürün ve stok işlemleri","soMenuGit('kamuToptanEkrani')"),
+        eTile("📋","İhaleler","Devlet ve belediye teklifleri","soMenuGit('ihaleEkrani')")
       ]);
   }
   function bankalarGenel(){
-    return baslik("Banka hesapları","Devlet bankasıyla oyuncu bankaları ayrı yönetilir.")
-      +grids([
-        link("🏛️","Devlet Bankası","Vadeli / vadesiz hesap, para yatırma ve çekme.","soMenuGit('bankaEkrani')"),
-        link("🏦","Oyuncu bankaları","Faizleri karşılaştır, mevduat yatır, kredi başvur.","soMenuGit('bankaRehberiEkrani')"),
-        link("📒","Mevduat ve kredilerim","Özel bankalardaki vadeler, geri ödemeler ve başvurular.","soMenuGit('bankaPortfoyEkrani')"),
-        link("➕","Yeni banka kur","Yeni özel banka kur, sermayesini belirle.","soMenuGit('bankaKurEkrani')")
+    return eBolum("Bankalar ve kuruluş","Müşteri hesapları Hayat bölümünde",[
+        eTile("🏦","Oyuncu bankaları","Bankaları ve hizmetlerini keşfet","soMenuGit('bankaRehberiEkrani')",true),
+        eTile("➕","Özel banka kur","Sermaye belirleyip banka kur","soMenuGit('bankaKurEkrani')")
       ])
-      +baslik("Kartlar ve ticari ödemeler","Kredi kartın, POS, çek defteri ve kart borçların.")
-      +grids([
-        link("💳","Kredi Kartlarım","Kart başvurusu, limit, harcama, ekstre ve borç ödeme.","soMenuGit('kartlarimEkrani')"),
-        link("🏪","POS / Kartlı ödeme","Şirket POS başvuruları ve kartlı satış talepleri.","soMenuGit('kartPosEkrani')"),
-        link("🧾","Çek defterim","Çek al, ver, ciro et, erken öde ve takibini yap.","soMenuGit('cekMerkeziAc')"),
-        link("💸","Para transferi","Banka havalesiyle diğer oyuncuya para gönder.","soMenuGit('paraGonderModal')")
+      +eBolum("Banka hesaplarım","Kişisel bankacılığa doğrudan bağlantı",[
+        eTile("📒","Tüm hesaplarım","Banka, kredi ve mevduat portföyü","soMenuGit('internetBankaciligiEkrani')"),
+        eTile("💳","Kredi kartlarım","Limitler, ekstre ve ödemeler","soMenuGit('kartlarimEkrani')"),
+        eTile("🧾","Çek defterim","Çek düzenle, öde ve tahsil et","soMenuGit('cekMerkeziAc')"),
+        eTile("🏪","POS işlemleri","Şirket POS ve kartlı satışlar","soMenuGit('kartPosEkrani')")
       ]);
   }
   async function bankalarHtml(){
-    var z="";
-    try{
-      var b=(await API.rpc("banka_yonetilen_liste"))||[];
-      if(b.length)z+=baslik("🏦 Banka Sahibi Yönetimi","Banka sahibiysen tüm onay/ret işlemlerin burada. Müşteri bankacılığıyla karışmaz.")
-        +grids([
-          link("📥","Başvuruları Yönet","POS, kredi kartı ve kredi başvurularını gör, onayla veya reddet.","soBankaYonetimGit('basvuru')","Yönetim"),
-          link("⚙️","Otomatik Karar Ayarları","POS, kredi kartı ve kredi için otomatik / manuel kurallar.","soBankaYonetimGit('ayar')","Yönetim")
-        ])
-        +baslik("Benim bankalarım","Bankanın adına dokunarak yönetimini aç.")
-        +grids(b.map(function(x){return link("🏦",x.ad,"Banka kasası: "+trPara(x.kasa),"soMenuBanka("+Number(x.id)+",'basvuru')","Yönetim");}));
-    }catch(_){/* Oyuncu müşteri olarak bankacılığı kullanmaya devam edebilir. */}
+    var z="",b=[];
+    try{var r=await API.rpc("banka_yonetilen_liste");if(Array.isArray(r))b=r;}catch(err){
+      z+='<p class="so-econ-intro">Banka yönetim bilgileri şu an yüklenemedi: '+esc(err.message||err)+'</p>';
+    }
+    if(b.length){
+      z+=eBolum("Benim bankalarım","Banka sahipleri için yönetim",[
+        eTile("🏦","Bankamı yönet","Banka özeti ve kasa yönetimi","soBankaYonetimGit('ozet')",true),
+        eTile("📥","Başvuruları yönet","POS, kredi ve kart başvuruları","soBankaYonetimGit('basvuru')"),
+        eTile("⚙️","Otomatik kararlar","Onay, ret ve limit kuralları","soBankaYonetimGit('ayar')")
+      ]);
+      z+='<section class="so-econ-section"><div class="so-econ-section-head"><h3>Banka seç</h3><small>'+b.length+' banka</small></div>'
+        +'<div class="so-grid">'+b.map(function(x){
+          return link("🏦",x.ad||"Banka","Kasa: "+trPara(x.kasa),"soMenuBanka("+Number(x.id)+",'ozet')","Yönet");
+        }).join("")+'</div></section>';
+    }
     return z+bankalarGenel();
   }
   window.soMenuBanka=function(id,tab){
@@ -474,80 +502,77 @@
     }
   }
   function sirketlerHtml(){
-    return baslik("Şirket kur ve ticaret yap","İlanlar ve piyasa işlemleri ayrı ekranlarda.")
-      +grids([
-        link("🏢","Tüm şirketler","Sektör, kâr, sermaye ve şirket sahipleri.","soMenuGit('sirketVitrinEkrani')"),
-        link("➕","Şirket kur","Kendi şirketini veya ortaklı şirketi oluştur.","soMenuGit('sirketKurulumFormuAc')"),
-        link("🏪","Satılık şirketler","Satın alma ilanları ve şirket bilgileri.","soMenuGit('sirketPazarEkrani')"),
-        link("🤝","Hisse pazarı","Hisse al, sat, ortak ol ve devret.","soMenuGit('sirketHissePazariEkrani')"),
-        link("🚀","Halka arzlar","Şirket halka arzları ve yatırım başvuruları.","soMenuGit('halkaArzPazarEkrani')"),
-        link("🏬","Rekabetçi işletmeler","Market, okul, hastane, fabrika ve ticaret.","soMenuGit('pazarMerkezEkrani')"),
-        link("📦","Toptan ticaret","Şirketler arasında mal alım-satımı.","soMenuGit('kamuToptanEkrani')"),
-        link("📋","Kamu ihaleleri","Devlet ve belediye işlerine teklif ver.","soMenuGit('ihaleEkrani')"),
-        link("🛡️","Sigorta şirketleri","Şirket sigortası, poliçe ve hasar işlemleri.","soMenuGit('msSigortaAc')"),
-        link("🏭","İş dünyası","Üretim, fabrika, mağaza, franchise ve işletmeler.","soMenuGit('isDunyasiEkrani')")
-      ]);
+    return eBolum("Şirket kur ve keşfet","Şirket pazarı",[
+      eTile("➕","Yeni şirket kur","Sektör, şehir, sermaye seç","soMenuGit('sirketKurulumFormuAc')",true),
+      eTile("🏢","Tüm şirketler","Şirketleri ve sahiplerini keşfet","soMenuGit('sirketVitrinEkrani')"),
+      eTile("🏷️","Satılık şirketler","İlanları incele ve şirket satın al","soMenuGit('sirketPazarEkrani')"),
+      eTile("🤝","Hisse ve ortaklık","Şirket hisseleri ve ortaklıklar","soMenuGit('sirketHissePazariEkrani')")
+    ])
+    +eBolum("Üretim ve ticaret","İşletmeler ve satış",[
+      eTile("🏭","İş dünyası","Fabrika, franchise ve üretim","soMenuGit('isDunyasiEkrani')"),
+      eTile("🛍️","Market ve mağaza","Ürünler, şirketler ve ticaret","soMenuGit('pazarMerkezEkrani')"),
+      eTile("📦","Toptan ticaret","Mal ve stok alım-satımı","soMenuGit('kamuToptanEkrani')"),
+      eTile("📋","Kamu ihaleleri","İlanlar ve teklif işlemleri","soMenuGit('ihaleEkrani')")
+    ])
+    +eBolum("Ödeme ve kayıtlar","Ticari işlemler",[
+      eTile("📜","İşlem geçmişim","Alış ve satış hareketleri","soMenuGit('ticaretGecmisimEkrani')"),
+      eTile("💸","Para gönder","Banka transferi yap","soMenuGit('paraGonderModal')"),
+      eTile("🧾","Çeklerim","Çek düzenle, öde ve takip et","soMenuGit('cekMerkeziAc')"),
+      eTile("🏪","POS yönetimi","POS başvuruları ve satış","soMenuGit('kartPosEkrani')")
+    ]);
   }
   function piyasalarHtml(){
-    return baslik("Yatırım ve ekonomi","Canlı işlem yapılabilen yatırım pazarları.")
-      +grids([
-        link("📈","Altın, döviz ve hisseler","Piyasa fiyatlarını incele, yatırım al veya sat.","soMenuGit('piyasaEkrani')"),
-        link("📊","Borsa","Borsa işlemleri ve hisse hareketleri.","soMenuGit('borsaEkrani')"),
-        link("🧾","Belediye tahvilleri","Belediyelere yatırım yap, faiz getirilerini incele.","soMenuGit('belediyeTahvilEkrani')"),
-        link("📊","Ekonomi merkezi","Piyasa raporu, büyüme, rekabet ve veriler.","soMenuGit('ekonomiMerkeziEkrani')"),
-        link("🚀","Halka arzlar","Yeni şirket hisseleri ve sonuçları.","soMenuGit('halkaArzPazarEkrani')"),
-        link("🏦","Mevduat fırsatları","Banka vadelerini ve oranlarını karşılaştır.","soMenuSec('ekonomi','bankalar')"),
-        link("🏛️","Merkez Bankası","Politika faizini ve PPK kararlarını incele.","soMenuGit('merkezBankasiEkrani')"),
-        link("⚖️","Sermaye Piyasası Kurulu","Borsa denetimi ve piyasa düzeni.","soMenuGit('spkEkrani')"),
-        link("📉","Rekabet Kurumu","Piyasa ve şirket rekabeti soruşturmaları.","soMenuGit('rekabetEkrani')")
-      ]);
+    return eBolum("Yatırım araçları","Alım-satım",[
+      eTile("📈","Altın ve döviz","Fiyatlar ve alım satım","soMenuGit('piyasaEkrani')",true),
+      eTile("📊","Borsa","Hisseler ve piyasa hareketleri","soMenuGit('borsaEkrani')"),
+      eTile("🚀","Halka arzlar","Yeni şirketlere yatırım","soMenuGit('halkaArzPazarEkrani')"),
+      eTile("🧾","Belediye tahvilleri","Tahvil getirileri ve işlemler","soMenuGit('belediyeTahvilEkrani')")
+    ])
+    +eBolum("Ekonomik görünüm","Rapor ve istatistikler",[
+      eTile("📊","Ekonomi raporu","Piyasa, büyüme ve rekabet","soMenuGit('ekonomiMerkeziEkrani')")
+    ])
+    +'<details class="so-econ-more"><summary>Düzenleyici kurumlar</summary>'
+    +grids([
+      link("🏛️","Merkez Bankası","Faiz ve PPK kararları.","soMenuGit('merkezBankasiEkrani')"),
+      link("⚖️","Sermaye Piyasası Kurulu","Sermaye piyasası düzeni.","soMenuGit('spkEkrani')"),
+      link("📉","Rekabet Kurumu","Piyasa rekabeti.","soMenuGit('rekabetEkrani')")
+    ])+'</details>';
   }
   function emlakHtml(){
-    return baslik("Gayrimenkul ve yatırımlar","Şehirlerde satılık ve kiralık taşınmazları yönet.")
-      +grids([
-        link("🏠","Gayrimenkul pazarı","Arsa, ev ve dükkân satın al.","soMenuGit('emlakYeniEkrani')"),
-        link("🏡","Yatırım pazarı","Yatırımlık taşınmaz ve ticari mülk ilanları.","soMenuGit('yatirimPazarEkrani')"),
-        link("🏗️","İnşaat şirketlerim","Şirketi seçip arsa ve inşaatlarına gir.","soMenuSec('ekonomi','sirketlerim')"),
-        link("💼","Şirketler ve şubeler","İşyerlerini ve büyüyen işletmelerini yönet.","soMenuSec('ekonomi','sirketlerim')")
-      ]);
+    return eBolum("Gayrimenkul piyasası","Satın al, sat, kiraya ver",[
+      eTile("🏠","Emlak pazarı","Ev, işyeri ve arsa ilanları","soMenuGit('emlakYeniEkrani')",true),
+      eTile("🏡","Yatırım pazarı","Ticari mülk ve kira getirisi","soMenuGit('yatirimPazarEkrani')"),
+      eTile("🏗️","İnşaatlarım","Şirketimi açıp projeleri yönet","soMenuSec('ekonomi','sirketlerim')"),
+      eTile("🏬","İşyerlerim","Şube ve dükkân yönetimi","soMenuSec('ekonomi','sirketlerim')")
+    ]);
   }
   function girisHtml(){
-    return baslik("İşletmeler ve ek kazanç","Şirket türü, ruhsat, sigorta ve yeni faaliyet alanları.")
-      +grids([
-        link("🛡️","Sigorta ve risk merkezi","Poliçe yaptır, hasar ve sigorta şirketlerini yönet.","soMenuGit('msSigortaAc')"),
-        link("💼","Ek işler","Kurye, taksi, özel ders, tasarım ve tamirat.","soMenuGit('ekIslerEkrani')"),
-        link("🏛️","Ruhsat merkezi","İşyeri, fabrika, mağaza ve inşaat ruhsatları.","soMenuGit('msRuhsatMerkeziAc')"),
-        link("📦","Üretim ve iş dünyası","Fabrika, mağaza, inşaat, franchise ve ticaret.","soMenuGit('isDunyasiEkrani')"),
-        link("🌾","Tarım ve hayvancılık","Tarlalar, hasat, hayvancılık ve tedarik.","soMenuUc('tarim')"),
-        link("📚","Kitap ve yayınevi","Kitap yaz, baskı yap ve telif kazan.","soMenuUc('kitap')"),
-        link("📺","Medya ve yayıncılık","Televizyon, gazete ve medya faaliyetleri.","soMenuUc('medya')"),
-        link("🎟️","Etkinlik ve organizasyon","Konser, konferans, fuar, bilet ve sponsor.","soMenuUc('etkinlik')"),
-        link("📢","Reklam ve anket ajansı","Reklam kampanyaları ve kamuoyu araştırmaları.","soMenuGit('ajansMerkezEkrani')"),
-        link("⚖️","Konkordato ve iflas","Zor durumdaki işletmelerin süreçleri.","soMenuGit('konkordatoEkrani')"),
-        link("📢","İhale İlan Panosu","Bütün kamu hizmeti ve yapım ilanları.","soMenuGit('msIhaleMerkeziAc')"),
-        link("🤝","Siyasi bağışlar","Şirketlerin partilere bağış işlemleri.","soMenuGit('siyasiBagisEkrani')")
-      ]);
+    return eBolum("İşletme hizmetleri","Gündelik işlemler",[
+      eTile("🛡️","Sigorta","Poliçe ve hasar işlemleri","soMenuGit('msSigortaAc')",true),
+      eTile("🏛️","Ruhsatlar","İşyeri ve inşaat ruhsatları","soMenuGit('msRuhsatMerkeziAc')"),
+      eTile("💼","Ek işler","Kurye, taksi, özel ders ve işler","soMenuGit('ekIslerEkrani')"),
+      eTile("📢","Ajanslar","Reklam ve kamuoyu araştırması","soMenuGit('ajansMerkezEkrani')")
+    ])
+    +'<details class="so-econ-more"><summary>Daha fazla faaliyet ve hizmet</summary>'
+    +grids([
+      link("🌾","Tarım ve hayvancılık","Üretim, hasat ve tedarik.","soMenuUc('tarim')"),
+      link("📚","Kitap ve yayınevi","Kitap yaz, bas ve sat.","soMenuUc('kitap')"),
+      link("📺","Medya","Yayıncılık ve medya şirketleri.","soMenuUc('medya')"),
+      link("🎟️","Organizasyon","Etkinlik ve biletli işler.","soMenuUc('etkinlik')"),
+      link("⚖️","Konkordato ve iflas","İşletme borç yapılandırmaları.","soMenuGit('konkordatoEkrani')"),
+      link("📢","İhale ilan panosu","Tüm kamu ihaleleri.","soMenuGit('msIhaleMerkeziAc')"),
+      link("🤝","Siyasi bağışlar","Şirketten siyasi bağış.","soMenuGit('siyasiBagisEkrani')")
+    ])+'</details>';
   }
-
-  function islemlerHtml(){
-    return baslik("Ödeme ve işlem kayıtları","Bankacılık ve ticaret işlemleri kendi yerlerinde.")
-      +grids([
-        link("💸","Para gönder","Banka havalesi yap.","soMenuGit('paraGonderModal')"),
-        link("🧾","Çeklerim","Çek düzenle, kabul et, öde ve tahsil et.","soMenuGit('cekMerkeziAc')"),
-        link("💳","Kredi Kartlarım / POS","Kartla ödeme al veya yap.","soMenuGit('kartPosEkrani')"),
-        link("📜","Alım-satım geçmişim","Gerçekleşen ticari işlem kayıtların.","soMenuGit('ticaretGecmisimEkrani')"),
-        link("📋","Kamu ihaleleri","İhale ilanları ve tekliflerin.","soMenuGit('ihaleEkrani')"),
-        link("⚖️","İcra ve haciz","Alacak takibi, icra dosyası, e-satış.","soMenuGit('icraMerkeziEkrani')"),
-        link("🏛️","Devlet bütçesi","Kamu ekonomisi ve harcamalar.","soMenuGit('kamuButceEkrani')")
-      ]);
-  }
+  /* Eski işlem bağlantılarına uyumluluk: yeni Ticaret sekmesi. */
+  function islemlerHtml(){return sirketlerHtml();}
   async function ekonomiYeniEkrani(){
     // Eylem sonrası menü yeniden açılıyorsa eski alt ekran geçmişini temizle.
     if(D.yigin.length)D.yigin=[];
     var no=++istek.ekonomi, s=secim.ekonomi;
     ciz("ekonomi",ekonomiHero(s)+'<div class="yukleniyor">Yükleniyor…</div>');
     var z="";
-    if(s==="genel")z=ekonomiGenel();
+    if(s==="genel")z=await ekonomiGenel();
     else if(s==="sirketlerim")z=await sirketlerimHtml();
     else if(s==="bankalar")z=await bankalarHtml();
     else if(s==="sirketler")z=sirketlerHtml();
