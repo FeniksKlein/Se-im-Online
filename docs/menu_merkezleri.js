@@ -212,10 +212,42 @@
     if(typeof window.ucYeniAc==="function")return window.ucYeniAc(tur);
     toast("Bu iş kolunun ekranı yüklenemedi.",true);
   };
-  window.soMenuSirket=function(id,tab){
-    if(typeof window.sirketTekSirketEkrani!=="function")return toast("Şirket yönetimi açılmadı.",true);
+  // Sirket paneli bazi surumlerde HTML tarafindan yuklenmedigi icin
+  // tiklama ile güvenli biçimde yukle. Tek istegi paylastir; oyuncu
+  // verilerine veya sunucu islemlerine dokunma.
+  var soSirketPanelYukleme=null;
+  function soSirketPanelHazirla(){
+    if(typeof window.sirketTekSirketEkrani==="function" &&
+       typeof window.sirketlerimMerkezi==="function")return Promise.resolve();
+    if(!soSirketPanelYukleme){
+      soSirketPanelYukleme=new Promise(function(resolve,reject){
+        var script=document.createElement("script");
+        script.src="./sirket_tek_merkez.js?v=20261025-panel-fix";
+        script.async=true;
+        script.onload=function(){
+          if(typeof window.sirketTekSirketEkrani==="function" &&
+             typeof window.sirketlerimMerkezi==="function")resolve();
+          else reject(new Error("Şirket yönetimi modülü başlatılamadı."));
+        };
+        script.onerror=function(){reject(new Error("Şirket yönetimi dosyası yüklenemedi."));};
+        document.head.appendChild(script);
+      }).catch(function(err){soSirketPanelYukleme=null;throw err;});
+    }
+    return soSirketPanelYukleme;
+  }
+  window.soMenuSirket=async function(id,tab){
     var no=Number(id),sek=tab||"genel";
-    return ekranAc(function(){return window.sirketTekSirketEkrani(no,sek);});
+    if(!Number.isSafeInteger(no)||no<=0)return toast("Geçerli bir şirket seç.",true);
+    try{
+      await soSirketPanelHazirla();
+      return ekranAc(function(){return window.sirketTekSirketEkrani(no,sek);});
+    }catch(err){
+      console.error("Şirket yönetimi yönlendirmesi:",err);
+      // Eski kuruluma sahip istemcide liste/degerlendirme paneli acik kalsin.
+      if(typeof window.sirketPortfoyDetay==="function")
+        return ekranAc(function(){return window.sirketPortfoyDetay(no);});
+      toast("Şirket yönetimi açılamadı: "+String(err&&err.message||err),true);
+    }
   };
   window.soMenuAra=function(metin){
     var q=String(metin||"").toLocaleLowerCase("tr-TR");
