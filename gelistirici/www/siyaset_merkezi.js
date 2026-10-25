@@ -306,7 +306,7 @@
     };
     if (d.durum === "canli" || d.durum === "yakinda") {
       D.canli = setInterval(async () => {
-        if (!document.getElementById("smOda") || document.hidden || $("#modal")) return;
+        if (!document.getElementById("smOda") || document.hidden || $("#modal") || (window.YUK && !YUK.otomatik())) return;
         const ta = $("#smYaz"); if (ta && ta.value.trim()) return;   // yazarken ekranı yenileme
         try { const y = await rpc("canli_yayin_detay", { p_yayin: id, p_son_id: 0 });
           if (y.durum !== d.durum || y.mesajlar.length !== d.mesajlar.length || y.alkis !== d.alkis || y.yuh !== d.yuh) window.smYayinEkrani(id); } catch (_) {}

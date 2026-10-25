@@ -289,7 +289,7 @@ async function mitingMeydanEkrani(id) {
     </div>`, { geri: true });
   mtBagla(id);
   portreleriTazele($("#mtSahne"));
-  if (!d.bitti) D.canli = setInterval(() => { if (!document.hidden) mtTazele(id); }, 4000);
+  if (!d.bitti) D.canli = setInterval(() => { if (!document.hidden && (!window.YUK || YUK.otomatik())) mtTazele(id); }, 6000 + Math.floor(Math.random() * 1500));
 }
 function mtSure(d) {
   const t = simdi(), bas = new Date(d.bas).getTime(), bit = new Date(d.bit).getTime();
