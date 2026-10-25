@@ -65,6 +65,16 @@ function render(){
   var aktif=poslar.filter(function(x){return x.durum==='aktif'});
   var gecmis=poslar.filter(function(x){return x.durum!=='bekliyor'&&x.durum!=='aktif'});
   var otomatik=!!a.pos;
+  var izinsizKart=(Array.isArray(d.kartlar)?d.kartlar:[]).filter(function(x){
+    return x.durum==='bekliyor' && (x.izin||[]).indexOf('kredi_notu')<0;
+  });
+  if(izinsizKart.length){
+    h+=box('⏳ Otomatik karar bekleyen kart başvuruları',
+      '<p class="by-pos-explain"><b>'+izinsizKart.length+' kredi kartı başvurusu müşteri onayı bekliyor.</b> '+
+      (a.kart?'Otomatik karar açık, fakat müşteri mali verilerinin paylaşımına izin vermeden onay/ret değerlendirmesi tamamlanamaz. ':
+       'Kredi kartlarında manuel değerlendirme seçili. ')+
+      'Alttaki müşteri başvurusundan “Mali bilgi izni iste” seçebilirsin. Müşteri kabul edince otomatik karar sistemi hemen çalışır; izin verilmezse başvuru beklemede kalır.</p>');
+  }
   h+=box('POS onay yönetimi',
     '<div class="by-pos-bar">'+
     '<p class="by-pos-status">Onay yöntemi: '+(otomatik?'Otomatik onay açık':'Manuel onay açık')+'</p>'+
@@ -86,7 +96,11 @@ function render(){
    '<p class="by-pos-explain">Aktif POS cihazı bulunmuyor.</p>');
   if(gecmis.length)h+=box('Reddedilen ve kapatılan POS kayıtları · '+gecmis.length,
    gecmis.map(function(x){return posKart(x)}).join(''));
- h+=box('Kredi kartı başvuruları',(d.kartlar.length?d.kartlar.map(function(x){var izin=(x.izin||[]).indexOf('kredi_notu')>=0;var details=izin?Object.keys(x.bilgi||{}).map(function(k){return row(k,JSON.stringify(x.bilgi[k]))}).join(''):'Müşterinin bilgi paylaşım izni bekleniyor';
+ h+=box('Kredi kartı başvuruları',(d.kartlar.length?d.kartlar.slice().sort(function(x,y){
+    return (x.durum==='bekliyor'?0:1)-(y.durum==='bekliyor'?0:1);
+  }).map(function(x){var izin=(x.izin||[]).indexOf('kredi_notu')>=0;
+  var details=izin?Object.keys(x.bilgi||{}).map(function(k){return row(k,JSON.stringify(x.bilgi[k]))}).join(''):
+  '<p class="by-pos-explain">Müşterinin mali belge paylaşım izni bekleniyor. Otomatik onay, bu izin gelene kadar işlem yapamaz.</p>';
  return box(x.oyuncu,row('İstenen limit',tl(x.istek))+row('Durum',x.durum)+details+(x.durum==='bekliyor'?
  (izin?'<input class="alan" id="bylimit'+x.id+'" type="number" min="1000" value="'+x.istek+'">'+b('Onayla','bankaYonetimKarar("kart",'+x.id+',true)'):b('Mali bilgi izni iste','bankaYonetimBilgi('+x.id+')'))+
  b('Reddet','bankaYonetimKarar("kart",'+x.id+',false)'):''))}).join(''):'Başvuru yok'));
