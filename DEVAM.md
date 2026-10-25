@@ -418,3 +418,7 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 - **Gündem:** kurum kartının hemen altında "Maaş kumbarası" şeridi (birikmiş tutar, doluluk çubuğu, tek dokunuşla **Topla** → `topla` RPC, ardından `durumYenile` + yeniden çizim). Dolunca yeşile döner ve nabız gibi parlar.
 - **Hayat:** asıl kumbara kartı (`#hTopla` düğmeli `.olay`) kurum kartının hemen altına taşınır ve büyütülür; Kasam/Bankacılık kartları altta kalır.
 - **Üst çubuk:** kumbara dolunca cüzdan çipinde yeşil nokta.
+
+## 2026-10-25 · 2026.10.25-9 Menü çekmecesinde genel arama
+- **İstek (Ercan):** Menüde "Siyaset" başlığının üstüne genel arama çubuğu; oyuncu menüyü bulamazsa yazıp bulsun. Başka hiçbir şey bozulmasın.
+- **Uygulama:** `premium_arayuz.js` → "Tüm bölümler" çekmecesinde profil kartının altında arama kutusu. Yazınca bölüm kutuları gizlenir, sonuçlar listelenir (Türkçe harf duyarsız, çok kelimeli). Dizin: bütün bölümler + sık işlemler (Maaşı topla, Kanun teklifi, Para gönder, Seçim takvimi, Gazeteler…) + Ekonomi ve Adliye menü merkezlerinin kendi arama listesi (`menu_merkezleri.js` artık `window.SO_MENU_ARAMA_INDEKSI` olarak paylaşıyor; tek satırlık ekleme, eski davranış aynı). Menü merkezi işlemleri gerekirse önce kendi sekmesini açar, sonra işlemi çalıştırır. Eşleşme yoksa "Oyuncu ara" önerilir. Enter ilk sonucu açar, Esc aramayı temizler.

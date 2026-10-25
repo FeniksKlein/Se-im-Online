@@ -195,7 +195,7 @@
     '#paMenu{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;justify-content:flex-end}',
     '#paMenu[hidden]{display:none}',
     '#paMenu .pa-perde{position:absolute;inset:0;background:rgba(4,7,20,.58);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);animation:paSoluk .25s ease both}',
-    '#paMenu .pa-cekmece{position:relative;max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 16px calc(var(--safeB,14px) + 14px);border-radius:28px 28px 0 0;background:linear-gradient(180deg,#19224a,#0f1636 46%);box-shadow:0 -24px 60px -20px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.10);animation:paYuksel .34s cubic-bezier(.2,.85,.25,1) both}',
+    '#paMenu .pa-cekmece{position:relative;max-height:88vh;min-height:min(80vh,660px);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 16px calc(var(--safeB,14px) + 14px);border-radius:28px 28px 0 0;background:linear-gradient(180deg,#19224a,#0f1636 46%);box-shadow:0 -24px 60px -20px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.10);animation:paYuksel .34s cubic-bezier(.2,.85,.25,1) both}',
     '#paMenu.kapaniyor .pa-cekmece{animation:paIn .22s ease-in both}#paMenu.kapaniyor .pa-perde{animation:paSoluk .22s ease reverse both}',
     '#paMenu .pa-tutamac{width:42px;height:5px;border-radius:5px;background:rgba(255,255,255,.22);margin:2px auto 12px}',
     '#paMenu .pa-cb{display:flex;align-items:center;gap:10px;margin-bottom:14px}',
@@ -210,6 +210,27 @@
     '#paMenu .pa-kim b{display:block;font:700 20px/1.1 var(--disp);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
     '#paMenu .pa-kim small{display:block;margin-top:3px;font-size:12.5px;opacity:.82;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
     '#paMenu .pa-kim .pa-cz{position:relative;padding:7px 10px;border-radius:12px;background:rgba(0,0,0,.22);color:#fff;font:700 14px/1 var(--disp);white-space:nowrap}',
+    '#paMenu .pa-ara{display:flex;align-items:center;gap:10px;margin-top:14px;padding:0 14px;height:50px;border-radius:16px;background:rgba(6,10,28,.55);box-shadow:inset 0 0 0 1px rgba(164,184,255,.16);cursor:text}',
+    '#paMenu .pa-ara:focus-within{box-shadow:inset 0 0 0 1.5px #a895ff,0 0 0 4px rgba(123,97,255,.18)}',
+    '#paMenu .pa-ara-simge{display:grid;place-items:center;color:#8f9bc0;flex:none}',
+    '#paMenu .pa-ara-simge svg{width:20px;height:20px}',
+    '#paMenu .pa-ara input{all:unset;flex:1;min-width:0;height:100%;font-size:16px;color:#f2f5ff}',
+    '#paMenu .pa-ara input::placeholder{color:#7f8aae}',
+    '#paMenu .pa-ara input::-webkit-search-cancel-button{-webkit-appearance:none}',
+    '#paMenu .pa-ara-sonuc{margin-top:12px;display:flex;flex-direction:column;gap:7px}',
+    '#paMenu .pa-ara-sonuc[hidden],#paMenu #paGruplar[hidden]{display:none}',
+    '#paMenu .pa-ara-bas{margin:2px 2px 2px;font-size:12.5px;font-weight:650;color:#8f9bc0}',
+    '#paMenu .pa-ara-satir{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border-radius:16px;background:linear-gradient(170deg,#1f2950,#161e3e);box-shadow:inset 0 0 0 1px rgba(164,184,255,.09)}',
+    '#paMenu .pa-ara-satir:active{transform:scale(.985)}',
+    '#paMenu .pa-ara-satir:focus-visible{box-shadow:inset 0 0 0 2px #a895ff}',
+    '#paMenu .pa-ara-satir.oyuncu{margin-top:4px;background:rgba(46,134,222,.10);box-shadow:inset 0 0 0 1px rgba(46,134,222,.30)}',
+    '#paMenu .pa-ara-ik{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:13px;color:#fff;background:linear-gradient(145deg,var(--k1),var(--k2));box-shadow:inset 0 1px 0 rgba(255,255,255,.26)}',
+    '#paMenu .pa-ara-ik svg{width:20px;height:20px}',
+    '#paMenu .pa-ara-orta{flex:1;min-width:0}',
+    '#paMenu .pa-ara-orta b{display:block;font-size:15px;font-weight:700;color:#f2f5ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '#paMenu .pa-ara-orta small{display:block;margin-top:2px;font-size:12px;color:#8f9bc0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '#paMenu .pa-ara-grp{flex:none;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.06);font-size:11px;font-weight:650;color:#aab4d4}',
+    '#paMenu .pa-ara-bos{margin:4px 2px;font-size:13.5px;line-height:1.45;color:#aab4d4}',
     '#paMenu .pa-grup{margin-top:18px}',
     '#paMenu .pa-grup>h3{margin:0 2px 9px;font-size:13px;font-weight:650;color:#8f9bc0;letter-spacing:.1px}',
     '#paMenu .pa-izgara{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}',
@@ -848,14 +869,109 @@
     return '<div class="pa-perde" onclick="soPaMenuKapat()"></div><div class="pa-cekmece" role="dialog" aria-modal="true" aria-label="Tüm bölümler"><div class="pa-tutamac"></div>' +
       '<div class="pa-cb"><h2>Tüm bölümler</h2><button type="button" class="pa-kapat" aria-label="Kapat" onclick="soPaMenuKapat()">' + IK.kapat + '</button></div>' +
       (p.kad ? '<button type="button" class="pa-kim" style="--k1:' + kb.a1 + ';--k2:' + kb.a2 + '" onclick="' + on('sekme', 'ben') + '"><span class="pa-pp">' + foto + '</span><span class="pa-km"><b>' + esc(p.kad) + '</b><small>' + esc(rolYaz(p)) + (p.parti ? ' · ' + esc(p.parti.kisa) : '') + '</small></span><span class="pa-cz">' + esc(kisaTl(cz.para)) + '</span></button>' : '') +
-      gruplar.map(function (gr) { var ic = gr[1].filter(Boolean).join(''); return ic ? '<section class="pa-grup"><h3>' + gr[0] + '</h3><div class="pa-izgara">' + ic + '</div></section>' : ''; }).join('') +
-      '<div class="pa-alt">Gündem, Devlet, Ekonomi ve Sohbet her zaman alt menüde.</div></div>';
+      '<label class="pa-ara" for="paAraKutu"><span class="pa-ara-simge">' + IK.ara + '</span><input id="paAraKutu" type="search" enterkeyhint="search" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Menülerde ara: kredi, dava, şirket kur…" aria-label="Menülerde ara" oninput="soPaAra(this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();soPaAraAc(0)}"></label>' +
+      '<div id="paAramaSonuc" class="pa-ara-sonuc" hidden aria-live="polite"></div>' +
+      '<div id="paGruplar">' + gruplar.map(function (gr) { var ic = gr[1].filter(Boolean).join(''); return ic ? '<section class="pa-grup"><h3>' + gr[0] + '</h3><div class="pa-izgara">' + ic + '</div></section>' : ''; }).join('') +
+      '<div class="pa-alt">Gündem, Devlet, Ekonomi ve Sohbet her zaman alt menüde.</div></div></div>';
   }
+  /* ---------- Menü çekmecesi: genel arama ---------- */
+  function normal(x) { return String(x || '').toLocaleLowerCase('tr-TR').replace(/[ıİ]/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c').replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u'); }
+  // [ikon, renk, başlık, açıklama, eylem (soPa eylem adı + argümanlar ya da kod), anahtar kelimeler, bölüm]
+  function aramaDizini() {
+    var p = profil() || {}, ls = [];
+    var e = function (ik, renk, ad, alt, ey, kel, grp) { ls.push({ ik: ik, renk: renk, ad: ad, alt: alt, ey: ey, kel: kel || '', grp: grp }); };
+    e('gundem', B.gundem.a1, 'Gündem', 'Akış, haberler, seçim takvimi', ['sekme', 'gundem'], 'ana sayfa haber akış paylaşım', 'Bölüm');
+    e('devlet', B.devlet.a1, 'Devlet', 'Makamım, hükümet, mevzuat, gazete, tarih', ['sekme', 'devlet'], 'hükümet kabine bakanlık makam yönetim belediye cumhurbaşkanı', 'Bölüm');
+    e('meclis', B.meclis.a1, 'Meclis', 'Sandalyeler, kanunlar, oylamalar', ['sekme', 'meclis'], 'tbmm milletvekili kanun yasa oylama grup başkanlık', 'Bölüm');
+    e('parti', B.parti.a1, 'Partiler', 'Partin, ittifaklar, ideolojiler', ['sekme', 'parti'], 'parti ittifak kurultay genel başkan üye katıl kur', 'Bölüm');
+    e('adliye', B.adliye.a1, 'Adliye', 'Mahkeme, davalar, avukatlar, baro', ['sekme', 'adliye'], 'mahkeme dava avukat hukuk baro icra', 'Bölüm');
+    e('harita', B.harita.a1, 'Türkiye haritası', '81 il, belediyeler, vekiller', ['sekme', 'harita'], 'harita il şehir belediye gelişmişlik', 'Bölüm');
+    e('dernek', B.dernek.a1, 'Dernekler', 'Sivil toplum, protesto, bildiri', ['sekme', 'dernek'], 'dernek vakıf stk protesto basın açıklaması bildiri', 'Bölüm');
+    e('hayat', B.hayat.a1, 'Hayat', 'Cüzdan, maaş kumbarası, görevler, statü', ['sekme', 'hayat'], 'cüzdan para maaş kumbara statü kıdem bağış vergi', 'Bölüm');
+    e('ekonomi', B.ekonomi.a1, 'Ekonomi', 'Şirketler, ticaret, bankalar, yatırım', ['sekme', 'ekonomi'], 'ekonomi şirket ticaret piyasa borsa', 'Bölüm');
+    e('sohbet', B.sohbet.a1, 'Sohbet', 'Kanallar ve özel mesajlar', ['sekme', 'sohbet'], 'mesaj sohbet kanal meydan kahve dm', 'Bölüm');
+    e('ben', B.ben.a1, 'Profilim', 'Kimlik kartı, ayarlar, geçmiş seçimler', ['sekme', 'ben'], 'profil hesap ayar biyografi portre taşın istifa çıkış', 'Bölüm');
+    e('kumbara', '#21a874', 'Maaşı topla', 'Maaş kumbarasındaki parayı cüzdanına al', ['topla'], 'maaş kumbara topla para kazan günlük', 'İşlem');
+    e('banka', '#b33a5c', 'Mobil Şube', 'Hesap, kredi kartı, kredi, birikim, FAST', ['mobilSube'], 'banka hesap kredi kart mevduat faiz fast eft havale iban', 'Para');
+    e('para', '#1f9e86', 'Para gönder', 'Başka bir oyuncuya para gönder', ['kod', 'paraGonderModal()'], 'para gönder transfer havale fast', 'Para');
+    e('ilan', '#d99a2b', 'İlan Meydanı', 'Satılık ev, dükkân, arsa, şirket, hisse', ['ilan'], 'ilan satılık ev daire dükkan arsa emlak tapu şirket hisse sahibinden', 'Para');
+    e('magaza', '#7a5af0', 'Mağaza', 'Siyaset Kartı ve ₺ paketleri', ['magaza'], 'mağaza satın al paket siyaset kartı rozet', 'Para');
+    e('gorev', '#8a68f2', 'Görevler', 'Günlük, haftalık ve kalıcı görevler', ['gorev'], 'görev ödül', 'Hayat');
+    e('kanun', B.meclis.a1, 'Kanun teklifi ver', 'Meclis\'e yeni kanun teklifi sun', ['kanun'], 'kanun teklif yasa önerge', 'Meclis');
+    e('sandik', B.meclis.a1, 'Yasama ve oylamalar', 'Oylamadaki kanunlar', ['meclisSekme', 'yasama'], 'oylama oy ver yasama kanun', 'Meclis');
+    e('kisiler', B.meclis.a1, 'İl il milletvekilleri', 'Vekil listesi', ['meclisSekme', 'vekiller'], 'vekil milletvekili liste', 'Meclis');
+    e('megafon', B.devlet.a1, 'Ulusa sesleniş', 'Cumhurbaşkanlarının konuşmaları', ['seslenis'], 'sesleniş konuşma cumhurbaşkanı', 'Devlet');
+    if (g('krizMerkeziEkrani')) e('kriz', '#e0565b', 'Kriz merkezi', 'Ülke krizleri ve kararlar', ['kriz'], 'kriz afet olay karar', 'Devlet');
+    e('gazete', B.devlet.a1, 'Resmî Gazete', 'Kanunlar ve kararnameler', ['gazete'], 'resmi gazete kararname', 'Devlet');
+    e('el', '#c03a6b', 'Koalisyon pazarlıkları', 'Gizli siyasi pazarlıklar ve protokoller', ['koalisyon'], 'koalisyon pazarlık protokol ittifak gizli', 'Siyaset');
+    e('kisiler', '#c03a6b', 'Kurucular kurulu', 'Parti kurma davetleri', ['kurucu'], 'parti kur kurucu davet', 'Siyaset');
+    e('ara', '#2e86de', 'Oyuncu ara', 'Kullanıcı adı, il ve partiye göre bul', ['ara'], 'oyuncu ara bul kişi profil', 'Kişiler');
+    e('yeniMesaj', '#2e86de', 'Yeni özel mesaj', 'Bir oyuncuya yaz', ['yeniMesaj'], 'mesaj yaz dm özel', 'Kişiler');
+    e('kisiler', '#2e86de', 'Çevrimiçi oyuncular', 'Şu an oyunda olanlar', ['cevrimici'], 'çevrimiçi online', 'Kişiler');
+    if (g('soYayinGit')) { e('gazete', '#d8425e', 'Gazeteler', 'Oyuncu gazeteleri ve köşe yazıları', ['kod', 'soYayinGit("basin")'], 'gazete köşe yazısı basın yayın', 'Basın'); e('kitap', '#d8425e', 'Kitaplar ve yayınevleri', 'Kitap oku, satın al, yayımla', ['kod', 'soYayinGit("kitap")'], 'kitap yayınevi yazar', 'Basın'); }
+    if (g('soGundemTakvimAc')) e('sandik', '#16a0a6', 'Seçim takvimi', 'Yaklaşan seçimler ve eski sonuçlar', ['kod', 'soGundemTakvimAc()'], 'seçim takvim aday başvuru sandık sonuç', 'Siyaset');
+    e('kalp', B.dernek.a1, 'Sosyal etki merkezi', 'Bağış kampanyaları, gönüllü etkinlikler', ['sosyal'], 'bağış kampanya gönüllü yardım', 'Dernekler');
+    if (g('stkKurModal')) e('dernekKur', B.dernek.a1, 'Dernek kur', 'Yeni dernek ya da vakıf kur', ['dernekKur'], 'dernek vakıf kur', 'Dernekler');
+    e('kalem', B.ben.a1, 'Portre ve biyografi', 'Profil resmini ve yazını düzenle', ['portre'], 'portre avatar resim biyografi', 'Profil');
+    e('kimlik', B.ben.a1, 'Seçmen kartım', 'Oy, adaylık ve parti kurma şartları', ['secmen'], 'seçmen kartı şart aday', 'Profil');
+    e('zil', '#e0565b', 'Bildirimler', 'Son gelişmeler', ['bildirim'], 'bildirim haber uyarı', 'Profil');
+    if (p.il_id) e('konum', B.harita.a1, (p.il_ad || 'İlim') + ' il sayfası', 'İlinin belediyesi, vekilleri ve oyuncuları', ['ilim', p.il_id], 'il şehrim belediye', 'Türkiye');
+    if (p.yonetici) e('ayar', '#7b8bb8', 'Yönetici paneli', 'Oyun yönetimi', ['yonetici'], 'yönetici admin panel', 'Profil');
+    var ind = window.SO_MENU_ARAMA_INDEKSI || {};
+    [['ekonomi', 'Ekonomi'], ['adliye', 'Adliye']].forEach(function (gr) {
+      (ind[gr[0]] || []).forEach(function (x) {
+        var t = String(x[0] || '').replace(/[\uFE0F\s]/g, ''), em = EMO[t] || EMO[Array.from(t)[0]] || [B[gr[0]].ik, B[gr[0]].a1];
+        ls.push({ ik: em[0], renk: em[1] || B[gr[0]].a1, ad: x[1], alt: x[2], ey: ['menu', gr[0], x[3]], kel: x[4] || '', grp: gr[1] });
+      });
+    });
+    var gor = {};                                   // aynı adlı satırları bir kez göster
+    return ls.filter(function (x) { var k = normal(x.ad); if (gor[k]) return false; gor[k] = 1; return true; });
+  }
+  var ARA = { liste: [], son: [] };
+  function aramaYap(q) {
+    var kutu = document.getElementById('paAramaSonuc'), gruplar = document.getElementById('paGruplar');
+    if (!kutu || !gruplar) return;
+    var n = normal(q).trim();
+    if (!n) { kutu.hidden = true; kutu.innerHTML = ''; gruplar.hidden = false; return; }
+    if (!ARA.liste.length) ARA.liste = aramaDizini();
+    var kelimeler = n.split(/\s+/).filter(Boolean);
+    var puanli = ARA.liste.map(function (x) {
+      var ad = normal(x.ad), hep = ad + ' ' + normal(x.alt) + ' ' + normal(x.kel) + ' ' + normal(x.grp);
+      if (!kelimeler.every(function (k) { return hep.indexOf(k) >= 0; })) return null;
+      var puan = (ad.indexOf(n) === 0 ? 0 : ad.indexOf(n) > 0 ? 1 : kelimeler.every(function (k) { return ad.indexOf(k) >= 0; }) ? 2 : 3) * 100 + (x.grp === 'Bölüm' ? 0 : 10);
+      return { x: x, p: puan };
+    }).filter(Boolean).sort(function (a, b) { return a.p - b.p; }).slice(0, 14).map(function (o) { return o.x; });
+    ARA.son = puanli;
+    gruplar.hidden = true; kutu.hidden = false;
+    kutu.innerHTML = '<div class="pa-ara-bas">' + (puanli.length ? puanli.length + ' sonuç' : 'Sonuç yok') + '</div>' +
+      (puanli.length ? puanli.map(function (x, i) {
+        return '<button type="button" class="pa-ara-satir" onclick="soPaAraAc(' + i + ')"><span class="pa-ara-ik" style="--k1:' + x.renk + ';--k2:' + karis(x.renk, '#0b1130', .55) + '">' + ikon(x.ik) + '</span>' +
+          '<span class="pa-ara-orta"><b>' + esc(x.ad) + '</b><small>' + esc(x.alt) + '</small></span><span class="pa-ara-grp">' + esc(x.grp) + '</span></button>';
+      }).join('') : '<p class="pa-ara-bos">“' + esc(q) + '” ile eşleşen bir menü bulamadım. Başka bir kelime dene; bir oyuncuyu arıyorsan aşağıdan bulabilirsin.</p>') +
+      '<button type="button" class="pa-ara-satir oyuncu" onclick="soPa(&quot;ara&quot;)"><span class="pa-ara-ik" style="--k1:#2e86de;--k2:#173a66">' + IK.ara + '</span><span class="pa-ara-orta"><b>Oyuncu ara</b><small>Bu isimde bir oyuncu mu arıyorsun?</small></span></button>';
+  }
+  window.soPaAra = function (q) { try { aramaYap(q); } catch (e) { if (window.console) console.warn('Menü arama:', e); } };
+  window.soPaAraAc = function (i) {
+    var x = ARA.son[i]; if (!x) return;
+    var ey = x.ey;
+    if (ey[0] === 'menu') {                         // Ekonomi / Adliye menü merkezinin bir işlemi
+      menuKapat(true);
+      var grp = ey[1], kod = ey[2], d = Dx();
+      try {
+        if (/^soMenuSec\(/.test(kod) && (!d || d.sekme !== grp || (d.yigin && d.yigin.length))) git(grp);
+        (new Function(kod))();
+      } catch (e) { hata(); }
+      return;
+    }
+    if (ey[0] === 'kod') { menuKapat(true); try { (new Function(ey[1]))(); } catch (e) { hata(); } return; }
+    window.soPa.apply(null, ey);
+  };
+
   var menuOdak = null;
   window.soPaMenu = function () {
     var el = document.getElementById('paMenu');
     if (!el) { el = document.createElement('div'); el.id = 'paMenu'; document.body.appendChild(el); }
-    menuOdak = document.activeElement;
+    menuOdak = document.activeElement; ARA.liste = []; ARA.son = [];
     el.className = ''; el.innerHTML = menuHtml(); el.hidden = false;
     var ilk = el.querySelector('.pa-kapat'); if (ilk) try { ilk.focus({ preventScroll: true }); } catch (e) {}
   };
@@ -867,7 +983,12 @@
     if (menuOdak && menuOdak.focus) try { menuOdak.focus({ preventScroll: true }); } catch (e) {}
   }
   window.soPaMenuKapat = function () { menuKapat(false); };
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') menuKapat(false); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var k = document.getElementById('paAraKutu');
+    if (k && k.value && document.activeElement === k) { k.value = ''; aramaYap(''); return; }
+    menuKapat(false);
+  });
 
   /* ---------- ortam rengi ---------- */
   var sonRenk = '';

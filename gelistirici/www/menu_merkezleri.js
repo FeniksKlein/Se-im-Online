@@ -89,6 +89,7 @@
       ["🛡️","Sigorta ve hasar","Poliçe, hasar ve işyeri sigortası","soMenuGit('msSigortaAc')","sigorta"]
     ]
   };
+  window.SO_MENU_ARAMA_INDEKSI = aramaIndeksi; // Menü çekmecesindeki genel arama da bu listeyi kullanır (premium_arayuz.js)
   function norm(s){return String(s||"").toLocaleLowerCase("tr-TR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ı/g,"i");}
   function aramaKutusu(grup){
     return '<div class="so-menu-arama"><span aria-hidden="true">⌕</span><input type="search"'
