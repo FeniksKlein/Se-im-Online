@@ -43,6 +43,7 @@ html=html.replace('<script src="meslek_dukkan.js"></script>',()=>'<script>'+fs.r
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','menu_merkezleri.js'),'utf8')+'</script></body>');
 // Premium Ekonomi: ekranlar ve Mobil Şube birlikteliği (eklentiyi en son yükle).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','premium_ekonomi.js'),'utf8')+'</script></body>');
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','yatirim_kasasi.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
