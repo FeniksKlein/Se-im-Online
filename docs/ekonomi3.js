@@ -393,7 +393,7 @@
   function girisleriEkle(){
     const ic = document.getElementById("icerik"); if (!ic) return;
     const h1 = document.querySelector("header.ust h1");
-    if (h1 && h1.textContent.trim() === "Ekonomi" && D.sekme === "ekonomi" && !ic.querySelector(".e3-giris")) ekonomiGirisKarti();
+    if (h1 && h1.textContent.trim() === "Ekonomi" && D.sekme === "ekonomi" && !ic.querySelector(".so-ekonomi") && !ic.querySelector(".e3-giris")) ekonomiGirisKarti();
     const karneBtn = (id, metin) => `<button class="btn altin e3-karne-btn" onclick="sirketKarnesiAc(${+id})">${metin || "Şirket karnesi, kararlar ve genel kurul"}</button>`;
     // Şirket portföyü (sirket_operasyon_merkezi): her şirket kutusu
     ic.querySelectorAll('.so-firma button[onclick*="sirketPortfoyDetay("]').forEach(b => {
