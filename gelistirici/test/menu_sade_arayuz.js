@@ -42,7 +42,7 @@ const HAYAT = {
         } };
         D.durum = { profil: PROFIL };
       }, HAYAT);
-      const menu = () => page.locator('nav.sekmeler button span:not([id])').allTextContents();
+      const menu = () => page.locator('nav.sekmeler button .pa-nl').allTextContents();
       const tasmaYok = async (ad) => { const t = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth); assert.ok(t <= 1, `${ad} ${w}px yatay taşma ${t}px`); };
       const foto = async (ad) => { if (shot) await page.screenshot({ path: path.join(shot, `${ad}_${w}.png`), fullPage: true }); };
 
@@ -57,14 +57,15 @@ const HAYAT = {
 
       // 2) Alt menü: Yönetim yok, Devlet ikinci, Ekonomi Hayat'tan sonra
       const m = await menu();
-      assert.deepEqual(m, ['Gündem', 'Devlet', 'Adliye', 'Hayat', 'Ekonomi', 'Sohbet', 'Meclis', 'Harita', 'Partiler', 'Dernekler']);
+      // 5'li alt menü: ortadaki düğme açık olan ikincil bölümün adını taşır (Hayat), diğerleri Menü çekmecesinde
+      assert.deepEqual(m, ['Gündem', 'Devlet', 'Hayat', 'Ekonomi', 'Sohbet']);
 
       // 3) Ekonomi sekmesi: hepsi tek ekranda, her giriş tek kez
       await page.locator('nav.sekmeler button').filter({ hasText: /^Ekonomi$/ }).click();
       await page.waitForSelector('.ms-grup');
       assert.equal(await page.locator('.ms-ust').count(), 0, 'Ekonomi üstünde tekrarlanan hızlı bağlantılar kalmamalı');
       assert.equal(await page.evaluate(() => D.sekme), 'ekonomi');
-      assert.equal(await page.locator('nav.sekmeler button.aktif span').first().textContent(), 'Ekonomi');
+      assert.equal(await page.locator('nav.sekmeler button.aktif .pa-nl').first().textContent(), 'Ekonomi');
       const satirlar = await page.locator('#icerik .giris-satir b').allTextContents();
       for (const var_ of ['İş dünyası', 'Rekabetçi şirketler', 'Piyasa raporu', 'Borsa', 'Halka arzlar', 'Devlet bankası', 'Oyuncu bankaları', 'Satılık mülkler', 'Merkez Bankası', 'Kamu ihaleleri', 'Para gönder'])
         assert.ok(satirlar.includes(var_), `Ekonomi'de "${var_}" yok: ${satirlar.join(', ')}`);
@@ -79,7 +80,7 @@ const HAYAT = {
       assert.equal(await page.locator('header.ust h1').textContent(), 'Devlet');
       assert.equal(await page.locator('#icerik .segment button.aktif').textContent(), 'Makamım');
       assert.match(await page.locator('#icerik').textContent(), /İzmir Belediyesi/);
-      assert.equal(await page.locator('nav.sekmeler button.aktif span').first().textContent(), 'Devlet');
+      assert.equal(await page.locator('nav.sekmeler button.aktif .pa-nl').first().textContent(), 'Devlet');
       await foto('devlet_makam'); await tasmaYok('Devlet');
       // Eski bağlantılar (Yönetim / Belediyem) Devlet › Makamım'a gelir
       for (const k of ['yonetim', 'belediye', 'bakanlik']) {

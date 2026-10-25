@@ -31,7 +31,7 @@ const shot = process.argv[2];
     // Alt menü: Yönetim artık Devlet › Makamım; Devlet Gündem'in hemen yanında (2026-10-13)
     await page.evaluate(() => sekmeAc('yonetim'));
     await page.waitForSelector('.ynt-bolum');
-    const menu = await page.locator('nav.sekmeler button span').allTextContents();
+    const menu = await page.locator('nav.sekmeler button .pa-nl').allTextContents(); // 5'li alt menü (premium arayüz)
     assert.equal(menu[0], 'Gündem'); assert.equal(menu[1], 'Devlet');
     assert.ok(!menu.includes('Yönetim') && !menu.includes('Belediyem') && !menu.includes('Bakanlığım'), menu.join(','));
     assert.equal(await page.locator('#icerik .segment button.aktif').textContent(), 'Makamım');
@@ -58,7 +58,7 @@ const shot = process.argv[2];
     // Makamsız oyuncuya sekme gösterilmez
     await page.evaluate(() => { PROFIL.makamlar = []; D.durum = { profil: PROFIL }; iskelet('Deneme', ''); });
     await page.waitForTimeout(300);
-    assert.ok(!(await page.locator('nav.sekmeler button span').allTextContents()).includes('Yönetim'));
+    assert.ok(!(await page.locator('nav.sekmeler button .pa-nl').allTextContents()).includes('Yönetim'));
     const ilgili = errors.filter(m => /yonetim|cimer|ynt/i.test(m));
     assert.deepEqual(ilgili, []);
     console.log('yonetim_arayuz: tamam');

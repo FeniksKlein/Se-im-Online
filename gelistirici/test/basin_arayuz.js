@@ -42,7 +42,7 @@ assert.equal((sql.match(/select oyun\.guncelleme_bitti\(\);/g) || []).length, 1)
     await page.evaluate(() => { fail = 'harita'; return profilOlusturEkrani(); });
     await page.selectOption('#il', '34'); assert.match(await page.locator('#ilbilgi').textContent(), /Veri alınamadı/);
     await page.evaluate(() => { fail = null; return basinEkrani(); });
-    assert.equal(await page.locator('.sekmeler button').count(), 6);
+    assert.equal(await page.locator('#app>nav.sekmeler>button').count(), 5); // 5'li alt menü (premium arayüz)
     await page.getByRole('button', { name: 'Teklifi kabul et', exact: true }).click();
     assert.equal((await last('gazete_yazar_yanit')).args.p_kabul, true);
     await page.getByRole('button', { name: 'Reddet', exact: true }).click();
