@@ -1,12 +1,7 @@
 name: Build and publish game web
+# Ayrı yayımlayıcı ile çakışmaması için otomatik çalışmaz.
+# Otomatik canlı yayın meslek-derle.yml tarafından yapılır.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "gelistirici/www/**"
-      - "gelistirici/build/derle.js"
-      - "gelistirici/SURUM"
-      - ".github/workflows/build-and-publish.yml"
   workflow_dispatch:
 permissions:
   contents: write
