@@ -259,7 +259,7 @@ function kmDavaModal(id, kad){
       const r = await eski.apply(this, arguments);
       try { await API.rpc("oyb_kredi_masasi", { p_banka: +id }); } catch (_) { return r; }   // sunucu modülü yoksa eski ekran olduğu gibi kalır
       try { const ic = $("#icerik");
-        if (ic && !ic.querySelector(".km-giris")) {
+        if (ic && !ic.querySelector(".vit-bank-layout") && !ic.querySelector(".km-giris")) {
           // Eski "Kredi başvurusu" kartı kredi masasına taşındı
           ic.querySelectorAll(".kart").forEach(k => { const h2 = k.querySelector("h2"); if (h2 && /^Kredi başvurusu/.test(h2.textContent.trim())) k.remove(); });
           const ilk = ic.querySelector(".kart"); (ilk ? ilk : ic).insertAdjacentHTML(ilk ? "afterend" : "afterbegin", kmGiris(id));

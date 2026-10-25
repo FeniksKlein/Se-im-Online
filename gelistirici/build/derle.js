@@ -13,7 +13,7 @@ for (const m of ['parti_yasam.js','parti_isbirligi.js','aday_sirket_ek.js','part
 // Yazı tipi: yazi/ klasöründeki WOFF dosyaları base64 olarak gömülür (internetsiz çalışır)
 const yazi=(dosya,kalinlik)=>`@font-face{font-family:"Kurul Display";font-style:normal;font-weight:${kalinlik};font-display:swap;src:url(data:font/woff;base64,${fs.readFileSync(path.join(kok,'www/yazi',dosya)).toString('base64')}) format("woff")}`;
 html=html.replace('/*YAZITIPI*/',()=>yazi('kurul-regular.woff',400)+yazi('kurul-bold.woff',700));
-for (const m of ['arayuz.js','sivil_toplum.js','kurucu_ideoloji.js','ekonomi_vitrin.js','emlak_vitrin.js','toplum_ek.js','gorevler.js','halka_arz.js','adliye.js','avukatlik.js','baro.js','avukat_zorunlu.js','canli_ek.js','secim_detay_sonuclar.js','cimer_ek.js','ekonomi_pazar.js','is_dunyasi.js','ekonomi_borsa.js','ekonomi_kurumlar.js','ajans.js','guvenlik.js','banka_kredi_icra.js','belediye_sehir.js','yonetim.js','banka_kredi_masasi.js','belediye_ruhsatlar.js','menu_sade.js','ek_isler.js','dernek_faaliyet.js','sirket_operasyon_merkezi.js','sirket_tum_turler.js','ekonomi3.js','oyuncu_arama.js','cb_yrd.js','siyaset_merkezi.js','gorunum_cila.js','yonetici_kontrol.js','mobil_yerel.js','magaza.js','uzaktan_kontrol.js','bildirim_merkezi.js'])
+for (const m of ['arayuz.js','sivil_toplum.js','kurucu_ideoloji.js','ekonomi_vitrin.js','emlak_vitrin.js','toplum_ek.js','gorevler.js','halka_arz.js','adliye.js','avukatlik.js','baro.js','avukat_zorunlu.js','canli_ek.js','secim_detay_sonuclar.js','cimer_ek.js','ekonomi_pazar.js','is_dunyasi.js','ekonomi_borsa.js','ekonomi_kurumlar.js','ajans.js','guvenlik.js','banka_kredi_icra.js','banka_kredi_masasi.js','belediye_sehir.js','yonetim.js','banka_kredi_masasi.js','belediye_ruhsatlar.js','menu_sade.js','ek_isler.js','dernek_faaliyet.js','sirket_operasyon_merkezi.js','sirket_tum_turler.js','ekonomi3.js','oyuncu_arama.js','cb_yrd.js','siyaset_merkezi.js','gorunum_cila.js','yonetici_kontrol.js','mobil_yerel.js','magaza.js','uzaktan_kontrol.js','bildirim_merkezi.js'])
   html=html.replace(`<script src="${m}"></script>`,()=>'<script>'+fs.readFileSync(path.join(kok,'www',m),'utf8')+'</script>');
 // Eski kaynak şablonunda cb_yrd.js etiketi bulunmasa da uygulama paketi yeni masayı içersin.
 if (!html.includes('cbYrdDosyaAc')) html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','cb_yrd.js'),'utf8')+'</script></body>');
@@ -39,6 +39,8 @@ html=html.replace('<script src="hesap_duzeltmeleri_20261025.js"></script>',()=>'
 html=html.replace('<script src="meslek_carsi.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','meslek_carsi.js'),'utf8')+'</script>');
 // Kuyumcu ve doviz ofisi: web ve mobil paket ayni ekranlari kullansin.
 html=html.replace('<script src="meslek_dukkan.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','meslek_dukkan.js'),'utf8')+'</script>');
+// Yeni ust sekmeli Ekonomi merkezi en son kurulur: eski uzun menunun uzerine yazilamaz.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','menu_merkezleri.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
