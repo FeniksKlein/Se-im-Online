@@ -1,0 +1,37 @@
+name: Build and publish game web
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gelistirici/www/**"
+      - "gelistirici/build/derle.js"
+      - "gelistirici/SURUM"
+      - ".github/workflows/build-and-publish.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check module JavaScript
+        run: node --check gelistirici/www/meslek_carsi.js
+      - name: Compile single-file site and mobile bundle
+        run: node --max-old-space-size=4096 gelistirici/build/derle.js
+      - name: Update GitHub Pages and legacy web copy
+        run: |
+          cp gelistirici/dist/index.html docs/index.html
+          cp gelistirici/dist/index.html www/index.html
+          git add docs/index.html www/index.html
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "build: publish game UI from latest source"
+            git push
+          fi
