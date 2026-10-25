@@ -405,6 +405,7 @@
       giris:["Diğer ekonomik faaliyetler","İş kolları, sigorta, ruhsat ve uzmanlık hizmetleri."]
     };
     var d=map[s]||map.genel;
+    if(s==='genel')return '';
     return '<header class="so-econ-banner"><div class="so-econ-eyebrow">◆ EKONOMİ MERKEZİ</div>'
       +'<h2>'+esc(d[0])+'</h2><p>'+esc(d[1])+'</p>'
 
@@ -508,7 +509,7 @@
         return eTile("🏛️",x.ad||"Banka",alt,"bankaGenelMudurlukEkrani("+Number(x.id)+")",i===0);
       }));
     }
-    return z+bankalarGenel();
+    return bankalarGenel()+z;
   }
   window.soMenuBanka=function(id,tab){
     if(typeof window.bankaYonetimEkrani!=="function"){
@@ -650,6 +651,47 @@
     EKRAN.ekonomi=function(){return window.ekonomiSekmeEkrani();};
   }
   stil();
+  /* Mobil ekonomide sekmeler piyasa panosunun ustunde gorunsun. Piyasa
+     panosunun verisini ya da baska ekranlarin siralamasini degistirmez. */
+  (function(){
+    let scheduled=false;
+    function yerlestir(){
+      if(typeof D==='undefined'||D.sekme!=='ekonomi'||D.yigin.length){
+        const eski=document.getElementById('so-tabs-piyasa-ust');
+        if(eski)eski.remove();
+        return;
+      }
+      const nav=document.querySelector('#icerik .so-ekonomi .so-tabs');
+      if(!nav)return;
+      const root=document.getElementById('app')||document.body;
+      const panolar=[...root.querySelectorAll('.kart,.sahne,.piyasa-panosu,.piyasa-ozet')];
+      const pano=panolar.find(el=>{
+        if(el.closest('#icerik'))return false;
+        const txt=(el.querySelector('h2,h3,small,.kucuk')||el).textContent||'';
+        return /piyasa panosu|şirketler endeksi/i.test(txt) && /piyasa panosu|şirketler endeksi/i.test(el.textContent||'');
+      });
+      const once=document.getElementById('so-tabs-piyasa-ust');
+      if(!pano){if(once)once.remove();nav.style.display='';return;}
+      if(once && once.dataset.from===nav.dataset.soNavId && once.nextElementSibling===pano)return;
+      if(once)once.remove();
+      // Ustte orijinal sekmelerin calisan bir kopyasi. Butonlar zaten
+      // soMenuSec'e yonlenir, piyasa karti yerinden koparilmaz.
+      if(!nav.dataset.soNavId)nav.dataset.soNavId=String(Date.now())+String(Math.random());
+      const yeni=nav.cloneNode(true);
+      yeni.id='so-tabs-piyasa-ust';
+      yeni.dataset.from=nav.dataset.soNavId;
+      yeni.style.cssText='position:relative;top:auto;z-index:8;margin:8px 0 12px;width:100%;';
+      pano.parentNode.insertBefore(yeni,pano);
+      nav.style.display='none';
+    }
+    const obs=new MutationObserver(()=>{
+      if(scheduled)return;
+      scheduled=true;
+      requestAnimationFrame(()=>{scheduled=false;yerlestir();});
+    });
+    obs.observe(document.getElementById('app')||document.body,{childList:true,subtree:true});
+    yerlestir();
+  })();
   /* Alt islem ekranlari da Ekonomi tasarim dilini kullanir; Mobil Sube kendi stilini korur. */
   function soEkonomiDerinStil(){
     var kutu=document.getElementById("icerik");if(!kutu)return;
