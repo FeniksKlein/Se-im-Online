@@ -117,8 +117,8 @@ declare d oyun.meslek_dukkan%rowtype;
 begin
  select * into d from oyun.meslek_dukkan where id=p_dukkan and sahibi=auth.uid() for update;
  if not found then raise exception 'Bu dukkan sana ait degil';end if;
- if p_makas is null or p_makas<case when d.tur='doviz' then 0.25 else 0.5 end
- or p_makas>case when d.tur='doviz' then 3 else 6 end then raise exception 'Bu dukkan icin makas siniri disinda';end if;
+ if p_makas is null or p_makas<0.25 or p_makas>6 then raise exception 'Gecersiz makas orani';end if;
+ if (d.tur='doviz' and p_makas>3) or (d.tur='kuyumcu' and p_makas<0.5) then raise exception 'Bu dukkan icin makas siniri disinda';end if;
  update oyun.meslek_dukkan set makas=round(p_makas,3) where id=p_dukkan;
  return jsonb_build_object('makas',round(p_makas,3));
 end; $$;
