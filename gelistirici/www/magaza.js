@@ -129,13 +129,14 @@
       return r;
     };
   }
-  // Üst çubuktaki cüzdan her ekranda mağazayı açar (altın + işareti); Kart ödülü hazırsa kırmızı nokta
+  // Üst çubuktaki cüzdan: tutara dokununca cüzdan hareketleri (son 24 saat, kaynaklarıyla) açılır,
+  // altın + işareti mağazayı açar (27.10.2026: eskiden ikisi de mağazayı açıyordu). Kart ödülü hazırsa kırmızı nokta.
   function cipGuncelle() {
     const c = document.querySelector(".ust .para-cip"); if (!c) return;
     if (!c.classList.contains("mg-cip")) {
-      c.classList.add("mg-cip"); c.setAttribute("onclick", "ekranAc(magazaEkrani)");
-      c.setAttribute("aria-label", "Mağaza: cüzdanına ₺ ekle"); c.title = "Mağaza";
-      c.insertAdjacentHTML("beforeend", `<span class="mg-arti">${SVG.arti}</span>`);
+      c.classList.add("mg-cip"); c.setAttribute("onclick", "ekranAc(typeof cuzdanEkrani==='function'?cuzdanEkrani:magazaEkrani)");
+      c.setAttribute("aria-label", "Cüzdan: gelen ve giden paralar"); c.title = "Cüzdan";
+      c.insertAdjacentHTML("beforeend", `<span class="mg-arti" role="button" aria-label="Mağaza: cüzdanına ₺ ekle" title="Mağaza" onclick="event.stopPropagation();ekranAc(magazaEkrani)">${SVG.arti}</span>`);
     }
     const nokta = !!(M.durum && M.durum.kart && M.durum.kart.odul_alinabilir);
     const n = c.querySelector(".mg-nokta");

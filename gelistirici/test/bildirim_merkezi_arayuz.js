@@ -60,7 +60,7 @@ const SINIF = [
   ['Ece basın toplantısı düzenliyor: "Bütçe hakkında". Gazeteci olarak 30 dakika içinde soru sorabilirsin.', 'duyuru', null],
   ['Türk Gelişim Partisi genel başkanı parti ideolojilerini oylamaya sundu. 48 saat içinde oyunu kullan.', 'acil', null],
   ['ÖP kasasından 50.000 ₺ harcandı: Ece üyesine kampanya desteği. Kasa defteri herkese açık.', 'duyuru', null],
-  ['Ece paylaşımına yanıt verdi: Tebrikler!', 'ozel', null],
+  ['Ece paylaşımına yanıt verdi: Tebrikler!', 'ozel', 'kursu'], // 26.10.2026'dan beri Kürsü bildirimlerine gider
   ['Uzun süredir oyuna girmedin. İki gün içinde girmezsen seçildiğin görevden düşeceksin ve olağanüstü seçim yapılacak.', 'acil', null],
   ['3 gündür oyuna girmediğin için genel başkan yardımcılığın sona erdi.', 'ozel', null],
   ['Cumhurbaşkanı seni Adalet Bakanlığı görevinden aldı.', 'ozel', null]

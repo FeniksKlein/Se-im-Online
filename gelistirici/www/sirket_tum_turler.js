@@ -241,6 +241,6 @@ if(typeof originalDetail==="function"){
 (function(){
  if(document.getElementById("npc-isletmeler-modulu"))return;
  const sc=document.createElement("script");sc.id="npc-isletmeler-modulu";
- sc.src="npc_isletmeler.js?v=20261025-2";sc.async=false;
+ sc.src="npc_isletmeler.js?v=20261027-rapor1";sc.async=false;
  document.body.appendChild(sc);
 })();

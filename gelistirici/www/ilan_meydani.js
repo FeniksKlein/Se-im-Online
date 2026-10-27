@@ -487,8 +487,11 @@
         '<div><span>Şirket kasası</span><b>' + tl(v.mali.kasa) + '</b></div><div><span>Sermaye</span><b>' + tl(v.mali.sermaye) + '</b></div>' +
         '<div><span>Defter değeri</span><b>' + tl(v.mali.defter) + '</b></div></div></section>';
     } else if (v.varlik === "sirket" || v.varlik === "hisse") {
-      h += '<p class="im-ipucu">Satıcı şirketin kasa bilgisini ilanda paylaşmadı. Teklif notunda sorabilirsin.</p>';
+      h += '<p class="im-ipucu">Satıcı şirketin kasa bilgisini ilanda paylaşmadı. Ciro ve kârlılık aşağıdaki inceleme raporunda; kasayı teklif notunda sorabilirsin.</p>';
     }
+    // 27.10.2026: şirket / hisse alırken kâr oranları, sermaye, kasa ve ciro (oyuncu isteği)
+    if ((v.varlik === "sirket" || v.varlik === "hisse") && yayinda && typeof sirketRaporuEkrani === "function")
+      h += '<button type="button" class="btn ikinci" style="margin:0 0 12px" onclick="ekranAc(function(){return sirketRaporuEkrani(null,' + Number(v.id) + ')})">Şirket inceleme raporu · ciro, kâr marjı, sermaye, kasa</button>';
     if (v.aciklama) h += '<section class="im-kutu"><h4>Açıklama</h4><div class="im-aciklama">' + esc(v.aciklama) + '</div></section>';
     var sb = v.satici_bilgi || {};
     h += '<section class="im-kutu"><h4>Satıcı</h4><div class="im-satici"><span class="im-av">' + esc(String(sb.kad || "?").charAt(0).toLocaleUpperCase("tr-TR")) + '</span>' +

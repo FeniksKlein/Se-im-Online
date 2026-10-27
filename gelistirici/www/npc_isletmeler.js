@@ -215,7 +215,8 @@ async function spPazar(){
 async function spDetay(sirketId){
  const id=tamid(sirketId);yukleniyor("Şirket detayları");
  try{
-  const [v,m]=await Promise.all([API.rpc("sirket_vitrini"),API.rpc("sirket_liste").catch(()=>({sirketler:[]}))]);
+  const [v,m,rap]=await Promise.all([API.rpc("sirket_vitrini"),API.rpc("sirket_liste").catch(()=>({sirketler:[]})),
+   API.rpc("sirket_satis_raporu",{p_sirket:id}).catch(()=>null)]);
   const s=(v.sirketler||[]).find(x=>Number(x.id)===id);
   if(!s||s.aktif===false||s.satilik==null){
    iskelet("Şirket detayları",kart("İlan bulunamadı",'<p class="alt">Bu şirket satılmış veya ilanı kaldırılmış olabilir.</p>'+buton("İlanlara dön","sirketPazarEkrani()",true)),{geri:true});return;
@@ -231,6 +232,8 @@ async function spDetay(sirketId){
    satir("Ortaklık / paylar",isimler)+
    satir("Kuruluş tarihi",spTarih(s.kurulus))+
    satir("Durumu",s.aktif?"Faaliyette":"Pasif"));
+  // 27.10.2026: alıcı için inceleme raporu (son 7/30 gün ciro, gider, net kâr, kâr marjı, F/K, kasa, stok)
+  if(rap&&typeof window.sirketRaporuHtml==="function")html+=window.sirketRaporuHtml(rap,true);
   html+=kart("Mali durumu ve kârlılığı",
    satir("Sermaye",tl(s.sermaye))+
    satir("Güncel şirket kasası",tl(s.kasa))+
@@ -250,11 +253,15 @@ async function spDetay(sirketId){
 async function spSatinAl(sirketId){
  const id=tamid(sirketId);
  try{
-  const v=await API.rpc("sirket_vitrini");
+  const [v,rap]=await Promise.all([API.rpc("sirket_vitrini"),API.rpc("sirket_satis_raporu",{p_sirket:id}).catch(()=>null)]);
   const s=(v.sirketler||[]).find(x=>Number(x.id)===id);
   if(!s||s.satilik==null||s.aktif===false){toast("İlan artık aktif değil.",true);await spPazar();return;}
+  const ozet=rap?"<br><br>Sermaye "+tl(rap.sermaye)+" · Kasa "+(rap.kasa_gizli?"gizli":tl(rap.kasa))+
+    "<br>Son 30 gün: ciro "+tl(rap.son30&&rap.son30.gelir)+" · net kâr "+tl(rap.son30&&rap.son30.net)+
+    (rap.son30&&rap.son30.marj!=null?" · marj %"+Number(rap.son30.marj).toLocaleString("tr-TR"):"")+
+    (rap.fiyat_kazanc!=null?"<br>F/K: "+Number(rap.fiyat_kazanc).toLocaleString("tr-TR")+" yıl":""):"";
   if(!await onayla("Şirket satın al",
-    guvenli(s.ad)+" · "+tl(s.satilik)+". Satış bedeli cüzdanından düşülür. Şirketin stokları, kasası, varlıkları ve mevcut yükümlülükleri birlikte devrolur.",
+    guvenli(s.ad)+" · "+tl(s.satilik)+". Satış bedeli cüzdanından düşülür. Şirketin stokları, kasası, varlıkları ve mevcut yükümlülükleri birlikte devrolur."+ozet,
     "Satın al"))return;
   await API.rpc("sirket_satilik_al",{p_sirket:id});
   toast("Şirket satın alındı. Şirketlerimden yönetebilirsin.");await spPazar();

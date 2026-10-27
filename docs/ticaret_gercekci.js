@@ -264,7 +264,15 @@ function price(id,prod,current){
 function wholesale(id){
  const arr=(TC.veri?.tedarikciler||[]).filter(x=>Number(x.sirket)!==Number(id));
  if(!arr.length){toast("Şu an hazır stoku bulunan üretici yok.",true);return;}
+ /* 27.10.2026: Toptan alım ekranında mağazanın kendi stoğu da görünür (oyuncu isteği). */
+ const myStock=(TC.veri?.stok||[]).filter(x=>Number(x.sirket)===Number(id)&&Number(x.adet)>0);
+ const myTotal=myStock.reduce((n,x)=>n+Number(x.adet||0),0);
+ const stockHtml='<div class="tc-hint" style="margin:0 0 10px;padding:10px 12px;border-radius:12px;background:var(--panel2)">'+
+  '<b style="display:block;margin-bottom:4px">Mağazandaki stok: '+myTotal+' adet'+(myStock.length?' · '+myStock.length+' çeşit':'')+'</b>'+
+  (myStock.length?myStock.map(x=>'<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:2px 0"><span>'+tm(item(x.urun)?.ad||x.urun)+'</span><span style="white-space:nowrap">'+Number(x.adet)+' adet'+(x.fiyat?' · satış '+money(x.fiyat):'')+'</span></div>').join(""):
+  '<div style="font-size:13px;color:var(--mut)">Mağazanda şu an satılık ürün yok.</div>')+'</div>';
  const m=popup(mine(id).ad+" · Toptan tedarik",
+ stockHtml+
  choices("tcSupplier","Üretici ve stok",arr.map(x=>[x.sirket+"|"+x.urun,(item(x.urun)?.ad||x.urun)+" · "+x.ad+" · "+x.adet+" adet · "+money(x.fiyat)]))+
  field("tcQty","Alınacak adet",5,1,500)+
  '<p id="tcDetails" class="alt"></p>',
@@ -277,7 +285,9 @@ function wholesale(id){
  const update=()=>{
    const [supplier,product]=sel(m,"tcSupplier").split("|");
    const x=arr.find(x=>String(x.sirket)===supplier&&x.urun===product);
-   m.querySelector("#tcDetails").textContent=x?"Stok "+x.adet+" adet · Toplam "+money(x.fiyat*Number(sel(m,"tcQty"))):"";
+   const own0=myStock.find(y=>y.urun===product);
+   m.querySelector("#tcDetails").textContent=x?"Üreticide "+x.adet+" adet · Toplam "+money(x.fiyat*Number(sel(m,"tcQty")))+
+    " · Mağazanda bu üründen "+Number(own0?.adet||0)+" adet var":"";
  };
  m.querySelector("#tcQty").oninput=update;m.querySelector("#tcSupplier").onchange=update;update();
 }

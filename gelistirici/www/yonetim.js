@@ -95,6 +95,7 @@ async function yonetimEkrani(){
       <button class="btn altin" onclick="D.devletSekme='hukumet';sekmeAc('devlet')">Hükümet ve kabine</button>
       ${cb ? `<button class="btn altin" onclick="cbTorenAc()">🇹🇷 Yemin törenim ve ulusa sesleniş</button>` : ""}
       ${cb ? `<button class="btn ikinci" onclick="sekmeAc('meclis')">Meclis ve onay bekleyen kanunlar</button>` : ""}
+      ${cb && typeof devletButcesiEkrani === "function" ? `<button class="btn ikinci" onclick="ekranAc(devletButcesiEkrani)">Devlet bütçesi · ek ödenek talepleri</button>` : ""}
       ${cb && ihaleVar ? `<button class="btn ikinci" onclick="PZ.ihaleSekme='masa';ekranAc(ihaleEkrani)">Kamu ihaleleri (bakanı olmayan bakanlıklar)</button>` : ""}</div>`;
   }
 
@@ -102,7 +103,8 @@ async function yonetimEkrani(){
   if (bakan) {
     h += `<div class="kart ynt-bolum"><h2>Bakanlık yönetim masası</h2><p class="alt">Bu kararlar yalnızca görevli olduğun bakanlıklara aittir. İcraat bedeli bakanlık kasasından karşılanır.</p>
       ${ihaleVar ? `<button class="btn ikinci" onclick="PZ.ihaleSekme='masa';ekranAc(ihaleEkrani)">Kamu ihalesi aç / yönet</button>` : ""}
-      ${typeof bakanSoruEkrani === "function" ? `<button class="btn ikinci" onclick="ekranAc(bakanSoruEkrani)">Soru önergeleri</button>` : ""}</div>`;
+      ${typeof bakanSoruEkrani === "function" ? `<button class="btn ikinci" onclick="ekranAc(bakanSoruEkrani)">Soru önergeleri</button>` : ""}
+      ${typeof bakanlikEtkinlikleriEkrani === "function" ? `<button class="btn ikinci" onclick="ekranAc(bakanlikEtkinlikleriEkrani)">Bakanlık etkinlikleri</button>` : ""}</div>`;
     h += D._bakanPanelleri.length && typeof bakanPanelHtml === "function"
       ? D._bakanPanelleri.map(pn => bakanPanelHtml(pn, false)).join("")
       : `<div class="kart"><p class="alt">Bakanlık yetkin henüz aktif değil. Teklifi Bildirimler bölümünden kabul etmelisin.</p></div>`;

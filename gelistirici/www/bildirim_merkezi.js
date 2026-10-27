@@ -43,6 +43,12 @@
   const MECLIS = /grup karari|kanun teklifi|vergi kanunu|anayasa degisikligi|oylama|meclis|tbmm|veto|yasama|grup konusmasi|grup gunu|grup toplantisi|tuzuk|partimize katildi|partimizden ayrildi|birlesti|kurultay|on secim|grup baskanvekil|partisinin adi|genel baskani yeni|teskilatli/;
 
   function rotaBul(t) {
+    // 27.10.2026: bakanlık masası bildirimleri
+    if (/^bakanlik: /.test(t)) {
+      if (/ilimizde .{0,80}duzenliyor|katilimciyla tamamlandi/.test(t)) return "bk_etkinlik";
+      if (/ek odenek istiyor|devlet butcesi/.test(t)) return "butce";
+      return "bakanlik";
+    }
     if (/^muzayede:/.test(t)) return "muzayede";
     if (/^kursu:|paylasimina yanit verdi/.test(t)) return "kursu";
     if (/ilan meydani|ilanina .{0,40}teklif|ilani icin karsi teklif|ilani baska bir aliciya|ilani yayindan kalkti|ilaninin 30 gunluk|ilanin oyun yonetimi|^satis tamamlandi: |artik senin \(/.test(t)) return "ilan";
@@ -80,7 +86,10 @@
     meclis:  { ad: "Meclis'e git", ac: () => sekmeAc("meclis"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.meclis === "function" },
     parti:   { ad: "Partilere git", ac: () => sekmeAc("parti"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.parti === "function" },
     devlet:  { ad: "Devlet'e git", ac: () => sekmeAc("devlet"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.devlet === "function" },
-    gundem:  { ad: "Gündem'e git", ac: () => sekmeAc("gundem"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.gundem === "function" }
+    gundem:  { ad: "Gündem'e git", ac: () => sekmeAc("gundem"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.gundem === "function" },
+    bakanlik:   { ad: "Bakanlık masasına git", ac: () => bakanlikMasamAc(), var: () => typeof bakanlikMasamAc === "function" },
+    bk_etkinlik:{ ad: "Etkinliğe git", ac: () => ekranAc(bakanlikEtkinlikleriEkrani), var: () => typeof bakanlikEtkinlikleriEkrani === "function" },
+    butce:      { ad: "Devlet bütçesine git", ac: () => ekranAc(devletButcesiEkrani), var: () => typeof devletButcesiEkrani === "function" }
   };
   function rotaGit(r) { try { if (ROTA[r] && ROTA[r].var()) { bantKapat(); ROTA[r].ac(); } } catch (_) {} }
   window.bmRotaGit = rotaGit;

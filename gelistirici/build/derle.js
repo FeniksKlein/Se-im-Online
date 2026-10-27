@@ -53,6 +53,9 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 // Şirket tek merkez, çek/bankacılık merkezi ve Şirketlerim gelir raporu (docs/*.js artık yüklenmediği için pakete gömülür).
 for (const m of ['cb_toren_2215.js','cb_kampanya.js','yatirim_pazari.js','sirket_tek_merkez.js','cek_merkezi.js','ekonomi_menu_onarim.js','muzayede.js','kursu.js'])
   html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www',m),'utf8')+'</script></body>');
+// 27.10.2026: Bakanlık masası + devlet bütçesi + bakanlık etkinlikleri, cüzdan hareketleri, şirket inceleme raporu (premium katmandan önce).
+for (const m of ['sirket_raporu.js','cuzdan_hareketleri.js','bakanlik_masasi.js'])
+  html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www',m),'utf8')+'</script></body>');
 // Premium arayüz katmanı: 5'li alt menü + Menü çekmecesi, bölüm kurum kartları, kimlik kartı (en son yüklenir).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','premium_arayuz.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();

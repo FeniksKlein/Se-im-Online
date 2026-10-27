@@ -915,6 +915,12 @@
     e('kisiler', B.meclis.a1, 'İl il milletvekilleri', 'Vekil listesi', ['meclisSekme', 'vekiller'], 'vekil milletvekili liste', 'Meclis');
     e('megafon', B.devlet.a1, 'Ulusa sesleniş', 'Cumhurbaşkanlarının konuşmaları', ['seslenis'], 'sesleniş konuşma cumhurbaşkanı', 'Devlet');
     if (g('krizMerkeziEkrani')) e('kriz', '#e0565b', 'Kriz merkezi', 'Ülke krizleri ve kararlar', ['kriz'], 'kriz afet olay karar', 'Devlet');
+    // 27.10.2026: bakanlık masası, etkinlikler, devlet bütçesi, cüzdan hareketleri
+    if (g('bakanlikMasamAc') && (p.makamlar || []).some(function (m) { return m.tur === 'bakan'; }))
+      e('devlet', '#3d5bd9', 'Bakanlık masam', 'İcraat, etkinlik, bütçe, haftalık görevler, karne', ['kod', 'bakanlikMasamAc()'], 'bakan bakanlık masa icraat etkinlik ödenek bütçe kasa görev karne saha ziyareti açıklama', 'Devlet');
+    if (g('bakanlikEtkinlikleriEkrani')) e('megafon', '#c9465a', 'Bakanlık etkinlikleri', 'Fuar, şenlik, tören: katıl, kıdem kazan', ['kod', 'ekranAc(bakanlikEtkinlikleriEkrani)'], 'etkinlik fuar şenlik tören festival bakanlık katıl kıdem', 'Devlet');
+    if (g('devletButcesiEkrani')) e('devlet', '#b9862a', 'Devlet bütçesi', 'Hazine, bakanlık kasaları, ödenek talepleri', ['kod', 'ekranAc(devletButcesiEkrani)'], 'bütçe hazine ödenek bakanlık kasa tahsis aktarım talep maliye', 'Devlet');
+    if (g('cuzdanEkrani')) e('para', '#6d55e6', 'Cüzdan hareketleri', 'Son 24 saat gelen ve giden para, kaynaklarıyla', ['kod', 'ekranAc(cuzdanEkrani)'], 'cüzdan hareket gelen giden para nereden harcama gelir gider son 24 saat geçmiş döküm hesap', 'Para');
     e('gazete', B.devlet.a1, 'Resmî Gazete', 'Kanunlar ve kararnameler', ['gazete'], 'resmi gazete kararname', 'Devlet');
     e('el', '#c03a6b', 'Koalisyon pazarlıkları', 'Gizli siyasi pazarlıklar ve protokoller', ['koalisyon'], 'koalisyon pazarlık protokol ittifak gizli', 'Siyaset');
     e('kisiler', '#c03a6b', 'Kurucular kurulu', 'Parti kurma davetleri', ['kurucu'], 'parti kur kurucu davet', 'Siyaset');

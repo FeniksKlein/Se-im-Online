@@ -580,11 +580,14 @@ const YUK = window.YUK = (function(){
     uzaktan_kontrol_durum: 30000, haberler: 60000, referandumlar: 60000, ihaleler: 60000, meclis: 60000, ilk_adimlar: 60000,
     miting_haklarim: 60000, dernek_akis: 60000, gundem_dernek_secimler: 60000, akis_gundem: 60000, cimer: 60000,
     siyaset_merkezi_ozet: 60000, kriz_merkezi: 60000, partiler: 120000, bos_makam_firsatlari: 120000, gun_ozeti: 120000,
-    siyasi_hafta: 120000, uygulama_ayar: 300000, surum: 300000
+    siyasi_hafta: 120000, uygulama_ayar: 300000, surum: 300000,
+    bakanlik_etkinlikleri: 45000, cuzdan_hareketleri: 10000 // 27.10.2026
   };
   const GECIR = { ajans_gundem: 1 }; // önbelleğe alınmaz ama önbelleği de silmez (gösterim sayar)
   // Sunucuda salt-okunur (STABLE) tanımlı fonksiyonlar: veri değiştiremezler, önbelleği silmeleri gerekmez.
   const OKU = new Set("adayliklarim,adliye_dava_ek,adliye_detay,adliye_durum,adliye_kurum_listesi,adliye_mahkeme,adliye_musadere_durum,adliye_siyasi_bilgi,akis_gundem,akis_konu,akis_liste,avukat_buro_davetler,avukat_dava_durum,avukat_durum,avukat_iller,avukat_pazarlik_liste,avukat_primlerim,bakanlik_panellerim,bakanlik_teklif_durumlari,balkon_durum,baro_dava_bilgi,baro_durum,bel_ruhsat_merkezi,belediye_detay_paneli,belediye_emlak_ozet,belediye_is_pazar,belediye_karnesi,belediye_sehir_paneli,belediye_yatirim_ekonomi_panel,bildirim_hedefleri,bildirim_yayin_ozet,bos_makam_firsatlari,canli_yayin_detay,canli_yayinlar,cb_kampanya_bilgi,cb_seslenisler,cb_toren_durum,cb_yardimcilari,cb_yardimcisi_adaylari,cb_yardimcisi_bakan_denetim,cb_yardimcisi_tekliflerim,cb_yrd_panel,cek_iptal_panel,cimer,cimer_karne,dernek_akis,dernek_eylem_oku,dernek_faaliyetler,dernek_kampanya_vitrin,dernek_program_katalog,dernek_program_ozet,dernek_proje_fiyatlar,dernek_uye_destek_liste,dernek_ziyaret_taleplerim,dernekler,emlak_pazarliklarim,gby_gorevleri,gun_ozeti,gundem_dernek_secimler,haftanin_ozeti,hukuk_islerim,ideoloji_durum,kapi_kapi_haklarim,kimlikler,koalisyon_durum,kurucu_davetlerim,magaza_rozetler,meclis_projeksiyon,meclis_rehber,mentor_durum,miting_haklarim,miting_meydan,mitingler,mulk_il_stok,mulk_pazar,musahit_paneli,mv_ortak_liste_gorunum,oyuncu_arama,oyuncu_parti_gecmisi,parti_aciklamalari,parti_ad_ozel_hakki,parti_gecisleri,parti_il_uyeleri,parti_kimlikleri,parti_sozcu_bilgi,parti_yetkilerim,resmi_gunler,secim_ayrintili_sonuclar,secim_gecesi,sigorta_afet_panel,sigorta_isletme_panel,sirket_vitrini,siyaset_merkezi_ozet,siyasi_hafta,stantlar,tarih_arsivi,uygulama_ayar,uzaktan_kontrol_durum".split(","));
+  // 27.10.2026: bakanlık masası, devlet bütçesi, cüzdan hareketleri ve şirket inceleme raporu salt okunur
+  ["bakanlik_masasi","bakanlik_etkinlikleri","yurutme_butce_masasi","cuzdan_hareketleri","sirket_satis_raporu","ilan_sirket_raporu"].forEach(f => OKU.add(f));
   const onb = new Map(), ucusta = new Map();
   let hataSay = 0, bekleSon = 0, nesil = 0, sonEtkilesim = 0;
   const sil = () => { onb.clear(); nesil++; };
@@ -1543,7 +1546,7 @@ function politikaBagla(){
         et.innerHTML = `Bütçeye etkisi: <b class="${r.gunluk > 0 ? "kotu" : "iyi"}">${r.gunluk > 0 ? "−" : "+"}${fmt(Math.abs(r.gunluk), 2)} milyar ₺/gün</b>${r.enflasyon ? ` · enflasyon <b class="${r.enflasyon > 0 ? "kotu" : "iyi"}">${r.enflasyon > 0 ? "+" : ""}${fmt(r.enflasyon, 1)} puan</b>` : ""}`;
       } catch (_) {} }, 300); };
     bt.onclick = async () => {
-      try { await API.rpc("politika_ayarla", { p_kod: kod, p_deger: +inp.value }); toast("Karar Resmî Gazete'de yayımlandı."); devletEkrani(); }
+      try { await API.rpc("politika_ayarla", { p_kod: kod, p_deger: +inp.value }); toast("Karar Resmî Gazete'de yayımlandı."); (window.bakanSonrasiYenile || devletEkrani)(); }
       catch (err) { toast(hataCevir(err.message), true); }
     };
   });
@@ -1553,15 +1556,27 @@ function etkiYaz(e2){
   return Object.entries(e2 || {}).map(([k, v]) => `${ad[k]} ${v > 0 ? "+" : ""}${fmt(v, Math.abs(v) < 1 ? 1 : (Number.isInteger(v) ? 0 : 1))}`).join(", ");
 }
 async function icraatYap(kod, ilGerekli){
-  const ic = [D._panel, ...(D._vekil || [])].filter(Boolean).flatMap(pn => pn.icraatlar).find(x => x.kod === kod);
+  // 27.10.2026: Yönetim ekranındaki paneller D._bakanPanelleri'nde durur; eskiden yalnız D._panel aranıyor,
+  // icraat bulunamayınca hata sessizce yutuluyordu ("tuşa basıyoruz, hiçbir şey olmuyor").
+  const paneller = [D._panel, ...(D._vekil || []), ...(D._bakanPanelleri || []), ...(D._bmPaneller || [])].filter(Boolean);
+  let ic = paneller.flatMap(pn => pn.icraatlar || []).find(x => x.kod === kod);
+  if (!ic) {
+    try {
+      const yeni = await API.rpc("bakanlik_panellerim");
+      D._bakanPanelleri = Array.isArray(yeni) ? yeni : [];
+      ic = D._bakanPanelleri.flatMap(pn => pn.icraatlar || []).find(x => x.kod === kod);
+    } catch (_) {}
+  }
+  if (!ic) ic = { kod, ad: "İcraat", aciklama: "", maliyet: null };
+  const yenile = () => { const f = window.bakanSonrasiYenile || devletEkrani; try { f(); } catch (_) { devletEkrani(); } };
   const calistir = async (il) => {
-    try { await API.rpc("icraat_yap", { p_kod: kod, p_il: il || null }); modalKapat(); toast(`${ic.ad} başlatıldı.`); devletEkrani(); }
+    try { await API.rpc("icraat_yap", { p_kod: kod, p_il: il || null }); modalKapat(); toast(`${ic.ad} başlatıldı.`); yenile(); }
     catch (err) { toast(hataCevir(err.message), true); }
   };
-  if (!ilGerekli) { if (await onayla(e(ic.ad), `${e(ic.aciklama)}<br><br>Maliyet: ${fmt(ic.maliyet)} milyar ₺ (bakanlık kasasından)`, "Uygula")) calistir(); return; }
+  if (!ilGerekli) { if (await onayla(e(ic.ad), `${e(ic.aciklama)}${ic.maliyet != null ? `<br><br>Maliyet: ${fmt(ic.maliyet)} milyar ₺ (bakanlık kasasından)` : ""}`, "Uygula")) calistir(); return; }
   const iller = [...VERI.iller].sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
   const gel = Object.fromEntries((D._karne ? D._karne.iller : []).map(x => [x.id, x.gelisim]));
-  const m = modal(`<h3 style="font-size:19px;font-weight:800">${e(ic.ad)}</h3><p class="alt">${e(ic.aciklama)} Maliyet: ${fmt(ic.maliyet)} milyar ₺.</p>
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">${e(ic.ad)}</h3><p class="alt">${e(ic.aciklama)}${ic.maliyet != null ? ` Maliyet: ${fmt(ic.maliyet)} milyar ₺.` : ""}</p>
     <div class="alan"><label>Hangi il?</label><select id="icil">${iller.map(i => `<option value="${i.id}">${e(i.ad)}${gel[i.id] != null ? " · gelişmişlik " + fmt(gel[i.id], 0) : ""}</option>`).join("")}</select></div>
     <button class="btn altin" id="icok">Uygula</button>`);
   $("#icok", m).onclick = () => calistir(+$("#icil", m).value);
