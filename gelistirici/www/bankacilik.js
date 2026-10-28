@@ -691,8 +691,8 @@
     bmodal('<h3 style="font-size:19px;font-weight:800">' + esc((m.banka || {}).ad || "Banka") + ' kredi paketleri</h3>' +
       '<p class="alt" style="margin:4px 0 10px">Kredi notun ' + sayi(m.kredi_notu) + ' (' + esc(m.not_ad || "") + ').' + (m.baska_kredi ? ' Başka bir bankada aktif kredin ya da başvurun var.' : '') + '</p>' +
       (pk.length ? '<div class="bk"><div class="bk-kutu">' + pk.map(function (p) {
-        var uygun = Number(m.kredi_notu) >= Number(p.min_not || 0) && Number(p.limitim) >= Number(p.min_tutar);
-        return satir({ bas: esc(p.ad) + (p.otomatik ? ' <span class="bk-rozet y">Anında</span>' : ''), alt: p.vade_gun + " gün · " + p.taksit_sayisi + " taksit · toplam %" + sayi(p.faiz, 2) + " · " + tlKisa(p.min_tutar) + "–" + tlKisa(p.max_tutar) + (Number(p.min_not) ? " · not ≥ " + p.min_not : ""),
+        var uygun = !p.engel && !m.baska_kredi && Number(m.kredi_notu) >= Number(p.min_not || 0) && Number(p.limitim) >= Number(p.min_tutar);
+        return satir({ bas: esc(p.ad) + (p.otomatik ? ' <span class="bk-rozet y">Anında</span>' : ''), alt: p.vade_gun + " gün · " + p.taksit_sayisi + " taksit · toplam %" + sayi(p.faiz, 2) + " · " + tlKisa(p.min_tutar) + "–" + tlKisa(p.max_tutar) + (Number(p.min_not) ? " · not ≥ " + p.min_not : "") + (!uygun ? '<br><span class="bk-ipucu">' + esc(p.engel || (m.baska_kredi ? 'Önce mevcut kredini kapat veya başvurunu sonuçlandır.' : 'Kredi koşulları bu paket için yeterli değil.')) + '</span>' : ""),
           sag: uygun ? '<button class="btn altin" style="margin:0;padding:8px 12px;width:auto" onclick="msKrediPaket(' + Number(p.id) + ')">Seç</button>' : '<span class="bk-rozet k">Uygun değil</span>', sagAlt: uygun ? "limitin " + tlKisa(p.limitim) : "" });
       }).join("") + '</div></div>' : '<div class="bk-ozet">Bu banka henüz paket tanımlamamış. Banka sana özel teklif gönderebilir.</div>') +
       '<button class="btn ikinci" onclick="msKrediAc()">Başka banka seç</button>');
