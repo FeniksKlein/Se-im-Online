@@ -712,8 +712,8 @@
           await API.rpc('miting_otobus_kaldir',{p_miting:id,p_kaynak_il:Number(il.value),p_adet:Number(adet.value)});
           modalKapat();
           toast('Otobüsler kaldırıldı; bedel parti kasasından düşüldü ve kalkış iline duyuruldu.');
-          if (typeof partiMitingKartCiz === 'function' && typeof D !== 'undefined' && D._pmiting)
-            partiMitingKartCiz(D._pmiting.parti_id || 0);
+          if (typeof window.partiMitingKartCiz === 'function' && window.__mitingOtobusPartiPid)
+            await window.partiMitingKartCiz(window.__mitingOtobusPartiPid);
           window.mitingOtobusAc(id);
         } catch(err) {gosterHata(err); kaldir.disabled=false;}
       });
@@ -736,6 +736,7 @@
   if (typeof window.partiMitingKartCiz === 'function') {
     var oncekiPartiKart = window.partiMitingKartCiz;
     window.partiMitingKartCiz = async function (pid) {
+      if (Number(pid)>0) window.__mitingOtobusPartiPid=Number(pid);
       var sonuc = await oncekiPartiKart.apply(this,arguments);
       var kart = document.querySelector('#partiMitingKart');
       var bilgi = typeof D !== 'undefined' && D._pmiting;
