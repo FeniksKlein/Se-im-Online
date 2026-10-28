@@ -17919,7 +17919,7 @@ function eventDialog(mode,id){
    field("ucDate","Etkinlik tarihi (12 saat–7 gün içinde)",when,"datetime-local")+
    field("ucCapacity","Salon kapasitesi (30–500)",100,"number",30,500)+
    field("ucTicket","Bilet fiyatı (50–3000 ₺)",400,"number",50,3000)+
-   note("Salon kirası = 5.000 ₺ + kapasite × 80 ₺. Ayrıca gerçekleşen bilet cirosunun %15'i personel ve hizmet gideridir. Sponsorluk gelirleri ayrıdır."),
+   note("Salon kirası = 5.000 ₺ + kapasite × 80 ₺ (peşin). Etkinlik bitince türe göre %5–9 personel/hizmet gideri, %3 biletleme komisyonu ve oyundaki KDV/kâr vergileri ayrı hesaplanır. Net sonuçta tüm kalemler gösterilir."),
    "Organizasyonu oluştur",async el=>{
     const cap=Number(val(el,"ucCapacity")),ticket=Number(val(el,"ucTicket"));
     if(typeof onayla==="function" && !await onayla("Salon ve organizasyon kirası",TL(5000+cap*80)+" şirket kasasından peşin kesilecek.","Etkinlik kur"))return false;
@@ -17957,6 +17957,33 @@ async function eventAct(mode,id,data){
  }catch(err){toast(err.message||String(err),true);}
 }
 window.ucEventModal=eventDialog;window.ucEventDo=eventAct;
+function ucEtkinlikMaliyetDokumu(ev){
+ const gelir=Number(ev.ciro||0)+Number(ev.sponsor||0);
+ const salon=Number(ev.mekan||0);
+ const personel=Number(ev.personel||0);
+ const biletleme=Number(ev.biletleme||0);
+ const kdv=Number(ev.kdv||0);
+ const karVergisi=Number(ev.kar_vergisi||0);
+ const gider=salon+personel+biletleme+kdv+karVergisi;
+ const kazanc=Number(ev.kar||0);
+ return '<div class="uc-etkinlik-hesap" style="margin-top:9px">'
+   +'<p class="kucuk" style="margin:6px 0">Salon dışında personel, biletleme, KDV ve kâr vergisi de düşülür. <b>Toplam gider ve vergi: '+TL(gider)+'</b>.</p>'
+   +'<details style="background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:10px">'
+   +'<summary style="cursor:pointer;font-weight:700">Gelir-gider dökümünü göster</summary>'
+   +'<div class="kucuk" style="margin-top:10px;line-height:1.9">'
+   +'🎟️ Bilet geliri: <b>+'+TL(ev.ciro)+'</b><br>'
+   +'🤝 Sponsorluk: <b>+'+TL(ev.sponsor)+'</b><br>'
+   +'🏛️ Salon kirası: <b>−'+TL(salon)+'</b><br>'
+   +'👥 Personel ve hizmet: <b>−'+TL(personel)+'</b><br>'
+   +'💳 Biletleme/ödeme komisyonu: <b>−'+TL(biletleme)+'</b><br>'
+   +'🧾 Satış KDV’si: <b>−'+TL(kdv)+'</b><br>'
+   +'🏦 Kâr vergisi: <b>−'+TL(karVergisi)+'</b><br>'
+   +'<b>Gelir toplamı: '+TL(gelir)+'</b><br>'
+   +'<b>Toplam gider: '+TL(gider)+'</b><br>'
+   +'<b>Net sonuç: '+TL(kazanc)+'</b>'
+   +(Math.abs(gelir-gider-kazanc)>1?'<p>Not: Önceki dönem kayıtlarında özel mahsup veya yuvarlama farkı olabilir.</p>':'')
+   +'</div></details></div>';
+}
 function renderEvents(){
  let out=card("🎟️ Konferans, konser ve fuarlar","Oyuncular kendi medya veya ajans şirketleriyle etkinlik düzenleyebilir. Mekân kirasını öder, bilet fiyatını ve salon kapasitesini seçer; gerçek oyuncular ile sınırlı sayıdaki sanal ziyaretçiler bilet alır. Bitişte vergiler ve personel gideri düşülür.",
   btn("➕ Organizasyon düzenle","ucEventModal('kur',0)")+
@@ -17969,7 +17996,7 @@ function renderEvents(){
    "<p>Organizatör: "+E(ev.sirket_ad)+"</p>"+
    "<b>"+TL(ev.bilet)+"</b> / bilet · "+ev.satilan+"/"+ev.kapasite+" satıldı"+
    "<p>Sponsor: "+TL(ev.sponsor)+" · Bilet cirosu: "+TL(ev.ciro)+" · Salon gideri: "+TL(ev.mekan)+"</p>"+
-   (ev.durum==="bitti"?"<b>Net sonuç: "+TL(ev.kar)+"</b>":"⏳ Etkinlik günü sanal katılım da hesaplanacak."),
+   (ev.durum==="bitti"?"<b>Net sonuç: "+TL(ev.kar)+"</b>"+ucEtkinlikMaliyetDokumu(ev):"⏳ Etkinlik günü sanal katılım da hesaplanacak."),
    (openSale&&!ev.biletim?btn("🎟️ Bilet al","ucEventDo('bilet_al',"+ev.id+")"):"")+
    (ev.biletim?note("✅ Biletin var"):"")+
    (ev.durum==="planlandi"?btn("Sponsor ol","ucEventModal('sponsor',"+ev.id+")",true):""));
