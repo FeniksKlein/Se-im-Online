@@ -206,7 +206,7 @@ async function spkKarar(id, ceza){
   const m = modal(`<h3 style="font-size:19px;font-weight:800">SPK #${id} · ${ceza ? "Ceza kararı" : "Cezasız kapatma"}</h3>
     <p class="alt" style="margin-top:8px">${e(inceleme.sirket)} · ${e(inceleme.taraf1)}. ${ceza ? "Sunucuda doğrulanan ters yönlü işlemler dışında hiçbir iddia tek başına kanıt sayılmaz. Ceza: doğrulanan hacmin %20'si (en az 10.000 ₺) ve 7 gün borsa yasağı." : "Dosya ceza verilmeksizin kapatılır."}</p>
     ${ceza ? `<p class="pz-not">İşlem numaraları: ${(delil.islem_idleri || []).map(x => "#" + e(x)).join(" ve ")} · Delil tutarı: ${ekTL(delil.toplam_tutar)}</p>` : ""}
-    <div class="alan ek-alan"><label>Gerekçeli karar (zorunlu, en az 40 karakter)</label><textarea id="ekSpkKararNot" maxlength="500" placeholder="Hangi işlemler ne nedenle manipülasyon sayıldı veya neden ihlal bulunmadı? Somut açıklama yaz."></textarea></div>
+    <div class="alan ek-alan"><label>Karar gerekçesi — zorunlu (en az 40 karakter)</label><textarea id="ekSpkKararNot" maxlength="500" rows="5" placeholder="Delilleri, inceleme bulgularını ve ceza veya beraat gerekçeni en az 40 karakterle açıkla."></textarea></div>
     <p class="kucuk" id="ekSpkKararSayac">0 / 40 karakter</p>
     <button class="btn ${ceza ? "tehlike" : ""}" id="ekSpkKararOnay">${ceza ? "Gerekçeli ceza ver" : "Gerekçeyle kapat"}</button>
     <button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
