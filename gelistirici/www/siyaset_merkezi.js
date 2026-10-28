@@ -626,3 +626,128 @@
     };
   }
 })();
+
+
+/* 29.10.2026 - Parti mitingi: iller arasi otobus, koltuk ve organizasyon arayuzu. */
+(function () {
+  'use strict';
+  if (window.__mitingOtobusKuruldu) return;
+  window.__mitingOtobusKuruldu = true;
+  var temiz = function (x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function (s) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s];
+  }); };
+  var tl = function (x) { return Number(x || 0).toLocaleString('tr-TR',{maximumFractionDigits:0}) + ' ₺'; };
+  var gosterHata = function (err) { if (typeof toast === 'function') toast(err && err.message ? err.message : String(err), true); };
+
+  window.mitingOtobusAc = async function (id) {
+    var d;
+    try { d = await API.rpc('miting_otobus_bilgi', {p_miting:id}); }
+    catch(err) { gosterHata(err); return; }
+    if (!d.parti_mitingi) {
+      toast('Otobüs organizasyonu yalnız parti mitinglerinde yapılabilir.', true);
+      return;
+    }
+    var sonuc = '<h3>🚌 ' + temiz(d.il) + ' mitingine otobüsler</h3>';
+    sonuc += '<p class="alt">Başka ildeki oyuncular, kendi illerinden kalkan otobüste ücretsiz yer ayırtıp miting başladığında meydanda katılım, slogan ve tepki haklarını kullanır. Her otobüs 40 kişiliktir.</p>';
+    var araclar = d.otobusler || [];
+    sonuc += '<div class="kart"><h3>Organize edilen seferler</h3>';
+    if (!araclar.length) sonuc += '<p class="alt">Henüz hiçbir ilden otobüs kaldırılmadı.</p>';
+    araclar.forEach(function (o) {
+      sonuc += '<div class="kv"><span>' + temiz(o.kaynak) + ' → ' + temiz(d.il) +
+        '<small style="display:block">' + o.adet + ' otobüs · ' + o.dolu + '/' + o.koltuk + ' koltuk</small></span><b>' +
+        ((o.kaynak_il === d.benim_ilim && o.benim_otobusum) ? 'Yeriniz ayrıldı' :
+        ((o.kaynak_il === d.benim_ilim && o.dolu < o.koltuk) ? 'Yer var' : '')) + '</b></div>';
+    });
+    sonuc += '</div>';
+    var bana = araclar.find(function (o) {return Number(o.kaynak_il) === Number(d.benim_ilim);});
+    if (d.rezervasyonum) sonuc += '<p class="kucuk">✅ Otobüs yerin ayrılmış. Miting saatinde “Mitinge katıl” seçeneğini kullan.</p>';
+    else if (Number(d.benim_ilim) === Number(d.il_id)) sonuc += '<p class="kucuk">Bu ilde yaşıyorsun; otobüse gerek olmadan mitinge katılabilirsin.</p>';
+    else if (bana && bana.dolu < bana.koltuk && new Date(d.bit).getTime() > new Date(d.simdi).getTime())
+      sonuc += '<button class="btn canli" id="moRezervasyon">Kendi ilimden ücretsiz koltuk ayırt</button>';
+    else if (bana && bana.dolu >= bana.koltuk) sonuc += '<p class="kucuk">İlinden kalkan otobüsler dolu. Partinin yeni otobüs kaldırması gerekiyor.</p>';
+    else sonuc += '<p class="kucuk">Yaşadığın ilden henüz otobüs yok. Genel başkan veya yetkili yardımcısının bu ilden otobüs kaldırması gerekiyor.</p>';
+    var planlama = d.yetkili && d.iller && new Date(d.bas).getTime() - new Date(d.simdi).getTime() > 600000;
+    if (planlama) {
+      sonuc += '<div class="kart"><h3>Parti kasasından otobüs kaldır</h3>' +
+        '<p class="alt">Ücret çıkış ve varış iline göre hesaplanır. 1 otobüs 40 kişilik; bir ilden bir mitinge en fazla 10 otobüs. Harcamalar parti kasası defterine yazılır.</p>' +
+        '<div class="kv"><span>Parti kasası</span><b>' + tl(d.kasa) + '</b></div>' +
+        '<div class="alan"><label>Kalkış ili</label><select id="moKaynak">' +
+        d.iller.map(function(i){return '<option value="'+Number(i.id)+'">'+temiz(i.ad)+'</option>';}).join('') +
+        '</select></div><div class="alan"><label>Otobüs adedi</label><select id="moAdet">' +
+        [1,2,3,4,5].map(function(i){return '<option value="'+i+'">'+i+' otobüs · '+(i*40)+' koltuk</option>';}).join('') +
+        '</select></div><p class="alt" id="moFiyat"></p>' +
+        '<button class="btn altin" id="moKaldir">Parti kasasından öde ve otobüs kaldır</button></div>';
+    } else if (d.yetkili && new Date(d.bas).getTime() <= new Date(d.simdi).getTime() + 600000) {
+      sonuc += '<p class="kucuk">Mitingin başlamasına 10 dakikadan az kaldığı için yeni otobüs planlaması kapalı.</p>';
+    }
+    var panel = modal(sonuc);
+    if (!panel) return;
+    var yer = panel.querySelector('#moRezervasyon');
+    if (yer) yer.addEventListener('click', async function () {
+      yer.disabled = true;
+      try {
+        await API.rpc('miting_otobus_yer_ayirt',{p_miting:id});
+        modalKapat(); toast('Otobüs koltuğun ayrıldı. Miting başladığında meydandan katılabilirsin.');
+        if (typeof mtTazele === 'function') mtTazele(id);
+      } catch (err) { gosterHata(err); yer.disabled = false; }
+    });
+    var il = panel.querySelector('#moKaynak'), adet = panel.querySelector('#moAdet');
+    var fiyat = panel.querySelector('#moFiyat'), kaldir = panel.querySelector('#moKaldir');
+    if (il && adet && fiyat && kaldir) {
+      var hesap = function () {
+        var rota = d.iller.find(function (i) {return Number(i.id) === Number(il.value);});
+        var mevcut = araclar.find(function (o) {return Number(o.kaynak_il) === Number(il.value);});
+        var n = Number(adet.value), tut = Number(rota && rota.ucret || 0) * n;
+        var kalan = Number(mevcut && mevcut.adet || 0);
+        fiyat.textContent = 'Birim: '+tl(rota && rota.ucret)+' · Toplam: '+tl(tut)+
+          ' · Ek koltuk: '+(n*40)+' · Bu ilden mevcut: '+kalan+' otobüs';
+        kaldir.disabled = kalan+n>10 || tut>Number(d.kasa);
+        if (kalan+n>10) fiyat.textContent += ' · 10 otobüslük sınır aşılıyor';
+        if (tut>Number(d.kasa)) fiyat.textContent += ' · Parti kasası yetersiz';
+      };
+      il.addEventListener('change',hesap); adet.addEventListener('change',hesap); hesap();
+      kaldir.addEventListener('click',async function () {
+        kaldir.disabled=true;
+        try {
+          await API.rpc('miting_otobus_kaldir',{p_miting:id,p_kaynak_il:Number(il.value),p_adet:Number(adet.value)});
+          modalKapat();
+          toast('Otobüsler kaldırıldı; bedel parti kasasından düşüldü ve kalkış iline duyuruldu.');
+          if (typeof partiMitingKartCiz === 'function' && typeof D !== 'undefined' && D._pmiting)
+            partiMitingKartCiz(D._pmiting.parti_id || 0);
+          window.mitingOtobusAc(id);
+        } catch(err) {gosterHata(err); kaldir.disabled=false;}
+      });
+    }
+  };
+
+  if (typeof window.mtSahneHtml === 'function') {
+    var oncekiSahne = window.mtSahneHtml;
+    window.mtSahneHtml = function (d) {
+      var sonuc = oncekiSahne.apply(this, arguments);
+      if (d && d.tur === 'parti') {
+        sonuc = sonuc.replace(/Canlı izliyorsun\. Katılmak, tepki vermek ve slogan atmak yalnız [^<]+yaşayanlara açık\./,
+          'Canlı izliyorsun. Başka ilden katılmak için partinin kaldırdığı otobüsten yer ayırtabilirsin.');
+        sonuc += '<div class="kart" style="margin-top:8px"><button class="btn ikinci" onclick="mitingOtobusAc('+
+          Number(d.id)+')">🚌 Otobüsler ve iller arası miting katılımı</button></div>';
+      }
+      return sonuc;
+    };
+  }
+  if (typeof window.partiMitingKartCiz === 'function') {
+    var oncekiPartiKart = window.partiMitingKartCiz;
+    window.partiMitingKartCiz = async function (pid) {
+      var sonuc = await oncekiPartiKart.apply(this,arguments);
+      var kart = document.querySelector('#partiMitingKart');
+      var bilgi = typeof D !== 'undefined' && D._pmiting;
+      if (!kart || !bilgi || !bilgi.yaklasan || !bilgi.yaklasan.length) return sonuc;
+      var h = '<div class="kart"><h3>🚌 Miting otobüsü organizasyonu</h3>' +
+        '<p class="alt">81 ilden otobüs kaldır, kontenjanları takip et veya kendi ilinden yer ayırt.</p>';
+      bilgi.yaklasan.forEach(function(m){
+        h += '<button class="btn ikinci" onclick="mitingOtobusAc('+Number(m.id)+')">'+
+          temiz(m.il)+' · '+temiz(m.baslik)+' — Otobüsler</button>';
+      });
+      kart.insertAdjacentHTML('beforeend',h+'</div>');
+      return sonuc;
+    };
+  }
+})();
