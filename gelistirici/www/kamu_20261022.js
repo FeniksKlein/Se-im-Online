@@ -5,6 +5,7 @@ const esc=x=>typeof e==='function'?e(String(x==null?'':x)):String(x==null?'':x).
 const num=x=>Number(x||0);
 const money=x=>(typeof fmt==='function'?fmt(num(x),2):num(x).toLocaleString('tr-TR'))+' ₺';
 const billion=x=>(typeof fmt==='function'?fmt(num(x),3):num(x).toFixed(3))+' milyar ₺';
+const billion6=x=>num(x).toLocaleString('tr-TR',{minimumFractionDigits:3,maximumFractionDigits:6})+' milyar ₺';
 const row=(label,val)=>'<div class="kv"><span>'+esc(label)+'</span><b>'+esc(val)+'</b></div>';
 const btn=(label,act,cls)=>'<button class="btn '+(cls||'ikinci')+'" onclick="'+act+'">'+esc(label)+'</button>';
 const para=(msg)=>'<p class="alt">'+msg+'</p>';
@@ -27,6 +28,16 @@ window.kamuButceEkrani=async function(){
    keys.forEach((key,i)=>{html+='<div class="alan"><label>'+names[i]+' (%)</label><input type="number" id="kb_'+key+'" value="20" min="0" max="100" step="1"></div>';});
    html+=btn('Bütçeyi onayla','kamuButceKaydet()','altin')+'</div>';
   }
+  if((d.son_hazine_hareketleri||[]).length){
+     html+='<div class="kart"><h2>Hazine hesap hareketleri</h2>'+
+       para('Her hareketin Hazine bakiyesinden düşen veya Hazineye giren tutarı ayrı kaydedilir. Toplam bakiye günlük ekonomi gelirleriyle de değişebilir.');
+     (d.son_hazine_hareketleri||[]).slice(0,10).forEach(v=>{
+       const zaman=new Date(v.zaman).toLocaleString('tr-TR');
+       html+=row(zaman+' · '+v.aciklama,(num(v.fark)>0?'+':'')+billion6(v.fark));
+       html+='<p class="kucuk">Önce: '+esc(billion6(v.onceki))+' · Sonra: '+esc(billion6(v.sonraki))+'</p>';
+     });
+     html+='</div>';
+   }
   html+='<div class="kart"><h2>Son bütçe kararları</h2>'+((d.kararlar||[]).map(v=>row(new Date(v.tarih).toLocaleString('tr-TR'),billion(v.toplam))).join('')||para('Henüz paylaştırma kararı alınmadı.'))+'</div>';
   sayfa('Devlet Bütçesi',html);
  }catch(err){sayfa('Devlet Bütçesi','<div class="kart">'+esc(err.message)+'</div>');}
@@ -37,8 +48,11 @@ window.kamuButceKaydet=async function(){
   keys.forEach(k=>{pay[k]=num(document.getElementById('kb_'+k).value);total+=pay[k];});
   if(total!==100){toast('Paylar toplamı %100 olmalı.',true);return;}
   if(!await onayla('Bütçe tahsisi','Hazine ödeneği bakanlıklara aktarılacak. İşlemi onaylıyor musun?','Aktar'))return;
-  await rpc('kamu_butce_dagit',{p_toplam:num(document.getElementById('kb_toplam').value),p_paylar:pay});
-  toast('Bütçe tahsis edildi.');window.kamuButceEkrani();
+  const tutar=num(document.getElementById('kb_toplam').value);
+  const sonuc=await rpc('kamu_butce_dagit',{p_toplam:tutar,p_paylar:pay});
+  const h=(sonuc.son_hazine_hareketleri||[]).find(x=>x.aciklama==='Merkezi bütçe tahsisi'&&Math.abs(num(x.fark)+tutar)<0.0000001);
+  toast(h?'Bütçe aktarıldı · Hazine '+billion6(h.onceki)+' → '+billion6(h.sonraki):'Bütçe tahsis edildi; Hazine hareketleri kaydedildi.');
+  window.kamuButceEkrani();
  }catch(err){error(err);}
 };
 
