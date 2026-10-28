@@ -460,3 +460,9 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
   - CSS öneki `.bkm-` (bildirim merkezi `.bm-` kullanıyor; çakışmasın).
 - **Şirketlerim hatası:** web paketi 10.25-7'den beri düzgün; ekran görüntüsü eski sürüm / mağaza uygulaması. Mağaza uygulaması kullanıcılarına bu ve yeni ekranlar ancak yeni mağaza derlemesiyle gider.
 - **Test:** `gelistirici/test/bakanlik_masasi_arayuz.js` (kurgusal veri, 390 ve 320 px) TAMAM. `yonetim_arayuz`, `ilan_meydani_arayuz`, `bankacilik_arayuz`, `muzayede_arayuz`, `kursu_arayuz`, `bildirim_merkezi_arayuz` TAMAM (sonuncusunda "paylaşımına yanıt verdi" beklentisi Kürsü rotasına güncellendi).
+
+## 2026-10-28 · Mağaza sürümü 1.0.1 (sürüm kodu 2) + CI itme yarışı
+- **Ercan:** "Hazine böyle kalsın (168.053 milyar ₺, düzeltilmeyecek), onun dışındakileri düzelt güncelle."
+- **Canlı kontrol (28.10 sabah):** gece günlük ödenek 12 bakanlığa yazıldı (`bakanlik_hareket` tur=gunluk), bir bakan icraat yaptı ve 25 milyar ek ödenek istedi; zamanlayıcı adımı `bakanlik_masasi` hatasız; yeni RPC'lerin hepsi 200, Postgres'te hata yok.
+- **Mağaza:** `mobil/magaza.json` → 1.0.1 / sürüm kodu 2 (Play'e yüklenen ilk paket 1.0.0 / 1 idi). `magaza.yml` push ile çalışır; çıktı `magaza-ciktilari` dalında, AAB imzasız. AdMob kimlikleri hâlâ Google TEST kimlikleri (1.0.0 ile aynı).
+- **CI:** `oyun-web-derle.yml` ve `meslek-derle.yml` aynı anda main'e itip birbirini reddediyordu ("SQL kurulum dosyasini kaydet" kırmızı X). İkisi de artık itme reddedilirse `git pull --rebase` ile alıp 5 kez yeniden dener.

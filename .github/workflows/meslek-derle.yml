@@ -36,5 +36,10 @@ jobs:
             echo "Yeni derleme degisikligi yok"
           else
             git commit -m "build: guncel oyuncu arayuzunu yayinla [skip ci]"
-            git push origin HEAD:main
+            # 28.10.2026: diğer iş (supabase-kurulum.sql) aynı anda itebilir; reddedilirse alıp yeniden dene.
+            for deneme in 1 2 3 4 5; do
+              git pull --rebase -q origin main && git push origin HEAD:main && exit 0
+              sleep $((deneme * 5))
+            done
+            exit 1
           fi

@@ -54,5 +54,11 @@ jobs:
           git add supabase-kurulum.sql
           if ! git diff --cached --quiet; then
             git commit -m "build: supabase-kurulum.sql [skip ci]"
-            git push origin HEAD:main
+            # 28.10.2026: "Uygulama derle" işi aynı anda docs/index.html'i itiyor; itme reddedilirse
+            # önce onun commit'ini al, sonra yeniden dene (eskiden bu adım kırmızı X veriyordu).
+            for deneme in 1 2 3 4 5; do
+              git pull --rebase -q origin main && git push origin HEAD:main && exit 0
+              sleep $((deneme * 5))
+            done
+            exit 1
           fi
