@@ -9347,9 +9347,27 @@ async function spkAc(){
   catch (err) { toast(hataCevir(err.message), true); }
 }
 async function spkKarar(id, ceza){
-  if (!await onayla("SPK kararı", ceza ? "Taraflara işlem hacminin %20'si kadar ceza ve 7 gün borsa yasağı verilecek." : "İnceleme ihlal bulunmadan kapatılacak.", ceza ? "Ceza ver" : "Kapat", ceza)) return;
-  try { await API.rpc("spk_karar", { p_id: id, p_ceza: ceza, p_not: null }); toast("Karar verildi."); spkEkrani(); }
-  catch (err) { toast(hataCevir(err.message), true); }
+  const inceleme = ((EK.spk || {}).incelemeler || []).find(x => x.id === id);
+  if (!inceleme) return toast("İnceleme bulunamadı.", true);
+  const delil = inceleme.delil || {};
+  if (ceza && !delil.yeterli) return toast("Somut borsa işlem kanıtı olmadan ceza verilemez.", true);
+  const m = modal(`<h3 style="font-size:19px;font-weight:800">SPK #${id} · ${ceza ? "Ceza kararı" : "Cezasız kapatma"}</h3>
+    <p class="alt" style="margin-top:8px">${e(inceleme.sirket)} · ${e(inceleme.taraf1)}. ${ceza ? "Sunucuda doğrulanan ters yönlü işlemler dışında hiçbir iddia tek başına kanıt sayılmaz. Ceza: doğrulanan hacmin %20'si (en az 10.000 ₺) ve 7 gün borsa yasağı." : "Dosya ceza verilmeksizin kapatılır."}</p>
+    ${ceza ? `<p class="pz-not">İşlem numaraları: ${(delil.islem_idleri || []).map(x => "#" + e(x)).join(" ve ")} · Delil tutarı: ${ekTL(delil.toplam_tutar)}</p>` : ""}
+    <div class="alan ek-alan"><label>Karar gerekçesi — zorunlu (en az 40 karakter)</label><textarea id="ekSpkKararNot" maxlength="500" rows="5" placeholder="Delilleri, inceleme bulgularını ve ceza veya beraat gerekçeni en az 40 karakterle açıkla."></textarea></div>
+    <p class="kucuk" id="ekSpkKararSayac">0 / 40 karakter</p>
+    <button class="btn ${ceza ? "tehlike" : ""}" id="ekSpkKararOnay">${ceza ? "Gerekçeli ceza ver" : "Gerekçeyle kapat"}</button>
+    <button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
+  const alan = $("#ekSpkKararNot", m), sayac = $("#ekSpkKararSayac", m), btn = $("#ekSpkKararOnay", m);
+  alan.oninput = () => { const n = alan.value.trim().length; sayac.textContent = `${n} / 40 karakter`; btn.disabled = n < 40; };
+  alan.oninput();
+  btn.onclick = async () => {
+    const not = alan.value.trim();
+    if (not.length < 40) return toast("En az 40 karakterlik somut karar gerekçesi yaz.", true);
+    btn.disabled = true;
+    try { await API.rpc("spk_karar", { p_id: id, p_ceza: ceza, p_not: not }); modalKapat(); toast("Gerekçeli karar kaydedildi."); spkEkrani(); }
+    catch (err) { btn.disabled = false; toast(hataCevir(err.message), true); }
+  };
 }
 
 /* ---------------- Konkordato ve iflas ---------------- */
