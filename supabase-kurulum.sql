@@ -52009,9 +52009,9 @@ begin
  return (select veri from oyun.rekabet_onbellek where id=1);
 end $$;
 revoke all on function oyun.rekabet_oku() from public,anon;
-grant execute on function oyun.rekabet_oku() to authenticated;
+revoke all on function oyun.rekabet_oku() from authenticated;
 create or replace function public.rekabet_paneli() returns jsonb
-language sql stable security invoker set search_path='' as $$ select oyun.rekabet_oku() $$;
+language plpgsql stable security definer set search_path='' as $$ begin if auth.uid() is null then raise exception 'Oturum gerekli'; end if; return oyun.rekabet_oku(); end $$;
 revoke all on function public.rekabet_paneli() from public,anon;
 grant execute on function public.rekabet_paneli() to authenticated;
 select oyun.rekabet_yenile();
