@@ -1,0 +1,57 @@
+name: iOS App Store Xcode paketi
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ios-appstore.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  ios-appstore:
+    runs-on: macos-26
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Capacitor bagimliliklari
+        working-directory: mobil
+        run: |
+          for deneme in 1 2 3 4; do
+            if npm install --no-audit --no-fund; then break; fi
+            if [ "$deneme" = 4 ]; then exit 1; fi
+            sleep 8
+          done
+      - name: En guncel canli oyun dosyalari
+        run: node gelistirici/build/magaza_paketi.js
+      - name: Yerel iOS proje, icon ve ayarlar
+        working-directory: mobil
+        run: |
+          npx cap add ios
+          npx capacitor-assets generate --ios --iconBackgroundColor '#0E1530' --iconBackgroundColorDark '#0E1530' --splashBackgroundColor '#0E1530' --splashBackgroundColorDark '#0E1530'
+          npx cap sync ios
+          node hazirla.mjs
+      - name: Xcode iOS simulator derleme dogrulamasi
+        working-directory: mobil/ios/App
+        run: |
+          xcodebuild -version
+          set -o pipefail
+          xcodebuild -project App.xcodeproj -scheme App -sdk iphonesimulator -configuration Release -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build | tail -50
+      - name: Guncel Xcode projesini arsivle
+        run: |
+          echo "GitHub kaynak commit: ${GITHUB_SHA}" > mobil/BILGI_APPSTORE.txt
+          echo "Supabase: mevcut secim-online projesi (canli, ayrica paketlenmez)" >> mobil/BILGI_APPSTORE.txt
+          echo "App Store'a yuklemek icin Apple Developer ile imzalama zorunludur." >> mobil/BILGI_APPSTORE.txt
+          cd mobil
+          rm -rf ios/App/build ios/DerivedData
+          zip -qry ../SecimOnline-iOS-Xcode.zip ios www assets capacitor.config.json magaza.json package.json hazirla.mjs BILGI_APPSTORE.txt APPSTORE_YAYIN_20261029.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SecimOnline-iOS-Xcode
+          path: SecimOnline-iOS-Xcode.zip
+          retention-days: 30
