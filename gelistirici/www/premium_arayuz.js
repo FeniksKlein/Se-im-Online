@@ -444,7 +444,7 @@
   function git(k) { var s = g('sekmeAc'); if (s) s(k); }
   function hata() { var t = g('toast'); if (t) t('Bu bölüm şu an açılamadı. Sayfayı yenileyip yeniden dene.', true); }
   var EYLEM = {
-    rekabet: function () { var f = g('rekabetEkrani'); f ? ac(f) : hata(); },
+    rekabet: function () { var f = g('rekabetPanosuEkrani'); f ? ac(f) : hata(); },
     sekme: function (k) { git(k); },
     mobilSube: function () { var f = g('mobilSubeEkrani'); f ? ac(function () { return f(); }) : hata(); },
     ilan: function () { var f = g('ilanMeydaniEkrani'); f ? ac(f) : hata(); },

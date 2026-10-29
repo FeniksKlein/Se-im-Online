@@ -17,9 +17,9 @@
     html += '</ol>' + (!rows.length?'<p>Bu sıralama için henüz kayıt yok.</p>':'') + '<footer>5 dakikada bir güncellenir · Son hesaplama: '+esc(new Date(data.zaman).toLocaleString('tr-TR'))+'<br>Yasaklı oyuncular ve onların yönettiği şirketler listelenmez. Eşitlikte ada göre sıralanır.</footer><button type="button" class="btn" id="rp-refresh">Yenile</button></div>';
     iskelet('Rekabet Panosu', html, {geri:true});
     document.querySelectorAll('[data-rp]').forEach(function(el) { el.onclick=function(){selected=el.dataset.rp;draw();}; });
-    document.getElementById('rp-refresh').onclick=window.rekabetEkrani;
+    document.getElementById('rp-refresh').onclick=window.rekabetPanosuEkrani;
   }
-  window.rekabetEkrani = async function () {
+  window.rekabetPanosuEkrani = async function () {
     iskelet('Rekabet Panosu', '<div id="rp-loading" class="kart">Sıralamalar yükleniyor…</div>', {geri:true});
     try {
       var result = await API.rpc('rekabet_paneli', {});
@@ -27,7 +27,7 @@
       data = result; draw();
     } catch(e) {
       if (!document.getElementById('rp-loading')) return;
-      iskelet('Rekabet Panosu','<div class="kart"><p>'+esc(e.message || 'Sıralamalar yüklenemedi.')+'</p><button type="button" class="btn" onclick="rekabetEkrani()">Tekrar dene</button></div>',{geri:true});
+      iskelet('Rekabet Panosu','<div class="kart"><p>'+esc(e.message || 'Sıralamalar yüklenemedi.')+'</p><button type="button" class="btn" onclick="rekabetPanosuEkrani()">Tekrar dene</button></div>',{geri:true});
     }
   };
   var style=document.createElement('style');
