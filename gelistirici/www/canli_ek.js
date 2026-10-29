@@ -116,9 +116,9 @@ function geceKancasi(s){
 async function gundemEkVeri(iste){
   const [canli, firsat, etiket, ozet, akis, cimer] = await Promise.all([
     iste("secim_gecesi_aktif", undefined, []), iste("bos_makam_firsatlari", undefined, []),
-    iste("akis_gundem", undefined, null), iste("gun_ozeti", undefined, null), iste("akis_liste", { p_kapsam: "herkes", p_limit: 5 }, []),
+    iste("akis_gundem", undefined, null), iste("gun_ozeti", undefined, null), iste("kursu_akis", { p_sekme: "herkes", p_imlec: null, p_limit: 3 }, null),
     typeof cimerGundemHtml === "function" ? iste("cimer", undefined, null) : null]);
-  return { canli: canli || [], firsat: firsat || [], etiket, ozet, akis: akis || [], cimer };
+  return { canli: canli || [], firsat: firsat || [], etiket, ozet, akis: (akis && akis.liste || []).map(x => x.g), cimer };
 }
 function gundemEkUst(ek){
   if (!ek || !ek.canli.length) return "";
@@ -148,15 +148,13 @@ function gundemEkAlt(ek){
   AKIS.gundemListe = ek.akis || [];
   h += `<div class="bolum-bas"><h2>Akış</h2><button class="kucuk" style="color:var(--ink2);font-weight:700" onclick="ekranAc(()=>akisEkrani())">Tümünü gör ›</button></div>
     <div class="kart akis-kart">
-      ${akisYazHtml("gAkis", "Ne düşünüyorsun? Görüşünü yaz…")}
-      ${et.length ? `<div class="etiket-cipler" style="margin-top:10px">${et.map(x => `<span class="etiket-cip" onclick="ekranAc(()=>akisEkrani('${e(x.etiket)}'))">#${e(x.etiket)} <span class="kucuk">${x.kisi}</span></span>`).join("")}</div>` : ""}
       <div id="gAkisListe">${AKIS.gundemListe.map(akisSatirHtml).join("") || `<div class="bos" style="padding:12px 0">Henüz paylaşım yok. İlk sözü sen söyle.</div>`}</div>
+      <button class="btn ikinci" onclick="ekranAc(()=>kursuEkrani())">Devamını okumak için Kürsü’ye git →</button>
     </div>
     <div class="kart"><button class="giris-satir" style="border:0;padding:4px 0" onclick="ekranAc(raporEkrani)"><span class="yik">${IKON.anket}</span><span class="orta"><b>Raporum ve başarımlarım</b><span class="kucuk">Bu ayın özeti, paylaşılabilir kart</span></span><span class="ok">›</span></button></div>`;
   setTimeout(() => {
     const k = $("#gAkisListe"); if (!k) return;
-    akisBagla(k, () => AKIS.gundemListe, async () => { try { AKIS.gundemListe = await API.rpc("akis_liste", { p_kapsam: "herkes", p_limit: 5 }); k.innerHTML = AKIS.gundemListe.map(akisSatirHtml).join(""); akisBagla(k, () => AKIS.gundemListe, null); } catch (_) {} });
-    akisYazBagla("gAkis", async () => { AKIS.gundemListe = await API.rpc("akis_liste", { p_kapsam: "herkes", p_limit: 5 }); k.innerHTML = AKIS.gundemListe.map(akisSatirHtml).join(""); akisBagla(k, () => AKIS.gundemListe, null); });
+    akisBagla(k, () => AKIS.gundemListe, window.soAkisYenile);
   }, 0);
   return h;
 }

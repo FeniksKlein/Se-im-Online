@@ -20,30 +20,14 @@
    if(k==="turkiye")return go(typeof otomatikGazeteEkrani==="function"?function(){return otomatikGazeteEkrani();}:window.otomatikGazeteEkrani);
    if(k==="kitap")return go(window.soKitapVitriniAc);
  };
- window.soAkisDaha=async function(){
-   var dugme=document.getElementById("so-akis-daha");
-   var kutu=document.getElementById("gAkisListe");
-   if(!dugme||!kutu||dugme.disabled||typeof AKIS==="undefined"||typeof akisBagla!=="function")return;
-   var liste=Array.isArray(AKIS.gundemListe)?AKIS.gundemListe:[];
-   var son=liste[liste.length-1];if(!son){dugme.hidden=true;return;}
-   dugme.disabled=true;dugme.textContent="Paylaşımlar yükleniyor…";
-   try{
-     var yeni=await API.rpc("akis_liste",{p_kapsam:"herkes",p_onceki:son.id,p_limit:20});
-     yeni=Array.isArray(yeni)?yeni:[];
-     var varOlan=new Set(liste.map(function(a){return String(a.id);}));
-     AKIS.gundemListe=liste.concat(yeni.filter(function(a){return !varOlan.has(String(a.id));}));
-     kutu.innerHTML=AKIS.gundemListe.map(akisSatirHtml).join("");
-     akisBagla(kutu,function(){return AKIS.gundemListe;},window.soAkisYenile);
-     dugme.hidden=yeni.length<20;
-   }catch(err){
-     if(typeof toast==="function")toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message||err),true);
-   }finally{dugme.disabled=false;dugme.textContent="Daha fazla paylaşım yükle";}
- };
+ window.soAkisDaha=function(){return go(function(){return window.kursuEkrani();});};
  window.soAkisYenile=async function(){
    var kutu=document.getElementById("gAkisListe");if(!kutu||typeof AKIS==="undefined")return;
    try{
      var miktar=Math.min(100,Math.max(5,(AKIS.gundemListe||[]).length));
-     var yeni=await API.rpc("akis_liste",{p_kapsam:"herkes",p_limit:miktar});
+     var sonuc=await API.rpc("kursu_akis",{p_sekme:"herkes",p_imlec:null,p_limit:3});
+     if(!kutu.isConnected)return;
+     var yeni=(sonuc.liste||[]).map(function(x){return x.g;});
      AKIS.gundemListe=Array.isArray(yeni)?yeni:[];
      kutu.innerHTML=AKIS.gundemListe.map(akisSatirHtml).join("");
      akisBagla(kutu,function(){return AKIS.gundemListe;},window.soAkisYenile);
@@ -197,12 +181,6 @@
      }
      akisBolumu.appendChild(akisKart);
      var akisListe=akisKart.querySelector("#gAkisListe");
-     if(akisListe&&akisListe.querySelectorAll(".akis-satir").length>=5){
-       var daha=document.createElement("button");
-       daha.type="button";daha.id="so-akis-daha";daha.className="btn ikinci so-akis-daha";
-       daha.textContent="Daha fazla paylaşım yükle";daha.setAttribute("onclick","soAkisDaha()");
-       akisKart.appendChild(daha);
-     }
      hizli.insertAdjacentElement("afterend",akisBolumu);
    }
    // Sandık gerçekten açık olduğu müddetçe oy kartlarını Akış'ın önüne taşı.

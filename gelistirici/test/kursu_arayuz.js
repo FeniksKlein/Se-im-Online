@@ -78,6 +78,8 @@ const BILDIRIM = { okundu: S(-30), yeni: 2, liste: [
       assert.match(t, /Kürsü/); assert.match(t, /Sana özel/); assert.match(t, /Takip ettiklerin/); assert.match(t, /Baran yeniden paylaştı/);
       assert.match(t, /Neler oluyor, Deniz\?/); assert.match(t, /1\.240/); assert.doesNotMatch(t, /undefined|NaN|null/);
       assert.equal(await page.locator('#krListe .kr-g').count(), 4);
+      assert.equal((await son('kursu_akis')).args.p_sekme, 'herkes');
+      assert.equal(await page.locator('[aria-label="Özel mesajlar"]').count(), 1);
       assert.equal(await page.locator('.kr-g[data-id="903"] .kr-alinti').count(), 1);
       await page.waitForSelector('#krSerit button'); assert.match(await page.locator('#krSerit').innerText(), /#eğitim/);
       assert.equal(await page.locator('#app .kr-fab').count(), 1);
@@ -162,6 +164,42 @@ const BILDIRIM = { okundu: S(-30), yeni: 2, liste: [
 
       // 10) Eski Akış girişleri Kürsü'ye yönlenir; Gündem önizlemesi Kürsü kartıyla çizilir
       assert.equal(await page.evaluate(() => { const h = akisSatirHtml({ id: 77, kad: 'Ekin', metin: 'Önizleme #deneme', zaman: new Date().toISOString(), begeni: 0, begenmeme: 0, yanit: 0, parti: null }, 0); return /kr-g/.test(h) && /data-tepki="begen"/.test(h) && /data-yanitla="77"/.test(h) && /data-etk="deneme"/.test(h); }), true);
+
+      // Ortak veri kaynağı ve üç gönderilik Gündem önizlemesi.
+      const onizleme = await page.evaluate(async () => {
+        const ek = await gundemEkVeri(async (ad, args, fallback) => ad === 'kursu_akis' ? API.rpc(ad,args) : fallback);
+        return {ids:ek.akis.map(x=>x.id), html:gundemEkAlt({...ek,etiket:[]})};
+      });
+      assert.equal((await son('kursu_akis')).args.p_limit,3);
+      assert.match(onizleme.html,/Devamını okumak için Kürsü/);
+      assert.doesNotMatch(onizleme.html,/gAkisMetin|Daha fazla paylaşım yükle/);
+      // Makamlar birbirinden farklı renk; unvan erişilebilir etikette korunur.
+      const renkler = await page.evaluate(() => ['Cumhurbaşkanı','Cumhurbaşkanı Yardımcısı','İçişleri Bakanı','Milletvekili (Ankara)','Belediye Başkanı (İzmir)'].map((unvan,i)=>{
+        const d=document.createElement('div');d.innerHTML=akisSatirHtml({id:800+i,kad:'Deneme',unvan,metin:'Test',zaman:new Date().toISOString()});
+        return d.querySelector('.kr-nisan').style.color;
+      }));
+      assert.equal(new Set(renkler).size,5);
+      await page.evaluate(() => {
+        const old=API.rpc;
+        API.rpc=async (ad,args)=>{
+          if(ad==='gecmis_secimler')return [{id:12,tur:'mv',sonuc_at:new Date().toISOString()}];
+          if(ad==='ozel_liste')return [{kad:'Ekin',parti:null,son:'Merhaba',zaman:new Date().toISOString(),okunmamis:2}];
+          if(ad==='sohbet_ozet')return {cevrimici:12,kanallar:['genel','il','belediye','parti','yonetim','ittifak','meclis','grup','divan','kabine'].map(kanal=>({kanal,baslik:kanal,yazabilir:true}))};
+          if(ad==='ozel_oku')return {kad:'Ekin',mesajlar:[{id:1,kad:'Ekin',metin:'Merhaba',zaman:new Date().toISOString(),benim:false}]};
+          if(ad==='rozetler')return {};
+          return old(ad,args);
+        };
+      });
+      await page.evaluate(()=>gecmisSecimlerModal());
+      await page.waitForSelector('#modal [data-secim="12"]');
+      await page.click('#modal button.btn');
+      await page.evaluate(()=>{D.sekme='sohbet';D.yigin=[];return sohbetListe();});
+      await page.waitForSelector('.dm-merkez');
+      assert.ok(await page.evaluate(()=>document.querySelector('.dm-merkez').getBoundingClientRect().top < document.querySelector('[data-sohbet-kanal]').getBoundingClientRect().top));
+      await tasma('Özel mesaj listesi');await foto('mesajlar');
+      await page.evaluate(()=>ekranAc(()=>ozelEkrani('Ekin')));
+      await page.waitForSelector('.dm-sohbet .balon');
+      await tasma('Özel konuşma');await foto('dm');
       await page.close();
     }
     const ilgili = hatalar.filter(m => !/ResizeObserver/.test(m));

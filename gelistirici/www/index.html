@@ -34,7 +34,19 @@ window.UYGULAMA_SURUM = "__SURUM__";   // derleme sırasında SURUM dosyasından
 <script src="siyasi_hayat.js"></script>
 <script src="parti_yasam.js"></script>
 <script src="parti_isbirligi.js"></script>
-<style>/*YAZITIPI*/</style>
+<style>/*YAZITIPI*/
+/* Özel mesajlar: sabit boyutlu portreler ve okunabilir sohbet balonları. */
+.dm-merkez .kanal{gap:12px;padding:15px 0;align-items:center}
+.dm-merkez .kanal>.portre,.dm-merkez .kanal>.amb{width:46px!important;height:46px!important;min-width:46px;max-width:46px;flex:0 0 46px;overflow:hidden;border-radius:50%}
+.dm-merkez .kanal>.amb svg,.dm-merkez .kanal>.amb img{width:100%;height:100%;object-fit:cover}
+.dm-merkez .kanal b{font-size:15px}.dm-merkez .mesaj-yeni{border-left:3px solid #a78bfa;padding-left:10px}
+.dm-sohbet .akis{background:radial-gradient(ellipse at top,#222342 0%,#11172b 70%);padding:16px 12px}
+.dm-sohbet .balon{border-radius:18px 18px 18px 5px;background:#252e49;max-width:85%;box-shadow:0 2px 6px #0002}
+.dm-sohbet .balon.benim{background:#51429a;border-radius:18px 18px 5px 18px}
+.dm-sohbet .balon .tx{line-height:1.5;overflow-wrap:anywhere}.dm-sohbet .balon .ne{opacity:.75;font-size:10px;text-align:right}
+.dm-sohbet .yazbar{gap:10px;padding:12px;padding-bottom:max(12px,env(safe-area-inset-bottom));background:#151c33}
+.dm-sohbet .yazbar textarea{border-radius:22px;padding:12px 16px}.dm-sohbet #gonder{border-radius:50%;background:#8563e6}
+</style>
 <style>
 /* =====================================================================
    GÖRSEL KİMLİK — "Seçim gecesi stüdyosu"
@@ -2642,9 +2654,18 @@ async function engellenenlerModal(){
     <button class="btn ikinci" onclick="modalKapat()">Kapat</button>`);
   m.querySelectorAll("[data-k]").forEach(b => b.onclick = async () => { await islem(() => API.rpc("engel_kaldir", { p_kad: b.dataset.k }), "Engel kaldırıldı."); engellenenlerModal(); });
 }
+async function gecmisSecimlerModal(){
+  const m = modal('<h2>Geçmiş seçimler</h2><div id="gecmisSecimListe" class="bos">Yükleniyor…</div><button class="btn ikinci" onclick="modalKapat()">Kapat</button>');
+  try {
+    const g = await API.rpc("gecmis_secimler", {p_limit:30});
+    if (!m.isConnected) return;
+    m.querySelector('#gecmisSecimListe').innerHTML = g.map(s => `<button class="liste-satir" style="width:100%;text-align:left;background:none;color:inherit;border:0" data-secim="${Number(s.id)}"><span class="orta"><b>${e((TUR[s.tur]||{}).ad||s.tur)}</b><span class="kucuk" style="display:block">${tarih(s.sonuc_at)}</span></span><span>›</span></button>`).join('') || 'Henüz sonuçlanan seçim yok.';
+    m.querySelectorAll('[data-secim]').forEach(b => b.onclick = () => {modalKapat(); ekranAc(()=>secimEkrani(Number(b.dataset.secim)));});
+  } catch(err){ if(m.isConnected)m.querySelector('#gecmisSecimListe').textContent=hataCevir(err.message); }
+}
 async function benEkrani(){
   yukleniyor("Profilim");
-  let g; try { await durumYenile(); g = await API.rpc("gecmis_secimler", { p_limit: 30 }); } catch (err) { iskelet("Profilim", `<div class="bos">${e(hataCevir(err.message))}</div>`); return; }
+  try { await durumYenile(); } catch (err) { iskelet("Profilim", `<div class="bos">${e(hataCevir(err.message))}</div>`); return; }
   const p = D.durum.profil;
   const ilSerbest = p.il_serbest && new Date(p.il_serbest).getTime() > simdi() ? `${tarihSaat(p.il_serbest)} tarihinden sonra` : null;
   if (typeof kimlikYukle === "function") await kimlikYukle([p.kad]);
@@ -2661,7 +2682,7 @@ async function benEkrani(){
       ${p.makamlar.some(x => x.tur === "bel") ? `<button class="btn ikinci" onclick="gorevIstifa('bel')">Belediye başkanlığından istifa et</button>` : ""}
       ${ekIstifaButonlari(p)}
       ${p.il_kilit ? `<p class="kucuk" style="margin-top:6px">${e(p.il_kilit)}</p>` : ilSerbest ? `<p class="kucuk" style="margin-top:6px">İlini ${ilSerbest} değiştirebilirsin.</p>` : ""}</div>
-    <div class="kart"><h2>Geçmiş seçimler</h2>${g.map(s => `<div class="liste-satir" onclick="ekranAc(()=>secimEkrani(${s.id}))" style="cursor:pointer"><div class="orta"><b>${TUR[s.tur].ad}</b><div class="kucuk">${tarih(s.sonuc_at)}</div></div><span style="color:var(--mut)">›</span></div>`).join("") || `<div class="bos">Henüz sonuçlanan seçim yok.</div>`}</div>
+    <div class="kart"><button class="btn ikinci" onclick="gecmisSecimlerModal()">🗳️ Geçmiş seçimler <span aria-hidden="true">›</span></button></div>
     <div class="kart"><h2>Bilgi</h2>
       <div class="liste-satir" onclick="vatandaslikModal()" style="cursor:pointer"><div class="orta"><b>Seçmen kartım</b><div class="kucuk">Oy, adaylık ve parti kurma şartları</div></div><span>›</span></div>
       <div class="liste-satir" onclick="metinGoster('kurallar')" style="cursor:pointer"><div class="orta"><b>Oyun kuralları ve takvim</b></div><span>›</span></div>
@@ -2725,7 +2746,7 @@ function ozelSatirlarHtml(liste){
   if (!liste.length) return `<div class="bos">Henüz özel mesajın yok. Bir oyuncunun kartına ya da sohbetteki bir mesajına dokunup yazabilirsin.</div>`;
   const sirali = [...liste].sort((a,b) => (Number(b.okunmamis > 0) - Number(a.okunmamis > 0)) ||
     new Date(b.zaman).getTime() - new Date(a.zaman).getTime());
-  return sirali.map(x => `<div class="kanal${+x.okunmamis > 0 ? " mesaj-yeni" : ""}" onclick="ekranAc(()=>ozelEkrani('${e(x.kad)}'))">${amblemKutu(x.parti)}
+  return sirali.map(x => `<div class="kanal${+x.okunmamis > 0 ? " mesaj-yeni" : ""}" onclick="ekranAc(()=>ozelEkrani('${e(x.kad)}'))">${typeof portre === "function" ? portre(x.kad, x.parti && x.parti.renk, 46) : amblemKutu(x.parti,46)}
     <div style="flex:1;min-width:0"><b>${e(x.kad)}</b>${x.unvan ? ` <span class="kucuk" style="color:var(--gold2)">${e(x.unvan)}</span>` : ""}
       <div class="kucuk" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.benden ? "Sen: " : ""}${e(x.son)}</div></div>
     <div style="text-align:right;flex:none"><div class="kucuk">${zamanKisa(x.zaman)}</div>${+x.okunmamis > 0 ? `<span class="rozet kirmizi" style="margin-top:4px">Yeni mesaj · ${x.okunmamis > 99 ? "99+" : x.okunmamis}</span>` : ""}</div></div>`).join("");
@@ -2795,11 +2816,12 @@ async function sohbetListe(){
   };
   iskelet("Sohbet", `
     <div class="kart" style="display:flex;justify-content:space-between;align-items:center"><b>Sohbet</b><span class="kucuk" style="color:var(--good)">● ${oz.cevrimici} oyuncu çevrimiçi</span></div>
-    ${GRUP.map(([ad, liste]) => `<div class="kart"><h2>${ad}</h2>${liste.map(kn => satir(oz.kanallar.find(k => k.kanal === kn))).join("")}</div>`).join("")}
-    <div class="kart"><h2 id="ozelMesajBaslik">Özel mesajlar${dm.some(x=>+x.okunmamis>0) ? ` <span class="rozet kirmizi">${dm.reduce((n,x)=>n+(Number(x.okunmamis)||0),0)} yeni</span>` : ""}</h2>
+
+    <div class="kart dm-merkez"><h2 id="ozelMesajBaslik">Özel mesajlar${dm.some(x=>+x.okunmamis>0) ? ` <span class="rozet kirmizi">${dm.reduce((n,x)=>n+(Number(x.okunmamis)||0),0)} yeni</span>` : ""}</h2>
       <div id="ozelMesajListesi">${ozelSatirlarHtml(dm)}</div>
       <button class="btn ikinci" onclick="yeniOzelModal()">Yeni mesaj</button>
       <button class="btn altin" onclick="oyuncuAramaAc()">Oyuncu ara · Profil ve mesaj</button></div>
+    ${GRUP.map(([ad, liste]) => `<div class="kart"><h2>${ad}</h2>${liste.map(kn => satir(oz.kanallar.find(k => k.kanal === kn))).join("")}</div>`).join("")}
     <div class="kart"><div class="kucuk">Hakaret, küfür, nefret söylemi ve spam yasaktır. Uygunsuz bir mesaja dokunup şikâyet edebilir, oyuncuyu engelleyebilirsin. 3 kişinin şikâyet ettiği mesaj otomatik gizlenir. Kilitli kanallar ilgili göreve gelince açılır.</div></div>`);
 }
 function yeniOzelModal(){
@@ -2871,6 +2893,7 @@ async function sohbetEkrani(kanal){
 }
 async function ozelEkrani(kad){
   const akis = sohbetCati(e(kad), `<button class="ikon" id="dmMenu" aria-label="Seçenekler" style="font-weight:900">⋯</button>`);
+  document.querySelector("#app .sohbet").classList.add("dm-sohbet");
   let sonId = null;
   const yeniGetir = async () => {
     try { const r = await API.rpc("ozel_oku", { p_kad: kad, p_sonra: sonId }); if (r.mesajlar.length) { sonId = r.mesajlar[r.mesajlar.length - 1].id; akisaEkle(akis, r.mesajlar, true); } } catch (_) {}

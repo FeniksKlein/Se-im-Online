@@ -97,7 +97,7 @@
   function nisan(unvan) {
     if (!unvan) return '';
     var u = String(unvan);
-    var renk = /Cumhurbaşkanı Yardımcısı/.test(u) ? '#f59e0b' : /Cumhurbaşkanı/.test(u) ? '#d4a62c' : /Başbakan/.test(u) ? '#e85568' : /Bakanı|Bakan$/.test(u) ? '#a78bfa' : /Milletvekili/.test(u) ? '#419dff' : /Belediye Başkanı/.test(u) ? '#20bd83' : /Genel Başkan/.test(u) ? '#e879bb' : '#94a3b8';
+    var renk = /Cumhurbaşkanı Yardımcısı/.test(u) ? '#f59e0b' : /Cumhurbaşkanı/.test(u) ? '#d4a62c' : /Başbakan/.test(u) ? '#e85568' : /Bakanı|Bakan(?:$|\s|\()/.test(u) ? '#a78bfa' : /Milletvekili/.test(u) ? '#419dff' : /Belediye Başkanı/.test(u) ? '#20bd83' : /TBMM Başkanı|Meclis Başkanı/.test(u) ? '#fb7185' : /Yargıç|Hakim|Hâkim/.test(u) ? '#22d3ee' : /Genel Başkan/.test(u) ? '#e879bb' : '#94a3b8';
     return '<span class="kr-nisan" style="color:' + renk + '" role="img" aria-label="' + esc(unvan) + '" title="' + esc(unvan) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 1.8l2.4 1.9 3-.4 1.1 2.8 2.8 1.1-.4 3 1.9 2.4-1.9 2.4.4 3-2.8 1.1-1.1 2.8-3-.4L12 22.2l-2.4-1.9-3 .4-1.1-2.8-2.8-1.1.4-3L1.2 12l1.9-2.4-.4-3 2.8-1.1 1.1-2.8 3 .4z"/><path d="M8 12.3l2.7 2.7 5.4-5.6" stroke="#fff" stroke-width="2.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
   }
 
@@ -247,6 +247,7 @@
   function sagIkonlar(secili) {
     var p = profil(), yeni = KR.ben ? n(KR.ben.yeni) : 0;
     return '<div class="kr-sag">' +
+      '<button type="button" class="kr-ust-b" onclick="sekmeAc(\'sohbet\')" aria-label="Özel mesajlar">' + I.mesaj + '</button>' +
       '<button type="button" class="kr-ust-b' + (secili === 'kesfet' ? ' on' : '') + '" data-kr="git" data-alt="kesfet" aria-label="Keşfet ve gündem">' + I.ara + '</button>' +
       '<button type="button" class="kr-ust-b' + (secili === 'bildirim' ? ' on' : '') + '" data-kr="git" data-alt="bildirim" aria-label="Kürsü bildirimleri' + (yeni ? ', ' + yeni + ' yeni' : '') + '">' + I.zil + '<span class="kr-rozet" id="krRozet"' + (yeni && secili !== 'bildirim' ? '' : ' hidden') + '>' + (yeni > 99 ? '99+' : yeni) + '</span></button>' +
       (p ? '<button type="button" class="kr-ust-b kr-ust-av' + (secili === 'profil' ? ' on' : '') + '" data-kr="profil" data-kad="' + esc(p.kad) + '" aria-label="Kürsü profilim">' + av(p.kad, p.parti && p.parti.renk, 30) + '</button>' : '') +
@@ -317,9 +318,9 @@
     kaydirmaIzle(s);
     benYukle().then(rozetYaz);
     gundemYukle().then(function () { var e = document.getElementById('krSerit'); if (e && aktif('ana') && KR.gundem) { var t = document.createElement('div'); t.innerHTML = gundemSeridi(); e.replaceWith(t.firstElementChild); } });
-    if (!taze) {
+    { // Ekrana her dönüşte sunucuyla eşitle; önbellek yalnızca ilk çizim içindir.
       try {
-        var r = await rpc('kursu_akis', { p_sekme: s, p_imlec: null, p_limit: 20 });
+        var r = await rpc('kursu_akis', { p_sekme: s === 'sana' ? 'herkes' : s, p_imlec: null, p_limit: 20 });
         if (!aktif('ana') || KR.sekme !== s) return;
         A.liste = (r && r.liste) || []; A.imlec = r && r.imlec; A.bitti = !A.imlec; A.t = Date.now(); A.kaydir = 0;
         var l = document.getElementById('krListe');
@@ -358,7 +359,7 @@
     if (dahaYuk) return; var s = KR.sekme, A = akisDurum(s); if (!A.imlec || !aktif('ana')) return;
     dahaYuk = true; var son = document.getElementById('krSon'); if (son) son.innerHTML = yukleHtml();
     try {
-      var r = await rpc('kursu_akis', { p_sekme: s, p_imlec: A.imlec, p_limit: 20 });
+      var r = await rpc('kursu_akis', { p_sekme: s === 'sana' ? 'herkes' : s, p_imlec: A.imlec, p_limit: 20 });
       if (!aktif('ana') || KR.sekme !== s) return;
       var var0 = {}; A.liste.forEach(function (x) { var0[x.g.id] = 1; });
       var yeni = ((r && r.liste) || []).filter(function (x) { return x && x.g && !var0[x.g.id]; });
