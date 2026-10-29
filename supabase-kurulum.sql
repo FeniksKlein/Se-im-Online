@@ -52016,6 +52016,8 @@ revoke all on function public.rekabet_paneli() from public,anon;
 grant execute on function public.rekabet_paneli() to authenticated;
 select oyun.rekabet_yenile();
 select cron.schedule('rekabet-panosu-5dk','*/5 * * * *','select oyun.rekabet_yenile()');
+-- Production uses the central scheduler; the legacy cron entry stays disabled.
+DO $$ BEGIN IF to_regclass('oyun.zamanlayici_adim') IS NOT NULL THEN UPDATE oyun.zamanlayici_adim SET periyot_dk=15,ofset_dk=0 WHERE adim='npc_isletme' AND komut='select oyun.npc_isletme_tick()'; END IF; END $$;
 -- =====================================================================
 --  KALICILIK (son): bütünlük kontrolü, silme koruması, sürüm bilgisi, sahibin sıfırlama/geri yükleme araçları
 -- =====================================================================
