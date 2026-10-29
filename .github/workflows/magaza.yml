@@ -46,7 +46,14 @@ jobs:
       - name: Paketler
         working-directory: mobil
         run: |
-          npm install --no-audit --no-fund
+          # Eski sharp/libvips indirme sunucusunda ara sira zaman asimi oluyor.
+          # Gecici ag hatasi yuzunden iOS paketinin tamamen atlanmasini onle.
+          for deneme in 1 2 3 4; do
+            if npm install --no-audit --no-fund; then break; fi
+            if [ "$deneme" = 4 ]; then exit 1; fi
+            echo "Bagimlilik indirmesi basarisiz; yeniden deneniyor: $deneme/4"
+            sleep 8
+          done
           npm ls --depth=0 | tee ../surumler.txt
       - name: Web içeriği (docs → mobil/www)
         run: node gelistirici/build/magaza_paketi.js
@@ -83,7 +90,14 @@ jobs:
       - name: Paketler
         working-directory: mobil
         run: |
-          npm install --no-audit --no-fund
+          # Eski sharp/libvips indirme sunucusunda ara sira zaman asimi oluyor.
+          # Gecici ag hatasi yuzunden iOS paketinin tamamen atlanmasini onle.
+          for deneme in 1 2 3 4; do
+            if npm install --no-audit --no-fund; then break; fi
+            if [ "$deneme" = 4 ]; then exit 1; fi
+            echo "Bagimlilik indirmesi basarisiz; yeniden deneniyor: $deneme/4"
+            sleep 8
+          done
           npm ls --depth=0 | tee ../surumler-ios.txt
       - name: Web içeriği
         run: node gelistirici/build/magaza_paketi.js
