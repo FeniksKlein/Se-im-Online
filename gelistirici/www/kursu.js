@@ -96,8 +96,9 @@
   // Makam sahiplerine "makam nişanı"; Cumhurbaşkanına altın nişan
   function nisan(unvan) {
     if (!unvan) return '';
-    var cb = /^Cumhurbaşkanı(?! Yardımcısı)/.test(String(unvan));
-    return '<span class="kr-nisan' + (cb ? ' altin' : '') + '" title="' + esc(unvan) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 1.8l2.4 1.9 3-.4 1.1 2.8 2.8 1.1-.4 3 1.9 2.4-1.9 2.4.4 3-2.8 1.1-1.1 2.8-3-.4L12 22.2l-2.4-1.9-3 .4-1.1-2.8-2.8-1.1.4-3L1.2 12l1.9-2.4-.4-3 2.8-1.1 1.1-2.8 3 .4z"/><path d="M8 12.3l2.7 2.7 5.4-5.6" stroke="#fff" stroke-width="2.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+    var u = String(unvan);
+    var renk = /Cumhurbaşkanı Yardımcısı/.test(u) ? '#f59e0b' : /Cumhurbaşkanı/.test(u) ? '#d4a62c' : /Başbakan/.test(u) ? '#e85568' : /Bakanı|Bakan$/.test(u) ? '#a78bfa' : /Milletvekili/.test(u) ? '#419dff' : /Belediye Başkanı/.test(u) ? '#20bd83' : /Genel Başkan/.test(u) ? '#e879bb' : '#94a3b8';
+    return '<span class="kr-nisan" style="color:' + renk + '" role="img" aria-label="' + esc(unvan) + '" title="' + esc(unvan) + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 1.8l2.4 1.9 3-.4 1.1 2.8 2.8 1.1-.4 3 1.9 2.4-1.9 2.4.4 3-2.8 1.1-1.1 2.8-3-.4L12 22.2l-2.4-1.9-3 .4-1.1-2.8-2.8-1.1.4-3L1.2 12l1.9-2.4-.4-3 2.8-1.1 1.1-2.8 3 .4z"/><path d="M8 12.3l2.7 2.7 5.4-5.6" stroke="#fff" stroke-width="2.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
   }
 
   /* ---------- metin: #etiket ve @kişi bağlantıları ---------- */

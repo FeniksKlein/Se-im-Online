@@ -1,7 +1,7 @@
 {
   "aciklama": "Mağaza derleme ayarları. AdMob UYGULAMA kimlikleri (içinde ~ olan) burada; ödüllü REKLAM BİRİMİ kimlikleri ve RevenueCat anahtarları sunucudan (Kontrol Merkezi › Ayarlar) değişir. Aşağıdaki ...3940256099942544... değerleri Google'ın TEST kimlikleridir; gerçekleriyle değiştirilmeden mağazaya yüklenmemeli.",
-  "surumAdi": "1.0.2",
-  "surumKodu": 3,
+  "surumAdi": "1.0.3",
+  "surumKodu": 4,
   "admobAndroidUygulama": "ca-app-pub-3940256099942544~3347511713",
   "admobIosUygulama": "ca-app-pub-3940256099942544~1458002511",
   "izlemeAciklamasi": "Reklamları sana daha uygun göstermek için izin istiyoruz. İzin vermesen de oyunu ve ödüllü reklamları kullanabilirsin."

@@ -42,7 +42,7 @@ async function npcIsletmeEkrani(sirketId){
   const liste=(d.son_satislar||[]).filter(x=>x.tur==="npc_satis").slice(0,10);
   html+=kart("Gerçekleşen NPC satışları",
    liste.length?liste.map(x=>satir(x.urun+" · "+x.adet+" adet",tl(x.tutar)+" · vergi "+tl(x.vergi))).join(""):
-   '<p class="alt">Henüz müşteri satışı yok. Stok aldıktan sonra saatlik ekonomi işlemleri başlar.</p>');
+   '<p class="alt">Henüz müşteri satışı yok. Stok aldıktan sonra 15 dakikada bir müşteri alışverişi gerçekleşir.</p>');
   iskelet("İşletme yönetimi",html,{geri:true});
  }catch(err){hataEkrani("İşletme yönetimi",err);}
 }

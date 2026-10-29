@@ -4,12 +4,14 @@
 // Kullanım: node gelistirici/build/magaza_paketi.js   (mobil/ içinde "npm install" yapılmış olmalı)
 const fs = require('fs'), path = require('path');
 const kok = path.join(__dirname, '../..');
+// Always compile current source: a concurrent web workflow may not have published docs yet.
+require('child_process').execFileSync(process.execPath, [path.join(kok,'gelistirici/build/derle.js')], {stdio:'inherit'});
 const kaynak = path.join(kok, 'docs'), hedef = path.join(kok, 'mobil/www');
 fs.rmSync(hedef, { recursive: true, force: true });
 fs.mkdirSync(hedef, { recursive: true });
 const dosyalar = fs.readdirSync(kaynak).filter(f => /\.js$/.test(f));
 for (const f of dosyalar) fs.copyFileSync(path.join(kaynak, f), path.join(hedef, f));
-let html = fs.readFileSync(path.join(kaynak, 'index.html'), 'utf8');
+let html = fs.readFileSync(path.join(kok, 'gelistirici/dist/index.html'), 'utf8');
 const surum = fs.readFileSync(path.join(kok, 'gelistirici/SURUM'), 'utf8').trim();
 const cdn = /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\/dist\/umd\/supabase\.min\.js"><\/script>/;
 if (!cdn.test(html)) throw new Error('Supabase CDN etiketi bulunamadı');

@@ -444,6 +444,7 @@
   function git(k) { var s = g('sekmeAc'); if (s) s(k); }
   function hata() { var t = g('toast'); if (t) t('Bu bölüm şu an açılamadı. Sayfayı yenileyip yeniden dene.', true); }
   var EYLEM = {
+    rekabet: function () { var f = g('rekabetEkrani'); f ? ac(f) : hata(); },
     sekme: function (k) { git(k); },
     mobilSube: function () { var f = g('mobilSubeEkrani'); f ? ac(function () { return f(); }) : hata(); },
     ilan: function () { var f = g('ilanMeydaniEkrani'); f ? ac(f) : hata(); },
@@ -860,6 +861,7 @@
         karo('devlet', bel ? 'Belediyem' : 'Devlet', bel ? 'Makamım' : 'Hükümet', on('sekme', 'devlet'))
       ]],
       ['Hayat ve para', [
+        karo('ekonomi', 'Rekabet Panosu', 'En zenginler ve ilk 10', on('rekabet')),
         karo('hayat', 'Hayat', 'Maaş, görev, statü', on('sekme', 'hayat'), cz.dolu ? '<span class="pa-rz yesil">Topla</span>' : ''),
         karo('@banka', 'Mobil Şube', 'Hesap, kart, kredi', on('mobilSube')),
         karo('@ilan', 'İlan Meydanı', 'Ev, dükkân, hisse', on('ilan')),
@@ -900,6 +902,7 @@
     e('harita', B.harita.a1, 'Türkiye haritası', '81 il, belediyeler, vekiller', ['sekme', 'harita'], 'harita il şehir belediye gelişmişlik', 'Bölüm');
     e('dernek', B.dernek.a1, 'Dernekler', 'Sivil toplum, protesto, bildiri', ['sekme', 'dernek'], 'dernek vakıf stk protesto basın açıklaması bildiri', 'Bölüm');
     e('hayat', B.hayat.a1, 'Hayat', 'Cüzdan, maaş kumbarası, görevler, statü', ['sekme', 'hayat'], 'cüzdan para maaş kumbara statü kıdem bağış vergi', 'Bölüm');
+    e('ekonomi', '#d4a62c', 'Rekabet Panosu', 'En zengin oyuncular, şirketler ve haftanın liderleri', ['rekabet'], 'istatistik sıralama zengin servet lider ilk 10 rekabet', 'Bölüm');
     e('ekonomi', B.ekonomi.a1, 'Ekonomi', 'Şirketler, ticaret, bankalar, yatırım', ['sekme', 'ekonomi'], 'ekonomi şirket ticaret piyasa borsa', 'Bölüm');
     e('sohbet', B.sohbet.a1, 'Sohbet', 'Kanallar ve özel mesajlar', ['sekme', 'sohbet'], 'mesaj sohbet kanal meydan kahve dm', 'Bölüm');
     e('ben', B.ben.a1, 'Profilim', 'Kimlik kartı, ayarlar, geçmiş seçimler', ['sekme', 'ben'], 'profil hesap ayar biyografi portre taşın istifa çıkış', 'Bölüm');
