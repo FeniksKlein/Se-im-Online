@@ -9,6 +9,13 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 30.10.2026 — makam protokolü, belediye kataloğu, sohbet tepkileri (canlıya uygulandı)
+- `sql/146_makam_protokol.sql` (+ `migrations/20261030_makam_protokol.sql`) Supabase'e Claude tarafından uygulandı.
+- Resmî program motoru: `oyun.resmi_program_tur` kataloğu (CB 8, bakan 6, TBMM Başkanı 4, MV 4, belediye 7 program), `resmi_program_panel/_yap/_katil`, `resmi_programlar`, `oyuncu_nisanlari`. Nişan/berat → `oyun.devlet_nisan` (oyuncu kartında görünür). Katılım ödülü günde en çok 3 kez.
+- Belediye: 6 yeni sürekli hizmet, 9 yeni yatırım (mevcut motor ve ekran kullanılır).
+- Sohbet tepkileri: `oyun.mesaj_tepki`, `mesaj_tepki_ver`, `mesaj_tepkileri` (kanal + özel).
+- Arayüz: `www/makam_kurumsal.js` (kurum künyeleri, makam ajandası, protokol akışı, berat önizleme; Hükümet/Meclis/Belediye/Bakanlık masası/Yönetim/oyuncu kartına bağlanır), `sohbet_tasarim.js` (tepkiler, kanal kimlikleri, Devlet kanallarında tutanak düzeni).
+
 ## 30.10.2026 — banka/havale/CB yardımcısı (canlıya uygulandı)
 - `sql/145_banka_kapasite_cbyrd.sql` + `migrations/20261030_banka_kapasite_havale_cbyrd.sql` Supabase'e Claude tarafından uygulandı (tekrar çalıştırma gerekmez).
 - Oyuncu bankası vadeli mevduatı: toplam mevduat ≤ özkaynak × 5, tek kişinin bir bankadaki açık vadeli mevduatı ≤ özkaynak (`oyun.oyb_mevduat_kapasite`). `oyb_yatir`, `banka_mevduat_yatir` sınırı uygular; `oyb_teklif` `azami_tutar` döner.
