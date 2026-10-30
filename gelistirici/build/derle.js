@@ -65,6 +65,7 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','makam_kurumsal.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','ekonomik_denge.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','miting_bilet.js'),'utf8')+'</script></body>');
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','ekonomi_rehber.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});

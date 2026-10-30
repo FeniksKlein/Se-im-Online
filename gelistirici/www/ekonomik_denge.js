@@ -39,7 +39,7 @@
         return '<div><span>' + x[0] + '</span><i style="--y:' + y + '%"></i><b>' + kisa(x[1]) + '</b></div>'; }).join('') + '</div>' +
       '<div class="dk-kpiler"><div class="dk-kpi"><small>Günlük vergin</small><b class="' + (b.gunluk_vergi > 0 ? 'kotu' : 'iyi') + '">' + tl(b.gunluk_vergi) + '</b></div>' +
       '<div class="dk-kpi"><small>Son 7 gün vergi</small><b>' + kisa(b.vergi_7gun) + '</b></div><div class="dk-kpi"><small>Son 7 gün fon desteği</small><b class="iyi">' + kisa(b.fon_7gun) + '</b></div></div>' +
-      (Number(b.borc) > 0 ? '<p class="ed-uyari">Servet vergisi borcun: <b>' + tl(b.borc) + '</b>. Borç kapanana kadar başka oyuncuya para aktaramaz, yeni şirket kuramazsın; cüzdanına ya da banka hesabına para geldikçe kendiliğinden tahsil edilir.</p>' : '') +
+      (Number(b.borc) > 0 ? '<p class="ed-uyari">Servet vergisi borcun: <b>' + tl(b.borc) + '</b>. Borç kapanana kadar başka oyuncuya para aktaramaz, yeni şirket kuramazsın; her gece 03:20\'de cüzdanından ya da devlet bankası vadesiz hesabından kendiliğinden tahsil edilir.</p>' : '') +
       (Number(b.servet) < Number(v.medyan) ? '<p class="ed-not">Servetin medyanın altında: aktifsen ve seçmen kartın hazırsa Fırsat Eşitliği Fonu\'ndan her gün pay alırsın (kişi başı en çok ' + tl(v.kurallar && v.kurallar.kisi_tavan) + ').</p>' : '') + '</section>';
 
     var dilim = '<section class="dk-protokol"><header class="dk-bolum"><div><small>Kademeli, yalnız eşiği aşan kısma</small><b>Servet vergisi dilimleri</b></div></header><div class="ed-dilimler">' +
@@ -65,7 +65,18 @@
       '<li><b>Banka hücumu kalkanı.</b> Bir oyuncunun bir bankadaki vadeli ve vadesiz mevduatı o bankanın özkaynağını, bankanın toplam mevduatı özkaynağının 5 katını aşamaz.</li>' +
       '<li><b>Aktarım sınırı.</b> Oyuncu bankası içi havaleler de dahil günlük para aktarımı tek bir sınıra tabidir; aynı cihazdaki hesaplar arasında aktarım yapılamaz.</li>' +
       '<li><b>Vergiden kaçış yok.</b> Servet vergisi borcu olan oyuncu borcu kapanmadan para aktaramaz, yeni şirket kuramaz.</li></ul></section>';
-    return '<div class="dk-resmi ed">' + kunye + ben + dilim + grafik + rekabet + kural + '</div>';
+
+    var e1 = (v.dilimler && v.dilimler[1]) ? v.dilimler[1].alt : null;
+    var sss = [
+      ['Ben bu vergiyi öder miyim?', Number(b.gunluk_vergi) > 0 ? 'Evet. Net servetin ' + tl(b.servet) + ', eşiğin üstünde; bugünkü hesapla günlük vergin <b>' + tl(b.gunluk_vergi) + '</b>. Vergi yalnız eşiği aşan kısma uygulanır.' : 'Hayır. Net servetin ' + tl(b.servet) + '; vergi yalnız ' + (e1 != null ? tl(e1) + ' eşiğini' : 'eşiği') + ' aşan servetten alınır. Oyuncuların büyük çoğunluğu bu vergiyi ödemez.'],
+      ['Ne zaman ve nereden kesilir?', 'Her gece 03:20\'de, önce cüzdandan, yetmezse devlet bankası vadesiz hesabından. İkisi de yetmezse kalan tutar vergi borcu olur ve sonraki gecelerde tahsil edilir. Her kesintide sana bildirim gelir.'],
+      ['Net servete neler dahil?', 'Cüzdan, devlet ve oyuncu bankalarındaki vadesiz ve vadeli mevduatın, şirket paylarının güncel değeri ve mülklerin.'],
+      ['Toplanan para nereye gidiyor?', 'Yarısı aynı gece medyanın altındaki aktif oyunculara Fırsat Eşitliği Fonu olarak eşit dağıtılır, yarısı Hazine\'ye gelir yazılır. Kimsenin cebine gitmez.']
+    ];
+    var sssHtml = '<section class="dk-protokol"><header class="dk-bolum"><div><small>Kısaca</small><b>Sık sorulanlar</b></div></header><div class="ed-sss">' +
+      sss.map(function (x) { return '<details><summary>' + esc(x[0]) + '</summary><p>' + x[1] + '</p></details>'; }).join('') + '</div>' +
+      (typeof window.vergiRehberiEkrani === 'function' ? '<button type="button" class="dk-tum" onclick="ekranAc(vergiRehberiEkrani)">Param nereye gitti? Bütün vergiler ve kesintiler</button>' : '') + '</section>';
+    return '<div class="dk-resmi ed">' + kunye + ben + dilim + grafik + rekabet + kural + sssHtml + '</div>';
   }
 
   async function ekran() {
@@ -115,7 +126,11 @@
     '.ed-kurallar{margin:0;padding:0 0 0 18px;display:flex;flex-direction:column;gap:9px;font-size:13px;line-height:1.5;color:#c5cdf0}.ed-kurallar b{color:#f5ecd4}',
     '.ed-kart{display:flex;align-items:center;gap:11px;width:100%;margin:0 0 12px;padding:12px;border-radius:16px;border:1px solid rgba(217,178,91,.3);background:linear-gradient(135deg,rgba(217,178,91,.10),rgba(217,178,91,.02)),var(--panel,#151E3D);color:var(--txt);font:inherit;text-align:left;cursor:pointer}',
     '.ed-kart-g{flex:1;min-width:0;display:flex;flex-direction:column}.ed-kart-g small{font-size:11.5px;color:#c9b88f}.ed-kart-g b{font-size:15px;color:#f5ecd4}.ed-kart-g em{font-style:normal;font-size:12.5px;color:#a9b2cf}',
-    '.ed-ok{color:#d9b25b;font-size:24px}'
+    '.ed-ok{color:#d9b25b;font-size:24px}',
+    '.ed-sss{display:flex;flex-direction:column;gap:6px}.ed-sss details{border-radius:12px;background:rgba(8,12,30,.45);border:1px solid rgba(217,178,91,.14)}',
+    '.ed-sss summary{list-style:none;cursor:pointer;padding:11px 36px 11px 12px;position:relative;font-size:14px;font-weight:700;color:#f3eee0}.ed-sss summary::-webkit-details-marker{display:none}',
+    '.ed-sss summary::after{content:"+";position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:19px;color:#d9b25b}.ed-sss details[open] summary::after{content:"−"}',
+    '.ed-sss p{margin:0;padding:0 12px 12px;font-size:13px;line-height:1.55;color:#c5cdf0}.ed-sss p b{color:#f5ecd4}'
   ];
   var st = document.createElement('style'); st.id = 'ekonomikDengeStil'; st.textContent = css.join('\n'); (document.head || document.documentElement).appendChild(st);
 })();

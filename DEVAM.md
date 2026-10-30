@@ -9,6 +9,12 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 30.10.2026 — "Param nereye gitti?" bilgilendirme (2026.10.30-9, canlıya uygulandı)
+- Oyuncu sorusu: "Bu kadar kazandım, nereye gitti?" `sql/150_ekonomi_bilgilendirme.sql`: `vergi_rehberi()` (güncel oranlar + kim belirler, 7 günlük kişisel kesinti dökümü, paranın durduğu yerler, borçlar), `tanitim_tamam(anahtar)` + `oyun.tanitim_okundu` (bir kerelik tanıtım sunucuda işaretlenir), `oyun.tek_seferlik` (bir kerelik işler). `denge_tick` bildirimleri artık nedenini anlatır; fon ödemesi `fon` türünde, alana haftada bir özet bildirim (`firsat_fonu_odeme.bildirildi`).
+- Bir kerelik resmî duyuru (anahtar `ekonomik_denge_duyuru_1`): herkese bildirim, vergi kapsamındakilere tahmini tutarlı kişisel ön bilgi, Resmî Gazete duyurusu, Gündem olayı.
+- Arayüz: `www/ekonomi_rehber.js` (Param nereye gitti? ekranı, bir kerelik "Yeni ekonomi düzeni" tanıtımı, vergi/fon bildirimlerine "Hesaplamayı gör" bağlantısı); Cüzdan ekranında şerit + kaynakta kesilen vergi satırı, Hayat'ta düğme, Ekonomik Denge'de sık sorulanlar.
+- Mobil: bu ekranlar (ve Ekonomik Denge) uygulamaya bir sonraki mağaza sürümüyle gelir; web hemen günceldir. Bildirim metinleri tek başına da bilgiyi taşır.
+
 ## 30.10.2026 — ekonomik denge, miting bileti, avukat kontenjanı (canlıya uygulandı ve AÇIK)
 - `sql/148_ekonomik_denge.sql`: kademeli servet vergisi (eşikler medyan servetin 10/25/50 katı; günlük %0,10/%0,20/%0,35), Fırsat Eşitliği Fonu (verginin %50'si medyan altı aktif oyunculara, kişi başı ≤ asgari×0,0667), otomatik Rekabet Kurumu (`yikici_rekabet_tick`, saatlik), paravan yasağı tetiği, vergi borcu engelleri, vadesiz mevduat kapasitesi, oyuncu bankası içi havale günlük sınıra dahil. Ayarlar tek satır: `oyun.denge_ayar` (kapatmak için `aktif=false`). Cron: `ekonomik-denge-gunluk` 00:20 UTC, `yikici-rekabet-saatlik`.
 - NOT: Supabase MCP'de `delete`/`drop` içeren migration'lar onay ister ve mobilde kendiliğinden iptal olur; fonksiyon gövdelerinde bile bu kelimelerden kaçın (`create or replace trigger` kullan).

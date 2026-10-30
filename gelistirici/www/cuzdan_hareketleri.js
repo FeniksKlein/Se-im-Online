@@ -37,8 +37,12 @@
     muzayede: ["Müzayede", "pey / iade"], iade: ["İade", "çeşitli"], piyango: ["Milli Piyango", "şans oyunları"], kazikazan: ["Kazı Kazan", "şans oyunları"],
     gazete_gelir: ["Gazete geliri", "basın"], gazete_kur: ["Gazete kuruluşu", "basın"], havale: ["Havale", "oyuncuya / oyuncudan"],
     satin_alma: ["Mağaza", "₺ paketi"], magaza: ["Mağaza", "₺ paketi"], ihale: ["İhale", "kamu"], ihale_iade: ["İhale iadesi", "kamu"],
-    ceza: ["Ceza", "adli / idari"], hibe: ["Hibe", "çeşitli"], yonetici: ["Oyun yönetimi", "düzeltme"]
+    ceza: ["Ceza", "adli / idari"], hibe: ["Hibe", "çeşitli"], yonetici: ["Oyun yönetimi", "düzeltme"],
+    // 30.10.2026: Ekonomik Denge
+    vergi: ["Servet vergisi", "Ekonomik Denge · kademeli"], fon: ["Fırsat Eşitliği Fonu", "servet vergisinden destek"],
+    ulasim: ["Ulaşım", "miting otobüsü"]
   };
+  TUR.servet = ["Servet vergisi (kanun)", "Meclis"];
   var turAd = function (t) { return (TUR[t] && TUR[t][0]) || String(t || "Diğer").replace(/_/g, " ").replace(/^./, function (c) { return c.toLocaleUpperCase("tr-TR"); }); };
   var turAlt = function (t) { return (TUR[t] && TUR[t][1]) || ""; };
 
@@ -111,7 +115,11 @@
     var net = Number(v.giris || 0) - Number(v.cikis || 0);
     var h = '<div class="cz">';
     h += '<section class="cz-ust"><small>Cüzdanın</small><b class="cz-para">' + tl(v.para) + '</b>' +
-      '<div class="cz-uc"><div><small>Gelen · ' + esc(donem) + '</small><b>+' + tl(v.giris) + '</b></div><div><small>Giden</small><b>−' + tl(v.cikis) + '</b></div><div><small>Net</small><b>' + (net >= 0 ? "+" : "−") + tl(Math.abs(net)) + '</b></div></div></section>';
+      '<div class="cz-uc"><div><small>Gelen · ' + esc(donem) + '</small><b>+' + tl(v.giris) + '</b></div><div><small>Giden</small><b>−' + tl(v.cikis) + '</b></div><div><small>Net</small><b>' + (net >= 0 ? "+" : "−") + tl(Math.abs(net)) + '</b></div></div>' +
+      (Number(v.vergi || 0) > 0 ? '<small style="margin-top:10px">Gelen tutarlar nettir; kaynağında ayrıca ' + tl(v.vergi) + ' vergi kesildi (maaş gelir vergisi, temettü stopajı, tapu harcı).</small>' : '') + '</section>';
+    if (typeof window.vergiRehberiEkrani === "function") {
+      h += '<div class="cz-serit" role="button" tabindex="0" onclick="ekranAc(vergiRehberiEkrani)"><span class="cz-si" style="background:linear-gradient(145deg,#e8cf8f,#9a7630);color:#1b1607">₺</span><span class="cz-ss"><b>Param nereye gitti?</b><small>Vergiler, kesintiler ve paranın şu an durduğu yerler</small></span><span class="cz-ok">›</span></div>';
+    }
     h += '<div class="cz-sec">' + [[24, "Son 24 saat"], [72, "3 gün"], [168, "7 gün"]].map(function (x) {
       return '<button type="button" class="' + (Number(v.saat) === x[0] ? "on" : "") + '" onclick="czSaat(' + x[0] + ')">' + x[1] + '</button>';
     }).join("") + '</div>';

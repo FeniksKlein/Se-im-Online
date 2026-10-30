@@ -3611,7 +3611,8 @@ function hayatCiz(h){
       <button class="btn ikinci" id="hBagis">Kalkınma bağışı yap</button></div>
     <div class="kart"><h2>Verginin karşılığı</h2>
       <p class="alt">Ödediğin gelir vergisinin hangi bakanlığa, belediyeye ve sosyal desteğe gittiğini gör.</p>
-      <button class="btn ikinci" id="hVergi">Verginin nereye gittiğini gör</button></div>
+      <button class="btn ikinci" id="hVergi">Verginin nereye gittiğini gör</button>
+      ${typeof window.vergiRehberiEkrani === "function" ? `<button class="btn altin" onclick="ekranAc(vergiRehberiEkrani)">Param nereye gitti? Kesinti dökümü</button>` : ""}</div>
     <div class="kart"><h2>Günlük bordron</h2>
       <div class="kv"><span class="k">Asgari ücret</span><span class="v">${tlYaz(kb.asgari)}/ay</span></div>
       <div class="kv"><span class="k">Statü · ${e(h.il_ad)} refahı${kb.ucret_bonus ? " · destekler" : ""}</span><span class="v">×${fmt(kb.statu_carpan, 2)} · ×${fmt(kb.il_carpan, 2)}${kb.ucret_bonus ? ` · +%${fmt(kb.ucret_bonus)}` : ""}</span></div>
