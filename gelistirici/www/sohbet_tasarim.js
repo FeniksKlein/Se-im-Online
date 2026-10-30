@@ -137,9 +137,48 @@
   };
   var KANAL_ALT = { genel: 'Tüm oyuncular', il: 'Senin ilindeki oyuncular', belediye: 'Herkes izler; belediye başkanı ve ilin vekilleri konuşur',
     parti: 'Yalnızca parti üyeleri görür', yonetim: 'Genel başkan ve yardımcıları', ittifak: 'İttifak partilerinin üyeleri',
-    meclis: 'Vekiller, bakanlar ve cumhurbaşkanı konuşur; herkes izler', kabine: 'Cumhurbaşkanı ve bakanlar',
-    grup: 'Partinin milletvekilleri ve genel başkanı', divan: 'TBMM Başkanı, başkanvekilleri ve grup başkanvekilleri' };
+    meclis: 'Açık oturum · Kürsü milletvekilleri, bakanlar ve Cumhurbaşkanına açık', kabine: 'Kapalı oturum · Cumhurbaşkanı ve bakanlar',
+    grup: 'Grup toplantısı · Partinin milletvekilleri ve genel başkanı', divan: 'Kapalı oturum · TBMM Başkanı, başkanvekilleri ve grup başkanvekilleri' };
   var KANAL_GRUP = [['Herkese açık', ['il', 'belediye']], ['Siyasi örgüt', ['parti', 'yonetim', 'ittifak']], ['Devlet', ['meclis', 'grup', 'divan', 'kabine']]];
+  /* Devlet kanalları: sohbet değil, resmî oturum. Tutanak düzeni, hitap kalıpları, oturum şeridi. */
+  var RESMI = {
+    meclis: { kurum: 'Türkiye Büyük Millet Meclisi', oturum: 'Genel Kurul', gun: 'Birleşim', gizlilik: 'Açık oturum', renk: '#d9b25b',
+      yer: 'Kürsüden söz alın', bos: 'Bu birleşimde henüz söz alan olmadı. Kürsü, milletvekilleri, bakanlar ve Cumhurbaşkanı için açıktır.',
+      izle: 'Genel Kurul görüşmeleri kamuya açıktır. Söz hakkı milletvekillerine, bakanlara ve Cumhurbaşkanına aittir; görüşmeleri izleyici sırasından takip ediyorsunuz.',
+      hitap: ['Sayın Başkan, değerli milletvekilleri; ', 'Sayın Başkan, söz istiyorum.', 'Grubumuz adına söz almış bulunuyorum. ', 'Yüce Meclisi saygıyla selamlıyorum.'] },
+    kabine: { kurum: 'Cumhurbaşkanlığı', oturum: 'Bakanlar Kurulu', gun: 'Toplantı', gizlilik: 'Kapalı oturum · Gizli', renk: '#d9b25b',
+      yer: 'Kurula arz edin', bos: 'Kurul henüz toplanmadı. Gündem maddelerini Cumhurbaşkanı ve bakanlar burada görüşür; görüşmeler gizlidir.',
+      izle: 'Bakanlar Kurulu görüşmeleri gizlidir; yalnızca Cumhurbaşkanı ve bakanlar söz alabilir.',
+      hitap: ['Sayın Cumhurbaşkanım, değerli bakanlar; ', 'Bakanlığımın çalışmalarını bilgilerinize sunarım. ', 'Takdirlerinize arz ederim.', 'Uygun görülmüştür.'] },
+    grup: { kurum: 'TBMM', oturum: 'Grup Toplantısı', gun: 'Grup toplantısı', gizlilik: 'Kapalı · Yalnız grup üyeleri', renk: '#b9a8ff',
+      yer: 'Gruba hitap edin', bos: 'Grup henüz toplanmadı. Milletvekilleri ve genel başkan, Meclis\'teki tutumu burada belirler.',
+      izle: 'Grup toplantısında yalnızca partinin milletvekilleri ve genel başkanı söz alabilir.',
+      hitap: ['Sayın Genel Başkanım, değerli grup üyeleri; ', 'Grup önerimizi takdirlerinize sunarım. ', 'Grubumuzun tutumu şudur: ', 'Saygılarımı sunarım.'] },
+    divan: { kurum: 'TBMM', oturum: 'Başkanlık Divanı ve Danışma Kurulu', gun: 'Toplantı', gizlilik: 'Kapalı oturum', renk: '#e8c35a',
+      yer: 'Kurula görüş bildirin', bos: 'Kurul henüz toplanmadı. Meclis\'in gündemi ve çalışma takvimi burada belirlenir.',
+      izle: 'Bu kurulda yalnızca TBMM Başkanı, başkanvekilleri ve grup başkanvekilleri söz alabilir.',
+      hitap: ['Sayın Başkan, değerli grup başkanvekilleri; ', 'Danışma Kurulu önerimizi arz ederim: ', 'Grubumuz öneriye katılmaktadır.', 'Grubumuz öneriye katılmamaktadır.'] }
+  };
+  var RESMI_GUNF = new Intl.DateTimeFormat('tr-TR', { timeZone: TZ, day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' });
+  var ARMA = '<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".55"/><circle cx="24" cy="24" r="18.5" fill="none" stroke="currentColor" stroke-width=".8" stroke-dasharray="1.2 2.2" opacity=".6"/>' +
+    '<path d="M13 33.5h22M15 33.5V22.5M33 33.5V22.5M20 33.5V22.5M28 33.5V22.5M12 22.5L24 14l12 8.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/><path d="M24 9.6l.9 1.9 2.1.3-1.5 1.5.4 2.1-1.9-1-1.9 1 .4-2.1-1.5-1.5 2.1-.3z" fill="currentColor"/></svg>';
+  function konusmaciRol(m) {
+    var u = String(m.unvan || '');
+    if (/Milletvekili$/.test(u)) return u.replace(/\s*Milletvekili$/, '') + ' Milletvekili';
+    return u;
+  }
+  function resmiKayit(m, S, ilk, son) {
+    var renk = (m.parti && m.parti.renk) || '#9aa6cc';
+    var cls = 'shm shr' + (m.benim ? ' benim' : '') + (ilk ? ' ilk' : '') + (son ? ' son' : '') + (m._bekle ? ' bekle' : '') + (m._hata ? ' hata' : '');
+    var h = '<div class="' + cls + '" data-id="' + esc(m.id) + '" data-kad="' + esc(m.kad || '') + '" style="--pr:' + esc(/^#[0-9a-f]{6}$/i.test(renk) ? renk : '#9aa6cc') + '">';
+    if (ilk) {
+      var rol = konusmaciRol(m), parti = m.parti && m.parti.kisa ? m.parti.kisa : '';
+      h += '<div class="shr-kim"><span class="shm-av">' + av(m.kad, renk, 34) + '</span><span class="shr-ad"><b>' + esc(m.kad) + '</b>' + nisan(m.unvan) +
+        (m.benim ? '<em>Siz</em>' : '') + '<small>' + esc([rol, parti].filter(Boolean).join(' · ') || 'Üye') + '</small></span><time>' + esc(saat(m.zaman)) + '</time></div>';
+    }
+    h += '<div class="shr-metin"><span class="shm-tx">' + metinHtml(m.metin) + '</span>' + (m._bekle || m._hata ? '<span class="shr-dur">' + tikHtml(m, S) + (m._hata ? ' Kayda geçmedi, dokunarak tekrar deneyin' : ' Kayda geçiyor') + '</span>' : '') + '</div></div>';
+    return h;
+  }
   function kanalIkon(kod, boy) {
     var k = KANAL_IK[kod] || ['#8f9bbd', I.mesaj], renk = k[0], ic = k[1];
     var p = profil();
@@ -446,7 +485,11 @@
     for (var i = 0; i < L.length; i++) {
       var m = L[i], sonraki = L[i + 1];
       var gun = gunAnahtar(m.zaman);
-      if (gun !== sonGun) { h += '<div class="shm-gun"><span>' + esc(gunBaslik(m.zaman)) + '</span></div>'; sonGun = gun; onceki = null; }
+      if (gun !== sonGun) {
+        if (S.resmi) { var tam = RESMI_GUNF.format(new Date(m.zaman)); h += '<div class="shr-gun"><i></i><span><b>' + esc(S.resmi.gun) + '</b>' + esc(tam) + '</span><i></i></div>'; }
+        else h += '<div class="shm-gun"><span>' + esc(gunBaslik(m.zaman)) + '</span></div>';
+        sonGun = gun; onceki = null;
+      }
       var kim = m.benim ? '__ben' : String(m.kad || S.kad || '');
       var ayni = function (a, b) { return a && b && (a.benim ? '__ben' : String(a.kad || S.kad || '')) === (b.benim ? '__ben' : String(b.kad || S.kad || '')) && Math.abs(new Date(b.zaman) - new Date(a.zaman)) < 5 * 60e3 && gunAnahtar(a.zaman) === gunAnahtar(b.zaman); };
       var ilk = !ayni(onceki, m), son = !ayni(m, sonraki);
@@ -465,6 +508,7 @@
     return '<span class="shm-tik" aria-label="Gönderildi">' + I.tik + '</span>';
   }
   function balon(m, S, ilk, son) {
+    if (S.resmi) return resmiKayit(m, S, ilk, son);
     var em = emojiSayisi(m.metin), renk = (m.parti && m.parti.renk) || '#9aa6cc';
     var kanalBaskasi = !S.ozel && !m.benim;
     var cls = 'shm' + (m.benim ? ' benim' : '') + (ilk ? ' ilk' : '') + (son ? ' son' : '') + (em ? ' emoji e' + Math.min(em, 4) : '') + (m._bekle ? ' bekle' : '') + (m._hata ? ' hata' : '');
@@ -672,9 +716,16 @@
   async function kanalEkrani(kanal) {
     var oz = ST.oz && (ST.oz.kanallar || []).find(function (k) { return k.kanal === kanal; });
     var cevYaz = function (k) { return k && k.cevrimici != null ? '<span class="shk-d cevrimici"><span class="sh-nokta"></span>' + k.cevrimici + ' çevrimiçi</span><span class="shk-ayr">·</span><span class="shk-unv">' + esc(KANAL_ALT[kanal] || '') + '</span>' : '<span class="shk-unv">' + esc(KANAL_ALT[kanal] || '') + '</span>'; };
-    var akis = kabuk({ ozel: false, baslik: esc((oz && oz.baslik) || 'Sohbet'), av: kanalIkon(kanal, 40), alt: cevYaz(oz),
-      sag: '<button type="button" class="shk-b" id="shkCev" aria-label="Çevrimiçi oyuncular">' + I.kisiler + '</button>' });
-    var S = { ozel: false, kanal: kanal, liste: [], sonId: null, ilkId: null, bitti: false, bekleyen: 0 };
+    var R = RESMI[kanal] || null;
+    if (R) cevYaz = function (k) { return '<span class="shk-unv">' + esc(R.gizlilik) + '</span>' + (k && k.cevrimici != null ? '<span class="shk-ayr">·</span><span class="shk-d cevrimici"><span class="sh-nokta"></span>' + k.cevrimici + ' üye hazır</span>' : ''); };
+    var akis = kabuk({ ozel: false, baslik: esc((oz && oz.baslik) || (R && R.oturum) || 'Sohbet'), av: R ? '<span class="shr-arma" style="--ar:' + R.renk + '">' + ARMA + '</span>' : kanalIkon(kanal, 40), alt: cevYaz(oz),
+      sag: '<button type="button" class="shk-b" id="shkCev" aria-label="' + (R ? 'Hazır bulunan üyeler' : 'Çevrimiçi oyuncular') + '">' + I.kisiler + '</button>' });
+    var S = { ozel: false, kanal: kanal, liste: [], sonId: null, ilkId: null, bitti: false, bekleyen: 0, resmi: R };
+    if (R) {
+      var kok = $1('.shk-kanal'); if (kok) kok.classList.add('shk-resmi', 'shr-' + kanal);
+      var ust = $1('.shk-ust'); if (ust) ust.insertAdjacentHTML('afterend', '<div class="shr-serit" style="--ar:' + R.renk + '"><span>' + esc(R.kurum) + '</span><b>' + esc(R.oturum) + '</b></div>');
+      var ta0 = $1('#yaz'); if (ta0) { ta0.placeholder = R.yer; ta0.maxLength = 500; }
+    }
     S.yaz = function (metin) { return API.rpc('sohbet_yaz', { p_kanal: kanal, p_metin: metin }); };
     S.yeniGetir = async function () {
       var r = await API.rpc('sohbet_oku', { p_kanal: kanal, p_once: null, p_sonra: S.sonId });
@@ -689,9 +740,27 @@
       S.liste = r.mesajlar || [];
       if (S.liste.length) { S.sonId = S.liste[S.liste.length - 1].id; S.ilkId = S.liste[0].id; }
       if (S.liste.length < 40) S.bitti = true;
-      S.bosHtml = '<div class="shm-bos">' + kanalIkon(kanal, 76) + '<b>' + esc(r.baslik || '') + '</b><p>' + (r.yazabilir ? 'Henüz kimse yazmadı. İlk sözü sen al!' : 'Henüz kimse söz almadı. Burada konuşulanları izleyebilirsin.') + '</p></div>';
+      S.bosHtml = R ? '<div class="shm-bos shr-bos" style="--ar:' + R.renk + '"><span class="shr-arma buyuk">' + ARMA + '</span><small>' + esc(R.kurum) + '</small><b>' + esc(r.baslik || R.oturum) + '</b><p>' + esc(R.bos) + '</p></div>'
+        : '<div class="shm-bos">' + kanalIkon(kanal, 76) + '<b>' + esc(r.baslik || '') + '</b><p>' + (r.yazabilir ? 'Henüz kimse yazmadı. İlk sözü sen al!' : 'Henüz kimse söz almadı. Burada konuşulanları izleyebilirsin.') + '</p></div>';
       akisCiz(akis, S, 'ilk');
-      if (!r.yazabilir) {
+      if (R && r.yazabilir) {
+        var yb0 = $1('#yazbar');
+        if (yb0) {
+          yb0.insertAdjacentHTML('beforebegin', '<div class="shr-hitap" role="group" aria-label="Hitap kalıpları">' + R.hitap.map(function (t) { return '<button type="button" data-hitap="' + esc(t) + '">' + esc(t.trim()) + '</button>'; }).join('') + '</div>');
+          var hb = $1('.shr-hitap');
+          if (hb) hb.addEventListener('click', function (ev) {
+            var b = ev.target.closest('[data-hitap]'); if (!b) return; hafif();
+            var ta = $1('#yaz'); if (!ta) return;
+            var t = b.getAttribute('data-hitap'), v = ta.value;
+            ta.value = /[;:]\s*$|\s$/.test(t) ? t + v.replace(/^\s+/, '') : (v ? v.replace(/\s*$/, ' ') : '') + t;
+            ta.dispatchEvent(new Event('input')); ta.focus();
+            try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (e) {}
+          });
+        }
+      }
+      if (R && !r.yazabilir) {
+        $1('#yazbar').innerHTML = '<div class="shk-not shr-izle">' + I.goz + '<span>' + esc(R.izle) + '</span></div>';
+      } else if (!r.yazabilir) {
         $1('#yazbar').innerHTML = '<div class="shk-not">' + I.goz + '<span>' + (kanal === 'belediye' ? 'Belediye meclisinde yalnızca o ilin belediye başkanı ve milletvekilleri söz alabilir.' : kanal === 'meclis' ? 'Genel Kurul\'da yalnızca milletvekilleri, bakanlar ve cumhurbaşkanı söz alabilir.' : 'Bu kanalda söz hakkın yok.') + ' Sen izleyebilirsin.</span></div>';
       }
       try { rozetGuncelle(await API.rpc('rozetler')); } catch (e) {}
@@ -699,7 +768,7 @@
       akis.innerHTML = '<div class="shm-bos"><p>' + esc(hataYaz(err)) + '</p></div>'; var yb = $1('#yazbar'); if (yb) yb.remove(); return;
     }
     var cb = $1('#shkCev'); if (cb) cb.onclick = function () { if (typeof cevrimiciListeAc === 'function') cevrimiciListeAc(); };
-    var kb = $1('#shkKim'); if (kb) kb.onclick = function () { tst(KANAL_ALT[kanal] || 'Sohbet kanalı'); };
+    var kb = $1('#shkKim'); if (kb) kb.onclick = function () { tst(R ? R.kurum + ' · ' + R.oturum + ' — ' + (KANAL_ALT[kanal] || '') : (KANAL_ALT[kanal] || 'Sohbet kanalı')); };
     var yukluyor = false;
     akis.addEventListener('scroll', async function () {
       if (akis.scrollTop > 60 || yukluyor || S.bitti || !S.ilkId) return;
@@ -990,6 +1059,48 @@
     '.shk-gonder.hazir{background:var(--sh-grad)!important;color:#fff!important;transform:rotate(-12deg) scale(1.04);box-shadow:0 10px 22px -10px rgba(255,79,139,.95)}.shk-gonder.hazir:active{transform:scale(.9)}',
     '.shk-gonder:disabled{opacity:1!important}',
     '.shk-not{flex:1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.05);color:var(--sh-soluk);font-size:13.5px;line-height:1.4}.shk-not>svg{width:19px;height:19px;flex:none;color:#b9a8ff}.shk-not span{flex:1;min-width:160px}.shk-not .sh-btn{height:38px}',
+    /* ===== resmî oturum (Devlet kanalları) ===== */
+    '.shk-resmi{background:#0a0f22}',
+    '.shk-resmi::before{background:radial-gradient(120% 55% at 50% -10%,rgba(217,178,91,.10),transparent 60%),linear-gradient(180deg,rgba(255,255,255,.012),transparent 40%)!important;background-size:auto!important}',
+    '.shk-resmi::after{content:"";position:absolute;left:50%;top:52%;width:min(70vw,340px);aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none;opacity:.035;color:#d9b25b;background:url("' + ("data:image/svg+xml;utf8," + encodeURIComponent(ARMA.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ').replace(/currentColor/g, '#d9b25b'))).replace(/"/g, '%22') + '") center/contain no-repeat}',
+    '.shk-resmi .shk-ust{background:rgba(9,13,32,.92);border-bottom:1px solid rgba(217,178,91,.22)}',
+    '.shk-resmi .shk-kim-m b{font-family:var(--disp);font-weight:800;letter-spacing:.2px}',
+    '.shr-arma{flex:none;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;color:var(--ar,#d9b25b);background:radial-gradient(circle at 50% 35%,rgba(217,178,91,.16),rgba(217,178,91,.04));box-shadow:0 0 0 1px rgba(217,178,91,.32) inset}',
+    '.shr-arma svg{width:34px;height:34px}.shr-arma.buyuk{width:84px;height:84px}.shr-arma.buyuk svg{width:72px;height:72px}',
+    '.shr-serit{position:relative;z-index:3;display:flex;align-items:baseline;justify-content:center;gap:8px;padding:7px 14px;background:linear-gradient(90deg,transparent,rgba(217,178,91,.10),transparent);border-bottom:1px solid rgba(217,178,91,.16);font-size:12px;color:#c9b88f;letter-spacing:.3px;white-space:nowrap;overflow:hidden}',
+    '.shr-serit b{font-family:var(--disp);font-size:13px;color:var(--ar,#d9b25b);font-weight:800;overflow:hidden;text-overflow:ellipsis}',
+    '.shr-serit span::after{content:"";display:inline-block;width:4px;height:4px;margin-left:8px;border-radius:50%;background:currentColor;opacity:.6;vertical-align:middle}',
+    '.shk-resmi .shk-akis{padding:6px 16px 18px!important}',
+    '.shr-gun{display:flex;align-items:center;gap:10px;margin:18px 0 6px;color:#c9b88f}',
+    '.shr-gun i{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(217,178,91,.4))}.shr-gun i:last-child{background:linear-gradient(90deg,rgba(217,178,91,.4),transparent)}',
+    '.shr-gun span{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:11.5px;text-align:center}.shr-gun b{font-family:var(--disp);font-size:14px;color:#e6cf93;font-weight:800;letter-spacing:.4px}',
+    '.shm.shr{display:block;margin:0;padding:0 0 0 12px;border-left:2px solid color-mix(in srgb,var(--pr) 70%,transparent);animation:shrGir .3s ease both;cursor:pointer}',
+    '.shm.shr.ilk{margin-top:16px;padding-top:2px}.shm.shr:not(.son){padding-bottom:6px}',
+    '@keyframes shrGir{from{opacity:0;transform:translateY(4px)}}',
+    '.shm.shr.benim{border-left-color:#d9b25b}',
+    '.shr-kim{display:flex;align-items:center;gap:10px;margin-bottom:6px}',
+    '.shr-kim .shm-av{width:34px;align-self:center}.shr-kim .shm-av .portre,.shr-kim .shm-av svg.portre,.shr-kim .shm-av .sh-av-bos{width:34px!important;height:34px!important}',
+    '.shr-ad{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;column-gap:5px}',
+    '.shr-ad b{font-family:var(--disp);font-size:15.5px;font-weight:800;color:#f1ecdf;letter-spacing:.2px}',
+    '.shr-ad em{font-style:normal;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:5px;color:#1b1607;background:#d9b25b}',
+    '.shr-ad .sh-nisan,.shr-ad .sh-nisan svg{width:14px;height:14px}',
+    '.shr-ad small{flex-basis:100%;font-size:12px;color:#a9b2cf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.shr-kim time{flex:none;align-self:flex-start;margin-top:3px;font-size:11.5px;color:#8a93b3;font-variant-numeric:tabular-nums}',
+    '.shr-metin{font-family:Georgia,"Iowan Old Style","Times New Roman",serif;font-size:16.5px;line-height:1.62;color:#e9ebf3;overflow-wrap:anywhere;-webkit-user-select:text;user-select:text}',
+    '.shr-metin .shm-tx::after{display:none}',
+    '.shr-metin .shm-et{color:#e6cf93}.shr-metin .shm-an{color:#b9cdfa}',
+    '.shm.shr.bekle .shr-metin{opacity:.65}.shm.shr.hata{border-left-color:#ff6b81}',
+    '.shr-dur{display:flex;align-items:center;gap:5px;margin-top:3px;font-family:inherit;font-size:11.5px;color:#8a93b3}.shr-dur .shm-tik{color:inherit}',
+    '.shr-bos{padding-top:54px}.shr-bos small{font-size:12px;letter-spacing:.6px;color:#c9b88f;margin-top:6px}.shr-bos b{color:#f1ecdf}.shr-bos p{font-family:Georgia,serif;font-size:15px}',
+    '.shr-hitap{position:relative;z-index:3;display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding:8px 10px 0;background:rgba(9,13,32,.92);border-top:1px solid rgba(217,178,91,.18)}.shr-hitap::-webkit-scrollbar{display:none}',
+    '.shr-hitap button{flex:none;height:32px;padding:0 12px;border-radius:9px;border:1px solid rgba(217,178,91,.32);background:rgba(217,178,91,.07);color:#e6cf93;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}',
+    '.shr-hitap button:active{background:rgba(217,178,91,.18)}',
+    '.shk-resmi .shk-yaz{background:rgba(9,13,32,.92)!important;border-top:0!important}',
+    '.shk-resmi .shk-kutu{border-radius:14px;border-color:rgba(217,178,91,.22)}.shk-resmi .shk-kutu:focus-within{border-color:rgba(217,178,91,.6);background:rgba(217,178,91,.06)}',
+    '.shk-resmi .shk-yaz textarea{border-radius:14px!important;font-family:Georgia,serif;font-size:16px}',
+    '.shk-resmi .shk-gonder{border-radius:14px!important}.shk-resmi .shk-gonder.hazir{background:linear-gradient(135deg,#e6cf93,#b8913f)!important;color:#1b1607!important;transform:none;box-shadow:0 10px 22px -12px rgba(217,178,91,.9)}',
+    '.shk-resmi .shk-asagi{color:#e6cf93;border-color:rgba(217,178,91,.3)}',
+    '.shr-izle{border:1px solid rgba(217,178,91,.18);background:rgba(217,178,91,.05)!important;color:#c9b88f!important}',
     '@media (min-width:760px){.shk-akis{padding-left:max(10px,calc(50% - 360px))!important;padding-right:max(10px,calc(50% - 360px))!important}}',
     '@media (prefers-reduced-motion:reduce){.shm,.sh-fab,.shk-asagi{animation:none}.sh-seg-kay{transition:none}.sh-nokta,.sh-ust-dm-say{animation:none}}'
   ];
