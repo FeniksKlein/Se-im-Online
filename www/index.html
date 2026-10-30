@@ -15719,7 +15719,7 @@ if(typeof window.iskelet==="function"){
     const ic=document.querySelector("#kmIc");
     if(ic&&!document.querySelector("#uzaktan-yonetim-menu")){
      ic.insertAdjacentHTML("beforebegin",
-      '<div class="kart" id="uzaktan-yonetim-menu"><button class="btn altin" onclick="ekranAc(uzaktanKontrolAdminEkrani)">📡 Canlı Oyun Yönetimi · Mağaza güncellemesiz ayarlar</button>'+ (String(D?.durum?.profil?.kad||'').toLowerCase()==='arventora' ? '<button class="btn altin" style="margin-top:10px" onclick="window.open(\'https://secim-online-kurucu-portali.vercel.app\',\'_blank\',\'noopener,noreferrer\')">♛ Kurucu Portalı'nı aç</button>' : '') +'</div>');
+      '<div class="kart" id="uzaktan-yonetim-menu"><button class="btn altin" onclick="ekranAc(uzaktanKontrolAdminEkrani)">📡 Canlı Oyun Yönetimi · Mağaza güncellemesiz ayarlar</button>'+ (String(D?.durum?.profil?.kad||'').toLowerCase()==='arventora' ? '<button class="btn altin" style="margin-top:10px" onclick="window.open(\'https://secim-online-kurucu-portali.vercel.app\',\'_blank\',\'noopener,noreferrer\')">♛ Kurucu Portalını aç</button>' : '') +'</div>');
     }
   }
   moduGizle();
