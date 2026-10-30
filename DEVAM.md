@@ -9,6 +9,11 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 30.10.2026 — ekonomik denge, miting bileti, avukat kontenjanı (canlıya uygulandı ve AÇIK)
+- `sql/148_ekonomik_denge.sql`: kademeli servet vergisi (eşikler medyan servetin 10/25/50 katı; günlük %0,10/%0,20/%0,35), Fırsat Eşitliği Fonu (verginin %50'si medyan altı aktif oyunculara, kişi başı ≤ asgari×0,0667), otomatik Rekabet Kurumu (`yikici_rekabet_tick`, saatlik), paravan yasağı tetiği, vergi borcu engelleri, vadesiz mevduat kapasitesi, oyuncu bankası içi havale günlük sınıra dahil. Ayarlar tek satır: `oyun.denge_ayar` (kapatmak için `aktif=false`). Cron: `ekonomik-denge-gunluk` 00:20 UTC, `yikici-rekabet-saatlik`.
+- NOT: Supabase MCP'de `delete`/`drop` içeren migration'lar onay ister ve mobilde kendiliğinden iptal olur; fonksiyon gövdelerinde bile bu kelimelerden kaçın (`create or replace trigger` kullan).
+- `sql/149_miting_bilet_avukat.sql`: başka ildeki canlı mitinge gidiş-dönüş bilet (`miting_bilet_al`, ücret = 2 × `miting_otobus_ucret`), `miting_katil` bileti kabul eder; `ayarlar.avukat_oran` 10 → 5. Arayüz: `www/miting_bilet.js`, `www/ekonomik_denge.js`.
+
 ## 30.10.2026 — makam protokolü, belediye kataloğu, sohbet tepkileri (canlıya uygulandı)
 - `sql/146_makam_protokol.sql` (+ `migrations/20261030_makam_protokol.sql`) Supabase'e Claude tarafından uygulandı.
 - Resmî program motoru: `oyun.resmi_program_tur` kataloğu (CB 8, bakan 6, TBMM Başkanı 4, MV 4, belediye 7 program), `resmi_program_panel/_yap/_katil`, `resmi_programlar`, `oyuncu_nisanlari`. Nişan/berat → `oyun.devlet_nisan` (oyuncu kartında görünür). Katılım ödülü günde en çok 3 kez.

@@ -28,7 +28,7 @@ create table if not exists oyun.denge_ayar (
   rekabet_ceza numeric not null default 0.10, -- şirket kasasının oranı
   rekabet_saat int not null default 72
 );
-insert into oyun.denge_ayar(id, aktif) values (1, false) on conflict do nothing;  -- canlıda doğrulandıktan sonra açılır
+insert into oyun.denge_ayar(id, aktif) values (1, true) on conflict do nothing;  -- canlıda 30.10.2026'da doğrulanıp açıldı
 
 create table if not exists oyun.denge_gun (
   gun date primary key, medyan numeric, gini numeric, toplam numeric, en_zengin_pay numeric, ust10_pay numeric,
@@ -91,23 +91,21 @@ returns jsonb language plpgsql security definer set search_path = '' as $$
 declare t timestamptz := oyun.simdi(); g date := (oyun.simdi() at time zone 'Europe/Istanbul')::date; a oyun.denge_ayar;
         med numeric; gin numeric; top numeric; ez numeric; u10 numeric; r record; vg numeric; kalan numeric; al numeric;
         c numeric; v numeric; tvergi numeric := 0; ttahsil numeric := 0; havuz numeric; kisi numeric; n int := 0; tlm numeric; asg numeric;
-        pr oyun.profiller;
+        pr oyun.profiller; alicilar uuid[] := '{}'; au uuid;
 begin
   if not pg_try_advisory_xact_lock(hashtext('denge_tick')) then return null; end if;
   select * into a from oyun.denge_ayar where id = 1;
   if not a.aktif or exists(select 1 from oyun.denge_gun where gun = g) then return null; end if;
-  create temp table if not exists _ns(user_id uuid, nakit numeric, hisse numeric, mulk numeric, toplam numeric) on commit drop;
-  delete from _ns; insert into _ns select * from oyun.net_servet_tablo();
-  select percentile_cont(.5) within group (order by toplam), sum(toplam) into med, top from _ns;
+  select percentile_cont(.5) within group (order by toplam), sum(toplam) into med, top from oyun.net_servet_tablo();
   med := greatest(coalesce(med, 0), 1);
   select round((sum((2 * rn - cnt - 1) * v2) / nullif(cnt * sum(v2), 0))::numeric, 3) into gin
-    from (select greatest(toplam, 0) v2, row_number() over (order by toplam) rn, count(*) over () cnt from _ns) z group by cnt;
-  select round(100 * max(toplam) / nullif(top, 0), 1) into ez from _ns;
-  select round(100 * sum(toplam) / nullif(top, 0), 1) into u10 from (select toplam from _ns order by toplam desc limit greatest(1, (select count(*) from _ns) / 10)) q;
+    from (select greatest(toplam, 0) v2, row_number() over (order by toplam) rn, count(*) over () cnt from oyun.net_servet_tablo()) z group by cnt;
+  select round(100 * max(toplam) / nullif(top, 0), 1) into ez from oyun.net_servet_tablo();
+  select round(100 * sum(toplam) / nullif(top, 0), 1) into u10 from (select toplam from oyun.net_servet_tablo() order by toplam desc limit greatest(1, (select count(*) from oyun.net_servet_tablo()) / 10)) q;
   tlm := oyun.pazar_tl_milyar(); asg := (select asgari from oyun.ulke where id = 1);
 
   -- 1) önce eski borçlar, sonra bugünkü vergi: cüzdandan, sonra devlet bankası vadesiz hesabından
-  for r in select s.user_id, s.toplam, coalesce(b.borc, 0) borc from _ns s left join oyun.servet_vergi_borc b on b.user_id = s.user_id
+  for r in select s.user_id, s.toplam, coalesce(b.borc, 0) borc from oyun.net_servet_tablo() s left join oyun.servet_vergi_borc b on b.user_id = s.user_id
            where coalesce(b.borc, 0) > 0 or s.toplam > (oyun.servet_esikler(med))[1] loop
     vg := oyun.servet_vergisi(r.toplam, med);
     kalan := vg + r.borc; al := 0;
@@ -138,19 +136,18 @@ begin
   -- 2) Fırsat Eşitliği Fonu: medyanın altındaki aktif, şartları tamam oyunculara eşit pay
   havuz := floor(ttahsil * a.fon_pay);
   kisi := 0;
-  create temp table if not exists _alici(user_id uuid) on commit drop; delete from _alici;
-  for pr in select p.* from oyun.profiller p join _ns s on s.user_id = p.id
+  for pr in select p.* from oyun.profiller p  join oyun.net_servet_tablo() s on s.user_id = p.id
             where not p.yasakli and s.toplam < med and p.son_gorulme > t - interval '3 days' and p.olusturma < t - interval '3 days' loop
     if oyun.uyari(pr, t) is null and not exists(select 1 from oyun.servet_vergi_borc b where b.user_id = pr.id and b.borc > 0) then
-      insert into _alici values (pr.id); n := n + 1;
+      alicilar := alicilar || pr.id; n := n + 1;
     end if;
   end loop;
   if n > 0 and havuz > 0 then
     kisi := least(floor(havuz / n), round(asg * a.kisi_tavan_asgari));
     if kisi >= 1 then
-      for r in select user_id from _alici loop
-        perform oyun.para_islem(r.user_id, kisi, 'yardim', 'Fırsat Eşitliği Fonu (servet vergisinden)', t);
-        insert into oyun.firsat_fonu_odeme(user_id, gun, tutar) values (r.user_id, g, kisi) on conflict do nothing;
+      foreach au in array alicilar loop
+        perform oyun.para_islem(au, kisi, 'yardim', 'Fırsat Eşitliği Fonu (servet vergisinden)', t);
+        insert into oyun.firsat_fonu_odeme(user_id, gun, tutar) values (au, g, kisi) on conflict do nothing;
       end loop;
     end if;
   end if;
