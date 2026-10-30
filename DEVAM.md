@@ -9,6 +9,12 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 30.10.2026 — banka/havale/CB yardımcısı (canlıya uygulandı)
+- `sql/145_banka_kapasite_cbyrd.sql` + `migrations/20261030_banka_kapasite_havale_cbyrd.sql` Supabase'e Claude tarafından uygulandı (tekrar çalıştırma gerekmez).
+- Oyuncu bankası vadeli mevduatı: toplam mevduat ≤ özkaynak × 5, tek kişinin bir bankadaki açık vadeli mevduatı ≤ özkaynak (`oyun.oyb_mevduat_kapasite`). `oyb_yatir`, `banka_mevduat_yatir` sınırı uygular; `oyb_teklif` `azami_tutar` döner.
+- Günlük havale: `ayarlar.havale_sinir` 1 → 15 (15 × asgari = 450.000 ₺). Yönetici panelinde üst sınır 10 → 50.
+- CB yardımcıları: Hükümet ekranında Ata/Değiştir/Görevden al/Teklifi geri çek; aday teklifi Hükümet ve Bildirimler ekranında kabul/ret eder (bu arayüz 25.10 derlemesinde kaybolmuştu). Yeni RPC: `cb_yardimcisi_teklif_geri`.
+
 ## Testler ve önizleme (Linux + Postgres 16)
 - `bash gelistirici/test/hepsi.sh` → bakımı yapılan testler: simulasyon (404 oyunculu tam ay), guvenlik, oyuncu_deneyimi (39 modülü + canlı geçişi), kalicilik. ~8 dk. `bash test/hepsi.sh eski` eski testleri de çalıştırır; onların bir kısmı ekonomi dengesi değiştiği için güncel olmayan beklentiler içerir (hata değil, test bakımı gerekiyor).
 - Eski tarayıcı testleri (`arayuz.js`, `basin_arayuz.js`, `istifa_arayuz.js`) 9 Ekim öncesinde de geçmiyordu (bayat beklentiler).

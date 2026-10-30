@@ -142,10 +142,75 @@
     try{await islem(()=>API.rpc('cb_yrd_dosya_karar',{p_id:id,p_kabul:kabul,p_gerekce:null}),kabul?'Onaylandı.':'Reddedildi.');await yenile();}catch(_){}
   };
 
+  /* ---- Atama / görevden alma (30.10.2026): CB tek dokunuşla atar, değiştirir, görevden alır ---- */
+  function atamaHtml(y) {
+    if (!y || !y.cb_miyim) return '';
+    const bek=y.bekleyen||[];
+    return `<div class="kart cb-yrd-atama"><h2>Cumhurbaşkanı Yardımcıları</h2>
+      <p class="alt" style="margin-bottom:6px">İki yardımcı atayabilirsin. Seçtiğin oyuncuya teklif gider; kabul edince göreve başlar, diğer makamlarını korur. Yeni teklif aynı makamdaki eski teklifin yerine geçer.</p>
+      ${(y.yardimcilar||[]).map(s=>{const b=bek.find(x=>x.sira===s.sira); const sira=Number(s.sira);
+        return `<div class="liste-satir" style="display:block"><div class="orta"><b>${sira}. Cumhurbaşkanı Yardımcısı</b>
+          <div class="kucuk">${s.kad?`<a class="bag" href="#" onclick="oyuncuKart('${e(s.kad)}');return false">${e(s.kad)}</a> · ${s.parti?e(s.parti.kisa):'Bağımsız'}`:'Boş makam'}
+          ${b?`<span style="color:var(--gold2)"> · Teklif bekleniyor: ${e(b.aday)}</span>`:''}</div></div>
+          <div class="satir" style="gap:8px;margin-top:8px">
+            <button class="btn ${s.kad?'ikinci':'altin'}" style="flex:1;margin:0" onclick="cbYrdAtaModal(${sira})">${s.kad?'Değiştir':'Ata'}</button>
+            ${s.kad?`<button class="btn tehlike" style="flex:1;margin:0" onclick="cbYrdGorevdenAl(${sira},'${e(s.kad)}')">Görevden al</button>`:''}
+            ${b?`<button class="btn ikinci" style="flex:1;margin:0" onclick="cbYrdTeklifGeri(${sira})">Teklifi geri çek</button>`:''}
+          </div></div>`;}).join('')}</div>`;
+  }
+  function teklifHtml(l) {
+    if (!l || !l.length) return '';
+    return `<div class="olay basvuru"><div class="baslik"><b>Cumhurbaşkanı Yardımcılığı teklifi</b><span class="rozet altin">Yanıt bekliyor</span></div>
+      ${l.map(t=>`<p class="alt" style="margin-top:6px">Cumhurbaşkanı ${e(t.teklif_eden)} seni ${Number(t.sira)}. Cumhurbaşkanı Yardımcısı olarak atamak istiyor. Kabul edersen mevcut makamların korunur.</p>
+        <div class="satir" style="gap:8px;margin-top:8px">
+          <button class="btn altin" style="flex:1;margin:0" onclick="cbYrdTeklifYanit(${Number(t.id)},true)">Kabul et</button>
+          <button class="btn ikinci" style="flex:1;margin:0" onclick="cbYrdTeklifYanit(${Number(t.id)},false)">Reddet</button></div>`).join('')}</div>`;
+  }
+  window.cbYrdTeklifKarti = teklifHtml;
+  window.cbYrdAtaModal = function (sira) {
+    if (![1,2].includes(sira)) return;
+    const m=modal(`<h3 style="font-size:19px;font-weight:800">${sira}. Cumhurbaşkanı Yardımcısı</h3>
+      <p class="alt">Listeden bir oyuncuya dokun; teklif hemen gönderilir.</p>
+      <div class="alan"><label>Oyuncu ara</label><input id="cyAra" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Kullanıcı adı"></div>
+      <div id="cyListe" style="max-height:48vh;overflow:auto"><div class="kucuk">Yükleniyor…</div></div>`);
+    const kutu=$('#cyListe',m), inp=$('#cyAra',m); let z=null;
+    const ara=async()=>{
+      try{
+        const l=await API.rpc('cb_yardimcisi_adaylari',{p_ara:inp.value.trim()})||[];
+        kutu.innerHTML=l.map(x=>`<div class="liste-satir" data-kad="${e(x.kad)}" style="cursor:pointer;${x.uygun?'':'opacity:.55'}"><div class="orta"><b>${e(x.kad)}</b> ${x.parti?`<span class="kucuk" style="color:${e(x.parti.renk)}">${e(x.parti.kisa)}</span>`:'<span class="kucuk">Bağımsız</span>'}
+          <div class="kucuk">${e(x.il||'')} · ${e(x.statu||'')}${x.bakanlik?' · '+e(x.bakanlik.replace('Bakanlığı','Bakanı')):''}${x.engel?` · <span style="color:var(--gold2)">${e(x.engel)}</span>`:''}</div></div><span class="rozet altin">Teklif et</span></div>`).join('')||'<div class="bos">Eşleşen oyuncu yok.</div>';
+      }catch(err){kutu.innerHTML=`<div class="kucuk">${e(hataCevir(err.message))}</div>`;}
+    };
+    inp.oninput=()=>{clearTimeout(z);z=setTimeout(ara,250);};
+    kutu.onclick=async ev=>{
+      const s=ev.target.closest('[data-kad]'); if(!s)return; const kad=s.dataset.kad;
+      try{await islem(()=>API.rpc('cb_yardimcisi_ata',{p_sira:sira,p_kad:kad}),`${kad} adlı oyuncuya ${sira}. yardımcılık teklifi gönderildi.`);modalKapat();await yenile();}catch(_){}
+    };
+    ara(); setTimeout(()=>{try{inp.focus();}catch(_){}} ,60);
+  };
+  window.cbYrdGorevdenAl = async function (sira,kad) {
+    if(!await onayla('Görevden al',`${kad}, ${sira}. Cumhurbaşkanı Yardımcılığı görevinden alınacak. Diğer makamları korunur.`,'Görevden al',true))return;
+    try{await islem(()=>API.rpc('cb_yardimcisi_gorevden_al',{p_sira:sira}),'Yardımcı görevden alındı.');await yenile();}catch(_){}
+  };
+  window.cbYrdTeklifGeri = async function (sira) {
+    try{await islem(()=>API.rpc('cb_yardimcisi_teklif_geri',{p_sira:sira}),'Teklif geri çekildi.');await yenile();}catch(_){}
+  };
+  window.cbYrdTeklifYanit = async function (id,kabul) {
+    if(!await onayla('Cumhurbaşkanı Yardımcılığı',kabul?'Görevi kabul edersen diğer makamların korunur.':'Teklifi reddetmek istiyor musun?',kabul?'Kabul et':'Reddet',!kabul))return;
+    try{await islem(()=>API.rpc('cb_yardimcisi_yanit',{p_teklif:id,p_kabul:kabul}),kabul?'Cumhurbaşkanı Yardımcısı olarak göreve başladın.':'Teklifi reddettin.');try{await durumYenile();}catch(_){}
+      if(document.querySelector('.ust h1')&&document.querySelector('.ust h1').textContent.trim()==='Bildirimler'&&typeof bildirimEkrani==='function')bildirimEkrani(); else await yenile();}catch(_){}
+  };
+
   const asil=hukumetHtml;
   window.hukumetHtml=hukumetHtml=async function () {
     const govde=await asil.apply(this,arguments);
-    try { const panel=await API.rpc('cb_yrd_panel'); return cbYrdHtml(panel)+govde; }
-    catch (_) { return govde; } // Yeni SQL henüz yüklenmediyse mevcut oyun kesintisiz çalışır.
+    const [panel,yrd,tek]=await Promise.all([
+      API.rpc('cb_yrd_panel').catch(()=>null),
+      API.rpc('cb_yardimcilari').catch(()=>null),
+      API.rpc('cb_yardimcisi_tekliflerim').catch(()=>[])
+    ]);
+    let ust='';
+    try { ust=teklifHtml(tek)+atamaHtml(yrd)+(panel?cbYrdHtml(panel):''); } catch (_) {} // Yeni SQL henüz yüklenmediyse mevcut oyun kesintisiz çalışır.
+    return ust+govde;
   };
 })();

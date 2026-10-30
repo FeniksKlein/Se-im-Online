@@ -2981,12 +2981,13 @@ async function oyuncuKart(kad){
 }
 async function bildirimEkrani(){
   yukleniyor("Bildirimler");
-  let liste, haklar, bakanTeklifleri = [], hedefler = {};
+  let liste, haklar, bakanTeklifleri = [], cbyTeklifleri = [], hedefler = {};
   let hy = null;
-  try { [liste, haklar, bakanTeklifleri] = await Promise.all([
+  try { [liste, haklar, bakanTeklifleri, cbyTeklifleri] = await Promise.all([
     API.rpc("bildirim_kutusu", { p_limit: 60 }),
     API.rpc("yayin_haklari"),
-    API.rpc("bakan_tekliflerim").catch(() => [])
+    API.rpc("bakan_tekliflerim").catch(() => []),
+    API.rpc("cb_yardimcisi_tekliflerim").catch(() => [])
   ]); if (haklar.length) { hy = await API.rpc("hayat"); D._hayat = hy; } }
   catch (err) { iskelet("Bildirimler", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
   // Yalnız sahibi olduğumuz kişisel bildirimler için gerçek yayın kimliğini al.
@@ -3000,6 +3001,7 @@ async function bildirimEkrani(){
   D._haklar = haklar;
   const yayinTurAd = { cb: "Ulusa sesleniş", bakan: "Bakanlık açıklaması", parti: "Parti genelgesi", vekil: "Milletvekili mesajı", belediye: "Belediye duyurusu", aday: "Seçim propagandası" };
   iskelet("Bildirimler", `
+    ${typeof window.cbYrdTeklifKarti === "function" ? window.cbYrdTeklifKarti(cbyTeklifleri) : ""}
     ${bakanTeklifleri.length ? `<div class="kart"><h2>Bakanlık tekliflerin (${bakanTeklifleri.length})</h2>
       <p class="alt">Teklifi kabul edersen mevcut görevlerin ve makamların korunur. Bakanlık ek görev olarak başlar.</p>
       ${bakanTeklifleri.map(t => `<div class="liste-satir" style="display:block">
