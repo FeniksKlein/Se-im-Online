@@ -194,11 +194,11 @@ const BILDIRIM = { okundu: S(-30), yeni: 2, liste: [
       await page.waitForSelector('#modal [data-secim="12"]');
       await page.click('#modal button.btn');
       await page.evaluate(()=>{D.sekme='sohbet';D.yigin=[];return sohbetListe();});
-      await page.waitForSelector('.dm-merkez');
-      assert.ok(await page.evaluate(()=>document.querySelector('.dm-merkez').getBoundingClientRect().top < document.querySelector('[data-sohbet-kanal]').getBoundingClientRect().top));
+      // 30.10.2026: Mesajlar tasarımı — sohbet sekmesi özel mesajlarla (Özel) açılır.
+      await page.waitForSelector('.sh[data-sh-ekran="ana"] .sh-seg button.on[data-v="ozel"]');
       await tasma('Özel mesaj listesi');await foto('mesajlar');
       await page.evaluate(()=>ekranAc(()=>ozelEkrani('Ekin')));
-      await page.waitForSelector('.dm-sohbet .balon');
+      await page.waitForSelector('.shk-dm .shm, .shk-dm .shm-bos');
       await tasma('Özel konuşma');await foto('dm');
       await page.close();
     }

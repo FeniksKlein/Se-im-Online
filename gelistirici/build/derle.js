@@ -59,6 +59,8 @@ for (const m of ['sirket_raporu.js','cuzdan_hareketleri.js','bakanlik_masasi.js'
 // Premium arayüz katmanı: 5'li alt menü + Menü çekmecesi, bölüm kurum kartları, kimlik kartı (en son yüklenir).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','premium_arayuz.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','rekabet.js'),'utf8')+'</script></body>');
+// 30.10.2026: Mesajlar (Sohbet yeniden tasarımı) en son yüklenir: eski sohbet ekranlarının yerine geçer.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','sohbet_tasarim.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
