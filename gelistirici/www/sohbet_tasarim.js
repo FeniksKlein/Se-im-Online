@@ -481,7 +481,7 @@
       (o.sag || '') + '</header>' +
       '<div class="akis shk-akis" id="akis" role="log" aria-live="polite"><div class="shk-yuk"><span></span><span></span><span></span></div></div>' +
       '<button type="button" class="shk-asagi" id="shkAsagi" hidden aria-label="En yeni mesajlara in">' + I.asagi + '<i id="shkAsagiSay" hidden></i></button>' +
-      '<div class="yazbar shk-yaz" id="yazbar"><div class="shk-kutu"><textarea id="yaz" rows="1" maxlength="' + (o.ozel ? 1000 : 500) + '" placeholder="' + (o.ozel ? 'Mesaj yaz' : 'Bu kanala yaz') + '" enterkeyhint="send"></textarea></div>' +
+      '<div class="yazbar shk-yaz" id="yazbar"><div class="shk-kutu"><textarea id="yaz" rows="1" autocomplete="on" autocorrect="on" autocapitalize="sentences" spellcheck="true" inputmode="text" maxlength="' + (o.ozel ? 1000 : 500) + '" placeholder="' + (o.ozel ? 'Mesaj yaz' : 'Bu kanala yaz') + '" enterkeyhint="send"></textarea></div>' +
       '<button type="button" id="gonder" class="shk-gonder" aria-label="Gönder" disabled>' + I.gonder + '</button></div></div>';
     var ta = $1('#yaz'), gb = $1('#gonder');
     ta.addEventListener('input', function () {
