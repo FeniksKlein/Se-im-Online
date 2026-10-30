@@ -142,62 +142,166 @@
     try{await islem(()=>API.rpc('cb_yrd_dosya_karar',{p_id:id,p_kabul:kabul,p_gerekce:null}),kabul?'Onaylandı.':'Reddedildi.');await yenile();}catch(_){}
   };
 
-  /* ---- Atama / görevden alma (30.10.2026): CB tek dokunuşla atar, değiştirir, görevden alır ---- */
+  /* ---- Cumhurbaşkanlığı makam kimliği (30.10.2026): mühür, makam plakaları, resmî yazı biçiminde teklif ---- */
+  const MUHUR = '<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".6"/><circle cx="24" cy="24" r="18.6" fill="none" stroke="currentColor" stroke-width=".8" stroke-dasharray="1.1 2.1" opacity=".7"/>'
+    + '<path d="M24 11.5l1.4 2.9 3.2.5-2.3 2.2.5 3.2-2.8-1.5-2.8 1.5.5-3.2-2.3-2.2 3.2-.5z" fill="currentColor"/><path d="M14 34.5h20M16 34.5v-9M32 34.5v-9M21.3 34.5v-9M26.7 34.5v-9M13.5 25.5L24 20l10.5 5.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+  const KOLTUK = '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M15 21V12.5A3.5 3.5 0 0 1 18.5 9h11a3.5 3.5 0 0 1 3.5 3.5V21M11 22.5h26v8H11zM14 30.5V38M34 30.5V38" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const SIRA_AD = { 1:'Birinci', 2:'İkinci' };
+  const TRH = new Intl.DateTimeFormat('tr-TR',{timeZone:'Europe/Istanbul',day:'numeric',month:'long',year:'numeric'});
+  const trh = t => { try { return TRH.format(new Date(t)); } catch (_) { return ''; } };
+  const portreYap = (kad,renk,boy) => { try { return portre(kad,renk,boy); } catch (_) { return `<span class="cbm-bas">${e(String(kad||'?').slice(0,2).toLocaleUpperCase('tr-TR'))}</span>`; } };
+  function tazele(k){ try { if (typeof portreleriTazele==='function') portreleriTazele(k); } catch (_) {} }
+
+  function serit(alt, baslik) {
+    return `<div class="cbm-serit"><span class="cbm-muhur">${MUHUR}</span><div><small>${e(alt)}</small><b>${e(baslik)}</b></div></div>`;
+  }
   function atamaHtml(y) {
     if (!y || !y.cb_miyim) return '';
     const bek=y.bekleyen||[];
-    return `<div class="kart cb-yrd-atama"><h2>Cumhurbaşkanı Yardımcıları</h2>
-      <p class="alt" style="margin-bottom:6px">İki yardımcı atayabilirsin. Seçtiğin oyuncuya teklif gider; kabul edince göreve başlar, diğer makamlarını korur. Yeni teklif aynı makamdaki eski teklifin yerine geçer.</p>
-      ${(y.yardimcilar||[]).map(s=>{const b=bek.find(x=>x.sira===s.sira); const sira=Number(s.sira);
-        return `<div class="liste-satir" style="display:block"><div class="orta"><b>${sira}. Cumhurbaşkanı Yardımcısı</b>
-          <div class="kucuk">${s.kad?`<a class="bag" href="#" onclick="oyuncuKart('${e(s.kad)}');return false">${e(s.kad)}</a> · ${s.parti?e(s.parti.kisa):'Bağımsız'}`:'Boş makam'}
-          ${b?`<span style="color:var(--gold2)"> · Teklif bekleniyor: ${e(b.aday)}</span>`:''}</div></div>
-          <div class="satir" style="gap:8px;margin-top:8px">
-            <button class="btn ${s.kad?'ikinci':'altin'}" style="flex:1;margin:0" onclick="cbYrdAtaModal(${sira})">${s.kad?'Değiştir':'Ata'}</button>
-            ${s.kad?`<button class="btn tehlike" style="flex:1;margin:0" onclick="cbYrdGorevdenAl(${sira},'${e(s.kad)}')">Görevden al</button>`:''}
-            ${b?`<button class="btn ikinci" style="flex:1;margin:0" onclick="cbYrdTeklifGeri(${sira})">Teklifi geri çek</button>`:''}
-          </div></div>`;}).join('')}</div>`;
+    const plaka = s => {
+      const b=bek.find(x=>x.sira===s.sira), sira=Number(s.sira), renk=s.parti&&s.parti.renk;
+      return `<div class="cbm-plaka${s.kad?'':' bos'}">
+        <div class="cbm-sira"><span>${sira}</span>${SIRA_AD[sira]||''} Yardımcı</div>
+        <div class="cbm-kisi">${s.kad?`<button type="button" class="cbm-portre" onclick="oyuncuKart('${e(s.kad)}')" style="--pr:${e(renk||'#8a93b3')}">${portreYap(s.kad,renk,58)}</button>`:`<span class="cbm-koltuk">${KOLTUK}</span>`}
+          <b>${s.kad?e(s.kad):'Makam boş'}</b>
+          <small>${s.kad?(s.parti?e(s.parti.kisa):'Bağımsız')+(s.bas?' · '+e(trh(s.bas))+"'den beri":''):'Atama bekliyor'}</small></div>
+        ${b?`<div class="cbm-bekle">Teklif yazısı iletildi<br><b>${e(b.aday)}</b></div>`:''}
+        <div class="cbm-eylem">
+          <button type="button" class="cbm-btn ana" onclick="cbYrdAtaModal(${sira})">${s.kad?'Değiştir':'Ata'}</button>
+          ${s.kad?`<button type="button" class="cbm-btn kirmizi" onclick="cbYrdGorevdenAl(${sira},'${e(s.kad)}')">Görevden al</button>`:''}
+          ${b?`<button type="button" class="cbm-btn" onclick="cbYrdTeklifGeri(${sira})">Teklifi geri çek</button>`:''}
+        </div></div>`;
+    };
+    return `<section class="cbm">${serit('Türkiye Cumhuriyeti Cumhurbaşkanlığı','Cumhurbaşkanı Yardımcıları')}
+      <div class="cbm-plakalar">${(y.yardimcilar||[]).map(plaka).join('')}</div>
+      <p class="cbm-dip">Atama, oyuncuya resmî teklif yazısıyla bildirilir; kabul ettiği an göreve başlar ve diğer makamlarını korur. Aynı makama yeni teklif, öncekinin yerine geçer.</p></section>`;
+  }
+  function yaziHtml(o) {
+    return `<article class="cbm-yazi">
+      <header><span class="cbm-muhur">${MUHUR}</span><div><b>T.C.</b><b>CUMHURBAŞKANLIĞI</b><small>Özel Kalem Müdürlüğü</small></div></header>
+      <div class="cbm-kunye"><span>Sayı : ${e(o.sayi)}</span><span>${e(o.tarih)}</span></div>
+      <div class="cbm-kunye"><span>Konu : ${e(o.konu)}</span></div>
+      <p class="cbm-hitap">Sayın ${e(o.alici)},</p>
+      <p>${o.govde}</p>
+      <div class="cbm-imza"><span>${e(o.imzalayan)}</span><small>Cumhurbaşkanı</small></div>
+    </article>`;
   }
   function teklifHtml(l) {
     if (!l || !l.length) return '';
-    return `<div class="olay basvuru"><div class="baslik"><b>Cumhurbaşkanı Yardımcılığı teklifi</b><span class="rozet altin">Yanıt bekliyor</span></div>
-      ${l.map(t=>`<p class="alt" style="margin-top:6px">Cumhurbaşkanı ${e(t.teklif_eden)} seni ${Number(t.sira)}. Cumhurbaşkanı Yardımcısı olarak atamak istiyor. Kabul edersen mevcut makamların korunur.</p>
-        <div class="satir" style="gap:8px;margin-top:8px">
-          <button class="btn altin" style="flex:1;margin:0" onclick="cbYrdTeklifYanit(${Number(t.id)},true)">Kabul et</button>
-          <button class="btn ikinci" style="flex:1;margin:0" onclick="cbYrdTeklifYanit(${Number(t.id)},false)">Reddet</button></div>`).join('')}</div>`;
+    const ben=kendiKad()||'';
+    return `<section class="cbm cbm-teklif">${serit('Size resmî yazı ulaştı','Atama teklifi')}
+      ${l.map(t=>yaziHtml({ sayi:`CB.ÖK-${new Date(t.zaman||Date.now()).getFullYear()}/${Number(t.id)}`, tarih:trh(t.zaman||Date.now()),
+        konu:`${SIRA_AD[t.sira]||t.sira+'.'} Cumhurbaşkanı Yardımcılığı`, alici:ben, imzalayan:t.teklif_eden,
+        govde:`Anayasa ve Cumhurbaşkanlığı kararnameleri çerçevesinde, <b>${Number(t.sira)}. Cumhurbaşkanı Yardımcılığı</b> görevine atanmanız uygun görülmüştür. Görevi kabul etmeniz hâlinde mevcut makamlarınız korunacaktır.<br><br>Bilgilerinize rica ederim.` })
+        +`<div class="cbm-eylem genis"><button type="button" class="cbm-btn ana" onclick="cbYrdTeklifYanit(${Number(t.id)},true)">Görevi kabul ediyorum</button>
+          <button type="button" class="cbm-btn" onclick="cbYrdTeklifYanit(${Number(t.id)},false)">Teşekkür ederek reddet</button></div>`).join('')}</section>`;
   }
   window.cbYrdTeklifKarti = teklifHtml;
+
   window.cbYrdAtaModal = function (sira) {
     if (![1,2].includes(sira)) return;
-    const m=modal(`<h3 style="font-size:19px;font-weight:800">${sira}. Cumhurbaşkanı Yardımcısı</h3>
-      <p class="alt">Listeden bir oyuncuya dokun; teklif hemen gönderilir.</p>
-      <div class="alan"><label>Oyuncu ara</label><input id="cyAra" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Kullanıcı adı"></div>
-      <div id="cyListe" style="max-height:48vh;overflow:auto"><div class="kucuk">Yükleniyor…</div></div>`);
-    const kutu=$('#cyListe',m), inp=$('#cyAra',m); let z=null;
+    const m=modal(`<div class="cbm-modal">${serit('Atama teklifi',`${sira}. Cumhurbaşkanı Yardımcısı`)}
+      <p class="cbm-dip" style="margin:4px 0 10px">Aday seçin; teklif yazısını göndermeden önce önizleyeceksiniz.</p>
+      <label class="cbm-ara"><input id="cyAra" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Oyuncu adıyla arayın"></label>
+      <div id="cyListe" class="cbm-liste"><div class="kucuk">Yükleniyor…</div></div></div>`);
+    const kutu=$('#cyListe',m), inp=$('#cyAra',m); let z=null, son=[];
     const ara=async()=>{
       try{
-        const l=await API.rpc('cb_yardimcisi_adaylari',{p_ara:inp.value.trim()})||[];
-        kutu.innerHTML=l.map(x=>`<div class="liste-satir" data-kad="${e(x.kad)}" style="cursor:pointer;${x.uygun?'':'opacity:.55'}"><div class="orta"><b>${e(x.kad)}</b> ${x.parti?`<span class="kucuk" style="color:${e(x.parti.renk)}">${e(x.parti.kisa)}</span>`:'<span class="kucuk">Bağımsız</span>'}
-          <div class="kucuk">${e(x.il||'')} · ${e(x.statu||'')}${x.bakanlik?' · '+e(x.bakanlik.replace('Bakanlığı','Bakanı')):''}${x.engel?` · <span style="color:var(--gold2)">${e(x.engel)}</span>`:''}</div></div><span class="rozet altin">Teklif et</span></div>`).join('')||'<div class="bos">Eşleşen oyuncu yok.</div>';
+        son=await API.rpc('cb_yardimcisi_adaylari',{p_ara:inp.value.trim()})||[];
+        kutu.innerHTML=son.map(x=>`<button type="button" class="cbm-aday${x.uygun?'':' pasif'}" data-kad="${e(x.kad)}"${x.uygun?'':' disabled'}>
+          <span class="cbm-aday-p" style="--pr:${e(x.parti&&x.parti.renk||'#8a93b3')}">${portreYap(x.kad,x.parti&&x.parti.renk,40)}</span>
+          <span class="cbm-aday-m"><b>${e(x.kad)}</b><small>${[x.parti?x.parti.kisa:'Bağımsız',x.il,x.bakanlik?x.bakanlik.replace('Bakanlığı','Bakanı'):x.statu].filter(Boolean).map(e).join(' · ')}${x.engel?` · <i>${e(x.engel)}</i>`:''}</small></span>
+          <span class="cbm-ok">›</span></button>`).join('')||'<div class="bos">Eşleşen oyuncu yok.</div>';
+        tazele(kutu);
       }catch(err){kutu.innerHTML=`<div class="kucuk">${e(hataCevir(err.message))}</div>`;}
     };
     inp.oninput=()=>{clearTimeout(z);z=setTimeout(ara,250);};
-    kutu.onclick=async ev=>{
-      const s=ev.target.closest('[data-kad]'); if(!s)return; const kad=s.dataset.kad;
-      try{await islem(()=>API.rpc('cb_yardimcisi_ata',{p_sira:sira,p_kad:kad}),`${kad} adlı oyuncuya ${sira}. yardımcılık teklifi gönderildi.`);modalKapat();await yenile();}catch(_){}
+    kutu.onclick=ev=>{
+      const s=ev.target.closest('[data-kad]'); if(!s||s.disabled)return; const kad=s.dataset.kad;
+      const govde=m.querySelector('.cbm-modal');
+      govde.innerHTML=`${yaziHtml({ sayi:`CB.ÖK-${new Date().getFullYear()}/…`, tarih:trh(Date.now()), konu:`${SIRA_AD[sira]} Cumhurbaşkanı Yardımcılığı`, alici:kad, imzalayan:kendiKad()||'',
+          govde:`Anayasa ve Cumhurbaşkanlığı kararnameleri çerçevesinde, <b>${sira}. Cumhurbaşkanı Yardımcılığı</b> görevine atanmanız uygun görülmüştür. Görevi kabul etmeniz hâlinde mevcut makamlarınız korunacaktır.<br><br>Bilgilerinize rica ederim.` })}
+        <div class="cbm-eylem genis"><button type="button" class="cbm-btn ana" id="cyGonder">Mühürle ve gönder</button><button type="button" class="cbm-btn" id="cyGeri">Başka aday seç</button></div>`;
+      $('#cyGeri',m).onclick=()=>{modalKapat();window.cbYrdAtaModal(sira);};
+      $('#cyGonder',m).onclick=async()=>{
+        const b=$('#cyGonder',m); b.disabled=true; b.classList.add('muhur');
+        try{await islem(()=>API.rpc('cb_yardimcisi_ata',{p_sira:sira,p_kad:kad}),`Teklif yazısı ${kad} adlı oyuncuya iletildi.`);modalKapat();await yenile();}catch(_){b.disabled=false;b.classList.remove('muhur');}
+      };
     };
     ara(); setTimeout(()=>{try{inp.focus();}catch(_){}} ,60);
   };
   window.cbYrdGorevdenAl = async function (sira,kad) {
-    if(!await onayla('Görevden al',`${kad}, ${sira}. Cumhurbaşkanı Yardımcılığı görevinden alınacak. Diğer makamları korunur.`,'Görevden al',true))return;
-    try{await islem(()=>API.rpc('cb_yardimcisi_gorevden_al',{p_sira:sira}),'Yardımcı görevden alındı.');await yenile();}catch(_){}
+    if(!await onayla('Görevden alma kararı',`${kad}, ${sira}. Cumhurbaşkanı Yardımcılığı görevinden alınacaktır. Karar kendisine resmî bildirimle iletilir; diğer makamları korunur.`,'Kararı imzala',true))return;
+    try{await islem(()=>API.rpc('cb_yardimcisi_gorevden_al',{p_sira:sira}),'Görevden alma kararı yürürlüğe girdi.');await yenile();}catch(_){}
   };
   window.cbYrdTeklifGeri = async function (sira) {
-    try{await islem(()=>API.rpc('cb_yardimcisi_teklif_geri',{p_sira:sira}),'Teklif geri çekildi.');await yenile();}catch(_){}
+    if(!await onayla('Teklifi geri çek',`${sira}. Cumhurbaşkanı Yardımcılığı için gönderilen teklif yazısı geri çekilecek.`,'Geri çek'))return;
+    try{await islem(()=>API.rpc('cb_yardimcisi_teklif_geri',{p_sira:sira}),'Teklif yazısı geri çekildi.');await yenile();}catch(_){}
   };
+
+  (function stil(){
+    if (document.getElementById('cbmStil')) return;
+    const G='#d9b25b', G2='#e8cf8f';
+    const css=`
+.cbm{position:relative;margin:12px 0;padding:16px 14px 14px;border-radius:18px;background:linear-gradient(180deg,rgba(217,178,91,.07),rgba(217,178,91,0) 46%),var(--panel,#151E3D);border:1px solid rgba(217,178,91,.26);box-shadow:0 18px 40px -26px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.04);overflow:hidden}
+.cbm::before{content:"";position:absolute;inset:6px;border:1px solid rgba(217,178,91,.10);border-radius:13px;pointer-events:none}
+.cbm-serit{display:flex;align-items:center;gap:12px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid rgba(217,178,91,.22)}
+.cbm-serit small{display:block;font-size:11.5px;letter-spacing:.5px;color:#c9b88f}
+.cbm-serit b{display:block;font-family:var(--disp);font-size:21px;font-weight:800;color:#f3ead2;letter-spacing:.2px;line-height:1.15}
+.cbm-muhur{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:${G};background:radial-gradient(circle at 50% 30%,rgba(217,178,91,.22),rgba(217,178,91,.04));box-shadow:0 0 0 1px rgba(217,178,91,.4) inset,0 8px 20px -10px rgba(217,178,91,.6)}
+.cbm-muhur svg{width:40px;height:40px}
+.cbm-plakalar{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cbm-plaka{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;padding:12px 10px;border-radius:14px;background:rgba(8,12,30,.45);border:1px solid rgba(217,178,91,.2)}
+.cbm-plaka.bos{border-style:dashed;background:rgba(8,12,30,.25)}
+.cbm-sira{display:flex;align-items:center;gap:6px;font-size:11.5px;letter-spacing:.4px;color:#c9b88f}
+.cbm-sira span{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-family:var(--disp);font-weight:800;font-size:12px;color:#1b1607;background:linear-gradient(135deg,${G2},#b8913f)}
+.cbm-kisi{display:flex;flex-direction:column;align-items:center;gap:3px;margin:10px 0 8px;min-width:0;width:100%}
+.cbm-portre{padding:0;border:0;background:none;cursor:pointer;border-radius:50%;box-shadow:0 0 0 2px #0e1530,0 0 0 3.5px var(--pr),0 10px 22px -10px rgba(0,0,0,.8)}
+.cbm-portre .portre,.cbm-portre svg.portre{width:58px!important;height:58px!important;border-radius:50%;display:block}
+.cbm-koltuk{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;color:rgba(217,178,91,.55);border:1px dashed rgba(217,178,91,.4)}.cbm-koltuk svg{width:30px;height:30px}
+.cbm-kisi b{margin-top:5px;font-family:var(--disp);font-size:16.5px;color:#f3ead2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cbm-plaka.bos .cbm-kisi b{color:#a9b2cf}
+.cbm-kisi small{font-size:11.5px;color:#a9b2cf;line-height:1.35}
+.cbm-bas{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#283563;font-weight:800}
+.cbm-bekle{width:100%;margin-bottom:8px;padding:6px 8px;border-radius:9px;font-size:11.5px;line-height:1.35;color:#c9b88f;background:rgba(217,178,91,.08);border:1px solid rgba(217,178,91,.2)}.cbm-bekle b{color:${G2}}
+.cbm-eylem{display:flex;flex-direction:column;gap:6px;width:100%;margin-top:auto}
+.cbm-eylem.genis{flex-direction:row;margin-top:12px}.cbm-eylem.genis .cbm-btn{flex:1}
+.cbm-btn{min-height:38px;padding:0 10px;border-radius:10px;border:1px solid rgba(217,178,91,.34);background:rgba(217,178,91,.06);color:${G2};font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cbm-btn:active{transform:scale(.97)}
+.cbm-btn.ana{border:0;background:linear-gradient(135deg,${G2},#b8913f);color:#1b1607;box-shadow:0 8px 18px -10px rgba(217,178,91,.9)}
+.cbm-btn.kirmizi{border-color:rgba(240,69,75,.38);background:rgba(240,69,75,.07);color:#ff8f94}
+.cbm-btn.muhur{animation:cbmMuhur .6s ease}
+@keyframes cbmMuhur{40%{transform:scale(.9) rotate(-3deg)}100%{transform:none}}
+.cbm-dip{margin:12px 2px 0;font-size:12px;line-height:1.5;color:#a9b2cf}
+.cbm-yazi{position:relative;padding:18px 16px 16px;border-radius:6px;background:#f6f2e7;color:#26221a;font-family:Georgia,"Times New Roman",serif;box-shadow:0 18px 36px -18px rgba(0,0,0,.85),0 0 0 1px rgba(0,0,0,.08) inset}
+.cbm-yazi::after{content:"";position:absolute;inset:0;border-radius:6px;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.012) 0 2px,transparent 2px 4px)}
+.cbm-yazi header{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;margin-bottom:12px}
+.cbm-yazi header .cbm-muhur{color:#9c7a2c;background:none;box-shadow:0 0 0 1px rgba(156,122,44,.45) inset}
+.cbm-yazi header b{display:block;font-size:13.5px;letter-spacing:1.4px;font-weight:700}.cbm-yazi header small{display:block;font-size:12px;color:#5f584a;font-style:italic}
+.cbm-kunye{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:#4b4538;margin-top:2px}
+.cbm-hitap{margin:14px 0 8px!important;font-weight:700}
+.cbm-yazi p{margin:0;font-size:15px;line-height:1.6;color:#26221a}
+.cbm-imza{display:flex;flex-direction:column;align-items:flex-end;margin-top:16px;padding-top:8px}
+.cbm-imza span{font-family:"Snell Roundhand","Segoe Script","Brush Script MT",cursive;font-size:22px;color:#1f3a7a;line-height:1;transform:rotate(-4deg)}
+.cbm-imza small{margin-top:6px;padding-top:4px;border-top:1px solid #8e8572;min-width:120px;text-align:center;font-size:12px;color:#4b4538;letter-spacing:.4px}
+.cbm-teklif .cbm-yazi{margin-bottom:2px}
+.cbm-modal .cbm-serit{margin-top:-2px}
+.cbm-ara{display:block}.cbm-ara input{width:100%;height:44px;padding:0 14px;border-radius:12px;border:1px solid rgba(217,178,91,.3);background:rgba(8,12,30,.5);color:var(--txt);font:inherit;font-size:15px;outline:none;box-sizing:border-box}
+.cbm-ara input:focus{border-color:rgba(217,178,91,.7)}
+.cbm-liste{max-height:48vh;overflow:auto;margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.cbm-aday{display:flex;align-items:center;gap:11px;width:100%;padding:9px 10px;border-radius:12px;border:1px solid var(--line,rgba(164,184,255,.1));background:rgba(255,255,255,.03);color:var(--txt);font:inherit;text-align:left;cursor:pointer}
+.cbm-aday:active{background:rgba(217,178,91,.08)}.cbm-aday.pasif{opacity:.5;cursor:default}
+.cbm-aday-p{flex:none;border-radius:50%;box-shadow:0 0 0 2px var(--pr)}.cbm-aday-p .portre,.cbm-aday-p svg.portre{width:40px!important;height:40px!important;border-radius:50%;display:block}.cbm-aday-p .cbm-bas{width:40px;height:40px;font-size:13px}
+.cbm-aday-m{flex:1;min-width:0;display:flex;flex-direction:column}.cbm-aday-m b{font-size:15px}.cbm-aday-m small{font-size:12px;color:var(--mut,#98A4C4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cbm-aday-m i{font-style:normal;color:${G2}}
+.cbm-ok{color:${G};font-size:22px}
+.cb-yrd-masasi,.cb-yrd-dosyalar{border:1px solid rgba(217,178,91,.22)!important;background:linear-gradient(180deg,rgba(217,178,91,.05),transparent 40%),var(--panel,#151E3D)!important}
+.cb-yrd-masasi h2,.cb-yrd-dosyalar h2{font-family:var(--disp);color:#f3ead2;padding-bottom:8px;border-bottom:1px solid rgba(217,178,91,.2)}
+@media (max-width:340px){.cbm-plakalar{grid-template-columns:1fr}}`;
+    const st=document.createElement('style'); st.id='cbmStil'; st.textContent=css; (document.head||document.documentElement).appendChild(st);
+  })();
   window.cbYrdTeklifYanit = async function (id,kabul) {
-    if(!await onayla('Cumhurbaşkanı Yardımcılığı',kabul?'Görevi kabul edersen diğer makamların korunur.':'Teklifi reddetmek istiyor musun?',kabul?'Kabul et':'Reddet',!kabul))return;
-    try{await islem(()=>API.rpc('cb_yardimcisi_yanit',{p_teklif:id,p_kabul:kabul}),kabul?'Cumhurbaşkanı Yardımcısı olarak göreve başladın.':'Teklifi reddettin.');try{await durumYenile();}catch(_){}
+    if(!await onayla(kabul?'Göreve kabul':'Teklife ret',kabul?'Cumhurbaşkanı Yardımcılığı görevini kabul ediyorsunuz. Karar resmî olarak kayda geçer; diğer makamlarınız korunur.':'Teklif yazısı teşekkürle reddedilecek ve Cumhurbaşkanına bildirilecek.',kabul?'Kabul ediyorum':'Reddet',!kabul))return;
+    try{await islem(()=>API.rpc('cb_yardimcisi_yanit',{p_teklif:id,p_kabul:kabul}),kabul?'Cumhurbaşkanı Yardımcılığı görevine başladınız.':'Teklif reddedildi.');try{await durumYenile();}catch(_){}
       if(document.querySelector('.ust h1')&&document.querySelector('.ust h1').textContent.trim()==='Bildirimler'&&typeof bildirimEkrani==='function')bildirimEkrani(); else await yenile();}catch(_){}
   };
 
