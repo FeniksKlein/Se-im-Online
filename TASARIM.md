@@ -931,3 +931,8 @@ Amaç oyuncunun her gün belli saatte oyunda olması ve başkalarının ona ihti
 - Görev Gündem'in en üstünde kırmızı kartla ve Bekleyen işlerde görünür; oy veren +1 kıdem kazanır.
 - Süreler kesin: 8 saat ortada yoksa yedek, 24 saatte çoğunluk yoksa değişim + 24 saat, 48. saatte verilen oylarla karar (bozma için en az 2 oy). Görevi ihmal eden 14 gün jüriye çağrılmaz; Yüksek Mahkeme'de ihmal atayan makama bildirilir.
 
+## 24. Meclis vitrini: sandalye dağılımı ve öz geçmiş (2026-10-31, modül 156)
+- TBMM sitesinin düzeni örnek alındı: koyu bant başlık, altın renkli büyük harf parti adları, sağda üye sayısı, Toplam satırı; vekil listesinde portre, büyük harf ad, ince çizgi, "İL MİLLETVEKİLİ", sağ altta ÖZ GEÇMİŞ.
+- Yasama dönemi kavramı oyuna girdi (1., 2. Dönem; ilk seçim öncesi Kuruluş Meclisi). Tüm dönem milletvekili listesi kalıcı bir onur listesi işlevi görür.
+- Öz geçmiş sayfası vekilin Meclis karnesidir: teklif, yasalaşan, kanun oyu katılım oranı, akşam oturumu, soru önergesi, gensoru; Kürsü hesabı aynı sayfada.
+

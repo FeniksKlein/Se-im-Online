@@ -9,6 +9,12 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 31.10.2026 — Meclis sandalye dağılımı ve milletvekili öz geçmişi (2026.10.31-5, canlıya uygulandı, modül 156)
+- İstek (Ercan): gerçek TBMM sitesindeki gibi partilerin sandalye dağılımı (hep güncel); partiye dokununca vekillerin portresi, adı, ili; vekile dokununca öz geçmiş ve Kürsü hesabı.
+- **Sunucu:** `oyun.mv_donemleri()` (vekil çıkarmış her genel/erken MV seçimi bir yasama dönemi; ilk seçimden önceki atamalar 0 = "Kuruluş Meclisi"), `oyun.mv_donem_no(secim, bas)`, `oyun.vekil_gorevleri(u)`; RPC'ler `public.meclis_sandalye(p_donem)`, `public.meclis_vekiller(p_donem, p_parti, p_bagimsiz)` (0 = tüm dönemler), `public.milletvekili_ozgecmis(p_kad)`. Güncel dönem anlık (vekilin bugünkü partisi); geçmiş dönemler seçildikleri partiye göre. Yasaklı hesaplar sayılmaz.
+- `oyun.rozetler`: "Kıdemli Vekil" artık farklı yasama dönemi sayısına bakar (aynı dönemde tekrar girişler sayılmaz).
+- **Arayüz:** `gelistirici/www/meclis_sandalye.js`. Meclis › Sandalyeler sekmesindeki "Partilerin sandalyeleri" kartı TBMM düzenindeki tabloyla değişti (Parti Adı / Üye Sayısı, Bağımsız, Boş sandalye, Toplam). `meclisSandalyeEkrani` (dönem seçimi, dakikada bir canlı tazeleme), `meclisVekilListesiEkrani` (portre, AD, "İL MİLLETVEKİLİ", görevler, ÖZ GEÇMİŞ), `milletvekiliOzgecmisEkrani` (öz geçmiş, yasama dönemleri, meclis çalışmaları, Kürsü hesabı, diğer görevler, rozetler). Vekil oyuncu kartına "Milletvekili öz geçmişi" düğmesi. Test: `gelistirici/test/meclis_sandalye_arayuz.js`.
+
 ## 31.10.2026 — Yargı düzeni: istinaf jürisi ve Yüksek Mahkeme işler halde (2026.10.31-4, canlıya uygulandı, modül 155)
 - Sorun (Ercan): itirazda üst mahkeme (istinaf jürisi) üyeleri atandığını bilmiyor ya da oy vermiyor, dava sonuçlanmıyor; taraf partilerden jüri seçilmesin.
 - **Tarafsızlık:** `oyun.dava_taraf_partileri(d)` (davacı/davalı parti, davacı-davalı-ek tarafların partileri). Bu partilerin üyeleri jüriye seçilmez (son çare kura dahil); Yüksek Mahkeme `dava_heyeti` de taraf partinin üyesi yargıcı çıkarır.
