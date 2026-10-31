@@ -560,21 +560,34 @@
 
   /* ---------- canlı sayaç ve tazeleme ---------- */
   function zamanlayiciKur() {
-    if (M.zamanlayici) return;
-    M.zamanlayici = setInterval(function () {
-      if (!aktifMi()) { clearInterval(M.zamanlayici); M.zamanlayici = null; clearInterval(M.tazele); M.tazele = null; return; }
-      var n = suan();
-      document.querySelectorAll('#icerik [data-mz-bitis]').forEach(function (el) {
-        var ms = new Date(el.getAttribute('data-mz-bitis')).getTime() - n; el.textContent = geri(ms);
-        if (el.classList.contains('mz-sayac')) el.classList.toggle('acil', ms > 0 && ms < 600000);
-      });
-    }, 1000);
-    clearInterval(M.tazele);
-    M.tazele = setInterval(function () {
+    if (!M.zamanlayici) {
+      M.zamanlayici = setInterval(function () {
+        if (!aktifMi()) {
+          clearInterval(M.zamanlayici); M.zamanlayici = null;
+          if (M.tazele) { clearInterval(M.tazele); M.tazele = null; }
+          if (window.CANLI && CANLI.ekranKopar) CANLI.ekranKopar();
+          return;
+        }
+        var n = suan();
+        document.querySelectorAll('#icerik [data-mz-bitis]').forEach(function (el) {
+          var ms = new Date(el.getAttribute('data-mz-bitis')).getTime() - n; el.textContent = geri(ms);
+          if (el.classList.contains('mz-sayac')) el.classList.toggle('acil', ms > 0 && ms < 600000);
+        });
+      }, 1000);
+    }
+    if (M.tazele) { clearInterval(M.tazele); M.tazele = null; }
+    var anahtarlar = M.ekran === 'lot' && M.lotId ? ['muzayede:lot:' + M.lotId]
+      : (M.ekran === 'salon' && M.sekme === 'salon' ? ['muzayede:salon'] : []);
+    var tazele = function () {
       if (!aktifMi() || document.hidden || (window.YUK && typeof YUK.otomatik === 'function' && !YUK.otomatik())) return;
       if (document.getElementById('modal')) return;
-      if (M.ekran === 'lot' && M.lotId && document.querySelector('#icerik .mz-pey')) lotCiz(true);
-      else if (M.ekran === 'salon' && M.sekme === 'salon' && document.querySelector('#icerik .mz-izgara,#icerik .mz-bos')) salonCiz(true);
-    }, 8000 + Math.floor(Math.random() * 2000));
+      if (M.ekran === 'lot' && M.lotId && document.querySelector('#icerik .mz-pey')) return lotCiz(true);
+      if (M.ekran === 'salon' && M.sekme === 'salon' && document.querySelector('#icerik .mz-izgara,#icerik .mz-bos')) return salonCiz(true);
+    };
+    if (!anahtarlar.length) { if (window.CANLI && CANLI.ekranKopar) CANLI.ekranKopar(); return; }
+    if (window.CANLI && CANLI.izle) {
+      CANLI.izle({ anahtarlar: anahtarlar, tazele: tazele, hizliMs: 8000, yedekMs: 90000, yayilim: 2000 });
+      M.tazele = D.canli;
+    } else M.tazele = setInterval(tazele, 8000 + Math.floor(Math.random() * 2000));
   }
 })();

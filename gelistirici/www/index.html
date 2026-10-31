@@ -2889,7 +2889,8 @@ async function sohbetEkrani(kanal){
   };
   const g = $("#gonder"); if (g) g.onclick = gonder;
   const ta = $("#yaz"); if (ta) ta.addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.shiftKey && window.innerWidth > 700) { ev.preventDefault(); gonder(); } });
-  D.canli = setInterval(() => { if (!document.hidden && YUK.otomatik()) yeniGetir(); }, 6000 + Math.floor(Math.random() * 1500));
+  if (window.CANLI && CANLI.izle) CANLI.izle({ anahtarlar: [CANLI.sohbetAnahtari(kanal)].filter(Boolean), tazele: () => { if (!document.hidden && YUK.otomatik()) return yeniGetir(); }, hizliMs: 6000, yedekMs: 90000 });
+  else D.canli = setInterval(() => { if (!document.hidden && YUK.otomatik()) yeniGetir(); }, 6000 + Math.floor(Math.random() * 1500));
 }
 async function ozelEkrani(kad){
   const akis = sohbetCati(e(kad), `<button class="ikon" id="dmMenu" aria-label="Seçenekler" style="font-weight:900">⋯</button>`);
@@ -2916,7 +2917,9 @@ async function ozelEkrani(kad){
     const b = $("#gonder"); if (b) b.disabled = false;
   };
   const g = $("#gonder"); if (g) g.onclick = gonder;
-  D.canli = setInterval(() => { if (!document.hidden && YUK.otomatik()) yeniGetir(); }, 6000 + Math.floor(Math.random() * 1500));
+  const kutu = D.durum && D.durum.profil && D.durum.profil.id ? "kutu:" + D.durum.profil.id : null;
+  if (window.CANLI && CANLI.izle) CANLI.izle({ anahtarlar: [kutu].filter(Boolean), tazele: () => { if (!document.hidden && YUK.otomatik()) return yeniGetir(); }, hizliMs: 6000, yedekMs: 90000 });
+  else D.canli = setInterval(() => { if (!document.hidden && YUK.otomatik()) yeniGetir(); }, 6000 + Math.floor(Math.random() * 1500));
 }
 function mesajMenu(tur, id, kad, el){
   const m = modal(`<h3 style="font-size:18px;font-weight:800">${e(kad)}</h3>
@@ -4358,6 +4361,7 @@ async function basla(){
   const adliyeBaglantisi = new URLSearchParams(window.location.search).get("ekran")==="adliye";
   sekmeAc(adliyeBaglantisi ? "adliye" : "gundem");
   PUSH.baslat();
+  if (window.CANLI && CANLI.kutuBaslat) CANLI.kutuBaslat();
   if (D._bekleyenYon) { const v = D._bekleyenYon; D._bekleyenYon = null; PUSH.yonlendir(v); }
 }
 // Geri sayımlar her saniye; ekran her dakika ve uygulamaya dönüldüğünde tazelenir
@@ -4369,7 +4373,7 @@ setInterval(() => {
   });
 }, 1000);
 setInterval(() => { if (D.durum && D.sekme === "gundem" && !D.yigin.length && !$("#modal") && !document.hidden && YUK.otomatik()) gundemEkrani(); }, 120000 + Math.floor(Math.random() * 30000));
-// Oyun açıkken tüm sohbet rozetleri ve konuşma listeleri yaklaşık 8 saniyede güncellenir.
+// Rozetler: özel mesaj kendi kutusu sinyalinde hemen, kanal rozetleri ve kopuk soket için yaklaşık 45 sn'de bir.
 let mesajKontroluSuruyor = false;
 async function mesajBildirimKontrol(){
   if (mesajKontroluSuruyor || !API || !D.durum || !D.durum.profil || document.hidden || !YUK.otomatik()) return;
@@ -4391,6 +4395,7 @@ window.addEventListener("load", () => {
   basla();
 });
 </script>
+<script src="canli_sinyal.js"></script>
 <script src="aday_sirket_ek.js"></script>
 <script src="parti_kimlik_ek.js"></script>
 <script src="otomatik_gazete.js"></script>

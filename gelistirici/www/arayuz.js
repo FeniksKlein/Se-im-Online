@@ -289,7 +289,12 @@ async function mitingMeydanEkrani(id) {
     </div>`, { geri: true });
   mtBagla(id);
   portreleriTazele($("#mtSahne"));
-  if (!d.bitti) D.canli = setInterval(() => { if (!document.hidden && (!window.YUK || YUK.otomatik())) mtTazele(id); }, 6000 + Math.floor(Math.random() * 1500));
+  if (!d.bitti) {
+    const taz = () => { if (!document.hidden && (!window.YUK || YUK.otomatik())) return mtTazele(id); };
+    const kalanMs = new Date(d.bit).getTime() - (typeof simdi === "function" ? simdi() : Date.now());
+    if (window.CANLI && CANLI.izle) CANLI.izle({ anahtarlar: ["miting:" + id], tazele: taz, hizliMs: 6000, yedekMs: 90000, yayilim: 1500, sonraMs: kalanMs > 0 ? kalanMs + 800 : null });
+    else D.canli = setInterval(() => { if (!document.hidden && (!window.YUK || YUK.otomatik())) mtTazele(id); }, 6000 + Math.floor(Math.random() * 1500));
+  }
 }
 function mtSure(d) {
   const t = simdi(), bas = new Date(d.bas).getTime(), bit = new Date(d.bit).getTime();
