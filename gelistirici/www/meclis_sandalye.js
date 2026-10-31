@@ -80,6 +80,7 @@
   // Sandalye ekranı açıkken her dakika tazele (yalnız güncel dönem)
   setInterval(async function () {
     if (document.hidden || !S.v || !S.v.guncel || !document.querySelector('#icerik .ms-ekran')) return;
+    if (typeof window.SO_MESGUL === 'function' && window.SO_MESGUL()) return;
     try { var v = await rpc('meclis_sandalye', { p_donem: null }); S.v = v; var el = document.querySelector('#icerik .ms-ekran'); if (el) el.outerHTML = sandalyeHtml(v); } catch (_) {}
   }, 60000);
 

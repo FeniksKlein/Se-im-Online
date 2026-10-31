@@ -936,3 +936,8 @@ Amaç oyuncunun her gün belli saatte oyunda olması ve başkalarının ona ihti
 - Yasama dönemi kavramı oyuna girdi (1., 2. Dönem; ilk seçim öncesi Kuruluş Meclisi). Tüm dönem milletvekili listesi kalıcı bir onur listesi işlevi görür.
 - Öz geçmiş sayfası vekilin Meclis karnesidir: teklif, yasalaşan, kanun oyu katılım oranı, akşam oturumu, soru önergesi, gensoru; Kürsü hesabı aynı sayfada.
 
+## 25. Kesintisiz ekran ilkesi (2026-10-31, modül 157)
+- Oyuncunun dokunuşu her zaman önceliklidir; otomatik tazeleme hiçbir zaman yazılanı silmez, sayfayı en üste atmaz, açık pencereyi bozmaz.
+- Sunucu canlı sinyali yalnız gerçek bir değişiklik olduğunda (seçim aşaması, ayar, modül, engel) yayılır.
+- Yeni modüllerde kendiliğinden yeniden çizim yapan zamanlayıcılar `window.SO_MESGUL()` ile kontrol etmeli.
+
