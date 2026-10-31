@@ -941,3 +941,20 @@ Amaç oyuncunun her gün belli saatte oyunda olması ve başkalarının ona ihti
 - Sunucu canlı sinyali yalnız gerçek bir değişiklik olduğunda (seçim aşaması, ayar, modül, engel) yayılır.
 - Yeni modüllerde kendiliğinden yeniden çizim yapan zamanlayıcılar `window.SO_MESGUL()` ile kontrol etmeli.
 
+
+## 26. Kamu Maliyesi 2.0: Hazine defteri, Varlık Fonu, bütçe dengesi → enflasyon (2026-10-31, modül 158)
+Sorun: Hazine eski bir birim hatasından 168 bin milyar ₺'ye şişmişti (günlük bütçe ~15 milyar). 25–30 milyarlık ödenekler görünmüyor, bütçe açığı hiçbir zaman sorun olmuyordu; Hazine kayıtlarının çoğu "Diğer" yazılıyor, oyuncu maaşından kesilen gelir vergisi hiçbir yere gitmiyordu.
+- **Varlık Fonu (Ercan'ın kararı, 31.10):** fazla nakit silinmedi; Türkiye Varlık Fonu'na devredildi (166.904,5 milyar ₺). Hazine'de 90 günlük cari gider kadar (1.100 milyar ₺) nakit kaldı. Fon Hazine'ye yıllık %0,25 temettü öder (~1,1 milyar ₺/gün). Yürütme fondan 30 günde en çok 60 milyar ₺ çekebilir ya da Hazine'den fona yatırabilir; 24 saatte bir, Resmî Gazete'de "Cumhurbaşkanlığı Kararı" olarak yayımlanır. Aktarım finansmandır, bütçe geliri sayılmaz.
+- **Hazine defteri:** her Hazine hareketi bir bütçe kalemine yazılır (`oyun.hazine_kalem`: gelir / gider / finansman). Kalem açıkça verilmediyse çağıran fonksiyondan çözülür (`oyun.hazine_kaynak` eşlemesi, `pg_context`); yeni bir para fonksiyonu yazan geliştirici ya `oyun.hazine_kaydet(kalem, tutar, açıklama)` kullanır ya da eşlemeye bir satır ekler.
+- **Gelirler Hazine'ye akar:** ülke geneli gelir vergisi ve KDV/ÖTV her gece; oyuncu maaşlarından kesilen gelir vergisi ertesi gece (stopaj, resmî kurla milyara çevrilir); şirket/işletme vergileri, harçlar, cezalar, kira vergileri anında.
+- **Giderler Hazine'den düşer:** bakanlık ödenekleri, belediye payı, sosyal destek, kanuni hibeler, partilere Hazine yardımı (yeni), iç borç faizi (gider) ve anapara (finansman ayrı); ek ödenek, kararname, resmî program ve kriz kararları.
+- **Bakanlıklar:** ödenek Hazine'den kasaya aktarılır, asıl harcama kasadan yapılır. Genel devlet = Hazine + bakanlık kasaları; aktarımlar iki defterde birbirini götürür, geriye bakanlıkların gerçek harcaması kalır.
+- **Makro bağ (her gece, dünün tam günü için, `oyun.makro_hesap`):** 7 günlük ortalama genel devlet dengesi / günlük GSYH (200 milyar ₺ × fiyat endeksi × reel büyüme endeksi):
+  - Enflasyon hedefi: açığın her %1'i +0,9 puan (en çok +25), fazlanın her %1'i −0,4 puan (en çok −5).
+  - Büyüme hedefi: ılımlı açık kısa vadede +0,12 puan/%1 (en çok +1,5), %8'i aşan açık geri çeker; fazla hafif yavaşlatır (en çok −0,8).
+  - Hazine eksi: açık Merkez Bankası kaynağıyla kapanır → enflasyon hedefine (−Hazine / GSYH) × 10 (en çok +20), her gün ek +0,2; büyüme −0,5; günlük bakanlık ödeneği yarıya iner; tahvil faizine +3 risk primi.
+  - Tahvil faizi = 8 + enflasyon/2 + risk primi (açık %3'ü aşınca (açık−3)×0,5, en çok 15).
+- **Harcama sınırı:** takdire bağlı harcama (kararname, resmî program, fon aktarımı) Hazine'yi eksiye düşüremez; kanuni/otomatik ödemeler düşürebilir (o zaman parasallaşma devreye girer).
+- **Uyarı:** Hazine 15 günlük cari giderin altına inince yürütmeye ve Maliye Bakanı'na bildirim (3 günde bir; eksideyken her gün).
+- **Görünürlük:** "Bütçe ve Ekonomi" ekranı herkese açık (Devlet › Hükümet kartı, Devlet bütçesi şeridi, menü araması): Hazine, fon, bugünün gelir-harcama-dengesi, 1/7/30 günlük kalemler, bakanlık harcamaları, genel devlet dengesi, enflasyon bileşenleri, borç ve faiz, son günler grafiği, son Hazine hareketleri.
+- Ayarlar tek satır `oyun.makro_ayar` (aktif=false → mali etki kapanır; katsayılar ve GSYH tabanı buradan). İlk tam gün 1 Kasım; 2 Kasım gecesinden itibaren enflasyona etki başlar.

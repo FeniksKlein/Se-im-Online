@@ -72,6 +72,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','siyaset_arenasi.js'),'utf8')+'</script></body>');
 // 31.10.2026: Meclis sandalye dağılımı (TBMM düzeni), vekil listeleri ve milletvekili öz geçmişi.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','meclis_sandalye.js'),'utf8')+'</script></body>');
+// 31.10.2026: Kamu Maliyesi 2.0 — Bütçe ve Ekonomi ekranı, Varlık Fonu, Devlet bütçesi şeridi (bakanlik_masasi.js stillerini kullanır).
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kamu_maliyesi.js'),'utf8')+'</script></body>');
 // 31.10.2026: Kesintisiz ekran — otomatik tazeleme oyuncu yazarken/kaydırırken ekranı bozmaz. EN SONDA kalmalı (iskelet'in en dış sarması).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kesintisiz_ekran.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();

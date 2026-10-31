@@ -1,0 +1,254 @@
+{
+ "bas": "2026-10-24T21:00:00+00:00",
+ "gun": 7,
+ "borc": {
+  "stok": 0,
+  "gunluk": 0
+ },
+ "faiz": {
+  "tahvil": 23,
+  "politika": 42,
+  "risk_primi": 0
+ },
+ "ozet": {
+  "son7": {
+   "gun": 5,
+   "denge": -41.3,
+   "gelir": 212.6,
+   "harcama": 253.9,
+   "ortalama": -8.26
+  },
+  "aktif": true,
+  "bugun": {
+   "denge": -28.296,
+   "gelir": 38.402,
+   "harcama": 66.697,
+   "finansman": -166904.521,
+   "bakanlik_net": -0.69,
+   "merkezi_gider": -66.007
+  },
+  "buyume": 7.69,
+  "hazine": 1085,
+  "k_acik": 0.9,
+  "k_fazla": 0.4,
+  "son_gun": "2026-11-05",
+  "baslangic": "2026-10-31T11:45:56.845759+00:00",
+  "enf_hedef": 34.1,
+  "enf_taban": 5,
+  "enf_tavan": 25,
+  "enflasyon": 30.94,
+  "gun_gider": 12.248,
+  "acik_orani": 4.05,
+  "enf_bilesen": {
+   "taban": 25,
+   "buyume": 2.3,
+   "ucret": 1.77,
+   "kidem": 1.5,
+   "destek": 0,
+   "mevzuat": 0,
+   "butce": 3.65,
+   "parasal": 0
+  },
+  "gsyh_gunluk": 203.95,
+  "varlik_fonu": 166904.5
+ },
+ "simdi": "2026-10-31T11:49:44.526236+00:00",
+ "gecmis": [
+  {
+   "gun": "2026-11-01",
+   "gelir": 41,
+   "harcama": 47,
+   "denge": -6.5,
+   "acik_orani": 2.4,
+   "enf_hedef": 31.6,
+   "hazine": 1075,
+   "enflasyon": 30.18
+  },
+  {
+   "gun": "2026-11-02",
+   "gelir": 42,
+   "harcama": 49,
+   "denge": 4,
+   "acik_orani": 2.8,
+   "enf_hedef": 32.2,
+   "hazine": 1065,
+   "enflasyon": 30.36
+  },
+  {
+   "gun": "2026-11-03",
+   "gelir": 43,
+   "harcama": 51,
+   "denge": -9.5,
+   "acik_orani": 3.2,
+   "enf_hedef": 32.8,
+   "hazine": 1055,
+   "enflasyon": 30.54
+  },
+  {
+   "gun": "2026-11-04",
+   "gelir": 44,
+   "harcama": 53,
+   "denge": 2,
+   "acik_orani": 3.6,
+   "enf_hedef": 33.4,
+   "hazine": 1045,
+   "enflasyon": 30.72
+  },
+  {
+   "gun": "2026-11-05",
+   "gelir": 45,
+   "harcama": 55,
+   "denge": -12.5,
+   "acik_orani": 4.0,
+   "enf_hedef": 34.0,
+   "hazine": 1035,
+   "enflasyon": 30.9
+  }
+ ],
+ "sistem": "baskanlik",
+ "yetkili": true,
+ "gelirler": [
+  {
+   "ad": "Kurumlar vergisi ve şirket vergileri",
+   "kod": "kurumlar_vergisi",
+   "tutar": 96.4,
+   "aciklama": "Şirket kârlarından ve işletme satışlarından alınan vergiler."
+  },
+  {
+   "ad": "KDV, ÖTV ve diğer vergiler",
+   "kod": "dolayli_vergi",
+   "tutar": 55.9,
+   "aciklama": "Tüketim vergileri; büyüme ve fiyat düzeyiyle artar."
+  },
+  {
+   "ad": "Gelir vergisi (ülke geneli)",
+   "kod": "gelir_vergisi",
+   "tutar": 18.75,
+   "aciklama": "Ülkedeki ücretlilerden alınan gelir vergisi; oran ve asgari ücretle değişir."
+  },
+  {
+   "ad": "Gelir vergisi stopajı (oyuncular)",
+   "kod": "stopaj",
+   "tutar": 5.4,
+   "aciklama": "Oyuncuların maaşından kaynakta kesilen vergi, ertesi gece Hazine'ye geçer."
+  },
+  {
+   "ad": "Varlık Fonu temettüsü",
+   "kod": "vf_getiri",
+   "tutar": 5.7,
+   "aciklama": "Türkiye Varlık Fonu'nun Hazine'ye ödediği günlük temettü."
+  },
+  {
+   "ad": "Harçlar, komisyonlar ve ücretler",
+   "kod": "harc_ucret",
+   "tutar": 4.2,
+   "aciklama": "Tapu harcı, borsa ve SPK ücretleri, ilan ve işlem harçları."
+  }
+ ],
+ "giderler": [
+  {
+   "ad": "Ek ödenek ve merkezi tahsis",
+   "kod": "ek_odenek",
+   "tutar": -90,
+   "aciklama": "Yürütmenin onayladığı ek ödenekler, tahsisler; bakanlık iadeleri bu kalemden düşer."
+  },
+  {
+   "ad": "Bakanlık ödenekleri (günlük)",
+   "kod": "bakanlik_odenek",
+   "tutar": -51,
+   "aciklama": "Bütçe kanunundaki paylarla her gece bakanlık kasalarına aktarılan ödenek."
+  },
+  {
+   "ad": "Belediyelere vergi payı",
+   "kod": "belediye_payi",
+   "tutar": -10.25,
+   "aciklama": "Vergi gelirlerinden il belediyelerine aktarılan pay."
+  },
+  {
+   "ad": "İl kalkınma destekleri",
+   "kod": "kalkinma",
+   "tutar": -10,
+   "aciklama": "Kararnameyle illere verilen kalkınma destekleri."
+  }
+ ],
+ "finansman": [
+  {
+   "ad": "Varlık Fonu aktarımları",
+   "kod": "vf_aktarim",
+   "tutar": -166904.521,
+   "aciklama": "Hazine ile Türkiye Varlık Fonu arasındaki aktarımlar."
+  }
+ ],
+ "hareketler": [
+  {
+   "fark": -15,
+   "kalem": "ek_odenek",
+   "sinif": "gider",
+   "zaman": "2026-10-31T11:47:37.15471+00:00",
+   "sonraki": 1085,
+   "aciklama": "Bakanlığa ek ödenek"
+  },
+  {
+   "fark": -166904.521,
+   "kalem": "vf_aktarim",
+   "sinif": "finansman",
+   "zaman": "2026-10-31T11:45:56.845759+00:00",
+   "sonraki": 1100,
+   "aciklama": "Fazla nakit Türkiye Varlık Fonu'na devredildi (tek seferlik reform)"
+  },
+  {
+   "fark": 0.412,
+   "kalem": "kurumlar_vergisi",
+   "sinif": "gelir",
+   "zaman": "2026-10-31T11:45:00.096881+00:00",
+   "sonraki": 168004.521,
+   "aciklama": "Kurumlar vergisi ve şirket vergileri"
+  }
+ ],
+ "varlik_fonu": {
+  "bakiye": 166904.5,
+  "cekilen": 0,
+  "kalan_hak": 60,
+  "son_islem": null,
+  "hareketler": [
+   {
+    "tur": "devir",
+    "tutar": 166904.521,
+    "zaman": "2026-10-31T11:45:56.845759+00:00",
+    "aciklama": "Hazine'deki fazla nakit fona devredildi (Kamu Maliyesi Reformu)"
+   }
+  ],
+  "aktarim_gun": 30,
+  "aktarim_tavan": 60,
+  "getiri_yillik": 0.25,
+  "gunluk_temettu": 1.143
+ },
+ "bakanlik_kasa": 89.23,
+ "bakanlik_harcama": [
+  {
+   "tur": "icraat",
+   "tutar": -135
+  },
+  {
+   "tur": "etkinlik",
+   "tutar": -37
+  },
+  {
+   "tur": "ziyaret",
+   "tutar": -7
+  },
+  {
+   "tur": "gider",
+   "tutar": -7
+  },
+  {
+   "tur": "ihale",
+   "tutar": -4.079
+  },
+  {
+   "tur": "denetim",
+   "tutar": -3.5
+  }
+ ],
+ "bakanlik_transfer": 204.706
+}

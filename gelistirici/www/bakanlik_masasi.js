@@ -654,10 +654,14 @@
   function dbCiz() {
     var d = DB.v || {}, hs = d.hesap || {}, ls = d.bakanliklar || [], y = d.yetkili;
     var yur = d.sistem === "parlamenter" ? "Başbakan" : "Cumhurbaşkanı";
+    var mb = d.maliye && d.maliye.bugun;   // 31.10.2026: gerçekleşen bütçe (modül 158); yoksa tahmini cari bütçe
     var h = '<div class="bkm" style="--a:#3d5bd9;--b:#141c46">';
     h += '<section class="bkm-kimlik"><div class="bkm-ust"><span class="bkm-amb">' + IK.kasa + '</span><div><h2>Merkezi Yönetim Bütçesi</h2><div class="bkm-alt">' + (d.yurutme ? yur + " " + esc(d.yurutme) : "Yürütme boş") + '</div></div></div>' +
-      '<div class="bkm-kasa"><div><small>Hazine</small><b>' + sayi(d.hazine, 1) + ' <span>milyar ₺</span></b></div></div>' +
-      '<div class="bkm-uc"><div><small>Günlük gelir</small><b>' + sayi(hs.gelir, 2) + '</b></div><div><small>Günlük gider</small><b>' + sayi(hs.gider, 2) + '</b></div><div><small>Günlük denge</small><b>' + (Number(hs.denge) >= 0 ? "+" : "") + sayi(hs.denge, 2) + '</b></div></div></section>';
+      '<div class="bkm-kasa"><div><small>Hazine</small><b>' + sayi(d.hazine, 1) + ' <span>milyar ₺</span></b></div>' +
+      (d.maliye && d.maliye.varlik_fonu != null ? '<div style="text-align:right"><small>Varlık Fonu</small><b style="font-size:17px">' + sayi(d.maliye.varlik_fonu, 0) + '</b></div>' : '') + '</div>' +
+      (mb ? '<div style="font-size:11px;opacity:.78;margin-top:12px">Bugün gerçekleşen (milyar ₺)</div><div class="bkm-uc" style="margin-top:6px"><div><small>Gelir</small><b>+' + sayi(mb.gelir, 2) + '</b></div><div><small>Harcama</small><b>' + sayi(mb.harcama, 2) + '</b></div><div><small>Denge</small><b>' + (Number(mb.denge) >= 0 ? "+" : "") + sayi(mb.denge, 2) + '</b></div></div>'
+        : '<div class="bkm-uc"><div><small>Günlük gelir</small><b>' + sayi(hs.gelir, 2) + '</b></div><div><small>Günlük gider</small><b>' + sayi(hs.gider, 2) + '</b></div><div><small>Günlük denge</small><b>' + (Number(hs.denge) >= 0 ? "+" : "") + sayi(hs.denge, 2) + '</b></div></div>') +
+      '</section>';
     var bek = (d.talepler || []).filter(function (t) { return t.durum === "bekliyor"; });
     if (y && bek.length) h += kutu("Karar bekleyen ek ödenek talepleri", bek.map(function (t) {
       return '<div class="bkm-satir" style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><b>' + esc(kisaAd(t.ad)) + ' · ' + mr(t.tutar, 1) + '</b><span class="bkm-rozet s">' + kalan(t.bitis) + '</span></div>' +
@@ -687,9 +691,9 @@
     var p = profil() || {};
     var mv = (p.makamlar || []).some(function (x) { return x.tur === "mv"; });
     h += '<details class="bkm-acil"><summary>Devlet bütçesi nasıl işler?</summary><p>' +
-      'Hazine\'nin geliri gelir vergisi ile KDV/ÖTV/kurumlar vergisinden, gideri bakanlıkların cari ödeneği, belediye payı ve sosyal destekten oluşur. ' +
+      'Hazine\'nin geliri gelir vergisi (oyuncu maaşlarından kesilen dahil), KDV/ÖTV, şirket vergileri, harçlar ve cezalardan; gideri bakanlık ödenekleri, belediye payı, sosyal destek, partilere Hazine yardımı ve faizden oluşur. ' +
       'Meclis bütçe kanunuyla 12 bakanlığın payını belirler; bu paylar her gece bakanlık kasalarına ödenek olarak akar (kasa tavanı ' + sayi(d.tavan, 0) + ' milyar ₺, aşan kısım Hazine\'de kalır). ' +
-      yur + ' gerekçeli ek ödenek taleplerini onaylar ya da reddeder, bakanlıklar arasında ödenek aktarabilir. Bütün hareketler bakanlık hesap defterlerinde herkese açıktır.</p></details>';
+      yur + ' gerekçeli ek ödenek taleplerini onaylar ya da reddeder, bakanlıklar arasında ödenek aktarabilir. Her onay Hazine\'den düşer; devlet gelirinden fazla harcarsa bütçe açığı enflasyonu ve faizi yükseltir, fazla verirse enflasyon düşer. Hazine eksiye düşerse açık Merkez Bankası kaynağıyla kapanır. Bütün hareketler herkese açıktır.</p></details>';
     if (mv && typeof kanunTeklifEkrani === "function") h += '<button class="btn ikinci" onclick="ekranAc(function(){return kanunTeklifEkrani(\'butce\')})">Meclis\'e bütçe kanunu teklifi ver</button>';
     h += '<button class="btn ikinci" onclick="ekranAc(bakanlikEtkinlikleriEkrani)">Bakanlık etkinlikleri</button></div>';
     iskelet("Devlet bütçesi", h, { geri: true });
@@ -703,7 +707,12 @@
     var t = ((DB.v && DB.v.talepler) || []).filter(function (x) { return Number(x.id) === Number(id); })[0] || {};
     var m = bmModal('<h3 style="font-size:19px;font-weight:800">' + (kabul ? "Ek ödeneği onayla" : "Talebi reddet") + '</h3>' +
       '<div class="bkm-ozet"><b>' + esc(t.ad || "") + '</b> · ' + mr(t.tutar, 1) + '<br>' + esc(t.gerekce || "") + '</div>' +
-      (kabul ? '<p class="alt">Tutar Hazine\'den bakanlık kasasına aktarılır ve Resmî Gazete\'de yayımlanır. Hazine: ' + mr(DB.v && DB.v.hazine, 1) + '.</p>' : "") +
+      (kabul ? (function () {
+        var hz = Number(DB.v && DB.v.hazine), son = hz - Number(t.tutar || 0);
+        return '<p class="alt">Tutar Hazine\'den bakanlık kasasına aktarılır ve Resmî Gazete\'de yayımlanır.</p>' +
+          '<div class="bkm-ozet">Hazine: <b>' + mr(hz, 1) + '</b> → <b>' + mr(son, 1) + '</b>' +
+          (son < 0 ? '<br><b>Hazine\'de yeterli nakit yok.</b>' : '<br>Bakanlık bu parayı harcadığında, devlet gelirinden fazla harcıyorsa bütçe açığı büyür; açık sürerse enflasyon yükselir.') + '</div>';
+      })() : "") +
       '<div class="alan"><label>' + (kabul ? "Not (isteğe bağlı)" : "Ret gerekçesi (isteğe bağlı)") + '</label><input id="bmKNot" maxlength="300"></div>' +
       '<button class="btn ' + (kabul ? "altin" : "tehlike") + '" id="bmKOk">' + (kabul ? "Onayla ve aktar" : "Reddet") + '</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
     m.querySelector("#bmKOk").onclick = async function () {
