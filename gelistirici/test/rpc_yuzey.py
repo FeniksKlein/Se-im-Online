@@ -75,6 +75,12 @@ begin
 end $$;
 create or replace function oyun.tick() returns void language sql security definer as $$ select null::void $$;
 create or replace function public._yol_bos() returns int language sql security definer set search_path = '' as $$ select 1 $$;
+-- PR #38 / #40 bu dalda yok; kilit onları da doğru bıraksın diye taklit.
+create or replace function oyun.canli_sinyal_gorur(p_anahtar text) returns boolean language sql stable security definer as $$ select true $$;
+create or replace function oyun.canli_sinyal(p_anahtar text) returns void language sql security definer as $$ select null::void $$;
+create or replace function oyun.canli_sinyal_tetik() returns trigger language plpgsql security definer as $$ begin return new; end $$;
+create or replace function public.reklam_hazirla() returns jsonb language sql security definer as $$ select '{}'::jsonb $$;
+create or replace function public.reklam_ssv_isle(jsonb) returns jsonb language sql security definer as $$ select '{}'::jsonb $$;
 create table if not exists oyun._tg_deneme(id int);
 create or replace function oyun._tg_deneme_fn() returns trigger language plpgsql as $$
 begin
@@ -128,6 +134,14 @@ for ad in ("push_al", "push_bitti", "odeme_isle", "parti_kur"):
 assert ayricalik("service_role", "public", "push_al")
 assert ayricalik("service_role", "public", "odeme_isle")
 assert not ayricalik("authenticated", "oyun", "tick")
+assert ayricalik("authenticated", "oyun", "canli_sinyal_gorur")
+assert not ayricalik("anon", "oyun", "canli_sinyal_gorur")
+assert not ayricalik("authenticated", "oyun", "canli_sinyal")
+assert not ayricalik("authenticated", "oyun", "canli_sinyal_tetik")
+assert ayricalik("authenticated", "public", "reklam_hazirla")
+assert not ayricalik("anon", "public", "reklam_hazirla")
+assert not ayricalik("authenticated", "public", "reklam_ssv_isle")
+assert ayricalik("service_role", "public", "reklam_ssv_isle")
 ok("authenticated yalnız izin listesi; anon yalnız sürüm ve uygulama ayarı; hizmet ve oyun.tick kapalı")
 
 # Giriş yapmadan sürüm okunur; rastgele bir oyun RPC'si anon'a kapalıdır

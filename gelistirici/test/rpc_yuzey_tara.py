@@ -5,7 +5,7 @@ from pathlib import Path
 
 KOK = Path(__file__).resolve().parents[2]
 AD = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
-HIZMET = {"push_al", "push_bitti", "odeme_isle", "meslek_kur_kaydet"}
+HIZMET = {"push_al", "push_bitti", "odeme_isle", "meslek_kur_kaydet", "reklam_ssv_isle"}
 
 def dosyalar():
     kokler = [
@@ -390,6 +390,10 @@ ESKI_UYGULAMA = {
     "mulk_satin_al": "gelistirici/sql/45_emlak_temizlik.sql (eski uygulamanın tek parametreli çağrısı)",
     "halka_arz_baslat": "gelistirici/sql/128_halka_arz_gercekci.sql (mağaza uygulamasının imzası korunur)",
 }
+# Bu dalda henüz yok. PR #40 istemciye ekliyor; kilit en sonda çalışınca grant'ı ezmesin.
+PARALEL_PR = {
+    "reklam_hazirla": "PR #40 public.reklam_hazirla() — yalnız authenticated",
+}
 ANON_IZIN = ("surum", "uygulama_ayar")
 
 def sonuc():
@@ -408,6 +412,8 @@ def sonuc():
     kanit.update(onbellek)
     for ad, nerede in ESKI_UYGULAMA.items():
         kanit.setdefault(ad, set()).add("eski:" + nerede)
+    for ad, nerede in PARALEL_PR.items():
+        kanit.setdefault(ad, set()).add("paralel:" + nerede)
     izin = set(kanit) - set(HIZMET)
     return {
         "izin": izin,

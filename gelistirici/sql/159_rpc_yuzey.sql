@@ -15,6 +15,11 @@
 --    • anon yalnızca giriş ekranından önce okunan surum ve uygulama_ayar.
 --    • service_role (edge function, ödeme, push, kur kaydı) public ve oyun'daki
 --      fonksiyonları çalıştırabilir. Bu anahtar uygulamada yoktur.
+--    • Paralel PR #38: oyun.canli_sinyal_gorur(text) RLS koşuludur, authenticated
+--      açık kalır. oyun.canli_sinyal(text) ve tetikleyici istemciye kapalıdır.
+--      PR #40: public.reklam_hazirla() authenticated listesindedir;
+--      public.reklam_ssv_isle(jsonb) yalnız service_role. Bu dalda fonksiyon
+--      yoksa grant atlanır.
 --    • admin_* ayrı şemaya taşınmadı: yönetici paneli aynı uygulamadan, oyuncunun
 --      oturumuyla çağırır. Her admin_* gövdesi oyun.yetki_zorunlu veya
 --      oyun.yonetici_zorunlu ile açılır (test bunu kaynakta doğrular).
@@ -128,8 +133,9 @@ end
 $yol$;
 
 -- @@rpc_yuzey_izin_bas@@
--- authenticated izin listesi (890 ad). Kaynak: istemci çağrıları
--- (gelistirici/www, www, docs), önbellek listesi ve eski mağaza uygulaması.
+-- authenticated izin listesi (891 ad). Kaynak: istemci çağrıları
+-- (gelistirici/www, www, docs), önbellek listesi, eski mağaza uygulaması
+-- ve PR #40 reklam_hazirla (bu dalda fonksiyon henüz yok; dizi onu da açar).
 do $izin$
 declare
   izin text[] := array[
@@ -253,7 +259,7 @@ declare
     'pazar_otopilot', 'pazar_sirket_kur', 'pazar_tasi', 'piyasa_durum', 'piyasa_emir', 'piyasa_panosu',
     'piyasa_raporu', 'politika_ayarla', 'politika_onizle', 'pos_banka_otomatik', 'pos_banka_panel', 'pos_basvur',
     'pos_basvuru_karar', 'pos_satis_talep', 'ppk_faiz_karari', 'profil_olustur', 'referandum_detay', 'referandum_oy',
-    'referandumlar', 'rekabet_ac', 'rekabet_ekrani', 'rekabet_paneli', 'reklam_al', 'reklam_odul',
+    'referandumlar', 'rekabet_ac', 'rekabet_ekrani', 'rekabet_paneli', 'reklam_al', 'reklam_hazirla', 'reklam_odul',
     'resmi_gun_mesaj_yaz', 'resmi_gunler', 'resmi_program_katil', 'resmi_program_panel', 'resmi_program_yap', 'resmi_programlar',
     'rozet_tak', 'rozetler', 'secim_ayrintili_sonuclar', 'secim_detay', 'secim_gecesi', 'secim_gecesi_aktif',
     'sektor_politika_ayarla', 'serbest_bagis', 'sigorta_afet_panel', 'sigorta_isletme_panel', 'sigorta_isletme_police_al', 'sigorta_mulk_onar',
@@ -313,3 +319,29 @@ begin
   end loop;
 end
 $izin$;
+
+-- Paralel PR'ler bu dalda yok. Kilit en sonda çalışınca onların grant'ını ezmesin.
+-- Fonksiyon henüz yoksa atlanır; varsa doğru rol açık kalır.
+do $paralel$
+begin
+  -- PR #38: Realtime satırını kim görür. RLS koşulu, oyun RPC'si değil.
+  -- Yazan oyun.canli_sinyal(text) ve tetikleyici istemciye kapalı kalır.
+  if to_regprocedure('oyun.canli_sinyal_gorur(text)') is not null then
+    revoke all on function oyun.canli_sinyal_gorur(text) from public, anon;
+    grant execute on function oyun.canli_sinyal_gorur(text) to authenticated;
+  end if;
+  if to_regprocedure('oyun.canli_sinyal(text)') is not null then
+    revoke all on function oyun.canli_sinyal(text) from public, anon, authenticated;
+  end if;
+  if to_regprocedure('oyun.canli_sinyal_tetik()') is not null then
+    revoke all on function oyun.canli_sinyal_tetik() from public, anon, authenticated;
+  end if;
+  -- PR #40: ödül hazırlığı oyuncuya, SSV tahsilatı yalnız service_role.
+  if to_regprocedure('public.reklam_ssv_isle(jsonb)') is not null then
+    revoke all on function public.reklam_ssv_isle(jsonb) from public, anon, authenticated;
+    if exists (select 1 from pg_roles where rolname = 'service_role') then
+      grant execute on function public.reklam_ssv_isle(jsonb) to service_role;
+    end if;
+  end if;
+end
+$paralel$;
