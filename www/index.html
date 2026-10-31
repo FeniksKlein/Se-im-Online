@@ -30959,6 +30959,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
       if (o.acik && o.vekil && !o.yoklamada) saYoklama(true);
     } catch (_) { /* modül kurulmadıysa sessiz */ }
   }
+  window.saGundemEkle = gundemEkle;
   if (typeof gundemEkrani === 'function') {
     var eskiG = gundemEkrani;
     window.gundemEkrani = gundemEkrani = async function () { var r = await eskiG.apply(this, arguments); await gundemEkle(); return r; };
