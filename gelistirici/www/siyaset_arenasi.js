@@ -76,7 +76,7 @@
   };
 
   /* --------------------------------------------------------- 2) BEKLEYEN İŞLER */
-  var IS_AD = { oylama: 'Oy ver', odenek: 'Karar ver', kurucu: 'Yanıtla', ittifak: 'Partiye git', golge: 'Kabineyi kur', hedef: 'Hedefe bak' };
+  var IS_AD = { juri: 'Oy ver', heyet: 'Karar ver', aym: 'Adliye', secim_itiraz: 'Adliye', oylama: 'Oy ver', odenek: 'Karar ver', kurucu: 'Yanıtla', ittifak: 'Partiye git', golge: 'Kabineyi kur', hedef: 'Hedefe bak' };
   function islerHtml(l) {
     if (!l || !l.length) return '<div class="kart"><div class="bos">Seni bekleyen bir iş yok. Kürsü\'de gündemi takip et ya da partinin hedefine katkı ver.</div></div>';
     return '<p class="alt sa-dip">Başka oyuncular senin kararını bekliyor. Cevap vermezsen süre dolar.</p>' + l.slice().sort(function (a, b) { return (a.oncelik || 9) - (b.oncelik || 9); }).map(function (x, i) {
@@ -86,6 +86,8 @@
   }
   window.saIsGit = function (i) {
     var l = (A.v.isler || []).slice().sort(function (a, b) { return (a.oncelik || 9) - (b.oncelik || 9); }), x = l[i]; if (!x) return;
+    if (x.git === 'dava') { if (typeof adliyeDosya === 'function') return ekranAc(function () { return adliyeDosya(x.id); }); try { return sekmeAc('adliye'); } catch (_) { return; } }
+    if (x.git === 'adliye') { try { return sekmeAc('adliye'); } catch (_) { return; } }
     if (x.git === 'meclis') return saSekme('bugun');
     if (x.git === 'golge') return saSekme('golge');
     if (x.git === 'hedef') return saSekme('hedef');
@@ -208,14 +210,24 @@
       ic = document.getElementById('icerik'); if (!ic || ic.querySelector('.sa-gk')) return;
       var ust = o.acik ? '<span class="sa-canli">● CANLI</span> Genel Kurul toplantıda' : new Date(o.bit) < new Date() ? 'Genel Kurul yarın 21:00\'de' : 'Genel Kurul bu akşam 21:00 · ' + kalan(o.bas) + ' sonra';
       var alt = (l.length ? l.length + ' iş seni bekliyor' : 'Bekleyen işin yok') + ' · ' + (o.oylamalar || []).length + ' oylama · sıralamalar ve gölge kabine';
+      var yargi = l.filter(function (x) { return x.tur === 'juri' || x.tur === 'heyet'; })[0];
       var d = document.createElement('div');
+      if (yargi) {
+        // Yargı görevi Gündem'in en üstünde ayrı ve kırmızı kart: "atandığımı bilmiyordum" olmasın
+        var y = document.createElement('div');
+        y.innerHTML = '<button type="button" class="kart sa-gk sa-yargi" onclick="saYargiGit()"><span class="sa-is-g"><small>' + (yargi.tur === 'juri' ? 'Jüri görevin var' : 'Yüksek Mahkeme görevin var') + '</small><b>' + esc(yargi.baslik.replace('⚖️ ', '')) + '</b><small>' +
+          esc(yargi.alt || '') + (yargi.bit ? ' · ' + kalan(yargi.bit) + ' kaldı' : '') + '</small></span><em>Oy ver ›</em></button>';
+        A.yargi = yargi;
+        ic.insertBefore(y.firstChild, ic.firstChild);
+      }
       d.innerHTML = '<button type="button" class="kart sa-gk' + (o.acik ? ' canli' : '') + '" onclick="ekranAc(siyasetArenasiEkrani)"><span class="sa-is-g"><small>Siyaset Arenası</small><b>' + ust + '</b><small>' + esc(alt) + '</small></span>' +
         (l.length ? '<i class="sa-rozet">' + l.length + '</i>' : '') + '<em>›</em></button>';
-      ic.insertBefore(d.firstChild, ic.firstChild);
+      var yk = ic.querySelector('.sa-yargi'); if (yk && yk.nextSibling) ic.insertBefore(d.firstChild, yk.nextSibling); else ic.insertBefore(d.firstChild, ic.firstChild);
       if (o.acik && o.vekil && !o.yoklamada) saYoklama(true);
     } catch (_) { /* modül kurulmadıysa sessiz */ }
   }
   window.saGundemEkle = gundemEkle;
+  window.saYargiGit = function () { var x = A.yargi; if (!x) return; if (typeof adliyeDosya === 'function') return ekranAc(function () { return adliyeDosya(x.id); }); try { sekmeAc('adliye'); } catch (_) {} };
   if (typeof gundemEkrani === 'function') {
     var eskiG = gundemEkrani;
     window.gundemEkrani = gundemEkrani = async function () { var r = await eskiG.apply(this, arguments); await gundemEkle(); return r; };
@@ -278,6 +290,7 @@
       '.sa-oy.kabul.secili{border-color:#34c98a;color:#34c98a}.sa-oy.ret.secili{border-color:#e5484d;color:#e5484d}.sa-oy.cekimser.secili{border-color:#8f9bbd}',
       '.sa-kisi{display:inline-flex;align-items:baseline;gap:4px;padding:4px 9px;margin:3px 4px 3px 0;border-radius:8px;background:var(--bg);font-size:12.5px;color:var(--txt);border-left:3px solid var(--r,#8f9bbd)}.sa-kisi small{color:var(--mut);font-size:11px}',
       '.sa-gelmeyen{font-size:13px;line-height:1.6;color:var(--mut)}.sa-dip{margin:8px 2px 14px;font-size:12.5px}',
+      '.sa-gk.sa-yargi{border-left-color:#e5484d;background:linear-gradient(90deg,rgba(229,72,77,.14),var(--panel) 60%)}.sa-gk.sa-yargi small:first-child{color:#ff8a8d}.sa-gk.sa-yargi em{color:#ff8a8d}',
       '.sa-is,.sa-gk{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;border-left:3px solid #d9b25b}.sa-is.o1{border-left-color:#e5484d}.sa-is.o2{border-left-color:#d9b25b}.sa-is.o3{border-left-color:#5b8def}',
       '.sa-is-g{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.sa-is-g b{font-size:14.5px;line-height:1.35;color:var(--txt)}.sa-is-g small{font-size:12px;color:var(--mut);line-height:1.4}',
       '.sa-is em,.sa-gk em{flex:none;font-style:normal;font-weight:700;font-size:13px;color:#d9b25b}.sa-gk.canli{border-left-color:#ff5d62}.sa-gk small:first-child{color:#d9b25b;font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.03em}',

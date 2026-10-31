@@ -434,7 +434,7 @@ function adlIstinafHtml(d,ek){
  return h;
 }
 function adlIstinafModal(id){
- const m=modal('<p class="alt">İstinafı, davayla ilgisi olmayan partilerden kurayla seçilen 3 kişilik jüri inceler. Jüri kararı onaylar ya da bozar. Her davada bir kez başvurulabilir.</p>'+adlAlan("İtiraz gerekçen (20–1500)","adlIstGerekce","textarea")+'<button class="btn altin" id="adlIstGonder">İstinafa başvur</button>');
+ const m=modal('<p class="alt">İstinafı kurayla seçilen 3 kişilik jüri inceler; davanın taraflarının partilerinden kimse jüriye seçilmez ve öncelik son 24 saatte oyunda olanlardadır. Jüri kararı onaylar ya da bozar. 8 saat oyuna girmeyen üyenin yerine yedek geçer; 24 saatte çoğunluk yoksa 24 saat ek süre verilir, sonra verilen oylara göre karar çıkar (bozma için en az 2 oy gerekir). Her davada bir kez başvurulabilir.</p>'+adlAlan("İtiraz gerekçen (20–1500)","adlIstGerekce","textarea")+'<button class="btn altin" id="adlIstGonder">İstinafa başvur</button>');
  adlFormBaslik(m,"İstinaf · Dava #"+id);
  m.querySelector("#adlIstGonder").onclick=()=>adlIslem(()=>API.rpc("adliye_istinaf",{p_dava:id,p_gerekce:m.querySelector("#adlIstGerekce").value}),"İstinaf başvurun alındı; jüri kurayla seçildi.",id);
 }

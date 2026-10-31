@@ -926,3 +926,8 @@ Amaç oyuncunun her gün belli saatte oyunda olması ve başkalarının ona ihti
 - **Gölge kabine:** ana muhalefete iş ve görünürlük; raporlar iktidar bakanına bildirim olarak gider, iki taraf arasında gerilim üretir.
 - Dengeleme: bütün yeni kıdem kaynakları günlük tavanlı (`oyun.kidem_kaynak`), para ödülü yalnız parti kasasına gider; bireysel para enjeksiyonu yok.
 
+## 23. Yargı düzeni: kimse "atandığımı bilmiyordum" demesin, hiçbir dava asılı kalmasın (2026-10-31, modül 155)
+- Taraf partilerden jüri ya da yargıç olmaz. Kura aktif oyunculardan başlar, yük dağıtılır (en çok 2 açık görev).
+- Görev Gündem'in en üstünde kırmızı kartla ve Bekleyen işlerde görünür; oy veren +1 kıdem kazanır.
+- Süreler kesin: 8 saat ortada yoksa yedek, 24 saatte çoğunluk yoksa değişim + 24 saat, 48. saatte verilen oylarla karar (bozma için en az 2 oy). Görevi ihmal eden 14 gün jüriye çağrılmaz; Yüksek Mahkeme'de ihmal atayan makama bildirilir.
+

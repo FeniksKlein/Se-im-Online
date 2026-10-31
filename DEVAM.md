@@ -9,6 +9,16 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 31.10.2026 — Yargı düzeni: istinaf jürisi ve Yüksek Mahkeme işler halde (2026.10.31-4, canlıya uygulandı, modül 155)
+- Sorun (Ercan): itirazda üst mahkeme (istinaf jürisi) üyeleri atandığını bilmiyor ya da oy vermiyor, dava sonuçlanmıyor; taraf partilerden jüri seçilmesin.
+- **Tarafsızlık:** `oyun.dava_taraf_partileri(d)` (davacı/davalı parti, davacı-davalı-ek tarafların partileri). Bu partilerin üyeleri jüriye seçilmez (son çare kura dahil); Yüksek Mahkeme `dava_heyeti` de taraf partinin üyesi yargıcı çıkarır.
+- **Kura (`oyun.juri_cek`):** önce son 24 saat, sonra 72 saat, 7 gün, 30 gün görülenler; aynı anda en çok 2 açık jüri görevi; son 14 günde görevi ihmal eden (`oyun.juri_ihmal`) seçilmez. 3 asıl + 3 yedek. `adliye_juri.atama` sütunu eklendi.
+- **Bildirim/görünürlük:** "⚖️ JÜRİ GÖREVİ" bildirimi taraflar ve süreyle; `bekleyen_islerim` en üstte jüri/Yüksek Mahkeme/AYM/seçim itirazı görevleri; Gündem'in başında kırmızı "Jüri görevin var" kartı (doğrudan dosyaya gider). Oy veren jüri üyesi +1 kıdem (`juri_oy`, günde en çok 2).
+- **Değişim:** atandıktan sonra 8 saat oyuna girmeyen üye yerine yedek (yoksa yeni kura) geçer (`oyun.juri_degistir`, zamanlayıcı `yargi_duzeni` 5 dk, `oyun.yargi_tick`). 24 saatte çoğunluk yoksa oy vermeyenler değişir + 24 saat ek süre.
+- **Sonuç:** ek süre de dolarsa verilen oylar: en az 2 oy ve bozma çoğunluktaysa bozulur; eşitlik, tek oy ya da hiç oy yoksa ilk derece kararı onanır. Oy vermeyen 14 gün jüriye seçilmez.
+- **Yüksek Mahkeme:** ek süre dahil oy kullanmayan yargıca ve atayan makama (yoksa meclis kaynaklı üye için TBMM Başkanı, diğerleri için CB) bildirim (`tg_heyet_ihmal`). 7 gün tarafsız heyet kurulamayan dava düşer, harç iade.
+- **Seçim itirazı:** 72 saatte karar verilmezse reddedilmiş sayılır (sonuç zaten geçerli).
+
 ## 31.10.2026 — Siyaset Arenası (2026.10.31-3, canlıya uygulandı, modül 154)
 - İstek: oyuncuların online kalma süresini artıran önerilerin hepsi. Zaten olanlara dokunulmadı (seçim gecesi yayını, canlı miting, Ülke Kriz Merkezi, ittifak teklifleri, röportaj/düello).
 - **Akşam Genel Kurulu (21:00–22:00 İstanbul):** `public.meclis_oturum()`, `public.meclis_yoklama()` (+1 kıdem, kaynak `meclis_yoklama`). 20:30'da vekillere davet, 22:00 sonrası olay akışına katılım özeti. Oturumda uygulamayı açık tutan vekilin yoklaması arayüzden kendiliğinden alınır; katılmayanlar herkese açık listelenir. Oylama `kanun_oy` ile yerinde.

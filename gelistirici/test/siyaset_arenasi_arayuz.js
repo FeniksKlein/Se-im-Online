@@ -12,6 +12,7 @@ const OTURUM = { acik: true, bas: S(-0.3), bit: S(0.7), gun: '2026-10-31', vekil
   katilmayan: ['TuranRiver', 'Ulaskonu16', 'CELAL'],
   oylamalar: [{ id: 49, baslik: 'Vatandaşlık Görevini Yerine Getirmeyen Vatandaşların Cezalandırılması Hakkında Kanun Teklifi', bit: S(2), kabul: 4, ret: 1, cekimser: 2, oyum: null }] };
 const ISLER = [
+  { tur: 'juri', oncelik: 1, baslik: '⚖️ Jüri görevi: Adliye #27 istinafı', alt: 'Kararı onayla ya da boz · davacı mehmetemincelik, davalı Kuzey', bit: S(20), id: 27, git: 'dava' },
   { tur: 'golge', oncelik: 3, baslik: 'Gölge kabineni tamamla', alt: '0/12 bakanlığa gölge bakan atandı', git: 'golge' },
   { tur: 'oylama', oncelik: 1, baslik: 'Kanun oylaması: Vatandaşlık Görevi', alt: 'Oyunu henüz kullanmadın', bit: S(2), id: 49, git: 'meclis' },
   { tur: 'kurucu', oncelik: 2, baslik: 'Kurucu daveti: Kuzey Yıldızı Topluluğu', alt: 'Kurucular kuruluna çağrıldın', bit: S(90), id: 24, git: 'kurucu' }];
@@ -77,6 +78,7 @@ const GOLGE = { parti: { id: 1, ad: 'Halk Partisi', kisa: 'HP', renk: '#c62828' 
     // Bekleyen işler: öncelik sırası
     await page.evaluate(() => saSekme('isler')); await bekle(500);
     t = await metin();
+    assert.match(t, /Jüri görevi: Adliye #27/);
     assert.ok(t.indexOf('Kanun oylaması') < t.indexOf('Kurucu daveti') && t.indexOf('Kurucu daveti') < t.indexOf('Gölge kabineni'), 'öncelik sırası');
     assert.ok(!await tasma(), genislik + ' px: taşma (işler)'); await yaz('02_isler');
 
@@ -102,9 +104,11 @@ const GOLGE = { parti: { id: 1, ad: 'Halk Partisi', kisa: 'HP', renk: '#c62828' 
     await bekle(800);
 
     // Gündem kartı ve kendiliğinden yoklama
-    const gk = await page.evaluate(async () => { calls.length = 0; iskelet('Gündem', '<div class="kart">Gündem</div>'); await saGundemEkle(); const k = document.querySelector('#icerik .sa-gk'); return k ? k.innerText : ''; }); await bekle(300);
+    const gk = await page.evaluate(async () => { calls.length = 0; iskelet('Gündem', '<div class="kart">Gündem</div>'); await saGundemEkle(); const k = document.querySelector('#icerik .sa-gk:not(.sa-yargi)'), y = document.querySelector('#icerik .sa-yargi'); window._yk = y ? y.innerText : ''; return k ? k.innerText : ''; }); await bekle(300);
     assert.equal(await page.evaluate(() => typeof gundemEkrani === 'function' && /gundemEkle/.test(String(gundemEkrani))), true, 'Gündem sarılmalı');
     assert.match(gk, /SİYASET ARENASI|Siyaset Arenası/); assert.match(gk, /iş seni bekliyor/);
+    const yk = await page.evaluate(() => window._yk);
+    assert.match(yk, /Jüri görevin var|JÜRİ GÖREVİN VAR/); assert.match(yk, /Adliye #27/);
     assert.ok(await son('meclis_yoklama'), 'oturum açıkken vekilin yoklaması kendiliğinden alınmalı');
     await yaz('06_gundem');
     await page.close();
