@@ -916,3 +916,13 @@ Hiyerarşi: vadeli mevduat (~%0,8/hafta, risksiz) < kira (%2/hafta, güvenli) < 
 
 ### Diğer ücretler
 Aday adaylığı: milletvekili 15.000, belediye 10.000 × il büyüklüğü, genel başkanlık 50.000, cumhurbaşkanı 150.000 ₺ · miting 5.000 × il büyüklüğü · taşınma 20.000 ₺ (devlet desteği düşülür) · il teşkilatı 10.000 × il büyüklüğü · yeni oyuncu 150.000 ₺ ile başlar (hepsi × fiyat düzeyi). Mağaza paketleri değişmedi.
+
+## 22. Siyaset Arenası: canlı anlar, karşılıklı bağımlılık, sezonlar (2026-10-31, modül 154)
+Amaç oyuncunun her gün belli saatte oyunda olması ve başkalarının ona ihtiyaç duyması.
+- **Randevu:** her akşam 21:00–22:00 TBMM Genel Kurulu. Vekil yoklaması +1 kıdem; gelmeyenin adı herkese açık. Haftalık parti hedeflerinden biri de yoklamadır.
+- **Bekleyen işler:** oyuncunun kararını bekleyen her şey tek listede; ödenek, oylama, kurucu daveti, ittifak teklifi.
+- **Takım hedefi:** her pazartesi partiye 3 hedef; ödül parti kasasına 25.000 ₺ × endeks ve katılan üyelere kıdem. Tek kişi tamamlayamaz.
+- **Sezon:** aylık 4 sıralama (Siyasetçi, Vekil, İş İnsanı, Kalem), ayın 1'inde unvan + 5 kıdem + gazete; haftalık "Haftanın Kalemi". Oyun sıfırlanmaz; ödüller oyuncu kartında birikir (×adet).
+- **Gölge kabine:** ana muhalefete iş ve görünürlük; raporlar iktidar bakanına bildirim olarak gider, iki taraf arasında gerilim üretir.
+- Dengeleme: bütün yeni kıdem kaynakları günlük tavanlı (`oyun.kidem_kaynak`), para ödülü yalnız parti kasasına gider; bireysel para enjeksiyonu yok.
+

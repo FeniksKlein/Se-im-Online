@@ -68,6 +68,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','ekonomi_rehber.js'),'utf8')+'</script></body>');
 // 31.10.2026: Fiyat Tarifesi (statü hakları, kuruluş bedelleri, parti kurma şartları) — ekonomik denge ve rehberden sonra.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','fiyat_tarifesi.js'),'utf8')+'</script></body>');
+// 31.10.2026: Siyaset Arenası (21:00 Genel Kurul, bekleyen işler, parti hedefleri, sıralamalar, gölge kabine) — Gündem'i en son sarar.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','siyaset_arenasi.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
