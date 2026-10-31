@@ -66,7 +66,8 @@
 
     var sss = [
       ['Neden şirket kuramıyorum?', 'Şirket kurmak en az <b>Vatandaş</b> statüsü ister. Aynı anda sahibi olabileceğin şirket sayısı da statünle artar (0, 1, 2, 3, 5, 8). Önceden kurduğun şirketler korunur; yalnız yeni kuruluş sınırlanır.'],
-      ['Daha çok oynayan daha hızlı mı ilerler?', 'Evet. Kıdem her gün maaşını toplamakla, her oy ve halk oylamasıyla (+3) ve etkinliklerle artar. Düzenli giren oyuncu statüleri birkaç kat hızlı açar; seri bonusu, görev ve reklam ödülleri de cebine girer.'],
+      ['Kıdem neyle artar?', 'Her gün maaşını toplamak +1, her oy ve halk oylaması +3, miting düzenlemek +1, mitinge katılmak +0,5, Meclis kanun oylaması +0,5 (günde en çok +1), Meclis içi seçim +1, il teşkilatı açmak +1 (günde en çok +2), parti stantı açmak +1, stantta gönüllülük +0,5, parti adına resmî açıklama +0,5, bakanlık etkinlikleri +0,5 ve Devlet Müzesi bağışları.'],
+      ['Daha çok oynayan daha hızlı mı ilerler?', 'Evet. Kıdem her gün maaşını toplamakla, oylarla, mitinglerle, Meclis çalışmasıyla ve parti görevleriyle artar. Düzenli giren oyuncu statüleri birkaç kat hızlı açar; seri bonusu, görev ve reklam ödülleri de cebine girer.'],
       ['Parti kurmak neden zorlaştı?', 'Oyunda yüzlerce küçük parti yerine gerçek ekiplerin kurduğu güçlü partiler olsun diye. Kurucular kurulunu topla, fona birlikte katkı yapın; parti kasası dolu başlar ve hemen il teşkilatı açabilirsiniz.'],
       ['Eski mülkümün kirası düşecek mi?', 'Hayır. Yeni kira verimi yalnız bundan sonra alınan konut ve dükkânlara uygulanır.']
     ];
