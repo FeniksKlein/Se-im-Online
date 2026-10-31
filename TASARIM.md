@@ -220,7 +220,7 @@ Oyunda NPC halk yok; seçmen de vatandaş da gerçek oyuncular. Bu yüzden beled
 | **Destekler** | Hükümetin sosyal desteği, belediyenin hemşehri desteği, ikramiye, AFAD yardımı, vergi iadesi, partinin kampanya desteği |
 | **Satın alma** | Mağazada ₺ paketleri: Cep harçlığı 10.000 ₺, Kampanya kasası 35.000 ₺, Seçim fonu 100.000 ₺. Ödeme App Store / Google Play'den alınır, RevenueCat sunucuya bildirir, para cüzdana eklenir. Fiyatı mağaza panelinde sen belirlersin |
 
-Yeni oyuncu 10.000 ₺ ile başlar.
+Yeni oyuncu 150.000 ₺ ile başlar (31.10.2026; `ayarlar.baslangic_para`).
 
 **Maaş** = asgari ücret × statü çarpanı × il çarpanı × (1 + destekler) × (1 + seri). İl çarpanı ilin gelişmişliğine bağlıdır: gelişmişlik 0 → ×0,8, 50 → ×1,0, 100 → ×1,2.
 
@@ -238,16 +238,18 @@ Yeni oyuncu 10.000 ₺ ile başlar.
 | Milletvekili | 310.332 ₺ |
 | Belediye başkanı (büyük il / orta / küçük / en küçük) | 317.800 / 267.800 / 198.900 / 171.400 ₺ |
 
+Birden fazla makamı olan en yüksek makamın maaşını tam, diğer her makamın %25'ini alır (31.10.2026; `oyun.tarife.makam_ek_oran`). Meclis Başkanlığı, başkanvekilliği ve grup başkanvekilliği vekil ödeneğine eklenen görev tazminatıdır, tam ödenir.
+
 ### Para nereye harcanır?
 | Harcama | Tutar |
 |---|---|
-| **Aday adaylığı ücreti** (parti kasasına gider) | Milletvekili 5.000, belediye 3.000 × il büyüklüğü (1–3), genel başkanlık 10.000, cumhurbaşkanlığı 20.000 ₺. Fiyat düzeyiyle artar. Genel başkan her ücreti ×0 ile ×3 arasında ayarlayabilir |
-| **Taşınma** (il değiştirme) | 5.000 ₺ × fiyat düzeyi. Devletin taşınma desteği, ücretsiz ulaşım ve hızlı tren düşürür |
+| **Aday adaylığı ücreti** (parti kasasına gider) | Milletvekili 15.000, belediye 10.000 × il büyüklüğü (1–3), genel başkanlık 50.000, cumhurbaşkanlığı 150.000 ₺ (31.10.2026, `oyun.tarife`). Fiyat düzeyiyle artar. Genel başkan her ücreti ×0 ile ×3 arasında ayarlayabilir |
+| **Taşınma** (il değiştirme) | 20.000 ₺ × fiyat düzeyi. Devletin taşınma desteği, ücretsiz ulaşım ve hızlı tren düşürür (en fazla %90) |
 | **Ek propaganda hakkı** | 1.500 ₺. Günlük hak bitince bir yayın daha. Günde en fazla 3 |
 | **Partiye bağış** | Parti kasasına girer. Günde en fazla bir aylık asgari ücret kadar (şehir bağışıyla ortak sınır). Her asgari ücret tutarı **+1 kıdem puanı** kazandırır |
 | **Şehir kalkınma bağışı** | İlin gelişmişliğini artırır: her asgari ücret tutarı için **+0,005 gelişmişlik** (gelişmiş ilde maaşlar ve belediye geliri artar) ve **+1 kıdem puanı**. Ayın hayırseverleri listesi herkese açıktır |
-| **Parti kuruluşu** | 25.000 ₺ × fiyat düzeyi: kuruluş harcı ve genel merkez binası. Kurucunun cüzdanından ödenir. Kuruluş düşerse yarısı iade edilir |
-| **İl teşkilatı** (parti kasasından) | 2.000 ₺ × il büyüklüğü (1–3) × fiyat düzeyi. Bir kez ödenir |
+| **Parti kuruluşu** | 500.000 ₺ × fiyat düzeyi harç (başvurandan) + 1.000.000 ₺ × fiyat düzeyi kuruluş fonu (kurucular birlikte toplar, partinin kasasına geçer). Ayrıntı: bölüm 21 |
+| **İl teşkilatı** (parti kasasından) | 10.000 ₺ × il büyüklüğü (1–3) × fiyat düzeyi. Bir kez ödenir |
 | **Para gönderme** | Başka bir oyuncuya; günde en fazla 1 aylık asgari ücret |
 
 **Verginin karşılığı:** "Hayat" ekranındaki vergi karnesi, son 7 günde ödediğin gelir vergisinin bütçe kanunundaki paylara göre hangi bakanlığa, belediyelere ve sosyal desteğe gittiğini gösterir; karşılığında sana işleyen hizmetleri (icraatlar, belediye hizmetleri) de listeler.
@@ -327,10 +329,10 @@ Süreli etkiler 7 gün, il seçilenler 14 gün sürer.
 Etkiler üst üste biner; indirimler en fazla %90'dır.
 
 ### Parti kuruluş ücreti ve il teşkilatları
-- **Kuruluş ücreti.** Parti kuran oyuncu kuruluş harcını ve genel merkez binasını cüzdanından öder (25.000 ₺ × fiyat düzeyi; yönetici değiştirebilir). Parası yetmeyen parti kuramaz. Ücret parti kurma ekranında ve seçmen kartında görünür.
+- **Kuruluş ücreti (31.10.2026).** Başvuran 500.000 ₺ × fiyat düzeyi harç öder; ayrıca 1.000.000 ₺ × fiyat düzeyi kuruluş fonu gerekir (kurucular emanete katkı yapar, eksiğini başvuran tamamlar; fon partinin kasasına geçer). Ücretler parti kurma ekranında, seçmen kartında ve Fiyat Tarifesi'nde görünür. Ayrıntı: bölüm 21.
 - **Genel merkez.** Kurucunun ilinde partinin ilk il teşkilatı olarak açılır.
-- **Kuruluş düşerse** (süresi içinde yeterli kurucu toplanamazsa) bina satılır, ücretin yarısı kurucuya iade edilir.
-- **İl teşkilatı.** Parti yalnızca teşkilatı olan illerde milletvekili ve belediye başkanı adayı gösterebilir (gerçekte de partiler teşkilatlandıkları yerde seçime girer). Teşkilatı genel başkan ya da yardımcıları açar; il binasının bedeli parti kasasından bir kez ödenir: küçük ilde 2.000, orta ilde 4.000, büyük ilde 6.000 ₺ (× fiyat düzeyi). O ildeki üyelere bildirim gider. Parti sayfasında hangi illerde teşkilatlı olduğu görünür.
+- **Kuruluş düşerse** (10 gün içinde yeterli kurucu toplanamazsa ya da başvuru iptal edilirse) harç alınmaz; fona yapılan bütün katkılar sahiplerine iade edilir.
+- **İl teşkilatı.** Parti yalnızca teşkilatı olan illerde milletvekili ve belediye başkanı adayı gösterebilir (gerçekte de partiler teşkilatlandıkları yerde seçime girer). Teşkilatı genel başkan ya da yardımcıları açar; il binasının bedeli parti kasasından bir kez ödenir: küçük ilde 10.000, orta ilde 20.000, büyük ilde 30.000 ₺ (× fiyat düzeyi). O ildeki üyelere bildirim gider. Parti sayfasında hangi illerde teşkilatlı olduğu görünür.
 - Oyunla gelen 5 parti 81 ilde teşkilatlıdır. Bu özellikten önce kurulmuş partiler, üyelerinin, adaylarının ve seçilmişlerinin bulunduğu illerde teşkilatlı sayıldı (kimsenin adaylığı güncelleme yüzünden düşmedi).
 - Yönetici teşkilat şartını panelden kapatabilir.
 
@@ -418,7 +420,7 @@ Faizler enflasyona bağlıdır. **Politika faizi (yıllık) = enflasyon + 5 puan
   - tek hesap olmak;
   - en az "Vatandaş" statüsü (kıdem).
   Yerel ve genel seçimde bunlara seçmen kütüğü eklenir: ilinde en az 7 gündür kayıtlı olmak.
-- **Parti kuruluşu.** Kurucunun en az 30 kıdemi olmalı. Kurulan parti "kuruluş aşamasında" başlar. 7 gün içinde seçmen kartı hazır 5 kurucu üyeye ulaşırsa kurulur; ulaşamazsa düşer. Kuruluş tamamlanmadan seçime aday çıkaramaz. Gerçekte Siyasi Partiler Kanunu en az 30 kurucu arar.
+- **Parti kuruluşu (31.10.2026).** Başvuran en az "Saygın Vatandaş" (30 kıdem) ve 14 günlük hesap; kurucular kurulu sen dahil en az 7 kişi, aktif oyuncu sayısıyla büyür (%2), en çok 30 (Siyasi Partiler Kanunu). Kurucu üyeler en az "Vatandaş", 7 günlük hesap, aynı cihaz değil, son 30 günde başka partinin kurucusu değil. Ayrıntı: bölüm 21.
 
 ### Belediye arsası ihalesi ve imar barışı: oyuncuya doğrudan karşılık
 - **Arsa ihalesi.**
@@ -856,3 +858,61 @@ Oyun 18 yaş ve üzeri içindir. Gerçek kişilere ya da oyunculara hakaret, teh
 - Mahkemede hiçbir yetkisi yoktur (temsil izni, parti davasında beyan, istinaf ve seçim itirazı kaldırıldı).
 - Görevi **parti adına resmî açıklama**dır: parti sayfasındaki "Resmî açıklamalar" bölümünden başlık + metin yayımlar; açıklama Gündem akışına düşer ve bütün üyelere bildirilir. Genel başkan da açıklama yapabilir. 15 dakikada bir açıklama; yazar ya da genel başkan kaldırabilir.
 - Sözcüyü yalnız genel başkan atar ve görevden alır.
+
+## 21. Uzun Soluklu Ekonomi: fiyat merdiveni, statü hakları, ekip partisi (2026-10-31, modül 151)
+
+**Amaç.** Oyun aylarca, yıllarca oynanacak. Ne yeni oyuncu ilk gün zengin olsun ne de eski oyuncu hedefsiz kalsın; düzenli oynayan daha hızlı ilerlesin. Parti kurmak ekip işi olsun.
+
+**Ölçülen sorun (30.10.2026, 21 günlük oyun):** pazar şirketleri haftada sermayenin %11'ini kazanıyordu; iki oto galeri haftada %160–225 getiriyle 4 milyon ₺ üretiyordu; enerji şirketleri herkesin elektrik faturasını topluyordu (%46/hafta); konut kirası bedelin 1/13'ü (%7,7/hafta); aynı kişi 3–4 makamın maaşını birden alıyordu; 25.000 ₺ ve 3 onayla parti kurulabildiği için 50 oyuncuya 11 parti vardı.
+
+### Tek tarife
+Bütün yeni fiyat ve oranlar `oyun.tarife` tablosundadır (yönetici SQL ile değiştirebilir; kurulum dosyası yeniden çalışınca ayarlanan değer korunur). `oyun.tf(kod)` değeri, `oyun.tf_tl(kod)` fiyat düzeyiyle güncellenmiş tutarı verir. Oyunculara açık ekran: **Ekonomi › Fiyat Tarifesi** (`public.fiyat_tarifesi`); bütün tutarlar sunucudaki gerçek fonksiyonlardan hesaplanır. Kilitleri toptan kapatmak: `update oyun.tarife set deger = 0 where kod = 'kilit_aktif';`
+
+### Statü hakları (kıdem kilidi)
+| Statü (kıdem) | Maaş | Şirket hakkı | Açılanlar |
+|---|---|---|---|
+| Yeni Gelen (0) | ×1,0 | 0 | aday olma, dernek üyeliği, yatırım |
+| Vatandaş (10) | ×1,2 | 1 | şirket ve dükkân, gazete, dernek kurmak; kurucu üye olmak |
+| Saygın Vatandaş (30) | ×1,4 | 2 | reklam ajansı, parti kurma başvurusu |
+| Kanaat Önderi (75) | ×1,6 | 3 | banka |
+| Duayen (150) | ×1,8 | 5 | |
+| Yaşayan Efsane (300) | ×2,0 | 8 | |
+
+Şirket hakkı = aynı anda en büyük ortağı olunabilecek aktif şirket sayısı. Kilit tek geçitte, `oyun.sirketler` tetiğinde (`tg_kurulus_denge_sirket`) uygulanır; yalnız oyuncu işlemlerinde çalışır. Mevcut şirketler korunur; hakkı dolu oyuncu yeni şirket kuramaz ama satın alabilir. Gazete ve dernek kilidi de tetikle (`tg_kurulus_denge_gazete`, `tg_kurulus_denge_dernek`). Kıdem: her gün maaş toplama +1, her oy ve halk oylaması +3, bakanlık etkinlikleri, müze bağışları.
+
+### Kuruluş sermayeleri
+| Ne | Tutar | Statü |
+|---|---|---|
+| Küçük işletme: ticaret, teknoloji, sanayi, inşaat, medya, tarım, danışmanlık, oto servis | 200.000 ₺ | Vatandaş |
+| Orta: market, ulaşım, lojistik, e-ticaret, geri dönüşüm, turizm, özel okul, giyim, yapı market, elektronik, mobilya | 500.000 ₺ | Vatandaş |
+| Özel hastane, akaryakıt | 1.000.000 ₺ | Vatandaş |
+| Enerji santrali | 1.500.000 ₺ | Vatandaş |
+| Otomobil galerisi | 2.500.000 ₺ | Vatandaş |
+| Reklam ve anket ajansı | 400.000 ₺ | Saygın Vatandaş |
+| Banka | 15.000.000 ₺ (ortaklı kurulabilir) | Kanaat Önderi |
+| Döviz bürosu / kuyumcu | 200.000 ₺ | Vatandaş |
+| Gazete | 150.000 ₺ × fiyat düzeyi | Vatandaş |
+| Dernek / şube | 50.000 ₺ / 5.000 ₺ × il büyüklüğü (× fiyat düzeyi) | Vatandaş |
+
+### Getiri dengesi
+- **Pazar şirketleri:** kapasite ×0,8, sabit gider +0,5 puan. Ortalama haftalık getiri %11 → %7,3 (iyi yönetilen ~%13, kötü yönetilen zarar).
+- **Perakende (NPC mağaza):** günlük brüt kâr sermayenin %2,5'ini aşamaz (`oyun.npc_marj_gun`); kalan talep ildeki rakiplere kalır. Zayıf kalan akaryakıt (×6), giyim, yapı, elektronik, mobilya talebi artırıldı.
+- **Şirketler arası fatura (elektrik, lojistik, reklam):** alan şirket günde en çok sermayesinin %1,2'sini toplar; fazlası kimseye gitmez.
+- **Kira:** yeni alınan konut/dükkânın haftalık kirası il taban bedelinin %2'si (eski %7,7). Önceden alınanlar eski kirasıyla devam eder.
+- **Makam:** en yüksek makam tam, diğerleri %25 (Meclis görev tazminatları tam).
+- **Görev ödülleri ×2** (izin aralığı 50–10.000 ₺).
+
+Hiyerarşi: vadeli mevduat (~%0,8/hafta, risksiz) < kira (%2/hafta, güvenli) < şirket (~%7/hafta, yönetim ve risk ister). Servet vergisi (bölüm 148) en üst dilimi frenler.
+
+### İlerleme hedefleri (simülasyon: her gün / haftada 5 gün / haftada 3 gün oynayan)
+İlk şirket ~14 / 28 / 56. gün · 1 milyon ₺ net servet ~70 / 120 / 180. gün · 5 milyon ₺ ~190. gün (her gün oynayan) · banka 4–6 aylık ekip hedefi.
+
+### Ekip partisi
+- **Kurucular kurulu:** sen dahil en az 7 kişi; son 14 günde aktif oyuncuların %2'si kadar büyür, en çok 30 (yasal sayı). Başvuru anındaki sayı geçerlidir.
+- **Başvuran:** en az Saygın Vatandaş, 14 günlük hesap, partisi olan genel başkan değil, Yüksek Mahkeme üyesi değil; iki kuruluş arası 90 gün; aynı anda tek başvuru.
+- **Kurucu üye:** en az Vatandaş, 7 günlük hesap, aynı cihazdaki hesaplar aynı kurulda sayılmaz, son 30 günde başka partinin kurucusu olmamış, genel başkan ve Yüksek Mahkeme üyesi değil. Onayını geri çekebilir.
+- **Para:** 500.000 ₺ harç (başvurandan, yok olur) + 1.000.000 ₺ kuruluş fonu. Kurucular fona emanetle katkı yapar (`public.kurucu_katki`, en az 10.000 ₺); eksiğini kuruluşta başvuran tamamlar; fon partinin kasasına geçer. Başvuru 10 günde dolar; iptal, ret, onay geri çekme ya da süre dolunca katkılar iade edilir (`oyun.kurucu_suresi_dolan`, zamanlayıcı 15 dk). Kuruluşta şartları taşımayan onaylar sayılmaz, katkıları iade edilir.
+- Mevcut partiler aynen kalır. Eyetkin, CELAL ve matestappen hesaplarına daha önce tanınan özel kuruluş istisnası değiştirilmedi.
+
+### Diğer ücretler
+Aday adaylığı: milletvekili 15.000, belediye 10.000 × il büyüklüğü, genel başkanlık 50.000, cumhurbaşkanı 150.000 ₺ · miting 5.000 × il büyüklüğü · taşınma 20.000 ₺ (devlet desteği düşülür) · il teşkilatı 10.000 × il büyüklüğü · yeni oyuncu 150.000 ₺ ile başlar (hepsi × fiyat düzeyi). Mağaza paketleri değişmedi.

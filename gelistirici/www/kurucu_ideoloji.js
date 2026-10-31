@@ -34,32 +34,72 @@ async function kurucuDavetModal(){
   let data;
   try{data=await API.rpc("kurucu_davetlerim");}
   catch(err){toast(hataCevir(err.message),true);return;}
-  const gelen=data.gelen||[],b=data.basvurum;
-  const davetSayisi=b?(b.davetler||[]).length:0;
-  const m=modal('<h3>Kurucular kurulu</h3><p class="alt">Parti kurmak için başvuran kişinin dışında en az üç ayrı oyuncunun EVET onayı gerekir. Davetliler kabul ederse parti kuruluşunda üye olurlar.</p>'+
-    (b?'<div class="kart"><h3>'+e(b.ad)+' · '+e(b.kisa)+'</h3><p class="alt">Kurucu onayı: <b>'+b.onay+'/3</b> · Son: '+e(tarihSaat(b.bit))+'</p>'+
+  /* 31.10.2026: ekip partisi — kurucular kurulu oyuncu sayısıyla büyür, kuruluş fonu birlikte toplanır (151_uzun_soluklu_ekonomi.sql) */
+  const gelen=data.gelen||[],b=data.basvurum,onaylar=data.onayladiklarim||[],k=data.kurallar||{};
+  const kurul=(b&&b.kurucu_kurulu)||k.kurucu_kurulu||4,gerek=(b&&b.gerekli!=null)?b.gerekli:Math.max(3,kurul-1);
+  const fon=(b&&b.fon)||k.fon||0,harc=(b&&b.harc)||k.harc||0,minK=k.katki_min||10000;
+  const davetSayisi=b?(b.davetler||[]).length:0,kalanDavet=Math.max(0,50-davetSayisi);
+  const cubuk=(v,top)=>{const y=top>0?Math.max(0,Math.min(100,100*v/top)):0;
+    return '<div style="height:8px;border-radius:5px;background:rgba(255,255,255,.08);overflow:hidden;margin:6px 0 4px"><i style="display:block;height:100%;width:'+y+'%;border-radius:5px;background:linear-gradient(90deg,#e8cf8f,#b8913f)"></i></div>';};
+  const katkiAlan=(id,bid,kalan)=>'<div class="alan"><label for="'+id+'">Kuruluş fonuna katkı (₺)</label>'+
+    '<input id="'+id+'" type="number" inputmode="numeric" min="'+Math.min(minK,kalan)+'" max="'+kalan+'" step="1000" placeholder="En az '+tlYaz(Math.min(minK,kalan))+'"></div>'+
+    '<button class="btn ikinci" data-katki="'+id+'" data-basvuru="'+bid+'">Katkı yap</button>'+
+    '<p class="kucuk">Fonda eksik: '+tlYaz(kalan)+'. Parti kurulmazsa ya da onayını geri çekersen katkın cüzdanına iade edilir.</p>';
+  const durumAd={evet:"Onayladı",hayir:"Ret / geri çekti",bekliyor:"Bekliyor"};
+  let html='<h3>Kurucular kurulu</h3><p class="alt">Parti kurmak ekip işidir: sen dahil en az <b>'+kurul+'</b> kişilik kurucular kurulu, <b>'+tlYaz(harc)+'</b> harç ve <b>'+tlYaz(fon)+
+    '</b> kuruluş fonu gerekir. Fon partinin kasasına geçer; kurucular birlikte toplar. Kurucu üyeler en az "'+e(k.ortak_statu||"Vatandaş")+'" statüsünde ve '+(k.ortak_hesap_gun||7)+
+    ' günlük hesaba sahip olmalı; aynı cihazdaki hesaplar ve son 30 günde başka partiyi kuranlar sayılmaz.</p>';
+  if(b){
+    const toplanan=b.toplanan||0,kalan=Math.max(0,fon-toplanan),yeter=b.onay>=gerek;
+    html+='<div class="kart"><h3>'+e(b.ad)+' · '+e(b.kisa)+'</h3>'+
+      '<p class="alt">Kurucu onayı: <b>'+b.onay+'/'+gerek+'</b> · Son: '+e(tarihSaat(b.bit))+'</p>'+cubuk(b.onay,gerek)+
+      '<p class="alt">Kuruluş fonu: <b>'+tlYaz(toplanan)+' / '+tlYaz(fon)+'</b>'+(b.kurucu_katki>0?' · senin katkın '+tlYaz(b.kurucu_katki):'')+'</p>'+cubuk(toplanan,fon)+
       '<p class="kucuk">'+e(ideolojiYaz(b.ideolojiler))+'</p>'+
-      (b.davetler||[]).map(d=>'<div class="kv"><span>'+e(d.kad)+'</span><b>'+e({evet:"Kabul",hayir:"Ret",bekliyor:"Bekliyor"}[d.durum]||d.durum)+'</b></div>').join('')+
-      (davetSayisi<20?'<div class="alan"><label for="kurucuYeniNick">Yeni kurucu adayları ekle</label>'+
+      (b.davetler||[]).map(d=>'<div class="kv"><span>'+e(d.kad)+(d.katki>0?' · '+tlYaz(d.katki):'')+
+        (d.engel?'<br><small style="color:#ffb3b8">Sayılmaz: '+e(d.engel)+'</small>':'')+'</span><b>'+e(durumAd[d.durum]||d.durum)+'</b></div>').join('')+
+      (kalan>0?katkiAlan('kurucuKatkiBen',b.id,kalan):'<p class="kucuk">Kuruluş fonu tamamlandı.</p>')+
+      (kalanDavet>0?'<div class="alan"><label for="kurucuYeniNick">Yeni kurucu adayları ekle</label>'+
         '<textarea id="kurucuYeniNick" class="alanmetin" rows="3" placeholder="Her satıra bir kullanıcı adı yaz"></textarea>'+
-        '<p class="kucuk">İlk başvurunu iptal etmeden yeni kişilere davet gönderebilirsin. Kalan davet hakkı: '+(20-davetSayisi)+'</p></div>'+
+        '<p class="kucuk">Başvurunu iptal etmeden yeni kişilere davet gönderebilirsin. Kalan davet hakkı: '+kalanDavet+'</p></div>'+
         '<div class="hata-metin" id="kurucuEkleHata"></div><button class="btn ikinci" id="kurucuEkle">Yeni davetleri gönder</button>':
-        '<p class="kucuk">20 kurucu daveti sınırına ulaştın.</p>')+
-      '<button class="btn altin" id="kurucularTamamla" '+(b.onay<3?'disabled':'')+'>Onayları tamamla ve partiyi kur</button>'+
-      '<button class="btn ikinci" id="kurucuIptal">Başvuruyu iptal et</button></div>':'')+
-    (gelen.length?'<h3>Bana gelen davetler</h3>'+gelen.map(d=>
-      '<div class="kart"><b>'+e(d.ad)+' ('+e(d.kisa)+')</b><div class="alt">Seni '+e(d.kurucu)+' kurucular kuruluna çağırıyor.</div>'+
-      '<div class="kucuk">İdeolojiler: '+e(ideolojiYaz(d.ideolojiler))+' · Son: '+e(tarihSaat(d.bit))+'</div>'+
-      '<div class="satir"><button class="btn altin" data-davet="'+d.id+'" data-yanit="evet">Kabul et</button>'+
-      '<button class="btn ikinci" data-davet="'+d.id+'" data-yanit="hayir">Reddet</button></div></div>').join(''):'')+
-    (!b&&!gelen.length?'<p class="alt">Bekleyen kurucu başvurusu veya davetin yok.</p>':'')+
-    '<button class="btn ikinci" id="kurucuKapat">Kapat</button>');
+        '<p class="kucuk">50 kurucu daveti sınırına ulaştın.</p>')+
+      '<p class="kucuk">Kuruluşta cüzdanından '+tlYaz(harc)+' harç'+(kalan>0?' ve fonun eksik kalan '+tlYaz(kalan)+'’si':'')+' alınır.</p>'+
+      '<button class="btn altin" id="kurucularTamamla" '+(yeter?'':'disabled')+'>'+(yeter?'Partiyi kur':'Partiyi kur ('+(gerek-b.onay)+' onay daha gerekli)')+'</button>'+
+      '<button class="btn ikinci" id="kurucuIptal">Başvuruyu iptal et</button></div>';
+  }
+  if(onaylar.length) html+='<h3>Kurucu üyesi olduğum başvurular</h3>'+onaylar.map(o=>{
+    const of=o.fon||fon,ot=o.toplanan||0,kalan=Math.max(0,of-ot);
+    return '<div class="kart"><b>'+e(o.ad)+' ('+e(o.kisa)+')</b><div class="alt">Başvuran: '+e(o.kurucu)+' · onay '+o.onay+'/'+o.gerekli+' · Son: '+e(tarihSaat(o.bit))+'</div>'+
+      cubuk(ot,of)+'<div class="kucuk">Kuruluş fonu: '+tlYaz(ot)+' / '+tlYaz(of)+(o.katki>0?' · senin katkın '+tlYaz(o.katki):'')+'</div>'+
+      (kalan>0?katkiAlan('kurucuKatki'+o.id,o.id,kalan):'')+
+      '<button class="btn ikinci" data-davet="'+o.id+'" data-yanit="hayir" data-geri="1">Onayımı geri çek</button></div>';}).join('');
+  if(gelen.length) html+='<h3>Bana gelen davetler</h3>'+gelen.map(d=>
+    '<div class="kart"><b>'+e(d.ad)+' ('+e(d.kisa)+')</b><div class="alt">Seni '+e(d.kurucu)+' kurucular kuruluna çağırıyor · onay '+(d.onay||0)+'/'+(d.gerekli||gerek)+'</div>'+
+    '<div class="kucuk">İdeolojiler: '+e(ideolojiYaz(d.ideolojiler))+' · Son: '+e(tarihSaat(d.bit))+'</div>'+
+    (d.engel?'<p class="kucuk" style="color:#ffb3b8">Şu an kurucu üye olamazsın: '+e(d.engel)+'</p>':'')+
+    '<div class="satir"><button class="btn altin" data-davet="'+d.id+'" data-yanit="evet"'+(d.engel?' disabled':'')+'>Kabul et</button>'+
+    '<button class="btn ikinci" data-davet="'+d.id+'" data-yanit="hayir">Reddet</button></div></div>').join('');
+  if(!b&&!gelen.length&&!onaylar.length) html+='<p class="alt">Bekleyen kurucu başvurusu veya davetin yok.</p>';
+  html+='<button class="btn ikinci" id="kurucuKapat">Kapat</button>';
+  const m=modal(html);
   m.querySelector("#kurucuKapat").onclick=()=>modalKapat();
   m.querySelectorAll("button[data-davet]").forEach(x=>x.onclick=async()=>{
+    if(x.dataset.geri&&!await onayla("Onayını geri çek","Kurucular kurulundan çıkarsın; kuruluş fonuna katkın varsa cüzdanına iade edilir.","Onayımı geri çek",true))return;
     x.disabled=true;
     try{
       await API.rpc("kurucu_davet_yanit",{p_basvuru:+x.dataset.davet,p_kabul:x.dataset.yanit==="evet"});
-      toast(x.dataset.yanit==="evet"?"Daveti kabul ettin.":"Daveti reddettin.");
+      toast(x.dataset.geri?"Onayını geri çektin.":x.dataset.yanit==="evet"?"Daveti kabul ettin. Dilersen kuruluş fonuna katkı yapabilirsin.":"Daveti reddettin.");
+      kurucuDavetModal();
+    }catch(err){x.disabled=false;toast(hataCevir(err.message),true);}
+  });
+  m.querySelectorAll("button[data-katki]").forEach(x=>x.onclick=async()=>{
+    const inp=m.querySelector("#"+x.dataset.katki),tutar=Math.round(Number(inp&&inp.value||0));
+    if(!tutar||tutar<=0){toast("Katkı tutarını yaz.",true);return;}
+    x.disabled=true;
+    try{
+      const r=await API.rpc("kurucu_katki",{p_basvuru:+x.dataset.basvuru,p_tutar:tutar});
+      toast(tlYaz(r.katki)+" katkı yapıldı. Fonda toplanan: "+tlYaz(r.toplanan)+" / "+tlYaz(r.fon)+".");
+      try{await durumYenile();}catch(_){}
       kurucuDavetModal();
     }catch(err){x.disabled=false;toast(hataCevir(err.message),true);}
   });
@@ -69,7 +109,7 @@ async function kurucuDavetModal(){
       const nickler=m.querySelector("#kurucuYeniNick").value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
       const hata=m.querySelector("#kurucuEkleHata");
       if(!nickler.length){hata.textContent="Davet edilecek en az bir kullanıcı adı yaz.";return;}
-      if(nickler.length>20-davetSayisi){hata.textContent="En fazla "+(20-davetSayisi)+" yeni kişi davet edebilirsin.";return;}
+      if(nickler.length>kalanDavet){hata.textContent="En fazla "+kalanDavet+" yeni kişi davet edebilirsin.";return;}
       if(new Set(nickler.map(x=>x.toLocaleLowerCase("tr"))).size!==nickler.length){hata.textContent="Aynı kullanıcı adını iki kez yazma.";return;}
       hata.textContent="";ekle.disabled=true;
       try{
@@ -79,7 +119,10 @@ async function kurucuDavetModal(){
       }catch(err){ekle.disabled=false;hata.textContent=hataCevir(err.message);}
     };
     m.querySelector("#kurucularTamamla").onclick=async()=>{
-      const btn=m.querySelector("#kurucularTamamla");btn.disabled=true;
+      const btn=m.querySelector("#kurucularTamamla");
+      const kalan=Math.max(0,fon-(b.toplanan||0));
+      if(!await onayla("Partiyi kur",tlYaz(harc)+" harç"+(kalan>0?" ve fonun eksik kalan "+tlYaz(kalan)+"’si":"")+" cüzdanından alınacak. Kuruluş fonu partinin kasasına geçer.","Partiyi kur"))return;
+      btn.disabled=true;
       try{
         await API.rpc("parti_kur_tamamla",{p_basvuru:b.id});
         modalKapat();toast("Kurucular kuruluyla partin resmen kuruldu.");
@@ -87,8 +130,8 @@ async function kurucuDavetModal(){
       }catch(err){btn.disabled=false;toast(hataCevir(err.message),true);}
     };
     m.querySelector("#kurucuIptal").onclick=async()=>{
-      if(!await onayla("Başvuruyu iptal et","Kurucu davetleri geçersiz olur. Henüz kuruluş ücreti kesilmedi.","Başvuruyu iptal et",true))return;
-      try{await API.rpc("parti_kur_iptal",{p_basvuru:b.id});toast("Başvuru iptal edildi.");kurucuDavetModal();}
+      if(!await onayla("Başvuruyu iptal et","Kurucu davetleri geçersiz olur; kuruluş fonundaki bütün katkılar sahiplerine iade edilir.","Başvuruyu iptal et",true))return;
+      try{await API.rpc("parti_kur_iptal",{p_basvuru:b.id});toast("Başvuru iptal edildi; katkılar iade edildi.");kurucuDavetModal();}
       catch(err){toast(hataCevir(err.message),true);}
     };
   }
@@ -130,7 +173,7 @@ async function ideolojiOylamaModal(pid){
 function partiKurEkrani(){
   const serbestAd=!!(D.durum&&D.durum.profil&&(D.durum.profil.kad||"").toLocaleLowerCase("tr")==="matestappen");
   const ozelKurucu=!!(D.durum&&D.durum.profil&&["eyetkin","celal","matestappen"].includes((D.durum.profil.kad||"").toLocaleLowerCase("tr")));
-  let renk=RENKLER[6],amb=VERI.amblem[0].id;
+  let renk=RENKLER[6],amb=VERI.amblem[0].id,gerekliDavet=6;
   iskelet("Parti kur",
     '<div class="kart" id="onizleme"></div>'+
     '<div class="kart">'+
@@ -141,9 +184,9 @@ function partiKurEkrani(){
     ideolojiSecimHtml([],"kurulusIdeoloji")+
     (ozelKurucu
       ? '<p class="alt">'+(serbestAd?'Bu hesap için parti adı serbest: 1–80 karakter. Mevcut başka partinin adını ya da kısaltmasını kullanamazsın. ':'')+'3 kurucu üye bulmadan ve kuruluş ücreti ödemeden partini hemen kurabilirsin.</p>'
-      : '<div class="alan"><label for="kurucuNick">Kurucu adayı oyuncu adları (en az 3)</label>'+
-        '<textarea id="kurucuNick" class="alanmetin" rows="4" placeholder="Her satıra bir kullanıcı adı yaz"></textarea></div>'+
-        '<p class="alt">Oyunculara kurucular kurulu daveti gönderilir. Kurucu dışında en az 3 kişi EVET demedikçe parti kurulmaz. Onay verenler kuruluş tamamlandığında yeni partiye katılır.</p>')+
+      : '<div class="alan"><label for="kurucuNick" id="kurucuNickEtiket">Kurucu adayı oyuncu adları</label>'+
+        '<textarea id="kurucuNick" class="alanmetin" rows="5" placeholder="Her satıra bir kullanıcı adı yaz"></textarea></div>'+
+        '<p class="alt" id="kurucuAciklama">Oyunculara kurucular kurulu daveti gönderilir. Yeterli kurucu EVET demedikçe parti kurulmaz. Onay verenler kuruluş tamamlandığında yeni partiye katılır ve kuruluş fonuna katkı yapabilir.</p>')+
     '<p class="kucuk" id="kurUcret">Kuruluş sermayesi hesaplanıyor…</p>'+
     '<div class="hata-metin" id="hata"></div>'+
     '<button class="btn altin" id="kur">'+(ozelKurucu?'Partiyi hemen kur':'Kurucu davetlerini gönder')+'</button>'+
@@ -155,8 +198,15 @@ function partiKurEkrani(){
   }else{
     API.rpc("vatandaslik").then(v=>{
       const pk=v.parti_kurma,el=$("#kurUcret");if(!el||!pk)return;
-      el.innerHTML='<b>Gerekli sermaye: '+tlYaz(Math.max(25000,pk.ucret||0))+'</b> · Cüzdandaki: '+tlYaz(pk.para||0)+
-        '. Başvuru ücretsizdir; sermaye yalnızca kuruluş tamamlandığında alınır.';
+      if(pk.kurucu)gerekliDavet=Math.max(1,pk.kurucu-1);
+      const et=$("#kurucuNickEtiket");if(et)et.textContent="Kurucu adayı oyuncu adları (en az "+gerekliDavet+")";
+      const ac=$("#kurucuAciklama");
+      if(ac&&pk.kurucu)ac.innerHTML='Kurucular kurulu sen dahil en az <b>'+pk.kurucu+'</b> kişi olmalı. Kurucu üyeler en az "'+e(pk.ortak_statu||"Vatandaş")+'" statüsünde ve '+(pk.ortak_hesap_gun||7)+
+        ' günlük hesaba sahip olmalı; aynı cihazdaki hesaplar sayılmaz. Onay verenler kuruluşta yeni partiye katılır ve kuruluş fonuna katkı yapabilir.';
+      el.innerHTML=(pk.harc!=null?'<b>Kuruluş: '+tlYaz(pk.harc)+' harç + '+tlYaz(pk.fon)+' kuruluş fonu</b> (fon partinin kasasına geçer, kurucular birlikte toplar)':'<b>Gerekli sermaye: '+tlYaz(Math.max(25000,pk.ucret||0))+'</b>')+
+        ' · Cüzdandaki: '+tlYaz(pk.para||0)+'. Başvuru ücretsizdir; tutarlar yalnızca kuruluş tamamlandığında alınır.'+
+        (pk.engel?'<br><span style="color:#ffb3b8">'+e(pk.engel)+'</span>':'');
+      if(pk.engel){const kb=$("#kur");if(kb)kb.disabled=true;}
     }).catch(()=>{});
   }
   const ciz=()=>{
@@ -173,8 +223,8 @@ function partiKurEkrani(){
   $("#kur").onclick=async()=>{
     const ideolojiler=secilen(),nickler=ozelKurucu?[]:$("#kurucuNick").value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);
     if(ideolojiler.length<1||ideolojiler.length>3){$("#hata").textContent="En az 1 en fazla 3 ideoloji seç.";return;}
-    if(!ozelKurucu&&new Set(nickler.map(x=>x.toLocaleLowerCase("tr"))).size<3){
-      $("#hata").textContent="Kendinden başka en az üç farklı oyuncunun kullanıcı adını yaz.";return;
+    if(!ozelKurucu&&new Set(nickler.map(x=>x.toLocaleLowerCase("tr"))).size<gerekliDavet){
+      $("#hata").textContent="Kendinden başka en az "+gerekliDavet+" farklı oyuncunun kullanıcı adını yaz.";return;
     }
     $("#hata").textContent="";$("#kur").disabled=true;
     try{
@@ -191,7 +241,7 @@ function partiKurEkrani(){
           p_ad:$("#ad").value,p_kisa:$("#kisa").value.toLocaleUpperCase("tr"),
           p_renk:renk,p_amblem:amb,p_ideolojiler:ideolojiler,p_kadlar:nickler
         });
-        toast("Kurucu adaylarına bildirim gönderildi. En az üç kabul bekleniyor.");
+        toast("Kurucu adaylarına bildirim gönderildi. En az "+gerekliDavet+" kabul bekleniyor.");
         sekmeAc("parti");kurucuDavetModal();
       }
     }catch(err){$("#hata").textContent=hataCevir(err.message);$("#kur").disabled=false;}
