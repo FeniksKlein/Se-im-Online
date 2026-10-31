@@ -92,10 +92,10 @@
 
   // Reklam ve satış: sunucudan kapatılabilir; anahtar yoksa anlaşılır mesaj
   if (typeof REKLAM === "object" && REKLAM && typeof REKLAM.goster === "function") {
-    const eskiGoster = REKLAM.goster.bind(REKLAM);
+    const eskiGoster = REKLAM.goster;
     REKLAM.goster = async function(){
       if (YK.ayar && YK.ayar.reklam_acik === false) throw new Error("Ödüllü reklamlar şu an kapalı.");
-      return eskiGoster();
+      return eskiGoster.apply(this, arguments);
     };
   }
   if (typeof ODEME === "object" && ODEME && typeof ODEME.hazirla === "function") {

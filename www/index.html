@@ -4149,9 +4149,26 @@ function hayatCiz(h){
   };
   $("#hReklam").onclick = async () => {
     const b = $("#hReklam"); b.disabled = true;
-    try { const izlendi = await REKLAM.goster(); if (!izlendi) { toast("Reklam yarıda kaldı; ödül verilmedi.", true); b.disabled = false; return; }
-      const r = await API.rpc("reklam_odul"); hayatCiz(r); toast(`Reklam ödülü: +${tlYaz(r.sonuc.odul)}`); }
-    catch (err) { toast(hataCevir(err.message), true); b.disabled = false; }
+    try {
+      const hazir = await API.rpc("reklam_hazirla");
+      if (hazir.yol === "reklamsiz") {
+        const r = await API.rpc("reklam_odul"); hayatCiz(r); toast(`Reklam ödülü: +${tlYaz(r.sonuc.odul)}`); return;
+      }
+      const izlendi = await REKLAM.goster({ userId: hazir.user_id, customData: hazir.token });
+      if (!izlendi) { toast("Reklam yarıda kaldı; ödül verilmedi.", true); b.disabled = false; return; }
+      const onceKalan = Number(hazir.kalan);
+      toast("Reklam doğrulanıyor…");
+      for (let i = 0; i < 12; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        if (window.YUK && YUK.temizle) YUK.temizle();
+        const r2 = await API.rpc("hayat");
+        if (r2.reklam && Number(r2.reklam.kalan) < onceKalan) { hayatCiz(r2); toast("Reklam ödülü hesabına geçti."); return; }
+      }
+      toast(AYAR.ADMOB_TEST
+        ? "Test reklam birimi sunucuya doğrulama göndermez. Ödül, AdMob SSV testi veya gerçek birimle gelir."
+        : "Reklam izlendi. Doğrulama gecikirse ödül kısa süre içinde cüzdanına yatar.", true);
+      b.disabled = false;
+    } catch (err) { toast(hataCevir(err.message), true); b.disabled = false; }
   };
   $("#hMagaza").onclick = () => magazaModal();
   $("#hBagis").onclick = () => ilBagisModal();
@@ -4183,10 +4200,10 @@ async function vergiKarneModal(){
     ${d.destek_gunluk ? `<div class="kv"><span class="k">Yeni vatandaşlara günlük sosyal destek</span><span class="v">${tlYaz(d.destek_gunluk)}/gün</span></div>` : ""}
     <button class="btn ikinci" onclick="modalKapat()">Kapat</button>`;
 }
-// Ödüllü reklam (@capacitor-community/admob). Ödül yalnızca reklam gerçekten izlenince verilir.
+// Ödüllü reklam (@capacitor-community/admob). Para, Google SSV imzası doğrulanınca yazılır; istemci ödül RPC'si ödemez.
 const REKLAM = {
   eklenti(){ const C = window.Capacitor; return C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.AdMob; },
-  async goster(){
+  async goster(ssv){
     const A = this.eklenti();
     if (!A) throw new Error("Reklamlar yalnızca telefondaki uygulamada izlenebilir.");
     if (!this._hazir) { await A.initialize({ initializeForTesting: !!AYAR.ADMOB_TEST }); this._hazir = true; }
@@ -4194,10 +4211,13 @@ const REKLAM = {
     let odul = false;
     const dinle = await A.addListener("onRewardedVideoAdReward", () => { odul = true; });
     try {
-      // Test modunda (Kontrol Merkezi › Ayarlar › admob_test) her zaman Google'ın test reklamı gösterilir; gelir ve geçersiz trafik riski olmaz
+      // Test modunda (Kontrol Merkezi › Ayarlar › admob_test) Google'ın test birimi gösterilir.
+      // Bu birimler SSV geri çağrısı göndermez; ödül gerçek birimde ya da konsol testiyle gelir.
       const test = !!AYAR.ADMOB_TEST;
       const birim = test ? (ios ? "ca-app-pub-3940256099942544/1712485313" : "ca-app-pub-3940256099942544/5224354917") : (ios ? AYAR.ADMOB_ODULLU_IOS : AYAR.ADMOB_ODULLU_ANDROID);
-      await A.prepareRewardVideoAd({ adId: birim, isTesting: test });
+      const opts = { adId: birim, isTesting: test };
+      if (ssv && (ssv.userId || ssv.customData)) opts.ssv = { userId: String(ssv.userId || ""), customData: String(ssv.customData || "") };
+      await A.prepareRewardVideoAd(opts);
       const r = await A.showRewardVideoAd();
       if (r && (r.amount != null || r.type)) odul = true;
     } finally { try { dinle.remove(); } catch (_) {} }
@@ -14314,10 +14334,10 @@ body{letter-spacing:.05px;text-rendering:optimizeLegibility}
 
   // Reklam ve satış: sunucudan kapatılabilir; anahtar yoksa anlaşılır mesaj
   if (typeof REKLAM === "object" && REKLAM && typeof REKLAM.goster === "function") {
-    const eskiGoster = REKLAM.goster.bind(REKLAM);
+    const eskiGoster = REKLAM.goster;
     REKLAM.goster = async function(){
       if (YK.ayar && YK.ayar.reklam_acik === false) throw new Error("Ödüllü reklamlar şu an kapalı.");
-      return eskiGoster();
+      return eskiGoster.apply(this, arguments);
     };
   }
   if (typeof ODEME === "object" && ODEME && typeof ODEME.hazirla === "function") {
@@ -15225,9 +15245,11 @@ body{letter-spacing:.05px;text-rendering:optimizeLegibility}
   /* ---------- Reklamsız ödül ---------- */
   if (typeof REKLAM === "object" && REKLAM && typeof REKLAM.goster === "function") {
     const eskiGoster = REKLAM.goster;
-    REKLAM.goster = async function () {
-      const d = M.durum || await durumYukle();
-      if (d && d.reklamsiz) return true;
+    REKLAM.goster = async function (ssv) {
+      if (!(ssv && (ssv.userId || ssv.customData))) {
+        const d = M.durum || await durumYukle();
+        if (d && d.reklamsiz) return true;
+      }
       return eskiGoster.apply(this, arguments);
     };
   }

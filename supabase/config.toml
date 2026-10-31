@@ -1,0 +1,5 @@
+# AdMob SSV geri çağrısı Google'dan gelir ve Supabase JWT taşımaz.
+# Yalnız bu fonksiyonun doğrulaması kapatılır; diğer fonksiyonlara dokunulmaz.
+
+[functions.admob-ssv]
+verify_jwt = false

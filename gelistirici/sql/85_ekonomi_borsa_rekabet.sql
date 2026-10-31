@@ -54,7 +54,8 @@ create table if not exists oyun.borsa_islem(
   komisyon  numeric not null,
   zaman     timestamptz not null
 );
-create index if not exists borsa_islem_sirket on oyun.borsa_islem(sirket_id, zaman desc);
+-- (sirket_id, zaman desc) indeksi 97_borsa_manipulasyon_koruma.sql içinde
+-- borsa_islem_fiyat_koruma_idx olarak kurulur. Eski ad borsa_islem_sirket mükerrerdi.
 
 create table if not exists oyun.rekabet_sorusturma(
   id      bigserial primary key,

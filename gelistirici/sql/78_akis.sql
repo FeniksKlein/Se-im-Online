@@ -17,7 +17,8 @@ create table if not exists oyun.akis(
   gizli    boolean not null default false
 );
 create index if not exists akis_zaman on oyun.akis(id desc) where not gizli;
-create index if not exists akis_kullanici on oyun.akis(user_id, zaman desc);
+-- (user_id, zaman desc) indeksi 141_kursu.sql içinde akis_user_zaman_idx olarak kurulur.
+-- Aynı kolonlara ikinci indeks (eski ad akis_kullanici) mükerrerdi; yeniden oluşturulmaz.
 
 create table if not exists oyun.akis_etiket(
   akis_id bigint not null references oyun.akis(id) on delete cascade,

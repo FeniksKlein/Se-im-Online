@@ -53,6 +53,7 @@ const AUTH = {
   sifreSifirla: () => null, sifreGuncelle: () => null,
   cikis: () => { aktif = null; },
   odeme: (urun) => psql(`set role service_role; select public.odeme_isle('${JSON.stringify({ event: { type: 'NON_RENEWING_PURCHASE', app_user_id: aktif.uid, product_id: urun, transaction_id: 'TEST-' + Date.now() } })}'::jsonb)`),
+  ssv: (ssv) => JSON.parse(psql(`set role service_role; select public.reklam_ssv_isle('${JSON.stringify({ transaction_id: 'ui-' + Date.now() + '-' + Math.random().toString(16).slice(2), user_id: ssv.userId, custom_data: ssv.customData, gizli: 'test-admob-ssv-gizli-degeri' }).replace(/'/g, "''")}'::jsonb)`)),
   testGiris: (kad) => { const uid = psql(`select id from oyun.profiller where kad='${kad}'`); aktif = { uid, email: kad + '@bot', onayli: true }; }
 };
 
@@ -63,6 +64,7 @@ const AUTH = {
   psql(`update oyun.ayarlar set baslangic='2026-10-02 12:00+03'`);
   saat('2026-10-02 12:00');
   psql(`update oyun.ayarlar set baslangic_para=60000`);
+  psql(`insert into oyun.uygulama_ayar(anahtar, deger, aciklama, herkese_acik) values ('admob_ssv_gizli', to_jsonb('test-admob-ssv-gizli-degeri'::text), 'test', false) on conflict (anahtar) do update set deger = excluded.deger, herkese_acik = false`);
   psql(`select oyun.test_bot_olustur(160, '2026-09-20 12:00+03')`);
   execFileSync('node', [path.join(KOK, 'build/derle.js')]);
 
@@ -89,7 +91,8 @@ const AUTH = {
       unsubscribeFromTopic: async ({ topic }) => { window.__konular = window.__konular.filter(t => t !== topic); },
       addListener: (ad, fn) => { window.__dinle[ad] = fn; return { remove() {} }; } },
       AdMob: { _d: {}, initialize: async () => {}, addListener: async function (ad, fn) { this._d[ad] = fn; return { remove: () => { delete this._d[ad]; } }; },
-        prepareRewardVideoAd: async () => {}, showRewardVideoAd: async function () { const f = this._d.onRewardedVideoAdReward; if (f) f({ type: 'odul', amount: 1 }); return { type: 'odul', amount: 1 }; } },
+        prepareRewardVideoAd: async (opts) => { window.__ssv = opts && opts.ssv; },
+        showRewardVideoAd: async function () { const f = this._d.onRewardedVideoAdReward; if (f) f({ type: 'odul', amount: 1 }); if (window.__ssv) { const r = await window.__api('ssv', window.__ssv); if (r.hata) throw new Error(r.hata); } return { type: 'odul', amount: 1 }; } },
       Purchases: { configure: async () => {},
         getProducts: async ({ productIdentifiers }) => ({ products: productIdentifiers.map((id, i) => ({ identifier: id, priceString: ['₺29,99', '₺89,99', '₺229,99'][i] || '₺0' })) }),
         purchaseStoreProduct: async ({ product }) => { const r = await window.__api('odeme', product.identifier); if (r.hata) throw new Error(r.hata); return { productIdentifier: product.identifier }; } } } };

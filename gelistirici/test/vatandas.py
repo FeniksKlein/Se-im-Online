@@ -92,15 +92,32 @@ s_ = hy(vek[0])["kumbara"]["saatlik"]
 assert abs(s_["makam"] - 310332 * end / 720) < 0.05, s_
 assert hy(reis)["makamlar"][0]["aylik"] == round(354497 * end)
 assert round(f("select oyun.makam_maasi('bel', 34::smallint)") / end) == 317800 and round(f("select oyun.makam_maasi('bel', 69::smallint)") / end) == 171400
+GIZLI = "test-admob-ssv-gizli-degeri"
+k("""insert into oyun.uygulama_ayar(anahtar, deger, aciklama, herkese_acik)
+     values ('admob_ssv_gizli', to_jsonb('%s'::text), 'test', false)
+     on conflict (anahtar) do update set deger = excluded.deger, herkese_acik = false""" % GIZLI)
+def ssv_isle(olay):
+    return qj("set role service_role; select public.reklam_ssv_isle('%s'::jsonb);" % j(olay).replace("'", "''"))
+p_veli = hy(veli)["para"]
+assert ssv_isle({"transaction_id": "yanlis", "user_id": veli, "custom_data": "yok", "gizli": "yanlis-gizli-ama-uzun-metin"})["durum"] == "yetkisiz"
+assert hy(veli)["para"] == p_veli
+hata_bekle(rpc, ayse, "reklam_odul", icerir="doğrulanmış")
 p0 = hy(ayse)["para"]
-r = rpc(ayse, "reklam_odul")
-assert r["sonuc"]["odul"] == round(asg_saat * 2) and r["para"] == p0 + r["sonuc"]["odul"] and r["reklam"]["kalan"] == 4
-hata_bekle(rpc, ayse, "reklam_odul", icerir="biraz bekle")
+haz = rpc(ayse, "reklam_hazirla")
+assert haz["yol"] == "ssv" and haz["user_id"] == ayse and haz["token"]
+olay = {"transaction_id": "ssv-1", "user_id": ayse, "custom_data": haz["token"], "gizli": GIZLI}
+r = ssv_isle(olay)
+assert r["durum"] == "verildi" and r["odul"] == round(asg_saat * 2), r
+assert ssv_isle(olay)["durum"] == "zaten_islendi"
+assert hy(ayse)["para"] == p0 + r["odul"] and hy(ayse)["reklam"]["kalan"] == 4
+hata_bekle(rpc, ayse, "reklam_hazirla", icerir="biraz bekle")
 for i in range(4):
-    saat(f"2026-10-05 09:{2 + 2 * i:02d}"); rpc(ayse, "reklam_odul")
+    saat(f"2026-10-05 09:{2 + 2 * i:02d}")
+    h = rpc(ayse, "reklam_hazirla")
+    assert ssv_isle({"transaction_id": f"ssv-{i+2}", "user_id": ayse, "custom_data": h["token"], "gizli": GIZLI})["durum"] == "verildi"
 saat("2026-10-05 09:30")
-hata_bekle(rpc, ayse, "reklam_odul", icerir="Yarın")
-ok(f"Makam maaşları gerçek oranlarda (vekil {round(310332 * end):,} ₺/ay, büyükşehir başkanı 317.800, küçük il 171.400); reklam ödülü 2 saatlik maaş, günde 5")
+hata_bekle(rpc, ayse, "reklam_hazirla", icerir="Yarın")
+ok(f"Makam maaşları gerçek oranlarda (vekil {round(310332 * end):,} ₺/ay, büyükşehir başkanı 317.800, küçük il 171.400); reklam ödülü 2 saatlik maaş, günde 5, yalnız doğrulanmış SSV")
 
 # ---------------- POLİTİKALAR (YÜRÜTME) ----------------
 hata_bekle(rpc, ali, "politika_ayarla", "asgari", 30000, icerir="ilgili bakan")
