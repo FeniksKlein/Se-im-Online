@@ -54080,6 +54080,13 @@ begin
  return jsonb_build_object('basvuru_id',idd,'davet',sayi,'gerekli',gerek-1,'kurucu_kurulu',gerek,'harc',harc,'fon',fon,'sermaye',harc+fon);
 end $function$;
 
+-- Eski doğrudan kuruluş çağrısı (eski uygulamalar): doğru yönlendirme metni
+create or replace function public.parti_kur(p_ad text, p_kisa text, p_renk text, p_amblem text)
+ returns jsonb language plpgsql security definer set search_path to '' as $function$
+begin
+ raise exception 'Yeni parti kurmak için kurucular kurulu gerekir: Partiler › Parti kur ekranından kurucu davetlerini gönder (sen dahil en az % kişi).', oyun.parti_kurucu_gerekli();
+end $function$;
+
 create or replace function public.kurucu_davet_ekle(p_basvuru bigint, p_kadlar text[])
  returns jsonb language plpgsql security definer set search_path to '' as $function$
 declare p oyun.profiller:=oyun.profilim(); b oyun.kurucu_basvuru; t timestamptz:=oyun.simdi();
