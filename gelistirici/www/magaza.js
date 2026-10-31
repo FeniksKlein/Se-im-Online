@@ -172,9 +172,11 @@
   /* ---------- Reklamsız ödül ---------- */
   if (typeof REKLAM === "object" && REKLAM && typeof REKLAM.goster === "function") {
     const eskiGoster = REKLAM.goster;
-    REKLAM.goster = async function () {
-      const d = M.durum || await durumYukle();
-      if (d && d.reklamsiz) return true;
+    REKLAM.goster = async function (ssv) {
+      if (!(ssv && (ssv.userId || ssv.customData))) {
+        const d = M.durum || await durumYukle();
+        if (d && d.reklamsiz) return true;
+      }
       return eskiGoster.apply(this, arguments);
     };
   }
