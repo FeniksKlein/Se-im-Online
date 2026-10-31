@@ -526,3 +526,4 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
   - `oyun.ihmal_tick`: bakan, CB yardımcısı ve genel başkan yardımcısı görevden alınmaz; 3 gün girmeyince bir kez cumhurbaşkanına / genel başkana ve görevliye bildirim. Seçilmiş görevlerin (CB, belediye, GB) 7 günlük kuralı değişmedi. `delete` yerine kayıt geçerliliği (`zaman > son_gorulme`) kullanılıyor.
   - Canlı test (geri alınan): tavanlar doğru (+2), `ihmal_tick` hatasız, bakanlar yerinde.
 - **Arayüz:** Fiyat Tarifesi SSS'ye "Kıdem neyle artar?" eklendi.
+- **Ek (09:30, 153):** Ercan seçilmiş görevler için de onayladı: `oyun.ihmal_tick` artık hiç kimseyi görevden almıyor. 7 gün girmeyen CB → CB yardımcıları + TBMM Başkanı, belediye başkanı → CB + İçişleri Bakanı, genel başkan → GBY'ler bilgilendirilir; ara seçim/olağanüstü kurultay açılmaz. Canlıya `ihmal_secilmis_bildirim_20261031`; 30 gün ilerisi simüle edildi, kimse düşmedi.

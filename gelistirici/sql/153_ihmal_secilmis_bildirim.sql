@@ -1,0 +1,5 @@
+-- 153 (31.10.2026) — Seçilmiş görevlerde de ihmal görevden almaz (Ercan: "Evet").
+-- 7 gün girmeyen cumhurbaşkanı → CB yardımcıları ve TBMM Başkanı; belediye başkanı → cumhurbaşkanı ve İçişleri Bakanı;
+-- genel başkan → genel başkan yardımcıları bilgilendirilir. Ara seçim/olağanüstü kurultay açılmaz. Canlıya: ihmal_secilmis_bildirim_20261031.
+-- Fonksiyonun tamamı canlıdakiyle aynıdır: select pg_get_functiondef('oyun.ihmal_tick(timestamptz)'::regprocedure);
+-- (gövde canlı veritabanından alınmıştır)
