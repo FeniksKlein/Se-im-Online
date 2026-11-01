@@ -4,6 +4,9 @@
 #           bash test/hepsi.sh eski     (ek olarak eski testler: ekonomi dengesi değiştiği için bazı beklentileri güncel değil)
 cd "$(dirname "$0")"
 basarisiz=0
+# RPC yüzeyi kendi küçük veritabanını kurar. Birleşik kurulum, migrations'ta olup
+# sql birleştirme listesinde olmayan oyun.eko_vergi_hareket yüzünden sıfırdan bitmeyebilir.
+if out=$(timeout 900 python3 rpc_yuzey.py 2>&1); then echo "✓ rpc_yuzey: $(echo "$out" | tail -1)"; else echo "✗ rpc_yuzey"; echo "$out" | tail -15; basarisiz=1; fi
 testler="secim_gecesi ek_ozellikler erken_secim_takvim cimer_akis yargi simulasyon guvenlik miting_canli parti_miting gazete_uzun gby_gorev_tepki gby_gorev_yetki ittifak_ortak dernek halka_arz ekonomi_pazar ekonomi_borsa ajans guvenlik_ekonomi ekonomi_kurumlar siyaset_merkezi oyuncu_incelemesi"
 [ "$1" = "eski" ] && testler="$testler sosyal devlet asama3 tek_gorev vatandas ekonomi2 bos_makam mevzuat meclis ekonomi3"
 for t in $testler; do

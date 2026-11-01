@@ -1,4 +1,8 @@
 -- =====================================================================
+--  RPC yüzeyi (kim hangi fonksiyonu çağırabilir) burada değil, kurulumun
+--  en sonundaki 159_rpc_yuzey.sql içindedir. Sonraki modüller tek tek grant
+--  ettiği için kilit en sonda uygulanır; 14'e konursa geri açılır.
+-- =====================================================================
 --  14 · ÇOKLU HESAPLA MÜCADELE, VATANDAŞLIK (OY) ŞARTLARI, PARTİ KURULUŞU
 --
 --  İlke: "bir insan = bir vatandaş". Aynı kişinin birden çok hesapla oy kullanması, aday olması,

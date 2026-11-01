@@ -11,7 +11,10 @@ const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düze
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
   'begin;', oku('kalicilik_bas.sql'),
   `select oyun.guncelleme_basla('${surum}', 'supabase-kurulum.sql');`,
-  ...dosyalar.map(oku), oku('kalicilik_son.sql'), 'select oyun.guncelleme_bitti();', 'commit;', '', oku('04_zamanlayici.sql'), ''].join('\n');
+  ...dosyalar.map(oku), oku('kalicilik_son.sql'), 'select oyun.guncelleme_bitti();',
+  '-- 159: bütün fonksiyonlar yazıldıktan sonra RPC yüzeyi kapanır. Bu dosya listenin ve işlemin sonunda kalmalı.',
+  oku('159_rpc_yuzey.sql'),
+  'commit;', '', oku('04_zamanlayici.sql'), ''].join('\n');
 fs.mkdirSync(path.join(kok, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(kok, 'dist/supabase-kurulum.sql'), sql);
 console.log('dist/supabase-kurulum.sql', sql.split('\n').length, 'satır');
