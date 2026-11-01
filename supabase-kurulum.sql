@@ -56977,19 +56977,33 @@ select oyun.guncelleme_bitti();
 -- Şema düzeyindeki REVOKE, Postgres'in fonksiyonlara gömülü PUBLIC hakkını silmez
 -- (şema ACL'i bu varsayılanın ÜSTÜNE eklenir). Kaldırma genel (şemasız) olmalıdır.
 do $varsayilan$
-declare r text;
 begin
-  foreach r in array array['postgres', 'supabase_admin'] loop
-    if exists (select 1 from pg_roles where rolname = r) then
-      execute format('alter default privileges for role %I revoke execute on functions from PUBLIC, anon, authenticated', r);
-      execute format('alter default privileges for role %I in schema public revoke execute on functions from PUBLIC, anon, authenticated', r);
-      execute format('alter default privileges for role %I in schema oyun revoke execute on functions from PUBLIC, anon, authenticated', r);
-      if exists (select 1 from pg_roles where rolname = 'service_role') then
-        execute format('alter default privileges for role %I in schema public grant execute on functions to service_role', r);
-        execute format('alter default privileges for role %I in schema oyun grant execute on functions to service_role', r);
-      end if;
+  -- SQL Editor postgres olarak bağlanır; kendi varsayılanını değiştirebilir.
+  if exists (select 1 from pg_roles where rolname = 'postgres') then
+    alter default privileges for role postgres revoke execute on functions from PUBLIC, anon, authenticated;
+    alter default privileges for role postgres in schema public revoke execute on functions from PUBLIC, anon, authenticated;
+    alter default privileges for role postgres in schema oyun revoke execute on functions from PUBLIC, anon, authenticated;
+    if exists (select 1 from pg_roles where rolname = 'service_role') then
+      alter default privileges for role postgres in schema public grant execute on functions to service_role;
+      alter default privileges for role postgres in schema oyun grant execute on functions to service_role;
     end if;
-  end loop;
+  end if;
+  -- supabase_admin çoğu projede postgres'in üyesi değildir. Canlıda bu adım
+  -- "permission denied" verdi ve işlemi durdurdu; yetki yoksa atlanır.
+  if exists (select 1 from pg_roles where rolname = 'supabase_admin') then
+    begin
+      alter default privileges for role supabase_admin revoke execute on functions from PUBLIC, anon, authenticated;
+      alter default privileges for role supabase_admin in schema public revoke execute on functions from PUBLIC, anon, authenticated;
+      alter default privileges for role supabase_admin in schema oyun revoke execute on functions from PUBLIC, anon, authenticated;
+      if exists (select 1 from pg_roles where rolname = 'service_role') then
+        alter default privileges for role supabase_admin in schema public grant execute on functions to service_role;
+        alter default privileges for role supabase_admin in schema oyun grant execute on functions to service_role;
+      end if;
+    exception
+      when insufficient_privilege then
+        raise notice 'supabase_admin varsayılan ayrıcalığı atlandı (yetki yok): %', sqlerrm;
+    end;
+  end if;
 end
 $varsayilan$;
 
