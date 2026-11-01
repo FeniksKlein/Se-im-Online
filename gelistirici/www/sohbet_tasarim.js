@@ -393,7 +393,22 @@
     if (!anaVar()) return;
     govdeTazele(true);
     try { rozetGuncelle(Object.assign({}, D.okunmamis || {})); } catch (e) {}
-    D.canli = setInterval(function () { if (!document.hidden && otomatik()) anaYokla(); }, 9000 + Math.floor(Math.random() * 2000));
+    canliKur(sinyalListesi(), function () { return anaYokla(); }, 9000);
+  }
+  function canliKur(anahtarlar, tazele, hizli) {
+    if (window.CANLI && typeof CANLI.izle === 'function') CANLI.izle({ anahtarlar: anahtarlar, tazele: tazele, hizliMs: hizli, yedekMs: 90000, yayilim: 1500 });
+    else D.canli = setInterval(function () { if (!document.hidden && otomatik()) Promise.resolve(tazele()).catch(function () {}); }, hizli + Math.floor(Math.random() * 1500));
+  }
+  function sinyalListesi() {
+    var ks = [], gor = {};
+    ((ST.oz && ST.oz.kanallar) || []).forEach(function (k) {
+      if (!k || k.kilit) return;
+      var s = k.sinyal || (window.CANLI && CANLI.sohbetAnahtari && CANLI.sohbetAnahtari(k.kanal));
+      if (s && !gor[s]) { gor[s] = 1; ks.push(s); }
+    });
+    var id = D.durum && D.durum.profil && D.durum.profil.id;
+    if (id) ks.push('kutu:' + id);
+    return ks;
   }
   var yoklaniyor = false;
   async function anaYokla() {
@@ -775,7 +790,8 @@
       var ta = $1('#yaz'); if (!ta) return; ta.value = b.getAttribute('data-hizli'); ta.dispatchEvent(new Event('input')); ta.focus();
     });
     asagiKur(akis, S); yazmaKur(S, akis);
-    D.canli = setInterval(function () { if (!document.hidden && otomatik()) S.yeniGetir().catch(function () {}); }, 4500 + Math.floor(Math.random() * 1500));
+    var kutuAnahtar = D.durum && D.durum.profil && D.durum.profil.id ? 'kutu:' + D.durum.profil.id : null;
+    canliKur(kutuAnahtar ? [kutuAnahtar] : [], function () { return S.yeniGetir().catch(function () {}); }, 4500);
   }
   function dmMenu(kad) {
     var sat = function (k, ik, ad, cls) { return '<button type="button" class="sh-es' + (cls ? ' ' + cls : '') + '" data-es="' + k + '">' + ik + '<span>' + ad + '</span></button>'; };
@@ -874,7 +890,7 @@
       yukluyor = false;
     }, { passive: true });
     asagiKur(akis, S); yazmaKur(S, akis);
-    D.canli = setInterval(function () { if (!document.hidden && otomatik()) S.yeniGetir().catch(function () {}); }, 5500 + Math.floor(Math.random() * 1500));
+    canliKur([r.sinyal || (window.CANLI && CANLI.sohbetAnahtari && CANLI.sohbetAnahtari(kanal))].filter(Boolean), function () { return S.yeniGetir().catch(function () {}); }, 5500);
   }
 
   /* =====================================================================

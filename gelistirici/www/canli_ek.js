@@ -105,7 +105,10 @@ function geceKancasi(s){
     }
     const benimAcik = !!(s.sonuc && s.sonuc.iller && s.sonuc.iller[String(s.benim_il || "")]);
     GECE.durum[s.id] = { acilan_il: g.acilan_il || 0, aktif: true, benimAcik };
-    D.canli = setInterval(() => { if (!document.hidden && (!window.YUK || YUK.otomatik())) secimEkrani(s.id, true); }, 15000 + Math.floor(Math.random() * 4000));
+    const taz = () => { if (!document.hidden && (!window.YUK || YUK.otomatik())) return secimEkrani(s.id, true); };
+    const sn = Number(g.sonraki_sn);
+    if (window.CANLI && CANLI.izle) CANLI.izle({ anahtarlar: ["secim:" + s.id], tazele: taz, hizliMs: 15000, yedekMs: 60000, yayilim: 4000, sonraMs: Number.isFinite(sn) && sn >= 0 ? Math.max(800, sn * 1000 + 400) : null });
+    else D.canli = setInterval(() => { if (!document.hidden && (!window.YUK || YUK.otomatik())) secimEkrani(s.id, true); }, 15000 + Math.floor(Math.random() * 4000));
   } else if (onceki && onceki.aktif) {
     GECE.durum[s.id] = { aktif: false };
     HAPTIK.guclu(); SES.fanfar(); toast("Sayım tamamlandı. Kesin sonuçlar açıklandı.");

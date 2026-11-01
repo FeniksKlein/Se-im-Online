@@ -378,7 +378,7 @@
   function yeniGozcu(s) {
     try { canliDurdur(); } catch (e) {}
     var tur = 0;
-    D.canli = setInterval(async function () {
+    var tazele = async function () {
       if (document.hidden || !aktif('ana') || KR.sekme !== s) return;
       try { if (typeof YUK !== 'undefined' && !YUK.otomatik()) return; } catch (e) {}
       tur++;
@@ -395,7 +395,9 @@
         }
       } catch (e) {}
       if (tur % 2 === 0) { await benYukle(true); rozetYaz(); }
-    }, 30000 + Math.floor(Math.random() * 4000));
+    };
+    if (window.CANLI && CANLI.izle) CANLI.izle({ anahtarlar: ['kursu:akis'], tazele: tazele, hizliMs: 30000, yedekMs: 120000, yayilim: 4000 });
+    else D.canli = setInterval(tazele, 30000 + Math.floor(Math.random() * 4000));
   }
   async function anaYenile() {
     var A = akisDurum(KR.sekme); A.t = 0; A.kaydir = 0;
