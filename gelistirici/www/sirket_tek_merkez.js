@@ -195,7 +195,8 @@ window.sirketTekSirketEkrani=async function(id,tab){
        (manager?action('Satış fiyatını kaydet','sirketMerkezStokFiyat('+id+','+k+','+JSON.stringify(String(x.urun)).replace(/"/g,'&quot;')+')'):''))).join(''):
        '<p class="alt">Bu şirket için listelenen stok bulunmuyor.</p>')+
      (factory&&manager?'<h3>Fabrika üretimi</h3>'+
-      '<div class="alan"><label>Ürün</label><select id="sm_urun">'+products.map(p=>'<option value="'+safe(p.kod)+'">'+safe(p.ad)+' · Maliyet '+money(p.maliyet)+'</option>').join('')+'</select></div>'+
+      '<div class="alan"><label>Ürün</label><select id="sm_urun">'+products.map(p=>'<option value="'+safe(p.kod)+'">'+safe(p.ad)+' · birim '+money(Number(p.maliyet)*(Number(company?.il_endeks?.aktif!==false&&company?.il_endeks?.uretim)||1))+' · '+Number(p.dakika)+' dk</option>').join('')+'</select></div>'+
+      '<p class="sm-note">Süre dolunca ürünler stoğa geçer. Birim maliyete '+safe(company?.il_ad||'ilin')+' üretim çarpanı dahildir. Ayrıntılı üretim ekranı: Üretim ve Ticaret.</p>'+
       '<div class="alan"><label>Üretilecek adet</label><input id="sm_adet" type="number" min="1" step="1" value="10"></div>'+
       action('Üretim emri ver','sirketMerkezTicaretYap('+id+',\'uret\')','altin'):'')+
      (store&&manager?'<h3>Mal satın al / Toptan tedarik</h3>'+
@@ -203,9 +204,19 @@ window.sirketTekSirketEkrani=async function(id,tab){
       '<div class="alan"><label>Alınacak adet</label><input id="sm_adet" type="number" min="1" step="1" value="1"></div>'+
       (vendors.length?action('Şirket kasasıyla mal al','sirketMerkezTicaretYap('+id+',\'toptan\')','altin'):'<p class="alt">Şu an stoklu tedarikçi bulunmuyor.</p>'):'')+
      '<h3>Üretim emirleri</h3>'+
-     (production.length?production.slice(0,8).map(p=>item(safe(p.urun)+' · '+p.adet+' adet'+
-       kv('Durum',p.tamam?'Tamamlandı':p.hazir?'Hazır':'Üretimde')+
-       kv('Maliyet',money(p.maliyet)))).join(''):'<p class="alt">Bekleyen üretim emri yok.</p>')+
+     (production.length?production.slice(0,8).map(p=>{
+       // 02.11.2026: "hazir" bitiş saatidir; eskiden her emirde "Hazır" yazıyordu. Durum ve saatler açıkça gösterilir.
+       const fark=t&&t.simdi?new Date(t.simdi).getTime()-Date.now():0;
+       const simdi=Date.now()+(Math.abs(fark)<6*3600000?fark:0),bit=p.hazir?new Date(p.hazir).getTime():0;
+       const saat=x=>x?new Date(x).toLocaleString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—';
+       const kalanDk=Math.max(0,Math.ceil((bit-simdi)/60000));
+       const durum=p.tamam?'Stokta · '+saat(p.tamam):!bit?'Üretimde':bit<=simdi?'Süre doldu · stoğa geçiyor (en geç '+saat(p.teslim||p.hazir)+')':
+         'Üretimde · '+(kalanDk>=60?Math.floor(kalanDk/60)+' sa '+(kalanDk%60)+' dk':kalanDk+' dk')+' kaldı';
+       const ad=(t?.urunler||[]).find(u=>u.kod===p.urun)?.ad||p.urun;
+       return item(safe(ad)+' · '+p.adet+' adet'+kv('Durum',durum)+
+         (!p.tamam&&bit?kv('Bitiş',saat(p.hazir)):'')+(p.baslangic?kv('Emir',saat(p.baslangic)):'')+
+         kv('Maliyet',money(p.maliyet)));
+     }).join(''):'<p class="alt">Bekleyen üretim emri yok.</p>')+
      '<h3>Gerçekleşen satışlar</h3>'+
      (sales.length?sales.map(x=>item(safe(x.urun)+' · '+x.adet+' adet'+kv('Ciro',money(x.ciro))+
        kv('Net kâr',money(x.kar))+'<p class="alt">'+shortDate(x.zaman)+'</p>')).join(''):'<p class="alt">Henüz kayıtlı satış yok.</p>')+

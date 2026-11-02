@@ -124,7 +124,9 @@ function pazarKurModal(sektor, ilId){
     ${sektor === "enerji" ? `<div class="alan"><label>Enerji kaynağı</label><select id="pzKaynak">${Object.entries(PZ_KAYNAK).map(([k, a]) => `<option value="${k}" ${k === "dogalgaz" ? "selected" : ""}>${a}</option>`).join("")}</select>
       <p class="pz-not">Kömür ucuzdur ama ilin memnuniyetini düşürür ve sıkı denetimde ceza yer. Doğalgazın maliyeti dolar kuruna bağlıdır. Güneş ve rüzgâr pahalıdır ama markanı ve ilin gelişimini büyütür.</p></div>` : ""}
     <p class="pz-not">Sermaye arttıkça kapasite ve personel gideri birlikte artar. Kurduktan sonra fiyatını, kaliteni ve ilini değiştirebilirsin.</p>
+    <div id="pzIlEko"></div>
     <button class="btn" id="pzKurBtn">Şirketi kur</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
+  if (typeof window.ilEkoKurulusSatiri === "function") window.ilEkoKurulusSatiri($("#pzIlEko", m), ilId, "pazar", { sektor: sektor, not: false });
   $("#pzKurBtn", m).onclick = async () => {
     const ad = $("#pzAd", m).value.trim(), ser = Number($("#pzSermaye", m).value), b = $("#pzKurBtn", m);
     if (ad.length < 3 || ad.length > 50) { toast("Şirket adı 3-50 karakter olmalı.", true); return; }

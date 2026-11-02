@@ -51,7 +51,7 @@
  function emirDurum(q){
   if(q.tamam) return "Tamamlandı · stoklara aktarıldı ("+tarih(q.tamam)+")";
   if(!q.hazir)return "Üretim devam ediyor";
-  if(new Date(q.hazir).getTime()<=simdi())return "Üretim süresi doldu · stok aktarımı bekleniyor (10 dakikada bir)";
+  if(new Date(q.hazir).getTime()<=simdi())return "Süre doldu · stoğa geçiyor (en geç "+tarih(q.teslim||q.hazir)+"; Üretim ve Ticaret ekranını açınca hemen)";
   const dk=Math.ceil((new Date(q.hazir).getTime()-simdi())/60000);
   return "Üretimde · yaklaşık "+dk+" dk kaldı · Bitiş: "+tarih(q.hazir);
  }

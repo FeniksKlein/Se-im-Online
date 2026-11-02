@@ -184,7 +184,8 @@ async function belRuhsatBasvur(){
  try{
   const response=await API.rpc("bel_ruhsat_basvur",{p_tur:kind,p_il:city,p_sirket:companyId,
    p_hedef:target,p_ad:companyName||null,p_sektor:sector,p_yatirim:investment});
-  toast("Başvuru #"+response.id+" belediyeye gönderildi. Tahmini harç: "+fmt(response.tahmini_harc)+" TL");
+  toast("Başvuru #"+response.id+" belediyeye gönderildi. Tahmini harç: "+fmt(response.tahmini_harc)+" TL"+
+   (Number(response.kurulus_gideri)>0?" · Bu ildeki işyeri kuruluş gideri: "+fmt(response.kurulus_gideri)+" TL (kuruluşta bir kez)":""));
   belRuhsatMerkeziEkrani();
  }catch(err){toast(hataCevir(err.message),true);}
 }

@@ -691,8 +691,8 @@
     bmodal('<h3 style="font-size:19px;font-weight:800">' + esc((m.banka || {}).ad || "Banka") + ' kredi paketleri</h3>' +
       '<p class="alt" style="margin:4px 0 10px">Kredi notun ' + sayi(m.kredi_notu) + ' (' + esc(m.not_ad || "") + ').' + (m.baska_kredi ? ' Başka bir bankada aktif kredin ya da başvurun var.' : '') + '</p>' +
       (pk.length ? '<div class="bk"><div class="bk-kutu">' + pk.map(function (p) {
-        var uygun = Number(m.kredi_notu) >= Number(p.min_not || 0) && Number(p.limitim) >= Number(p.min_tutar);
-        return satir({ bas: esc(p.ad) + (p.otomatik ? ' <span class="bk-rozet y">Anında</span>' : ''), alt: p.vade_gun + " gün · " + p.taksit_sayisi + " taksit · toplam %" + sayi(p.faiz, 2) + " · " + tlKisa(p.min_tutar) + "–" + tlKisa(p.max_tutar) + (Number(p.min_not) ? " · not ≥ " + p.min_not : ""),
+        var uygun = !p.engel && !m.baska_kredi && Number(m.kredi_notu) >= Number(p.min_not || 0) && Number(p.limitim) >= Number(p.min_tutar);
+        return satir({ bas: esc(p.ad) + (p.otomatik ? ' <span class="bk-rozet y">Anında</span>' : ''), alt: p.vade_gun + " gün · " + p.taksit_sayisi + " taksit · toplam %" + sayi(p.faiz, 2) + " · " + tlKisa(p.min_tutar) + "–" + tlKisa(p.max_tutar) + (Number(p.min_not) ? " · not ≥ " + p.min_not : "") + (!uygun ? '<br><span class="bk-ipucu">' + esc(p.engel || (m.baska_kredi ? 'Önce mevcut kredini kapat veya başvurunu sonuçlandır.' : 'Kredi koşulları bu paket için yeterli değil.')) + '</span>' : ""),
           sag: uygun ? '<button class="btn altin" style="margin:0;padding:8px 12px;width:auto" onclick="msKrediPaket(' + Number(p.id) + ')">Seç</button>' : '<span class="bk-rozet k">Uygun değil</span>', sagAlt: uygun ? "limitin " + tlKisa(p.limitim) : "" });
       }).join("") + '</div></div>' : '<div class="bk-ozet">Bu banka henüz paket tanımlamamış. Banka sana özel teklif gönderebilir.</div>') +
       '<button class="btn ikinci" onclick="msKrediAc()">Başka banka seç</button>');
@@ -915,15 +915,26 @@
     var h = '<div class="' + (bil.durum === "riskli" ? "bk-uyari" : "bk-bilgi") + '">' + durumCumle + " " +
       (bek ? bek + " başvuru kararını bekliyor. " : "Bekleyen başvuru yok. ") +
       (Number(bil.geciken_mevduat) > 0 ? "Vadesi gelmiş " + tl(bil.geciken_mevduat) + " mevduat ödemesi var; kasayı güçlendir. " : "") +
-      (Number(bil.krediler_geciken) > 0 ? tl(bil.krediler_geciken) + " kredi gecikmede." : "") + '</div>';
+      (Number(bil.krediler_geciken) > 0 ? tl(bil.krediler_geciken) + " kredi takipte. " : "") +
+      (Number(bil.krediler_izleme) > 0 ? tl(bil.krediler_izleme) + " kredi yakın izlemede. " : "") +
+      (Number(bil.geciken_taksit) > 0 && !Number(bil.krediler_geciken) && !Number(bil.krediler_izleme) ? tl(bil.geciken_taksit) + " taksit gecikmede; bir günden kısa gecikme nota yansımaz." : "") + '</div>';
     if (bek) h += '<div class="bk-dugmeler">' + dugme("Başvuruları aç", "gmSekme('basvuru')", "altin") + '</div>';
     // oranlar
     var lik = bil.likidite, syr = bil.sermaye_yeterlilik, npl = Number(bil.takipteki_oran || 0), km = bil.kredi_mevduat;
     h += kutu("Bankacılık oranları",
       oranSatiri("Likidite", lik, lik == null ? "Borç yok" : sayi(lik, 2) + " kat", lik == null ? 100 : lik / 2 * 100, lik == null || lik >= 1.2 ? "var(--good)" : lik >= 1 ? "var(--warn)" : "var(--al)", "Kasa, hemen ödenebilecek mevduatın kaç katı. 1,2 katın üstü güvenli.") +
       oranSatiri("Sermaye yeterliliği", syr, syr == null ? "Riskli varlık yok" : "%" + sayi(syr, 1), syr == null ? 100 : syr / 30 * 100, syr == null || syr >= 15 ? "var(--good)" : syr >= 12 ? "var(--warn)" : "var(--al)", "Özkaynağın risk ağırlıklı kredilere oranı. Yasal alt sınır %12.") +
-      oranSatiri("Takipteki alacaklar", npl, "%" + sayi(npl, 1), npl * 4, npl <= 5 ? "var(--good)" : npl <= 15 ? "var(--warn)" : "var(--al)", "Geciken kredi ve kart borçlarının toplam alacağa oranı.") +
+      oranSatiri("Takipteki alacaklar", npl, "%" + sayi(npl, 1), npl * 4, npl <= 5 ? "var(--good)" : npl <= 15 ? "var(--warn)" : "var(--al)", "3 günden uzun geciken ya da icraya düşen kredi ve kart borçlarının toplam alacağa oranı." + (bil.takipteki_ozkaynak != null && Number(bil.takipteki_ozkaynak) > 0 ? " Özkaynağa oranı %" + sayi(bil.takipteki_ozkaynak, 1) + "." : "")) +
+      (Number(bil.izleme_oran) > 0 ? oranSatiri("Yakın izlemedeki krediler", Number(bil.izleme_oran), "%" + sayi(bil.izleme_oran, 1), Number(bil.izleme_oran) * 3, "var(--warn)", "Taksidi 1-3 gündür gecikmiş krediler. Takibe düşmeden ödenirse not etkilenmez.") : "") +
       oranSatiri("Kredi / mevduat", km, km == null ? "Mevduat yok" : "%" + sayi(km, 0), km == null ? 0 : km / 2, km == null || km <= 120 ? "var(--ink2)" : "var(--warn)", "Topladığın mevduatın ne kadarını krediye çevirdiğin."));
+    // güven notunu etkileyen kalemler (sunucu 160)
+    var etk = Array.isArray(bil.not_etkenleri) ? bil.not_etkenleri : null;
+    if (etk) h += kutu("Güven notunu etkileyenler", (etk.length ? etk.map(function (x) {
+      var c = Number(x.ceza || 0);
+      var ad = { likidite: "Likidite", sermaye: "Sermaye yeterliliği", takipteki: "Takipteki alacak", izleme: "Yakın izleme", gecikme: "Kısa gecikme", mevduat: "Mevduat ödemesi", ozkaynak: "Özkaynak" }[x.kod] || "Etken";
+      return satir({ bas: ad, alt: esc(x.aciklama), sag: c > 0 ? '<span class="eks">−' + c + ' puan</span>' : '<span class="art">etkisiz</span>' });
+    }).join("") : '<div class="bk-bos">Notu düşüren bir kalem yok.</div>') +
+      '<div class="bk-bilgi" style="margin-top:8px">Puan ' + Number(bil.puan || 0) + ' / 100. Bir günden kısa taksit gecikmesi nota yansımaz; 1-3 gün yakın izleme, 3 günü aşan ya da icraya düşen kredi takipteki alacak sayılır. Etki, sorunlu kredinin bankanın özkaynağına göre büyüklüğüyle orantılıdır.</div>');
     // bilanço
     h += '<div class="bk-bil"><div><h4>Varlıklar</h4>' +
       '<div class="bk-bs"><span>Kasa</span><b>' + tlKisa(bil.nakit) + '</b></div>' +
@@ -1175,7 +1186,8 @@
     h += '<div class="bk-form" style="margin-bottom:10px"><input id="gmAra" placeholder="Müşteri ara" value="' + esc(GM.ara) + '" oninput="gmAra(this.value)"></div>';
     var kr = (v.krediler || []).filter(function (k) { return Number(k.geciken) > 0; });
     if (kr.length) h += kutu("Geciken krediler", kr.map(function (k) {
-      return satir({ bas: esc(k.kad) + " · kalan " + tl(k.kalan), alt: "Geciken " + tl(k.geciken) + (k.icra ? " · icra: " + esc(k.icra.durum) : ""),
+      var sinifAd = { 1: "bir günden kısa gecikme", 2: "yakın izleme", 3: "takipte" }[Number(k.sinif)] || "";
+      return satir({ bas: esc(k.kad) + " · kalan " + tl(k.kalan), alt: "Geciken " + tl(k.geciken) + (sinifAd ? " · " + sinifAd : "") + (k.icra ? " · icra: " + esc(k.icra.durum) : ""),
         sag: yon && k.dava_acilabilir ? '<button class="btn altin" style="margin:0;padding:8px 12px;width:auto" onclick="gmIcra(' + Number(k.id) + ')">İcra başlat</button>' : '' });
     }).join(""));
     var gk = (v.kartlar || []).filter(function (k) { return Number(k.gecikmis_asgari) > 0; });

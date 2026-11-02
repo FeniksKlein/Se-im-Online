@@ -133,7 +133,7 @@ end
 $yol$;
 
 -- @@rpc_yuzey_izin_bas@@
--- authenticated izin listesi (891 ad). Kaynak: istemci çağrıları
+-- authenticated izin listesi (893 ad). Kaynak: istemci çağrıları
 -- (gelistirici/www, www, docs), önbellek listesi, eski mağaza uygulaması
 -- ve PR #40 reklam_hazirla (bu dalda fonksiyon henüz yok; dizi onu da açar).
 do $izin$
@@ -287,7 +287,9 @@ declare
     'yk_makamlar', 'yk_motor_calistir', 'yk_oyuncu', 'yk_oyuncular', 'yk_ozet', 'yk_para',
     'yk_parti_degistir', 'yk_parti_gorev_al', 'yk_satir_kaydet', 'yk_satir_sil', 'yk_satislar', 'yk_secimler',
     'yk_sistem_hatalari', 'yk_sustur', 'yk_tablo', 'yk_tablolar', 'yk_uygulama_ayar_kaydet', 'yk_uygulama_ayarlari',
-    'yonetim_hediyeleri', 'yurutme_butce_masasi'
+    'yonetim_hediyeleri', 'yurutme_butce_masasi',
+    -- 161 (02.11.2026) il ekonomisi
+    'il_ekonomi_bilgi', 'il_ekonomi_liste'
   ];
 -- @@rpc_yuzey_izin_son@@
   anon_izin text[] := array['surum', 'uygulama_ayar'];

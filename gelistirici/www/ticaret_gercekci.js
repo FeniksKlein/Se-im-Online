@@ -17,6 +17,65 @@ const item=id=>(TC.veri?.urunler||[]).find(x=>x.kod===id);
 const mine=(id)=> (TC.veri?.sirketler||[]).find(x=>x.id===Number(id));
 const storeStock=id=>(TC.veri?.stok||[]).filter(x=>x.sirket===id);
 const bizNames=(list)=>list.map(x=>[x.id,x.ad+" · Kasa "+money(x.kasa)]);
+/* Üretim emri zamanları (02.11.2026): sunucu saatiyle senkron geri sayım, bitiş ve stoğa geçiş saati. */
+const simdiMs=()=>Date.now()+(TC.saatFark||0);
+const saatYaz=x=>x?new Date(x).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}):"—";
+function gunSaat(x){
+ if(!x)return "—";
+ const d=new Date(x),n=new Date(simdiMs()),y=new Date(n.getTime()+86400000);
+ const ayni=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+ return (ayni(d,n)?"bugün ":ayni(d,y)?"yarın ":d.toLocaleDateString("tr-TR",{day:"numeric",month:"short"})+" ")+saatYaz(x);
+}
+function sureYaz(ms){
+ if(ms<=0)return "süre doldu";
+ const dk=Math.ceil(ms/60000);
+ if(dk<=1)return "1 dakikadan az";
+ const sa=Math.floor(dk/60),kd=dk%60;
+ return (sa?sa+" sa ":"")+(kd?kd+" dk":"");
+}
+const ilEnd=s=>s&&s.il_endeks&&s.il_endeks.aktif!==false?s.il_endeks:null;
+const uretimCarpani=s=>Number(ilEnd(s)?.uretim)||1;
+function emirDurum(q){
+ const bas=new Date(q.baslangic||q.hazir).getTime(),bit=new Date(q.hazir).getTime(),n=simdiMs();
+ if(q.tamam)return {kod:"stokta",yuzde:100,etiket:"Stokta",metin:"Stoğa geçti: "+gunSaat(q.tamam)};
+ if(bit<=n)return {kod:"geciyor",yuzde:100,etiket:"Stoğa geçiyor",
+  metin:"Süre doldu ("+saatYaz(q.hazir)+"). Ürünler bu ekran yenilenince hemen, değilse en geç "+saatYaz(q.teslim||q.hazir)+" stokta."};
+ const yuzde=bit>bas?Math.max(2,Math.min(99,Math.round((n-bas)/(bit-bas)*100))):50;
+ return {kod:"uretimde",yuzde,etiket:"Üretimde",kalan:sureYaz(bit-n),
+  metin:"Bitiş "+gunSaat(q.hazir)+" · stoğa en geç "+saatYaz(q.teslim||q.hazir)};
+}
+function emirKart(q,ad){
+ const d=emirDurum(q),u=item(q.urun);
+ return '<div class="tc-emir '+d.kod+'" data-bas="'+tm(q.baslangic||"")+'" data-bit="'+tm(q.hazir||"")+'" data-teslim="'+tm(q.teslim||"")+'" data-tamam="'+(q.tamam?1:0)+'">'+
+  '<div class="tc-emir-ust"><b>'+tm(u?.ad||q.urun)+' · '+Number(q.adet)+' adet</b><span class="tc-chip '+d.kod+'">'+d.etiket+'</span></div>'+
+  (d.kod==="stokta"?'':'<div class="tc-ilerleme"><i style="width:'+d.yuzde+'%"></i></div>')+
+  '<div class="tc-emir-alt">'+(d.kalan?'<b class="tc-kalan">'+d.kalan+' kaldı</b>':'')+'<span class="tc-emir-metin">'+tm(d.metin)+'</span></div>'+
+  '<small class="tc-emir-kunye">'+(ad?tm(ad)+' · ':'')+(q.kaynak==="mutfak"?"Mutfak · ":"")+'Maliyet '+money(q.maliyet)+(q.baslangic?' · Emir '+gunSaat(q.baslangic):'')+'</small></div>';
+}
+let tcSaatZaman=null,tcSonYenile=0;
+function tcSaatGuncelle(){
+ const kok=document.getElementById("tcPanelKok");
+ if(!kok){clearInterval(tcSaatZaman);tcSaatZaman=null;return;}
+ let biten=false;
+ kok.querySelectorAll(".tc-emir").forEach(el=>{
+  if(el.dataset.tamam==="1")return;
+  const q={baslangic:el.dataset.bas,hazir:el.dataset.bit,teslim:el.dataset.teslim};
+  const d=emirDurum(q);
+  if(d.kod!=="uretimde"&&el.classList.contains("uretimde"))biten=true;
+  const bar=el.querySelector(".tc-ilerleme i");if(bar)bar.style.width=d.yuzde+"%";
+  const k=el.querySelector(".tc-kalan");if(k)k.textContent=d.kalan?d.kalan+" kaldı":"";
+  const mt=el.querySelector(".tc-emir-metin");if(mt)mt.textContent=d.metin;
+  const ch=el.querySelector(".tc-chip");if(ch){ch.textContent=d.etiket;ch.className="tc-chip "+d.kod;}
+  el.classList.remove("uretimde","geciyor");el.classList.add(d.kod);
+  if(d.kod==="geciyor")biten=true;
+ });
+ // Süresi dolan emir: panel sunucudan tazelenince ürünler hemen stoğa geçer (oyuncu bir şey yazmıyorsa)
+ if(biten&&Date.now()-tcSonYenile>30000&&!(typeof window.SO_MESGUL==="function"&&window.SO_MESGUL())){
+  tcSonYenile=Date.now();
+  try{if(window.SO_KESINTISIZ)window.SO_KESINTISIZ.oto=Date.now();}catch(_){}
+  Promise.resolve(ticaretMerkezEkrani(TC.sekme)).catch(()=>{});
+ }
+}
 /* Fabrika bazinda sunucunun hesapladigi uretim deneyimi ve sermaye kapasitesi. */
 const tcCapacityInfo=s=>s?.kapasite||{};
 const tcCapacityMultiplier=s=>Math.max(1,Math.min(10,Number(tcCapacityInfo(s).katsayi)||1));
@@ -75,7 +134,7 @@ async function factoryWithPermit(preferredGroup){
    ["gida","🥖 Gıda (su, ekmek, un vb.)"],["teknoloji","💻 Teknoloji"],
    ["malzeme","🧱 İnşaat malzemeleri"]])+
   field("tcPermitCapital","Kuruluş sermayesi (TL)",250000,100000,100000000)+
-  '<p class="alt" id="tcPermitInfo"></p>',
+  '<p class="alt" id="tcPermitInfo"></p><div id="tcPermitIlEko"></div>',
   "Fabrikayı kur",async root=>{
    const r=permits.find(x=>x.id===Number(sel(root,"tcPermit")));
    const capital=Number(sel(root,"tcPermitCapital"));
@@ -103,6 +162,7 @@ async function factoryWithPermit(preferredGroup){
   el.querySelector("#tcPermitInfo").textContent=r?
    "Ruhsat: "+r.sirket+" · Geçerlilik sonu: "+
    date(new Date(new Date(r.karar_zamani).getTime()+72*60*60*1000).toISOString()):"";
+  if(r&&typeof window.ilEkoKurulusSatiri==="function")window.ilEkoKurulusSatiri(el.querySelector("#tcPermitIlEko"),Number(r.il_id),"fabrika",{not:false});
  };
  el.querySelector("#tcPermit").onchange=info;info();
 }
@@ -133,7 +193,7 @@ async function marketWithPermit(){
   choices("tcMarketPermit","Onaylı market ruhsatı",
    permits.map(r=>[r.id,r.sirket+" · "+ilAdi(r.il_id)+" · Onaylı"]))+
   field("tcMarketCapital","Kuruluş sermayesi (TL)",200000,100000,100000000)+
-  '<p class="alt" id="tcMarketPermitInfo"></p>',
+  '<p class="alt" id="tcMarketPermitInfo"></p><div id="tcMarketIlEko"></div>',
   "Marketi kur",async root=>{
    const r=permits.find(x=>Number(x.id)===Number(sel(root,"tcMarketPermit")));
    const capital=Number(sel(root,"tcMarketCapital"));
@@ -158,6 +218,7 @@ async function marketWithPermit(){
   if(r)el.querySelector("#tcMarketPermitInfo").textContent="Ruhsat #"+r.id+
    " · "+ilAdi(r.il_id)+" · Son geçerlilik: "+
    date(new Date(new Date(r.karar_zamani).getTime()+72*60*60*1000).toISOString());
+  if(r&&typeof window.ilEkoKurulusSatiri==="function")window.ilEkoKurulusSatiri(el.querySelector("#tcMarketIlEko"),Number(r.il_id),"magaza",{not:false});
  };
  el.querySelector("#tcMarketPermit").onchange=info;info();
 }
@@ -194,28 +255,64 @@ function produce(id,preferredProduct){
  if(!firm||firm.tur!=="fabrika"||!firm.yonetici){toast("Üretimi yönetebileceğin fabrika bulunamadı.",true);return;}
  const list=(TC.veri.urunler||[]).filter(x=>x.grup===firm.grup);
  if(!list.length){toast("Bu üretim grubunda ürün bulunamadı.",true);return;}
+ const ue=uretimCarpani(firm),end=ilEnd(firm);
+ const ilk=list.some(x=>x.kod===preferredProduct)?preferredProduct:list[0].kod;
  const m=popup(firm.ad+" · Üretim emri",
- choices("tcItem","Üretilecek ürün",list.map(x=>[x.kod,x.ad]))+
- field("tcQty","Üretim adedi",10,1,500)+
- '<div class="tc-hint" id="tcDetails"></div>',
+  '<p class="alt">Ürünü seç, adedi belirle. Maliyet emir verilince fabrika kasasından düşer; süre dolunca ürünler satış stoğuna geçer.</p>'+
+  '<div class="tc-urunler" id="tcUrunSec">'+list.map(p=>'<button type="button" class="tc-urun'+(p.kod===ilk?' on':'')+'" data-kod="'+tm(p.kod)+'">'+
+   '<b>'+tm(p.ad)+'</b><small>'+Number(p.dakika)+' dk · birim '+money(Number(p.maliyet)*ue)+'</small></button>').join("")+'</div>'+
+  '<input type="hidden" id="tcItem" value="'+tm(ilk)+'">'+
+  '<div class="alan"><label for="tcQty">Üretim adedi</label><div class="tc-adet">'+
+   '<button type="button" data-d="-10">−10</button><button type="button" data-d="-1">−1</button>'+
+   '<input id="tcQty" type="number" min="1" max="500" step="1" inputmode="numeric" value="10">'+
+   '<button type="button" data-d="1">+1</button><button type="button" data-d="10">+10</button>'+
+   '<button type="button" data-d="max">En çok</button></div></div>'+
+  '<div class="tc-ozet" id="tcDetails" aria-live="polite"></div>',
  "Üretimi başlat",async node=>{
   const p=item(sel(node,"tcItem")),qty=Number(sel(node,"tcQty"));
   const max=tcBatchCapacity(firm,p);
   if(!p||!Number.isInteger(qty)||qty<1||qty>max){toast("Bu fabrikanın güncel parti kapasitesi "+max+" adet. Adedi buna göre ayarla.",true);return;}
-  await action("uret",{sirket:id,urun:p.kod,adet:qty},"Üretim emri verildi. Süre bitince stoklara eklenecek.");
+  const bitis=new Date(simdiMs()+Number(p.dakika)*60000);
+  await action("uret",{sirket:id,urun:p.kod,adet:qty},
+   "Üretim emri verildi: "+qty+" adet "+p.ad+". "+gunSaat(bitis)+" hazır ("+sureYaz(Number(p.dakika)*60000)+" sonra), süre dolunca stoğa geçer.");
  });
+ const qtyEl=m.querySelector("#tcQty");
  const refresh=()=>{
-   const p=item(sel(m,"tcItem")),qty=Number(sel(m,"tcQty"));
-   if(!p)return;
-   const max=tcBatchCapacity(firm,p);
-   m.querySelector("#tcQty").max=max;
-   m.querySelector("#tcDetails").textContent="Güncel parti kapasitesi "+max+" adet (başlangıç "+p.parti+
-   ") · Süre "+p.dakika+" dk · Maliyet "+money(p.maliyet*qty)+
-   " · Önerilen raf fiyatı "+money(p.satis)+" · "+tcCapacityDescription(firm);
+  const p=item(sel(m,"tcItem"));
+  if(!p)return;
+  const max=tcBatchCapacity(firm,p);
+  qtyEl.max=max;
+  let qty=Math.floor(Number(qtyEl.value)||0);
+  const birim=Math.round(Number(p.maliyet)*ue),toplam=Math.round(Number(p.maliyet)*Math.max(0,qty)*ue);
+  const bitis=new Date(simdiMs()+Number(p.dakika)*60000),kasa=Number(firm.kasa);
+  const yetmez=Number.isFinite(kasa)&&toplam>kasa,fazla=qty>max;
+  m.querySelector("#tcDetails").innerHTML=
+   '<div class="tc-ozet-izgara">'+
+    '<div><small>Süre</small><b>'+sureYaz(Number(p.dakika)*60000)+'</b></div>'+
+    '<div><small>Hazır olur</small><b>'+gunSaat(bitis)+'</b></div>'+
+    '<div'+(yetmez?' class="uyari"':'')+'><small>Toplam maliyet</small><b>'+money(toplam)+'</b></div>'+
+    '<div'+(fazla?' class="uyari"':'')+'><small>Parti kapasitesi</small><b>'+max+' adet</b></div>'+
+   '</div>'+
+   (yetmez?'<p class="tc-uyari">Fabrika kasası ('+money(kasa)+') bu partiye yetmiyor.</p>':'')+
+   (fazla?'<p class="tc-uyari">Bu üründe tek partide en çok '+max+' adet üretebilirsin.</p>':'')+
+   '<p class="tc-not">Birim maliyet '+money(birim)+(end&&ue!==1?' ('+tm(firm.il_ad||"il")+' üretim çarpanı ×'+ue.toLocaleString("tr-TR",{maximumFractionDigits:2})+': işçilik, enerji, kira)':'')+
+   ' · önerilen raf fiyatı '+money(p.satis)+'. Süre dolunca ürünler stoğa geçer: bu ekran açıksa hemen, değilse en geç 10 dakika içinde.</p>'+
+   '<details class="tc-kapasite"><summary>Kapasite ve üretim tecrübesi</summary><p class="tc-not">'+tm(tcCapacityDescription(firm))+'</p></details>';
  };
- if(preferredProduct&&list.some(x=>x.kod===preferredProduct))
-  m.querySelector("#tcItem").value=preferredProduct;
- m.querySelector("#tcItem").onchange=refresh;m.querySelector("#tcQty").oninput=refresh;refresh();
+ m.querySelectorAll("#tcUrunSec .tc-urun").forEach(b=>b.onclick=()=>{
+  m.querySelectorAll("#tcUrunSec .tc-urun").forEach(x=>x.classList.toggle("on",x===b));
+  m.querySelector("#tcItem").value=b.dataset.kod;
+  const p=item(b.dataset.kod),max=tcBatchCapacity(firm,p);
+  if(Number(qtyEl.value)>max)qtyEl.value=max;
+  refresh();
+ });
+ m.querySelectorAll(".tc-adet button").forEach(b=>b.onclick=()=>{
+  const p=item(sel(m,"tcItem")),max=tcBatchCapacity(firm,p);
+  let v=Math.floor(Number(qtyEl.value)||0);
+  v=b.dataset.d==="max"?max:v+Number(b.dataset.d);
+  qtyEl.value=Math.max(1,Math.min(max,v));refresh();
+ });
+ qtyEl.oninput=refresh;refresh();
 }
 function kitchenPrepare(id,preferred){
  const s=mine(id);
@@ -237,7 +334,7 @@ function kitchenPrepare(id,preferred){
    }
    try{
     const result=await API.rpc("eko_magaza_hazirla",{p_sirket:id,p_urun:p.kod,p_adet:qty});
-    modalKapat();toast(qty+" adet "+p.ad+" hazırlanıyor. Hazır olacağı saat: "+date(result.hazir));
+    modalKapat();toast(qty+" adet "+p.ad+" hazırlanıyor. Hazır olur: "+gunSaat(result.hazir)+" ("+sureYaz(Number(result.dakika||0)*60000)+" sonra).");
     await ticaretMerkezEkrani("magaza");
    }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message),true);}
   });
@@ -248,8 +345,10 @@ function kitchenPrepare(id,preferred){
   const max=Math.min(Number(p.parti)||0,250);
   m.querySelector("#tcKitchenQty").max=max;
   m.querySelector("#tcKitchenDetails").textContent="Parti üst sınırı "+max+
-   " · Maliyet "+money(p.maliyet*qty)+" · Hazırlık "+Math.max(10,Math.ceil(p.dakika*.5))+
-   " dakika · Önerilen satış fiyatı "+money(p.satis)+" / adet";
+   " · Maliyet "+money(p.maliyet*qty*(Number(ilEnd(s)?.fiyat)||1))+" · Hazırlık "+Math.max(10,Math.ceil(p.dakika*.5))+
+   " dakika · Hazır olur "+gunSaat(new Date(simdiMs()+Math.max(10,Math.ceil(p.dakika*.5))*60000))+
+   " · Önerilen satış fiyatı "+money(p.satis*(Number(ilEnd(s)?.fiyat)||1))+" / adet"+
+   (ilEnd(s)?" ("+(s.il_ad||"il")+" fiyat düzeyi ×"+Number(ilEnd(s).fiyat).toLocaleString("tr-TR",{maximumFractionDigits:2})+")":"");
  };
  m.querySelector("#tcKitchenItem").onchange=update;
  m.querySelector("#tcKitchenQty").oninput=update;
@@ -485,11 +584,18 @@ function panel(){
   const arr=own("fabrika");
   for(const s of arr){
    const st=storeStock(s.id);
+   const bekleyen=(d.uretim||[]).filter(q=>Number(q.sirket)===Number(s.id)&&!q.tamam);
+   const ie=ilEnd(s);
    html+=card("🏭 "+s.ad,"Faaliyet: "+tm(s.grup)+" · Kasa "+money(s.kasa)+
    " · Stokta "+st.reduce((n,x)=>n+Number(x.adet),0)+" ürün"+
-   '<p class="tc-hint">'+tm(tcCapacityDescription(s))+"</p>",
+   (bekleyen.length?" · "+bekleyen.length+" emir üretimde":"")+
+   (s.il_ad?'<span class="tc-il">'+tm(s.il_ad)+(ie?' · üretim maliyeti ×'+Number(ie.uretim).toLocaleString("tr-TR",{maximumFractionDigits:2})+
+     ' · müşteri yoğunluğu ×'+Number(ie.talep).toLocaleString("tr-TR",{maximumFractionDigits:1}):'')+'</span>':'')+
+   '<p class="tc-hint">'+tm(tcCapacityDescription(s))+"</p>"+
+   bekleyen.map(q=>emirKart(q,"")).join(""),
    button("Üretim emri ver","tcProduce("+s.id+")")+
-   secondary("⚙️ Otomatik üretim ayarla","tcAutoProduction("+s.id+")"));
+   secondary("⚙️ Otomatik üretim ayarla","tcAutoProduction("+s.id+")")+
+   (s.il&&typeof window.ilEkoDetay==="function"?secondary("Şehir ekonomisi","ilEkoDetay("+Number(s.il)+")"):""));
    for(const a of (TC.otoVeri?.uretim||[]).filter(a=>Number(a.sirket)===Number(s.id)&&a.aktif)){
     const code=String(a.urun||"");if(!/^[a-z0-9_]+$/.test(code))continue;
     html+=card("⚙️ Otomatik üretim · "+(item(code)?.ad||code),
@@ -502,9 +608,14 @@ function panel(){
    "Birim stok maliyeti "+money(x.maliyet)+" · Toptan satış "+money(x.fiyat),
    secondary("Toptan fiyatı belirle","tcPrice("+s.id+",'"+x.urun+"',"+Number(x.fiyat)+")"));
   }
-  html+=title("Üretim süreçleri","son 60 parti");
-  for(const x of d.uretim||[])html+=card((item(x.urun)?.ad||x.urun)+" · "+x.adet+" adet",
-   "Maliyet "+money(x.maliyet)+" · "+(x.tamam?"Stoklara aktarıldı":"Hazır olacağı zaman "+date(x.hazir)));
+  const firmaAd=id=>(TC.veri?.sirketler||[]).find(x=>Number(x.id)===Number(id))?.ad||"";
+  const aktifEmir=(d.uretim||[]).filter(x=>!x.tamam).sort((a,b)=>new Date(a.hazir)-new Date(b.hazir));
+  const bitenEmir=(d.uretim||[]).filter(x=>x.tamam);
+  html+=title("Üretim süreçleri",aktifEmir.length?aktifEmir.length+" emir sürüyor":"son 60 parti");
+  if(!aktifEmir.length&&!bitenEmir.length)html+=card("Henüz üretim emri yok","Bir fabrikadan üretim emri verdiğinde süresi, bitiş saati ve stoğa geçişi burada görünür.");
+  if(aktifEmir.length)html+='<section class="kart tc-card">'+aktifEmir.map(q=>emirKart(q,firmaAd(q.sirket))).join("")+'</section>';
+  if(bitenEmir.length)html+='<details class="tc-biten"><summary>Stoğa geçen son '+Math.min(20,bitenEmir.length)+' üretim</summary>'+
+   bitenEmir.slice(0,20).map(q=>emirKart(q,firmaAd(q.sirket))).join("")+'</details>';
   html+=title("Üretilebilen ürünler",""+(d.urunler||[]).length+" çeşit");
   html+='<details class="tc-products"><summary style="padding:14px;border-radius:12px;background:var(--panel);color:var(--txt);cursor:pointer">Tüm ürünleri göster / gizle</summary><div style="padding-top:10px">';
   for(const p of d.urunler||[]){
@@ -547,8 +658,7 @@ function panel(){
       "▶️ Otomatik satışı aç":"⏸️ Otomatik satışı durdur",
      "tcToggleSales("+s.id+","+
       ((TC.otoVeri?.satis||[]).find(x=>Number(x.sirket)===Number(s.id))?.aktif===false?"true":"false")+")"));
-   for(const q of pending)html+=card("Hazırlanıyor · "+(item(q.urun)?.ad||q.urun),
-    "Ürün: "+q.adet+" adet · Bitiş saati: "+date(q.hazir));
+   if(pending.length)html+='<section class="kart tc-card">'+pending.map(q=>emirKart(q,s.ad)).join("")+'</section>';
    for(const x of st){
     const code=String(x.urun||"");
     if(!/^[a-z0-9_]+$/.test(code))continue;
@@ -621,12 +731,35 @@ async function ticaretMerkezEkrani(tab){
  yukleniyor("Üretim ve Ticaret");
  try{
   [TC.veri,TC.otoVeri]=await Promise.all([API.rpc("eko_ticaret_panel"),API.rpc("eko_otomasyon_panel").catch(()=>({uretim:[],kendi:[],satis:[]}))]);
+  if(TC.veri&&TC.veri.simdi){const f=new Date(TC.veri.simdi).getTime()-Date.now();TC.saatFark=Math.abs(f)<6*3600000?f:0;}
   const tabs=[["uretim","🏭 Üretim"],["magaza","🛍️ Mağazalar"],["zincir","🏷️ Zincirler"],["rapor","📊 Kâr / Zarar"]];
-  const html='<style>.tc-hero{padding:18px;border-radius:18px;background:linear-gradient(120deg,#293963,#46346c);color:#fff}.tc-hero h2{font-size:26px;color:#fff;margin:0 0 6px}.tc-hero p{font-size:13px;color:#d4dbf2}.tc-tabs{display:flex;gap:7px;overflow-x:auto;padding:10px 0;margin-bottom:8px}.tc-tabs button{white-space:nowrap;flex:0 0 auto;padding:10px 13px;border-radius:12px;border:1px solid var(--line2);background:var(--panel);color:var(--txt)}.tc-tabs button.tc-selected{border-color:#a995ff;background:#383063}.tc-card{margin-bottom:10px}.tc-card h3{margin:0 0 8px}.tc-card .btn{margin-top:6px;margin-right:5px}.tc-hint{padding:12px;margin:12px 0;background:var(--panel2);border-radius:12px;color:var(--txt)}</style>'+
+  const html='<style>.tc-hero{padding:18px;border-radius:18px;background:linear-gradient(120deg,#293963,#46346c);color:#fff}.tc-hero h2{font-size:26px;color:#fff;margin:0 0 6px}.tc-hero p{font-size:13px;color:#d4dbf2}.tc-tabs{display:flex;gap:7px;overflow-x:auto;padding:10px 0;margin-bottom:8px}.tc-tabs button{white-space:nowrap;flex:0 0 auto;padding:10px 13px;border-radius:12px;border:1px solid var(--line2);background:var(--panel);color:var(--txt)}.tc-tabs button.tc-selected{border-color:#a995ff;background:#383063}.tc-card{margin-bottom:10px}.tc-card h3{margin:0 0 8px}.tc-card .btn{margin-top:6px;margin-right:5px}.tc-hint{padding:12px;margin:12px 0;background:var(--panel2);border-radius:12px;color:var(--txt)}'+
+   '.tc-il{display:block;margin-top:6px;font-size:12.5px;color:var(--mut,#98a4c4)}'+
+   '.tc-emir{padding:12px 0;border-top:1px solid var(--line2)}.tc-card>.tc-emir:first-child,.tc-hint+.tc-emir{border-top:0}'+
+   '.tc-emir-ust{display:flex;justify-content:space-between;gap:8px;align-items:center}.tc-emir-ust b{font-size:14.5px}'+
+   '.tc-chip{flex:0 0 auto;font-size:11.5px;padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--txt)}'+
+   '.tc-chip.uretimde{background:rgba(143,124,255,.18);border-color:#8f7cff}.tc-chip.geciyor{background:rgba(242,179,61,.16);border-color:#f2b33d}.tc-chip.stokta{background:rgba(52,201,138,.15);border-color:#34c98a}'+
+   '.tc-ilerleme{height:8px;border-radius:6px;background:rgba(255,255,255,.08);margin:9px 0 7px;overflow:hidden}.tc-ilerleme i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#6f5cf0,#a995ff);transition:width .6s}'+
+   '.tc-emir.geciyor .tc-ilerleme i{background:#f2b33d}'+
+   '.tc-emir-alt{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:13px;color:var(--txt)}.tc-kalan{color:#c9bfff}'+
+   '.tc-emir-kunye{display:block;margin-top:4px;font-size:12px;color:var(--mut,#98a4c4)}'+
+   '.tc-biten{margin:10px 0;padding:10px 14px;border-radius:14px;background:var(--panel);border:1px solid var(--line2)}.tc-biten summary{cursor:pointer;padding:4px 0;color:var(--txt)}'+
+   '.tc-urunler{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:10px 0}'+
+   '.tc-urun{text-align:left;padding:10px 11px;border-radius:12px;border:1px solid var(--line2);background:var(--panel);color:var(--txt)}.tc-urun b{display:block;font-size:14px}.tc-urun small{font-size:12px;color:var(--mut,#98a4c4)}'+
+   '.tc-urun.on{border-color:#a995ff;background:#383063;box-shadow:0 0 0 1px #a995ff inset}'+
+   '.tc-adet{display:flex;gap:6px;align-items:stretch}.tc-adet input{flex:1;min-width:60px;text-align:center}.tc-adet button{flex:0 0 auto;min-width:40px;padding:0 9px;border-radius:10px;border:1px solid var(--line2);background:var(--panel);color:var(--txt);font-size:13px}'+
+   '.tc-ozet{margin:12px 0;padding:12px;border-radius:14px;background:var(--panel2)}'+
+   '.tc-ozet-izgara{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tc-ozet-izgara small{display:block;font-size:12px;color:var(--mut,#98a4c4)}.tc-ozet-izgara b{font-size:16px}.tc-ozet-izgara .uyari b{color:#f0704b}'+
+   '.tc-not{margin:10px 0 0;font-size:12.5px;line-height:1.5;color:var(--mut,#98a4c4)}.tc-uyari{margin:8px 0 0;font-size:13px;color:#f0704b}'+
+   '.tc-kapasite summary{cursor:pointer;margin-top:8px;font-size:12.5px;color:var(--txt)}</style>'+
    '<section class="tc-hero"><h2>🏭 Üretim ve Ticaret</h2><p>Üret · Tedarik et · Sanal müşterilere sat · Franchise zinciri kur</p></section>'+
    '<div class="tc-tabs">'+tabs.map(([key,label])=>'<button class="'+(key===TC.sekme?"tc-selected":"")+
-   '" onclick="ticaretMerkezEkrani(\''+key+'\')">'+label+'</button>').join("")+'</div>'+panel();
+   '" onclick="ticaretMerkezEkrani(\''+key+'\')">'+label+'</button>').join("")+'</div>'+
+   (typeof window.ilEkonomileriEkrani==="function"?'<button class="btn ikinci" style="margin:0 0 10px" onclick="ekranAc(ilEkonomileriEkrani)">Şehir ekonomileri: 81 ilde kuruluş gideri ve müşteri</button>':'')+
+   '<div id="tcPanelKok">'+panel()+'</div>';
   iskelet("Üretim ve Ticaret",html,{geri:true});
+  if(tcSaatZaman)clearInterval(tcSaatZaman);
+  tcSaatZaman=setInterval(tcSaatGuncelle,10000);
  }catch(err){iskelet("Üretim ve Ticaret",card("Bağlantı sorunu",tm(typeof hataCevir==="function"?hataCevir(err.message):err.message)),{geri:true});}
 }
 window.ticaretMerkezEkrani=ticaretMerkezEkrani;

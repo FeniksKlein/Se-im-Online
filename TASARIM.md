@@ -958,3 +958,17 @@ Sorun: Hazine eski bir birim hatasından 168 bin milyar ₺'ye şişmişti (gün
 - **Uyarı:** Hazine 15 günlük cari giderin altına inince yürütmeye ve Maliye Bakanı'na bildirim (3 günde bir; eksideyken her gün).
 - **Görünürlük:** "Bütçe ve Ekonomi" ekranı herkese açık (Devlet › Hükümet kartı, Devlet bütçesi şeridi, menü araması): Hazine, fon, bugünün gelir-harcama-dengesi, 1/7/30 günlük kalemler, bakanlık harcamaları, genel devlet dengesi, enflasyon bileşenleri, borç ve faiz, son günler grafiği, son Hazine hareketleri.
 - Ayarlar tek satır `oyun.makro_ayar` (aktif=false → mali etki kapanır; katsayılar ve GSYH tabanı buradan). İlk tam gün 1 Kasım; 2 Kasım gecesinden itibaren enflasyona etki başlar.
+
+## 27. Banka güven notu: gecikme sınıfları ve önemlilik (2026-11-02, modül 160)
+- Kredi sınıfı (BDDK/TFRS 9'a benzer; oyunda bir gün ≈ bir ay): taksit 24 saatten kısa gecikmişse **normal**, 24-72 saat **yakın izleme**, 72 saati geçmiş, icraya düşmüş ya da yasal takipteyse **takipteki alacak**. Kart: gecikmiş asgari → yakın izleme; takip/kapalı → takipteki.
+- Güven notu cezası bankanın büyüklüğüyle orantılıdır: takipteki oranının cezası, kredi defterinin özkaynağa oranıyla (en az %20) çarpılır; takipteki alacağın özkaynağa oranı ayrıca değerlendirilir (%5/%10/%25/%50 üstü 4/10/20/30 puan); büyük olan uygulanır. Yakın izleme yalnız küçük bir ceza verir (×ağırlık).
+- Genel Müdürlük ekranı notu etkileyen kalemleri puanlarıyla gösterir.
+
+## 28. İl ekonomisi: şehre göre kuruluş, maliyet ve müşteri (2026-11-02, modül 161)
+- Veri: TÜİK ADNKS 2025 il nüfusu, TÜİK il bazında GSYH 2024 (kişi başı $), SEGE kademesi ve oyundaki il gelişimi (belediye yatırımları çarpanları %10'a kadar oynatır).
+- Çarpanlar: kira ve kuruluş ×0,5–2,0 · müşteri yoğunluğu ×0,2–6,0 · alım gücü ×0,6–1,4 · fiyat düzeyi ×0,90–1,15 · üretim maliyeti ×0,90–1,20.
+- Fabrika, mağaza, müteahhit ofisi, sigorta acentesi ve pazar şirketi açılışında **bir kerelik işyeri kuruluş gideri** (kira depozitosu, tadilat, donanım) şirket kasasından düşer; belediye harcı ayrıca alınır. İstanbul'da fabrika ≈ 82 bin ₺, Tunceli'de ≈ 30 bin ₺. Pazar şirketlerinde sektörün asgari sermayesinin %10'u × il çarpanı. Şube kirası ve tadilatı da il çarpanıyla.
+- Fabrika üretim maliyeti × üretim çarpanı; kahveci/fast food malzemesi ve önerilen raf fiyatı × fiyat düzeyi; stoklu NPC işletmelerin alış/satış referansları fiyat düzeyine göre.
+- Market/kahve/fast food için şehrin günlük NPC müşteri kotası ve mağaza başı saatlik müşteri, stoklu NPC işletmelerin günlük talebi ilin nüfus ve gelirine göre; müşterinin harcaması ilin alım gücüne göre. Kota şehirdeki bütün mağazalar arasında paylaşılır.
+- Yönetici `il_ekonomi_aktif` tarifesini 0 yaparak bütün şehir çarpanlarını kapatabilir; kuruluş gideri tutarları tarifeden ayarlanır.
+- Üretim emri: emir verilirken süre, hazır olma saati ve il çarpanlı maliyet gösterilir; süre dolunca ürünler Üretim ve Ticaret paneli açıldığında hemen, açılmazsa en geç bir sonraki 10 dakikalık işlemde stoğa geçer.

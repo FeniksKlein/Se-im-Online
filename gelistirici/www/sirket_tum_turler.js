@@ -54,6 +54,7 @@ async function sirketTumTurKur(onayli){
    '<div class="alan" id="stkProdBox"><label>Fabrika üretim grubu</label><select id="stkProd"><option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option><option value="malzeme">İnşaat malzemeleri</option></select></div>'+
    '<div class="alan" id="stkEnergyBox" style="display:none"><label>Enerji kaynağı</label><select id="stkEnergy"><option value="yenilenebilir">Yenilenebilir</option><option value="dogalgaz">Doğalgaz</option><option value="komur">Kömür</option></select></div>'+
    '<div class="kart" style="margin-top:12px"><p id="stkDescription" class="alt"></p><p id="stkPermit" class="alt"></p></div>'+
+   '<div id="stkIlEko"></div>'+
    '<button class="btn ikinci" id="stkLicense">🏛️ Ruhsat ve harç bilgileri</button>'+
    '<button class="btn altin" id="stkCreate">Şirketi kur</button>'+
    '<button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>'
@@ -99,6 +100,12 @@ async function sirketTumTurKur(onayli){
     el("stkPermit").textContent=info[2]==="none"?"Banka türü mevcut kuruluş ve finans kurallarına tabidir.":
       permission(info)?"✅ Onaylı belediye ruhsatı bulundu. Kuruluşta harç kesilir.":
       "✅ Şirketi kurduğunda kuruluş ruhsatı sistem tarafından anında onaylanacak. Harç kuruluşta tahsil edilir.";
+    // Şehre göre kuruluş gideri ve şehir ekonomisi (sunucu 161)
+    if(typeof window.ilEkoKurulusSatiri==="function"){
+      const ekoTur=category==="factory"?"fabrika":category==="retail"?"magaza":category==="build"?"insaat":
+        category==="insurance"?"sigorta":category==="service"?"pazar":null;
+      window.ilEkoKurulusSatiri(el("stkIlEko"),Number(city.value),ekoTur,{sektor:category==="service"?sektor.split(":")[1]:null});
+    }
     el("stkCreate").textContent=category==="factory"?"Fabrikayı kur ve üretimi aç":
       category==="retail"?"Mağazayı kur ve satışa aç":"Şirketi kur ve faaliyete başlat";
   }
@@ -111,7 +118,7 @@ async function sirketTumTurKur(onayli){
     if(!Number.isSafeInteger(capital)||capital<min||capital>100000000){toast("Sermaye "+cash(min)+" ile 100.000.000 ₺ arasında tam sayı olmalı.",true);return;}
     if(!Number.isInteger(loc)||loc<1||loc>81){toast("Geçerli bir faaliyet ili seç.",true);return;}
     if(((category==="factory"&&sector!=="sanayi")||sector==="insaat"||sector==="ajans")&&loc!==home){toast("Bu şirket türü kayıtlı ikamet ilinde açılır. Başka şehirde fabrika açmak için sanayi sektörünü seç.",true);return;}
-    if(!await onayla("Sıfırdan bağımsız şirket kurulumu",company+" ayrı bir şirket olarak kurulacak; başka hiçbir şirketine bağlanmayacak. "+cash(capital)+" sermaye cüzdanından yatırılacak ve gerekli belediye harcı yeni şirket kasasından kesilecek.","Kur"))return;
+    if(!await onayla("Sıfırdan bağımsız şirket kurulumu",company+" ayrı bir şirket olarak kurulacak; başka hiçbir şirketine bağlanmayacak. "+cash(capital)+" sermaye cüzdanından yatırılacak; belediye harcı ve bu ildeki işyeri kuruluş gideri yeni şirket kasasından kesilecek.","Kur"))return;
     this.disabled=true;
     try{
       // Kurulus ruhsati belediye baskani karari beklemeden verilir.
