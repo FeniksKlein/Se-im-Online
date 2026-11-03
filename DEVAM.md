@@ -592,3 +592,16 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
   - Canlı test (geri alınan): tavanlar doğru (+2), `ihmal_tick` hatasız, bakanlar yerinde.
 - **Arayüz:** Fiyat Tarifesi SSS'ye "Kıdem neyle artar?" eklendi.
 - **Ek (09:30, 153):** Ercan seçilmiş görevler için de onayladı: `oyun.ihmal_tick` artık hiç kimseyi görevden almıyor. 7 gün girmeyen CB → CB yardımcıları + TBMM Başkanı, belediye başkanı → CB + İçişleri Bakanı, genel başkan → GBY'ler bilgilendirilir; ara seçim/olağanüstü kurultay açılmaz. Canlıya `ihmal_secilmis_bildirim_20261031`; 30 gün ilerisi simüle edildi, kimse düşmedi.
+
+## 2026-11-03 · 2026.11.03-1 Genel seçim + CB seçimi 6 Kasım Cuma (tek seferlik) — canlıda
+- **İstek (Ercan):** Cumhurbaşkanlığı ve genel seçim bu cuma; adaylık süreçleri takvime uygun, oyunun kurallarına göre ayarlansın. (Soruldu: tek seferlik mi, her ayın ilk/son cuması mı → "Bu cuma, 6 Kasım".)
+- **Önceki durum:** 23 Ekim erken seçimi 1 Aralık olağan seçimini iptal etmişti; sıradaki genel + CB seçimi 1 Ocak 2027 Cuma'ydı.
+- **Takvim (oyunun erken seçim kuralıyla, `erken_genel_secim_olustur` ile aynı kayıtlar, `ara_neden='erken_secim'`, dönem `erken-genel-0-20261103225533`):**
+  - 3 Kasım 22.55 → 5 Kasım Perşembe 08.00: MV aday adaylığı, bağımsız adaylık, GB'lerin CB adayı kararı, CB ön seçimi başvurusu, ittifak ortak CB adayı önerisi.
+  - 5 Kasım Perşembe 08.00–22.00 MV ve CB ön seçimleri (sonuç 22.30).
+  - 6 Kasım Cuma 08.00–22.00 genel seçim + CB seçimi (sonuç 22.30); 7 Kasım 00.00 göreve başlama. Gerekirse CB 2. turu 7 Kasım 08.00–22.00 (motor kurar).
+  - 1 Ocak 2027 Cuma olağan seçimi **iptal edilmedi** (bir sonraki olağan seçim). Belediye (10 Kasım) ve kurultay (18 Kasım) aynı.
+- **Canlı:** `migrations/20261103_genel_cb_secim_6_kasim_cuma.sql` (`genel_cb_secim_6_kasim_cuma_20261103`; `tek_seferlik` anahtarı `genel_cb_secim_20261106`). Öncesi yedek `yedek_20261103_225416_915897`. 37 oyuncuya bildirim, Resmî Gazete duyurusu, Gündem olayı. Push sunucuda kapalı (`push_acik()=false`).
+- **162** `gelistirici/sql/162_iptal_secim_takvimden_cikar.sql` (= `migrations/20261103_iptal_secim_takvimden_cikar.sql`, canlıya `iptal_secim_takvimden_cikar_162_20261103`): iptal edilen seçimler (`sonuc.iptal`) `durum()` takviminden çıkar. Sebep: iptal edilmiş 1 Aralık seçimlerinin sonuç saati ileride olduğu için Gündem'in "son 36 saatte sonuçlanan" süzgecinden geçip "Sonuçlandı" kartı olarak görünüyordu. `pg_get_functiondef` yaması (113'teki yöntem), gövdenin geri kalanı aynı.
+- **Doğrulama (geri alınan işlemlerde):** GB'nin CB karar kartı açık (son 5 Kasım 08.00), üyenin takviminde mv_on/cb_on/cb "başvuru", mv "yakında"; `aday_ol('mv_on')` yeni seçime bağlanıyor; yama sonrası takvimde 2026-12 kayıtları yok, diğerleri aynı.
+- **Açık konu:** `oyun.mv_secim_modu.her_aday_vekil = true` (test modu: kesinleşmiş her aday vekil olur, baraj yok) hâlâ açık; 6 Kasım seçimi de bu modla sayılır. Kapatma kararı Ercan'da.
