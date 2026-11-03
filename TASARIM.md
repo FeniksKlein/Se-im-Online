@@ -931,6 +931,20 @@ Amaç oyuncunun her gün belli saatte oyunda olması ve başkalarının ona ihti
 - Görev Gündem'in en üstünde kırmızı kartla ve Bekleyen işlerde görünür; oy veren +1 kıdem kazanır.
 - Süreler kesin: 8 saat ortada yoksa yedek, 24 saatte çoğunluk yoksa değişim + 24 saat, 48. saatte verilen oylarla karar (bozma için en az 2 oy). Görevi ihmal eden 14 gün jüriye çağrılmaz; Yüksek Mahkeme'de ihmal atayan makama bildirilir.
 
+### Süre sonu kararları: üyeler oy vermese de her dosya kapanır (2026-11-03, modül 163)
+| Yargı yeri | Süre | Süre dolunca |
+|---|---|---|
+| **İlk derece (Yüksek Mahkeme heyeti)** | Savunma 24 saat, karar savunmadan sonra **48 saat** (önceden 72) | Heyetin tamamı oy verip çoğunluk oluşmadıysa son oydan **2 saat** sonra beklemeden karar. Oy vermeyen varsa bir kez 24 saat ek süre ve hatırlatma; sonra verilen oylarla **CMK m.229/3** (en ağır oy, çoğunluk oluşana kadar ona en yakın oya eklenir; oy vermeyen sanık lehine sayılır). Hiç oy yoksa dava düşer, harç iade. |
+| **İstinaf jürisi** | 24 saat | Çoğunluk yoksa oy vermeyenler değişir, 24 saat ek süre (başvurudan en çok 48 saat); sonra verilen oylarla karar, bozma için en az 2 oy ve bozma çoğunluğu. |
+| **Anayasa Mahkemesi (kanun başvurusu)** | 6 saat görüş + 48 saat | Oy vermeyen varsa bir kez 24 saat ek süre ve hatırlatma; sonra iptal için üye tamsayısının salt çoğunluğu gerekir, sağlanamazsa başvuru **reddedilir** (kanun yürürlükte). Son 12 saatte oy vermeyen üyeye hatırlatma. |
+| **Parti kapatma davası** | 48 saat | Verilen oylarla karar (kapatma 2/3, yardımdan yoksunluk salt çoğunluk, aksi ret). |
+| **Seçim itirazı** | 72 saat | Reddedilmiş sayılır. |
+| **İcra itirazı** | 72 saat | Verilen oyların çoğunluğu itirazı haklı bulduysa takip iptal; yoksa itiraz reddedilmiş sayılır, takip haciz aşamasına geçer. |
+
+- Mahkemede hiç (tarafsız) üye yoksa süre işlemez; 7 gün sonra dava / AYM başvurusu / kapatma davası düşer.
+- Karar yazılmış ama istinaf süresi tanımsız kalmış dosyada istinaf süresi o an başlar (24 saat) ve taraflara bildirilir; itiraz yoksa karar kesinleşir.
+- Süreler `oyun.mahkeme_ayar`dan (karar_saat, istinaf_saat, juri_saat) yönetici tarafından değiştirilebilir.
+
 ## 24. Meclis vitrini: sandalye dağılımı ve öz geçmiş (2026-10-31, modül 156)
 - TBMM sitesinin düzeni örnek alındı: koyu bant başlık, altın renkli büyük harf parti adları, sağda üye sayısı, Toplam satırı; vekil listesinde portre, büyük harf ad, ince çizgi, "İL MİLLETVEKİLİ", sağ altta ÖZ GEÇMİŞ.
 - Yasama dönemi kavramı oyuna girdi (1., 2. Dönem; ilk seçim öncesi Kuruluş Meclisi). Tüm dönem milletvekili listesi kalıcı bir onur listesi işlevi görür.

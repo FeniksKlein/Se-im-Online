@@ -7750,7 +7750,7 @@ async function adliyeDosya(id){
    +'</div>':'';
   const hakim=ek?ek.oy_verebilirim:(ADL.hakim_miyim&&d.durum==="acik"&&!d.davalimiyim&&!d.davacimiyim);
   const gerek=ADL.cb_miyim&&d.durum==="karar"&&!d.af_at&&d.karar!=="beraat";
-  const heyet=ek&&d.durum==="acik"?'<div class="kart"><h3>Yüksek Mahkeme heyeti</h3><p class="alt">'+ek.oy_sayi+'/'+ek.heyet_sayi+' üye oy verdi; karar için '+ek.gerekli+' üyenin aynı kararda birleşmesi gerekir. Oylar karar açıklanınca görünür.</p>'+(ek.oyum?'<p class="kucuk">Oyun: '+e(ADL_CEZALAR[ek.oyum.karar]||ek.oyum.karar)+'</p>':'')+'</div>':'';
+  const heyet=ek&&d.durum==="acik"?'<div class="kart"><h3>Yüksek Mahkeme heyeti</h3><p class="alt">'+ek.oy_sayi+'/'+ek.heyet_sayi+' üye oy verdi; karar için '+ek.gerekli+' üyenin aynı kararda birleşmesi gerekir. Oylar karar açıklanınca görünür. Heyetin tamamı oy verip ayrışırsa 2 saat sonra, süre dolarsa (oy vermeyen varsa bir kez 24 saat ek süreyle) verilen oylardan CMK m.229 kuralıyla karar çıkar.</p>'+(ek.oyum?'<p class="kucuk">Oyun: '+e(ADL_CEZALAR[ek.oyum.karar]||ek.oyum.karar)+'</p>':'')+'</div>':'';
   const ist=ek?adlIstinafHtml(d,ek):'';
   const eylem=heyet+ist+(hakim?'<div class="kart"><button class="btn altin" onclick="adlKararModal('+id+')">'+(ek&&ek.oyum?'Oyumu değiştir':'Yüksek Mahkeme: oyumu ver')+'</button></div>':'')
    +(gerek?'<div class="kart"><button class="btn ikinci" onclick="adlAfModal('+id+')">Cumhurbaşkanı: cezayı affet</button></div>':'');
