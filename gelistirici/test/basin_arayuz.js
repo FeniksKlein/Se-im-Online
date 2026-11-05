@@ -65,7 +65,7 @@ assert.equal((sql.match(/select oyun\.guncelleme_bitti\(\);/g) || []).length, 1)
     assert.equal((await last('gazete_para_cek')).args.p_miktar, 500);
     await page.getByRole('button', { name: 'Slogan ve abonelik ayarları' }).click(); await page.fill('#gazAbone', '0'); await modalClick('Kaydet');
     assert.equal((await last('gazete_ayar')).args.p_abonelik, 0);
-    await page.getByRole('button', { name: 'Köşe yazarlığı teklif et' }).click(); await page.fill('#gazKad', 'Deniz'); await page.fill('#gazUcret', '100'); await modalClick('Teklif gönder');
+    await page.getByRole('button', { name: 'Köşe yazarı işe al' }).click(); await page.fill('#gazKad', 'Deniz'); await page.fill('#gazUcret', '100'); await modalClick('Teklif gönder');
     assert.deepEqual((await last('gazete_yazar_teklif')).args, { p_gazete: 7, p_kad: 'Deniz', p_ucret: 100 });
     await page.getByRole('button', { name: 'Yazarlığı sonlandır' }).click(); await modalClick('Sonlandır');
     assert.equal((await last('gazete_yazar_cikar')).args.p_kad, "Yazar'\"<b>");

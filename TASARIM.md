@@ -986,3 +986,15 @@ Sorun: Hazine eski bir birim hatasından 168 bin milyar ₺'ye şişmişti (gün
 - Market/kahve/fast food için şehrin günlük NPC müşteri kotası ve mağaza başı saatlik müşteri, stoklu NPC işletmelerin günlük talebi ilin nüfus ve gelirine göre; müşterinin harcaması ilin alım gücüne göre. Kota şehirdeki bütün mağazalar arasında paylaşılır.
 - Yönetici `il_ekonomi_aktif` tarifesini 0 yaparak bütün şehir çarpanlarını kapatabilir; kuruluş gideri tutarları tarifeden ayarlanır.
 - Üretim emri: emir verilirken süre, hazır olma saati ve il çarpanlı maliyet gösterilir; süre dolunca ürünler Üretim ve Ticaret paneli açıldığında hemen, açılmazsa en geç bir sonraki 10 dakikalık işlemde stoğa geçer.
+
+## 29. Basın ve kitap rekabeti: haftalık tiraj, çok satanlar, imza günü (2026-11-05, modül 164)
+- **Hafta:** Pazartesi 00:00 – Pazar 23:59 (İstanbul saati). Pazartesi gece yarısını geçen ilk 5 dakikalık işlemde geçen haftanın sonuçları resmîleşir.
+- **Tiraj:** haftanın en iyi 14 yazısı puanlanır (köşe yazısı 1,3 · haber 1 · propaganda 0,5; 800 karakterden kısa yazı orantılı, en az %30). `tiraj = 420 × puan^0,85 × (1 + 0,12×okur + 0,25×abone + 0,06×yorumcu)`, ücretsiz gazetede ×1,1, 10'a yuvarlı. Okur: gazeteyi o hafta açan gerçek oyuncu (sahip ve köşe yazarları hariç). Okur ve yorumcu için hesap en az 72 saatlik olmalı; her biri en çok 40 kişi sayılır. O hafta yazı çıkmayan gazetenin tirajı 0'dır.
+- **Resmî tiraj:** `gazete_tiraj` tablosuna yazılır, Türkiye Gündem'de (Bülten) sıralamayla açıklanır, her gazete sahibine sırası bildirilir. Son 4 haftada hiç yazı çıkarmamış gazeteye "sayı çıkarmadı" hatırlatması gitmez.
+- **Çok satanlar:** haftanın satış adedi `uc_kitap_satis`'ten hesaplanır; Pazartesi ilk 10 kitap Türkiye Gündem'de açıklanır, 1. kitabın yazarına ve yayınevi yöneticilerine bildirim gider. Ekranda yayınevleri bu haftaki satış adedine, yazarlar toplam satışa göre sıralanır.
+- **İmza günü:** kitabın yazarı (cüzdandan) ya da yayınevinin %50+ ortağı (yayınevi kasasından ya da kendi cüzdanından) bir ilde 3 saatlik imza masası kurar.
+  - Bedel: tarife `imza_gunu` (2.000 ₺) × il kuruluş endeksi × fiyat endeksi, 100'e yuvarlı, en az 1.000 ₺ (İstanbul ≈ 4.100 ₺, Tunceli ≈ 1.500 ₺). Masa açıldığında o ilin belediye kasasına "kültür merkezi salon kirası" olarak geçer.
+  - Satış: `30 × √(il talep endeksi) × (400/fiyat)^0,55 × (1 + 0,22 × katılım puanı)`, en çok 150 nüsha; 3 saate eşit yayılır, stok yettiğince. Katılım puanı: aynı ildeki okur 2, başka ilden 1, en çok 12 (yazar ve düzenleyen sayılmaz).
+  - Oyuncular masa açıkken "İmzalı nüsha al" ile kitabın normal fiyatından alır; nüsha kitaplıkta "imzalı" görünür.
+  - Kurallar: stok en az 10; başlangıç 15 dakika – 7 gün sonrası; aynı kitaba aynı anda tek imza günü ve bitişten 48 saat sonra yenisi; düzenleyen başına en çok 2 açık imza günü. Başlamadan iptal edilirse bedelin yarısı iade edilir, yarısı belediyeye geçer.
+  - Duyuru: planlanınca Türkiye Gündem'de haber ve o ildeki oyunculara bildirim; masa açılınca katılanlara bildirim; bitince yazara/düzenleyene sonuç bildirimi ve satış olduysa haber.
