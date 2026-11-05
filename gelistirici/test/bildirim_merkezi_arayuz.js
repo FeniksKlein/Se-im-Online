@@ -1,6 +1,6 @@
 // Bildirim merkezi arayüz testi (sahte RPC, ağ yok, canlıya bağlanmaz).
 // Çalıştır: NODE_PATH=/opt/npm-tools/node_modules node gelistirici/test/bildirim_merkezi_arayuz.js [ekran_klasörü]
-// Denetlenenler: sınıflandırma, Dikkat isteyen kartı, filtre çipleri, gün başlıkları, "Gördüm",
+// Denetlenenler: sınıflandırma, Bekleyen işler yığını (#bmDikkat), bölmeli sekmeler, gün grupları, "Gördüm",
 // yayınlara dokunma işleyicisinin korunması, toast yığını, yeni süreli bildirim bandı,
 // sunucuda bildirim_yeniler yoksa sessiz düşüş, 320/390 px, sayfa hatası.
 const { chromium } = require('playwright');
@@ -136,10 +136,15 @@ const kutu = [
     const ekran = await page.evaluate(() => ({
       baslik: document.querySelector('.ust h1')?.textContent,
       dikkat: document.querySelectorAll('#bmDikkat .bm-d-oge').length,
+      dikkatGorunen: document.querySelectorAll('#bmDikkat .bm-d-oge:not([hidden])').length,
+      yigin: !!document.querySelector('#bmDikkat.yigin'),
+      basliklar: [...document.querySelectorAll('.bm-liste .bm-r-bas')].map(x => x.textContent),
+      grup: document.querySelectorAll('.bm-liste .bm-grup').length,
+      yeniEtiket: document.querySelector('.ust .bm-ust-yeni')?.textContent || '',
       dikkatMetin: [...document.querySelectorAll('#bmDikkat .bm-d-metin')].map(x => x.textContent),
       cipler: [...document.querySelectorAll('.bm-cip')].map(x => x.textContent.replace(/\s+/g, ' ').trim()),
       gunler: [...document.querySelectorAll('.bm-gun')].map(x => x.textContent),
-      ogeler: document.querySelectorAll('.bm-liste > .kisisel, .bm-liste > .yayin').length,
+      ogeler: document.querySelectorAll('.bm-liste .bm-grup > .kisisel, .bm-liste .bm-grup > .yayin').length,
       acilListe: document.querySelectorAll('.bm-liste .kisisel.bm-k-acil').length,
       gitDugme: [...document.querySelectorAll('#bmDikkat .bm-dugme:not(.sade)')].map(x => x.textContent.trim()),
       disarida: document.querySelectorAll('#icerik > .kisisel, #icerik > .yayin').length,
@@ -148,12 +153,16 @@ const kutu = [
     assert.strictEqual(ekran.baslik, 'Bildirimler');
     assert.strictEqual(ekran.ogeler, kutu.length, 'Tüm öğeler listeye taşınmalı');
     assert.strictEqual(ekran.disarida, 0, 'Liste dışında öğe kalmamalı');
-    assert.strictEqual(ekran.dikkat, 3, 'Son 3 günün 3 süreli bildirimi Dikkat kartında olmalı: ' + JSON.stringify(ekran.dikkatMetin));
+    assert.strictEqual(ekran.dikkat, 3, 'Son 3 günün 3 süreli bildirimi Bekleyen işler kartında olmalı: ' + JSON.stringify(ekran.dikkatMetin));
+    assert.ok(ekran.yigin && ekran.dikkatGorunen === 1, 'Bekleyen işler kapalıyken yalnız ilki görünür (yığın)');
+    assert.ok(ekran.basliklar.includes('Kriz masası') && ekran.basliklar.includes('ÖP grup kararı'), 'Başlık/gövde ayrımı: ' + JSON.stringify(ekran.basliklar));
+    assert.ok(ekran.grup >= 2, 'Her gün tek panel olmalı');
+    assert.strictEqual(ekran.yeniEtiket, '6 yeni');
     assert.ok(!ekran.dikkatMetin.some(m => m.includes('14 numaralı')), '4 günlük bildirim Dikkat kartına girmemeli');
     assert.strictEqual(ekran.acilListe, 4, 'Listede 4 süreli bildirim kırmızı işaretli olmalı');
     assert.ok(ekran.gunler[0] === 'Bugün' && ekran.gunler.includes('Dün'), JSON.stringify(ekran.gunler));
     assert.ok(ekran.cipler[0].startsWith('Tümü'), ekran.cipler.join(' | '));
-    assert.ok(ekran.cipler.some(c => c.includes('Yayınlar')) && ekran.cipler.some(c => c.includes('Meclis ve parti')), ekran.cipler.join(' | '));
+    assert.deepStrictEqual(ekran.cipler, ['Tümü', 'Kişisel', 'Siyaset', 'Duyuru', 'Yayın'], ekran.cipler.join(' | '));
     assert.ok(ekran.gitDugme.includes('Yönetime git ›') && ekran.gitDugme.includes("Adliye'ye git ›") && ekran.gitDugme.includes('Bankaya git ›'), ekran.gitDugme.join(','));
     assert.ok(!ekran.yatay, 'Yatay kaydırma olmamalı');
     if (klasor) await page.screenshot({ path: path.join(klasor, `bm_kutu_${W}.png`) });
@@ -161,7 +170,7 @@ const kutu = [
     // 3) Filtre: Meclis ve parti
     await page.click('.bm-cip[data-f="meclis"]');
     const meclis = await page.evaluate(() => ({
-      gorunen: [...document.querySelectorAll('.bm-liste > .kisisel, .bm-liste > .yayin')].map(n => n.className),
+      gorunen: [...document.querySelectorAll('.bm-liste .kisisel, .bm-liste .yayin')].map(n => n.className),
       kayit: localStorage.getItem('bm_filtre_v1')
     }));
     assert.ok(meclis.gorunen.length === 3 && meclis.gorunen.every(c => c.includes('bm-k-meclis')), JSON.stringify(meclis.gorunen));
@@ -176,17 +185,25 @@ const kutu = [
     await page.evaluate(() => modalKapat());
     await page.click('.bm-cip[data-f="tumu"]');
 
-    // 4) Gördüm: karttan kalkar, kayıtlı kalır, ekran yenilenince geri gelmez
+    // 4) Satıra dokununca ilgili ekrana gider (Kriz masası → Yönetim)
+    const tik = await page.evaluate(() => { const r = document.querySelector('.bm-liste .kisisel.bm-tik .bm-r-bas'); return r ? r.textContent : null; });
+    assert.ok(tik, 'Rotası olan satır dokunulabilir olmalı');
+    // 5) Yığın aç/kapa, Gördüm: karttan kalkar, kayıtlı kalır, ekran yenilenince geri gelmez
+    await page.click('#bmDikkat .bm-isler-bas');
+    let acik = await page.evaluate(() => ({ g: document.querySelectorAll('#bmDikkat .bm-d-oge:not([hidden])').length, hepsi: !!document.querySelector('#bmDikkat .bm-isler-alt:not([hidden]) [data-hepsi]') }));
+    assert.deepStrictEqual(acik, { g: 3, hepsi: true }, 'Yığın açılınca hepsi ve "Hepsini gördüm" görünür');
+    if (klasor) await page.screenshot({ path: path.join(klasor, `bm_isler_acik_${W}.png`) });
     await page.click('#bmDikkat [data-gordum="901"]');
     let kalan = await page.evaluate(() => document.querySelectorAll('#bmDikkat .bm-d-oge').length);
     assert.strictEqual(kalan, 2);
+    assert.strictEqual(await page.evaluate(() => document.querySelector('#bmDikkat .bm-isler-sayi').textContent), '2');
     await page.evaluate(() => bildirimEkrani());
     await page.waitForTimeout(400);
     kalan = await page.evaluate(() => document.querySelectorAll('#bmDikkat .bm-d-oge').length);
     assert.strictEqual(kalan, 2, '"Gördüm" denen bildirim yeniden açılışta kartta olmamalı');
     sonuc.push(`${W}px: Bildirimler ekranı, filtre, yayın menüsü, Gördüm`);
 
-    // 5) Toast yığını: en fazla 3, hata mesajı başarı mesajıyla silinmez
+    // 6) Toast yığını: en fazla 3, hata mesajı başarı mesajıyla silinmez
     await page.evaluate(() => sekmeAc('hayat'));
     await page.waitForTimeout(300);
     await page.evaluate(() => { document.querySelectorAll('#bmTostYigin .toast').forEach(t => t.remove()); toast('Miting tamamlandı.'); toast('Bakiye yetersiz.', true); toast('Bağış gönderildi.'); toast('Yayın gönderildi.'); toast('Yayın gönderildi.'); });
@@ -199,7 +216,7 @@ const kutu = [
     assert.deepStrictEqual(tost2, ['Bakiye yetersiz.'], 'Başarı mesajları 2,6 sn sonra kalkar, hata 5 sn kalır: ' + JSON.stringify(tost2));
     sonuc.push(`${W}px: toast yığını`);
 
-    // 6) Bant: rozet sayısı artınca yalnız yeni ve son 2 günün süreli bildirimleri için çıkar
+    // 7) Bant: rozet sayısı artınca yalnız yeni ve son 2 günün süreli bildirimleri için çıkar
     await page.evaluate(() => { window.__rozet = { bildirim: 3, ozel: 0, sohbet: 0 }; rozetGuncelle(window.__rozet); });
     await page.waitForTimeout(400);
     const bant = await page.evaluate(() => {

@@ -393,12 +393,12 @@ const AUTH = {
   // ---- PROPAGANDA
   psql(`select set_config('request.jwt.claim.sub','${uid(botlar[0])}',false); select public.yayin_gonder('bakan', 'Adalet Bakanlığı olarak yargı reformu paketimizi yarın Meclise sunuyoruz.', null)`);
   await page.evaluate(() => { D.yigin = []; sekmeAc('gundem'); }); await page.waitForTimeout(500);
-  await page.evaluate(() => ekranAc(bildirimEkrani)); await bekle('Propaganda yayınla');
-  await tikla('Yeni yayın'); await page.waitForTimeout(300);
+  await page.evaluate(() => ekranAc(bildirimEkrani)); await bekle('Seçmenlerine seslen');
+  await page.click('#bmSes'); await page.waitForTimeout(300); // 05.11.2026: Bildirimler 2.0 yayın çubuğu
   await foto('31-yayin-modal');
   await page.locator('.secenek', { hasText: 'Cumhurbaşkanı' }).click();
   await page.fill('#ymetin', 'Aziz milletim! Yeni dönemde 81 ilimize hizmet için kabinemizi kurduk. Hayırlı olsun.');
-  await tikla('Yayınla'); await bekle('kişiye ulaştı');
+  await page.click('#ygonder'); await bekle('kişiye ulaştı');
   await page.waitForTimeout(600);
   await foto('32-bildirimler');
   ok('Propaganda: ulusa sesleniş gönderildi, bakan açıklaması bildirim kutusunda');
