@@ -11,6 +11,9 @@ def an(ts): q(f"update oyun.ayarlar set test_simdi = '{ts}+03'")
 
 q("update oyun.ayarlar set push_aktif = true, test_simdi = '2029-12-20 12:00+03'")
 q("update oyun.mv_secim_modu set her_aday_vekil = false")
+# Bu test eski düzeni (sonuç saatinden sonra 12 dk) denetler; canlı sayım düzeni secim_yayini.py'de
+q("update oyun.secim_gecesi_ayar set canli_sayim = false")
+q("delete from oyun.genel_onbellek")
 
 # --- adaylar (profilli oyuncular)
 U = []

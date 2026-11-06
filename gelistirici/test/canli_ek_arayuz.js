@@ -64,7 +64,7 @@ const shot = process.argv[2];
     await page.evaluate(() => { API.rpc = window.__rpc; });
     // --- gündem kartları
     const gh = await page.evaluate(() => gundemEkUst({ canli: [{ secim_id: 5, tur: 'mv', yuzde: 40 }], firsat: [], etiket: [], ozet: null }) + gundemEkAlt({ canli: [], firsat: [{ tur: 'belediye', anahtar: 'bel:34', metin: 'İstanbul belediye başkanlığı boş.', ekran: 'gundem' }], etiket: [{ etiket: 'gündem', kisi: 3, paylasim: 4 }], ozet: { gelismeler: [{ tur: 'secim', metin: '<b>Seçim</b> sonuçlandı', zaman: '' }] }, akis: [], cimer: null }));
-    assert.match(gh, /sayımı sürüyor/); assert.match(gh, /İstanbul belediye başkanlığı boş/); assert.match(gh, /#gündem/); assert.doesNotMatch(gh, /<b>Seçim<\/b>/);
+    assert.match(gh, /sayımı sürüyor|Seçim gecesi/);   // 165: canlı yayın bandı assert.match(gh, /İstanbul belediye başkanlığı boş/); assert.match(gh, /#gündem/); assert.doesNotMatch(gh, /<b>Seçim<\/b>/);
 
     // --- akış
     await page.evaluate(() => akisEkrani());

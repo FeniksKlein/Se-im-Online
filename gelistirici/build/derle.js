@@ -79,6 +79,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','il_ekonomisi.js'),'utf8')+'</script></body>');
 // 05.11.2026: Dernekler 2.0 — sade ana sayfa (Derneklerim · Keşfet · Sokak · Yardım) ve dernek sayfası; eski sivil_toplum/dernek_faaliyet/toplum_ek ekranlarının yerine geçer.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','dernek_vitrini.js'),'utf8')+'</script></body>');
+// 06.11.2026: Seçim gecesi canlı yayını (sunucu 165) — sandık sandık sayım, harita, stüdyo yorumu, yeniden izleme. secimEkrani/olayKarti/gundemEkUst'ü sarar.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','secim_yayini.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kesintisiz_ekran.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
