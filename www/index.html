@@ -1490,6 +1490,7 @@ function sohbetOkunmamisSayi(ok){
   return Number.isFinite(sayi) ? Math.max(0, Math.floor(sayi)) : 0;
 }
 function iskelet(baslik, govde, opt){
+  if(baslik==="Partiler")govde='<div class="kart"><button class="btn altin" onclick="ekranAc(sokakHareketleriEkrani)">📢 Sokak Hareketleri — eylemler ve protestolar</button></div>'+govde;
   if(baslik==="Partiler")govde='<div class="kart"><button class="btn altin" onclick="ekranAc(koalisyonPazarlikEkrani)">Gizli siyasi pazarlıklar ve koalisyon protokolleri</button></div>'+govde;
   if(baslik==="Şirketlerim")govde='<div class="kart"><button class="btn altin" onclick="ekranAc(belediyeHizmetIhaleEkrani)">Belediyelerin hizmet ihaleleri</button></div>'+govde;
   if(typeof baslik==="string" && baslik.endsWith(" Belediyesi"))govde='<div class="kart"><button class="btn altin" onclick="ekranAc(belediyeSehirYonetimEkrani)">🏙️ Şehir yönetimi, binalar ve ekonomi</button><button class="btn ikinci" onclick="ekranAc(belediyeHizmetIhaleEkrani)">Hizmet ihalesi aç / yönet</button></div>'+govde;
@@ -35377,5 +35378,31 @@ try { if (typeof EKRAN !== "undefined" && EKRAN) EKRAN.dernek = function () { re
     try { if (typeof D === 'object' && D && (!D.yigin || !D.yigin.length) && typeof EKRAN === 'object' && EKRAN[D.sekme]) { S.oto = simdi(); EKRAN[D.sekme](); } } catch (_) {}
   }, 5000);
 })();
-</script></body>
+</script>
+<script>
+/* Sokak Hareketleri - live menu integration, uses existing authenticated API */
+async function sokakHareketleriEkrani(){
+  yukleniyor("Sokak Hareketleri");
+  try {
+    const d=await API.rpc("sokak_eylemler");
+    let h='<div class="kart"><h2>📢 Sokak Hareketleri</h2><p>İl bazında barışçıl protestolar ve siyasi eylemler.</p></div>';
+    if(d.aktif){
+      h+='<div class="kart"><h3>Yeni Eylem Başlat</h3><p>Yalnız parti genel başkanı başlatabilir. Başlangıç ücreti parti kasasından düşer.</p><form id="sokakYeniForm"><label>İl numarası (1–81)</label><input name="il" type="number" min="1" max="81" required><label>Gerekçe (15–400 karakter)</label><textarea name="gerekce" minlength="15" maxlength="400" required></textarea><button class="btn altin" type="submit">Eylemi başlat</button></form></div>';
+    }else h+='<div class="kart">Sokak hareketleri henüz yöneticiler tarafından açılmadı.</div>';
+    h+='<h3>Mevcut Eylemler</h3>';
+    const items=Array.isArray(d.eylemler)?d.eylemler:[];
+    if(!items.length)h+='<div class="kart">Henüz eylem yok.</div>';
+    for(const x of items)h+='<div class="kart"><b>'+e(x.parti)+'</b> — İl '+Number(x.il_id)+'<p>'+e(x.gerekce)+'</p><small>'+e(x.durum)+' · Muhalefet '+Number(x.muhalefet_fonu).toLocaleString("tr-TR")+' ₺ · İktidar '+Number(x.iktidar_fonu).toLocaleString("tr-TR")+' ₺</small></div>';
+    iskelet("Sokak Hareketleri",h,{geri:true});
+    const form=document.getElementById("sokakYeniForm");
+    if(form)form.addEventListener("submit",async function(ev){
+      ev.preventDefault();const b=form.querySelector("button");b.disabled=true;
+      const fd=new FormData(form);
+      try {await API.rpc("sokak_eylem_baslat",{p_il:Number(fd.get("il")),p_gerekce:String(fd.get("gerekce"))});toast("Eylem başlatıldı");sokakHareketleriEkrani();}
+      catch(err){toast(hataCevir(err.message),true);b.disabled=false;}
+    });
+  }catch(err){iskelet("Sokak Hareketleri",'<div class="kart">'+e(hataCevir(err.message))+'</div>',{geri:true});}
+}
+</script>
+</body>
 </html>
