@@ -289,7 +289,10 @@ declare
     'yk_sistem_hatalari', 'yk_sustur', 'yk_tablo', 'yk_tablolar', 'yk_uygulama_ayar_kaydet', 'yk_uygulama_ayarlari',
     'yonetim_hediyeleri', 'yurutme_butce_masasi',
     -- 161 (02.11.2026) il ekonomisi
-    'il_ekonomi_bilgi', 'il_ekonomi_liste'
+    'il_ekonomi_bilgi', 'il_ekonomi_liste',
+    -- 164 · Süper Yönetici Portalı (docs/yonetim/): gövdeler oyun.yp_sahip() ile açılır (yönetici + aal2).
+    'yp_ben', 'yp_islemler', 'yp_onizle', 'yp_oy_teshis', 'yp_oyuncu_ara', 'yp_pano',
+    'yp_secim', 'yp_secimler', 'yp_sozluk', 'yp_uygula'
   ];
 -- @@rpc_yuzey_izin_son@@
   anon_izin text[] := array['surum', 'uygulama_ayar'];
