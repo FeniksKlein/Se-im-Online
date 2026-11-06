@@ -316,7 +316,11 @@ async function oturumKontrol(){
   if(!session) return girisEkrani();
   let ben;
   try { ben = await S.sb.rpc("yp_ben").then(r => { if(r.error) throw r.error; return r.data; }); }
-  catch(err){ return girisEkrani(err.message); }
+  catch(err){
+    const m = String(err.message || err);
+    if(/yp_ben|function|schema cache/i.test(m)) return girisEkrani("Portalın sunucu kurulumu henüz tamamlanmadı. Kurulum bitince bu sayfa kendiliğinden çalışır.");
+    return girisEkrani(m);
+  }
   S.ben = ben;
   if(!ben.yonetici){
     girisKabuk(`<div class="uyari u-hata"><b>Bu hesap yönetici değil</b>${e(ben.kad || "")} hesabıyla portal kullanılamaz.</div>
