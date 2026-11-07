@@ -29,6 +29,23 @@
   if(d.yetki){
    h.push('<div class="ic-kart"><h3>🔎 Oyuncu hakkında inceleme</h3><p class="ic-help">Suç isnadı değil, gerekçeli oyun içi incelemedir. İşlem günlük 5 dosya ve oyuncu başına 7 günde 1 dosya ile sınırlıdır. İnceleme 48 saat sonra karar verilmezse sonuçsuz kalır.</p><label>Oyuncu adıyla ara</label><input type="search" id="icAra" placeholder="En az 2 karakter"><button class="btn ikinci" data-ic-search="1" type="button">Oyuncu ara</button><form data-ic="sorusturma"><label>Oyuncu seç</label><select name="p_hedef" id="icHedef" required><option value="">Önce oyuncu arayın</option></select><label>İncelemenin konusu</label><input name="p_konu" minlength="20" maxlength="180" placeholder="İncelemenin somut konusu" required>'+formAlan("p_delil","Oyun içi delil, işlem ve olay bağlantısı (40–800 karakter)","",40)+'<button type="submit" class="btn altin">Gerekçeli inceleme aç</button></form></div>');
   }
+  if(d.yetki){
+    h.push('<div class="ic-kart"><h3>🏅 Oyuncuya valilik veya emniyet müdürlüğü teklif et</h3><p>Atamalar gerçek oyunculara teklif edilir. Oyuncu kabul ederse 7 gün yetki alır; kendi ilinde güvenlik emri ve uzlaşma çalışması yapar. Teklif 24 saat geçerlidir.</p><form data-ic="atama"><label>Hedef il</label><select name="p_il">'+(d.iller||[]).map(function(i){return '<option value="'+Number(i.id)+'">'+temiz(i.ad)+'</option>';}).join('')+'</select><label>Görev</label><select name="p_tur"><option value="vali">Vali</option><option value="emniyet">İl emniyet müdürü</option></select><label>Oyuncu (aşağıdaki oyuncu arama alanından bulun)</label><select name="p_hedef" id="icAtamaHedef" required><option value="">Önce oyuncu arayın</option></select>'+formAlan('p_gerekce','Atamanın gerekçesi','',20)+'<button type="submit" class="btn altin">Görev teklif et · 50.000 ₺</button></form></div>');
+  }
+  if((d.atamalar||[]).length){
+    h.push('<div class="ic-kart"><h3>🏛️ Valilik ve emniyet görev kayıtları</h3>');
+    (d.atamalar||[]).forEach(function(a){
+      h.push('<details><summary>#'+Number(a.id)+' · '+temiz(a.il)+' · '+(a.tur==='vali'?'Vali':'Emniyet Müdürü')+' · '+temiz(a.oyuncu)+' · '+temiz(a.durum)+'</summary><p>'+temiz(a.gerekce)+'</p><p class="ic-help">Görev bitişi: '+tarih(a.bitis)+'</p>');
+      if(a.durum==='teklif'&&a.benim)h.push('<form data-ic="atama_yanit"><input type="hidden" name="p_id" value="'+Number(a.id)+'"><label>Atama teklifine cevabın</label><select name="p_kabul"><option value="true">Kabul et</option><option value="false">Reddet</option></select><button type="submit" class="btn altin">Yanıtla</button></form>');
+      if(a.durum==='aktif'&&(a.benim||d.yetki)){
+        h.push('<form data-ic="il_emir"><input type="hidden" name="p_atama" value="'+Number(a.id)+'"><label>İl güvenliği emri</label><select name="p_tur"><option value="devriye">Devriye gönder · 150.000 ₺</option><option value="takviye">Takviye gönder · 500.000 ₺ (kamuoyu tepkisi olabilir)</option><option value="uzlasma">Uzlaşma görevlileri gönder · 100.000 ₺</option></select>'+formAlan('p_gerekce','Somut güvenlik ve kamu yararı gerekçesi','',25)+'<button class="btn altin" type="submit">İl emrini uygula</button></form>');
+        h.push('<form data-ic="atama_kapat"><input type="hidden" name="p_id" value="'+Number(a.id)+'">'+formAlan('p_gerekce',a.benim?'Görevden ayrılma gerekçesi':'Görevden alma gerekçesi','',20)+'<button class="btn ikinci" type="submit">'+(a.benim?'İstifa et':'Görevi bitir')+'</button></form>');
+      }
+      if(a.durum==='teklif'&&d.yetki)h.push('<form data-ic="atama_kapat"><input type="hidden" name="p_id" value="'+Number(a.id)+'">'+formAlan('p_gerekce','Teklifi geri çekme gerekçesi','',20)+'<button class="btn ikinci" type="submit">Teklifi geri çek</button></form>');
+      h.push('</details>');
+    });
+    h.push('</div>');
+  }
   if((d.basvurular||[]).length){
    h.push('<div class="ic-kart"><h3>📨 Destek başvuruları</h3>');
    (d.basvurular||[]).forEach(function(b){
@@ -74,6 +91,11 @@
   else if(cmd==='basvur'){fn='icisleri_basvur';args={p_tur:d.get('p_tur'),p_gerekce:d.get('p_gerekce')};}
   else if(cmd==='basvuru_karar'){fn='icisleri_basvuru_karar';args={p_id:Number(d.get('p_id')),p_kabul:d.get('p_kabul')==='true',p_gerekce:d.get('p_gerekce')};}
   else if(cmd==='sorusturma'){fn='icisleri_sorusturma_ac';args={p_hedef:d.get('p_hedef'),p_konu:d.get('p_konu'),p_delil:d.get('p_delil')};}
+  else if(cmd==='atama'){fn='icisleri_atama_teklif';args={p_il:Number(d.get('p_il')),p_tur:d.get('p_tur'),p_hedef:d.get('p_hedef'),p_gerekce:d.get('p_gerekce')};}
+  else if(cmd==='atama_yanit'){fn='icisleri_atama_yanit';args={p_id:Number(d.get('p_id')),p_kabul:d.get('p_kabul')==='true'};}
+  else if(cmd==='atama_kapat'){fn='icisleri_atama_kapat';args={p_id:Number(d.get('p_id')),p_gerekce:d.get('p_gerekce')};}
+  else if(cmd==='il_emir'){fn='icisleri_il_emir_ver';args={p_atama:Number(d.get('p_atama')),p_tur:d.get('p_tur'),p_gerekce:d.get('p_gerekce')};}
+
   else if(cmd==='savunma'){fn='icisleri_savunma';args={p_id:Number(d.get('p_id')),p_metin:d.get('p_metin')};}
   else if(cmd==='hakim'){fn='icisleri_hakim_karar';args={p_id:Number(d.get('p_id')),p_karar:d.get('p_karar'),p_gerekce:d.get('p_gerekce')};}
   else if(cmd==='itiraz'){fn='icisleri_itiraz';args={p_id:Number(d.get('p_id')),p_metin:d.get('p_metin')};}
@@ -84,7 +106,7 @@
  },true);
  document.addEventListener('click',async function(ev){
   var src=ev.target.closest&&ev.target.closest('[data-ic-search]');if(src){
-   src.disabled=true;try{var sonuc=await API.rpc('icisleri_oyuncu_ara',{p_ara:document.getElementById('icAra').value});var s=document.getElementById('icHedef');s.innerHTML='<option value="">Oyuncu seç</option>'+sonuc.map(function(x){return '<option value="'+temiz(x.id)+'">'+temiz(x.kad)+' · '+temiz(x.il)+'</option>';}).join('');if(!sonuc.length&&typeof toast==="function")toast("Oyuncu bulunamadı");}catch(ex){if(typeof toast==="function")toast(ex.message,true);}finally{src.disabled=false;}
+   src.disabled=true;try{var sonuc=await API.rpc('icisleri_oyuncu_ara',{p_ara:document.getElementById('icAra').value});var s=document.getElementById('icHedef');var html='<option value="">Oyuncu seç</option>'+sonuc.map(function(x){return '<option value="'+temiz(x.id)+'">'+temiz(x.kad)+' · '+temiz(x.il)+'</option>';}).join('');if(s)s.innerHTML=html;var at=document.getElementById('icAtamaHedef');if(at)at.innerHTML=html;if(!sonuc.length&&typeof toast==="function")toast("Oyuncu bulunamadı");}catch(ex){if(typeof toast==="function")toast(ex.message,true);}finally{src.disabled=false;}
   }
   var ey=ev.target.closest&&ev.target.closest('[data-ic-eylem]');if(ey&&typeof window.sokakHareketleriEkrani==='function')return window.ekranAc?ekranAc(window.sokakHareketleriEkrani):sokakHareketleriEkrani();
  },true);
