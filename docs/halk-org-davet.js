@@ -455,9 +455,15 @@ sokakHareketleriEkrani=async function(){
    '<div class="hh-meter" aria-label="Eylem gücü '+num(x.seviye)+' / 100"><i style="width:'+pct+'%"></i></div>'+
    '<p><strong>Güç: '+num(x.seviye)+'/100</strong> · '+num(x.katilim)+' katılımcı</p>'+
    '<p class="hh-muted">Eylem fonu: <b>'+tl(x.muhalefet_fonu)+'</b> · Hükümet uzlaşma fonu: <b>'+tl(x.iktidar_fonu)+'</b><br>Bitiş: '+esc(dt(x.bitis))+'</p>'+
-   (x.katildim?'<span class="hh-pill live">✓ Katılıyorsun</span>':
-      '<button type="button" class="hh-action hh-primary" data-hh-join="'+id+'">🙋 Eyleme bireysel katıl</button>')+
-   '<details class="hh-detail"><summary>👥 Destekçiler ('+Number((x.destekler||[]).length)+')</summary>'+
+   (x.katildim?'<span class="hh-pill live">✓ Katılıyorsun · '+esc(x.katilim_sifatim||'Bağımsız')+'</span>':
+      '<form data-hh-fn="sokak_katil_tercih" data-hh-id="'+id+'" class="hh-participate">'+
+      '<label>Nasıl katılmak istiyorsun?</label><select name="katilim_sekli" required>'+
+      '<option value="bagimsiz:">Bağımsız oyuncu olarak</option>'+
+      opts((d.katilim_kuruluslari||[]).filter(y=>Number(y.eylem_id)===id),y=>y.tur+':'+y.id,y=>(y.tur==='parti'?'🏳️ Parti · ':'🏛️ Dernek · ')+y.ad)+
+      '</select><button class="hh-action hh-primary">🙋 Eyleme katıl</button></form>')+
+   '<details class="hh-detail"><summary>👥 Katılımcılar ve destekçiler ('+Number((x.destekler||[]).length)+')</summary>'+
+   '<p class="hh-muted">Katılanların örgütlü veya bağımsız katılım biçimleri</p>'+
+   (x.katilim_ayrintilari||[]).map(y=>'<div class="hh-log">'+esc(y.ad)+' · '+esc(y.sifat)+'</div>').join('')+
    ((x.destekler||[]).length?(x.destekler||[]).map(y=>'<div class="hh-log"><b>'+esc(y.ad||y.tur)+'</b> · '+esc(y.taraf==='iktidar'?'Uzlaşma':'Eylem')+' · '+tl(y.tutar)+'</div>').join(''):'<p>Henüz destekçi yok.</p>')+'</details>'+
    '<details class="hh-detail"><summary>💰 Eylemi fonla ve güçlendir</summary>'+
    '<form data-hh-fn="sokak_destek" data-hh-id="'+id+'"><label>Fon kaynağı: oyuncu / parti / dernek</label><select name="kaynak" required>'+
@@ -634,6 +640,10 @@ sokakHareketleriEkrani=async function(){
   if(fn==='sokak_davet_gonder'){
    const dest=String(args.hedef).split(':');delete args.hedef;
    args.p_hedef_tur=dest[0];args.p_hedef_id=Number(dest[1]);args.p_eylem=id;
+  }
+  if(fn==='sokak_katil_tercih'){
+   const source=String(args.katilim_sekli||'bagimsiz:').split(':');delete args.katilim_sekli;
+   args.p_eylem=id;args.p_org_tur=source[0];args.p_org_id=source[0]==='bagimsiz'?null:Number(source[1]||0);
   }
   if(fn==='sokak_destek'){
    const source=String(args.kaynak||'oyuncu:').split(':');delete args.kaynak;
