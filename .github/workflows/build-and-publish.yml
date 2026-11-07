@@ -23,6 +23,19 @@ jobs:
         run: |
           cp gelistirici/dist/index.html docs/index.html
           cp gelistirici/dist/index.html www/index.html
+          cp docs/halk-org-davet.js www/halk-org-davet.js
+          node --check docs/halk-org-davet.js
+          python3 - <<'PY'
+          from pathlib import Path
+          tag=b'<script defer src="halk-org-davet.js?v=20261107-2"></script>\n'
+          for name in ('docs/index.html','www/index.html'):
+              p=Path(name)
+              data=p.read_bytes()
+              if b'halk-org-davet.js' not in data:
+                  position=data.lower().rfind(b'</body>')
+                  if position<0: raise SystemExit('Closing body missing: '+name)
+                  p.write_bytes(data[:position]+tag+data[position:])
+          PY
           git add docs/index.html www/index.html
           if ! git diff --cached --quiet; then
             git config user.name "github-actions[bot]"
