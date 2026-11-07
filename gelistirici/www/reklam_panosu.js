@@ -823,14 +823,14 @@
       '<h4>' + esc(ihaleKonu(i)) + ' işletme hakkı</h4><p class="rp-not" style="margin-top:2px">İdare: ' + esc(i.idare) + '</p>';
     if (acik) {
       h += '<div class="rp-ihale-izgara"><div><small>Muhammen bedel</small><b>' + tl(i.muhammen) + '</b></div><div><small>En düşük teklif</small><b>' + tl(i.asgari) + '</b></div>' +
-        '<div><small>Geçici teminat</small><b>%' + Math.round(Number(i.teminat_oran) * 100) + '</b></div><div><small>İşletme süresi</small><b>' + i.isletme_gun + ' gün</b></div>' +
+        '<div><small>Tahsil usulü</small><b>Tam bloke</b></div><div><small>İşletme süresi</small><b>' + i.isletme_gun + ' gün</b></div>' +
         '<div><small>İşletme başlangıcı</small><b>' + tarihKisa(i.isletme_bas) + '</b></div><div><small>Verilen teklif</small><b>' + Number(i.teklif_say || 0) + ' zarf</b></div></div>';
-      if (benim) h += '<p class="rp-not" style="color:#5BE0A7">✓ Teklifin: ' + tl(benim.tutar) + ' (' + esc(benim.ad) + ') · ' + tl(benim.teminat) + ' teminat yatırıldı. Zarflar ' + tarihKisa(i.bit) + '’te açılacak.</p>';
+      if (benim) h += '<p class="rp-not" style="color:#5BE0A7">✓ Teklifin: ' + tl(benim.tutar) + ' (' + esc(benim.ad) + ') · ' + tl(benim.teminat) + (Number(benim.teminat) >= Number(benim.tutar) ? ' bloke edildi' : ' teminat yatırıldı') + '. Zarflar ' + tarihKisa(i.bit) + '’te açılacak.</p>';
       else if (i.yetkili) h += '<p class="rp-not uyari">İhale yetkilisi olduğun için bu ihaleye teklif veremezsin.</p>';
       else h += '<button type="button" class="btn" data-rp="ihale" data-id="' + Number(i.id) + '">Kapalı teklif ver</button>';
     } else if (i.durum === 'sonuclandi' && i.kazanan) {
       h += '<p class="rp-not">🏆 Kazanan: <b>' + esc(i.kazanan.ad) + '</b> · ' + tl(i.kazanan.tutar) + ' · ' + Number(i.teklif_say || 0) + ' teklif · muhammen ' + tl(i.muhammen) + '</p>';
-      if (benim) h += '<p class="rp-not">Senin teklifin: ' + tl(benim.tutar) + ' · ' + ({ kazandi: 'kazandı', kaybetti: 'kaybetti, teminat iade edildi', irat: 'bedel ödenemedi, teminat irat kaydedildi' }[benim.durum] || benim.durum) + '</p>';
+      if (benim) h += '<p class="rp-not">Senin teklifin: ' + tl(benim.tutar) + ' · ' + ({ kazandi: 'kazandı', kaybetti: 'kaybetti, bloke edilen tutar iade edildi', irat: 'bedel ödenemedi, teminat irat kaydedildi' }[benim.durum] || benim.durum) + '</p>';
     } else {
       h += '<p class="rp-not">' + (i.durum === 'teklifsiz' ? 'Teklif çıkmadı; panoları idare işletmeye devam ediyor.' : i.durum === 'bozuldu' ? 'Kazananlar bedeli ödeyemedi; ihale bozuldu.' : 'İhale iptal edildi.') + '</p>';
     }
@@ -874,24 +874,24 @@
     var kay = ih.kaynaklar || [], S = { k: 0, tutar: Number(i.asgari) };
     var md = modal('<h3 style="font-size:20px;font-weight:800">Kapalı teklif ver</h3><p class="rp-not" style="margin-top:4px">' + esc(ihaleKonu(i)) + ' işletme hakkı · ' + esc(i.idare) + '</p><div id="rpIhIc"></div>');
     function ciz() {
-      var tem = Math.max(100, Math.round(S.tutar * Number(i.teminat_oran))), k = kay[S.k] || {};
+      var k = kay[S.k] || {}, yetmez = k.kasa != null && Number(k.kasa) < S.tutar;
       document.getElementById('rpIhIc').innerHTML =
         '<div class="rp-teklif"><div class="rp-teklif-satir"><span>Muhammen bedel</span><b>' + tl(i.muhammen) + '</b></div><div class="rp-teklif-satir"><span>En düşük teklif</span><b>' + tl(i.asgari) + '</b></div>' +
         '<div class="rp-teklif-satir"><span>İşletme</span><b>' + i.isletme_gun + ' gün · ' + tarihKisa(i.isletme_bas) + '’ten</b></div><div class="rp-teklif-satir"><span>Zarfların açılışı</span><b>' + tarihKisa(i.bit) + '</b></div></div>' +
         '<div class="rp-alan"><label>Teklifi veren</label>' + kay.map(function (x, n) { return '<button type="button" class="rp-radyo' + (n === S.k ? ' aktif' : '') + '" data-k="' + n + '"><b>' + esc(x.ad) + '</b><small>' + (x.tur === 'sirket' ? 'Şirket kasası' : 'Cüzdan') + ' · bakiye ' + tl(x.kasa) + '</small></button>'; }).join('') + '</div>' +
         '<div class="rp-alan"><label for="rpIhTutar">Teklif tutarı (₺)</label><input type="number" id="rpIhTutar" inputmode="numeric" min="' + Number(i.asgari) + '" step="500" value="' + S.tutar + '"></div>' +
         '<div class="rp-secenek" style="margin:-4px 0 14px"><button type="button" data-hizli="asgari">En düşük</button><button type="button" data-hizli="muhammen">Muhammen</button><button type="button" data-hizli="10">+%10</button></div>' +
-        '<div class="rp-teklif"><div class="rp-teklif-satir"><span>Şimdi tahsil edilecek geçici teminat</span><b>' + tl(tem) + '</b></div><div class="rp-teklif-satir"><span>Kazanırsan kapanışta tahsil edilecek kalan</span><b>' + tl(Math.max(0, S.tutar - tem)) + '</b></div>' +
-        '<div class="rp-teklif-toplam"><span>Teklif</span><b>' + tl(S.tutar) + '</b></div></div>' +
+        '<div class="rp-teklif"><div class="rp-teklif-satir"><span>Şimdi bloke edilir</span><b>' + tl(S.tutar) + '</b></div><div class="rp-teklif-satir"><span>Kazanırsan</span><b>Doğrudan Hazine’ye geçer</b></div><div class="rp-teklif-satir"><span>Kaybedersen</span><b>Tamamı iade edilir</b></div>' +
+        '<div class="rp-teklif-toplam"><span>Teklif</span><b>' + tl(S.tutar) + '</b></div></div>' + (yetmez ? '<p class="rp-not uyari">Bu kaynakta yeterli bakiye yok: teklifin tamamı teklif anında bloke edilir.</p>' : '') +
         '<details class="rp-detay" open><summary>İhale şartları</summary><div class="rp-not">' +
         '<p>• Kapalı teklif usulü: tutarlar zarflar açılana kadar gizlidir. Teklif geri alınamaz ve değiştirilemez.</p>' +
         '<p>• En yüksek teklif kazanır; eşitlikte önce veren öne geçer.</p>' +
-        '<p>• İhale bedeli devlete (Hazine) gelir yazılır. Kaybedenlerin teminatı iade edilir; kazanan kalan bedeli ödeyemezse teminatı Hazine’ye gelir kaydedilir ve sıradaki teklife geçilir.</p>' +
+        '<p>• Kesin tahsil: teklif verirken tutarın tamamı cüzdanından ya da şirket kasasından bloke edilir. Zarflar açılınca kazananın bedeli doğrudan devlete (Hazine) geçer; kaybedenlerin bloke tutarı tamamen iade edilir.</p>' +
         '<p>• İhale yetkilisi (o ilin belediye başkanı; ülke genelinde Cumhurbaşkanı ve Ulaştırma Bakanı) ile yönettiği ya da ortağı olduğu şirketler katılamaz.</p>' +
         '<p>• Aynı anda en fazla ' + Number(ih.ayar && ih.ayar.en_fazla || 3) + ' pano işletmesi tutabilirsin.</p>' +
         '<p>• Sözleşme boyunca her panonun günlük fiyatını sen belirlersin; kira geliri sana gelir, her kiralamadan %' + Math.round(Number(ih.ayar && ih.ayar.vergi || 0.1) * 100) + ' ilan ve reklam vergisi idareye ödenir.</p>' +
         '<p>• Yayındaki eski reklamlar süreleri bitene kadar panoda kalır.</p></div></details>' +
-        '<button class="btn rp-btn-sicak" id="rpIhGonder">Teminatı yatır ve teklifi ver</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>';
+        '<button class="btn rp-btn-sicak" id="rpIhGonder">Bedeli bloke et ve teklifi ver</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>';
       if (k) {}
     }
     ciz();
@@ -905,8 +905,8 @@
         var k = kay[S.k]; b.disabled = true; b.textContent = 'Teklif veriliyor…';
         try {
           var r = await API.rpc('pano_ihale_teklif_ver', { p_ihale: Number(i.id), p_tur: k.tur, p_id: k.tur === 'sirket' ? Number(k.id) : null, p_tutar: S.tutar });
-          modalKapat(); toast('Teklifin zarfa kondu · ' + tl(r.teminat) + ' teminat yatırıldı'); reklamPanolariEkrani();
-        } catch (err) { hataGoster(err); b.disabled = false; b.textContent = 'Teminatı yatır ve teklifi ver'; }
+          modalKapat(); toast('Teklifin zarfa kondu · ' + tl(r.bloke || r.teminat) + ' bloke edildi'); reklamPanolariEkrani();
+        } catch (err) { hataGoster(err); b.disabled = false; b.textContent = 'Bedeli bloke et ve teklifi ver'; }
       }
     });
   }

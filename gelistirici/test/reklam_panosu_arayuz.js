@@ -45,7 +45,7 @@ const shot = process.argv[2];
         if (ad === 'pano_merkez') return MERKEZ; if (ad === 'pano_vitrin') return VITRIN;
         if (ad === 'kimlikler') return { ArvenTora: { avatar: '3-4-1-0-2-5-1' } };
         if (ad === 'pano_ihale_merkez') return IHALE;
-        if (ad === 'pano_ihale_teklif_ver') return { tamam: true, teminat: Math.round(args.p_tutar * 0.03) };
+        if (ad === 'pano_ihale_teklif_ver') return { tamam: true, teminat: args.p_tutar, bloke: args.p_tutar };
         if (ad === 'pano_isletme_fiyat') return { tamam: true, fiyatlar: args.p_fiyatlar };
         if (ad === 'pano_teklif_v2') return { slot: args.p_slot || 2, slotlar: [{ slot: 1, fiyat: 20450, bos: bit }, { slot: 2, fiyat: 20450, bos: new Date().toISOString() }, { slot: 3, fiyat: 20450, bos: new Date().toISOString() }],  kapsam: args.p_kapsam, il: 'İzmir', gun: args.p_gun, gunluk: 20450, indirim: args.p_gun >= 7 ? 0.1 : args.p_gun >= 3 ? 0.04 : 0, toplam: Math.round(20450 * args.p_gun * (args.p_gun >= 7 ? 0.9 : args.p_gun >= 3 ? 0.96 : 1)), bas: new Date().toISOString(), bit, hemen: true, sira_dolu: false, slot: 2, gelir_yeri: 'İzmir Belediyesi kasası', yasak_uyari: true, fiyat: { sezon: true, sezon_carpan: 1.35, dolu: 1, slot: 5 } };
         if (ad === 'afis_kaydet') return { id: 6, tamam: true };
