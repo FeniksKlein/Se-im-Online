@@ -412,6 +412,7 @@ iskelet=function(title,body,options){
  return oldIskelet(title,body,options);
 };
 const former=sokakHareketleriEkrani;
+let lastCommandTab='events';
 sokakHareketleriEkrani=async function(){
  await former();
  document.body.classList.add('so-hh-page');
@@ -510,6 +511,7 @@ sokakHareketleriEkrani=async function(){
   '<h3>Dosya #'+id+' · '+esc(g.hedef)+'</h3><p class="hh-muted">Eylem #'+Number(item.event.id)+' · Bitiş '+esc(dt(g.bitis))+'</p>'+
   (g.avukat?'<p>Avukat: '+esc(g.avukat)+' · '+esc(g.avukat_durum)+'</p>':'')+
   (g.itiraz?'<div class="hh-log">Savunma / itiraz: '+esc(g.itiraz)+'</div>':'')+
+  (g.on_inceleme?'<div class="hh-log">Hâkim ön incelemesi: <b>'+esc(g.on_inceleme==='serbest'?'Derhal serbest bırakıldı':'Mevcut gözaltı süresi onaylandı')+'</b><p>'+esc(g.on_inceleme_gerekce)+'</p></div>':'')+
   (g.karar?'<div class="hh-log">Mahkeme: '+esc(g.karar)+' · '+esc(g.karar_gerekce)+' · Tazminat: '+tl(g.tazminat)+'</div>':'');
   if(g.benim&&isLive){
    law+='<details class="hh-detail"><summary>👩‍⚖️ Avukat çağır</summary><form data-hh-fn="sokak_avukat_cagir" data-hh-id="'+id+'">'+
@@ -522,6 +524,13 @@ sokakHareketleriEkrani=async function(){
    law+='<details class="hh-detail"><summary>📝 Gözaltına itiraz et</summary><form data-hh-fn="sokak_gozalti_itiraz" data-hh-id="'+id+'">'+
    '<label>Savunma ve itiraz gerekçesi</label><textarea name="p_metin" minlength="20" maxlength="600" required></textarea>'+
    '<button class="hh-action hh-primary">İtiraz et, mahkemeye gönder</button></form></details>';
+  }
+  if(g.mahkeme_yetki&&isLive&&!g.on_inceleme&&!g.karar){
+   law+='<details class="hh-detail"><summary>⚖️ Hâkim ön incelemesi – gözaltı kararı</summary><form data-hh-fn="sokak_gozalti_hakim_incele" data-hh-id="'+id+'">'+
+   '<label>Gözaltı inceleme kararı</label><select name="p_karar"><option value="serbest">Derhal serbest bırak</option><option value="devam">Kalan gözaltı süresini onayla</option></select>'+
+   '<label>Gerekçeli hâkim kararı</label><textarea name="p_gerekce" minlength="25" maxlength="700" required></textarea>'+
+   '<p class="hh-muted">Bu karar bir tutuklama hükmü değildir; mevcut bir saatlik sürenin üzerine çıkmaz. İtiraz hakkı korunur.</p>'+
+   '<button class="hh-action hh-primary">Gerekçeli kararı kaydet</button></form></details>';
   }
   if(g.mahkeme_yetki&&g.itiraz&&!g.karar){
    law+='<details class="hh-detail"><summary>⚖️ Hâkim kararı ver</summary><form data-hh-fn="sokak_gozalti_mahkeme" data-hh-id="'+id+'">'+
@@ -581,6 +590,7 @@ sokakHareketleriEkrani=async function(){
  legacyBlocks.forEach(el=>{el.style.display='none';el.dataset.hhLegacyBlock='1';});
  const tabs=[...root.querySelectorAll('[data-hh-tab]')];
  function show(key){
+  lastCommandTab=key;
   tabs.forEach(b=>b.setAttribute('aria-selected',String(b.dataset.hhTab===key)));
   root.querySelectorAll('[data-hh-panel]').forEach(panel=>{panel.hidden=panel.dataset.hhPanel!==key;});
   const legacyVisible=key==='tools'&&root.dataset.hhLegacy==='1';
@@ -589,7 +599,7 @@ sokakHareketleriEkrani=async function(){
  }
  tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.hhTab)));
  root.querySelector('#hhOldToggle')?.addEventListener('click',()=>{root.dataset.hhLegacy=root.dataset.hhLegacy==='1'?'0':'1';show('tools');});
- show(pending.some(z=>z.info.benim)?'legal':'events');
+ show(pending.some(z=>z.info.benim)?'legal':lastCommandTab);
  async function run(btn,fn,args,success){
   if(btn)btn.disabled=true;
   try{
@@ -632,7 +642,7 @@ sokakHareketleriEkrani=async function(){
    args.p_tutar=Number(args.p_tutar);args.p_taraf='muhalefet';args.p_eylem=id;
   }
   if(['sokak_eylem_sonlandir','sokak_basina_aciklama','sokak_yanit','sokak_butce_mudahale','sokak_polis_gonder'].includes(fn))args.p_eylem=id;
-  if(['sokak_avukat_cagir','sokak_gozalti_itiraz','sokak_gozalti_mahkeme','sokak_baro_ata'].includes(fn))args.p_gozalti=id;
+  if(['sokak_avukat_cagir','sokak_gozalti_itiraz','sokak_gozalti_mahkeme','sokak_baro_ata','sokak_gozalti_hakim_incele'].includes(fn))args.p_gozalti=id;
   if(fn==='sokak_eylem_sonlandir'&&!window.confirm('Bu eylemi kesin olarak sonlandırmak istiyor musun?'))return;
   if(fn==='sokak_butce_mudahale')args.p_tutar=Number(args.p_tutar);
   run(form.querySelector('button'),fn,args);
