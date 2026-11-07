@@ -298,6 +298,8 @@ declare
     'yp_oyuncu', 'yp_oyuncular',
     -- 171 · Portal aşama 3: canlı ayarlar
     'yp_ayar_gecmis', 'yp_ayarlar',
+    -- 172 · Portal aşama 4: siyaset ve ekonomi
+    'yp_dernekler', 'yp_ekonomi', 'yp_parti', 'yp_siyaset', 'yp_sirketler',
     -- 165 (06.11.2026) seçim gecesi canlı yayını
     'secim_yayini', 'secim_yayini_tekrar'
   ];

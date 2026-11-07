@@ -221,6 +221,13 @@ tbody tr.tik:hover td{background:var(--yuzey2)}
 .fark .bitecek li::marker{color:var(--muhur)}
 .fark .baslayacak li::marker{color:var(--onay)}
 
+/* Siyaset ve ekonomi */
+.renk-nokta{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:baseline;margin-right:2px;border:1px solid color-mix(in srgb,var(--murekkep) 20%,transparent)}
+.meclis-cubuk{display:flex;height:18px;border-radius:9px;overflow:hidden;background:var(--cizgi);gap:1px}
+.arz{display:grid;gap:10px}
+.arz div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;font-size:14px}
+.arz i{grid-column:1/-1;height:6px;border-radius:3px;background:var(--sandik)}
+
 /* Canlı ayarlar */
 .ayar-grup{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--soluk);margin:18px 0 6px}
 .ayar-grup:first-child{margin-top:4px}
@@ -317,6 +324,8 @@ const IK = {
   secim:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10h16v10H4z"/><path d="M9 10V4h6v6"/><path d="M9 15h6"/></svg>',
   islem:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
   oyuncu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.9.8 3.1 2.5 3.5 5.2"/></svg>',
+  siyaset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10 12 4l9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg>',
+  ekonomi:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5M4 19h16"/><path d="m7 15 4-4 3 3 5-6"/></svg>',
   ayar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
   toplu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>',
   ara:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
@@ -583,13 +592,15 @@ function uygulamaBaslat(){
         <a href="#/secimler" data-yol="secim">${IK.secim}Seçimler</a>
         <a href="#/oyuncular" data-yol="oyuncu">${IK.oyuncu}Oyuncular</a>
         <a href="#/toplu" data-yol="toplu">${IK.toplu}Toplu işlem</a>
+        <a href="#/siyaset" data-yol="siyaset">${IK.siyaset}Siyaset</a>
+        <a href="#/ekonomi" data-yol="ekonomi">${IK.ekonomi}Ekonomi</a>
         <a href="#/ayarlar" data-yol="ayar">${IK.ayar}Canlı ayarlar</a>
         <a href="#/islemler" data-yol="islem">${IK.islem}İşlem geçmişi</a>
       </nav>
       <div class="yan-alt">
         <div>${e(S.ben.kad)} · yönetici</div>
         <div class="sat"><button class="btn btn-kucuk" id="tema">Tema</button><button class="btn btn-kucuk" id="cikis">Çıkış</button></div>
-        <div class="kucuk">Siyaset/ekonomi, duyuru ve asistan modülleri sonraki aşamalarda eklenecek.</div>
+        <div class="kucuk">Duyuru/olay/destek ve asistan modülleri sonraki aşamalarda eklenecek.</div>
       </div>
     </aside>
     <main class="ana">
@@ -620,13 +631,16 @@ function yonlendir(){
   const h = location.hash.replace(/^#\/?/, "") || "pano";
   const [a, b] = h.split("/");
   document.querySelectorAll(".menu a").forEach(x => x.toggleAttribute("aria-current", false));
-  const yol = a === "secimler" || a === "secim" ? "secim" : a === "islemler" ? "islem" : a === "oyuncular" || a === "oyuncu" ? "oyuncu" : a === "toplu" ? "toplu" : a === "ayarlar" ? "ayar" : "pano";
+  const yol = a === "secimler" || a === "secim" ? "secim" : a === "islemler" ? "islem" : a === "oyuncular" || a === "oyuncu" ? "oyuncu" : a === "toplu" ? "toplu" : a === "ayarlar" ? "ayar" : a === "siyaset" || a === "parti" ? "siyaset" : a === "ekonomi" ? "ekonomi" : "pano";
   const m = document.querySelector(`.menu a[data-yol="${yol}"]`);
   if(m) m.setAttribute("aria-current", "page");
   if(a === "oyuncular") return oyuncularSayfa();
   if(a === "oyuncu" && b) return oyuncuSayfa(b);
   if(a === "toplu") return topluSayfa();
   if(a === "ayarlar") return ayarlarSayfa();
+  if(a === "siyaset") return siyasetSayfa();
+  if(a === "parti" && b) return partiSayfa(b);
+  if(a === "ekonomi") return ekonomiSayfa();
   if(a === "secimler") return secimlerSayfa();
   if(a === "secim" && b) return secimSayfa(+b);
   if(a === "islemler") return islemlerSayfa();
@@ -1425,6 +1439,191 @@ async function ayarGecmisPencere(anahtar, baslik){
   const p = pencere(baslik, `<div class="yukleniyor">Yükleniyor…</div>`, `<button class="btn btn-ana" data-kapat>Kapat</button>`);
   const g = await guvenli(() => rpc("yp_ayar_gecmis", { p_anahtar: anahtar, p_limit: 100 }));
   p.govde(g ? ayarGecmisTablo(g, !!anahtar) + `<p class="kucuk soluk" style="margin-top:8px">Yalnız portal üzerinden yapılan değişiklikler listelenir.</p>` : "");
+}
+
+/* ---------- Siyaset ve ekonomi: ortak ---------- */
+const milyar = v => v == null ? "—" : `${Number(v).toLocaleString("tr-TR", { maximumFractionDigits: 1 })} milyar ₺`;
+const yuzde = v => v == null ? "—" : `%${Number(v).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}`;
+const renkNokta = r => `<span class="renk-nokta" style="background:${/^#[0-9a-f]{6}$/i.test(r || "") ? r : "var(--cizgi)"}"></span>`;
+const oyuncuLink = (id, kad) => id ? `<a href="#/oyuncu/${e(id)}">${e(kad || "—")}</a>` : e(kad || "—");
+IS.kurum_kasa = { ad: "Kurum kasası düzelt", aciklama: "Kasaya para ekler (+) ya da düşer (−). Oyunun kasa defterine “Oyun yönetimi” açıklamasıyla kaydedilir; geri alınabilir.",
+  form: o => `<input type="hidden" id="fTur" value="${e(o.tur || "")}">
+    <div class="alan"><label for="fTutar">Tutar (${["hazine", "bakanlik"].includes(o.tur) ? "milyar ₺" : "₺"})</label>
+      <input id="fTutar" inputmode="decimal" placeholder="${["hazine", "bakanlik"].includes(o.tur) ? "ör. 25 ya da -2,5" : "ör. 50000 ya da -10000"}">
+      <small>${o.kasa_metin ? "Şu an: " + e(o.kasa_metin) + " · " : ""}Düşmek için başına eksi (−) koy.</small></div>
+    <div class="alan"><label for="fAc">Açıklama</label><input id="fAc" maxlength="200" placeholder="Kasa defterinde görünür"></div>`,
+  oku: q => { const m = ["hazine", "bakanlik"].includes(q("#fTur").value);
+    let t = q("#fTutar").value.trim().replace("−", "-").replace(/\s|₺/g, "");
+    t = m ? t.replace(",", ".") : t.replace(/\./g, "");
+    if(!(m ? /^-?\d+(\.\d{1,3})?$/ : /^-?\d+$/).test(t) || +t === 0) return m ? "Tutar milyar ₺ olarak yazılmalı (ör. 25 ya da -2,5)." : "Tutar sıfırdan farklı tam sayı olmalı.";
+    const a = q("#fAc").value.trim(); if(a.length < 3) return "Açıklama yaz (en az 3 karakter).";
+    return { tutar: +t, aciklama: a }; } };
+IS.parti_duzenle = { ad: "Parti adı / rengi düzelt", aciklama: "Oyunun ad kuralları uygulanır (ad 5-40 harf, kısa ad 2-6 büyük harf). Partinin 7 günlük ad değiştirme hakkı harcanmaz; geri alınabilir.",
+  form: o => `<div class="alan"><label for="fAd">Parti adı</label><input id="fAd" maxlength="40" value="${e(o.ad || "")}"></div>
+    <div class="alan"><label for="fKisa">Kısa ad</label><input id="fKisa" maxlength="6" value="${e(o.kisa || "")}" style="text-transform:uppercase"></div>
+    <div class="alan"><label for="fRenk">Renk</label><input id="fRenk" type="color" value="${e(/^#[0-9a-f]{6}$/i.test(o.renk || "") ? o.renk : "#888888")}" style="width:72px;height:40px;padding:2px"></div>`,
+  oku: q => ({ ad: q("#fAd").value.trim(), kisa: q("#fKisa").value.trim().toLocaleUpperCase("tr"), renk: q("#fRenk").value }) };
+function kasaDuzelt(tur, id, ad, kasaMetin, sonra){ islemFormu("kurum_kasa", { tur, id: id == null ? null : String(id) }, ad, sonra, { tur, kasa_metin: kasaMetin }); }
+function makamAl(makamId, ad, sonra){ islemFormu("makam_al", { makam_id: makamId }, ad, sonra); }
+
+/* ---------- Siyaset ---------- */
+S.siyasetSekme = S.siyasetSekme || "partiler";
+async function siyasetSayfa(){
+  yukle();
+  const d = await guvenli(() => rpc("yp_siyaset")); if(!d) return;
+  S.siyaset = d;
+  const m = d.meclis;
+  sayfa(`<div class="blok-bas" style="margin-bottom:12px"><h1>Siyaset ve devlet</h1><span class="alt">${sayi(d.partiler.filter(p => !p.kapali).length)} açık parti · ${sayi(d.bagimsiz)} bağımsız oyuncu</span></div>
+    <div class="sayilar" style="margin-bottom:14px">
+      <div class="sayi"><b>${sayi(m.dolu)} / ${sayi(m.kontenjan)}</b><span>Milletvekili</span></div>
+      <div class="sayi"><b>${sayi(d.devlet.filter(x => x.tur === "bakan").length)} / 12</b><span>Bakan</span></div>
+      <div class="sayi"><b>${sayi(d.belediyeler.filter(b => b.baskan).length)} / 81</b><span>Belediye başkanı</span></div>
+      <div class="sayi"><b>${sayi(d.ittifaklar.length)}</b><span>İttifak</span></div>
+    </div>
+    <div class="sekmeler" role="tablist">${[["partiler", "Partiler"], ["devlet", "Devlet ve meclis"], ["belediye", "Belediyeler"]].map(([k, a]) =>
+      `<button role="tab" data-sk="${k}" aria-selected="${S.siyasetSekme === k}">${a}</button>`).join("")}</div>
+    <div id="siyIcerik"></div>`);
+  document.querySelectorAll("[data-sk]").forEach(b => b.onclick = () => { S.siyasetSekme = b.dataset.sk; document.querySelectorAll("[data-sk]").forEach(x => x.setAttribute("aria-selected", x === b)); siyasetSekme(); });
+  siyasetSekme();
+}
+function siyasetSekme(){
+  const d = S.siyaset, k = document.getElementById("siyIcerik"); if(!d || !k) return;
+  const yenile = () => siyasetSayfa();
+  if(S.siyasetSekme === "partiler"){
+    k.innerHTML = `<section class="blok"><div class="tablo-kap"><table><thead><tr><th>Parti</th><th class="gizle-mobil">Genel başkan</th><th class="sag">Üye</th>
+        <th class="sag gizle-mobil">MV</th><th class="sag gizle-mobil">Belediye</th><th class="sag gizle-mobil">Teşkilat</th><th class="sag">Kasa</th></tr></thead><tbody>
+      ${d.partiler.map(p => `<tr class="tik" data-parti="${p.id}"><td>${renkNokta(p.renk)} <b>${e(p.kisa)}</b> <span class="kucuk soluk">${e(p.ad)}</span>
+          ${p.kapali ? `<span class="etiket e-tamam">Kapalı</span>` : ""}${p.kurulus_bit && new Date(p.kurulus_bit) > new Date() ? `<span class="etiket e-basvuru">Kuruluşta</span>` : ""}
+          ${p.ittifak ? `<div class="kucuk soluk">${e(p.ittifak)}</div>` : ""}</td>
+        <td class="gizle-mobil">${e(p.gb || "—")}</td><td class="sag">${sayi(p.uye)}<div class="kucuk soluk">${sayi(p.aktif_uye)} aktif</div></td>
+        <td class="sag gizle-mobil">${sayi(p.mv)}</td><td class="sag gizle-mobil">${sayi(p.belediye)}</td><td class="sag gizle-mobil">${sayi(p.teskilat)}</td>
+        <td class="sag tutar">${e(tl(p.kasa))}</td></tr>`).join("")}</tbody></table></div>
+      ${d.ittifaklar.length ? `<h3 style="margin:14px 0 6px">İttifaklar</h3><ul class="kucuk">${d.ittifaklar.map(i => `<li><b>${e(i.ad)}</b>: ${e((i.partiler || []).join(", "))}</li>`).join("")}</ul>` : ""}</section>`;
+    k.querySelectorAll("[data-parti]").forEach(t => t.onclick = () => location.hash = "#/parti/" + t.dataset.parti);
+  } else if(S.siyasetSekme === "devlet"){
+    const m = d.meclis, top = Math.max(1, m.dolu);
+    k.innerHTML = `<div class="izgara iz-2">
+      <section class="blok"><div class="blok-bas"><h2>Yürütme ve meclis başkanlığı</h2></div>
+        ${d.devlet.length ? `<div class="tablo-kap"><table><tbody>${d.devlet.map(x => `<tr><td><b>${e(x.ad)}</b><div class="kucuk soluk">${oyuncuLink(x.user_id, x.kad)}${x.parti ? " · " + e(x.parti) : ""} · ${e(tarih(x.bas, true))}</div></td>
+          <td class="sag"><button class="btn btn-kucuk btn-kirmizi" data-makam="${x.makam_id}" data-ad="${e(x.kad + " · " + x.ad)}">Görevden al</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="bos">Görevli yok.</div>`}
+        ${d.bos_bakanlik.length ? `<p class="kucuk" style="margin-top:10px"><b>Boş bakanlıklar:</b> ${e(d.bos_bakanlik.join(", "))}</p>` : ""}
+        <p class="kucuk soluk" style="margin-top:8px">Görev vermek için oyuncunun dosyasını aç (Oyuncular › oyuncu › Görev ver).</p></section>
+      <section class="blok"><div class="blok-bas"><h2>Meclis</h2><span class="alt">${sayi(m.dolu)} / ${sayi(m.kontenjan)} sandalye</span></div>
+        <div class="meclis-cubuk">${m.dagilim.map(x => `<span style="flex:${x.sandalye};background:${/^#/.test(x.renk || "") ? x.renk : "var(--soluk)"}" title="${e(x.parti)}: ${x.sandalye}"></span>`).join("")}</div>
+        <ul class="kucuk" style="margin-top:10px">${m.dagilim.map(x => `<li>${renkNokta(x.renk)} ${e(x.parti)}: <b>${sayi(x.sandalye)}</b> (%${Math.round(x.sandalye * 100 / top)})</li>`).join("") || "<li>Henüz vekil yok.</li>"}</ul>
+        <h3 style="margin:14px 0 6px">Yüksek Mahkeme</h3>
+        ${d.mahkeme.length ? `<ul class="kucuk">${d.mahkeme.map(x => `<li>${x.sira}. üye: ${x.bos ? "<i>boş</i>" : oyuncuLink(x.user_id, x.kad)}${x.gorev_bit ? ` · görev ${e(tarih(x.gorev_bit, true))}'e kadar` : ""}</li>`).join("")}</ul>` : `<div class="bos">Üye yok.</div>`}</section></div>`;
+    k.querySelectorAll("[data-makam]").forEach(b => b.onclick = () => makamAl(+b.dataset.makam, b.dataset.ad, yenile));
+  } else {
+    k.innerHTML = `<section class="blok"><div class="filtreler" style="grid-template-columns:minmax(160px,1fr)"><div class="alan"><label for="belAra">İl ara</label><input id="belAra" type="search" value="${e(S.belAra || "")}"></div></div><div id="belTablo"></div></section>`;
+    const ciz = () => {
+      const a = (S.belAra || "").toLocaleLowerCase("tr");
+      const l = d.belediyeler.filter(b => !a || b.il.toLocaleLowerCase("tr").includes(a) || (b.baskan || "").toLocaleLowerCase("tr").includes(a));
+      document.getElementById("belTablo").innerHTML = `<div class="tablo-kap"><table><thead><tr><th>İl</th><th>Belediye başkanı</th><th class="sag">Kasa</th>
+          <th class="sag gizle-mobil">Gelişim</th><th class="sag gizle-mobil">Memnuniyet</th><th class="sag gizle-mobil">Oyuncu</th><th class="sag gizle-mobil">MV</th><th></th></tr></thead><tbody>
+        ${l.map(b => `<tr><td><b>${e(b.il)}</b></td><td>${b.baskan ? `${renkNokta(b.renk)} ${oyuncuLink(b.baskan_id, b.baskan)} <span class="kucuk soluk">${e(b.parti || "bağımsız")}</span>` : `<span class="soluk">boş</span>`}</td>
+          <td class="sag tutar">${e(tl(b.kasa))}</td><td class="sag gizle-mobil">${b.gelisim == null ? "—" : Math.round(b.gelisim)}</td><td class="sag gizle-mobil">${b.memnuniyet == null ? "—" : Math.round(b.memnuniyet)}</td>
+          <td class="sag gizle-mobil">${sayi(b.nufus)}</td><td class="sag gizle-mobil">${sayi(b.mv)}/${sayi(b.mv_kontenjan)}</td>
+          <td class="sag"><button class="btn btn-kucuk" data-belkasa="${b.il_id}" data-ad="${e(b.il)}" data-kasa="${e(tl(b.kasa))}">Kasa</button></td></tr>`).join("")}</tbody></table></div>`;
+      document.querySelectorAll("[data-belkasa]").forEach(x => x.onclick = () => kasaDuzelt("il", x.dataset.belkasa, x.dataset.ad + " Belediyesi kasası", x.dataset.kasa, yenile));
+    };
+    document.getElementById("belAra").oninput = ev => { S.belAra = ev.target.value; ciz(); };
+    ciz();
+  }
+}
+
+async function partiSayfa(id){
+  yukle();
+  const p = await guvenli(() => rpc("yp_parti", { p_id: +id }));
+  if(!p) return sayfa(`<p class="kucuk"><a href="#/siyaset">Siyaset</a></p><div class="uyari u-hata" style="margin-top:10px">Parti yüklenemedi.</div>`);
+  const yenile = () => partiSayfa(id);
+  S.partiSekme = S.partiSekme || "uyeler";
+  sayfa(`<p class="kucuk"><a href="#/siyaset">Siyaset</a></p>
+    <div class="profil-bas"><div style="flex:1;min-width:220px"><h1>${renkNokta(p.renk)} ${e(p.ad)} <span class="etiket">${e(p.kisa)}</span> ${p.kapali ? `<span class="etiket e-tamam">Kapalı</span>` : ""}</h1>
+      <div class="alt">Genel başkan: ${oyuncuLink(p.gb_id, p.gb)}${p.gb_vekil ? ` (vekil: ${e(p.gb_vekil)})` : ""} · kurucu ${e(p.kurucu || "—")} · kuruluş ${e(tarih(p.kurulus, true))}${p.ittifak ? ` · ${e(p.ittifak.ad)} ittifakı (${e((p.ittifak.partiler || []).join(", "))})` : ""}</div></div></div>
+    <div class="sayilar" style="margin-bottom:14px">
+      <div class="sayi"><b>${sayi(p.uyeler.length)}</b><span>Üye</span></div>
+      <div class="sayi"><b>${sayi(p.makamlar.length)}</b><span>Görev</span></div>
+      <div class="sayi"><b>${sayi(p.teskilat.filter(x => x.aktif).length)}</b><span>İl teşkilatı</span></div>
+      <div class="sayi"><b>${e(tl(p.kasa))}</b><span>Parti kasası</span></div>
+    </div>
+    <div class="dugmeler" id="eylem">${p.kapali ? "" : `<button class="btn" id="pDuzenle">Adı / rengi düzelt</button>`}<button class="btn" id="pKasa">Kasa düzelt</button></div>
+    <div class="sekmeler" role="tablist">${[["uyeler", "Üyeler"], ["yonetim", "Yönetim ve teşkilat"], ["gorev", "Görevler ve adaylar"], ["gecmis", "Geçmiş"]].map(([k, a]) =>
+      `<button role="tab" data-ps="${k}" aria-selected="${S.partiSekme === k}">${a}</button>`).join("")}</div><div id="pIcerik"></div>`);
+  const pd = document.getElementById("pDuzenle");
+  if(pd) pd.onclick = () => islemFormu("parti_duzenle", { parti_id: p.id }, `${p.ad} (${p.kisa})`, yenile, p);
+  document.getElementById("pKasa").onclick = () => kasaDuzelt("parti", p.id, `${p.kisa} parti kasası`, tl(p.kasa), yenile);
+  const satir = (l, kolon, bos) => l && l.length ? `<div class="tablo-kap"><table><thead><tr>${kolon.map(([, a, c]) => `<th class="${c || ""}">${a}</th>`).join("")}</tr></thead><tbody>
+    ${l.map(r => `<tr>${kolon.map(([f, , c]) => `<td class="${c || ""}">${typeof f === "function" ? f(r) : deger(f, r[f])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : `<div class="bos">${bos}</div>`;
+  const ciz = () => {
+    const k = document.getElementById("pIcerik"), t = S.partiSekme;
+    if(t === "uyeler") k.innerHTML = `<section class="blok">${satir(p.uyeler, [[r => oyuncuLink(r.user_id, r.kad) + (r.cevrimici ? ` <span class="etiket e-oy">Çevrimiçi</span>` : ""), "Üye"], ["il", "İl"],
+        [r => e(r.gorev || "—"), "Görev", "gizle-mobil"], ["katilim", "Katılım", "gizle-mobil"], ["son_gorulme", "Son görülme", "gizle-mobil"]], "Üyesi yok.")}</section>`;
+    else if(t === "yonetim") k.innerHTML = `<div class="izgara iz-2"><section class="blok"><div class="blok-bas"><h2>Genel başkan yardımcıları</h2></div>
+        ${satir(p.gby, [["sira", "Sıra"], [r => oyuncuLink(r.user_id, r.kad), "Oyuncu"], ["gorev", "Görev"]], "Atanmış yardımcı yok.")}</section>
+      <section class="blok"><div class="blok-bas"><h2>İl başkanları</h2></div>${satir(p.teskilat, [["il", "İl"], ["kad", "İl başkanı"], [r => r.aktif ? "Aktif" : `<span class="soluk">Pasif</span>`, "Durum"]], "Teşkilat yok.")}</section></div>`;
+    else if(t === "gorev") {
+      k.innerHTML = `<section class="blok"><div class="blok-bas"><h2>Partili görevliler</h2></div>${satir(p.makamlar, [["ad", "Görev"], ["kad", "Oyuncu"], ["bas", "Başlangıç", "gizle-mobil"],
+          [r => `<button class="btn btn-kucuk btn-kirmizi" data-makam="${r.makam_id}" data-ad="${e(r.kad + " · " + r.ad)}">Görevden al</button>`, "", "sag"]], "Görevli yok.")}</section>
+        <section class="blok"><div class="blok-bas"><h2>Bekleyen adaylıklar</h2></div>${satir(p.adaylar, [["secim", "Seçim"], ["kad", "Aday"], ["il", "İl"], ["sira", "Sıra", "sag"]], "Bekleyen adaylık yok.")}</section>`;
+      k.querySelectorAll("[data-makam]").forEach(b => b.onclick = () => makamAl(+b.dataset.makam, b.dataset.ad, yenile));
+    } else k.innerHTML = `<div class="izgara iz-2"><section class="blok"><div class="blok-bas"><h2>Son katılım ve ayrılışlar</h2></div>${satir(p.gecisler, [["zaman", "Zaman"], ["kad", "Oyuncu"], ["yon", "Ne oldu"], [r => e(r.diger || "bağımsız"), "Diğer taraf"]], "Kayıt yok.")}</section>
+      <section class="blok"><div class="blok-bas"><h2>Ad değişiklikleri</h2></div>${satir(p.ad_gecmisi, [["zaman", "Zaman"], ["eski", "Eski"], ["yeni", "Yeni"], ["kad", "Değiştiren"]], "Ad değişmemiş.")}</section></div>`;
+  };
+  document.querySelectorAll("[data-ps]").forEach(b => b.onclick = () => { S.partiSekme = b.dataset.ps; document.querySelectorAll("[data-ps]").forEach(x => x.setAttribute("aria-selected", x === b)); ciz(); });
+  ciz();
+}
+
+/* ---------- Ekonomi ---------- */
+async function ekonomiSayfa(){
+  yukle();
+  const d = await guvenli(() => rpc("yp_ekonomi")); if(!d) return;
+  const g = d.gosterge, pa = d.para_arzi, yenile = () => ekonomiSayfa();
+  const arz = [["Oyuncu cüzdanları", pa.cuzdan], ["Devlet Bankası mevduatı", pa.devlet_bankasi], ["Özel banka mevduatı", pa.ozel_banka], ["Şirket kasaları", pa.sirket],
+    ["Parti kasaları", pa.parti], ["Dernek kasaları", pa.dernek], ["Belediye kasaları", pa.belediye]].filter(([, v]) => v != null);
+  const arzTop = arz.reduce((t, [, v]) => t + Number(v || 0), 0) || 1;
+  const tablo2 = (l, kolon, bos) => l && l.length ? `<div class="tablo-kap"><table><thead><tr>${kolon.map(([, a, c]) => `<th class="${c || ""}">${a}</th>`).join("")}</tr></thead><tbody>
+    ${l.map(r => `<tr>${kolon.map(([f, , c]) => `<td class="${c || ""}">${typeof f === "function" ? f(r) : deger(f, r[f])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : `<div class="bos">${bos}</div>`;
+  sayfa(`<div class="blok-bas" style="margin-bottom:12px"><h1>Ekonomi</h1><a class="kucuk" href="#/ayarlar">Ekonomi ayarları › Canlı ayarlar</a></div>
+    <div class="sayilar" style="margin-bottom:14px">
+      <div class="sayi"><b>${e(milyar(g.hazine))}</b><span>Hazine</span></div>
+      <div class="sayi"><b>${e(yuzde(g.enflasyon))}</b><span>Enflasyon</span></div>
+      <div class="sayi"><b>${e(yuzde(g.buyume))}</b><span>Büyüme</span></div>
+      <div class="sayi"><b>${e(yuzde(g.issizlik))}</b><span>İşsizlik</span></div>
+      <div class="sayi"><b>${e(tl(g.asgari))}</b><span>Asgari ücret</span></div>
+      <div class="sayi"><b>${Number(g.endeks || 0).toLocaleString("tr-TR", { maximumFractionDigits: 3 })}</b><span>Fiyat endeksi</span></div>
+    </div>
+    <div class="dugmeler" style="margin-bottom:14px"><button class="btn" id="hazKasa">Hazine düzelt</button><button class="btn" id="sirkAc">Şirketler</button><button class="btn" id="dernekAc">Dernekler</button></div>
+    <div class="izgara iz-2">
+      <section class="blok"><div class="blok-bas"><h2>Para arzı</h2><span class="alt">${e(tl(arzTop))}</span></div>
+        <div class="arz">${arz.map(([a, v]) => `<div><span>${e(a)}</span><b>${e(tl(v))}</b><i style="width:${Math.max(1, Math.round(Number(v || 0) * 100 / arzTop))}%"></i></div>`).join("")}</div></section>
+      <section class="blok"><div class="blok-bas"><h2>Bakanlık kasaları</h2></div>
+        ${tablo2(d.bakanliklar, [["ad", "Bakanlık"], [r => e(milyar(r.kasa)), "Kasa", "sag tutar"], [r => `<button class="btn btn-kucuk" data-bk="${e(r.kod)}" data-ad="${e(r.ad)}" data-kasa="${e(milyar(r.kasa))}">Kasa</button>`, "", "sag"]], "Bakanlık yok.")}</section>
+      <section class="blok"><div class="blok-bas"><h2>Son 24 saat: gelir kaynakları</h2></div>${tablo2(d.gelir_24s, [["tur", "Tür"], [r => e(tl(r.tutar)), "Toplam", "sag tutar"], ["adet", "Adet", "sag"]], "Hareket yok.")}</section>
+      <section class="blok"><div class="blok-bas"><h2>Son 24 saat: harcamalar</h2></div>${tablo2(d.gider_24s, [["tur", "Tür"], [r => e(tl(r.tutar)), "Toplam", "sag tutar"], ["adet", "Adet", "sag"]], "Hareket yok.")}</section>
+      <section class="blok"><div class="blok-bas"><h2>En zengin oyuncular</h2><span class="alt">cüzdan</span></div>${tablo2(d.zenginler, [[r => oyuncuLink(r.user_id, r.kad), "Oyuncu"], [r => e(tl(r.para)), "Para", "sag tutar"]], "—")}</section>
+      <section class="blok"><div class="blok-bas"><h2>Büyük transferler (72 saat)</h2></div>${tablo2(d.transferler, [["zaman", "Zaman", "gizle-mobil"], [r => `${e(r.gonderen)} → ${e(r.alici)}${r.bagli ? ` <span class="etiket e-hata">Aynı cihaz</span>` : ""}`, "Gönderen → alıcı"], [r => e(tl(r.tutar)), "Tutar", "sag tutar"]], "Transfer yok.")}</section>
+      <section class="blok"><div class="blok-bas"><h2>MASAK</h2><span class="alt">${sayi(d.masak.bekleyen)} yeni</span></div>${tablo2(d.masak.son, [["zaman", "Zaman", "gizle-mobil"], ["kad", "Oyuncu"], ["tur", "Tür", "gizle-mobil"], [r => e(tl(r.tutar)), "Tutar", "sag tutar"], ["durum", "Durum"]], "Kayıt yok.")}</section>
+      <section class="blok"><div class="blok-bas"><h2>Hazine hareketleri</h2></div>${tablo2(d.hazine_hareket, [["zaman", "Zaman", "gizle-mobil"], [r => e(r.aciklama) + (r.kalem ? `<div class="kucuk soluk">${e(r.kalem)}</div>` : ""), "Açıklama"], [r => `<b style="color:var(${r.fark < 0 ? "--muhur" : "--onay"})">${e(milyar(r.fark))}</b>`, "Fark", "sag tutar"]], "Hareket yok.")}</section>
+    </div>`);
+  document.getElementById("hazKasa").onclick = () => kasaDuzelt("hazine", null, "Hazine", milyar(g.hazine), yenile);
+  document.querySelectorAll("[data-bk]").forEach(b => b.onclick = () => kasaDuzelt("bakanlik", b.dataset.bk, b.dataset.ad + " kasası", b.dataset.kasa, yenile));
+  document.getElementById("sirkAc").onclick = () => kurumListe("sirket");
+  document.getElementById("dernekAc").onclick = () => kurumListe("dernek");
+}
+async function kurumListe(tur){
+  const p = pencere(tur === "sirket" ? "Şirketler" : "Dernekler", `${tur === "sirket" ? `<div class="alan" style="margin-bottom:10px"><label for="kAra">Ara (ad, sektör, kurucu)</label><input id="kAra" type="search"></div>` : ""}<div id="kListe"><div class="yukleniyor">Yükleniyor…</div></div>`,
+    `<button class="btn btn-ana" data-kapat>Kapat</button>`);
+  const ciz = async ara => {
+    const l = await guvenli(() => tur === "sirket" ? rpc("yp_sirketler", { p_ara: ara || null, p_limit: 100 }) : rpc("yp_dernekler")); if(!l) return;
+    p.q("#kListe").innerHTML = l.length ? `<div class="tablo-kap"><table><thead><tr><th>${tur === "sirket" ? "Şirket" : "Dernek"}</th><th class="gizle-mobil">${tur === "sirket" ? "Kurucu" : "Başkan"}</th><th class="sag">Kasa</th><th></th></tr></thead><tbody>
+      ${l.map(x => `<tr><td><b>${e(x.ad)}</b>${x.sektor ? `<div class="kucuk soluk">${e(x.sektor)}${x.aktif === false ? " · kapalı" : ""}</div>` : x.kapali ? `<div class="kucuk soluk">kapalı</div>` : ""}</td>
+        <td class="gizle-mobil">${e(x.kurucu || x.baskan || "—")}</td><td class="sag tutar">${e(tl(x.kasa))}</td>
+        <td class="sag"><button class="btn btn-kucuk" data-k="${x.id}" data-ad="${e(x.ad)}" data-kasa="${e(tl(x.kasa))}">Kasa</button></td></tr>`).join("")}</tbody></table></div>` : `<div class="bos">Kayıt yok.</div>`;
+    p.q("#kListe").querySelectorAll("[data-k]").forEach(b => b.onclick = () => { p.kapat(true); kasaDuzelt(tur, b.dataset.k, b.dataset.ad + (tur === "sirket" ? " şirket kasası" : " dernek kasası"), b.dataset.kasa, () => kurumListe(tur)); });
+  };
+  const a = p.q("#kAra"); if(a){ let z; a.oninput = () => { clearTimeout(z); z = setTimeout(() => ciz(a.value.trim()), 300); }; }
+  ciz("");
 }
 
 /* ---------- İşlem geçmişi ---------- */
