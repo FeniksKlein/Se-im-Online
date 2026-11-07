@@ -34,3 +34,6 @@ select cron.schedule('siyaset-merkezi', '1-59/5 * * * *', 'select oyun.siyaset_m
 
 -- 113 Zamanlayıcı geçmişi temizliği (2026-10-22): cron.job_run_details günde ~8.000 satır büyüyordu; son 7 gün tutulur
 select cron.schedule('cron-gecmis-temizlik', '23 3 * * *', $$delete from cron.job_run_details where end_time < now() - interval '7 days'$$);
+
+-- 166 Halk hareketleri: kısa, kilitli ve tekrar çalıştırılabilir kontrol.
+select cron.schedule('halk-hareketleri', '*/5 * * * *', 'select oyun.sokak_tick()');

@@ -82,6 +82,7 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 // 06.11.2026: Seçim gecesi canlı yayını (sunucu 165) — sandık sandık sayım, harita, stüdyo yorumu, yeniden izleme. secimEkrani/olayKarti/gundemEkUst'ü sarar.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','secim_yayini.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kesintisiz_ekran.js'),'utf8')+'</script></body>');
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','halk_hareketleri.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
