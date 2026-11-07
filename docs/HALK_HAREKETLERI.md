@@ -4,12 +4,12 @@ Partiler → Halk Hareketleri. İl memnuniyetsizliği; ülke memnuniyeti, işsiz
 
 ## Sınırlar
 
-- Başlatan hesap en az 7 günlük; katılımcı hesap ve yerel ikamet en az 3 günlük.
-- Başlatmak için ilde 3 aktif oyuncu ve 35 memnuniyetsizlik gerekir.
+- Eylem başlatan hesap en az 7 günlük, katılımcı hesap en az 3 günlük olmalıdır. Katılım için il ikameti veya ilde 3 gün yaşama şartı yoktur; 81 ilden katılınabilir.
+- Parti veya dernek başkanı, oyuncu sayısı ve memnuniyetsizlik ön şartı aranmadan eylem başlatabilir.
 - İl başına tek eylem, kapanıştan itibaren 7 gün dinlenme; parti başına tek aktif eylem ve başlangıçlar arasında 72 saat.
 - Ülkede en fazla 6 eylem; kişi/kurum başına en fazla 3 eşzamanlı destek.
 - Son 24 saat protesto fonu: kişi 100.000 TL, kurum 250.000 TL. Uzlaşma limitleri üç katı. Bir eylemde toplam protesto fonu en fazla 1 milyon TL.
-- Kırmızı için 75 puan, 40 memnuniyetsizlik, en az 5 kişi ve aktif yerel oyuncuların %30'u. Para tek başına yetmez.
+- Kırmızı için 75 puan ve Türkiye genelinden en az 3 gerçek katılımcı gerekir. Para tek başına yetmez. Uzaktaki katılımcılar güç ve ulusal kriz hesabında sayılır.
 - Üç kat uzlaşma fonu eylemi kapatır. Hükümet altı saatte bir somut yanıt yayımlayabilir; açıklama tek başına puan düşürmez. Hizmet iyileşmesi memnuniyetsizliği azaltır.
 - Erken seçim: en az 3 kırmızı il + en az 15 farklı kişi ve aktif ülkenin %20'si, kesintisiz 72 saat. Yakın/aktif seçimler ve yeni CB'nin ilk 7 günü korunur; kriz kaynaklı seçim arasında 14 gün gerekir. Makamlar zorla silinmez, seçim takvimiyle devredilir.
 
@@ -47,8 +47,12 @@ Doğrulama: `halk_hukumet.sql` rollback testinde CB/İçişleri yetkileri, kamu 
 
 Yeni eylemde değiştirilemeyen bir talep seçilir: il hizmet memnuniyeti +5 puan, ulusal işsizlik −0,5 puan veya yürürlükteki vergi −1 puan. Eski eylemin organizatörü talebini bir kez kesinleştirebilir.
 
-Hükümet somut teklif sunduğunda başlangıç/hedef kaydedilir ve en az üç yerel katılımcıdan oluşan seçmen listesi sabitlenir. Oylar tek seferliktir. On iki saatte tüm seçmenlerin yarısından fazlası kabul ederse eylem 24 saat askıya alınır; fonlama ve yeni hükümet müdahalesi durur. Organizatör tek başına kabul ederek bu süreci atlayamaz. Ret veya yetersiz kabul eylemi kapatmaz.
+Hükümet somut teklif sunduğunda başlangıç/hedef kaydedilir ve Türkiye genelinden en az üç gerçek katılımcıdan oluşan seçmen listesi sabitlenir. Oylar tek seferliktir. On iki saatte tüm seçmenlerin yarısından fazlası kabul ederse eylem 24 saat askıya alınır; fonlama ve yeni hükümet müdahalesi durur. Organizatör tek başına kabul ederek bu süreci atlayamaz. Ret veya yetersiz kabul eylemi kapatmaz.
 
 Mevcut beş dakikalık halk hareketleri kontrolü, 24 saat sonunda göstergeyi ölçer. Hedef sağlanırsa eylem kapanır ve hükümet memnuniyeti +1 olur. Sağlanmazsa memnuniyet −3 olur; eylem kalan süresiyle devam eder. Askıda geçirilen 24 saat eylemin bitişine bir kez eklenir; aynı eylemde tekrar uzlaşmayla sınırsız süre uzatılamaz. Göstergeler mevcut ekonomi/belediye kararlarından değişir; uzlaşma düğmesi tek başına vaadi gerçekleştirmez.
 
 `halk_uzlasma.sql`: rollback ile çoğunluk, tekrar oy, tek kişiyle atlama engeli, askı, sözün tutulması/tutulmaması ve iç fonksiyon yetkileri doğrulandı. DOM testi teklif/oylama arayüzünü kapsar. Gerçek cihaz testi yapılmadı.
+
+## Türkiye geneli eylem katılımı — 2026.11.07
+
+Eylemin ilinde yaşamak veya ikamet süresini doldurmak gerekmiyor. Kısıtsız, en az 3 günlük hesabı bulunan oyuncular 81 ilden katılabilir; parti ve dernek üyeleri uygun kuruluş desteğiyle, diğer oyuncular bağımsız olarak başvurur. Katılımcılar eylem gücü, kırmızı eşik ve ulusal kriz sayacında illerinden bağımsız sayılır. Somut uzlaşma oylaması da tüm kayıtlı katılımcıları kapsar. Canlı RPC değişiklikleri `20261107190500_sokak_eylem_ulke_geneli_katilim.sql` ve `20261107191500_sokak_uzlasma_turkiye_geneli_oylama.sql` içinde tutulur. Geri alınan işlem testinde başka ilden bağımsız katılım başarılı oldu.
