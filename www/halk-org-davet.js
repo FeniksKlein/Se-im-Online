@@ -114,6 +114,19 @@ if(!document.getElementById('hh-kapsamli-bildiri-css')){
 
 const oldIskelet=iskelet;
 iskelet=function(baslik,govde,opt){
+ // Partiler ekraninin eski / sade menulerinde kaybolan eylem girisini gorunur tut.
+ if(baslik==='Partiler'&&!String(govde).includes('id="so-halk-quick-link"')){
+  govde=`<div id="so-halk-quick-link" style="margin:12px 0 16px">
+   <button type="button" onclick="sokakHareketleriEkrani()" aria-label="Sokak Eylemleri ekranini ac"
+    style="display:flex;align-items:center;gap:14px;width:100%;min-height:76px;text-align:left;padding:15px 17px;border:1px solid #ce9b65;border-radius:17px;color:#fff;background:linear-gradient(120deg,#51335c,#222d57);box-shadow:0 8px 22px #080e222e;cursor:pointer">
+    <span aria-hidden="true" style="font-size:26px;line-height:1">📣</span>
+    <span style="display:flex;flex:1;flex-direction:column;gap:4px;min-width:0">
+     <strong style="font-size:17px;line-height:1.3;color:#fff">Sokak Eylemleri</strong>
+     <small style="font-size:12px;line-height:1.4;color:#e3dbea">Eylem başlat · Katıl · Fonla · Yönet</small>
+    </span>
+    <span aria-hidden="true" style="font-size:26px;color:#f0bb78">›</span>
+   </button></div>`+govde;
+ }
  if(baslik==='Halk Hareketleri'&&!String(govde).includes('id="hhOrgAnchor"'))
   govde='<div id="hhOrgAnchor"></div>'+govde;
  return oldIskelet(baslik,govde,opt);
