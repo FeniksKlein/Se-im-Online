@@ -10,3 +10,7 @@ begin
 end $$;
 create or replace function cron.unschedule(p_id bigint) returns boolean language sql as $$ delete from cron.job where jobid = p_id returning true $$;
 create or replace function cron.unschedule(p_ad text) returns boolean language sql as $$ delete from cron.job where jobname = p_ad returning true $$;
+create or replace function cron.alter_job(job_id bigint, schedule text default null, command text default null, database text default null, username text default null, active boolean default null)
+returns void language sql as $$
+  update cron.job set schedule = coalesce(alter_job.schedule, job.schedule), command = coalesce(alter_job.command, job.command) where jobid = job_id
+$$;

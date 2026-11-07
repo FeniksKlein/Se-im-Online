@@ -294,6 +294,8 @@ declare
     -- 164 · Süper Yönetici Portalı (docs/yonetim/): gövdeler oyun.yp_sahip() ile açılır (yönetici + aal2).
     'yp_ben', 'yp_islemler', 'yp_onizle', 'yp_oy_teshis', 'yp_oyuncu_ara', 'yp_pano',
     'yp_secim', 'yp_secimler', 'yp_sozluk', 'yp_uygula',
+    -- 168 · Portal aşama 2: oyuncu listesi ve oyuncu dosyası
+    'yp_oyuncu', 'yp_oyuncular',
     -- 165 (06.11.2026) seçim gecesi canlı yayını
     'secim_yayini', 'secim_yayini_tekrar'
   ];
