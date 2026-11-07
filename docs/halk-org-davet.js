@@ -443,7 +443,7 @@ sokakHareketleriEkrani=async function(){
  '<div class="hh-stat"><strong>'+invitations.length+'</strong><span>Yanıt bekleyen davet</span></div>'+
  '<div class="hh-stat"><strong>'+num(live.reduce((s,x)=>s+Number(x.katilim||0),0))+'</strong><span>Katılım kaydı</span></div>'+
  '<div class="hh-stat"><strong>'+pending.length+'</strong><span>Aktif gözaltı</span></div></div></div>'+
- '<nav class="hh-tabs" role="tablist" aria-label="Eylem yönetimi">'+link('events','🔥 Eylemler')+link('create','✊ Yeni eylem')+link('invite','🤝 Davetler')+link('legal','⚖️ Hukuk')+link('state','🏛️ Hükümet')+link('history','📰 Geçmiş')+'</nav>';
+ '<nav class="hh-tabs" role="tablist" aria-label="Eylem yönetimi">'+link('events','🔥 Eylemler')+link('create','✊ Yeni eylem')+link('invite','🤝 Davetler')+link('legal','⚖️ Hukuk')+link('state','🏛️ Hükümet')+link('history','📰 Geçmiş')+link('tools','🧰 Diğer işlemler')+'</nav>';
  const pan=(name,content)=>'<div data-hh-panel="'+name+'" role="tabpanel" hidden>'+content+'</div>';
  let evhtml='<div class="hh-box"><h3>Canlı eylem haritası</h3><p>Parti ve dernek desteği ayrı; her oyuncu kendi adına, parti üyeliğinden bağımsız olarak da katılabilir. Fiziki katılım için mevcut il ve ikamet koşulları geçerlidir.</p></div>';
  if(!live.length)evhtml+='<div class="hh-empty">Şu anda aktif eylem yok. Yeni Eylem bölümünden bir hareket başlatılabilir.</div>';
@@ -565,7 +565,7 @@ sokakHareketleriEkrani=async function(){
    (x.aciklamalar||[]).map(y=>'<div class="hh-log"><b>'+esc(y.ad)+' / '+esc(y.taraf)+'</b> · '+esc(dt(y.zaman))+'<p>'+esc(y.metin)+'</p></div>').join('')+
    '</details>';
  }
- html+=pan('history',history)+'</section>';
+ html+=pan('history',history)+pan('tools','<div class="hh-box"><h3>Gelişmiş eylem işlemleri</h3><p>Koalisyon çağrıları, ayrıntılı hükümet kararları, polis geri çekme, somut uzlaşma ve söz oylaması gibi önceki araçlar bu bölümden kullanılabilir. Açıldığında eski işlem kartları aşağıda görünür.</p><button type="button" class="hh-action hh-primary" id="hhOldToggle">Gelişmiş işlemleri göster / gizle</button></div>')+'</section>';
  anchor.insertAdjacentHTML('afterbegin',html);
  const root=document.getElementById('hhCommand');
  // Eski coklu panelleri gizleyip tek komuta merkezinden yonet. Gereken eski islevler diger modullerde kalir.
@@ -578,8 +578,11 @@ sokakHareketleriEkrani=async function(){
  function show(key){
   tabs.forEach(b=>b.setAttribute('aria-selected',String(b.dataset.hhTab===key)));
   root.querySelectorAll('[data-hh-panel]').forEach(panel=>{panel.hidden=panel.dataset.hhPanel!==key;});
+  const legacyVisible=key==='tools'&&root.dataset.hhLegacy==='1';
+  ['hhOrgUI','hhFinansUI','so-v2'].forEach(id=>{const old=document.getElementById(id);if(old&&old!==anchor&&!old.contains(root))old.style.display=legacyVisible?'':'none';});
  }
  tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.hhTab)));
+ root.querySelector('#hhOldToggle')?.addEventListener('click',()=>{root.dataset.hhLegacy=root.dataset.hhLegacy==='1'?'0':'1';show('tools');});
  show(pending.some(z=>z.info.benim)?'legal':'events');
  async function run(btn,fn,args,success){
   if(btn)btn.disabled=true;
