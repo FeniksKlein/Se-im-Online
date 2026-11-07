@@ -4,13 +4,11 @@
 -- Çıktı: "KABUL_SONUC {...}" ile başlayan hata metni (JSON).
 do $kabul$
 declare
-  sonuc jsonb := '[]'::jsonb;
+  rapor jsonb := '[]'::jsonb;
   yon uuid; modr uuid; oyuncu uuid; x uuid; x_parti bigint; x_il smallint;
   sm oyun.secimler; so oyun.secimler; scb oyun.secimler; sbel oyun.secimler;
   o jsonb; s jsonb; n1 bigint; n2 bigint; rev1 bigint; rev2 bigint; h text; ok boolean; cb_aday bigint; liste_parti bigint;
 
-  -- jwt
-  procedure_dummy int;
 begin
   -- ---------- Hazırlık ----------
   select id into yon from oyun.profiller where yonetici limit 1;
@@ -26,7 +24,7 @@ begin
      and not exists (select 1 from oyun.partiler pa where pa.gb = pr.id)
    order by pr.olusturma limit 1;
   select id into oyuncu from oyun.profiller where not yonetici and id is distinct from x and id is distinct from modr and not yasakli limit 1;
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('hazirlik', jsonb_build_object('mv', sm.id, 'mv_on', so.id, 'cb', scb.id, 'bel', sbel.id,
+  rapor := rapor || jsonb_build_array(jsonb_build_object('hazirlik', jsonb_build_object('mv', sm.id, 'mv_on', so.id, 'cb', scb.id, 'bel', sbel.id,
     'x_var', x is not null, 'mod_var', modr is not null)));
 
   -- ---------- Senaryo 8: yetkisiz erişim ----------
@@ -36,11 +34,11 @@ begin
     'amr', jsonb_build_array(jsonb_build_object('method', 'totp', 'timestamp', extract(epoch from now())::bigint)))::text, true);
   execute 'set local role authenticated';
   begin perform public.yp_pano(); ok := false; exception when others then ok := sqlerrm like 'YP_YETKI%'; end;
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('s8_oyuncu_pano_reddedildi', ok));
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s8_oyuncu_pano_reddedildi', ok));
   begin perform public.yp_onizle('mv_toplu_adaylik', jsonb_build_object('secim_id', sm.id)); ok := false; exception when others then ok := sqlerrm like 'YP_YETKI%'; end;
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('s8_oyuncu_onizle_reddedildi', ok));
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s8_oyuncu_onizle_reddedildi', ok));
   begin perform oyun.yp_uy_mv_toplu_adaylik(jsonb_build_object('secim_id', sm.id)); ok := false; exception when insufficient_privilege then ok := true; when others then ok := false; end;
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('s8_ic_islem_dogrudan_kapali', ok));
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s8_ic_islem_dogrudan_kapali', ok));
   execute 'reset role';
   -- (b) moderatör
   if modr is not null then
@@ -48,7 +46,7 @@ begin
     perform set_config('request.jwt.claims', jsonb_build_object('sub', modr, 'role', 'authenticated', 'aal', 'aal2')::text, true);
     execute 'set local role authenticated';
     begin perform public.yp_secimler(false); ok := false; exception when others then ok := sqlerrm like 'YP_YETKI%'; end;
-    sonuc := sonuc || jsonb_build_array(jsonb_build_object('s8_moderator_reddedildi', ok));
+    rapor := rapor || jsonb_build_array(jsonb_build_object('s8_moderator_reddedildi', ok));
     execute 'reset role';
   end if;
   -- (c) yönetici ama çok faktörsüz
@@ -57,12 +55,12 @@ begin
     'amr', jsonb_build_array(jsonb_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
   execute 'set local role authenticated';
   begin perform public.yp_pano(); ok := false; exception when others then ok := sqlerrm like 'YP_MFA%'; end;
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('s8_mfa_yok_reddedildi', ok));
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s8_mfa_yok_reddedildi', ok));
   -- (d) anonim
   execute 'reset role';
   execute 'set local role anon';
   begin perform public.yp_pano(); ok := false; exception when insufficient_privilege then ok := true; when others then ok := false; end;
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('s8_anonim_kapali', ok));
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s8_anonim_kapali', ok));
   execute 'reset role';
 
   -- ---------- Yönetici oturumu (aal2, taze kod) ----------
@@ -71,10 +69,10 @@ begin
     'amr', jsonb_build_array(jsonb_build_object('method', 'totp', 'timestamp', extract(epoch from now())::bigint)))::text, true);
   execute 'set local role authenticated';
   o := public.yp_pano();
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('pano', jsonb_build_object('oyuncu', o->'oyuncu'->'toplam',
+  rapor := rapor || jsonb_build_array(jsonb_build_object('pano', jsonb_build_object('oyuncu', o->'oyuncu'->'toplam',
     'yaklasan', jsonb_array_length(o->'secim'->'yaklasan'), 'bos_pusula_il', jsonb_array_length(coalesce(o->'secim'->'bos_pusula'->'iller', '[]')))));
   o := public.yp_secim(sm.id);
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('secim_detay', jsonb_build_object('aday', jsonb_array_length(o->'adaylar'), 'tutarli', o->'takvim_tutarli'))));
+  rapor := rapor || jsonb_build_array(jsonb_build_object('secim_detay', jsonb_build_object('aday', jsonb_array_length(o->'adaylar'), 'tutarli', o->'takvim_tutarli'))));
   execute 'reset role';
 
   -- X'i bu dönemin CB adayı yap (test verisi; blok sonunda geri alınır).
@@ -83,20 +81,20 @@ begin
   -- ---------- Senaryo 1: CB adayları hariç uygun herkes MV adayı ----------
   execute 'set local role authenticated';
   o := public.yp_onizle('mv_toplu_adaylik', jsonb_build_object('secim_id', sm.id, 'cb_haric', true));
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('s1_onizleme', jsonb_build_object('sayi', o->'sayi', 'cb_haric', o->'cb_haric_sayi',
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s1_onizleme', jsonb_build_object('sayi', o->'sayi', 'cb_haric', o->'cb_haric_sayi',
     'x_haric_cb_nedeniyle', exists (select 1 from jsonb_array_elements(o->'haric') e where (e->>'user_id')::uuid = x and e->>'neden' = 'Cumhurbaşkanı adayı'),
     'x_eklenecekler_arasinda', exists (select 1 from jsonb_array_elements(o->'etkilenen') e where (e->>'user_id')::uuid = x),
     'bos_once', o->'bos_pusula_once', 'bos_sonra', o->'bos_pusula_sonra', 'engel', o->'engel')));
   -- yanlış onay cümlesi
   begin perform public.yp_uygula((o->>'anahtar')::uuid, 'evet'); ok := false; exception when others then ok := sqlerrm like 'YP_ONAY%'; end;
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('kritik_yanlis_onay_reddedildi', ok));
+  rapor := rapor || jsonb_build_array(jsonb_build_object('kritik_yanlis_onay_reddedildi', ok));
   execute 'reset role';
   select count(*) into n1 from oyun.adaylar where secim_id in (so.id, sm.id);
   execute 'set local role authenticated';
   s := public.yp_uygula((o->>'anahtar')::uuid, 'onaylıyorum');
   execute 'reset role';
   select count(*) into n2 from oyun.adaylar where secim_id in (so.id, sm.id);
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('s1_uygula', jsonb_build_object('basarili', s->'basarili', 'eklenen', jsonb_array_length(s->'eklenen'),
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s1_uygula', jsonb_build_object('basarili', s->'basarili', 'eklenen', jsonb_array_length(s->'eklenen'),
     'eklenemeyen', s->'eklenemeyen', 'kayit_farki', n2 - n1, 'onizleme_sayisi', o->'sayi', 'dogrulama', s->'dogrulama',
     'cb_adayi_mv_olmadi', not exists (select 1 from oyun.adaylar where user_id = x and secim_id in (so.id, sm.id)),
     'dogru_il_parti', not exists (select 1 from oyun.adaylar a join oyun.profiller pr on pr.id = a.user_id
@@ -109,7 +107,7 @@ begin
   o := public.yp_onizle('mv_toplu_adaylik', jsonb_build_object('secim_id', sm.id, 'cb_haric', true));
   execute 'reset role';
   select count(*) into n1 from oyun.adaylar where secim_id in (so.id, sm.id);
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('s7_tekrar', jsonb_build_object('ayni_anahtar_tekrar', s->'tekrar',
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s7_tekrar', jsonb_build_object('ayni_anahtar_tekrar', s->'tekrar',
     'kayit_degismedi', n1 = n2, 'yeni_onizleme_engel', o->'engel')));
 
   -- ---------- CB adaylarını MV'den çıkar + geri al ----------
@@ -123,7 +121,7 @@ begin
   o := public.yp_onizle('geri_al', jsonb_build_object('islem_id', (s->>'islem_id')::bigint));
   s := public.yp_uygula((o->>'anahtar')::uuid, 'ONAYLIYORUM');
   execute 'reset role';
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('cb_cikar', jsonb_build_object('silindi', ok,
+  rapor := rapor || jsonb_build_array(jsonb_build_object('cb_cikar', jsonb_build_object('silindi', ok,
     'geri_alindi', exists (select 1 from oyun.adaylar where user_id = x and secim_id = so.id), 'geri_basarili', s->'basarili')));
   delete from oyun.adaylar where user_id = x and secim_id = so.id;
 
@@ -141,7 +139,7 @@ begin
   s := public.secim_detay(scb.id);
   begin perform public.oy_ver(scb.id, cb_aday); s := s || jsonb_build_object('_oy', 'ok'); exception when others then s := s || jsonb_build_object('_oy', sqlerrm); end;
   execute 'reset role';
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('s2_cb_adayi_oy', jsonb_build_object(
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s2_cb_adayi_oy', jsonb_build_object(
     'mv_pusula_secenek', jsonb_array_length(coalesce(o->'secenekler', '[]')), 'mv_oy_engeli', o->'oy_engeli', 'mv_oy', h,
     'cb_pusula_secenek', jsonb_array_length(coalesce(s->'secenekler', '[]')), 'cb_oy', s->'_oy',
     'oylar_kaydi', (select count(*) from oyun.oylar where secmen = x and secim_id in (sm.id, scb.id)))));
@@ -162,7 +160,7 @@ begin
   execute 'set local role authenticated';
   h := (public.secim_detay(sbel.id))->>'oy_bit';
   execute 'reset role';
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('s3_takvim', jsonb_build_object('basarili', s->'basarili',
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s3_takvim', jsonb_build_object('basarili', s->'basarili',
     'istemci_yeni_bitis', h::timestamptz = sbel.oy_bit - interval '1 hour', 'sinyal_gitti', rev2 > rev1, 'dogrulama', s->'dogrulama')));
   perform set_config('request.jwt.claim.sub', yon::text, true);
   perform set_config('request.jwt.claims', jsonb_build_object('sub', yon, 'role', 'authenticated', 'aal', 'aal2',
@@ -171,7 +169,7 @@ begin
   o := public.yp_onizle('geri_al', jsonb_build_object('islem_id', (s->>'islem_id')::bigint));
   s := public.yp_uygula((o->>'anahtar')::uuid, 'ONAYLIYORUM');
   execute 'reset role';
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('s3_geri_al', jsonb_build_object('basarili', s->'basarili',
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s3_geri_al', jsonb_build_object('basarili', s->'basarili',
     'eski_hale_dondu', (select oy_bit from oyun.secimler where id = sbel.id) = sbel.oy_bit)));
 
   -- ---------- Veri değişirse uygulanmaz; süresi dolan ön izleme uygulanmaz ----------
@@ -183,7 +181,7 @@ begin
   s := public.yp_uygula((o->>'anahtar')::uuid, null);
   execute 'reset role';
   update oyun.secimler set sonuc_at = sbel.sonuc_at where id = sbel.id;
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('degisen_veri_korumasi', jsonb_build_object('uygulanmadi', s->'basarili' = 'false'::jsonb, 'degisti', s->'degisti',
+  rapor := rapor || jsonb_build_array(jsonb_build_object('degisen_veri_korumasi', jsonb_build_object('uygulanmadi', s->'basarili' = 'false'::jsonb, 'degisti', s->'degisti',
     'takvim_ayni', (select oy_bit from oyun.secimler where id = sbel.id) = sbel.oy_bit)));
   execute 'set local role authenticated';
   o := public.yp_onizle('secim_takvim', jsonb_build_object('secim_id', sbel.id, 'oy_bit', sbel.oy_bit - interval '30 minutes', 'duyur', false));
@@ -192,7 +190,7 @@ begin
   execute 'set local role authenticated';
   s := public.yp_uygula((o->>'anahtar')::uuid, null);
   execute 'reset role';
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('sure_dolu_onizleme', jsonb_build_object('uygulanmadi', s->'basarili' = 'false'::jsonb, 'hata', s->'hata')));
+  rapor := rapor || jsonb_build_array(jsonb_build_object('sure_dolu_onizleme', jsonb_build_object('uygulanmadi', s->'basarili' = 'false'::jsonb, 'hata', s->'hata')));
 
   -- ---------- Kritik işlem, kod eskiyse yeniden doğrulama ister ----------
   perform set_config('request.jwt.claims', jsonb_build_object('sub', yon, 'role', 'authenticated', 'aal', 'aal2',
@@ -201,7 +199,7 @@ begin
   o := public.yp_onizle('genel_secim_olustur', jsonb_build_object('on_gun', (now() at time zone 'Europe/Istanbul')::date + 20, 'secim_gun', (now() at time zone 'Europe/Istanbul')::date + 21));
   begin perform public.yp_uygula((o->>'anahtar')::uuid, 'ONAYLIYORUM'); ok := false; exception when others then ok := sqlerrm like 'YP_TAZE%'; end;
   execute 'reset role';
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('kritik_taze_kod', jsonb_build_object('reddedildi', ok, 'onizleme_engel', o->'engel', 'kayit', o->'sayi')));
+  rapor := rapor || jsonb_build_array(jsonb_build_object('kritik_taze_kod', jsonb_build_object('reddedildi', ok, 'onizleme_engel', o->'engel', 'kayit', o->'sayi')));
 
   -- ---------- Erken genel seçim + geri al ----------
   perform set_config('request.jwt.claims', jsonb_build_object('sub', yon, 'role', 'authenticated', 'aal', 'aal2',
@@ -214,13 +212,13 @@ begin
   o := public.yp_onizle('geri_al', jsonb_build_object('islem_id', (s->>'islem_id')::bigint));
   s := public.yp_uygula((o->>'anahtar')::uuid, 'ONAYLIYORUM');
   execute 'reset role';
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('erken_secim', jsonb_build_object('kurulan', n1, 'geri_basarili', s->'basarili')));
+  rapor := rapor || jsonb_build_array(jsonb_build_object('erken_secim', jsonb_build_object('kurulan', n1, 'geri_basarili', s->'basarili')));
 
   -- ---------- Senaryo 10: denetim kayıtları ----------
   execute 'set local role authenticated';
   o := public.yp_islemler(50, 0);
   execute 'reset role';
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('s10_denetim', jsonb_build_object('kayit', o->'toplam',
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s10_denetim', jsonb_build_object('kayit', o->'toplam',
     'durumlar', (select jsonb_object_agg(d, c) from (select e->>'durum' d, count(*) c from jsonb_array_elements(o->'kayitlar') e group by 1) z),
     'once_sonra_dolu', (select count(*) from jsonb_array_elements(o->'kayitlar') e where e->>'durum' in ('uygulandi', 'geri_alindi') and e->'sonra' is not null),
     'mod_log', (select count(*) from oyun.mod_kayit where islem like 'yp\_%'))));
@@ -229,9 +227,9 @@ begin
   execute 'set local role authenticated';
   o := public.yp_oy_teshis((select id from oyun.secimler where tur = 'mv' and donem like 'erken-genel-0-%' order by id desc limit 1), null, null, true);
   execute 'reset role';
-  sonuc := sonuc || jsonb_build_array(jsonb_build_object('teshis_bu_gece', o->'ozet',
+  rapor := rapor || jsonb_build_array(jsonb_build_object('teshis_bu_gece', o->'ozet',
     'gizli_oy', not exists (select 1 from jsonb_array_elements(o->'oyuncular') e where e ? 'parti_id' or e ? 'aday_id' or e ? 'tercih')));
 
-  raise exception 'KABUL_SONUC %', sonuc::text;
+  raise exception 'KABUL_SONUC %', rapor::text;
 end
 $kabul$;
