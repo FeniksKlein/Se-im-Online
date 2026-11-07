@@ -227,6 +227,16 @@ tbody tr.tik:hover td{background:var(--yuzey2)}
 .arz{display:grid;gap:10px}
 .arz div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;font-size:14px}
 .arz i{grid-column:1/-1;height:6px;border-radius:3px;background:var(--sandik)}
+.kartlar{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr))}
+.kartlar > .blok + .blok{margin-top:0}
+.kart h3{font-size:15px;margin:0}
+.alinti{margin:0 0 8px;padding:10px 12px;border-left:3px solid var(--muhur);background:var(--yuzey2);border-radius:0 var(--r1) var(--r1) 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.konusma{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}
+.balon{align-self:flex-start;max-width:85%;background:var(--yuzey2);border-radius:12px 12px 12px 4px;padding:8px 11px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.balon.giden{align-self:flex-end;background:var(--sandik-acik);border-radius:12px 12px 4px 12px}
+.balon small{display:block;color:var(--soluk);font-size:11px;margin-top:3px}
+.olay-liste{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.gizli-etiket{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* Canlı ayarlar */
 .ayar-grup{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--soluk);margin:18px 0 6px}
@@ -327,6 +337,9 @@ const IK = {
   siyaset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10 12 4l9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/></svg>',
   ekonomi:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5M4 19h16"/><path d="m7 15 4-4 3 3 5-6"/></svg>',
   ayar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+  duyuru:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10v4h3l7 4V6L7 10H4z"/><path d="M17.5 9a4 4 0 0 1 0 6"/></svg>',
+  olay:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4 2.8 19.5h18.4L12 4z"/><path d="M12 10v4.5M12 17v.01"/></svg>',
+  destek:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v11H9l-5 4V5z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',
   toplu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>',
   ara:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
   menu:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>'
@@ -594,13 +607,16 @@ function uygulamaBaslat(){
         <a href="#/toplu" data-yol="toplu">${IK.toplu}Toplu işlem</a>
         <a href="#/siyaset" data-yol="siyaset">${IK.siyaset}Siyaset</a>
         <a href="#/ekonomi" data-yol="ekonomi">${IK.ekonomi}Ekonomi</a>
+        <a href="#/duyurular" data-yol="duyuru">${IK.duyuru}Duyurular</a>
+        <a href="#/olaylar" data-yol="olay">${IK.olay}Olaylar</a>
+        <a href="#/destek" data-yol="destek">${IK.destek}Destek</a>
         <a href="#/ayarlar" data-yol="ayar">${IK.ayar}Canlı ayarlar</a>
         <a href="#/islemler" data-yol="islem">${IK.islem}İşlem geçmişi</a>
       </nav>
       <div class="yan-alt">
         <div>${e(S.ben.kad)} · yönetici</div>
         <div class="sat"><button class="btn btn-kucuk" id="tema">Tema</button><button class="btn btn-kucuk" id="cikis">Çıkış</button></div>
-        <div class="kucuk">Duyuru/olay/destek ve asistan modülleri sonraki aşamalarda eklenecek.</div>
+        <div class="kucuk">Yapay zekâ asistanı ve teknik araçlar sonraki aşamada eklenecek.</div>
       </div>
     </aside>
     <main class="ana">
@@ -631,7 +647,7 @@ function yonlendir(){
   const h = location.hash.replace(/^#\/?/, "") || "pano";
   const [a, b] = h.split("/");
   document.querySelectorAll(".menu a").forEach(x => x.toggleAttribute("aria-current", false));
-  const yol = a === "secimler" || a === "secim" ? "secim" : a === "islemler" ? "islem" : a === "oyuncular" || a === "oyuncu" ? "oyuncu" : a === "toplu" ? "toplu" : a === "ayarlar" ? "ayar" : a === "siyaset" || a === "parti" ? "siyaset" : a === "ekonomi" ? "ekonomi" : "pano";
+  const yol = a === "secimler" || a === "secim" ? "secim" : a === "islemler" ? "islem" : a === "oyuncular" || a === "oyuncu" ? "oyuncu" : a === "toplu" ? "toplu" : a === "ayarlar" ? "ayar" : a === "siyaset" || a === "parti" ? "siyaset" : a === "ekonomi" ? "ekonomi" : a === "duyurular" ? "duyuru" : a === "olaylar" ? "olay" : a === "destek" ? "destek" : "pano";
   const m = document.querySelector(`.menu a[data-yol="${yol}"]`);
   if(m) m.setAttribute("aria-current", "page");
   if(a === "oyuncular") return oyuncularSayfa();
@@ -641,6 +657,9 @@ function yonlendir(){
   if(a === "siyaset") return siyasetSayfa();
   if(a === "parti" && b) return partiSayfa(b);
   if(a === "ekonomi") return ekonomiSayfa();
+  if(a === "duyurular") return duyurularSayfa();
+  if(a === "olaylar") return olaylarSayfa();
+  if(a === "destek") return destekSayfa();
   if(a === "secimler") return secimlerSayfa();
   if(a === "secim" && b) return secimSayfa(+b);
   if(a === "islemler") return islemlerSayfa();
@@ -1624,6 +1643,238 @@ async function kurumListe(tur){
   };
   const a = p.q("#kAra"); if(a){ let z; a.oninput = () => { clearTimeout(z); z = setTimeout(() => ciz(a.value.trim()), 300); }; }
   ciz("");
+}
+
+/* ---------- Duyuru merkezi ---------- */
+const tablo3 = (l, kolon, bos) => l && l.length ? `<div class="tablo-kap"><table><thead><tr>${kolon.map(([, a, c]) => `<th class="${c || ""}">${a}</th>`).join("")}</tr></thead><tbody>
+  ${l.map(r => `<tr>${kolon.map(([f, , c]) => `<td class="${c || ""}">${typeof f === "function" ? f(r) : deger(f, r[f])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : `<div class="bos">${bos}</div>`;
+const sayac = (el, max) => { const s = el.parentElement.querySelector("small[data-sayac]"); const f = () => { if(s) s.textContent = `${el.value.length} / ${max}`; }; el.addEventListener("input", f); f(); };
+function pushDurumHtml(pu){
+  const calisiyor = pu.aktif && pu.adres_var && pu.cihaz > 0;
+  if(calisiyor) return `<div class="uyari u-iyi"><b>Telefon bildirimi (push) çalışıyor</b>${sayi(pu.cihaz)} kayıtlı cihaz (${sayi(pu.cihaz_7g)} tanesi son 7 günde güncel) · kuyrukta ${sayi(pu.bekleyen)} bildirim${pu.son_gonderim ? ` · son gönderim ${e(tarih(pu.son_gonderim))}` : ""}.</div>`;
+  return `<div class="uyari u-dikkat"><b>Telefon bildirimi (push) şu an çalışmıyor</b>
+    Kayıtlı cihaz: ${sayi(pu.cihaz)} · gönderim ${pu.aktif ? "açık" : "kapalı"} · gönderim adresi ${pu.adres_var ? "tanımlı" : "tanımlı değil"}.
+    Duyurular oyun içinde (bildirim kutusu, haber akışı, duyuru bandı) görünür; telefona kilit ekranı bildirimi olarak düşmez.
+    Açmak için Firebase / Apple bildirim anahtarları ve uygulamanın bu özelliği içeren yeni bir mağaza sürümü gerekir; portaldan açılamaz.</div>`;
+}
+async function duyurularSayfa(){
+  yukle();
+  const d = await guvenli(() => rpc("yp_duyurular")); if(!d) return;
+  const yenile = () => duyurularSayfa();
+  const bekleyen = d.planlar.filter(x => x.durum === "bekliyor");
+  const PLAN_D = { bekliyor: ["Bekliyor", "e-basvuru"], gonderildi: ["Gönderildi", "e-oy"], iptal: ["İptal", "e-tamam"], basarisiz: ["Başarısız", "e-hata"] };
+  sayfa(`<div class="blok-bas" style="margin-bottom:12px"><h1>Duyuru merkezi</h1><span class="alt">${sayi(d.kitle.toplam)} oyuncu · ${sayi(d.kitle.aktif_7g)} son 7 günde aktif</span></div>
+    <div class="dugmeler" style="margin-bottom:14px"><button class="btn btn-ana" id="dYeni">Yeni duyuru</button><button class="btn" id="dBant">Duyuru bandı</button>
+      <a class="btn" href="#/toplu">Seçili oyunculara bildirim</a></div>
+    ${pushDurumHtml(d.push)}
+    <div class="izgara iz-2" style="margin-top:14px">
+      <section class="blok"><div class="blok-bas"><h2>Duyuru bandı</h2><span class="alt">uygulamanın üstünde herkese</span></div>
+        ${d.bant.deger ? `<p style="font-weight:600">“${e(d.bant.deger)}”</p>` : `<div class="bos">Şu an bant yok.</div>`}
+        ${d.bant.planli ? `<p class="kucuk soluk">Bant için planlı bir değişiklik var (Canlı ayarlar › planlar).</p>` : ""}</section>
+      <section class="blok"><div class="blok-bas"><h2>Planlı duyurular</h2><span class="alt">${sayi(bekleyen.length)} bekliyor</span></div>
+        ${tablo3(d.planlar.slice(0, 12), [[r => `<b>${e(tarih(r.zaman))}</b><div class="kucuk soluk">${e(r.hedef)}</div>`, "Zaman"],
+          [r => `${e(r.metin)}${r.hata ? `<div class="kucuk" style="color:var(--muhur)">${e(r.hata)}</div>` : ""}`, "Metin"],
+          [r => `<span class="etiket ${PLAN_D[r.durum][1]}">${PLAN_D[r.durum][0]}</span>`, "Durum"],
+          [r => r.durum === "bekliyor" ? `<button class="btn btn-kucuk btn-kirmizi" data-iptal="${r.islem_id}">İptal et</button>` : "", "", "sag"]], "Planlı duyuru yok.")}</section>
+    </div>
+    <section class="blok" style="margin-top:14px"><div class="blok-bas"><h2>Yayınlanan duyurular</h2><span class="alt">bildirim kutusu · son 60</span></div>
+      ${tablo3(d.arsiv, [[r => `<span class="kucuk">${e(tarih(r.zaman))}</span>${r.gelecek ? ` <span class="etiket e-basvuru">İleri tarihli</span>` : ""}`, "Zaman"],
+        [r => `${e(r.metin)}<div class="kucuk soluk">${e(r.hedef)} · ${sayi(r.kitle)} oyuncu${r.gonderen ? " · " + e(r.gonderen) : ""}</div>`, "Duyuru"],
+        [r => r.gizli ? `<span class="etiket e-tamam">Gizlendi</span>` : `<span class="etiket e-oy">Yayında</span>`, "Durum"],
+        [r => !r.gizli && r.islem_id ? `<button class="btn btn-kucuk" data-geri="${r.islem_id}">Geri al</button>` : "", "", "sag"]], "Henüz duyuru yayınlanmadı.")}
+      <p class="kucuk soluk" style="margin-top:8px">Portal öncesi duyurular (eski yönetim paneli) burada görünür ama geri alınamaz.</p></section>
+    <section class="blok"><div class="blok-bas"><h2>Haber akışındaki duyurular</h2></div>
+      ${tablo3(d.haberler, [["zaman", "Zaman"], ["metin", "Metin"]], "Haber akışında duyuru yok.")}</section>`);
+  document.getElementById("dYeni").onclick = () => duyuruFormu(yenile);
+  document.getElementById("dBant").onclick = () => bantFormu(d.bant.deger, yenile);
+  document.querySelectorAll("[data-iptal],[data-geri]").forEach(b => b.onclick = () => islemYap("geri_al", { islem_id: +(b.dataset.iptal || b.dataset.geri) }, yenile));
+}
+function duyuruFormu(sonra){
+  const so = sozluk();
+  const p = pencere("Yeni duyuru", `<div class="form">
+      <div class="alan"><label for="dMetin">Duyuru metni</label><textarea id="dMetin" rows="5" maxlength="600" placeholder="ör. Bu akşam 21.00'de genel seçim oylaması başlıyor."></textarea><small data-sayac></small></div>
+      <fieldset class="alan" style="border:0;padding:0;margin:0"><legend style="font-weight:600;margin-bottom:6px">Nerede görünsün?</legend>
+        <label class="secim-kutu"><input type="checkbox" id="dKutu" checked><span><b>Bildirim kutusu</b> · “Oyun Yönetimi” imzasıyla, hedefe uyan oyunculara</span></label>
+        <label class="secim-kutu" style="margin-top:6px"><input type="checkbox" id="dHaber"><span><b>Haber akışı</b> · “duyuru” olarak</span></label></fieldset>
+      <div class="izgara iz-2"><div class="alan"><label for="dIl">Hedef il</label><select id="dIl"><option value="">Bütün Türkiye</option>${secenek(so.iller, "id", "ad")}</select></div>
+        <div class="alan"><label for="dPa">Hedef parti</label><select id="dPa"><option value="">Bütün partiler</option>${secenek(so.partiler, "id", "kisa")}</select></div></div>
+      <div class="alan"><label for="dZa">Ne zaman?</label><select id="dZa"><option value="hemen">Hemen</option><option value="ileri">İleri bir tarihte</option></select></div>
+      <div class="alan gizli" id="dTarA"><label for="dTar">Gönderim zamanı (Türkiye saati)</label><input id="dTar" type="datetime-local" value="${yerelGirdi(new Date(Date.now() + 3600e3))}"><small>En erken 2 dakika, en geç 30 gün sonrası.</small></div>
+      <p class="kucuk soluk">Çevrimiçi, aktif ya da tek tek seçilmiş oyunculara göndermek için <a href="#/toplu">Toplu işlem › Bildirim gönder</a>.</p>
+      <div id="dHata"></div></div>`,
+    `<button class="btn" data-kapat>Vazgeç</button><button class="btn btn-ana" id="dOn">Ön izleme</button>`);
+  sayac(p.q("#dMetin"), 600); p.q("#dMetin").focus();
+  p.q("#dZa").onchange = () => p.q("#dTarA").classList.toggle("gizli", p.q("#dZa").value !== "ileri");
+  p.q("#dOn").onclick = () => {
+    const hata = m => { p.q("#dHata").innerHTML = `<div class="uyari u-hata">${e(m)}</div>`; };
+    const metin = p.q("#dMetin").value.trim();
+    if(metin.length < 3) return hata("Duyuru metnini yaz (en az 3 karakter).");
+    const kanallar = [p.q("#dKutu").checked && "kutu", p.q("#dHaber").checked && "haber"].filter(Boolean);
+    if(!kanallar.length) return hata("En az bir yer seç: bildirim kutusu ya da haber akışı.");
+    const param = { metin, kanallar };
+    if(p.q("#dIl").value) param.hedef_il = +p.q("#dIl").value;
+    if(p.q("#dPa").value) param.hedef_parti = +p.q("#dPa").value;
+    if(p.q("#dZa").value === "ileri"){ const v = p.q("#dTar").value; if(!v) return hata("Gönderim zamanını seç."); param.zaman = girdidenISO(v); }
+    p.kapat(true); islemYap("duyuru_yayinla", param, sonra);
+  };
+}
+function bantFormu(simdi, sonra){
+  const p = pencere("Duyuru bandı", `<div class="form">
+      <p class="kucuk soluk">Uygulamanın üstünde herkese görünen tek satırlık duyuru. Telefonlara 0–8 saniye içinde yansır. Boş bırakılırsa bant kalkar.</p>
+      <div class="alan"><label for="bMetin">Bant metni</label><input id="bMetin" maxlength="200" value="${e(simdi || "")}"><small data-sayac></small></div>
+      <div class="alan"><label for="bSure">Otomatik kaldır</label><select id="bSure"><option value="">Kaldırma (ben değiştirene kadar)</option>
+        <option value="1">1 saat sonra</option><option value="6">6 saat sonra</option><option value="24">24 saat sonra</option><option value="72">3 gün sonra</option><option value="168">7 gün sonra</option></select>
+        <small>Süre dolunca bant eski hâline döner (değiştirilmemişse).</small></div>
+      <div class="alan"><label for="bNeden">Neden</label><input id="bNeden" maxlength="300" placeholder="ör. Bakım duyurusu — ayar geçmişinde görünür"></div>
+      <div id="bHata"></div></div>`,
+    `${simdi ? `<button class="btn btn-kirmizi" id="bKaldir">Bandı kaldır</button>` : ""}<button class="btn" data-kapat>Vazgeç</button><button class="btn btn-ana" id="bOn">Ön izleme</button>`);
+  sayac(p.q("#bMetin"), 200); p.q("#bMetin").focus();
+  const git = metin => {
+    const neden = p.q("#bNeden").value.trim();
+    if(neden.length < 3){ p.q("#bHata").innerHTML = `<div class="uyari u-hata">Nedeni yaz (en az 3 karakter).</div>`; return; }
+    const param = { degisiklikler: [{ anahtar: "uygulama.duyuru_bandi", deger: metin }], neden };
+    const s = p.q("#bSure").value; if(s && metin) param.bitis = new Date(Date.now() + s * 3600e3).toISOString();
+    p.kapat(true); islemYap("ayar_degistir", param, sonra);
+  };
+  p.q("#bOn").onclick = () => git(p.q("#bMetin").value.trim());
+  const k = p.q("#bKaldir"); if(k) k.onclick = () => git("");
+}
+
+/* ---------- Olay merkezi ---------- */
+async function olaylarSayfa(){
+  yukle();
+  const d = await guvenli(() => rpc("yp_olaylar")); if(!d) return;
+  S.olay = d;
+  const yenile = () => olaylarSayfa(), a = d.aktif, ot = d.otomatik || {};
+  const aktifSay = a.ulusal.length + a.ulke.length + a.belediye.length;
+  const otoYaz = (ad, x) => x ? `<li><b>${ad}:</b> ${x.aktif ? "açık" : "kapalı"} · en az ${sayi(x.min_aralik_gun)} gün arayla · haftalık %${sayi(x.haftalik_ihtimal)} ihtimal · son kriz ${e(tarih(x.son_kriz, true))}</li>` : "";
+  sayfa(`<div class="blok-bas" style="margin-bottom:12px"><h1>Olay merkezi</h1><span class="alt">${aktifSay ? sayi(aktifSay) + " aktif kriz" : "aktif kriz yok"}</span></div>
+    <div class="hizli" style="margin-bottom:14px">
+      <button data-olay="ulusal"><b>Ulusal kriz başlat</b><span>Deprem, sel, salgın, kur şoku… (${sayi(d.ulusal_sablon.length)} tür)</span></button>
+      <button data-olay="ulke"><b>Ülke krizi başlat</b><span>Bakanlık kararı bekleyen kriz (${sayi(d.ulke_sablon.length)} tür)</span></button>
+      <button data-olay="belediye"><b>Belediye krizi başlat</b><span>Bir ilin başkanına kriz masası (${sayi(d.belediye_sablon.length)} tür)</span></button>
+    </div>
+    <div class="izgara iz-2">
+      <section class="blok"><div class="blok-bas"><h2>Süren krizler</h2></div>
+        ${aktifSay ? `<ul class="olay-liste">
+          ${a.ulusal.map(x => `<li><span class="etiket e-hata">Ulusal</span> <b>${e(x.baslik)}${x.il ? " · " + e(x.il) : ""}</b><div class="kucuk soluk">${sayi(x.asama)}. aşama · başladı ${e(tarih(x.bas))} · ilk karar ${x.karar1 ? "verildi" : "son " + e(tarih(x.a1_son))}</div></li>`).join("")}
+          ${a.ulke.map(x => `<li><span class="etiket e-dikkat">Ülke</span> <b>${e(x.baslik)}</b><div class="kucuk soluk">${e(x.bakanlik || "")} · karar için son ${e(tarih(x.karar_son))} (${e(kalan(x.karar_son))})</div></li>`).join("")}
+          ${a.belediye.map(x => `<li><span class="etiket e-basvuru">Belediye</span> <b>${e(x.il)}: ${e(x.baslik || "")}</b><div class="kucuk soluk">Başkan ${e(x.baskan || "—")} · karar için son ${e(tarih(x.son))} (${e(kalan(x.son))})</div></li>`).join("")}
+        </ul>` : `<div class="bos">Şu an süren kriz yok.</div>`}
+        <p class="kucuk soluk" style="margin-top:8px">Başlayan krizi oyunun kriz motoru yürütür: kararlar oyunculardan beklenir, süre dolunca otomatik sonuçlanır. Portal krizi geri almaz.</p></section>
+      <section class="blok"><div class="blok-bas"><h2>Otomatik kriz çekilişi</h2></div>
+        <ul class="kucuk">${otoYaz("Ulusal kriz", ot.ulusal)}${otoYaz("Ülke krizi", ot.ulke)}</ul>
+        <p class="kucuk soluk" style="margin-top:8px">Elle başlatılan kriz de “son kriz” sayılır; otomatik çekiliş o tarihten itibaren bekler.</p></section>
+    </div>
+    <section class="blok" style="margin-top:14px"><div class="blok-bas"><h2>Son krizler</h2></div>
+      ${tablo3(d.gecmis, [["tur", "Tür"], ["baslik", "Kriz"], ["bas", "Başladı"], [r => e({ aktif: "Sürüyor", bekliyor: "Karar bekliyor", acik: "Açık", bitti: "Bitti", cozuldu: "Çözüldü", suresi_doldu: "Süre doldu", sessiz: "Başkan sessiz kaldı" }[r.durum] || r.durum), "Durum"]], "Kriz kaydı yok.")}</section>
+    <section class="blok"><div class="blok-bas"><h2>Haber akışı</h2><span class="alt">son 40</span></div>
+      ${tablo3(d.haber, [["zaman", "Zaman"], [r => e(r.tur), "Tür", "gizle-mobil"], [r => e(r.metin) + (r.il ? `<div class="kucuk soluk">${e(r.il)}</div>` : ""), "Haber"]], "Haber yok.")}</section>`);
+  document.querySelectorAll("[data-olay]").forEach(b => b.onclick = () => olayFormu(b.dataset.olay, yenile));
+}
+function olayFormu(tur, sonra){
+  const d = S.olay;
+  const sab = tur === "ulusal" ? d.ulusal_sablon : tur === "ulke" ? d.ulke_sablon : d.belediye_sablon;
+  const baslik = { ulusal: "Ulusal kriz başlat", ulke: "Ülke krizi başlat", belediye: "Belediye krizi başlat" }[tur];
+  const iller = tur === "belediye" ? d.iller.filter(i => i.baskan) : d.iller;
+  const p = pencere(baslik, `<div class="form">
+      <div class="alan"><label for="oKod">Kriz türü</label><select id="oKod"><option value="">Seç</option>${sab.map(s => `<option value="${e(s.kod)}">${e(s.baslik)}${s.kapsam ? (s.kapsam === "il" ? " · bir ilde" : " · ülke çapında") : ""}${tur === "belediye" && !s.mevsiminde ? " · mevsim dışı" : ""}</option>`).join("")}</select></div>
+      <div id="oBilgi"></div>
+      <div class="alan gizli" id="oIlA"><label for="oIl">İl</label><select id="oIl"><option value="">Seç</option>${iller.map(i => `<option value="${i.id}" ${i.acik_kriz && tur === "belediye" ? "disabled" : ""}>${e(i.ad)}${tur === "belediye" ? ` · ${e(i.baskan)}${i.acik_kriz ? " · açık krizi var" : ""}` : ` · ${sayi(i.nufus)} oyuncu`}</option>`).join("")}</select>
+        ${tur === "belediye" ? `<small>Yalnız görevde belediye başkanı olan iller listelenir (${sayi(iller.length)} il).</small>` : ""}</div>
+      <div id="oHata"></div></div>`,
+    `<button class="btn" data-kapat>Vazgeç</button><button class="btn btn-ana" id="oOn">Ön izleme</button>`);
+  const goster = () => {
+    const s = sab.find(x => x.kod === p.q("#oKod").value);
+    p.q("#oIlA").classList.toggle("gizli", !(tur === "belediye" || (s && s.kapsam === "il")));
+    if(!s){ p.q("#oBilgi").innerHTML = ""; return; }
+    const ek = tur === "ulusal" ? [s.kategori, s.bakanlik, s.il_havuzu && s.il_havuzu.length ? "olağan iller: " + s.il_havuzu.slice(0, 6).join(", ") : ""]
+      : tur === "ulke" ? [s.kategori, s.bakanlik, s.sektor ? "sektör: " + s.sektor : "", sayi(s.secenek) + " seçenek"] : [sayi(s.secenek) + " seçenek", s.mevsiminde ? "" : "bu ay normalde çıkmaz"];
+    p.q("#oBilgi").innerHTML = `<div class="uyari u-bilgi"><b>${e(s.baslik)}</b>${e(s.aciklama || s.metin || "")}<div class="kucuk soluk" style="margin-top:4px">${e(ek.filter(Boolean).join(" · "))}</div></div>`;
+  };
+  p.q("#oKod").onchange = goster; goster();
+  p.q("#oOn").onclick = () => {
+    const kod = p.q("#oKod").value, il = p.q("#oIl").value;
+    if(!kod){ p.q("#oHata").innerHTML = `<div class="uyari u-hata">Kriz türünü seç.</div>`; return; }
+    const param = { tur, kod }; if(il && !p.q("#oIlA").classList.contains("gizli")) param.il_id = +il;
+    p.kapat(true); islemYap("olay_baslat", param, sonra);
+  };
+}
+
+/* ---------- Destek merkezi ---------- */
+S.destekSekme = S.destekSekme || "sikayet";
+const SIK_TUR = { mesaj: "Sohbet mesajı", yayin: "Yayın", ozel: "Özel mesaj", oyuncu: "Oyuncu" };
+const SIK_NEDEN = { hakaret: "Hakaret", nefret: "Nefret söylemi", spam: "Spam", taciz: "Taciz", uygunsuz: "Uygunsuz", diger: "Diğer" };
+const TALEP_K = { hata: "Hata", hesap: "Hesap", oyuncu: "Oyuncu şikâyeti", oneri: "Öneri", diger: "Diğer" };
+async function destekSayfa(){
+  yukle();
+  const d = await guvenli(() => rpc("yp_destek", { p_durum: S.destekTum ? "tum" : "acik" })); if(!d) return;
+  S.destek = d;
+  const c = d.sayac;
+  sayfa(`<div class="blok-bas" style="margin-bottom:12px"><h1>Destek merkezi</h1></div>
+    <div class="sayilar" style="margin-bottom:14px">
+      <div class="sayi"><b>${sayi(c.sikayet)}</b><span>Bekleyen şikâyet</span></div>
+      <div class="sayi"><b>${sayi(c.mesaj)}</b><span>Okunmamış mesaj</span></div>
+      <div class="sayi"><b>${sayi(c.talep)}</b><span>Yeni destek talebi</span></div>
+    </div>
+    <div class="sekmeler" role="tablist">${[["sikayet", "Şikâyetler"], ["mesaj", "Yönetime mesajlar"], ["talep", "Destek talepleri"]].map(([k, a]) =>
+      `<button role="tab" data-ds="${k}" aria-selected="${S.destekSekme === k}">${a}</button>`).join("")}</div>
+    <div id="dsIcerik"></div>`);
+  document.querySelectorAll("[data-ds]").forEach(b => b.onclick = () => { S.destekSekme = b.dataset.ds; document.querySelectorAll("[data-ds]").forEach(x => x.setAttribute("aria-selected", x === b)); destekSekme(); });
+  destekSekme();
+}
+function destekSekme(){
+  const d = S.destek, k = document.getElementById("dsIcerik"); if(!d || !k) return;
+  const yenile = () => destekSayfa();
+  if(S.destekSekme === "sikayet"){
+    k.innerHTML = d.sikayetler.length ? `<div class="kartlar">${d.sikayetler.map((s, i) => `<section class="blok kart">
+        <div class="blok-bas"><h3>${e(SIK_TUR[s.tur] || s.tur)} · ${oyuncuLink(s.hedef, s.kad)}</h3>
+          <span>${s.durum === "yeni" ? `<span class="etiket e-dikkat">Bekliyor</span>` : `<span class="etiket e-tamam">İncelendi</span>`}</span></div>
+        ${s.icerik ? `<blockquote class="alinti">${e(s.icerik.metin)}${s.icerik.gizli ? ` <span class="etiket e-tamam">Gizli</span>` : ""}</blockquote>` : ""}
+        <p class="kucuk soluk">${sayi(s.sayi)} kişi şikâyet etti (${e((s.sikayetciler || []).join(", "))}) · ${e((s.nedenler || []).map(n => SIK_NEDEN[n] || n).join(", "))} · ilk ${e(tarih(s.ilk))}
+          · bu oyuncu hakkında toplam ${sayi(s.hedef_toplam)} şikâyet${s.hedef_susturma && new Date(s.hedef_susturma) > new Date() ? ` · ${e(tarih(s.hedef_susturma))}'e kadar susturulmuş` : ""}</p>
+        <div class="dugmeler" style="margin-top:10px">${s.durum === "yeni" ? `
+          <button class="btn btn-kucuk" data-sk="${i}" data-karar="yok_say">Yok say</button>
+          ${s.tur !== "oyuncu" ? `<button class="btn btn-kucuk" data-sk="${i}" data-karar="gizle">Gizle</button>` : ""}
+          <button class="btn btn-kucuk btn-kirmizi" data-sk="${i}" data-karar="gizle_sustur1">${s.tur !== "oyuncu" ? "Gizle + " : ""}1 gün sustur</button>
+          <button class="btn btn-kucuk btn-kirmizi" data-sk="${i}" data-karar="gizle_sustur7">${s.tur !== "oyuncu" ? "Gizle + " : ""}7 gün sustur</button>
+          <a class="btn btn-kucuk" href="#/oyuncu/${e(s.hedef)}">Oyuncu dosyası</a>`
+          : s.islem_id ? `<button class="btn btn-kucuk" data-geri="${s.islem_id}">Kararı geri al</button>` : `<span class="kucuk soluk">Eski panelden incelendi.</span>`}</div></section>`).join("")}</div>`
+      : `<div class="bos">Bekleyen ya da son 7 günde incelenen şikâyet yok.</div>`;
+    k.querySelectorAll("[data-sk]").forEach(b => b.onclick = () => { const s = d.sikayetler[+b.dataset.sk];
+      islemYap("sikayet_karar", { tur: s.tur, kayit_id: s.kayit_id, hedef: s.hedef, karar: b.dataset.karar }, yenile); });
+  } else if(S.destekSekme === "mesaj"){
+    k.innerHTML = `<p class="kucuk soluk" style="margin-bottom:10px">Oyuncuların oyun içinden sana (${e(S.ben.kad)}) yazdığı özel mesajlar. Yanıtın oyuncunun özel mesaj kutusuna senin hesabından gider.</p>
+      ${d.mesajlar.length ? `<div class="kartlar">${d.mesajlar.map((m, i) => `<section class="blok kart">
+        <div class="blok-bas"><h3>${oyuncuLink(m.user_id, m.kad)}</h3><span>${m.okunmamis ? `<span class="etiket e-dikkat">${sayi(m.okunmamis)} okunmamış</span>` : `<span class="kucuk soluk">${e(tarih(m.son))}</span>`}</span></div>
+        <div class="konusma">${(m.mesajlar || []).map(x => `<div class="balon ${x.gelen ? "" : "giden"}">${e(x.metin)}<small>${e(tarih(x.zaman))}</small></div>`).join("")}</div>
+        <div class="alan" style="margin-top:10px"><label for="yan${i}" class="gizli-etiket">Yanıt</label><textarea id="yan${i}" rows="2" maxlength="1000" placeholder="Yanıt yaz"></textarea></div>
+        <div class="dugmeler" style="margin-top:8px"><button class="btn btn-kucuk btn-ana" data-yan="${i}" ${m.son_gelen ? "" : "disabled"}>Yanıtla</button></div></section>`).join("")}</div>`
+        : `<div class="bos">Sana gelen özel mesaj yok.</div>`}`;
+    k.querySelectorAll("[data-yan]").forEach(b => b.onclick = () => { const m = d.mesajlar[+b.dataset.yan], t = k.querySelector("#yan" + b.dataset.yan).value.trim();
+      if(t.length < 2) return bildir("Yanıt yaz.", true);
+      islemYap("destek_yanitla", { kaynak: "ozel", id: m.son_gelen, metin: t }, yenile); });
+  } else {
+    const TD = { yeni: ["Yeni", "e-dikkat"], yanitlandi: ["Yanıtlandı", "e-oy"], kapali: ["Kapalı", "e-tamam"] };
+    k.innerHTML = `<div class="uyari u-bilgi" style="margin-bottom:12px"><b>Uygulama içi “Sorun bildir” ekranı</b>Sunucu tarafı hazır: talepler buraya düşer, yanıtın oyuncuya bildirim olarak gider.
+        Uygulamadaki ekran bir sonraki mağaza sürümüyle gelecek; o zamana kadar oyuncular sana özel mesajla ulaşır (“Yönetime mesajlar” sekmesi).</div>
+      <label class="secim-kutu" style="margin-bottom:10px"><input type="checkbox" id="dsTum" ${S.destekTum ? "checked" : ""}><span>Kapatılanları da göster</span></label>
+      ${d.talepler.length ? `<div class="kartlar">${d.talepler.map((t, i) => `<section class="blok kart">
+        <div class="blok-bas"><h3>#${t.id} · ${e(TALEP_K[t.kategori] || t.kategori)} · ${oyuncuLink(t.user_id, t.kad)}</h3><span class="etiket ${TD[t.durum][1]}">${TD[t.durum][0]}</span></div>
+        <p style="white-space:pre-wrap">${e(t.metin)}</p>
+        <p class="kucuk soluk">${e(tarih(t.zaman))}${t.surum ? " · sürüm " + e(t.surum) : ""}${t.platform ? " · " + e(t.platform) : ""}</p>
+        ${t.yanit ? `<div class="balon giden" style="margin-top:8px">${e(t.yanit)}<small>${e(t.yanitlayan || "")} · ${e(tarih(t.yanit_zaman))}</small></div>` : ""}
+        ${t.durum !== "kapali" ? `<div class="alan" style="margin-top:10px"><label for="ty${i}" class="gizli-etiket">Yanıt</label><textarea id="ty${i}" rows="2" maxlength="1000" placeholder="Yanıt yaz"></textarea></div>
+          <div class="dugmeler" style="margin-top:8px"><button class="btn btn-kucuk btn-ana" data-ty="${i}">Yanıtla</button><button class="btn btn-kucuk" data-ty="${i}" data-kapat-talep="1">Yanıtla ve kapat</button>
+            <button class="btn btn-kucuk" data-tk="${i}">Yanıtsız kapat</button></div>` : ""}</section>`).join("")}</div>`
+        : `<div class="bos">${S.destekTum ? "Destek talebi yok." : "Açık destek talebi yok."}</div>`}`;
+    k.querySelector("#dsTum").onchange = ev => { S.destekTum = ev.target.checked; destekSayfa(); };
+    k.querySelectorAll("[data-ty]").forEach(b => b.onclick = () => { const t = d.talepler[+b.dataset.ty], m = k.querySelector("#ty" + b.dataset.ty).value.trim();
+      if(m.length < 2) return bildir("Yanıt yaz.", true);
+      islemYap("destek_yanitla", { kaynak: "talep", id: t.id, metin: m, kapat: !!b.dataset.kapatTalep }, yenile); });
+    k.querySelectorAll("[data-tk]").forEach(b => b.onclick = () => islemYap("destek_yanitla", { kaynak: "talep", id: d.talepler[+b.dataset.tk].id, kapat: true }, yenile));
+  }
+  k.querySelectorAll("[data-geri]").forEach(b => b.onclick = () => islemYap("geri_al", { islem_id: +b.dataset.geri }, yenile));
 }
 
 /* ---------- İşlem geçmişi ---------- */

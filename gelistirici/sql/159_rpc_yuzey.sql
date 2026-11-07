@@ -300,6 +300,8 @@ declare
     'yp_ayar_gecmis', 'yp_ayarlar',
     -- 172 · Portal aşama 4: siyaset ve ekonomi
     'yp_dernekler', 'yp_ekonomi', 'yp_parti', 'yp_siyaset', 'yp_sirketler',
+    -- 173 · Portal aşama 5: duyuru, olay, destek (+ oyuncunun destek talebi)
+    'yp_destek', 'yp_duyurular', 'yp_olaylar', 'destek_gonder', 'destek_taleplerim',
     -- 165 (06.11.2026) seçim gecesi canlı yayını
     'secim_yayini', 'secim_yayini_tekrar'
   ];
