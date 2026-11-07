@@ -139,7 +139,7 @@ $yol$;
 do $izin$
 declare
   izin text[] := array[
-    'sokak_eylemler', 'sokak_eylem_baslat', 'sokak_destek', 'sokak_yanit',
+    'sokak_hukumet_panel', 'sokak_hukumet_karar', 'sokak_karar_yanit', 'sokak_eylemler', 'sokak_eylem_baslat', 'sokak_destek', 'sokak_yanit',
     'aday_ol', 'adaylik_geri_cek', 'adaylik_vazgec', 'adayliklarim', 'adliye_af_cikar', 'adliye_beyan_ver',
     'adliye_dava_ac', 'adliye_dava_ek', 'adliye_detay', 'adliye_durum', 'adliye_hakim_al', 'adliye_hakim_ata',
     'adliye_hakim_istifa', 'adliye_istinaf', 'adliye_juri_oy', 'adliye_kurum_dava_ac', 'adliye_kurum_listesi', 'adliye_mahkeme',

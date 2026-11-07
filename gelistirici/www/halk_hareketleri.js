@@ -2,7 +2,7 @@
 async function sokakHareketleriEkrani(){
  yukleniyor('Halk Hareketleri');
  try {
-  const d=await API.rpc('sokak_eylemler'),a=d.ayar||{},fmt=n=>Number(n||0).toLocaleString('tr-TR'),date=t=>t?new Date(t).toLocaleString('tr-TR'):'—';
+  const d=await API.rpc('sokak_hukumet_panel'),a=d.ayar||{},fmt=n=>Number(n||0).toLocaleString('tr-TR'),date=t=>t?new Date(t).toLocaleString('tr-TR'):'—';
   let h='<div class="kart"><h2>📢 Halk Hareketleri</h2><p>Barışçıl gösteriler, ortak fonlama ve hükümetle uzlaşma.</p><details><summary>Kurallar ve kötüye kullanım sınırları</summary><p>Başlatma: muhalefet genel başkanı, 7 günlük hesap, ilde en az 3 aktif oyuncu ve 35/100 memnuniyetsizlik. Parti kasasından '+fmt(a.baslatma_bedeli)+' TL.</p><p>İlde tek eylem; kapanıştan sonra 7 gün bekleme. Parti başına tek aktif eylem ve 72 saat bekleme. Ülkede en fazla 6 eylem. Her kişi/kurum en fazla 3 eylemi destekleyebilir.</p><p>İlk süre 24 saat. Her '+fmt(a.baslatma_bedeli)+' TL ek protesto fonu 12 saat kazandırır; toplam en fazla 5 gün. Katılım için 3 günlük hesap ve ilde 3 günlük ikamet gerekir.</p><p>Son 24 saat fon limiti: kişi '+fmt(a.baslatma_bedeli*2)+' TL, kurum '+fmt(a.baslatma_bedeli*5)+' TL. Uzlaşma tarafında bu limitler üç kattır. Eylem protesto fonu en fazla '+fmt(a.baslatma_bedeli*20)+' TL. Harcamalar iade edilmez.</p><p>Kırmızı: en az 75 puan, 40 memnuniyetsizlik ve en az 5 yerel katılımcı (aktif ilin %30’u). Para tek başına yeterli değildir. Uzlaşma fonu protesto fonunun 3 katına ulaşınca eylem kapanır.</p><p>Erken seçim: en az 3 kırmızı il ve aktif ülkenin %20’si (en az 15 kişi), kesintisiz 72 saat. Yakın seçim, yeni hükümetin ilk 7 günü ve 14 günlük kriz seçimi beklemesi korunur. Cumhurbaşkanı seçimle devredene kadar görevde kalır.</p><p>Kırmızı eylemler büyümeyi ve hükümet memnuniyetini sınırlı etkiler; şirketlerin kâr beklentisi değerine en fazla %6 risk indirimi uygulanır. Hükümet açıklaması tek başına sayacı sıfırlamaz; fon veya gerçek hizmet iyileşmesi gerekir.</p></details></div>';
   if(d.kriz?.kirmizi_baslangic)h+='<div class="kart"><b>Ulusal kriz sayacı</b><p>Başlangıç: '+e(date(d.kriz.kirmizi_baslangic))+'</p><p>Koşullar bozulursa 72 saat sayacı sıfırlanır.</p></div>';
   if(!d.aktif)h+='<div class="kart">Halk hareketleri şu anda kapalı.</div>';
@@ -17,11 +17,13 @@ async function sokakHareketleriEkrani(){
     h+='<form class="hhFon" data-id="'+Number(x.id)+'"><label>Taraf</label><select name="taraf">'+(!d.iktidar?'<option value="muhalefet">Protestoyu destekle</option>':'')+'<option value="iktidar">Uzlaşmayı destekle</option></select><label>Ödeme kaynağı</label><select name="kaynak">'+kaynak+'</select><label>Tutar (TL)</label><input name="tutar" type="number" min="1000" step="0.01" required><button class="btn altin">Fonu öde</button></form>';
     if(d.hukumet)h+='<form class="hhYanit" data-id="'+Number(x.id)+'"><label>Hükümetin çözüm yanıtı</label><textarea name="metin" minlength="20" maxlength="500" required></textarea><button class="btn">Yanıtı yayımla</button></form>';
    }
+   h+=hhHukumetHTML(x,d);
    h+='<details><summary>Destekçiler</summary>'+(x.destekler||[]).map(k=>'<p>'+e(k.ad||k.tur)+' · '+e(k.taraf==='iktidar'?'Uzlaşma':'Protesto')+' · '+fmt(k.tutar)+' TL</p>').join('')+'</details></div>';
   }
   if(!(d.eylemler||[]).length)h+='<div class="kart">Henüz eylem yok. Yeni eylem için ilin memnuniyetsizlik ve katılım şartlarını sağlaması gerekir.</div>';
   iskelet('Halk Hareketleri',h,{geri:true});
   async function run(b,fn,args){b.disabled=true;try{await API.rpc(fn,args);toast('İşlem tamamlandı');await sokakHareketleriEkrani();}catch(err){toast(hataCevir(err.message),true);b.disabled=false;}}
+  hhHukumetBagla(run);
   document.getElementById('hhYeni')?.addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(ev.currentTarget);run(ev.currentTarget.querySelector('button'),'sokak_eylem_baslat',{p_il:Number(f.get('il')),p_gerekce:String(f.get('metin'))});});
   document.querySelectorAll('[data-hh-katil]').forEach(b=>b.addEventListener('click',()=>run(b,'sokak_destek',{p_eylem:Number(b.dataset.hhKatil),p_taraf:'muhalefet'})));
   document.querySelectorAll('.hhFon').forEach(form=>form.addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(form),k=d.kaynaklar[Number(f.get('kaynak'))];run(form.querySelector('button'),'sokak_destek',{p_eylem:Number(form.dataset.id),p_taraf:String(f.get('taraf')),p_kaynak:k.tur,p_kaynak_id:k.id,p_tutar:Number(f.get('tutar'))});}));
@@ -30,3 +32,28 @@ async function sokakHareketleriEkrani(){
 }
 // Kaynak derlemesine kalıcı menü bağlantısı.
 (function(){const eski=iskelet;iskelet=function(baslik,govde,opt){if(baslik==='Partiler')govde='<div class="kart"><button class="btn altin" onclick="ekranAc(sokakHareketleriEkrani)">📢 Halk Hareketleri · Protestolar ve uzlaşma</button></div>'+govde;return eski(baslik,govde,opt);};})();
+function hhHukumetHTML(x,d){
+ const fmt=n=>Number(n||0).toLocaleString('tr-TR'),active=d.aktif&&x.durum==='aktif';
+ const names={masa:'Uzlaşma masası',yonlendirme:'Bilgilendirme ve yönlendirme',uyari:'Sert siyasi uyarı',dagitma:'Ek bütçeyle dağıtma',yaptirim:'6 saatlik eylem yaptırımı'};
+ let h='';
+ if(active&&d.mudahale_yetki){
+  h+='<details><summary>🏛️ Cumhurbaşkanı / İçişleri müdahalesi</summary><p>İçişleri kullanılabilir bütçe karşılığı: '+fmt(d.icisleri_kasa_tl)+' TL. Bütün giderler kamu kasasına kaydedilir.</p><p>Aynı eylemde 6 saatte bir; ülke çapında 24 saatte en fazla 4 karar.</p><ul><li>Uzlaşma: organizatörün 12 saat içinde kabulüyle kapanır; ret halinde devam eder.</li><li>Yönlendirme: 12 saat boyunca yoğunluk −10 puan.</li><li>Sert uyarı: 6 saat −8 puan; ardından 18 saat +6 puan tepki ve ülke memnuniyetinde −1.</li><li>Dağıtma: en az 12 saat kırmızı olmalı; ülke çapında 48 saatte bir. Ülke memnuniyeti −4, il memnuniyeti −5.</li><li>Yaptırım: seçilen katılımcının yalnız bu eyleme katılım/fon hakkı 6 saat durur. İtiraz uygulamayı durdurur; hakim onaylayabilir/kaldırabilir. Hesap, oy hakkı ve diğer faaliyetler etkilenmez. Ülke memnuniyeti −1.</li></ul><form class="hhKarar" data-id="'+Number(x.id)+'"><label>Yöntem ve kamu gideri</label><select name="tur">'+Object.entries(names).map(([k,v])=>'<option value="'+k+'">'+e(v)+' · '+fmt(x.bedeller?.[k])+' TL</option>').join('')+'</select><label>Yalnız yaptırım için katılımcı</label><select name="hedef"><option value="">Katılımcı seç</option>'+(x.katilimcilar||[]).map(p=>'<option value="'+e(p.id)+'">'+e(p.ad)+'</option>').join('')+'</select><label>Karar gerekçesi / somut çözüm taahhüdü</label><textarea name="metin" minlength="20" maxlength="500" required></textarea><p>Harcama iade edilmez. Bir eylemde en fazla 3 yaptırım; aynı oyuncuya 7 günde bir uygulanabilir.</p><button class="btn altin">Kamu bütçesinden öde ve uygula</button></form></details>';
+ }
+ for(const k of x.kararlar||[]){
+  let opts=[];
+  if(active&&!k.suresi_doldu){
+   if(k.tur==='masa'&&k.durum==='aktif'&&x.ben_baslattim)opts=[['kabul','Uzlaşmayı kabul et ve eylemi bitir'],['ret','Teklifi reddet']];
+   if(k.tur==='yaptirim'&&k.durum==='aktif'&&k.ben_hedefim)opts=[['itiraz','Yaptırıma itiraz et (uygulama durur)']];
+   if(k.tur==='yaptirim'&&k.durum==='itiraz'&&k.yargi_yetki)opts=[['kaldirildi','Yargı: yaptırımı kaldır'],['onandi','Yargı: yaptırımı onayla']];
+  }
+  h+='<div class="kart"><b>'+e(names[k.tur]||k.tur)+'</b> · '+e(k.suresi_doldu?'Süresi doldu':k.durum)+'<p>'+e(k.gerekce)+'</p><small>'+e(k.yapan_ad)+' · '+fmt(k.bedel)+' TL'+(k.hedef_ad?' · Katılımcı: '+e(k.hedef_ad):'')+'</small>';
+  if(k.cevap)h+='<p>Yanıt: '+e(k.cevap)+'</p>';
+  if(opts.length)h+='<form class="hhKararYanit" data-id="'+Number(k.id)+'"><select name="islem">'+opts.map(o=>'<option value="'+o[0]+'">'+e(o[1])+'</option>').join('')+'</select><textarea name="metin" minlength="20" maxlength="500" placeholder="Gerekçeniz" required></textarea><button class="btn">Yanıtı kaydet</button></form>';
+  h+='</div>';
+ }
+ return h;
+}
+function hhHukumetBagla(run){
+ document.querySelectorAll('.hhKarar').forEach(form=>form.addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(form),tur=String(f.get('tur')),hedef=String(f.get('hedef'));if(tur==='yaptirim'&&!hedef){toast('Katılımcı seçmelisin',true);return;}run(form.querySelector('button'),'sokak_hukumet_karar',{p_eylem:Number(form.dataset.id),p_tur:tur,p_gerekce:String(f.get('metin')),p_hedef:tur==='yaptirim'?hedef:null});}));
+ document.querySelectorAll('.hhKararYanit').forEach(form=>form.addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(form);run(form.querySelector('button'),'sokak_karar_yanit',{p_karar:Number(form.dataset.id),p_islem:String(f.get('islem')),p_metin:String(f.get('metin'))});}));
+}

@@ -26,3 +26,19 @@ Kırmızı iller için ülke çapında 24 saatte bir, en çok 2 puan memnuniyet,
 RPC'ler yalnız authenticated rolüne açık; hesap ve kurum yetkisi sunucuda kontrol edilir. İç yardımcılar ve tablolar istemciye kapalıdır. Danışmanın RLS-politikasız tablo ve authenticated SECURITY DEFINER bildirimleri bu kontrollü RPC mimarisi için beklenir.
 
 Cron: `halk-hareketleri`, beş dakikada bir `oyun.sokak_tick()`. Devre dışı bırakmak için yalnız `oyun.sokak_eylem_ayar.aktif=false` ayarlanır; veri silinmez. Yeni kurulum varsayılanı kapalıdır; canlı açılış testlerden sonra ayrı yapılır.
+
+## Hükümet karşılıkları — 2026.11.07-2
+
+Cumhurbaşkanı ve İçişleri Bakanı eylem kartındaki müdahale bölümünü kullanır. Kaynak İçişleri bütçesidir; mevcut `pazar_tl_milyar()` oyun ölçeğiyle TL tutarı kamu bütçesi birimine çevrilir ve bakanlık hesap defterine kaydedilir.
+
+| Karar | Bedel | Sonuç |
+|---|---:|---|
+| Uzlaşma masası | Başlatma bedelinin 2 katı | Organizatör 12 saat içinde kabul ederse eylem kapanır, il memnuniyeti +2. Ret/süre dolması otomatik kapatmaz. Eylem başına bir teklif. |
+| Bilgilendirme/yönlendirme | 3 katı | 12 saat yoğunluk −10 puan. |
+| Sert siyasi uyarı | 1 katı | 6 saat −8 puan; sonraki 18 saat +6 tepki. Ülke memnuniyeti −1. |
+| Ek bütçeli dağıtma | En az 5 başlangıç bedeli; protesto fonunun 5 katından mevcut uzlaşma fonu düşülür | 12 saattir kırmızı eylem kapanır. Ülke memnuniyeti −4, il −5. Ülke çapında 48 saatte bir. |
+| Süreli yaptırım | 2 katı | Katılımcının yalnız o eyleme katılım/fon hakkı 6 saat durur; ülke memnuniyeti −1. |
+
+Her eylemde kararlar arasında 6 saat; hükümetin ülke çapında 24 saatte en fazla 4 kararı. Bir eylemde en fazla 3 yaptırım, aynı kişiye 7 günde bir. Yaptırım hesap kapatmaz, para cezası kesmez, oy kullanmayı engellemez. Hedef oyuncu itiraz edince uygulama durur. Mevcut adliye hakimi onaylar/kaldırır; karar veren ve hedef kendi dosyasını inceleyemez. Onay asıl 6 saatlik bitişi uzatmaz. Açıklama ve kararlar bildirim/eylem geçmişine yazılır.
+
+Doğrulama: `halk_hukumet.sql` rollback testinde CB/İçişleri yetkileri, kamu tahsilatı, bekleme, uzlaşma kabul/ret, yönlendirme, uyarı/geri tepme, yaptırım/itiraz/yargı ve dağıtma kontrol edildi. DOM testi yeni karar ve uzlaşma yanıtı formlarını da kapsar. Gerçek cihaz testi yapılmadı.
