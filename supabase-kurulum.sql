@@ -65329,6 +65329,42 @@ begin
 end $portal$;
 
 revoke all on function oyun.pano_ihale_kapat(bigint), oyun.pano_ihale_artis_tutar(numeric), oyun.pano_ihale_sonraki(bigint) from public, anon, authenticated;
+-- 08.11.2026 · İstemci hata kaydı
+-- Oyuncunun telefonunda bir ekran açılamadığında asıl teknik hata (yığın izi dahil) buraya yazılır.
+-- Oyuncu yalnızca sade bir mesaj görür; geliştirici/yönetici gerçek nedeni buradan okur.
+create table if not exists oyun.istemci_hata (
+  id bigserial primary key,
+  zaman timestamptz not null default now(),
+  oyuncu uuid,
+  ekran text,
+  mesaj text,
+  yigin text,
+  tarayici text
+);
+create index if not exists istemci_hata_zaman_idx on oyun.istemci_hata (zaman desc);
+alter table oyun.istemci_hata enable row level security;
+
+create or replace function public.istemci_hata_kaydet(p_ekran text, p_mesaj text, p_yigin text default null, p_tarayici text default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'oyun', 'public', 'pg_temp'
+as $function$
+declare v_uid uuid := auth.uid(); v_say int;
+begin
+  if v_uid is null then return jsonb_build_object('tamam', false); end if;
+  -- Kötüye kullanım sınırı: oyuncu başına saatte en çok 30 kayıt
+  select count(*) into v_say from oyun.istemci_hata where oyuncu = v_uid and zaman > now() - interval '1 hour';
+  if v_say >= 30 then return jsonb_build_object('tamam', false, 'sinir', true); end if;
+  insert into oyun.istemci_hata (oyuncu, ekran, mesaj, yigin, tarayici)
+  values (v_uid, left(coalesce(p_ekran, ''), 80), left(coalesce(p_mesaj, ''), 500), left(p_yigin, 3000), left(p_tarayici, 300));
+  -- Tablo şişmesin: 14 günden eski kayıtları temizle
+  delete from oyun.istemci_hata where zaman < now() - interval '14 days';
+  return jsonb_build_object('tamam', true);
+end $function$;
+
+revoke all on function public.istemci_hata_kaydet(text, text, text, text) from public, anon;
+grant execute on function public.istemci_hata_kaydet(text, text, text, text) to authenticated;
 -- =====================================================================
 --  KALICILIK (son): bütünlük kontrolü, silme koruması, sürüm bilgisi, sahibin sıfırlama/geri yükleme araçları
 -- =====================================================================
@@ -65684,7 +65720,9 @@ declare
     'dernek_kampanya_vitrin', 'dernek_katil', 'dernek_kur', 'dernek_program_baslat', 'dernek_program_katalog', 'dernek_program_katil',
     'dernek_program_ozet', 'dernek_proje_fiyatlar', 'dernek_proje_yap', 'dernek_protesto_katil', 'dernek_sube_ac', 'dernek_uye_destek_basvur',
     'dernek_uye_destek_karar', 'dernek_uye_destek_liste', 'dernek_yonetim_ata', 'dernek_ziyaret_taleplerim', 'dernek_ziyaret_tamamla', 'dernek_ziyaret_teklif',
-    'dernek_ziyaret_yanit', 'dernekler', 'disiplin_baslat', 'disiplin_durum', 'disiplin_oyla', 'durum',
+    'dernek_ziyaret_yanit', 'dernekler', 'disiplin_baslat', 'disiplin_durum', 'disiplin_oyla', 'durum', 'istemci_hata_kaydet',
+    -- 08.11.2026: Halk Hareketleri ekranlarının çağırdığı ve listede eksik kalan adlar
+    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
     'ek_is_baslat', 'ek_is_paneli', 'ek_is_ucret_al', 'eko_emlak_islem', 'eko_emlak_panel', 'eko_gunluk_kar_cek',
     'eko_islem', 'eko_magaza_hazirla', 'eko_otomasyon_ayarla', 'eko_otomasyon_panel', 'eko_panel', 'eko_ticaret_islem',
     'eko_ticaret_panel', 'eko_vergi_kanun_teklif', 'eko_vergi_panel', 'ekonomi_yasa_durum', 'ekonomi_yasa_teklif', 'emlak_pazarlik_alici_yanit',
