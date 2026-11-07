@@ -189,7 +189,8 @@ document.addEventListener('submit',async ev=>{
  for(const key of entry[1]){
   let v=data.has(key)?data.get(key):null;
   if(key==='p_oyuncu'&&!v)v=data.get('p_hedef');
-  if(key==='p_hedef'&&data.get('p_kurum_tur')!=='oyuncu')v=null;
+  if(key==='p_hedef'&&f.dataset.icExtra==='olay_bildir'&&data.get('p_kurum_tur')!=='oyuncu')v=null;
+  if(key==='p_kurum_id'&&data.get('p_kurum_tur')==='oyuncu')v=null;
   if(['p_id','p_olay','p_karar','p_kurum_id','p_tutar'].includes(key))v=v===''||v==null?(key==='p_tutar'?0:null):Number(v);
   if(['p_onay','p_kabul','p_kaldir'].includes(key))v=v==='true';
   args[key]=v;
