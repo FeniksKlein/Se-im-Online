@@ -49,13 +49,13 @@ begin
     rapor := rapor || jsonb_build_array(jsonb_build_object('s8_moderator_reddedildi', ok));
     execute 'reset role';
   end if;
-  -- (c) yönetici ama çok faktörsüz
+  -- (c) yönetici, yalnız şifreyle (07.11.2026'dan beri doğrulama uygulaması şartı yok → açılmalı)
   perform set_config('request.jwt.claim.sub', yon::text, true);
   perform set_config('request.jwt.claims', jsonb_build_object('sub', yon, 'role', 'authenticated', 'aal', 'aal1',
     'amr', jsonb_build_array(jsonb_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
   execute 'set local role authenticated';
-  begin perform public.yp_pano(); ok := false; exception when others then ok := sqlerrm like 'YP_MFA%'; end;
-  rapor := rapor || jsonb_build_array(jsonb_build_object('s8_mfa_yok_reddedildi', ok));
+  begin perform public.yp_pano(); ok := true; exception when others then ok := false; end;
+  rapor := rapor || jsonb_build_array(jsonb_build_object('s8_sifreyle_acildi', ok));
   -- (d) anonim
   execute 'reset role';
   execute 'set local role anon';
@@ -192,14 +192,12 @@ begin
   execute 'reset role';
   rapor := rapor || jsonb_build_array(jsonb_build_object('sure_dolu_onizleme', jsonb_build_object('uygulanmadi', s->'basarili' = 'false'::jsonb, 'hata', s->'hata')));
 
-  -- ---------- Kritik işlem, kod eskiyse yeniden doğrulama ister ----------
-  perform set_config('request.jwt.claims', jsonb_build_object('sub', yon, 'role', 'authenticated', 'aal', 'aal2',
-    'amr', jsonb_build_array(jsonb_build_object('method', 'totp', 'timestamp', extract(epoch from now() - interval '2 hours')::bigint)))::text, true);
+  -- ---------- Kritik işlem ön izlemesi (07.11.2026: yeniden kod isteme kaldırıldı) ----------
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', yon, 'role', 'authenticated', 'aal', 'aal1')::text, true);
   execute 'set local role authenticated';
   o := public.yp_onizle('genel_secim_olustur', jsonb_build_object('on_gun', (now() at time zone 'Europe/Istanbul')::date + 20, 'secim_gun', (now() at time zone 'Europe/Istanbul')::date + 21));
-  begin perform public.yp_uygula((o->>'anahtar')::uuid, 'ONAYLIYORUM'); ok := false; exception when others then ok := sqlerrm like 'YP_TAZE%'; end;
   execute 'reset role';
-  rapor := rapor || jsonb_build_array(jsonb_build_object('kritik_taze_kod', jsonb_build_object('reddedildi', ok, 'onizleme_engel', o->'engel', 'kayit', o->'sayi')));
+  rapor := rapor || jsonb_build_array(jsonb_build_object('kritik_onizleme', jsonb_build_object('onizleme_engel', o->'engel', 'kayit', o->'sayi')));
 
   -- ---------- Erken genel seçim + geri al ----------
   perform set_config('request.jwt.claims', jsonb_build_object('sub', yon, 'role', 'authenticated', 'aal', 'aal2',

@@ -303,7 +303,7 @@ function girisEkrani(hata){
     <div class="alan"><label for="gS">Şifre</label><input id="gS" type="password" autocomplete="current-password" required></div>
     ${hata ? `<div class="uyari u-hata">${e(hata)}</div>` : ""}
     <button class="btn btn-ana" type="submit">Giriş yap</button>
-    <p class="kucuk soluk">Oyundaki yönetici hesabınla giriş yap. Ardından doğrulama uygulamasındaki kod istenir.</p></form>`);
+    <p class="kucuk soluk">Oyundaki yönetici hesabının e-posta ve şifresiyle giriş yap.</p></form>`);
   document.getElementById("gForm").onsubmit = async ev => {
     ev.preventDefault();
     const { error } = await S.sb.auth.signInWithPassword({ email: gE.value.trim(), password: gS.value });
@@ -327,12 +327,8 @@ async function oturumKontrol(){
       <button class="btn" id="cik">Çıkış yap</button>`);
     document.getElementById("cik").onclick = cikis; return;
   }
-  const { data: aal } = await S.sb.auth.mfa.getAuthenticatorAssuranceLevel();
-  if(aal && aal.currentLevel === "aal2") return uygulamaBaslat();
-  const { data: f } = await S.sb.auth.mfa.listFactors();
-  const dogrulanmis = (f && f.totp || []).find(x => x.status === "verified");
-  if(dogrulanmis) return kodEkrani(dogrulanmis.id);
-  return kayitEkrani(f);
+  /* 07.11.2026: sahibin isteğiyle doğrulama uygulaması adımı kaldırıldı; e-posta + şifre yeterli. */
+  return uygulamaBaslat();
 }
 async function kayitEkrani(f){
   for(const x of (f && f.all || [])) if(x.status !== "verified") await S.sb.auth.mfa.unenroll({ factorId: x.id });
@@ -466,7 +462,7 @@ async function islemYap(islem, param, sonra){
   p.el.querySelector(".pencere-bas h2").textContent = o.baslik || "İşlem";
   let govde = onizlemeHtml(o);
   if(!o.engel && o.kritik) govde += `<div class="muhur-alan"><div class="alan"><label for="onay">Onaylamak için <b>${e(o.onay_metni)}</b> yaz</label>
-    <input id="onay" autocomplete="off" autocapitalize="characters"><small>Kritik işlem: son 10 dakikada kod girmediysen doğrulama kodu da istenir.</small></div>
+    <input id="onay" autocomplete="off" autocapitalize="characters"><small>Kritik işlem: onay metnini aynen yazman gerekir.</small></div>
     <button class="muhur" id="uygula" disabled>MÜHÜRLE</button></div>`;
   p.govde(govde);
   p.alt(o.engel ? `<button class="btn" data-kapat>Kapat</button>` : o.kritik ? `<button class="btn" data-kapat>Vazgeç</button>`
