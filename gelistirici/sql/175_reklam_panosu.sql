@@ -313,6 +313,11 @@ begin
   return p;
 end $$;
 
+-- Türkçe tutar biçimi (1.234.567)
+create or replace function oyun.pano_tl(n numeric) returns text language sql immutable set search_path = '' as $$
+  select replace(to_char(round(coalesce(n, 0)), 'FM999G999G999G990'), ',', '.')
+$$;
+
 -- Ödemeyi alır (eksi) ya da iade eder (artı). Kayıtlar her kasanın kendi defterine yazılır.
 create or replace function oyun.pano_odeme(p_odeme text, p_tur text, p_id bigint, u uuid, p_tutar numeric, p_aciklama text)
 returns void language plpgsql security definer set search_path = '' as $$
@@ -321,24 +326,24 @@ begin
   if p_tutar = 0 then return; end if;
   if p_odeme = 'oyuncu' then
     update oyun.cuzdan set para = para + p_tutar where user_id = u and para + p_tutar >= 0;
-    if not found then raise exception 'Cüzdanında yeterli para yok. Gereken: % ₺', to_char(-p_tutar, 'FM999G999G999G990'); end if;
+    if not found then raise exception 'Cüzdanında yeterli para yok. Gereken: % ₺', oyun.pano_tl(-p_tutar); end if;
     insert into oyun.hesap_hareket (user_id, zaman, tutar, tur, aciklama) values (u, t, p_tutar, case when p_tutar < 0 then 'gider' else 'gelir' end, p_aciklama);
   elsif p_tur = 'parti' then
     update oyun.partiler set kasa = kasa + p_tutar where id = p_id and kasa + p_tutar >= 0;
-    if not found then raise exception 'Parti kasası yetersiz. Gereken: % ₺', to_char(-p_tutar, 'FM999G999G999G990'); end if;
+    if not found then raise exception 'Parti kasası yetersiz. Gereken: % ₺', oyun.pano_tl(-p_tutar); end if;
     insert into oyun.parti_hareket (parti_id, zaman, tutar, aciklama, tur) values (p_id, t, p_tutar, p_aciklama, case when p_tutar < 0 then 'gider' else 'gelir' end);
   elsif p_tur = 'dernek' then
     update oyun.dernekler set kasa = kasa + p_tutar where id = p_id and kasa + p_tutar >= 0;
-    if not found then raise exception 'Dernek kasası yetersiz. Gereken: % ₺', to_char(-p_tutar, 'FM999G999G999G990'); end if;
+    if not found then raise exception 'Dernek kasası yetersiz. Gereken: % ₺', oyun.pano_tl(-p_tutar); end if;
     insert into oyun.dernek_hareket (dernek_id, zaman, tutar, tur, aciklama, user_id) values (p_id, t, p_tutar, case when p_tutar < 0 then 'gider' else 'gelir' end, p_aciklama, u);
   elsif p_tur = 'sirket' then
     update oyun.sirketler set kasa = kasa + p_tutar where id = p_id and kasa + p_tutar >= 0;
-    if not found then raise exception 'Şirket kasası yetersiz. Gereken: % ₺', to_char(-p_tutar, 'FM999G999G999G990'); end if;
+    if not found then raise exception 'Şirket kasası yetersiz. Gereken: % ₺', oyun.pano_tl(-p_tutar); end if;
     insert into oyun.sirket_hareket (sirket_id, zaman, tutar, aciklama, faaliyet_gelir, faaliyet_gider, dagitilan_kar)
     values (p_id, t, p_tutar, p_aciklama, 0, greatest(-p_tutar, 0), 0);
   elsif p_tur = 'gazete' then
     update oyun.oyuncu_gazeteleri set kasa = kasa + p_tutar where id = p_id and kasa + p_tutar >= 0;
-    if not found then raise exception 'Gazete kasası yetersiz. Gereken: % ₺', to_char(-p_tutar, 'FM999G999G999G990'); end if;
+    if not found then raise exception 'Gazete kasası yetersiz. Gereken: % ₺', oyun.pano_tl(-p_tutar); end if;
     insert into oyun.gazete_hareket (gazete_id, zaman, tutar, tur, aciklama) values (p_id, t, p_tutar, case when p_tutar < 0 then 'gider' else 'gelir' end, p_aciklama);
   else
     raise exception 'Geçersiz ödeme kaynağı.';
@@ -553,7 +558,7 @@ begin
   gunluk := (fy ->> 'gunluk')::numeric; ind := oyun.pano_indirim(p_gun);
   toplam := round(gunluk * p_gun * (1 - ind));
   if p_beklenen is not null and toplam > p_beklenen * 1.001 then
-    raise exception 'Fiyat değişti (bu arada pano kiralandı ya da seçim sezonu başladı). Yeni tutar: % ₺. Teklifi yenileyip tekrar dene.', to_char(toplam, 'FM999G999G999G990');
+    raise exception 'Fiyat değişti (bu arada pano kiralandı ya da seçim sezonu başladı). Yeni tutar: % ₺. Teklifi yenileyip tekrar dene.', oyun.pano_tl(toplam);
   end if;
   bas := (b ->> 'bos')::timestamptz;
   if bas > now() + make_interval(days => a.sira_gun) then
@@ -570,7 +575,7 @@ begin
   aciklama := format('Reklam panosu #%s · %s · %s gün', yid,
                      case when p_kapsam = 'il' then (select i.ad from oyun.iller i where i.id = il) else 'Ülke geneli' end, p_gun);
   perform oyun.pano_odeme(odeme, f.sahip_tur, f.sahip_id, p.id, -toplam, aciklama);
-  perform oyun.pano_gelir(p_kapsam, il, toplam, format('%s · %s ₺ · %s', aciklama, to_char(toplam, 'FM999G999G999G990'), sahip_ad));
+  perform oyun.pano_gelir(p_kapsam, il, toplam, format('%s · %s ₺ · %s', aciklama, oyun.pano_tl(toplam), sahip_ad));
 
   return jsonb_build_object('tamam', true, 'id', yid, 'bas', bas, 'bit', bas + make_interval(days => p_gun), 'tutar', toplam,
     'hemen', bas <= now() + interval '1 minute', 'slot', (b ->> 'slot')::int,
@@ -655,7 +660,7 @@ begin
   update oyun.pano_sikayet set durum = 'kapandi' where yayin_id = y.id;
   if p.id <> y.odeyen then
     perform oyun.bildir(y.odeyen, format('Reklamın yayından kaldırıldı: "%s". Gerekçe: %s%s', coalesce(y.afis_ad, 'Afiş'), n,
-      case when v_iade > 0 then format(' · Kalan süre için %s ₺ iade edildi.', to_char(v_iade, 'FM999G999G999G990')) else '' end), oyun.simdi());
+      case when v_iade > 0 then format(' · Kalan süre için %s ₺ iade edildi.', oyun.pano_tl(v_iade)) else '' end), oyun.simdi());
   end if;
   return jsonb_build_object('tamam', true, 'iade', v_iade);
 end $$;
