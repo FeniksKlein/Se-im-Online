@@ -1176,3 +1176,12 @@
   s.async=false;
   (document.body||document.head).appendChild(s);
 })();
+
+/* İçişleri v2: ana komuta modülünün ardından aynı sayfada erişilebilir.
+   dinamik script'lerde async=false yükleme sırasını korur. */
+(function(){
+ if(document.getElementById('icisleri-ek-loader'))return;
+ var s=document.createElement('script');s.id='icisleri-ek-loader';s.async=false;
+ s.src='./icisleri_ek.js?v=20261107-2';
+ (document.body||document.head).appendChild(s);
+})();
