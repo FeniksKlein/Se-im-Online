@@ -296,6 +296,8 @@ declare
     'yp_secim', 'yp_secimler', 'yp_sozluk', 'yp_uygula',
     -- 168 · Portal aşama 2: oyuncu listesi ve oyuncu dosyası
     'yp_oyuncu', 'yp_oyuncular',
+    -- 171 · Portal aşama 3: canlı ayarlar
+    'yp_ayar_gecmis', 'yp_ayarlar',
     -- 165 (06.11.2026) seçim gecesi canlı yayını
     'secim_yayini', 'secim_yayini_tekrar'
   ];
