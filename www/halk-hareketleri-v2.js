@@ -1,0 +1,125 @@
+/* SEÇİM ONLINE · HALK HAREKETLERİ V2 · olay, polis, hukuk */
+(function(){
+'use strict';
+const eskiIskelet=iskelet;
+iskelet=function(baslik,govde,opt){
+ if(baslik==='Halk Hareketleri'&&!String(govde).includes('id="so-v2"')) govde='<div id="so-v2"></div>'+govde;
+ return eskiIskelet(baslik,govde,opt);
+};
+const eskiEkran=sokakHareketleriEkrani;
+sokakHareketleriEkrani=async function(){
+ await eskiEkran();
+ const mount=document.getElementById('so-v2');
+ if(!mount)return;
+ mount.innerHTML='<div class="kart">🛡️ Olaylar, ortak eylemler ve gözaltı/mahkeme kayıtları yükleniyor...</div>';
+ try{
+  const d=await API.rpc('sokak_ek_panel');
+  const esc=t=>e(String(t??'')),num=t=>Number(t||0).toLocaleString('tr-TR');
+  const saat=t=>t?new Date(t).toLocaleString('tr-TR'):'—';
+  const aktif=x=>x.durum==='aktif'&&Date.parse(x.bitis)>Date.now();
+  let h='<div class="kart"><h2>📰 Olaylardan Doğan Halk Hareketleri</h2><p>Zam, vergi, enflasyon, işsizlik, hazine sıkıntısı, kararname ve eksik kabine gibi gerçek oyun olaylarından eylem doğar. En az iki muhalefet partisi de herhangi bir konuda ortak çağrı yapabilir.</p><p><small>Yeni eylem için genel başkanlık, 7 günlük hesap, ilde 2 aktif yerel oyuncu, bütçe ve bekleme kuralları geçerlidir. Olay temelli eylemde ayrıca 35 memnuniyetsizlik eşiği aranmaz. Aynı il ve parti bekleme sınırları korunur.</small></p></div>';
+  if(d.aktif&&d.koalisyon_baslatabilir){
+   h+='<div class="kart"><details><summary><b>🤝 Partiler arası ortak eylem çağrısı aç</b></summary><p>Farklı iki muhalefet partisi onay verince ortak olay doğar. Konu serbesttir; 48 saatlik çağrı süresi ve 72 saatlik yeniden çağrı sınırı vardır.</p><form data-so-fn="sokak_koalisyon_cagri"><label>Çağrı başlığı</label><input name="p_baslik" minlength="12" maxlength="120" required placeholder="Örn. Bakan atamalarındaki gecikmeye tepki"><label>Ortak gerekçe ve talepler</label><textarea name="p_aciklama" minlength="35" maxlength="500" required></textarea><button class="btn altin">Diğer partileri davet et</button></form></details></div>';
+  }
+  if((d.koalisyonlar||[]).length){
+   h+='<div class="kart"><h3>🤝 Açık ortak çağrılar</h3>';
+   for(const c of d.koalisyonlar){
+    h+='<div class="kart"><b>'+esc(c.baslik)+'</b><p>'+esc(c.aciklama)+'</p><p><small>'+num(c.sayi)+' parti · '+esc((c.partiler||[]).join(', '))+' · '+esc(saat(c.bitis))+' son</small></p>';
+    if(d.koalisyon_baslatabilir&&!c.katildim)h+='<button class="btn" data-so-join="'+Number(c.id)+'">Partim adına katıl</button>';
+    h+='</div>';
+   }
+   h+='</div>';
+  }
+  if(d.aktif&&d.baslatabilir){
+   const ol=(d.olaylar||[]),ill=(d.iller||[]);
+   h+='<div class="kart"><h3>📣 Gerçek oyun olayı üzerinden eylem başlat</h3>';
+   if(ol.length){
+    h+='<form data-so-fn="sokak_olay_baslat"><label>Eylemin dayandığı olay</label><select name="p_olay">'+ol.map(o=>'<option value="'+Number(o.id)+'">'+esc(o.baslik)+' · '+esc(o.tur)+'</option>').join('')+'</select>';
+    h+='<label>Eylem ili</label><select name="p_il">'+ill.map(i=>'<option value="'+Number(i.id)+'">'+esc(i.ad)+'</option>').join('')+'</select><label>Talep türü</label><select name="p_tur"><option value="genel">Olayın geri çekilmesi / politika değişikliği</option><option value="hizmet">İl hizmetleri +5</option><option value="issizlik">İşsizlik −0,5</option><option value="vergi">Vergi −1</option></select><label>Somut gerekçe</label><textarea name="p_gerekce" minlength="20" maxlength="400" placeholder="Hükümetten hangi değişikliği istiyorsunuz?" required></textarea><button class="btn altin">Olay temelli eylem başlat · '+num(d.ayar?.baslatma_bedeli)+' TL</button></form>';
+    h+='<details><summary>Dayanak olayları ve süreleri</summary>'+ol.slice(0,35).map(o=>'<p><b>'+esc(o.baslik)+'</b> · '+esc(o.tur)+'<br>'+esc(o.aciklama)+'<br><small>Son başlatma: '+esc(saat(o.bitis))+'</small></p>').join('')+'</details>';
+   }else h+='<p>Şu anda kaydedilmiş geçerli bir olay yok. Yeni ekonomik/siyasi kararlar veya iki partili ortak çağrılar burada görünür.</p>';
+   h+='</div>';
+  }
+  h+='<div class="kart"><h2>🛡️ Polis, gözaltı, avukat ve mahkeme</h2><p><b>Düşük bütçe:</b> devriye, gözaltı yok (50.000 TL). <b>Orta bütçe:</b> en çok 2 katılımcı (150.000 TL). <b>Yüksek bütçe:</b> en çok 4 katılımcı (400.000 TL). Gözaltılar 1 saattir; katılımcılar rastgele seçilir, 24 saatte tekrar alınamaz.</p><p>Yalnız eylem katılımı ve gözaltı süresince il değiştirme engellenir. Oy kullanma, mesaj, şirket ve bankacılık açık kalır. Gözaltı mahkemede itirazla derhal durur; haksız gözaltı tazminatı verilebilir.</p><p><b>Dışarıdan destek serbest:</b> başka ildeki oyuncular, partiler ve dernekler normal eylem fonlama formundan protestoyu finanse edebilir; fizikî katılım için yerel ikamet gerekir.</p></div>';
+  for(const x of d.eylemler||[]){
+   const open=aktif(x);
+   h+='<div class="kart"><h3>'+esc(x.il)+' · '+esc(x.parti)+' · Eylem #'+Number(x.id)+'</h3>';
+   if(x.olay)h+='<p><b>Dayanak:</b> '+esc(x.olay.baslik)+' ('+esc(x.olay.tur)+')</p>';
+   if(open&&d.mudahale_yetki){
+    const base=Number(d.ayar?.baslatma_bedeli||50000);
+    h+='<details><summary>🚓 Polis sevk et (Cumhurbaşkanı / İçişleri Bakanı)</summary><p>Kamu kasası yeterli değilse işlem gerçekleşmez. Aynı eyleme 6 saatte bir, ülke çapında 24 saatte en fazla 4 müdahale yapılabilir. Polis gücü arttıkça tepki ve memnuniyet kaybı artar.</p>';
+    h+='<form data-so-fn="sokak_polis_gonder" data-so-id="'+Number(x.id)+'"><label>Müdahale seviyesi</label><select name="p_seviye"><option value="dusuk">Düşük · devriye / 0 gözaltı · '+num(base)+' TL</option><option value="orta">Orta · en çok 2 gözaltı · '+num(base*3)+' TL</option><option value="yuksek">Yüksek · en çok 4 gözaltı · '+num(base*8)+' TL</option></select><label>Somut kamu güvenliği gerekçesi</label><textarea name="p_gerekce" minlength="25" maxlength="500" required></textarea><button class="btn altin">Polis görevlendir</button></form></details>';
+   }
+   const pol=x.polis||[];
+   if(pol.length){
+    h+='<details open><summary>🚓 Polis müdahaleleri ('+pol.length+')</summary>';
+    for(const p of pol){
+     h+='<p><b>'+esc(p.seviye)+' müdahale</b> · '+esc(saat(p.zaman))+' · '+num(p.bedel)+' TL · '+num(p.alinan)+' gözaltı'+(p.geri_cekildi?' · Geri çekildi':'')+'<br>'+esc(p.gerekce)+'</p>';
+     if(d.mudahale_yetki&&!p.geri_cekildi&&Date.now()-Date.parse(p.zaman)<3*3600000){
+      h+='<form data-so-fn="sokak_polis_geri_cek" data-so-id="'+Number(p.id)+'"><textarea name="p_gerekce" minlength="20" maxlength="500" placeholder="Polis çekme gerekçesi" required></textarea><button class="btn">Polisi geri çek ve gözaltıları bitir</button></form>';
+     }
+    }
+    h+='</details>';
+   }
+   const goz=x.gozaltilar||[];
+   if(goz.length){
+    h+='<details open><summary>⚖️ Gözaltılar ve duruşmalar ('+goz.length+')</summary>';
+    for(const g of goz){
+     const live=g.durum==='aktif'&&Date.parse(g.bitis)>Date.now();
+     h+='<div class="kart"><b>'+esc(g.hedef)+'</b> · '+esc(live?'Gözaltında':g.durum)+' · '+esc(saat(g.bitis))+' son';
+     if(g.avukat)h+='<p>Avukat: '+esc(g.avukat)+' ('+esc(g.avukat_durum)+')</p>';
+     if(g.itiraz)h+='<p><b>İtiraz:</b> '+esc(g.itiraz)+'</p>';
+     if(g.karar)h+='<p><b>Mahkeme:</b> '+esc(g.karar)+' · '+esc(g.karar_gerekce||'')+'<br>Tazminat: '+num(g.tazminat)+' TL, ödenen '+num(g.tazminat_odendi)+' TL</p>';
+     if(g.benim&&live&&(d.avukatlar||[]).length){
+      h+='<form data-so-fn="sokak_avukat_cagir" data-so-id="'+Number(g.id)+'"><label>Avukat çağır</label><select name="p_avukat">'+d.avukatlar.map(a=>'<option value="'+esc(a.id)+'">'+esc(a.ad)+'</option>').join('')+'</select><button class="btn">Avukat çağır</button></form>';
+     }
+     if(g.ben_avukat&&g.avukat_durum==='cagrildi'){
+      h+='<button class="btn" data-so-law="'+Number(g.id)+'" data-so-accept="true">Avukatlık teklifini kabul et</button> <button class="btn" data-so-law="'+Number(g.id)+'" data-so-accept="false">Reddet</button>';
+     }
+     if(!g.itiraz&&(g.benim||(g.ben_avukat&&g.avukat_durum==='kabul'))&&Date.now()-Date.parse(g.baslangic)<24*3600000){
+      h+='<form data-so-fn="sokak_gozalti_itiraz" data-so-id="'+Number(g.id)+'"><label>Mahkemeye itiraz (gözaltı hemen sona erer)</label><textarea name="p_metin" minlength="20" maxlength="600" required></textarea><button class="btn altin">Gözaltına itiraz et</button></form>';
+     }
+     if(g.mahkeme_yetki&&g.itiraz&&!g.karar){
+      h+='<form data-so-fn="sokak_gozalti_mahkeme" data-so-id="'+Number(g.id)+'"><label>Bağımsız mahkeme kararı</label><select name="p_karar"><option value="haksiz">Haksız gözaltı: tazminat kararı</option><option value="uygun">Müdahale hukuka uygun</option></select><textarea name="p_gerekce" minlength="25" maxlength="700" placeholder="Gerekçeli karar" required></textarea><button class="btn">Kararı açıkla</button></form>';
+     }
+     if(g.benim&&Number(g.tazminat)>Number(g.tazminat_odendi))h+='<button class="btn" data-so-pay="'+Number(g.id)+'">Ödenmemiş tazminatı tahsil et</button>';
+     h+='</div>';
+    }
+    h+='</details>';
+   }
+   h+='<details><summary>🎙️ Açıklamalar ve kamuoyu ('+(x.aciklamalar||[]).length+')</summary>';
+   h+='<form data-so-fn="sokak_basina_aciklama" data-so-id="'+Number(x.id)+'"><label>Açıklama sıfatı</label><select name="p_taraf"><option value="basin">Basın / oyuncu yorumu</option><option value="muhalefet">Eylem katılımcısı veya örgütleyen parti</option><option value="hukuk">Ruhsatlı avukat</option>'+(d.mudahale_yetki?'<option value="hukumet">Hükümet</option>':'')+'</select><textarea name="p_metin" minlength="30" maxlength="600" placeholder="Halka açık açıklama metni" required></textarea><button class="btn">Basın açıklamasını yayımla</button></form>';
+   h+=(x.aciklamalar||[]).map(y=>'<blockquote><b>'+esc(y.ad)+' · '+esc(y.taraf)+'</b><br>'+esc(y.metin)+'<br><small>'+esc(saat(y.zaman))+'</small></blockquote>').join('');
+   h+='</details></div>';
+  }
+  mount.innerHTML=h;
+  async function rpc(btn,fn,args){
+   if(btn)btn.disabled=true;
+   try{
+    const val=await API.rpc(fn,args);
+    const msg=fn==='sokak_polis_gonder'?'Polis görevlendirildi. Gözaltına alınan oyuncu: '+num(val?.gozalti_sayisi):'İşlem kaydedildi';
+    toast(msg);
+    await sokakHareketleriEkrani();
+   }catch(err){
+    toast(hataCevir(err.message||String(err)),true);
+    if(btn)btn.disabled=false;
+   }
+  }
+  mount.querySelectorAll('form[data-so-fn]').forEach(form=>form.addEventListener('submit',event=>{
+   event.preventDefault();
+   const args=Object.fromEntries(new FormData(form).entries());
+   const fn=form.dataset.soFn,id=Number(form.dataset.soId);
+   if(['sokak_polis_gonder','sokak_basina_aciklama'].includes(fn)) args.p_eylem=id;
+   if(['sokak_polis_geri_cek'].includes(fn))args.p_polis=id;
+   if(['sokak_avukat_cagir','sokak_gozalti_itiraz','sokak_gozalti_mahkeme'].includes(fn)) args.p_gozalti=id;
+   if(fn==='sokak_olay_baslat'){args.p_il=Number(args.p_il);args.p_olay=Number(args.p_olay);}
+   rpc(form.querySelector('button'),fn,args);
+  }));
+  mount.querySelectorAll('[data-so-join]').forEach(btn=>btn.addEventListener('click',()=>rpc(btn,'sokak_koalisyon_katil',{p_cagri:Number(btn.dataset.soJoin)})));
+  mount.querySelectorAll('[data-so-law]').forEach(btn=>btn.addEventListener('click',()=>rpc(btn,'sokak_avukat_cevap',{p_gozalti:Number(btn.dataset.soLaw),p_kabul:btn.dataset.soAccept==='true'})));
+  mount.querySelectorAll('[data-so-pay]').forEach(btn=>btn.addEventListener('click',()=>rpc(btn,'sokak_gozalti_tazminat_tahsil',{p_gozalti:Number(btn.dataset.soPay)})));
+ }catch(err){
+  mount.innerHTML='<div class="kart">Yeni halk hareketleri paneli yüklenemedi: '+e(hataCevir(err.message||String(err)))+'</div>';
+ }
+};
+})();
