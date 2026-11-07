@@ -304,6 +304,8 @@ declare
     'yp_destek', 'yp_duyurular', 'yp_olaylar', 'destek_gonder', 'destek_taleplerim',
     -- 174 · Portal aşama 6: sistem, tutarlılık, asistan kaydı
     'yp_asistan_gecmis', 'yp_asistan_kaydet', 'yp_sistem', 'yp_tutarlilik',
+    -- 175 (07.11.2026) afiş stüdyosu ve reklam panoları
+    'pano_vitrin', 'pano_merkez', 'afis_kaydet', 'afis_sil', 'pano_teklif', 'pano_kirala', 'pano_begen', 'pano_sikayet', 'pano_il_tarife', 'pano_kaldir', 'pano_sikayet_kapat',
     -- 165 (06.11.2026) seçim gecesi canlı yayını
     'secim_yayini', 'secim_yayini_tekrar'
   ];

@@ -81,6 +81,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','dernek_vitrini.js'),'utf8')+'</script></body>');
 // 06.11.2026: Seçim gecesi canlı yayını (sunucu 165) — sandık sandık sayım, harita, stüdyo yorumu, yeniden izleme. secimEkrani/olayKarti/gundemEkUst'ü sarar.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','secim_yayini.js'),'utf8')+'</script></body>');
+// 07.11.2026: Afiş Stüdyosu ve Reklam Panoları (sunucu 175) — Gündem şeridi için iskeleti sarar; kesintisiz ekrandan ÖNCE yüklenir.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','reklam_panosu.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kesintisiz_ekran.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','halk_hareketleri.js'),'utf8')+'</script></body>');
 // İçişleri Komuta Merkezi: güvenli oyuncu dosyaları ve görev ekranı.
