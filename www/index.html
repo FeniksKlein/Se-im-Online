@@ -35410,7 +35410,7 @@ async function sokakHareketleriEkrani(){
  }catch(err){iskelet('Halk Hareketleri','<div class="kart">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
 // Kaynak derlemesine kalıcı menü bağlantısı.
-(function(){const eski=iskelet;iskelet=function(baslik,govde,opt){if(baslik==='Partiler')govde='<div class="kart"><button class="btn altin" onclick="ekranAc(sokakHareketleriEkrani)">📢 Halk Hareketleri · Protestolar ve uzlaşma</button></div>'+govde;return eski(baslik,govde,opt);};})();
+/* Partiler menusu kisa yolu halk-org-davet.js tarafindan tek kez cizilir. */
 function hhHukumetHTML(x,d){
  const fmt=n=>Number(n||0).toLocaleString('tr-TR'),active=d.aktif&&x.durum==='aktif';
  const names={masa:'Uzlaşma masası',yonlendirme:'Bilgilendirme ve yönlendirme',uyari:'Sert siyasi uyarı',dagitma:'Ek bütçeyle dağıtma',yaptirim:'6 saatlik eylem yaptırımı'};
