@@ -306,6 +306,8 @@ declare
     'yp_asistan_gecmis', 'yp_asistan_kaydet', 'yp_sistem', 'yp_tutarlilik',
     -- 175 (07.11.2026) afiş stüdyosu ve reklam panoları
     'pano_vitrin', 'pano_merkez', 'afis_kaydet', 'afis_sil', 'pano_teklif', 'pano_kirala', 'pano_begen', 'pano_sikayet', 'pano_il_tarife', 'pano_kaldir', 'pano_sikayet_kapat',
+    -- 176 (07.11.2026) pano işletme hakkı ihalesi
+    'pano_teklif_v2', 'pano_kirala_v2', 'pano_ihale_teklif_ver', 'pano_isletme_fiyat', 'pano_ihale_merkez',
     -- 165 (06.11.2026) seçim gecesi canlı yayını
     'secim_yayini', 'secim_yayini_tekrar'
   ];

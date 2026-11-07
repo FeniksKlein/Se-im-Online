@@ -564,6 +564,20 @@
       '.rp-serit-ust{display:flex;align-items:center;gap:8px;margin-bottom:2px}.rp-serit-ust b{font-size:15px}.rp-serit-ust small{color:var(--mut);font-size:13px}.rp-serit-ust .rp-bosluk{flex:1}',
       '.rp-serit-ust button{min-height:36px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.1);color:#fff;font-weight:700;font-size:13px}',
       '.rp-kunye-satir{font-size:13px;color:var(--mut);margin-top:6px;display:flex;gap:8px;align-items:center}.rp-kunye-satir span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.rp-isletme-serit{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:-2px 0 10px;padding:9px 12px;border-radius:12px;background:linear-gradient(135deg,rgba(255,138,61,.16),rgba(240,69,75,.10));border:1px solid rgba(255,138,61,.35);font-size:14px;line-height:1.35}',
+      '.rp-isletme-serit.idare{background:var(--panel);border-color:var(--line)}.rp-isletme-serit span:last-child{color:var(--txt2);flex-basis:100%}',
+      '.rp-ih-rozet{display:inline-block;padding:3px 8px;border-radius:6px;background:#ff8a3d;color:#1a0f0a;font-size:11px;font-weight:900;letter-spacing:.6px}',
+      '.rp-isletme-serit.idare .rp-ih-rozet{background:#7b8bb8;color:#0E1530}',
+      '.rp-ihale{margin-bottom:12px;border-color:rgba(255,138,61,.28);background:linear-gradient(170deg,#1f2347,#151b38)}.rp-ihale.kapali{border-color:var(--line);background:var(--panel)}',
+      '.rp-ihale.kapali .rp-ih-rozet{background:#7b8bb8;color:#0E1530}',
+      '.rp-ihale-ust{display:flex;align-items:center;gap:8px;margin-bottom:8px}.rp-ihale h4{font-family:var(--disp);font-size:20px;line-height:1.15}',
+      '.rp-geri-sayim{font-size:13px;font-weight:800;color:#F7C766}',
+      '.rp-ihale-izgara{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.rp-ihale-izgara div{background:rgba(255,255,255,.05);border-radius:10px;padding:8px 10px}',
+      '.rp-ihale-izgara small{display:block;font-size:12px;color:var(--mut)}.rp-ihale-izgara b{font-size:16px}',
+      '.rp-detay{margin:6px 0 12px}.rp-detay>summary{min-height:44px;display:flex;align-items:center;font-weight:800;color:var(--txt2);cursor:pointer}',
+      '.rp-pano-no{display:inline-block;padding:2px 7px;border-radius:6px;background:var(--panel3);font-size:12px;font-weight:800;color:var(--txt)}',
+      '.rp-pano-sec{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}.rp-pano-sec button{display:grid;gap:2px;text-align:left;min-height:64px;padding:9px 10px;border-radius:12px;background:var(--panel2);color:var(--txt);border:1px solid var(--line)}',
+      '.rp-pano-sec button.aktif{border-color:var(--ink2);background:var(--inkbg)}.rp-pano-sec b{font-size:14px}.rp-pano-sec span{font-size:14px;font-weight:700;color:#F7C766}.rp-pano-sec small{font-size:12px;color:var(--mut)}',
       '@media (prefers-reduced-motion:reduce){.rp-pano-yuzey::after,.rp-kutlama .rp-pano-yuzey,.rp-isik-par{animation:none!important}.rp-dondur>.rp-kare{transition:none}}'
     ].join('\n');
     document.head.appendChild(st);
@@ -694,8 +708,8 @@
     try {
       var p = profil();
       EKR.il = EKR.il || (p && p.il_id) || null;
-      var r = await Promise.all([merkezYukle(), vitrinYukle(EKR.il, true)]);
-      m = r[0]; v = r[1];
+      var r = await Promise.all([merkezYukle(), vitrinYukle(EKR.il, true), API.rpc('pano_ihale_merkez').catch(function () { return null; })]);
+      m = r[0]; v = r[1]; RP.ihale = r[2];
     } catch (err) {
       iskelet('Reklam Panoları', hazirlikMi(err) ? hazirlikHTML : '<div class="kart">' + esc(typeof hataCevir === 'function' ? hataCevir(err.message) : err.message) + '</div>', { geri: true });
       return;
@@ -717,9 +731,11 @@
     if (!m.ayar.acik) h += '<div class="kart"><b>Reklam panoları şu an yeni kiralamaya kapalı.</b><p class="rp-not">Yayındaki reklamlar süreleri bitene kadar görünür.</p></div>';
     if (v.yasak && v.gizlenen) h += '<div class="kart"><b>🗳️ Seçim yasağı sürüyor</b><p class="rp-not">Oy verme saatlerinde ' + v.gizlenen + ' siyasi reklam gösterilmiyor. Süreleri işlemeye devam ediyor.</p></div>';
     // Ülke geneli
-    h += '<div class="rp-bolum"><h3>Ülke geneli dev panolar</h3><small>Bütün oyuncular görür</small></div><div class="rp-yatay">' + slotKartlari(ul, slotUlke, 'ulke', m.ulke && m.ulke.fiyat) + '</div>';
+    h += '<div class="rp-bolum"><h3>Ülke geneli dev panolar</h3><small>Bütün oyuncular görür</small></div>' + isletmeSerit(m.ulke && m.ulke.fiyat, 'Ulaştırma ve Altyapı Bakanlığı') + '<div class="rp-yatay">' + slotKartlari(ul, slotUlke, 'ulke', m.ulke && m.ulke.fiyat) + '</div>';
     // İl
-    h += '<div class="rp-bolum"><h3>' + esc(v.il || '') + ' panoları</h3><small>' + esc(v.il || 'İl') + 'de oynayanlar görür</small></div><div class="rp-yatay">' + slotKartlari(yer, slotIl, 'il', ilBilgi.fiyat) + '</div>';
+    h += '<div class="rp-bolum"><h3>' + esc(v.il || '') + ' panoları</h3><small>' + esc(v.il || 'İl') + 'de oynayanlar görür</small></div>' + isletmeSerit(ilBilgi.fiyat, (v.il || '') + ' Belediyesi') + '<div class="rp-yatay">' + slotKartlari(yer, slotIl, 'il', ilBilgi.fiyat) + '</div>';
+    // İhaleler ve işletmeler
+    h += ihaleBolum(RP.ihale, v);
     // Afişlerim
     var afisler = m.afisler || [];
     h += '<div class="rp-bolum"><h3>Afişlerim</h3><small>' + afisler.length + ' tasarım</small></div><div class="rp-yatay">' +
@@ -747,6 +763,7 @@
       '<p>• İl panosu kirası o ilin belediye kasasına, ülke geneli kira Hazine’ye gelir yazılır.</p>' +
       '<p>• Her afişin altında herkesin göreceği bir künye bulunur: "Ödeyen: …".</p>' +
       (m.ayar.secim_gunu_yasak ? '<p>• Seçim yasağı: oy verme saatlerinde parti ve aday reklamları gösterilmez; süre işlemeye devam eder.</p>' : '') +
+      '<p>• Panoların işletme hakkı ihaleyle verilir (il panoları: il belediyesi, ülke geneli: Ulaştırma ve Altyapı Bakanlığı). İhaleyi kazanan sözleşme boyunca fiyatları kendisi belirler ve kira gelirini alır; her kiralamadan ilan ve reklam vergisi idareye ödenir. İşletmecisi olmayan panoları idare resmî tarifeyle kiralar.</p>' +
       '<p>• Hakaret, küfür ve yanıltıcı içerik şikâyet üzerine yayından kaldırılır.</p></div></details>';
     iskelet('Reklam Panoları', h, { geri: true });
     var kok = document.getElementById('icerik');
@@ -776,15 +793,142 @@
     return k ? k.ad : ({ parti: 'Parti', dernek: 'Dernek', sirket: 'Şirket', gazete: 'Gazete' }[f.sahip_tur] || '');
   }
   function slotKartlari(liste, slot, kapsam, fiyat) {
-    var out = liste.map(function (y) {
+    var out = [], kul = {};
+    var reklam = function (y) {
       return '<div class="rp-kart">' + panoHTML('<div data-rp="yayin" data-id="' + Number(y.id) + '" role="button" tabindex="0">' + afisSvg(y.tasarim, { kunye: y.sahip_ad, etiket: y.ad }) + '</div>', { kucuk: true }) +
-        '<div class="rp-pano-etiket"><b>' + esc(y.sahip_ad) + '</b><span class="rp-bosluk"></span><span>' + kalanYaz(y.bit) + '</span></div>' +
+        '<div class="rp-pano-etiket"><span class="rp-pano-no">Pano ' + Number(y.slot || 1) + '</span><b>' + esc(y.sahip_ad) + '</b><span class="rp-bosluk"></span><span>' + kalanYaz(y.bit) + '</span></div>' +
         '<div class="rp-pano-etiket"><button type="button" class="rp-cip" data-rp="begen" data-id="' + Number(y.id) + '" style="background:' + (y.begendim ? 'rgba(240,69,75,.25)' : 'rgba(255,255,255,.08)') + '">' + (y.begendim ? '♥' : '♡') + ' ' + sayiYaz(y.begeni) + '</button><span>👁 ' + sayiYaz(y.gosterim) + ' kişi</span></div></div>';
-    });
-    var bos = Math.max(0, slot - liste.length);
-    for (var i = 0; i < bos; i++) out.push('<div class="rp-kart">' + panoHTML('<div class="rp-kiralik" data-rp="kirala" data-kapsam="' + kapsam + '" role="button" tabindex="0"><div><b>KİRALIK</b><span>' + (fiyat ? 'Günlük ' + tl(fiyat.gunluk) : 'Hemen kirala') + '</span></div></div>', { kucuk: true }) + '<div class="rp-pano-etiket"><span>Boş pano</span><span class="rp-bosluk"></span><button type="button" class="rp-cip" data-rp="kirala" data-kapsam="' + kapsam + '">Kirala ›</button></div></div>');
+    };
+    for (var s = 1; s <= slot; s++) {
+      var y = liste.find(function (x) { return Number(x.slot) === s && !kul[x.id]; });
+      if (y) { kul[y.id] = 1; out.push(reklam(y)); continue; }
+      var fy = fiyat && fiyat.fiyatlar ? Number(fiyat.fiyatlar[s - 1]) : fiyat ? Number(fiyat.gunluk) : 0;
+      out.push('<div class="rp-kart">' + panoHTML('<div class="rp-kiralik" data-rp="kirala" data-kapsam="' + kapsam + '" data-slot="' + s + '" role="button" tabindex="0"><div><b>KİRALIK</b><span>' + (fy ? 'Günlük ' + tl(fy) : 'Hemen kirala') + '</span></div></div>', { kucuk: true }) +
+        '<div class="rp-pano-etiket"><span class="rp-pano-no">Pano ' + s + '</span><span>Boş</span><span class="rp-bosluk"></span><button type="button" class="rp-cip" data-rp="kirala" data-kapsam="' + kapsam + '" data-slot="' + s + '">Kirala ›</button></div></div>');
+    }
+    liste.forEach(function (y) { if (!kul[y.id]) out.push(reklam(y)); });
     if (!out.length) out.push('<div class="rp-kart"><p class="rp-not">Pano bulunamadı.</p></div>');
     return out.join('');
+  }
+  function isletmeSerit(fiyat, idare) {
+    var isl = fiyat && fiyat.isletme;
+    if (isl) return '<div class="rp-isletme-serit"><span class="rp-ih-rozet">İŞLETMECİ</span><b>' + esc(isl.ad) + '</b><span>fiyatları işletmeci belirliyor · sözleşme ' + tarihKisa(isl.bit) + '’e kadar</span></div>';
+    return '<div class="rp-isletme-serit idare"><span class="rp-ih-rozet">İDARE</span><b>' + esc(idare) + '</b><span>işletmeci yok; resmî tarife' + (fiyat && fiyat.sonraki_isletme ? ' · ' + tarihKisa(fiyat.sonraki_isletme) + '’ten itibaren yeni işletmeci' : '') + '</span></div>';
+  }
+  function ihaleKonu(i) { return i.kapsam === 'ulke' ? 'Ülke geneli ' + i.slot + ' dev pano' : (i.il || '') + ' il panoları (' + i.slot + ' pano)'; }
+  function ihaleKart(i) {
+    var acik = i.durum === 'acik', benim = (i.benim || [])[0];
+    var h = '<div class="rp-kart rp-ihale' + (acik ? '' : ' kapali') + '"><div class="rp-ihale-ust"><span class="rp-ih-rozet">' + (acik ? 'İHALE · KAPALI TEKLİF' : 'SONUÇ İLANI') + '</span><span class="rp-bosluk"></span>' +
+      (acik ? '<span class="rp-geri-sayim">⏳ ' + kalanYaz(i.bit) + '</span>' : '<span class="rp-geri-sayim">' + tarihKisa(i.bit) + '</span>') + '</div>' +
+      '<h4>' + esc(ihaleKonu(i)) + ' işletme hakkı</h4><p class="rp-not" style="margin-top:2px">İdare: ' + esc(i.idare) + '</p>';
+    if (acik) {
+      h += '<div class="rp-ihale-izgara"><div><small>Muhammen bedel</small><b>' + tl(i.muhammen) + '</b></div><div><small>En düşük teklif</small><b>' + tl(i.asgari) + '</b></div>' +
+        '<div><small>Geçici teminat</small><b>%' + Math.round(Number(i.teminat_oran) * 100) + '</b></div><div><small>İşletme süresi</small><b>' + i.isletme_gun + ' gün</b></div>' +
+        '<div><small>İşletme başlangıcı</small><b>' + tarihKisa(i.isletme_bas) + '</b></div><div><small>Verilen teklif</small><b>' + Number(i.teklif_say || 0) + ' zarf</b></div></div>';
+      if (benim) h += '<p class="rp-not" style="color:#5BE0A7">✓ Teklifin: ' + tl(benim.tutar) + ' (' + esc(benim.ad) + ') · ' + tl(benim.teminat) + ' teminat yatırıldı. Zarflar ' + tarihKisa(i.bit) + '’te açılacak.</p>';
+      else if (i.yetkili) h += '<p class="rp-not uyari">İhale yetkilisi olduğun için bu ihaleye teklif veremezsin.</p>';
+      else h += '<button type="button" class="btn" data-rp="ihale" data-id="' + Number(i.id) + '">Kapalı teklif ver</button>';
+    } else if (i.durum === 'sonuclandi' && i.kazanan) {
+      h += '<p class="rp-not">🏆 Kazanan: <b>' + esc(i.kazanan.ad) + '</b> · ' + tl(i.kazanan.tutar) + ' · ' + Number(i.teklif_say || 0) + ' teklif · muhammen ' + tl(i.muhammen) + '</p>';
+      if (benim) h += '<p class="rp-not">Senin teklifin: ' + tl(benim.tutar) + ' · ' + ({ kazandi: 'kazandı', kaybetti: 'kaybetti, teminat iade edildi', irat: 'bedel ödenemedi, teminat irat kaydedildi' }[benim.durum] || benim.durum) + '</p>';
+    } else {
+      h += '<p class="rp-not">' + (i.durum === 'teklifsiz' ? 'Teklif çıkmadı; panoları idare işletmeye devam ediyor.' : i.durum === 'bozuldu' ? 'Kazananlar bedeli ödeyemedi; ihale bozuldu.' : 'İhale iptal edildi.') + '</p>';
+    }
+    return h + '</div>';
+  }
+  function ihaleBolum(ih, v) {
+    if (!ih) return '';
+    var benIl = Number(v.il_id), pIl = Number((profil() || {}).il_id);
+    var acik = (ih.ihaleler || []).filter(function (i) { return i.durum === 'acik'; }).sort(function (a, b) {
+      var oa = a.kapsam === 'ulke' ? 0 : Number(a.il_id) === benIl || Number(a.il_id) === pIl ? 1 : 2, ob = b.kapsam === 'ulke' ? 0 : Number(b.il_id) === benIl || Number(b.il_id) === pIl ? 1 : 2;
+      return oa - ob || new Date(a.bit) - new Date(b.bit);
+    });
+    var kapali = (ih.ihaleler || []).filter(function (i) { return i.durum !== 'acik'; });
+    var h = '<div class="rp-bolum"><h3>Pano ihaleleri</h3><small>' + acik.length + ' açık ihale</small></div>' +
+      '<p class="rp-not" style="margin:-4px 0 10px">Panoların işletme hakkı ihaleyle kiraya verilir. En yüksek kapalı teklifi veren kazanır; sözleşme boyunca pano fiyatlarını kendisi belirler ve kira gelirini alır.</p>';
+    var ilk = acik.slice(0, 3), kalan = acik.slice(3);
+    h += ilk.map(ihaleKart).join('');
+    if (kalan.length) h += '<details class="rp-detay"><summary>Diğer ' + kalan.length + ' ihale</summary>' + kalan.map(ihaleKart).join('') + '</details>';
+    if (!acik.length) h += '<div class="rp-kart"><p class="rp-not">Şu an açık pano ihalesi yok. İşletmecisi olmayan panolar için ilan kendiliğinden yayımlanır.</p></div>';
+    var isl = ih.isletmelerim || [];
+    if (isl.length) {
+      h += '<div class="rp-bolum"><h3>İşletmelerim</h3><small>' + isl.length + ' sözleşme</small></div>' + isl.map(function (z) {
+        var fy = (z.fiyatlar || []).map(function (x, k) { return '<span class="rp-cip" style="background:var(--panel2)">Pano ' + (k + 1) + ' · ' + tl(x) + '</span>'; }).join('');
+        return '<div class="rp-kart rp-ihale"><div class="rp-ihale-ust"><span class="rp-ih-rozet">' + (new Date(z.bas).getTime() > simdiMs() ? 'BAŞLAYACAK · ' + tarihKisa(z.bas) : 'İŞLETİYORSUN') + '</span><span class="rp-bosluk"></span><span class="rp-geri-sayim">⏳ ' + kalanYaz(z.bit) + '</span></div>' +
+          '<h4>' + esc(z.kapsam === 'ulke' ? 'Ülke geneli dev panolar' : (z.il || '') + ' il panoları') + '</h4><p class="rp-not" style="margin-top:2px">İşletmeci: ' + esc(z.isletmeci_ad) + ' · ' + tarihKisa(z.bas) + ' – ' + tarihKisa(z.bit) + '</p>' +
+          '<div class="rp-istat"><div><b>' + tl(z.bedel).replace(' ₺', '') + '</b><small>₺ ihale bedeli</small></div><div><b>' + tl(z.gelir).replace(' ₺', '') + '</b><small>₺ net kira</small></div><div><b>' + Number(z.dolu || 0) + '/' + z.slot + '</b><small>şu an dolu</small></div></div>' +
+          '<div class="rp-cip-sira">' + fy + '</div><p class="rp-not">Resmî tarife karşılığı: ' + tl(z.devlet_gunluk) + '/gün · ' + Number(z.kiralama || 0) + ' kiralama · ' + tl(z.vergi) + ' vergi ödendi</p>' +
+          '<button type="button" class="btn" data-rp="isletme" data-id="' + Number(z.id) + '">Pano fiyatlarını belirle</button></div>';
+      }).join('');
+    }
+    var tum = ih.isletmeler || [];
+    if (tum.length || kapali.length) {
+      h += '<details class="rp-detay"><summary>Sonuçlanan ihaleler ve işletmeciler</summary>' +
+        (tum.length ? '<div class="rp-kart"><b>Şu anki işletmeciler</b>' + tum.map(function (z) { return '<p class="rp-not">' + esc(z.kapsam === 'ulke' ? 'Ülke geneli' : z.il) + ' · <b>' + esc(z.ad) + '</b> · ' + tl(z.bedel) + ' · ' + tarihKisa(z.bit) + '’e kadar</p>'; }).join('') + '</div>' : '') +
+        kapali.map(ihaleKart).join('') + '</details>';
+    }
+    return h;
+  }
+  function ihaleTeklifModal(id) {
+    var ih = RP.ihale, i = ih && (ih.ihaleler || []).find(function (x) { return Number(x.id) === Number(id); }); if (!i) return;
+    var kay = ih.kaynaklar || [], S = { k: 0, tutar: Number(i.asgari) };
+    var md = modal('<h3 style="font-size:20px;font-weight:800">Kapalı teklif ver</h3><p class="rp-not" style="margin-top:4px">' + esc(ihaleKonu(i)) + ' işletme hakkı · ' + esc(i.idare) + '</p><div id="rpIhIc"></div>');
+    function ciz() {
+      var tem = Math.max(100, Math.round(S.tutar * Number(i.teminat_oran))), k = kay[S.k] || {};
+      document.getElementById('rpIhIc').innerHTML =
+        '<div class="rp-teklif"><div class="rp-teklif-satir"><span>Muhammen bedel</span><b>' + tl(i.muhammen) + '</b></div><div class="rp-teklif-satir"><span>En düşük teklif</span><b>' + tl(i.asgari) + '</b></div>' +
+        '<div class="rp-teklif-satir"><span>İşletme</span><b>' + i.isletme_gun + ' gün · ' + tarihKisa(i.isletme_bas) + '’ten</b></div><div class="rp-teklif-satir"><span>Zarfların açılışı</span><b>' + tarihKisa(i.bit) + '</b></div></div>' +
+        '<div class="rp-alan"><label>Teklifi veren</label>' + kay.map(function (x, n) { return '<button type="button" class="rp-radyo' + (n === S.k ? ' aktif' : '') + '" data-k="' + n + '"><b>' + esc(x.ad) + '</b><small>' + (x.tur === 'sirket' ? 'Şirket kasası' : 'Cüzdan') + ' · bakiye ' + tl(x.kasa) + '</small></button>'; }).join('') + '</div>' +
+        '<div class="rp-alan"><label for="rpIhTutar">Teklif tutarı (₺)</label><input type="number" id="rpIhTutar" inputmode="numeric" min="' + Number(i.asgari) + '" step="500" value="' + S.tutar + '"></div>' +
+        '<div class="rp-secenek" style="margin:-4px 0 14px"><button type="button" data-hizli="asgari">En düşük</button><button type="button" data-hizli="muhammen">Muhammen</button><button type="button" data-hizli="10">+%10</button></div>' +
+        '<div class="rp-teklif"><div class="rp-teklif-satir"><span>Şimdi tahsil edilecek geçici teminat</span><b>' + tl(tem) + '</b></div><div class="rp-teklif-satir"><span>Kazanırsan kapanışta tahsil edilecek kalan</span><b>' + tl(Math.max(0, S.tutar - tem)) + '</b></div>' +
+        '<div class="rp-teklif-toplam"><span>Teklif</span><b>' + tl(S.tutar) + '</b></div></div>' +
+        '<details class="rp-detay" open><summary>İhale şartları</summary><div class="rp-not">' +
+        '<p>• Kapalı teklif usulü: tutarlar zarflar açılana kadar gizlidir. Teklif geri alınamaz ve değiştirilemez.</p>' +
+        '<p>• En yüksek teklif kazanır; eşitlikte önce veren öne geçer.</p>' +
+        '<p>• Kaybedenlerin teminatı iade edilir. Kazanan kalan bedeli ödeyemezse teminatı idareye gelir kaydedilir ve sıradaki teklife geçilir.</p>' +
+        '<p>• İhale yetkilisi (o ilin belediye başkanı; ülke genelinde Cumhurbaşkanı ve Ulaştırma Bakanı) ile yönettiği ya da ortağı olduğu şirketler katılamaz.</p>' +
+        '<p>• Aynı anda en fazla ' + Number(ih.ayar && ih.ayar.en_fazla || 3) + ' pano işletmesi tutabilirsin.</p>' +
+        '<p>• Sözleşme boyunca her panonun günlük fiyatını sen belirlersin; kira geliri sana gelir, her kiralamadan %' + Math.round(Number(ih.ayar && ih.ayar.vergi || 0.1) * 100) + ' ilan ve reklam vergisi idareye ödenir.</p>' +
+        '<p>• Yayındaki eski reklamlar süreleri bitene kadar panoda kalır.</p></div></details>' +
+        '<button class="btn rp-btn-sicak" id="rpIhGonder">Teminatı yatır ve teklifi ver</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>';
+      if (k) {}
+    }
+    ciz();
+    md.addEventListener('input', function (ev) { if (ev.target.id === 'rpIhTutar') { S.tutar = Math.max(0, Math.round(Number(ev.target.value) || 0)); var pos = ev.target.selectionStart; ciz(); var t = document.getElementById('rpIhTutar'); t.focus(); try { t.setSelectionRange(pos, pos); } catch (_) {} } });
+    md.addEventListener('click', async function (ev) {
+      var b = ev.target.closest('[data-k],[data-hizli],#rpIhGonder'); if (!b) return;
+      if (b.dataset.k != null) { S.k = Number(b.dataset.k); ciz(); return; }
+      if (b.dataset.hizli) { S.tutar = b.dataset.hizli === 'asgari' ? Number(i.asgari) : b.dataset.hizli === 'muhammen' ? Number(i.muhammen) : Math.round(S.tutar * 1.1 / 500) * 500; ciz(); return; }
+      if (b.id === 'rpIhGonder') {
+        if (S.tutar < Number(i.asgari)) { toast('En az ' + tl(i.asgari) + ' teklif vermelisin', true); return; }
+        var k = kay[S.k]; b.disabled = true; b.textContent = 'Teklif veriliyor…';
+        try {
+          var r = await API.rpc('pano_ihale_teklif_ver', { p_ihale: Number(i.id), p_tur: k.tur, p_id: k.tur === 'sirket' ? Number(k.id) : null, p_tutar: S.tutar });
+          modalKapat(); toast('Teklifin zarfa kondu · ' + tl(r.teminat) + ' teminat yatırıldı'); reklamPanolariEkrani();
+        } catch (err) { hataGoster(err); b.disabled = false; b.textContent = 'Teminatı yatır ve teklifi ver'; }
+      }
+    });
+  }
+  function isletmeFiyatModal(id) {
+    var z = RP.ihale && (RP.ihale.isletmelerim || []).find(function (x) { return Number(x.id) === Number(id); }); if (!z) return;
+    var F = (z.fiyatlar || []).map(Number);
+    var md = modal('<h3 style="font-size:20px;font-weight:800">Pano fiyatlarını belirle</h3><p class="rp-not" style="margin-top:4px">' + esc(z.kapsam === 'ulke' ? 'Ülke geneli dev panolar' : (z.il || '') + ' il panoları') + ' · resmî tarife ' + tl(z.devlet_gunluk) + '/gün</p><div id="rpIsIc"></div>');
+    function ciz() {
+      document.getElementById('rpIsIc').innerHTML = '<div class="rp-secenek" style="margin:12px 0"><button type="button" data-f="devlet">Resmî tarife</button><button type="button" data-f="0.8">Hepsi %20 ucuz</button><button type="button" data-f="1.2">Hepsi %20 pahalı</button></div>' +
+        F.map(function (x, k) { return '<div class="rp-alan"><label for="rpIsF' + k + '">Pano ' + (k + 1) + ' · günlük fiyat (₺)</label><input type="number" id="rpIsF' + k + '" data-n="' + k + '" inputmode="numeric" min="100" max="5000000" step="50" value="' + Math.round(x) + '"></div>'; }).join('') +
+        '<p class="rp-not">Fiyatlar yeni kiralamalarda geçerli olur. Kira gelirinin %' + Math.round(Number(RP.ihale.ayar && RP.ihale.ayar.vergi || 0.1) * 100) + '’i ilan ve reklam vergisi olarak idareye gider. Uzun süre indirimi ve seçim zammı işletmeci panolarında uygulanmaz.</p>' +
+        '<button class="btn rp-btn-sicak" id="rpIsKaydet">Fiyatları kaydet</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>';
+    }
+    ciz();
+    md.addEventListener('input', function (ev) { var n = ev.target.dataset && ev.target.dataset.n; if (n != null) F[Number(n)] = Number(ev.target.value) || 0; });
+    md.addEventListener('click', async function (ev) {
+      var b = ev.target.closest('[data-f],#rpIsKaydet'); if (!b) return;
+      if (b.dataset.f) { F = F.map(function (x) { return b.dataset.f === 'devlet' ? Math.round(Number(z.devlet_gunluk) / 50) * 50 : Math.max(100, Math.round(x * Number(b.dataset.f) / 50) * 50); }); ciz(); return; }
+      b.disabled = true;
+      try { await API.rpc('pano_isletme_fiyat', { p_isletme: Number(z.id), p_fiyatlar: F.map(function (x) { return Math.round(x); }) }); modalKapat(); toast('Pano fiyatları güncellendi'); RP.vitrinT = 0; reklamPanolariEkrani(); }
+      catch (err) { hataGoster(err); b.disabled = false; }
+    });
   }
   function durumYaz(y) {
     if (y.durum === 'aktif') return new Date(y.bas).getTime() > simdiMs() ? '<span class="rp-durum sirada">SIRADA · ' + tarihKisa(y.bas) + '</span>' : '<span class="rp-durum yayinda">YAYINDA · ' + kalanYaz(y.bit) + '</span>';
@@ -818,7 +962,8 @@
     var el = document.getElementById('rpHaritaBilgi'); if (!el) return;
     el.innerHTML = '<div class="rp-teklif" style="margin-bottom:0"><div class="rp-teklif-satir"><span>İl</span><b>' + esc(b.ad) + '</b></div>' +
       '<div class="rp-teklif-satir"><span>Panolar</span><b>' + (f.dolu || 0) + ' / ' + (f.slot || 0) + ' dolu</b></div>' +
-      '<div class="rp-teklif-satir"><span>Günlük fiyat</span><b>' + tl(f.gunluk) + (Number(f.belediye_carpan) !== 1 ? ' · belediye tarifesi ' + String(f.belediye_carpan).replace('.', ',') + ' kat' : '') + '</b></div>' +
+      '<div class="rp-teklif-satir"><span>İşleten</span><b>' + (f.isletme ? esc(f.isletme.ad) + ' (ihaleyle)' : esc(b.ad) + ' Belediyesi') + '</b></div>' +
+      '<div class="rp-teklif-satir"><span>Günlük fiyat</span><b>' + (f.isletme ? tl(f.gunluk) + '’den' : tl(f.gunluk)) + (Number(f.belediye_carpan) !== 1 ? ' · belediye tarifesi ' + String(f.belediye_carpan).replace('.', ',') + ' kat' : '') + '</b></div>' +
       '<div class="rp-teklif-satir"><span>Yayın başlangıcı</span><b>' + (hemen ? 'Hemen' : tarihKisa(b.bos.bos)) + '</b></div>' +
       '<div class="rp-eylem-sira"><button type="button" class="btn" data-rp="kirala" data-kapsam="il" data-il="' + Number(id) + '">Bu ilde kirala</button><button type="button" class="btn ikinci" data-rp="ilgor" data-il="' + Number(id) + '">Panolarını gör</button></div></div>';
   }
@@ -846,8 +991,10 @@
     if (a === 'yayin') return yayinModal(id);
     if (a === 'kirala') {
       var kap = b.dataset.kapsam || 'il', il = Number(b.dataset.il) || Number(v.il_id);
-      return kiralaModal({ kapsam: kap, il: il });
+      return kiralaModal({ kapsam: kap, il: il, slot: Number(b.dataset.slot) || null });
     }
+    if (a === 'ihale') return ihaleTeklifModal(id);
+    if (a === 'isletme') return isletmeFiyatModal(id);
     if (a === 'tekrar') { var af = (m.afisler || []).find(function (x) { return Number(x.id) === Number(b.dataset.afis); }); return kiralaModal({ afis: af, kapsam: 'il', il: Number(v.il_id) }); }
     if (a === 'il') return haritaBilgi(m, id);
     if (a === 'ilgor') { EKR.il = Number(b.dataset.il); return reklamPanolariEkrani(); }
@@ -951,7 +1098,7 @@
       if (await onayla('Önce bir afiş tasarla', 'Panoya asmak için hazır bir afişin olmalı. Afiş Stüdyosu’nda 12 hazır şablonla bir dakikada hazırlayabilirsin.', 'Afiş Stüdyosu’nu aç')) ekranAc(function () { return afisStudyosu(null); });
       return;
     }
-    var S = { afis: o.afis || afisler[0], kapsam: o.kapsam === 'ulke' ? 'ulke' : 'il', il: Number(o.il) || (profil() && profil().il_id) || 34, gun: 3, odeme: 'kasa', teklif: null, istek: 0 };
+    var S = { afis: o.afis || afisler[0], kapsam: o.kapsam === 'ulke' ? 'ulke' : 'il', il: Number(o.il) || (profil() && profil().il_id) || 34, gun: 3, odeme: 'kasa', teklif: null, istek: 0, slot: Number(o.slot) || null };
     var md = modal('<h3 style="font-size:20px;font-weight:800">Panoyu kirala</h3><div id="rpKiraIc"></div>');
     var kaynakBul = function () { return (m.kaynaklar || []).find(function (k) { return k.tur === S.afis.sahip_tur && (S.afis.sahip_tur === 'oyuncu' || Number(k.id) === Number(S.afis.sahip_id)); }); };
     var ben = (m.kaynaklar || [])[0] || { kasa: 0 };
@@ -964,6 +1111,7 @@
         (afisler.length > 1 ? '<div class="rp-alan"><label for="rpKiraAfis">Afiş</label><select id="rpKiraAfis">' + afisler.map(function (f) { return '<option value="' + Number(f.id) + '"' + (Number(f.id) === Number(S.afis.id) ? ' selected' : '') + '>' + esc(f.ad) + '</option>'; }).join('') + '</select></div>' : '') +
         '<div class="rp-alan"><label>Nerede yayınlansın?</label><div class="rp-secenek"><button type="button" data-kap="il" class="' + (S.kapsam === 'il' ? 'aktif' : '') + '">📍 İl panosu</button><button type="button" data-kap="ulke" class="' + (S.kapsam === 'ulke' ? 'aktif' : '') + '">🇹🇷 Ülke geneli</button></div></div>' +
         (S.kapsam === 'il' ? '<div class="rp-alan"><label for="rpKiraIl">İl</label><select id="rpKiraIl">' + iller.map(function (i) { return '<option value="' + Number(i.id) + '"' + (Number(i.id) === Number(S.il) ? ' selected' : '') + '>' + esc(i.ad) + ' · ' + tl(i.fiyat.gunluk) + '/gün · ' + (i.fiyat.slot - (i.fiyat.dolu || 0)) + ' boş</option>'; }).join('') + '</select></div>' : '') +
+        '<div id="rpSlotlar"></div>' +
         '<div class="rp-alan"><label>Süre</label><div class="rp-secenek">' + gunler.map(function (g) { return '<button type="button" data-gun="' + g + '" class="' + (S.gun === g ? 'aktif' : '') + '">' + g + ' gün</button>'; }).join('') + '</div></div>' +
         '<div class="rp-alan"><label>Ödeme</label>' +
         (kasaOk ? '<button type="button" class="rp-radyo' + (S.odeme === 'kasa' ? ' aktif' : '') + '" data-ode="kasa"><b>' + esc(k.ad) + ' kasası</b><small>Bakiye ' + tl(k.kasa) + '</small></button>' : '') +
@@ -978,11 +1126,17 @@
       var no = ++S.istek, el = document.getElementById('rpTeklif'), btn = document.getElementById('rpKiraOde');
       if (btn) btn.disabled = true;
       try {
-        var t = await API.rpc('pano_teklif', { p_kapsam: S.kapsam, p_il: S.kapsam === 'il' ? S.il : null, p_gun: S.gun });
+        var t = await API.rpc('pano_teklif_v2', { p_kapsam: S.kapsam, p_il: S.kapsam === 'il' ? S.il : null, p_gun: S.gun, p_slot: S.slot });
         if (no !== S.istek || !document.getElementById('rpTeklif')) return;
         S.teklif = t;
+        var sl = document.getElementById('rpSlotlar');
+        if (sl) sl.innerHTML = (t.slotlar || []).length > 1 ? '<div class="rp-alan"><label>Pano</label><div class="rp-pano-sec">' + t.slotlar.map(function (x) {
+          var hemen = new Date(x.bos).getTime() <= simdiMs() + 60000;
+          return '<button type="button" data-slot="' + Number(x.slot) + '" class="' + (Number(x.slot) === Number(t.slot) ? 'aktif' : '') + '"><b>Pano ' + Number(x.slot) + '</b><span>' + tl(x.fiyat) + '/gün</span><small>' + (hemen ? 'boş' : tarihKisa(x.bos) + '’te boşalır') + '</small></button>';
+        }).join('') + '</div></div>' : '';
         var siyasi = S.afis.sahip_tur === 'parti' || S.afis.sahip_tur === 'oyuncu';
-        el.innerHTML = '<div class="rp-teklif-satir"><span>Günlük fiyat</span><b>' + tl(t.gunluk) + '</b></div>' +
+        el.innerHTML = (t.isletme ? '<div class="rp-teklif-satir"><span>İşletmeci</span><b>' + esc(t.isletme.ad) + '</b></div>' : '') +
+          '<div class="rp-teklif-satir"><span>Günlük fiyat · Pano ' + Number(t.slot) + '</span><b>' + tl(t.gunluk) + '</b></div>' +
           (t.indirim > 0 ? '<div class="rp-teklif-satir"><span>Uzun süre indirimi</span><b style="color:#5BE0A7">%' + Math.round(t.indirim * 100) + '</b></div>' : '') +
           '<div class="rp-teklif-satir"><span>Başlangıç</span><b>' + (t.hemen ? 'Hemen' : tarihKisa(t.bas) + ' (sırada)') + '</b></div>' +
           '<div class="rp-teklif-satir"><span>Bitiş</span><b>' + tarihKisa(t.bit) + '</b></div>' +
@@ -991,24 +1145,25 @@
           (t.fiyat && t.fiyat.sezon ? '<p class="rp-not uyari">🗳️ Seçim sezonu: fiyatlar ' + String(t.fiyat.sezon_carpan).replace('.', ',') + ' kat.</p>' : '') +
           (t.fiyat && t.fiyat.dolu > 0 ? '<p class="rp-not">Panoların ' + t.fiyat.dolu + '/' + t.fiyat.slot + '’i dolu; doluluk fiyatı artırır.</p>' : '') +
           (siyasi && t.yasak_uyari ? '<p class="rp-not">Oy verme saatlerinde siyasi reklamlar gösterilmez, süre işlemeye devam eder.</p>' : '') +
-          (t.sira_dolu ? '<p class="rp-not uyari">Bu bölgedeki panolar uzun süre dolu. Başka bir il seç.</p>' : '');
+          (t.neden ? '<p class="rp-not uyari">' + esc(t.neden) + '</p>' : '');
         if (btn) { btn.disabled = !!t.sira_dolu; btn.textContent = 'Öde ve yayınla · ' + tl(t.toplam); }
       } catch (err) { if (no === S.istek && el) el.innerHTML = '<p class="rp-not uyari">' + esc(typeof hataCevir === 'function' ? hataCevir(err.message) : err.message) + '</p>'; }
     }
     md.addEventListener('change', function (ev) {
-      if (ev.target.id === 'rpKiraIl') { S.il = Number(ev.target.value); teklifAl(); }
+      if (ev.target.id === 'rpKiraIl') { S.il = Number(ev.target.value); S.slot = null; teklifAl(); }
       if (ev.target.id === 'rpKiraAfis') { S.afis = afisler.find(function (f) { return Number(f.id) === Number(ev.target.value); }) || S.afis; ciz(); }
     });
     md.addEventListener('click', async function (ev) {
-      var b = ev.target.closest('[data-kap],[data-gun],[data-ode],#rpKiraOde'); if (!b) return;
-      if (b.dataset.kap) { S.kapsam = b.dataset.kap; ciz(); return; }
+      var b = ev.target.closest('[data-kap],[data-gun],[data-ode],[data-slot],#rpKiraOde'); if (!b) return;
+      if (b.dataset.kap) { S.kapsam = b.dataset.kap; S.slot = null; ciz(); return; }
+      if (b.dataset.slot) { S.slot = Number(b.dataset.slot); teklifAl(); return; }
       if (b.dataset.gun) { S.gun = Number(b.dataset.gun); md.querySelectorAll('[data-gun]').forEach(function (x) { x.classList.toggle('aktif', x === b); }); teklifAl(); return; }
       if (b.dataset.ode) { S.odeme = b.dataset.ode; md.querySelectorAll('[data-ode]').forEach(function (x) { x.classList.toggle('aktif', x === b); }); return; }
       if (b.id === 'rpKiraOde') {
         if (!S.teklif) return;
         b.disabled = true; b.textContent = 'Ödeme yapılıyor…';
         try {
-          var r = await API.rpc('pano_kirala', { p_afis: Number(S.afis.id), p_kapsam: S.kapsam, p_il: S.kapsam === 'il' ? S.il : null, p_gun: S.gun, p_odeme_tur: S.odeme === 'oyuncu' ? 'oyuncu' : 'kasa', p_beklenen: Number(S.teklif.toplam) });
+          var r = await API.rpc('pano_kirala_v2', { p_afis: Number(S.afis.id), p_kapsam: S.kapsam, p_il: S.kapsam === 'il' ? S.il : null, p_gun: S.gun, p_odeme_tur: S.odeme === 'oyuncu' ? 'oyuncu' : 'kasa', p_beklenen: Number(S.teklif.toplam), p_slot: Number(S.teklif.slot) || null });
           modalKapat(); RP.vitrinT = 0;
           kutlama(S.afis, r, (kaynakBul() || {}).ad);
           try { if (typeof durumYenile === 'function') durumYenile(); } catch (_) {}
