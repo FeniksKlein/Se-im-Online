@@ -96,6 +96,22 @@ if(!document.getElementById(hhStyleId)){
  document.head.appendChild(style);
 }
 
+// Eylem formlarının altındaki bildiri kartları telefon ekranında taşmaz.
+if(!document.getElementById('hh-kapsamli-bildiri-css')){
+ const s=document.createElement('style');s.id='hh-kapsamli-bildiri-css';
+ s.textContent=`
+ #hhOrgUI .hhBildirOnizleme {margin:14px 0;background:#172140;border:1px solid #4c608d;border-radius:14px;padding:14px}
+ #hhOrgUI .hhBildirOnizleme p {margin:7px 0;overflow-wrap:anywhere;white-space:pre-wrap}
+ #hhOrgUI .hhDetayKart {margin:12px 0;padding:12px;background:#172140;border:1px solid #48577f;border-radius:12px}
+ #hhOrgUI .hhDetayKart summary {cursor:pointer;padding:6px 0;line-height:1.5;overflow-wrap:anywhere}
+ #hhOrgUI .hhDetayKart p {line-height:1.5;overflow-wrap:anywhere}
+ #hhOrgUI .hhOrnekKonular {display:flex;flex-wrap:wrap;gap:8px}
+ #hhOrgUI .hhOrnekKonular button {font-size:13px;max-width:100%;white-space:normal}
+ #hhOrgUI #hhBildiriSayac {color:#c5cbed}
+ `;
+ document.head.appendChild(s);
+}
+
 const oldIskelet=iskelet;
 iskelet=function(baslik,govde,opt){
  if(baslik==='Halk Hareketleri'&&!String(govde).includes('id="hhOrgAnchor"'))
@@ -112,6 +128,11 @@ sokakHareketleriEkrani=async function(){
  catch(err){toast(hataCevir(err.message||String(err)),true);return;}
  const esc=v=>e(String(v??'')),trNum=v=>Number(v||0).toLocaleString('tr-TR');
  const sources=d.baslatma_kaynaklari||[], targets=d.davet_hedefleri||[];
+ // Bildirili eylemler için eklenen ayrı, kalıcı ve herkese açık eylem bilgileri.
+ let hhDetaylar=[];
+ try{const kayitlar=await API.rpc('sokak_eylem_detay_panel');if(Array.isArray(kayitlar))hhDetaylar=kayitlar;}
+ catch(ex){console.warn('Eylem bildiri paneli',ex);}
+
  const active=x=>d.aktif&&x.durum==='aktif'&&Date.parse(x.bitis)>Date.now();
  const createOptions=sources.map(o=>'<option value="'+esc(o.tur)+':'+Number(o.id)+'">'+esc(o.tur==='parti'?'Parti':'Dernek')+' · '+esc(o.ad)+'</option>').join('');
  const targetOptions=targets.map(o=>'<option value="'+esc(o.tur)+':'+Number(o.id)+'">'+esc(o.tur==='parti'?'Parti':'Dernek')+' · '+esc(o.ad)+'</option>').join('');
@@ -119,12 +140,47 @@ sokakHareketleriEkrani=async function(){
   '<p>Parti genel başkanları ve dernek başkanları, kendi kuruluşları adına eylem açabilir. İlde aktif oyuncu sayısı ve memnuniyetsizlik ön şartı yoktur. Eylem başladıktan sonra diğer parti ve dernekler davet edilebilir; daveti kabul eden kuruluş para yatırmadan ortak destekçi olur.</p>'+
   '<p><small>Hesabın en az 7 günlük olmalı. Kuruluş kasasından '+trNum(d.ayar?.baslatma_bedeli)+' TL alınır. İl, kuruluş ve ülke çapındaki bekleme/sayı sınırları devam eder.</small></p></div>';
  if(d.aktif&&sources.length){
-  html+='<div class="kart"><h3>Yeni eylem başlat</h3><form id="hhOrgCreate">'+
-   '<label>Eylemi başlatan parti / dernek</label><select name="kaynak" required>'+createOptions+'</select>'+
-   '<label>İl</label><select name="il" required>'+(d.iller||[]).map(i=>'<option value="'+Number(i.id)+'">'+esc(i.ad)+'</option>').join('')+'</select>'+
-   '<label>Talep</label><select name="tur"><option value="genel">Genel / siyasi ve toplumsal bir talep</option><option value="hizmet">İl hizmet memnuniyeti +5</option><option value="issizlik">İşsizlik −0,5</option><option value="vergi">Vergi −1</option></select>'+
-   '<label>Eylemin gerekçesi ve talebi</label><textarea name="gerekce" minlength="15" maxlength="400" required placeholder="Hangi karara veya soruna karşı eylem düzenleniyor?"></textarea>'+
-   '<button class="btn altin">Kuruluş kasasından '+trNum(d.ayar?.baslatma_bedeli)+' TL öde ve başlat</button></form></div>';
+  html+='<div class="kart"><h3>📢 Yeni halk hareketi düzenle</h3>'+
+   '<p>Bir eylemin adı, dayandığı somut olay, muhatabı, talepleri ve halka yayımlanacak resmi bildirisi açıkça belirtilir. Tüm bilgiler eylemin kaydında kalır.</p>'+
+   '<form id="hhOrgCreate">'+
+   '<label>Eylemi düzenleyen parti veya dernek</label><select name="kaynak" required>'+createOptions+'</select>'+
+   '<label>Eylemin düzenleneceği il</label><select name="il" required>'+(d.iller||[]).map(i=>'<option value="'+Number(i.id)+'">'+esc(i.ad)+'</option>').join('')+'</select>'+
+   '<label>Eylemin başlığı</label><input name="baslik" minlength="8" maxlength="90" required placeholder="Örn. Hayat Pahalılığına Karşı Halk Buluşması">'+
+   '<label>Eylemin başlatılma sebebi</label><select name="sebep" required>'+
+   ['Ekonomik kriz','Zam ve vergiler','Enflasyon ve hayat pahalılığı','İşsizlik ve istihdam','Hükümet kararı','Bakan atanmaması','Hak ve özgürlükler','Adalet ve yargı','Yolsuzluk iddiaları','Belediye hizmetleri','Çevre ve doğa','Eğitim ve sağlık','Demokrasi ve seçimler','Diğer toplumsal mesele'].map(v=>'<option>'+esc(v)+'</option>').join('')+'</select>'+
+   '<label>Eylemin muhatabı / taleplerin yöneltildiği makam</label><select name="muhatap" required>'+
+   ['Cumhurbaşkanlığı','Hükümet','İçişleri Bakanlığı','İlgili Bakanlık','TBMM','Belediye','Kamu Kurumu','İşverenler','Kamuoyu'].map(v=>'<option>'+esc(v)+'</option>').join('')+'</select>'+
+   '<label>Hangi karar veya olay eyleme sebep oldu?</label><textarea name="olay" minlength="12" maxlength="200" required placeholder="Somut karar, zam, atama, ekonomik gelişme veya yaşanan olayı açıkla."></textarea>'+
+   '<label>Hükümetten / muhataptan somut talepler</label><textarea name="talepler" minlength="20" maxlength="500" required placeholder="Örn. Zam kararının geri alınması, yeni bir çözüm takvimi açıklanması, kamuoyuna hesap verilmesi."></textarea>'+
+   '<label>Oyun içi talep ve etkisi</label><select name="tur"><option value="genel">Genel siyasi / toplumsal talep</option><option value="hizmet">İl hizmet memnuniyeti +5</option><option value="issizlik">İşsizlik −0,5</option><option value="vergi">Vergi −1</option></select>'+
+   '<label>Eylem sloganı (isteğe bağlı)</label><input name="slogan" maxlength="90" placeholder="Örn. Geçim İçin, Adalet İçin!">'+
+   '<label>Halka açıklanacak eylem bildirisi</label><textarea name="bildiri" minlength="60" maxlength="600" required placeholder="Kuruluşumuz adına halkımıza sesleniyoruz... Neden toplandığımızı ve taleplerimizi açıklayın."></textarea>'+
+   '<small id="hhBildiriSayac">0 / 600 karakter · Bildiri kamuoyuna yayımlanır.</small>'+
+   '<div class="kart hhBildirOnizleme" aria-live="polite"><b>📰 Kamuoyuna duyuru önizlemesi</b><div id="hhBildiriOnizleme"><p>Başlık, sebep, talepler ve bildiri yazdıkça burada görünecek.</p></div></div>'+
+   '<button type="submit" class="btn altin">Kuruluş kasasından '+trNum(d.ayar?.baslatma_bedeli)+' TL öde, eylemi ve bildiriyi yayımla</button></form>'+
+   '<details><summary><b>💡 Eylem konusu için örnek taslaklar</b></summary>'+
+   '<p>Hazır taslaklar sadece örnektir. Oyundaki gerçek karara veya olaya göre değiştirmelisin.</p>'+
+   '<div class="hhOrnekKonular"><button type="button" class="btn" data-hh-ornek="zam">Zam ve vergi</button> '+
+   '<button type="button" class="btn" data-hh-ornek="bakan">Eksik kabine</button> '+
+   '<button type="button" class="btn" data-hh-ornek="issizlik">İşsizlik</button> '+
+   '<button type="button" class="btn" data-hh-ornek="belediye">Belediye hizmetleri</button> '+
+   '<button type="button" class="btn" data-hh-ornek="adalet">Adalet talebi</button></div></details></div>';
+
+ }
+ // Bildiri ve talepler yalnızca oluşturanın değil, diğer partilerin ve oyuncuların da görebileceği açıklıklardır.
+ if(hhDetaylar.length){
+  html+='<div class="kart"><h3>📰 Eylem bildirileri, gerekçeleri ve talepler</h3>'+
+   '<p>Kuruluşların yayımladığı bildirileri okuyabilir, hangi soruna tepki verdiklerini ve ne istediklerini görebilirsin.</p>';
+  for(const x of hhDetaylar.slice(0,15)){
+   html+='<details class="hhDetayKart"><summary><b>'+esc(x.baslik)+'</b></summary>'+
+    '<p><b>Başlatma sebebi:</b> '+esc(x.sebep)+'</p>'+
+    '<p><b>Muhatap:</b> '+esc(x.muhatap)+'</p>'+
+    '<p><b>Dayanak olan karar / olay:</b> '+esc(x.olay)+'</p>'+
+    '<p><b>Somut talepler:</b> '+esc(x.talepler).replaceAll('\\n','<br>')+'</p>'+
+    (x.slogan?'<p><b>Slogan:</b> “'+esc(x.slogan)+'”</p>':'')+
+    '<div class="kart"><b>📜 Resmî eylem bildirisi</b><p>'+esc(x.bildiri).replaceAll('\\n','<br>')+'</p></div></details>';
+  }
+  html+='</div>';
  }
  if((d.davetler||[]).length){
   html+='<div class="kart"><h3>📨 Kuruluşlarına gelen eylem davetleri</h3>';
@@ -166,13 +222,45 @@ sokakHareketleriEkrani=async function(){
   catch(ex){toast(hataCevir(ex.message||String(ex)),true);btn.disabled=false;}
  }
  const form=document.getElementById('hhOrgCreate');
- form?.addEventListener('submit',ev=>{
-  ev.preventDefault();const a=new FormData(form),[tur,id]=String(a.get('kaynak')).split(':');
-  send(form.querySelector('button'),'sokak_org_baslat',{
-   p_il:Number(a.get('il')),p_gerekce:String(a.get('gerekce')),p_tur:String(a.get('tur')),
-   p_kaynak:tur,p_kaynak_id:Number(id)
+ const ornekler={
+  zam:{baslik:'Zam ve Vergi Kararlarına Karşı Halk Buluşması',sebep:'Zam ve vergiler',muhatap:'Hükümet',olay:'Oyun içinde duyurulan zam ve vergi artışlarının hane bütçeleri üzerindeki etkilerine itiraz ediyoruz.',talepler:'Zam kararlarının yeniden değerlendirilmesini, geçim yükünün hafifletilmesini ve kamuoyuna açıklama yapılmasını talep ediyoruz.',slogan:'Geçim İçin Birlikteyiz!',bildiri:'Kamuoyuna duyurulur: Alınan zam ve vergi kararları halkın geçimini zorlaştırmaktadır. Barışçıl gösterimizle kararların gözden geçirilmesini, çözüm takvimi açıklanmasını ve vatandaşların sesinin duyulmasını istiyoruz.'},
+  bakan:{baslik:'Kabine Atamaları ve Yönetim Sorumluluğu Eylemi',sebep:'Bakan atanmaması',muhatap:'Cumhurbaşkanlığı',olay:'Oyun yönetimindeki boş bakanlıkların kamu hizmetlerinde belirsizlik yaratmasına dikkat çekiyoruz.',talepler:'Boş bakanlıklara atama yapılmasını, görev dağılımının açıklanmasını ve hizmetlerin aksatılmamasını talep ediyoruz.',slogan:'Yönetimde Belirsizliğe Son!',bildiri:'Halkımıza saygıyla duyuruyoruz: Kamu yönetimindeki boş makamların ve belirsizliğin giderilmesini istiyoruz. Barışçıl eylemimiz, sorumlu makamlardan atama takvimi ve şeffaf bilgilendirme beklemektedir.'},
+  issizlik:{baslik:'İş ve Geçim Hakkı İçin Dayanışma Eylemi',sebep:'İşsizlik ve istihdam',muhatap:'İlgili Bakanlık',olay:'Oyun ekonomisinde istihdam olanaklarının yetersizliğine ve işsizlik riskine tepki gösteriyoruz.',talepler:'İstihdamı artıracak tedbirlerin açıklanmasını, yeni iş alanları oluşturulmasını ve ekonomik destek planı hazırlanmasını istiyoruz.',slogan:'İş, Emek, Güvence!',bildiri:'Emek ve geçim mücadelesi için bir araya geliyoruz. İşsizliği azaltacak gerçekçi adımlar, şeffaf ekonomik hedefler ve çalışanların haklarını koruyacak çözümler talep ediyoruz. Eylemimiz barışçıldır.'},
+  belediye:{baslik:'Yaşanabilir Kent ve Hizmet Hakkı Buluşması',sebep:'Belediye hizmetleri',muhatap:'Belediye',olay:'Oyun ilindeki belediye hizmetlerinin aksaması ve vatandaş beklentilerinin karşılanamamasına itiraz ediyoruz.',talepler:'Hizmetlerin iyileştirilmesini, harcama planının açıklanmasını ve eksik hizmetler için somut bir takvim hazırlanmasını istiyoruz.',slogan:'Kent Bizim, Söz Bizim!',bildiri:'Kent sakinleri olarak daha düzenli ve ulaşılabilir belediye hizmetleri istiyoruz. Belediye yönetimini şeffaf açıklama yapmaya, aksayan hizmetleri gidermeye ve çözüm takvimini halkla paylaşmaya çağırıyoruz.'},
+  adalet:{baslik:'Hukukun Üstünlüğü ve Adalet İçin Buluşma',sebep:'Adalet ve yargı',muhatap:'Kamu Kurumu',olay:'Oyun içindeki bir kamu veya yargı kararının adalet ve şeffaflık bakımından tartışma yaratmasına itiraz ediyoruz.',talepler:'Kararların gerekçelerinin açıklanmasını, tarafsız inceleme yapılmasını ve hukuka uygun çözüm üretilmesini talep ediyoruz.',slogan:'Herkes İçin Adalet!',bildiri:'Adalet ve hukuk güvenliği bütün oyuncular için gereklidir. Barışçıl eylemimizle tartışmalı kararların gerekçelendirilmesini, bağımsız denetimi ve hak arama yollarının açık tutulmasını talep ediyoruz.'}
+ };
+ if(form){
+  const preview=form.querySelector('#hhBildiriOnizleme'),counter=form.querySelector('#hhBildiriSayac');
+  const update=()=>{
+   const a=new FormData(form),val=k=>String(a.get(k)||'').trim();
+   const parts=[
+    ['Başlık',val('baslik')],['Sebep',val('sebep')],['Muhatap',val('muhatap')],
+    ['Dayanak olan olay',val('olay')],['Talepler',val('talepler')],
+    ['Slogan',val('slogan')],['Resmî bildiri',val('bildiri')]
+   ];
+   preview.innerHTML=parts.map(([ad,v])=>'<p><b>'+esc(ad)+':</b> '+esc(v||'Henüz girilmedi').replaceAll('\\n','<br>')+'</p>').join('');
+   counter.textContent=val('bildiri').length+' / 600 karakter · Bildiri kamuoyuna yayımlanır.';
+  };
+  form.addEventListener('input',update);
+  form.addEventListener('change',update);
+  document.querySelectorAll('[data-hh-ornek]').forEach(btn=>btn.addEventListener('click',()=>{
+   const t=ornekler[btn.dataset.hhOrnek];if(!t)return;
+   Object.entries(t).forEach(([k,v])=>{const field=form.elements.namedItem(k);if(field)field.value=v;});
+   update();form.querySelector('[name=baslik]')?.scrollIntoView({behavior:'smooth',block:'center'});
+  }));
+  update();
+  form.addEventListener('submit',ev=>{
+   ev.preventDefault();
+   if(!form.reportValidity())return;
+   const a=new FormData(form),[tur,id]=String(a.get('kaynak')).split(':');
+   const val=k=>String(a.get(k)||'').trim();
+   send(form.querySelector('button[type=submit]'),'sokak_org_baslat_kapsamli',{
+    p_il:Number(a.get('il')),p_tur:val('tur'),p_kaynak:tur,p_kaynak_id:Number(id),
+    p_baslik:val('baslik'),p_sebep:val('sebep'),p_muhatap:val('muhatap'),
+    p_olay:val('olay'),p_talepler:val('talepler'),p_slogan:val('slogan'),p_bildiri:val('bildiri')
+   });
   });
- });
+ }
  document.querySelectorAll('.hhOrgInvite').forEach(form=>form.addEventListener('submit',ev=>{
   ev.preventDefault();const [tur,id]=String(new FormData(form).get('hedef')).split(':');
   send(form.querySelector('button'),'sokak_davet_gonder',{p_eylem:Number(form.dataset.id),p_hedef_tur:tur,p_hedef_id:Number(id)});
