@@ -724,6 +724,6 @@
 (function(){
  if(document.getElementById('icisleri-ek-loader'))return;
  var s=document.createElement('script');s.id='icisleri-ek-loader';s.async=false;
- s.src='./icisleri_ek.js?v=20261107-2';
+ s.src='./icisleri_ek.js?v=20261107-3';
  (document.body||document.head).appendChild(s);
 })();
