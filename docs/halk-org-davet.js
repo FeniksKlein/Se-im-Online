@@ -116,9 +116,9 @@ const oldIskelet=iskelet;
 iskelet=function(baslik,govde,opt){
  // Partiler ekraninin eski / sade menulerinde kaybolan eylem girisini gorunur tut.
  if(baslik==='Partiler'&&!String(govde).includes('id="so-halk-quick-link"')){
-  govde=`<div id="so-halk-quick-link" style="margin:12px 0 16px">
-   <button type="button" onclick="sokakHareketleriEkrani()" aria-label="Sokak Eylemleri ekranini ac"
-    style="display:flex;align-items:center;gap:14px;width:100%;min-height:76px;text-align:left;padding:15px 17px;border:1px solid #ce9b65;border-radius:17px;color:#fff;background:linear-gradient(120deg,#51335c,#222d57);box-shadow:0 8px 22px #080e222e;cursor:pointer">
+  govde=`<div id="so-halk-quick-link" style="margin:12px 0 16px;position:relative;z-index:20;pointer-events:auto">
+   <button type="button" data-so-halk-open="1" aria-label="Sokak Eylemleri ekranini ac"
+    style="display:flex;align-items:center;gap:14px;width:100%;min-height:76px;text-align:left;padding:15px 17px;border:1px solid #ce9b65;border-radius:17px;color:#fff;background:linear-gradient(120deg,#51335c,#222d57);box-shadow:0 8px 22px #080e222e;cursor:pointer;position:relative;z-index:21;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent">
     <span aria-hidden="true" style="font-size:26px;line-height:1">📣</span>
     <span style="display:flex;flex:1;flex-direction:column;gap:4px;min-width:0">
      <strong style="font-size:17px;line-height:1.3;color:#fff">Sokak Eylemleri</strong>
@@ -131,6 +131,25 @@ iskelet=function(baslik,govde,opt){
   govde='<div id="hhOrgAnchor"></div>'+govde;
  return oldIskelet(baslik,govde,opt);
 };
+// Safari/WebView: Inline onclick kullanma; sayfa her cizildiginde degisen dugmeye
+// sabit ve guvenli olay dinleyicisi ile gercek ekrani ac.
+document.addEventListener('click',function(ev){
+ const target=ev.target;
+ if(!target||typeof target.closest!=='function')return;
+ const btn=target.closest('#so-halk-quick-link button[data-so-halk-open]');
+ if(!btn)return;
+ ev.preventDefault();
+ ev.stopPropagation();
+ if(btn.disabled)return;
+ btn.disabled=true;
+ const fail=function(err){
+  console.error('Sokak Eylemleri acilamadi',err);
+  if(typeof toast==='function')toast('Sokak Eylemleri acilamadi: '+(typeof hataCevir==='function'?hataCevir(err?.message||String(err)):String(err)),true);
+ };
+ try{
+  Promise.resolve(sokakHareketleriEkrani()).catch(fail).finally(function(){btn.disabled=false;});
+ }catch(err){btn.disabled=false;fail(err);}
+},true);
 const prev=sokakHareketleriEkrani;
 sokakHareketleriEkrani=async function(){
  await prev();
