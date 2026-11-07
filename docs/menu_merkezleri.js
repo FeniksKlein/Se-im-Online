@@ -1166,3 +1166,13 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", baslat, {once:true});
   else baslat();
 })();
+
+/* İçişleri Komuta Merkezi: ekrana göre güvenli tekil yükleyici. */
+(function(){
+  if (document.getElementById('icisleri-komuta-loader')) return;
+  var s=document.createElement('script');
+  s.id='icisleri-komuta-loader';
+  s.src='./icisleri_komuta.js?v=20261107-1';
+  s.async=false;
+  (document.body||document.head).appendChild(s);
+})();
