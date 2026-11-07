@@ -347,3 +347,287 @@ sokakHareketleriEkrani=async function(){
   });
  };
 })();
+
+
+/* 2026-11-07 · HALK HAREKETLERI KOMUTA MERKEZI · okunurluk ve tum roller */
+(function(){
+'use strict';
+if(typeof sokakHareketleriEkrani!=='function' || typeof iskelet!=='function')return;
+var cssId='so-hh-command-style-v3';
+if(!document.getElementById(cssId)){
+ var st=document.createElement('style');st.id=cssId;
+ st.textContent=[
+ 'body.so-hh-page{--hh-bg:#101831;--hh-panel:#192340;--hh-line:#43547d;--hh-text:#f4f7ff;--hh-muted:#c5cfe7;color:var(--hh-text)}',
+ 'body.so-hh-page :is(.kart,details,section,form){min-width:0;box-sizing:border-box;overflow-wrap:anywhere}',
+ 'body.so-hh-page .kart form{display:flex!important;flex-direction:column!important;gap:10px!important;align-items:stretch!important}',
+ 'body.so-hh-page .kart form>label{display:block!important;color:#ecf1ff!important;font-size:15px!important;font-weight:650!important;line-height:1.5!important;white-space:normal!important;margin:6px 0 0!important;max-width:100%!important}',
+ 'body.so-hh-page :is(select,input:not([type=checkbox]):not([type=radio]),textarea){display:block!important;position:static!important;box-sizing:border-box!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:48px!important;margin:0!important;padding:12px 14px!important;font:500 16px/1.4 -apple-system,BlinkMacSystemFont,system-ui,sans-serif!important;letter-spacing:normal!important;opacity:1!important;color:#f6f8ff!important;-webkit-text-fill-color:#f6f8ff!important;background:#111c37!important;border:1px solid #7789b4!important;border-radius:12px!important;box-shadow:none!important;text-align:left!important}',
+ 'body.so-hh-page :is(select,input,textarea)::placeholder{color:#b9c5df!important;-webkit-text-fill-color:#b9c5df!important;opacity:1!important}',
+ 'body.so-hh-page select{color-scheme:dark!important;-webkit-appearance:menulist!important;appearance:menulist!important;white-space:nowrap!important;text-overflow:ellipsis!important}',
+ 'body.so-hh-page select option{background:#17223c!important;color:#fff!important;-webkit-text-fill-color:#fff!important}',
+ 'body.so-hh-page textarea{height:auto!important;min-height:100px!important;resize:vertical!important;white-space:pre-wrap!important}',
+ 'body.so-hh-page form button{width:100%!important;min-height:48px!important;white-space:normal!important;line-height:1.35!important;padding:12px 14px!important;overflow-wrap:anywhere!important}',
+ 'body.so-hh-page :is(input,select,textarea,button):focus-visible{outline:3px solid #b8a5ff!important;outline-offset:2px!important}',
+ '#hhCommand{font:400 15px/1.55 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:#f4f7ff;min-width:0;display:block;width:100%;box-sizing:border-box;overflow-wrap:anywhere}',
+ '#hhCommand *{box-sizing:border-box}',
+ '#hhCommand h2{font-size:21px;line-height:1.25;margin:0 0 8px;color:#fff}',
+ '#hhCommand h3{font-size:17px;line-height:1.3;margin:0 0 10px;color:#fff}',
+ '#hhCommand p{margin:6px 0 12px;color:#d5ddf1;line-height:1.5}',
+ '#hhCommand .hh-hero{border:1px solid #776adb;border-radius:20px;padding:22px 18px;background:linear-gradient(135deg,#272357,#17294c);margin:10px 0 15px}',
+ '#hhCommand .hh-kickers{font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:#c7bbff;font-weight:800}',
+ '#hhCommand .hh-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}',
+ '#hhCommand .hh-stat{background:rgba(5,13,38,.42);padding:13px;border-radius:13px;border:1px solid #41466f}',
+ '#hhCommand .hh-stat strong{display:block;color:#fff;font-size:22px;line-height:1.25}',
+ '#hhCommand .hh-stat span{color:#d4daf3;font-size:12px}',
+ '#hhCommand .hh-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:thin;scroll-snap-type:x proximity}',
+ '#hhCommand .hh-tab{flex:0 0 auto!important;width:auto!important;min-height:43px!important;padding:10px 12px!important;font-size:14px!important;background:#222c4e!important;color:#d8e0f4!important;border:1px solid #4b5a80!important;border-radius:12px!important;scroll-snap-align:start}',
+ '#hhCommand .hh-tab[aria-selected=true]{background:#7867ed!important;color:white!important;border-color:#b0a5ff!important;font-weight:750!important}',
+ '#hhCommand [data-hh-panel][hidden]{display:none!important}',
+ '#hhCommand .hh-box{background:#192340;border:1px solid #3e4b70;border-radius:17px;padding:17px 15px;margin-bottom:12px;min-width:0}',
+ '#hhCommand .hh-box.hh-event{border-left:4px solid #927cf8}',
+ '#hhCommand .hh-pill{display:inline-block;padding:4px 10px;border-radius:99px;background:#344269;color:#f4f6ff;font-size:12px;font-weight:750;margin:0 6px 8px 0}',
+ '#hhCommand .hh-pill.live{background:#29463f;color:#c8f7e8}',
+ '#hhCommand .hh-pill.warn{background:#4a3c25;color:#ffe2a0}',
+ '#hhCommand .hh-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}',
+ '#hhCommand button.hh-action{margin:0!important;min-height:46px!important;width:100%!important;background:#303b61!important;color:#fff!important;border:1px solid #61709a!important;border-radius:12px!important;padding:10px 8px!important;font-weight:700!important;white-space:normal!important}',
+ '#hhCommand button.hh-primary{background:#7967ed!important;border-color:#a898ff!important;color:#fff!important}',
+ '#hhCommand button.hh-danger{background:#4e2935!important;border-color:#e095a5!important}',
+ '#hhCommand .hh-detail{margin:11px 0;border:1px solid #435274;border-radius:12px;padding:10px 12px;background:rgba(7,12,32,.26)}',
+ '#hhCommand .hh-detail>summary{cursor:pointer;color:#eeeaff;font-weight:750;font-size:15px;line-height:1.5}',
+ '#hhCommand .hh-detail[open]{padding-bottom:15px}',
+ '#hhCommand .hh-detail form{margin-top:12px!important}',
+ '#hhCommand .hh-muted{font-size:13px;color:#c7d0e4!important}',
+ '#hhCommand .hh-meter{height:12px;background:#0c1430;border-radius:15px;overflow:hidden;margin:10px 0}',
+ '#hhCommand .hh-meter>i{display:block;height:100%;background:linear-gradient(90deg,#74a7fb,#efb24b,#ef676e);border-radius:15px}',
+ '#hhCommand .hh-log{border-left:2px solid #626dab;padding:8px 12px;margin:8px 0;color:#d8e0f2;font-size:13px}',
+ '#hhCommand .hh-empty{padding:20px;text-align:center;border:1px dashed #64739c;border-radius:14px;color:#dbe1f5}',
+ '#hhCommand .hh-divider{border:0;border-top:1px solid #4b5979;margin:16px 0}',
+ '#hhCommand .hh-box button:disabled{opacity:.55!important}',
+ '@media(max-width:390px){#hhCommand .hh-actions{grid-template-columns:1fr}#hhCommand .hh-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+ ].join('\n');document.head.appendChild(st);
+}
+const oldIskelet=iskelet;
+iskelet=function(title,body,options){
+ document.body.classList.toggle('so-hh-page',title==='Halk Hareketleri');
+ return oldIskelet(title,body,options);
+};
+const former=sokakHareketleriEkrani;
+sokakHareketleriEkrani=async function(){
+ await former();
+ document.body.classList.add('so-hh-page');
+ const anchor=document.getElementById('hhOrgAnchor')||document.getElementById('so-v2');
+ if(!anchor)return;
+ let d;
+ try{d=await API.rpc('sokak_merkez_panel');}
+ catch(err){console.warn('Halk Hareketleri merkez paneli',err);return;}
+ document.getElementById('hhCommand')?.remove();
+ const esc=x=>e(String(x??''));
+ const num=x=>Number(x||0).toLocaleString('tr-TR',{maximumFractionDigits:1});
+ const tl=x=>num(x)+' TL';
+ const dt=x=>x?new Date(x).toLocaleString('tr-TR'):'—';
+ const now=Date.now();
+ const alive=x=>x.durum==='aktif'&&Date.parse(x.bitis)>now;
+ const events=d.eylemler||[], live=events.filter(alive);
+ const legal=events.flatMap(x=>(x.gozaltilar||[]).map(g=>({event:x,info:g})));
+ const pending=legal.filter(x=>x.info.durum==='aktif'&&Date.parse(x.info.bitis)>now);
+ const invitations=d.davetler||[];
+ const sources=d.kaynaklar||[];
+ const opts=(items,getVal,getText)=>items.map(x=>'<option value="'+esc(getVal(x))+'">'+esc(getText(x))+'</option>').join('');
+ const parts=(d.davet_hedefleri||[]);
+ const members=(d.baro_avukatlar||[]);
+ const link=(key,title)=>'<button type="button" class="hh-tab" data-hh-tab="'+key+'" role="tab" aria-selected="false">'+title+'</button>';
+ let html='<section id="hhCommand" aria-label="Halk Hareketleri komuta merkezi">'+
+ '<div class="hh-hero"><div class="hh-kickers">SEÇİM ONLINE / HALK HAREKETLERİ</div>'+
+ '<h2>📣 Halk Hareketleri Merkezi</h2><p>Eylemleri başlat, örgütleri birleştir, destek topla, hükümetle müzakere et ve hukuki süreçleri yönet.</p>'+
+ '<div class="hh-stats"><div class="hh-stat"><strong>'+live.length+'</strong><span>Aktif eylem</span></div>'+
+ '<div class="hh-stat"><strong>'+invitations.length+'</strong><span>Yanıt bekleyen davet</span></div>'+
+ '<div class="hh-stat"><strong>'+num(live.reduce((s,x)=>s+Number(x.katilim||0),0))+'</strong><span>Katılım kaydı</span></div>'+
+ '<div class="hh-stat"><strong>'+pending.length+'</strong><span>Aktif gözaltı</span></div></div></div>'+
+ '<nav class="hh-tabs" role="tablist" aria-label="Eylem yönetimi">'+link('events','🔥 Eylemler')+link('create','✊ Yeni eylem')+link('invite','🤝 Davetler')+link('legal','⚖️ Hukuk')+link('state','🏛️ Hükümet')+link('history','📰 Geçmiş')+'</nav>';
+ const pan=(name,content)=>'<div data-hh-panel="'+name+'" role="tabpanel" hidden>'+content+'</div>';
+ let evhtml='<div class="hh-box"><h3>Canlı eylem haritası</h3><p>Parti ve dernek desteği ayrı; her oyuncu kendi adına, parti üyeliğinden bağımsız olarak da katılabilir. Fiziki katılım için mevcut il ve ikamet koşulları geçerlidir.</p></div>';
+ if(!live.length)evhtml+='<div class="hh-empty">Şu anda aktif eylem yok. Yeni Eylem bölümünden bir hareket başlatılabilir.</div>';
+ for(const x of live){
+  const id=Number(x.id), pct=Math.max(0,Math.min(100,Number(x.seviye||0)));
+  evhtml+='<article class="hh-box hh-event"><div><span class="hh-pill live">● AKTİF</span><span class="hh-pill">'+esc(x.il)+'</span><span class="hh-pill">#'+id+'</span></div>'+
+   '<h3>'+esc(x.parti||'Bağımsız eylem')+'</h3><p>'+esc(x.gerekce)+'</p>'+
+   '<div class="hh-meter" aria-label="Eylem gücü '+num(x.seviye)+' / 100"><i style="width:'+pct+'%"></i></div>'+
+   '<p><strong>Güç: '+num(x.seviye)+'/100</strong> · '+num(x.katilim)+' katılımcı</p>'+
+   '<p class="hh-muted">Eylem fonu: <b>'+tl(x.muhalefet_fonu)+'</b> · Hükümet uzlaşma fonu: <b>'+tl(x.iktidar_fonu)+'</b><br>Bitiş: '+esc(dt(x.bitis))+'</p>'+
+   (x.katildim?'<span class="hh-pill live">✓ Katılıyorsun</span>':
+      '<button type="button" class="hh-action hh-primary" data-hh-join="'+id+'">🙋 Eyleme bireysel katıl</button>')+
+   '<details class="hh-detail"><summary>💰 Eylemi fonla ve güçlendir</summary>'+
+   '<form data-hh-fn="sokak_destek" data-hh-id="'+id+'"><label>Para kaynağı</label><select name="p_kaynak" required>'+
+   opts(sources,x=>x.tur,x=>x.ad)+'</select><label>Kaynak (parti / dernek seçimi)</label>'+
+   '<select name="kaynak_id">'+opts(sources.filter(y=>y.id),x=>x.tur+':'+x.id,x=>x.ad)+'</select>'+
+   '<label>Fon tutarı (TL, en az 1.000)</label><input name="p_tutar" type="number" min="1000" step="1000" required placeholder="Örn. 10000">'+
+   '<button class="hh-action hh-primary">Eyleme fon gönder</button></form></details>';
+  if(x.ben_baslattim){
+   evhtml+='<details class="hh-detail"><summary>📨 Başka parti ve dernekleri davet et</summary>'+
+    '<p>Kuruluş lideri kabul, ret veya çekimser yanıtı verebilir. Kabul sonrası üyeler kendi istekleriyle katılır.</p>'+
+    '<form data-hh-fn="sokak_davet_gonder" data-hh-id="'+id+'"><label>Davet edilecek kuruluş</label>'+
+    '<select name="hedef" required>'+opts(parts,x=>x.tur+':'+x.id,x=>(x.tur==='parti'?'🏳️ Parti · ':'🏛️ Dernek · ')+x.ad)+'</select>'+
+    '<button class="hh-action hh-primary">Destek daveti gönder</button></form>'+
+    ((x.davet_ozeti||[]).length?'<h3>Davet yanıtları</h3>'+x.davet_ozeti.map(y=>'<div class="hh-log">'+esc(y.kurulus)+' · <b>'+esc(y.durum)+'</b></div>').join(''):'')+'</details>'+
+    '<details class="hh-detail"><summary>🛑 Eylemi sonlandır</summary><p>Sonlandırma kalıcıdır; geri açılmaz. Fon iadeleri otomatik yapılmaz.</p>'+
+    '<form data-hh-fn="sokak_eylem_sonlandir" data-hh-id="'+id+'"><label>Sonlandırma gerekçesi</label>'+
+    '<textarea name="p_gerekce" minlength="15" maxlength="500" required placeholder="Talepler karşılandı, strateji değişikliği, uzlaşma..."></textarea>'+
+    '<button class="hh-action hh-danger">Eylemi bitir ve duyur</button></form></details>';
+  }
+  evhtml+='<details class="hh-detail"><summary>🎙️ Basın açıklaması yap</summary>'+
+   '<form data-hh-fn="sokak_basina_aciklama" data-hh-id="'+id+'"><label>Açıklama sıfatı</label><select name="p_taraf">'+
+   '<option value="basin">Oyuncu / basın</option><option value="muhalefet">Eylem destekçisi</option><option value="hukuk">Avukat</option>'+
+   (d.mudahale_yetki?'<option value="hukumet">Hükümet</option>':'')+'</select>'+
+   '<label>Halka açık açıklaman</label><textarea name="p_metin" minlength="30" maxlength="600" required></textarea>'+
+   '<button class="hh-action">Açıklamayı yayımla</button></form></details></article>';
+ }
+ html+=pan('events',evhtml);
+ let create='<div class="hh-box"><h3>Yeni hareket başlat</h3><p>Parti veya dernek lideri eylem açabilir. Memnuniyetsizlik ve asgari katılımcı şartı kaldırılmıştır; diğer mevcut oyun süre/bütçe limitleri geçerlidir.</p></div>';
+ if((d.baslatma_kaynaklari||[]).length){
+  create+='<div class="hh-box"><form data-hh-fn="sokak_org_baslat_bildirili"><label>Eylemi düzenleyen</label><select name="kaynak" required>'+
+  opts(d.baslatma_kaynaklari,x=>x.tur+':'+x.id,x=>x.ad)+'</select>'+
+  '<label>Eylem yapılacak il</label><select name="p_il" required>'+opts(d.iller||[],x=>x.id,x=>x.ad)+'</select>'+
+  '<label>Somut talep</label><select name="p_tur"><option value="genel">Siyasi/toplumsal düzenleme</option><option value="hizmet">Belediye hizmetleri iyileşsin</option><option value="issizlik">İşsizlik azalsın</option><option value="vergi">Vergi indirilsin</option></select>'+
+  '<label>Eylemin gerekçesi</label><textarea name="p_gerekce" minlength="15" maxlength="400" required placeholder="Eylem hangi olaya ya da karara tepki?"></textarea>'+
+  '<label>Halka açık eylem bildirisi</label><textarea name="p_bildiri" minlength="30" maxlength="600" required placeholder="Taleplerimizi açıklıyor, tüm oyuncuları barışçıl eyleme çağırıyoruz..."></textarea>'+
+  '<p class="hh-muted">Kuruluş kasasından '+tl(d.ayar?.baslatma_bedeli)+' alınır; eylem ve bildiri tek işlemde yayınlanır.</p>'+
+  '<button class="hh-action hh-primary">🚩 Eylemi başlat ve bildiriyi yayımla</button></form></div>';
+ }else create+='<div class="hh-empty">Eylem başlatmak için açık bir parti veya derneğin lideri olman gerekiyor.</div>';
+ html+=pan('create',create);
+ let invites='<div class="hh-box"><h3>Destek çağrıları</h3><p>Davet edilen parti/dernek yalnızca liderin kararıyla kurumsal destek verir. Üyeler otomatik katılmaz; bireysel katılım ayrıca seçilir.</p></div>';
+ for(const inv of invitations)invites+='<div class="hh-box"><span class="hh-pill warn">YANIT BEKLİYOR</span><h3>'+esc(inv.kurulus)+' · '+esc(inv.il)+'</h3>'+
+ '<p>'+esc(inv.eylem)+'</p><div class="hh-actions"><button class="hh-action hh-primary" data-hh-invite="'+Number(inv.id)+'" data-hh-choice="kabul">✓ Kabul et</button>'+
+ '<button class="hh-action" data-hh-invite="'+Number(inv.id)+'" data-hh-choice="ret">✕ Reddet</button>'+
+ '<button class="hh-action" data-hh-invite="'+Number(inv.id)+'" data-hh-choice="cekimser">◌ Çekimser kal</button></div></div>';
+ if(!invitations.length)invites+='<div class="hh-empty">Liderliğini yaptığın kuruluşlara gelen açık davet yok.</div>';
+ html+=pan('invite',invites);
+ let law='<div class="hh-box"><h3>Gözaltı, savunma ve yargı</h3><p>Gözaltındaki oyuncu avukat isteyebilir veya baroya başvurabilir. Baro görevlendirir, avukat kabul eder, oyuncu/avukatı itiraz eder ve bağımsız hâkim gerekçeli karar verir. Gözaltı ile mahkûmiyet aynı şey değildir.</p></div>';
+ for(const item of legal){
+  const g=item.info,id=Number(g.id),isLive=g.durum==='aktif'&&Date.parse(g.bitis)>now;
+  if(!isLive&&!g.benim&&!g.ben_avukat&&!g.mahkeme_yetki)continue;
+  law+='<div class="hh-box"><span class="hh-pill '+(isLive?'warn':'')+'">'+esc(isLive?'GÖZALTINDA':g.durum)+'</span>'+
+  '<h3>Dosya #'+id+' · '+esc(g.hedef)+'</h3><p class="hh-muted">Eylem #'+Number(item.event.id)+' · Bitiş '+esc(dt(g.bitis))+'</p>'+
+  (g.avukat?'<p>Avukat: '+esc(g.avukat)+' · '+esc(g.avukat_durum)+'</p>':'')+
+  (g.itiraz?'<div class="hh-log">Savunma / itiraz: '+esc(g.itiraz)+'</div>':'')+
+  (g.karar?'<div class="hh-log">Mahkeme: '+esc(g.karar)+' · '+esc(g.karar_gerekce)+' · Tazminat: '+tl(g.tazminat)+'</div>':'');
+  if(g.benim&&isLive){
+   law+='<details class="hh-detail"><summary>👩‍⚖️ Avukat çağır</summary><form data-hh-fn="sokak_avukat_cagir" data-hh-id="'+id+'">'+
+   '<label>Aktif ruhsatlı avukat</label><select name="p_avukat" required>'+
+   opts(d.avukatlar||[],x=>x.id,x=>x.ad)+'</select><button class="hh-action">Avukat çağır</button></form></details>'+
+   '<button class="hh-action hh-primary" data-hh-baro-request="'+id+'">⚖️ Barodan müdafi iste</button>';
+  }
+  if(g.ben_avukat&&g.avukat_durum==='cagrildi')law+='<div class="hh-actions"><button class="hh-action hh-primary" data-hh-law="'+id+'" data-hh-law-accept="1">Avukatlığı kabul et</button><button class="hh-action" data-hh-law="'+id+'" data-hh-law-accept="0">Reddet</button></div>';
+  if(!g.itiraz&&(g.benim||(g.ben_avukat&&g.avukat_durum==='kabul'))&&Date.parse(g.baslangic)>now-86400000){
+   law+='<details class="hh-detail"><summary>📝 Gözaltına itiraz et</summary><form data-hh-fn="sokak_gozalti_itiraz" data-hh-id="'+id+'">'+
+   '<label>Savunma ve itiraz gerekçesi</label><textarea name="p_metin" minlength="20" maxlength="600" required></textarea>'+
+   '<button class="hh-action hh-primary">İtiraz et, mahkemeye gönder</button></form></details>';
+  }
+  if(g.mahkeme_yetki&&g.itiraz&&!g.karar){
+   law+='<details class="hh-detail"><summary>⚖️ Hâkim kararı ver</summary><form data-hh-fn="sokak_gozalti_mahkeme" data-hh-id="'+id+'">'+
+   '<label>Gerekçeli karar türü</label><select name="p_karar"><option value="haksiz">Haksız gözaltı / tazminat</option><option value="uygun">Gözaltı hukuka uygun</option></select>'+
+   '<label>Hâkim gerekçesi</label><textarea name="p_gerekce" minlength="25" maxlength="700" required></textarea>'+
+   '<button class="hh-action hh-primary">Mahkeme kararını açıkla</button></form></details>';
+  }
+  if(g.benim&&Number(g.tazminat)>Number(g.tazminat_odendi))law+='<button class="hh-action" data-hh-comp="'+id+'">Tazminatı tahsil et ('+tl(Number(g.tazminat)-Number(g.tazminat_odendi))+')</button>';
+  law+='</div>';
+ }
+ if(d.baro_baskani){
+  law+='<div class="hh-box"><h3>🏛️ Baro müdafi atamaları</h3>';
+  const reqs=(d.baro_talepleri||[]).filter(x=>x.durum==='bekliyor');
+  if(!reqs.length)law+='<p>Bekleyen baro görevlendirme talebi yok.</p>';
+  for(const y of reqs)law+='<form data-hh-fn="sokak_baro_ata" data-hh-id="'+Number(y.gozalti_id)+'">'+
+   '<p><b>'+esc(y.hedef)+'</b> · Dosya #'+Number(y.gozalti_id)+' · '+esc(dt(y.basvuru))+'</p>'+
+   '<label>Görevlendirilecek baro avukatı</label><select name="p_avukat" required>'+opts(members,x=>x.id,x=>x.ad)+'</select>'+
+   '<button class="hh-action hh-primary">Baro adına müdafi görevlendir</button></form>';
+  law+='</div>';
+ }
+ html+=pan('legal',law);
+ let state='<div class="hh-box"><h3>Hükümet karşı hamleleri</h3><p>Uzlaşma, kamuoyu açıklaması ve bütçeli müdahaleler kamu kaynaklarına bağlıdır. Polis müdahalesi ve hukuki kararlar ayrı kaydedilir.</p></div>';
+ if(d.mudahale_yetki)for(const x of live)state+='<div class="hh-box"><h3>'+esc(x.il)+' · '+esc(x.parti)+'</h3><p>Hükümet uzlaşma fonu: '+tl(x.iktidar_fonu)+'</p>'+
+ '<form data-hh-fn="sokak_yanit" data-hh-id="'+Number(x.id)+'"><label>Hükümetin açıklaması ve çözüm önerisi</label><textarea name="p_metin" minlength="20" maxlength="600" required></textarea>'+
+ '<button class="hh-action hh-primary">Hükümet yanıtını yayımla</button></form>'+
+ '<details class="hh-detail"><summary>💼 Bütçeyle müdahale</summary><form data-hh-fn="sokak_butce_mudahale" data-hh-id="'+Number(x.id)+'">'+
+ '<label>Harcama (TL)</label><input type="number" name="p_tutar" min="'+Number(d.ayar?.baslatma_bedeli||50000)+'" max="2000000" step="1000" required>'+
+ '<label>Somut gerekçe</label><textarea name="p_gerekce" minlength="25" maxlength="500" required></textarea>'+
+ '<button class="hh-action">Bütçeyi kullan</button></form></details>'+
+ '<details class="hh-detail"><summary>🚓 Polis sevki ve gözaltı</summary><form data-hh-fn="sokak_polis_gonder" data-hh-id="'+Number(x.id)+'">'+
+ '<label>Sevk seviyesi</label><select name="p_seviye"><option value="dusuk">Düşük – gözaltı yok</option><option value="orta">Orta – en çok 2 kişi</option><option value="yuksek">Yüksek – en çok 4 kişi</option></select>'+
+ '<label>Kamu güvenliği gerekçesi</label><textarea name="p_gerekce" minlength="25" maxlength="500" required></textarea>'+
+ '<button class="hh-action">Polis sevk et</button></form></details></div>';
+ if(!d.mudahale_yetki)state+='<div class="hh-empty">Bu alanda işlem yapma yetkisi Cumhurbaşkanı ve İçişleri Bakanındadır. Eylemlerin durumunu Eylemler sekmesinden herkes görebilir.</div>';
+ html+=pan('state',state);
+ let history='<div class="hh-box"><h3>Geçmiş, kararlar ve basın</h3><p>Tüm işlemler kayıt altındadır. İlgili eylem sona erse de alınmış mahkeme kararları saklanır.</p></div>';
+ for(const x of events){
+  history+='<details class="hh-detail"><summary>#'+Number(x.id)+' · '+esc(x.il)+' · '+esc(x.parti)+' · '+esc(x.durum)+'</summary>'+
+   '<p>'+esc(x.gerekce)+'</p>'+(x.kapanma_nedeni?'<p>Sonlandırma nedeni: '+esc(x.kapanma_nedeni)+'</p>':'')+
+   '<p class="hh-muted">Başlangıç '+esc(dt(x.baslangic))+' · Bitiş '+esc(dt(x.bitis))+'</p>'+
+   (x.davet_ozeti||[]).map(y=>'<div class="hh-log">Davet: '+esc(y.kurulus)+' · '+esc(y.durum)+'</div>').join('')+
+   (x.aciklamalar||[]).map(y=>'<div class="hh-log"><b>'+esc(y.ad)+' / '+esc(y.taraf)+'</b> · '+esc(dt(y.zaman))+'<p>'+esc(y.metin)+'</p></div>').join('')+
+   '</details>';
+ }
+ html+=pan('history',history)+'</section>';
+ anchor.insertAdjacentHTML('afterbegin',html);
+ const root=document.getElementById('hhCommand');
+ // Eski coklu panelleri gizleyip tek komuta merkezinden yonet. Gereken eski islevler diger modullerde kalir.
+ ['hhOrgUI','hhFinansUI','so-v2'].forEach(id=>{
+  const old=document.getElementById(id);
+  if(old&&old!==anchor&&!old.contains(root))old.style.display='none';
+ });
+ // Orijinal formlari gizle; ekran iskeletinin gezinme/baslik ogelerine dokunma.
+ const tabs=[...root.querySelectorAll('[data-hh-tab]')];
+ function show(key){
+  tabs.forEach(b=>b.setAttribute('aria-selected',String(b.dataset.hhTab===key)));
+  root.querySelectorAll('[data-hh-panel]').forEach(panel=>{panel.hidden=panel.dataset.hhPanel!==key;});
+ }
+ tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.hhTab)));
+ show(pending.some(z=>z.info.benim)?'legal':'events');
+ async function run(btn,fn,args,success){
+  if(btn)btn.disabled=true;
+  try{
+   await API.rpc(fn,args);
+   toast(success||'İşlem kaydedildi');
+   await sokakHareketleriEkrani();
+  }catch(ex){toast(hataCevir(ex.message||String(ex)),true);if(btn)btn.disabled=false;}
+ }
+ root.querySelectorAll('[data-hh-join]').forEach(btn=>btn.addEventListener('click',()=>{
+  run(btn,'sokak_destek',{p_eylem:Number(btn.dataset.hhJoin),p_taraf:'muhalefet',p_kaynak:'oyuncu',p_tutar:0},'Eyleme katıldın');
+ }));
+ root.querySelectorAll('[data-hh-invite]').forEach(btn=>btn.addEventListener('click',()=>{
+  run(btn,'sokak_davet_karar',{p_davet:Number(btn.dataset.hhInvite),p_karar:btn.dataset.hhChoice},'Davet yanıtı kaydedildi');
+ }));
+ root.querySelectorAll('[data-hh-baro-request]').forEach(btn=>btn.addEventListener('click',()=>{
+  run(btn,'sokak_baro_iste',{p_gozalti:Number(btn.dataset.hhBaroRequest)},'Baro avukatı talep edildi');
+ }));
+ root.querySelectorAll('[data-hh-law]').forEach(btn=>btn.addEventListener('click',()=>{
+  run(btn,'sokak_avukat_cevap',{p_gozalti:Number(btn.dataset.hhLaw),p_kabul:btn.dataset.hhLawAccept==='1'});
+ }));
+ root.querySelectorAll('[data-hh-comp]').forEach(btn=>btn.addEventListener('click',()=>{
+  run(btn,'sokak_gozalti_tazminat_tahsil',{p_gozalti:Number(btn.dataset.hhComp)});
+ }));
+ root.querySelectorAll('form[data-hh-fn]').forEach(form=>form.addEventListener('submit',ev=>{
+  ev.preventDefault();
+  const fn=form.dataset.hhFn, id=Number(form.dataset.hhId);
+  const args=Object.fromEntries(new FormData(form).entries());
+  if(fn==='sokak_org_baslat_bildirili'){
+   const source=String(args.kaynak).split(':');delete args.kaynak;
+   args.p_kaynak=source[0];args.p_kaynak_id=Number(source[1]);args.p_il=Number(args.p_il);
+  }
+  if(fn==='sokak_davet_gonder'){
+   const dest=String(args.hedef).split(':');delete args.hedef;
+   args.p_hedef_tur=dest[0];args.p_hedef_id=Number(dest[1]);args.p_eylem=id;
+  }
+  if(fn==='sokak_destek'){
+   const source=String(args.p_kaynak||'oyuncu');
+   const org=String(args.kaynak_id||'').split(':');delete args.kaynak_id;
+   args.p_kaynak_id=source==='oyuncu'?null:Number(org[0]===source?org[1]:0);
+   if(source!=='oyuncu'&&!args.p_kaynak_id)return toast('Parti/dernek para kaynağını doğru seç',true);
+   args.p_tutar=Number(args.p_tutar);args.p_taraf='muhalefet';args.p_eylem=id;
+  }
+  if(['sokak_eylem_sonlandir','sokak_basina_aciklama','sokak_yanit','sokak_butce_mudahale','sokak_polis_gonder'].includes(fn))args.p_eylem=id;
+  if(['sokak_avukat_cagir','sokak_gozalti_itiraz','sokak_gozalti_mahkeme','sokak_baro_ata'].includes(fn))args.p_gozalti=id;
+  if(fn==='sokak_eylem_sonlandir'&&!window.confirm('Bu eylemi kesin olarak sonlandırmak istiyor musun?'))return;
+  if(fn==='sokak_butce_mudahale')args.p_tutar=Number(args.p_tutar);
+  run(form.querySelector('button'),fn,args);
+ }));
+};
+})();
