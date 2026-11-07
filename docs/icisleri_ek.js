@@ -16,7 +16,7 @@ function sel(name,label,opts){return '<label>'+esc(label)+'</label><select name=
 function hidden(name,val){return '<input type="hidden" name="'+esc(name)+'" value="'+esc(val)+'">';}
 function form(fn,content,btn){return '<form data-ic-extra="'+esc(fn)+'">'+content+'<button type="submit" class="btn altin">'+esc(btn)+'</button></form>';}
 function textRow(title,content){return '<div class="ic-kart"><h3>'+title+'</h3>'+content+'</div>';}
-function choice(id){return '<select name="p_hedef" class="ic-extra-kisi" required><option value="">Aşağıdan oyuncu arayıp seç</option></select>';}
+function choice(id){return '<select name="p_hedef" class="ic-extra-kisi"><option value="">Aşağıdan oyuncu arayıp seç</option></select>';}
 function linkedTarget(){return '<label>Hedef oyuncu</label>'+choice();}
 function section(title,body){return '<details class="ic-kart" style="margin:10px 0;padding:12px;border:1px solid var(--line2,#556587);border-radius:13px"><summary style="cursor:pointer;font-weight:800;font-size:17px;padding:9px 0">'+esc(title)+'</summary>'+body+'</details>';}
 function judgeSelect(){return sel('p_onay','Mahkeme kararı',[['true','Onayla'],['false','Reddet']]);}
@@ -186,6 +186,12 @@ document.addEventListener('submit',async ev=>{
  ev.preventDefault();ev.stopImmediatePropagation();
  const entry=rpcMap[f.dataset.icExtra];if(!entry)return;
  const data=new FormData(f),args={},button=f.querySelector('button[type="submit"]');
+ if (f.dataset.icExtra==='olay_bildir' && ((data.get('p_kurum_tur')==='oyuncu' && !data.get('p_hedef')) || (data.get('p_kurum_tur')!=='oyuncu' && !data.get('p_kurum_id')))) {
+  if(typeof toast==='function')toast('İhbar için hedef oyuncu veya kurum seçmelisiniz.',true);return;
+ }
+ if (['odul','anlasma_teklif'].includes(f.dataset.icExtra) && !data.get('p_hedef')) {
+  if(typeof toast==='function')toast('Önce hedef oyuncuyu seçmelisiniz.',true);return;
+ }
  for(const key of entry[1]){
   let v=data.has(key)?data.get(key):null;
   if(key==='p_oyuncu'&&!v)v=data.get('p_hedef');
