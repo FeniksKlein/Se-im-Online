@@ -46,6 +46,20 @@
     });
     h.push('</div>');
   }
+  if(d.kriz&&(d.kriz.bakan||d.kriz.yurutme)){
+    h.push('<div class="ic-kart"><h3>🚨 Cumhurbaşkanlığı onaylı özel il güvenlik tedbirleri</h3><p class="ic-help">İçişleri Bakanı teklif eder, Cumhurbaşkanı gerekçeli kararla onaylar veya reddeder. Onaylanan tedbir 12 saat sürer, 2 milyon ₺ bakanlık ödeneği gerektirir ve ilin güvenlik/itibar göstergelerini etkiler. Oyuncuların oy, hesap, şirket ve iletişim haklarını kısıtlamaz.</p>');
+    if(d.kriz.bakan){
+      h.push('<form data-ic="kriz_teklif"><label>Özel tedbir önerilen il</label><select name="p_il">'+(d.kriz.iller||[]).map(function(i){return '<option value="'+Number(i.id)+'">'+temiz(i.ad)+'</option>';}).join('')+'</select>'+formAlan('p_gerekce','Kriz gerekçesi ve somut risk','',40)+'<button class="btn altin" type="submit">Cumhurbaşkanlığına teklif sun</button></form>');
+    }
+    (d.kriz.kararlar||[]).forEach(function(x){
+      h.push('<details><summary>#'+Number(x.id)+' · '+temiz(x.il)+' · '+temiz(x.durum)+'</summary><p>'+temiz(x.gerekce)+'</p><p class="ic-help">Açılış: '+tarih(x.acilis)+' · Bitiş: '+tarih(x.bitis)+'</p>');
+      if(d.kriz.yurutme&&x.durum==='onay_bekliyor'){
+        h.push('<form data-ic="kriz_karar"><input type="hidden" name="p_id" value="'+Number(x.id)+'"><label>Cumhurbaşkanlığı kararı</label><select name="p_kabul"><option value="true">Onayla · 12 saat</option><option value="false">Reddet</option></select>'+formAlan('p_gerekce','Cumhurbaşkanlığı karar gerekçesi','',25)+'<button class="btn altin" type="submit">Kararı ilan et</button></form>');
+      }else if(x.karar_gerekce) h.push('<p><b>Karar gerekçesi:</b> '+temiz(x.karar_gerekce)+'</p>');
+      h.push('</details>');
+    });
+    h.push('</div>');
+  }
   if((d.basvurular||[]).length){
    h.push('<div class="ic-kart"><h3>📨 Destek başvuruları</h3>');
    (d.basvurular||[]).forEach(function(b){
@@ -79,7 +93,7 @@
  window.icisleriKomutaEkrani=async function(){
   if(!window.API||typeof API.rpc!=="function")return;
   if(typeof window.yukleniyor==="function")yukleniyor("İçişleri Bakanlığı");
-  try{var d=await API.rpc("icisleri_komuta_panel");iskelet("İçişleri · Komuta Merkezi",render(d),{geri:true});}
+  try{var d=await API.rpc("icisleri_komuta_panel");try{d.kriz=await API.rpc("icisleri_kriz_panel");}catch(_){d.kriz=null;}iskelet("İçişleri · Komuta Merkezi",render(d),{geri:true});}
   catch(err){iskelet("İçişleri · Komuta Merkezi",'<div class="kart"><p>'+temiz(err.message||err)+'</p><button class="btn" onclick="icisleriKomutaEkrani()">Yeniden dene</button></div>',{geri:true});}
  };
  window.icisleriKomutaAc=function(){if(typeof window.ekranAc==="function")return ekranAc(window.icisleriKomutaEkrani);return window.icisleriKomutaEkrani();};
@@ -96,6 +110,8 @@
   else if(cmd==='atama_kapat'){fn='icisleri_atama_kapat';args={p_id:Number(d.get('p_id')),p_gerekce:d.get('p_gerekce')};}
   else if(cmd==='il_emir'){fn='icisleri_il_emir_ver';args={p_atama:Number(d.get('p_atama')),p_tur:d.get('p_tur'),p_gerekce:d.get('p_gerekce')};}
 
+  else if(cmd==='kriz_teklif'){fn='icisleri_kriz_teklif';args={p_il:Number(d.get('p_il')),p_gerekce:d.get('p_gerekce')};}
+  else if(cmd==='kriz_karar'){fn='icisleri_kriz_karar';args={p_id:Number(d.get('p_id')),p_kabul:d.get('p_kabul')==='true',p_gerekce:d.get('p_gerekce')};}
   else if(cmd==='savunma'){fn='icisleri_savunma';args={p_id:Number(d.get('p_id')),p_metin:d.get('p_metin')};}
   else if(cmd==='hakim'){fn='icisleri_hakim_karar';args={p_id:Number(d.get('p_id')),p_karar:d.get('p_karar'),p_gerekce:d.get('p_gerekce')};}
   else if(cmd==='itiraz'){fn='icisleri_itiraz';args={p_id:Number(d.get('p_id')),p_metin:d.get('p_metin')};}
