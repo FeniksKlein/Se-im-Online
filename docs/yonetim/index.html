@@ -237,6 +237,25 @@ tbody tr.tik:hover td{background:var(--yuzey2)}
 .balon small{display:block;color:var(--soluk);font-size:11px;margin-top:3px}
 .olay-liste{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .gizli-etiket{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.kontrol-liste{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.kontrol-liste summary{cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+.kontrol-liste details{border-bottom:1px solid var(--cizgi);padding-bottom:8px}
+.kontrol-liste details > *:not(summary){margin:6px 0 0}
+.sohbet{display:flex;flex-direction:column;gap:10px}
+.mesajlar{display:flex;flex-direction:column;gap:10px;min-height:260px;max-height:62vh;overflow:auto;padding:4px 2px}
+.mesajlar .balon{max-width:92%;font-size:15px;line-height:1.5}
+.mesajlar .balon:not(.giden){white-space:normal}
+.mesajlar .balon small{margin-top:8px}
+.balon.yaziyor{color:var(--soluk);font-style:italic}
+.ornekler{display:flex;gap:8px;flex-wrap:wrap}
+.ornekler .btn{white-space:normal;text-align:left}
+.sohbet-giris{display:flex;gap:8px;align-items:flex-end}
+.sohbet-giris textarea{flex:1;min-width:0;resize:vertical}
+.oneri{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border:1px solid var(--sandik);border-radius:var(--r2);background:var(--yuzey)}
+.oneri.engelli{border-color:var(--muhur)}
+.madde{display:block;padding-left:4px}
+.gecmis-kayit{border-bottom:1px solid var(--cizgi);padding:10px 0}
+.gecmis-kayit p{margin:4px 0}
 
 /* Canlı ayarlar */
 .ayar-grup{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--soluk);margin:18px 0 6px}
@@ -340,6 +359,8 @@ const IK = {
   duyuru:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10v4h3l7 4V6L7 10H4z"/><path d="M17.5 9a4 4 0 0 1 0 6"/></svg>',
   olay:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4 2.8 19.5h18.4L12 4z"/><path d="M12 10v4.5M12 17v.01"/></svg>',
   destek:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v11H9l-5 4V5z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',
+  sistem:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01M11 7.5h6M11 16.5h6"/></svg>',
+  asistan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z"/></svg>',
   toplu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>',
   ara:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
   menu:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>'
@@ -569,6 +590,10 @@ async function islemYap(islem, param, sonra){
   let o;
   try { o = await rpc("yp_onizle", { p_islem: islem, p_param: param || {} }); }
   catch(err){ p.govde(`<div class="uyari u-hata"><b>Ön izleme yapılamadı</b>${e(err.message)}</div>`); p.alt(`<button class="btn" data-kapat>Kapat</button>`); return; }
+  onizlemeCiz(p, o, sonra);
+}
+function onizlemeAc(o, sonra){ onizlemeCiz(pencere(o.baslik || "İşlem", "", ""), o, sonra); }
+function onizlemeCiz(p, o, sonra){
   p.el.querySelector(".pencere-bas h2").textContent = o.baslik || "İşlem";
   let govde = onizlemeHtml(o);
   if(!o.engel && o.kritik) govde += `<div class="muhur-alan"><div class="alan"><label for="onay">Onaylamak için <b>${e(o.onay_metni)}</b> yaz</label>
@@ -611,12 +636,14 @@ function uygulamaBaslat(){
         <a href="#/olaylar" data-yol="olay">${IK.olay}Olaylar</a>
         <a href="#/destek" data-yol="destek">${IK.destek}Destek</a>
         <a href="#/ayarlar" data-yol="ayar">${IK.ayar}Canlı ayarlar</a>
+        <a href="#/sistem" data-yol="sistem">${IK.sistem}Sistem</a>
+        <a href="#/asistan" data-yol="asistan">${IK.asistan}Asistan</a>
         <a href="#/islemler" data-yol="islem">${IK.islem}İşlem geçmişi</a>
       </nav>
       <div class="yan-alt">
         <div>${e(S.ben.kad)} · yönetici</div>
         <div class="sat"><button class="btn btn-kucuk" id="tema">Tema</button><button class="btn btn-kucuk" id="cikis">Çıkış</button></div>
-        <div class="kucuk">Yapay zekâ asistanı ve teknik araçlar sonraki aşamada eklenecek.</div>
+        <div class="kucuk">Her işlem ön izleme ile yapılır ve İşlem geçmişine yazılır.</div>
       </div>
     </aside>
     <main class="ana">
@@ -647,7 +674,7 @@ function yonlendir(){
   const h = location.hash.replace(/^#\/?/, "") || "pano";
   const [a, b] = h.split("/");
   document.querySelectorAll(".menu a").forEach(x => x.toggleAttribute("aria-current", false));
-  const yol = a === "secimler" || a === "secim" ? "secim" : a === "islemler" ? "islem" : a === "oyuncular" || a === "oyuncu" ? "oyuncu" : a === "toplu" ? "toplu" : a === "ayarlar" ? "ayar" : a === "siyaset" || a === "parti" ? "siyaset" : a === "ekonomi" ? "ekonomi" : a === "duyurular" ? "duyuru" : a === "olaylar" ? "olay" : a === "destek" ? "destek" : "pano";
+  const yol = a === "secimler" || a === "secim" ? "secim" : a === "islemler" ? "islem" : a === "oyuncular" || a === "oyuncu" ? "oyuncu" : a === "toplu" ? "toplu" : a === "ayarlar" ? "ayar" : a === "siyaset" || a === "parti" ? "siyaset" : a === "ekonomi" ? "ekonomi" : a === "duyurular" ? "duyuru" : a === "olaylar" ? "olay" : a === "destek" ? "destek" : a === "sistem" ? "sistem" : a === "asistan" ? "asistan" : "pano";
   const m = document.querySelector(`.menu a[data-yol="${yol}"]`);
   if(m) m.setAttribute("aria-current", "page");
   if(a === "oyuncular") return oyuncularSayfa();
@@ -660,6 +687,8 @@ function yonlendir(){
   if(a === "duyurular") return duyurularSayfa();
   if(a === "olaylar") return olaylarSayfa();
   if(a === "destek") return destekSayfa();
+  if(a === "sistem") return sistemSayfa();
+  if(a === "asistan") return asistanSayfa();
   if(a === "secimler") return secimlerSayfa();
   if(a === "secim" && b) return secimSayfa(+b);
   if(a === "islemler") return islemlerSayfa();
@@ -1875,6 +1904,136 @@ function destekSekme(){
     k.querySelectorAll("[data-tk]").forEach(b => b.onclick = () => islemYap("destek_yanitla", { kaynak: "talep", id: d.talepler[+b.dataset.tk].id, kapat: true }, yenile));
   }
   k.querySelectorAll("[data-geri]").forEach(b => b.onclick = () => islemYap("geri_al", { islem_id: +b.dataset.geri }, yenile));
+}
+
+/* ---------- Sistem ve bakım ---------- */
+const boyut = b => { b = Number(b) || 0; const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0; while(b >= 1024 && i < u.length - 1){ b /= 1024; i++; } return `${b.toLocaleString("tr-TR", { maximumFractionDigits: b < 10 && i ? 1 : 0 })} ${u[i]}`; };
+const SEVIYE = { hata: ["Sorun", "e-hata"], uyari: ["Uyarı", "e-dikkat"], bilgi: ["Bilgi", "e-tamam"] };
+const yedekTarih = s => { const m = /^yedek_(\d{4})(\d\d)(\d\d)_(\d\d)(\d\d)/.exec(s || ""); return m ? `${+m[3]}.${m[2]}.${m[1]} ${m[4]}.${m[5]}` : s; };
+IS.yedek_al = { ad: "Yedek al", aciklama: "Oyunun bütün tablolarının o anki kopyasını alır. Son 5 yedek saklanır; daha eskisi kendiliğinden silinir. Yedekten geri dönüş portaldan yapılmaz.",
+  form: () => `<div class="alan"><label for="fAc">Açıklama</label><input id="fAc" maxlength="120" placeholder="ör. Büyük güncelleme öncesi"></div>`,
+  oku: q => { const a = q("#fAc").value.trim(); if(a.length < 3) return "Açıklama yaz (en az 3 karakter)."; return { aciklama: a }; } };
+async function sistemSayfa(){
+  yukle();
+  const [d, t] = await Promise.all([guvenli(() => rpc("yp_sistem")), guvenli(() => rpc("yp_tutarlilik"))]);
+  if(!d) return;
+  const yenile = () => sistemSayfa();
+  const aktif = d.zamanlayici.filter(x => x.aktif), pasif = d.zamanlayici.filter(x => !x.aktif), hatali = aktif.filter(x => x.hata_48s > 0);
+  const sorunlu = t ? t.kontroller.filter(k => (k.sayi || 0) > 0 && k.seviye !== "bilgi") : [];
+  sayfa(`<div class="blok-bas" style="margin-bottom:12px"><h1>Sistem ve bakım</h1><span class="alt">Kontrol: ${e(tarih(d.zaman, true))}</span></div>
+    <div class="dugmeler" style="margin-bottom:14px"><button class="btn btn-ana" id="sYedek">Yedek al</button><button class="btn" id="sYenile">Yeniden kontrol et</button></div>
+    <div class="sayilar" style="margin-bottom:14px">
+      <div class="sayi"><b>${e(d.surum && d.surum.sunucu || "—")}</b><span>Sunucu sürümü</span></div>
+      <div class="sayi"><b>${sayi(d.oyuncu.cevrimici)}</b><span>Çevrimiçi (15 dk)</span></div>
+      <div class="sayi"><b>${sayi(d.oyuncu.aktif_24s)}</b><span>Son 24 saatte aktif</span></div>
+      <div class="sayi"><b>${e(boyut(d.veritabani.boyut))}</b><span>Veritabanı</span></div>
+      <div class="sayi"><b>${sayi(d.yedekler.length)} / 5</b><span>Yedek</span></div>
+    </div>
+    ${t ? `<div class="uyari ${sorunlu.length ? (sorunlu.some(k => k.seviye === "hata") ? "u-hata" : "u-dikkat") : "u-iyi"}" style="margin-bottom:14px">
+      <b>${sorunlu.length ? `${sayi(sorunlu.length)} kontrolde bulgu var` : "Tutarlılık kontrollerinde sorun yok"}</b>${sayi(t.kontroller.length)} kontrol çalıştı. Ayrıntılar aşağıda.</div>` : ""}
+    <div class="izgara iz-2">
+      <section class="blok"><div class="blok-bas"><h2>Tutarlılık kontrolleri</h2><span class="alt">salt okunur</span></div>
+        ${t ? `<ul class="kontrol-liste">${t.kontroller.map(k => `<li>
+          <details ${(k.sayi || 0) > 0 && k.seviye !== "bilgi" ? "open" : ""}><summary>
+            ${k.hata ? `<span class="etiket e-tamam">Çalışmadı</span>` : (k.sayi || 0) > 0 ? `<span class="etiket ${SEVIYE[k.seviye][1]}">${SEVIYE[k.seviye][0]} · ${sayi(k.sayi)}</span>` : `<span class="etiket e-oy">Temiz</span>`}
+            <b>${e(k.baslik)}</b></summary>
+            <p class="kucuk soluk">${e(k.aciklama)}</p>
+            ${k.hata ? `<p class="kucuk" style="color:var(--muhur)">${e(k.hata)}</p>` : ""}
+            ${k.ornekler && k.ornekler.length ? `<ul class="kucuk">${k.ornekler.map(o => `<li>${o.user_id ? oyuncuLink(o.user_id, o.metin) : e(o.metin)}</li>`).join("")}</ul>
+              ${k.sayi > k.ornekler.length ? `<p class="kucuk soluk">İlk ${k.ornekler.length} kayıt gösteriliyor.</p>` : ""}<p class="kucuk"><b>Ne yapılır:</b> ${e(k.cozum)}</p>` : ""}
+          </details></li>`).join("")}</ul>` : `<div class="bos">Kontroller yüklenemedi.</div>`}</section>
+      <section class="blok"><div class="blok-bas"><h2>Zamanlanmış işler</h2><span class="alt">${sayi(aktif.length)} aktif · ${sayi(hatali.length)} hatalı</span></div>
+        ${hatali.length ? `<div class="uyari u-hata" style="margin-bottom:10px"><b>Son 48 saatte hata veren iş</b>${hatali.map(x => `<div style="margin-top:6px"><b style="display:inline">${e(x.ad)}</b> · ${sayi(x.hata_48s)} kez<div class="kucuk" style="overflow-wrap:anywhere">${e(x.son_hata || "")}</div></div>`).join("")}
+          <p class="kucuk" style="margin-top:6px">Hata veren iş o gün yapması gerekeni yapmamıştır. Düzeltme kod değişikliği gerektirir.</p></div>` : ""}
+        ${tablo3(aktif, [[r => `<b>${e(r.ad)}</b><div class="kucuk soluk">${e(r.zaman)}</div>`, "İş"], [r => r.son ? e(tarih(r.son)) : "—", "Son çalışma"],
+          [r => r.hata_48s ? `<span class="etiket e-hata">${sayi(r.hata_48s)} hata</span>` : r.son_durum === "succeeded" ? `<span class="etiket e-oy">Tamam</span>` : `<span class="etiket">${e(r.son_durum || "—")}</span>`, "Durum"]], "Zamanlanmış iş bulunamadı.")}
+        ${pasif.length ? `<details style="margin-top:8px"><summary class="kucuk">Kapalı işler (${sayi(pasif.length)})</summary><p class="kucuk soluk">${e(pasif.map(x => x.ad).join(", "))}</p></details>` : ""}</section>
+      <section class="blok"><div class="blok-bas"><h2>Yedekler</h2><span class="alt">en fazla 5 saklanır</span></div>
+        ${tablo3(d.yedekler, [[r => `<b>${e(yedekTarih(r.sema))}</b><div class="kucuk soluk">${e((r.aciklama || "").replace(/ · \d\d\.\d\d\.\d{4} \d\d:\d\d$/, ""))}</div>`, "Yedek"],
+          [r => e(boyut(r.boyut)), "Boyut", "sag"], [r => sayi(r.tablo), "Tablo", "sag gizle-mobil"]], "Yedek yok.")}
+        <p class="kucuk soluk" style="margin-top:8px">Yedekten geri dönüş, yedek anından sonraki bütün oyuncu ilerlemesini siler. Bu yüzden portala konmadı; gerekirse teknik destekle, senin açık onayınla yapılır.</p></section>
+      <section class="blok"><div class="blok-bas"><h2>Oyun motoru hataları</h2></div>
+        ${tablo3(d.motor_hatalari, [[r => `<b>${e(r.adim)}</b><div class="kucuk" style="overflow-wrap:anywhere">${e(r.hata || "")}</div>`, "Adım"], ["sayi", "Kez", "sag"], [r => e(tarih(r.son)), "Son", "gizle-mobil"]], "Kayıtlı motor hatası yok.")}</section>
+      <section class="blok"><div class="blok-bas"><h2>Oyuncular</h2></div>
+        <dl class="kv"><dt>Toplam (engelsiz)</dt><dd>${sayi(d.oyuncu.toplam)}</dd><dt>Engelli</dt><dd>${sayi(d.oyuncu.engelli)}</dd><dt>Son 7 günde aktif</dt><dd>${sayi(d.oyuncu.aktif_7g)}</dd><dt>Son 7 günde yeni</dt><dd>${sayi(d.oyuncu.yeni_7g)}</dd></dl>
+        <h3 style="margin:14px 0 6px">Portal (son 7 gün)</h3>
+        <dl class="kv"><dt>Uygulanan işlem</dt><dd>${sayi(d.portal.islem_7g)}</dd><dt>Başarısız</dt><dd>${sayi(d.portal.basarisiz_7g)}</dd><dt>Geri alınan</dt><dd>${sayi(d.portal.geri_alinan_7g)}</dd><dt>Asistan sorusu</dt><dd>${sayi(d.portal.asistan_7g)}</dd></dl></section>
+      <section class="blok"><div class="blok-bas"><h2>Veritabanı</h2><span class="alt">${sayi(d.veritabani.tablo_sayisi)} oyun tablosu · ${e(boyut(d.veritabani.oyun_boyut))}</span></div>
+        ${tablo3(d.veritabani.en_buyuk, [["tablo", "Tablo"], [r => r.satir >= 0 ? sayi(r.satir) : "—", "Satır (yaklaşık)", "sag"], [r => e(boyut(r.boyut)), "Boyut", "sag"]], "—")}
+        ${d.surum_gecmisi.length ? `<h3 style="margin:14px 0 6px">Sunucu güncellemeleri</h3>${tablo3(d.surum_gecmisi, [["surum", "Sürüm"], [r => e(r.aciklama || ""), "Açıklama", "gizle-mobil"], ["baslangic", "Tarih"]], "—")}` : ""}</section>
+    </div>
+    <div style="margin-top:14px">${pushDurumHtml(d.push)}</div>`);
+  document.getElementById("sYedek").onclick = () => islemFormu("yedek_al", {}, "Bütün oyun verisi", yenile);
+  document.getElementById("sYenile").onclick = yenile;
+}
+
+/* ---------- Yapay zekâ asistanı ---------- */
+S.asistan = S.asistan || [];   // {rol: "user"|"assistant", metin, onizlemeler?, hata?}
+const ORNEK_SORU = ["Bugün sistemde ya da veride bir sorun var mı?", "Yaklaşan seçimde oy kullanamayacak oyuncu var mı?", "En zengin 5 oyuncu kim, servetleri ne kadar?",
+  "Yarın 20.00'de herkese seçim hatırlatması planla", "Bekleyen şikâyetleri özetle"];
+const ARAC_AD = { pano: "kontrol merkezi", sozluk: "il/parti listesi", oyuncu_ara: "oyuncu arama", oyuncu_listesi: "oyuncu listesi", oyuncu_dosyasi: "oyuncu dosyası",
+  secimler: "seçimler", secim: "seçim ayrıntısı", oy_teshis: "oy teşhisi", siyaset: "siyaset", parti: "parti dosyası", ekonomi: "ekonomi", sirketler: "şirketler",
+  ayarlar: "canlı ayarlar", ayar_gecmisi: "ayar geçmişi", duyurular: "duyurular", olaylar: "olaylar", destek: "destek", sistem: "sistem", tutarlilik: "tutarlılık kontrolleri",
+  islem_gecmisi: "işlem geçmişi", islem_onizle: "ön izleme" };
+function asistanMetin(m){ // güvenli, sade biçim: **kalın**, satır sonu, madde
+  return e(m).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/^[-•] (.+)$/gm, "<span class='madde'>• $1</span>").replace(/\n/g, "<br>");
+}
+async function asistanSayfa(){
+  sayfa(`<div class="blok-bas" style="margin-bottom:12px"><h1>Asistan</h1><button class="btn btn-kucuk" id="aGecmis">Geçmiş</button></div>
+    <div class="uyari u-bilgi" style="margin-bottom:12px"><b>Asistan ne yapar?</b>Oyunun verisine bakıp sorularını yanıtlar ve istediğin işlemlerin <b style="display:inline">ön izlemesini</b> hazırlar.
+      Hiçbir şeyi kendi başına değiştirmez: hazırladığı kartı açıp kontrol eder, uygun görürsen sen uygularsın. Kimin kime oy verdiğini göremez. Her konuşma kayda geçer.</div>
+    <section class="blok sohbet"><div id="aMesajlar" class="mesajlar" aria-live="polite"></div>
+      <div class="ornekler" id="aOrnek">${ORNEK_SORU.map(s => `<button class="btn btn-kucuk" data-ornek="${e(s)}">${e(s)}</button>`).join("")}</div>
+      <div class="sohbet-giris"><label for="aSoru" class="gizli-etiket">Soru</label><textarea id="aSoru" rows="2" maxlength="4000" placeholder="Sorunu ya da isteğini yaz…"></textarea>
+        <button class="btn btn-ana" id="aGonder">Gönder</button></div>
+      <div class="dugmeler" style="margin-top:8px"><button class="btn btn-kucuk" id="aTemizle">Yeni konuşma</button></div></section>`);
+  asistanCiz();
+  const g = document.getElementById("aSoru");
+  g.addEventListener("keydown", ev => { if(ev.key === "Enter" && !ev.shiftKey){ ev.preventDefault(); asistanGonder(); } });
+  document.getElementById("aGonder").onclick = asistanGonder;
+  document.getElementById("aTemizle").onclick = () => { S.asistan = []; asistanCiz(); };
+  document.getElementById("aGecmis").onclick = asistanGecmis;
+  document.querySelectorAll("[data-ornek]").forEach(b => b.onclick = () => { g.value = b.dataset.ornek; asistanGonder(); });
+}
+function asistanCiz(bekliyor){
+  const k = document.getElementById("aMesajlar"); if(!k) return;
+  const o = document.getElementById("aOrnek"); if(o) o.classList.toggle("gizli", S.asistan.length > 0);
+  k.innerHTML = S.asistan.length ? S.asistan.map((m, i) => m.rol === "user" ? `<div class="balon giden">${e(m.metin)}</div>`
+    : m.anahtar_yok ? `<div class="uyari u-dikkat"><b>Asistan henüz etkin değil</b>Asistanın çalışması için bir Anthropic API anahtarı gerekiyor (kullanıma göre ücretlendirilir).
+        Anahtarı console.anthropic.com adresinden alıp Supabase panelinde <i>Edge Functions › Secrets</i> bölümüne <b style="display:inline">ANTHROPIC_API_KEY</b> adıyla eklediğinde asistan hemen çalışır; uygulama güncellemesi gerekmez.</div>`
+    : `<div class="balon">${m.hata && !m.metin ? `<span style="color:var(--muhur)">${e(m.hata)}</span>` : asistanMetin(m.metin || "")}
+        ${(m.onizlemeler || []).map((p, j) => `<div class="oneri ${p.engel ? "engelli" : ""}"><div><b>${e(p.baslik || p.islem)}</b><div class="kucuk">${e(p.ozet || "")}</div>
+          ${p.engel ? `<div class="kucuk" style="color:var(--muhur)">Uygulanamaz: ${e(p.engel)}</div>` : ""}</div>
+          ${p.engel ? "" : `<button class="btn btn-kucuk btn-ana" data-oneri="${i}:${j}">${p.kritik ? "Ön izlemeyi aç (kritik)" : "Ön izlemeyi aç"}</button>`}</div>`).join("")}
+        ${m.araclar && m.araclar.length ? `<small>Baktığı yerler: ${e([...new Set(m.araclar)].map(a => ARAC_AD[a] || a).join(", "))}</small>` : ""}</div>`).join("")
+    : `<div class="bos">Bir soru sor ya da aşağıdaki örneklerden birini seç.</div>`;
+  if(bekliyor) k.insertAdjacentHTML("beforeend", `<div class="balon yaziyor">Asistan veriye bakıyor…</div>`);
+  k.querySelectorAll("[data-oneri]").forEach(b => b.onclick = () => { const [i, j] = b.dataset.oneri.split(":").map(Number); const p = S.asistan[i].onizlemeler[j];
+    if(p.gecerlilik && new Date(p.gecerlilik) < new Date()) return bildir("Bu ön izlemenin süresi doldu (15 dakika). Asistandan yeniden iste.", true);
+    onizlemeAc(p, () => { p.uygulandi = true; }); });
+  k.scrollTop = k.scrollHeight;
+}
+async function asistanGonder(){
+  const g = document.getElementById("aSoru"), b = document.getElementById("aGonder"); if(!g || b.disabled) return;
+  const soru = g.value.trim(); if(!soru) return;
+  const gecmis = S.asistan.filter(m => m.metin && !m.anahtar_yok).map(m => ({ rol: m.rol, metin: m.metin })).slice(-12);
+  S.asistan.push({ rol: "user", metin: soru }); g.value = ""; b.disabled = true; asistanCiz(true);
+  let r;
+  try {
+    const { data, error } = await S.sb.functions.invoke("yp-asistan", { body: { soru, gecmis } });
+    if(error) throw new Error(error.message || String(error));
+    r = data || {};
+  } catch(err){ r = { hata: "Asistana ulaşılamadı: " + (err.message || err) }; }
+  S.asistan.push({ rol: "assistant", metin: r.yanit || "", onizlemeler: r.onizlemeler || [], araclar: r.araclar || [], hata: r.hata, anahtar_yok: r.anahtar_yok });
+  b.disabled = false; asistanCiz(); g.focus();
+}
+async function asistanGecmis(){
+  const p = pencere("Asistan geçmişi", `<div class="yukleniyor">Yükleniyor…</div>`, `<button class="btn btn-ana" data-kapat>Kapat</button>`);
+  const l = await guvenli(() => rpc("yp_asistan_gecmis", { p_limit: 50 })); if(!l){ p.kapat(true); return; }
+  p.govde(l.length ? l.map(k => `<div class="gecmis-kayit"><div class="kucuk soluk">${e(tarih(k.zaman, true))} · ${e(k.kad || "")}${k.model ? " · " + e(k.model) : ""}${k.girdi_token ? ` · ${sayi(k.girdi_token + (k.cikti_token || 0))} token` : ""}</div>
+      <p><b>${e(k.soru)}</b></p>${k.yanit ? `<p class="kucuk">${asistanMetin(k.yanit)}</p>` : ""}${k.hata ? `<p class="kucuk" style="color:var(--muhur)">${e(k.hata)}</p>` : ""}
+      ${k.onizlemeler && k.onizlemeler.length ? `<p class="kucuk">Hazırlanan ön izleme: ${k.onizlemeler.map(o => `#${e(o.islem_id)} ${e(o.ozet || o.islem)}`).join("; ")}</p>` : ""}</div>`).join("")
+    : `<div class="bos">Henüz asistana soru sorulmadı.</div>`);
 }
 
 /* ---------- İşlem geçmişi ---------- */

@@ -302,6 +302,8 @@ declare
     'yp_dernekler', 'yp_ekonomi', 'yp_parti', 'yp_siyaset', 'yp_sirketler',
     -- 173 · Portal aşama 5: duyuru, olay, destek (+ oyuncunun destek talebi)
     'yp_destek', 'yp_duyurular', 'yp_olaylar', 'destek_gonder', 'destek_taleplerim',
+    -- 174 · Portal aşama 6: sistem, tutarlılık, asistan kaydı
+    'yp_asistan_gecmis', 'yp_asistan_kaydet', 'yp_sistem', 'yp_tutarlilik',
     -- 165 (06.11.2026) seçim gecesi canlı yayını
     'secim_yayini', 'secim_yayini_tekrar'
   ];
