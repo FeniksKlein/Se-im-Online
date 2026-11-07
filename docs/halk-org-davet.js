@@ -456,10 +456,11 @@ sokakHareketleriEkrani=async function(){
    '<p class="hh-muted">Eylem fonu: <b>'+tl(x.muhalefet_fonu)+'</b> · Hükümet uzlaşma fonu: <b>'+tl(x.iktidar_fonu)+'</b><br>Bitiş: '+esc(dt(x.bitis))+'</p>'+
    (x.katildim?'<span class="hh-pill live">✓ Katılıyorsun</span>':
       '<button type="button" class="hh-action hh-primary" data-hh-join="'+id+'">🙋 Eyleme bireysel katıl</button>')+
+   '<details class="hh-detail"><summary>👥 Destekçiler ('+Number((x.destekler||[]).length)+')</summary>'+
+   ((x.destekler||[]).length?(x.destekler||[]).map(y=>'<div class="hh-log"><b>'+esc(y.ad||y.tur)+'</b> · '+esc(y.taraf==='iktidar'?'Uzlaşma':'Eylem')+' · '+tl(y.tutar)+'</div>').join(''):'<p>Henüz destekçi yok.</p>')+'</details>'+
    '<details class="hh-detail"><summary>💰 Eylemi fonla ve güçlendir</summary>'+
-   '<form data-hh-fn="sokak_destek" data-hh-id="'+id+'"><label>Para kaynağı</label><select name="p_kaynak" required>'+
-   opts(sources,x=>x.tur,x=>x.ad)+'</select><label>Kaynak (parti / dernek seçimi)</label>'+
-   '<select name="kaynak_id">'+opts(sources.filter(y=>y.id),x=>x.tur+':'+x.id,x=>x.ad)+'</select>'+
+   '<form data-hh-fn="sokak_destek" data-hh-id="'+id+'"><label>Fon kaynağı: oyuncu / parti / dernek</label><select name="kaynak" required>'+
+   opts(sources,x=>x.tur+':'+(x.id??''),x=>x.ad)+'</select>'+
    '<label>Fon tutarı (TL, en az 1.000)</label><input name="p_tutar" type="number" min="1000" step="1000" required placeholder="Örn. 10000">'+
    '<button class="hh-action hh-primary">Eyleme fon gönder</button></form></details>';
   if(x.ben_baslattim){
@@ -574,11 +575,16 @@ sokakHareketleriEkrani=async function(){
   if(old&&old!==anchor&&!old.contains(root))old.style.display='none';
  });
  // Orijinal formlari gizle; ekran iskeletinin gezinme/baslik ogelerine dokunma.
+ // Ilk ekranin (sari guc / taraf / fon) kartlari anchor ile ayni kapsayicidadir.
+ const legacyBlocks=anchor.parentElement?[...anchor.parentElement.children].filter(el=>
+  el!==anchor&&(el.classList.contains('kart')||el.matches('details,section')||el.id==='so-v2')):[];
+ legacyBlocks.forEach(el=>{el.style.display='none';el.dataset.hhLegacyBlock='1';});
  const tabs=[...root.querySelectorAll('[data-hh-tab]')];
  function show(key){
   tabs.forEach(b=>b.setAttribute('aria-selected',String(b.dataset.hhTab===key)));
   root.querySelectorAll('[data-hh-panel]').forEach(panel=>{panel.hidden=panel.dataset.hhPanel!==key;});
   const legacyVisible=key==='tools'&&root.dataset.hhLegacy==='1';
+  legacyBlocks.forEach(el=>{el.style.display=legacyVisible?'':'none';});
   ['hhOrgUI','hhFinansUI','so-v2'].forEach(id=>{const old=document.getElementById(id);if(old&&old!==anchor&&!old.contains(root))old.style.display=legacyVisible?'':'none';});
  }
  tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.hhTab)));
@@ -620,10 +626,9 @@ sokakHareketleriEkrani=async function(){
    args.p_hedef_tur=dest[0];args.p_hedef_id=Number(dest[1]);args.p_eylem=id;
   }
   if(fn==='sokak_destek'){
-   const source=String(args.p_kaynak||'oyuncu');
-   const org=String(args.kaynak_id||'').split(':');delete args.kaynak_id;
-   args.p_kaynak_id=source==='oyuncu'?null:Number(org[0]===source?org[1]:0);
-   if(source!=='oyuncu'&&!args.p_kaynak_id)return toast('Parti/dernek para kaynağını doğru seç',true);
+   const source=String(args.kaynak||'oyuncu:').split(':');delete args.kaynak;
+   args.p_kaynak=source[0];args.p_kaynak_id=source[0]==='oyuncu'?null:Number(source[1]||0);
+   if(args.p_kaynak!=='oyuncu'&&!args.p_kaynak_id)return toast('Geçerli parti veya dernek seç',true);
    args.p_tutar=Number(args.p_tutar);args.p_taraf='muhalefet';args.p_eylem=id;
   }
   if(['sokak_eylem_sonlandir','sokak_basina_aciklama','sokak_yanit','sokak_butce_mudahale','sokak_polis_gonder'].includes(fn))args.p_eylem=id;
