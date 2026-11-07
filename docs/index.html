@@ -36978,6 +36978,25 @@ try { if (typeof EKRAN !== "undefined" && EKRAN) EKRAN.dernek = function () { re
   }, 5000);
 })();
 </script><script>/* SO_HALK_HAREKETLERI_V1 — web ve mobil ortak ekran */
+/* 08.11.2026 · Halk Hareketleri formları okunur: koyu zemin, açık yazı, alt alta etiketler (iOS/Android) */
+(function(){
+ if(typeof document==='undefined'||document.getElementById('hh-temel-form-okunur'))return;
+ var F='form.hhFon,form#hhYeni,form.hhYanit,form.hhKarar,form.hhKararYanit,form.hhTalep';
+ var k=function(x){return F.split(',').map(function(f){return f+' '+x;}).join(',');};
+ var st=document.createElement('style');st.id='hh-temel-form-okunur';
+ st.textContent=[
+  F+'{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:8px!important;width:100%!important;margin:12px 0 0!important;box-sizing:border-box!important}',
+  k('label')+'{display:block!important;width:100%!important;margin:6px 0 0!important;color:#eef2ff!important;font-size:15px!important;font-weight:600!important;line-height:1.45!important}',
+  k('select')+','+k('input')+','+k('textarea')+'{display:block!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;min-height:48px!important;margin:0!important;padding:12px 14px!important;font:400 16px/1.4 system-ui,-apple-system,sans-serif!important;color:#f5f7ff!important;-webkit-text-fill-color:#f5f7ff!important;background:#111a34!important;border:1px solid #7180ab!important;border-radius:12px!important;opacity:1!important;box-shadow:none!important}',
+  k('select')+'{color-scheme:dark!important;-webkit-appearance:menulist!important;appearance:auto!important}',
+  k('option')+'{color:#f5f7ff!important;background:#111a34!important}',
+  k('textarea')+'{min-height:110px!important;resize:vertical!important}',
+  k('input::placeholder')+','+k('textarea::placeholder')+'{color:#b6c1da!important;-webkit-text-fill-color:#b6c1da!important;opacity:1!important}',
+  k('button')+'{width:100%!important;min-height:48px!important;margin-top:8px!important;white-space:normal!important}',
+  k('p')+'{color:#d7ddf3!important}'
+ ].join('\n');
+ (document.head||document.documentElement).appendChild(st);
+})();
 async function sokakHareketleriEkrani(){
  yukleniyor('Halk Hareketleri');
  try {
