@@ -1,3 +1,46 @@
+/* 08.11.2026 · Halk Hareketleri dayanıklılık katmanı
+   Ekran, üst üste binen birkaç katmandan oluşur. Önceden herhangi bir katmandaki tek bir hata
+   bütün ekranı "Sokak Eylemleri açılamadı" uyarısıyla düşürüyordu. Artık her katman ayrı korunur:
+   biri çökerse diğerleri ve eylem işlemleri çalışmaya devam eder. Asıl teknik hata sunucuya
+   (oyun.istemci_hata) yazılır; oyuncu yalnızca sade bir uyarı görür. */
+(function(){
+'use strict';
+if(window.__hhSar)return;
+let sonRapor=0;
+function rapor(katman,err){
+ try{
+  console.error('Halk Hareketleri katmanı: '+katman,err);
+  const simdi=Date.now();if(simdi-sonRapor<1500)return;sonRapor=simdi;
+  const mesaj=String((err&&err.message)||err||'bilinmeyen hata');
+  const yigin=String((err&&err.stack)||'');
+  if(typeof API!=='undefined'&&API&&typeof API.rpc==='function')
+   Promise.resolve(API.rpc('istemci_hata_kaydet',{p_ekran:'halk_hareketleri:'+katman,p_mesaj:mesaj,p_yigin:yigin,p_tarayici:String(navigator.userAgent||'')})).catch(function(){});
+ }catch(_){}
+}
+function kabuk(){
+ if(document.getElementById('hhOrgAnchor'))return;
+ const govde='<div id="hhOrgAnchor"></div>';
+ try{iskelet('Halk Hareketleri',govde,{geri:true});}catch(err){rapor('iskelet',err);}
+ if(document.getElementById('hhOrgAnchor'))return;
+ // Ekran iskeleti de çizilemediyse ana alana doğrudan sade bir sayfa koy.
+ const alan=document.getElementById('icerik')||document.getElementById('app');
+ if(!alan)return;
+ alan.innerHTML='<div class="ust"><button class="geri" onclick="geriGit()" aria-label="Geri">‹</button><h1>Halk Hareketleri</h1></div><div style="padding:12px 16px 90px">'+govde+'</div>';
+}
+window.__hhSar=function(katman,fn){
+ if(typeof fn!=='function'||fn.__hhKatman)return fn;
+ const sarili=async function(){
+  try{return await fn.apply(this,arguments);}
+  catch(err){rapor(katman,err);kabuk();}
+ };
+ sarili.__hhKatman=katman;
+ return sarili;
+};
+window.__hhRapor=rapor;
+window.__hhKabuk=kabuk;
+if(typeof sokakHareketleriEkrani==='function')sokakHareketleriEkrani=window.__hhSar('temel',sokakHareketleriEkrani);
+})();
+
 /* Halk hareketleri kuruluş liderliği ve canlı eylem davetleri */
 (function(){
 'use strict';
@@ -144,7 +187,9 @@ document.addEventListener('click',function(ev){
  btn.disabled=true;
  const fail=function(err){
   console.error('Sokak Eylemleri acilamadi',err);
-  if(typeof toast==='function')toast('Sokak Eylemleri acilamadi: '+(typeof hataCevir==='function'?hataCevir(err?.message||String(err)):String(err)),true);
+  if(window.__hhRapor)window.__hhRapor('menu',err);
+  if(window.__hhKabuk)window.__hhKabuk();
+  if(!document.getElementById('hhCommand')&&typeof toast==='function')toast('Halk Hareketleri ekranı tam yüklenemedi. Sayfayı yenileyip tekrar dene.',true);
  };
  try{
   Promise.resolve(sokakHareketleriEkrani()).catch(fail).finally(function(){btn.disabled=false;});
@@ -301,6 +346,7 @@ sokakHareketleriEkrani=async function(){
  document.querySelectorAll('[data-hh-reject]').forEach(btn=>btn.addEventListener('click',()=>send(btn,'sokak_davet_yanit',{p_davet:Number(btn.dataset.hhReject),p_kabul:false})));
 };
 })();
+if(window.__hhSar&&typeof sokakHareketleriEkrani==='function')sokakHareketleriEkrani=window.__hhSar('org',sokakHareketleriEkrani);
 
 
 /* SO_HALK_FINANS_V1 — Protesto vs hükümet bütçe rekabeti */
@@ -379,6 +425,7 @@ sokakHareketleriEkrani=async function(){
   });
  };
 })();
+if(window.__hhSar&&typeof sokakHareketleriEkrani==='function')sokakHareketleriEkrani=window.__hhSar('finans',sokakHareketleriEkrani);
 
 
 /* 2026-11-07 · HALK HAREKETLERI KOMUTA MERKEZI · okunurluk ve tum roller */
@@ -695,6 +742,7 @@ sokakHareketleriEkrani=async function(){
  }));
 };
 })();
+if(window.__hhSar&&typeof sokakHareketleriEkrani==='function')sokakHareketleriEkrani=window.__hhSar('merkez',sokakHareketleriEkrani);
 
 /* Deployment asset version: 20261107-4; source of truth for GitHub Pages. */
 

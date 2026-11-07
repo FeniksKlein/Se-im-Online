@@ -17,6 +17,12 @@ const cdn = /<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase
 if (!cdn.test(html)) throw new Error('Supabase CDN etiketi bulunamadı');
 html = html.replace(cdn, '<script src="supabase.min.js"></script>');
 html = html.replace(/window\.UYGULAMA_SURUM = "[^"]*";/, `window.UYGULAMA_SURUM = ${JSON.stringify(surum)};`);
+// 08.11.2026: Halk Hareketleri modülü canlı web'e derleme sonrası eklenir; mağaza paketinde de olsun.
+if (!html.includes('halk-org-davet.js') && fs.existsSync(path.join(hedef, 'halk-org-davet.js'))) {
+  const i = html.toLowerCase().lastIndexOf('</body>');
+  if (i < 0) throw new Error('index.html içinde </body> bulunamadı');
+  html = html.slice(0, i) + '<script defer src="halk-org-davet.js?v=20261108-1"></script>\n' + html.slice(i);
+}
 fs.writeFileSync(path.join(hedef, 'index.html'), html);
 // Supabase istemcisi (npm paketinden)
 const aday = ['dist/umd/supabase.js', 'dist/umd/supabase.min.js'].map(x => path.join(kok, 'mobil/node_modules/@supabase/supabase-js', x)).find(x => fs.existsSync(x));
