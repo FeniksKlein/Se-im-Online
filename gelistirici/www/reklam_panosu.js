@@ -886,7 +886,7 @@
         '<details class="rp-detay" open><summary>İhale şartları</summary><div class="rp-not">' +
         '<p>• Kapalı teklif usulü: tutarlar zarflar açılana kadar gizlidir. Teklif geri alınamaz ve değiştirilemez.</p>' +
         '<p>• En yüksek teklif kazanır; eşitlikte önce veren öne geçer.</p>' +
-        '<p>• Kaybedenlerin teminatı iade edilir. Kazanan kalan bedeli ödeyemezse teminatı idareye gelir kaydedilir ve sıradaki teklife geçilir.</p>' +
+        '<p>• İhale bedeli devlete (Hazine) gelir yazılır. Kaybedenlerin teminatı iade edilir; kazanan kalan bedeli ödeyemezse teminatı Hazine’ye gelir kaydedilir ve sıradaki teklife geçilir.</p>' +
         '<p>• İhale yetkilisi (o ilin belediye başkanı; ülke genelinde Cumhurbaşkanı ve Ulaştırma Bakanı) ile yönettiği ya da ortağı olduğu şirketler katılamaz.</p>' +
         '<p>• Aynı anda en fazla ' + Number(ih.ayar && ih.ayar.en_fazla || 3) + ' pano işletmesi tutabilirsin.</p>' +
         '<p>• Sözleşme boyunca her panonun günlük fiyatını sen belirlersin; kira geliri sana gelir, her kiralamadan %' + Math.round(Number(ih.ayar && ih.ayar.vergi || 0.1) * 100) + ' ilan ve reklam vergisi idareye ödenir.</p>' +

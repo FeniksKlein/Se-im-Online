@@ -16,7 +16,7 @@
 --   • Tekel sınırı: bir oyuncu (yönettiği şirketlerle birlikte) aynı anda en fazla 3 işletme tutar.
 --   • Sonuç: en yüksek teklifin kalan bedeli tahsil edilir ve sözleşme yapılır. Ödeyemeyen kazananın
 --     teminatı idareye gelir kaydedilir, sıradaki teklife geçilir. Kaybedenlerin teminatı iade edilir.
---     İhale bedeli belediye kasasına ya da Hazine'ye gider.
+--     İhale bedeli (il ihaleleri dahil) devlete, Hazine'ye gelir yazılır.
 --   • İşletmeci her panonun günlük fiyatını kendisi belirler. Kira geliri işletmeciye geçer; her
 --     kiralamadan %10 ilan ve reklam vergisi belediyeye (ülke genelinde Hazine'ye) kesilir.
 --   • İşletmecisi olmayan panoları idare eski tarifeyle doğrudan kiralamaya devam eder.
@@ -157,13 +157,10 @@ create or replace function oyun.pano_ihale_gelir(p_kapsam text, p_il smallint, p
 returns void language plpgsql security definer set search_path = '' as $$
 declare kur numeric := nullif(oyun.pazar_tl_milyar(), 0);
 begin
+  -- İhale bedeli ve irat kaydedilen teminatlar, il ihalesi dahil her zaman devlete (Hazine) gelir yazılır
   if p_tutar = 0 or kur is null then return; end if;
-  if p_kapsam = 'il' then
-    update oyun.il_durum set kasa = coalesce(kasa, 0) + p_tutar / kur where il_id = p_il;
-    insert into oyun.belediye_sehir_hareket (il_id, tur, tutar, aciklama, zaman) values (p_il, 'ihale_geliri', p_tutar / kur, p_aciklama, oyun.simdi());
-  else
-    perform oyun.hazine_kaydet('diger_gelir', p_tutar / kur, p_aciklama);
-  end if;
+  perform oyun.hazine_kaydet('diger_gelir', p_tutar / kur,
+    p_aciklama || case when p_kapsam = 'il' then ' · ' || coalesce((select i.ad from oyun.iller i where i.id = p_il), '') || ' panoları' else '' end);
 end $$;
 
 -- Ödeme: şirket gelirleri kâr hesabına faaliyet geliri olarak yazılır
