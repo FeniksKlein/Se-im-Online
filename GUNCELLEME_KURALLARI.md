@@ -40,3 +40,16 @@ Bu proje, yayındaki oyunun **hiçbir güncellemeyle sıfırlanmaması** üzerin
   - Önce yedek alınır.
   - Oyun dünyası boşalır; giriş hesapları ve kataloglar kalır.
   - Ardından `supabase-kurulum.sql` bir kez daha çalıştırılır.
+
+
+## Yeni ekranlar için zorunlu okunurluk standardı (2026-11-07)
+
+Yeni özelliklerde mobil form alanlarını tek satırda yan yana sıkıştırma. Her `label`, `select`, `input`, `textarea` ve gönderim düğmesi ayrı satırda ve `width:100%; min-width:0; box-sizing:border-box` düzeninde olmalı.
+
+- iPhone Safari ve Android WebView üzerinde metin girişi en az **16px** (otomatik yakınlaştırmayı önler), açıklamalar en az 14px, etiketler en az 15px ve yeterli satır yüksekliğinde.
+- Koyu arka planda açık metin, belirgin `placeholder`, `color-scheme:dark` ve açıkça tanımlanmış koyu `option` rengi kullanılmalı. Yazı ve açılır menü aynı renge düşmemeli.
+- Dokunma alanları en az 44–48px yüksek, ekrandan taşmayan, uzun Türkçe açıklamalarda satır kıran düğmeler olmalı.
+- Bütün yeni eylem, dava, teklif, davet ve fonlama panelleri aynı erişilebilir görsel bileşen ailesini kullanmalı; başlık, gerekçe, işlem, yetki ve sonucu ayrı göstermeli.
+- Kullanıcının yetkisi istemcideki butonun görünümünden **değil**, Supabase RPC içinde sunucu tarafında doğrulanmalı.
+- Yayın öncesi `node --check`, CSS/form alanı taşma kontrolü, küçük iPhone ekranı ve koyu temada kontrast kontrolü yapılmalı; mümkünse cihazda giriş yapılarak gerçek işlem akışı denenmeli.
+- Yeni halka açık JavaScript değişiminde dosya URL'sindeki sürüm numarası değiştirilerek iOS/Android önbelleği yenilenmeli.
