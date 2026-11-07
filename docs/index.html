@@ -35382,7 +35382,7 @@ async function sokakHareketleriEkrani(){
  yukleniyor('Halk Hareketleri');
  try {
   const d=await API.rpc('sokak_uzlasma_panel'),a=d.ayar||{},fmt=n=>Number(n||0).toLocaleString('tr-TR'),date=t=>t?new Date(t).toLocaleString('tr-TR'):'—';
-  let h='<div class="kart"><h2>📢 Halk Hareketleri</h2><p>Barışçıl gösteriler, ortak fonlama ve hükümetle uzlaşma.</p><details><summary>Kurallar ve kötüye kullanım sınırları</summary><p>Başlatma: muhalefet genel başkanı, 7 günlük hesap, ilde en az 3 aktif oyuncu ve 35/100 memnuniyetsizlik. Parti kasasından '+fmt(a.baslatma_bedeli)+' TL.</p><p>İlde tek eylem; kapanıştan sonra 7 gün bekleme. Parti başına tek aktif eylem ve 72 saat bekleme. Ülkede en fazla 6 eylem. Her kişi/kurum en fazla 3 eylemi destekleyebilir.</p><p>İlk süre 24 saat. Her '+fmt(a.baslatma_bedeli)+' TL ek protesto fonu 12 saat kazandırır; toplam en fazla 5 gün. Katılım için 3 günlük hesap gerekir. Türkiye\'nin 81 ilinden katılım serbesttir.</p><p>Son 24 saat fon limiti: kişi '+fmt(a.baslatma_bedeli*2)+' TL, kurum '+fmt(a.baslatma_bedeli*5)+' TL. Uzlaşma tarafında bu limitler üç kattır. Eylem protesto fonu en fazla '+fmt(a.baslatma_bedeli*20)+' TL. Harcamalar iade edilmez.</p><p>Kırmızı: en az 75 puan ve Türkiye genelinden en az 3 gerçek katılımcı. Para tek başına yeterli değildir. Uzlaşma fonu protesto fonunun 3 katına ulaşınca eylem kapanır.</p><p>Erken seçim: en az 3 kırmızı il ve aktif ülkenin %20’si (en az 15 kişi), kesintisiz 72 saat. Yakın seçim, yeni hükümetin ilk 7 günü ve 14 günlük kriz seçimi beklemesi korunur. Cumhurbaşkanı seçimle devredene kadar görevde kalır.</p><p>Kırmızı eylemler büyümeyi ve hükümet memnuniyetini sınırlı etkiler; şirketlerin kâr beklentisi değerine en fazla %6 risk indirimi uygulanır. Hükümet açıklaması tek başına sayacı sıfırlamaz; fon veya gerçek hizmet iyileşmesi gerekir.</p></details></div>';
+  let h='<div class="kart"><h2>📢 Halk Hareketleri</h2><p>Barışçıl gösteriler, ortak fonlama ve hükümetle uzlaşma.</p><details><summary>Kurallar ve kötüye kullanım sınırları</summary><p>Başlatma: muhalefet genel başkanı, 7 günlük hesap, ilde en az 3 aktif oyuncu ve 35/100 memnuniyetsizlik. Parti kasasından '+fmt(a.baslatma_bedeli)+' TL.</p><p>İlde tek eylem; kapanıştan sonra 7 gün bekleme. Parti başına tek aktif eylem ve 72 saat bekleme. Ülkede en fazla 6 eylem. Her kişi/kurum en fazla 3 eylemi destekleyebilir.</p><p>İlk süre 24 saat. Her '+fmt(a.baslatma_bedeli)+' TL ek protesto fonu 12 saat kazandırır; toplam en fazla 5 gün. Katılım için 3 günlük hesap gerekir. Türkiye'nin 81 ilinden katılım serbesttir.</p><p>Son 24 saat fon limiti: kişi '+fmt(a.baslatma_bedeli*2)+' TL, kurum '+fmt(a.baslatma_bedeli*5)+' TL. Uzlaşma tarafında bu limitler üç kattır. Eylem protesto fonu en fazla '+fmt(a.baslatma_bedeli*20)+' TL. Harcamalar iade edilmez.</p><p>Kırmızı: en az 75 puan ve Türkiye genelinden en az 3 gerçek katılımcı. Para tek başına yeterli değildir. Uzlaşma fonu protesto fonunun 3 katına ulaşınca eylem kapanır.</p><p>Erken seçim: en az 3 kırmızı il ve aktif ülkenin %20’si (en az 15 kişi), kesintisiz 72 saat. Yakın seçim, yeni hükümetin ilk 7 günü ve 14 günlük kriz seçimi beklemesi korunur. Cumhurbaşkanı seçimle devredene kadar görevde kalır.</p><p>Kırmızı eylemler büyümeyi ve hükümet memnuniyetini sınırlı etkiler; şirketlerin kâr beklentisi değerine en fazla %6 risk indirimi uygulanır. Hükümet açıklaması tek başına sayacı sıfırlamaz; fon veya gerçek hizmet iyileşmesi gerekir.</p></details></div>';
   if(d.kriz?.kirmizi_baslangic)h+='<div class="kart"><b>Ulusal kriz sayacı</b><p>Başlangıç: '+e(date(d.kriz.kirmizi_baslangic))+'</p><p>Koşullar bozulursa 72 saat sayacı sıfırlanır.</p></div>';
   if(!d.aktif)h+='<div class="kart">Halk hareketleri şu anda kapalı.</div>';
   if(d.aktif&&d.baslatabilir)h+='<div class="kart"><h3>Eylem başlat</h3><form id="hhYeni"><label>İl · memnuniyetsizlik</label><select name="il">'+(d.iller||[]).map(i=>'<option value="'+Number(i.id)+'">'+e(i.ad)+' · '+fmt(i.memnuniyetsizlik)+'/100</option>').join('')+'</select><label>Talep</label><select name="talep"><option value="hizmet">İl hizmet memnuniyeti +5 puan</option><option value="issizlik">İşsizlik −0,5 puan</option><option value="vergi">Vergi −1 puan</option></select><label>Somut talep ve gerekçe</label><textarea name="metin" minlength="15" maxlength="400" required></textarea><p>Parti kasasından '+fmt(a.baslatma_bedeli)+' TL harcanır.</p><button class="btn altin">Ücreti öde ve başlat</button></form></div>';
@@ -35410,7 +35410,7 @@ async function sokakHareketleriEkrani(){
  }catch(err){iskelet('Halk Hareketleri','<div class="kart">'+e(hataCevir(err.message))+'</div>',{geri:true});}
 }
 // Kaynak derlemesine kalıcı menü bağlantısı.
-/* Partiler menusu kisa yolu halk-org-davet.js tarafindan tek kez cizilir. */
+(function(){const eski=iskelet;iskelet=function(baslik,govde,opt){if(baslik==='Partiler')govde='<div class="kart"><button class="btn altin" onclick="ekranAc(sokakHareketleriEkrani)">📢 Halk Hareketleri · Protestolar ve uzlaşma</button></div>'+govde;return eski(baslik,govde,opt);};})();
 function hhHukumetHTML(x,d){
  const fmt=n=>Number(n||0).toLocaleString('tr-TR'),active=d.aktif&&x.durum==='aktif';
  const names={masa:'Uzlaşma masası',yonlendirme:'Bilgilendirme ve yönlendirme',uyari:'Sert siyasi uyarı',dagitma:'Ek bütçeyle dağıtma',yaptirim:'6 saatlik eylem yaptırımı'};
@@ -35447,6 +35447,365 @@ function hhSozHTML(x,d){
  }return h+'</div>';
 }
 function hhSozBagla(run){document.querySelectorAll('[data-soz]').forEach(b=>b.addEventListener('click',()=>run(b,'sokak_soz_oyla',{p_eylem:Number(b.dataset.soz),p_oy:b.dataset.oy==='evet'})));document.querySelectorAll('.hhTalep').forEach(f=>f.addEventListener('submit',ev=>{ev.preventDefault();run(f.querySelector('button'),'sokak_talep_sec',{p_eylem:Number(f.dataset.id),p_tur:String(new FormData(f).get('tur'))});}));}
-</script><script defer src="halk-org-davet.js?v=20261107-6"></script>
-<script defer src="icisleri_komuta.js?v=20261107-2"></script><script defer src="icisleri_ek.js?v=20261107-2"></script></body>
+</script><script>/* Seçim Online · İçişleri Komuta Merkezi · 07.11.2026 */
+(function(){
+ "use strict";
+ if(window.SO_ICISLERI_KOMUTA_20261107)return;
+ window.SO_ICISLERI_KOMUTA_20261107=true;
+ function temiz(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+ function say(v){return Number(v||0).toLocaleString("tr-TR",{maximumFractionDigits:2});}
+ function tarih(v){return v?new Date(v).toLocaleString("tr-TR"):"—";}
+ function uiStyle(){
+  if(document.getElementById("icKomutaCss"))return;
+  var el=document.createElement("style");el.id="icKomutaCss";
+  el.textContent="#icKomuta{color:var(--txt,#eff3ff);font:inherit;line-height:1.5}#icKomuta .ic-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}#icKomuta .ic-kart{background:var(--panel2,#15213d);padding:13px;border-radius:13px;border:1px solid var(--line2,#4e648c);margin:10px 0}#icKomuta .ic-kart h3{margin:0 0 8px;font-size:17px}#icKomuta label{display:block;font-weight:700;font-size:14px;margin:10px 0 5px}#icKomuta input,#icKomuta textarea,#icKomuta select{box-sizing:border-box;display:block;width:100%;min-height:46px;padding:10px 12px;background:#111a34;border:1px solid #8192b4;color:#f5f7ff;-webkit-text-fill-color:#f5f7ff;border-radius:10px;font:inherit;font-size:16px;opacity:1}#icKomuta textarea{min-height:90px;resize:vertical}#icKomuta .btn{margin-top:10px;min-height:45px;white-space:normal}#icKomuta details{padding:10px 0;border-top:1px solid var(--line2,#4e648c)}#icKomuta summary{cursor:pointer;font-weight:750;overflow-wrap:anywhere}#icKomuta p,#icKomuta small{overflow-wrap:anywhere}#icKomuta .ic-durum{font-weight:800}#icKomuta .ic-help{font-size:13px;color:var(--mut,#cbd5e1)}";
+  document.head.appendChild(el);
+ }
+ function formAlan(ad, etiket, val, uzun){
+  return '<label>'+temiz(etiket)+'</label><textarea name="'+ad+'" minlength="'+(uzun||25)+'" maxlength="800" required>'+temiz(val||"")+'</textarea>';
+ }
+ function kararForm(fn,id,ek,btn){
+  return '<form data-ic="'+temiz(fn)+'"><input type="hidden" name="p_id" value="'+Number(id)+'">'+ek+formAlan("p_gerekce","Gerekçeli karar (en az 25 karakter)","",25)+'<button class="btn altin" type="submit">'+temiz(btn)+'</button></form>';
+ }
+ function render(d){
+  uiStyle();
+  var h=['<div id="icKomuta"><div class="ic-kart"><h2>🛡️ İçişleri Bakanlığı · Komuta Merkezi</h2><p>81 ilde kamu güvenliği, valilik koordinasyonu, belediye denetimleri, afet müdahalesi ve oyuncuların hakları burada yönetilir.</p><p class="ic-help">Bakanlık makamı: '+(d.yetki?'Yetkilisiniz':'Vatandaş erişimi')+'. İdari inceleme mahkeme kararı olmadan para cezası veya kıdem kaybı yaratmaz.</p>'+(d.yetki?'<b>Bakanlık kasası: '+say(d.kasa_tl)+' ₺</b>':'')+'</div>'];
+  if(d.yetki){
+   h.push('<div class="ic-kart"><h3>🏛️ Valilikler, kolluk ve hizmet icraatları</h3><form data-ic="icraat"><label>Görev seç</label><select name="p_kod">'+(d.icraatlar||[]).map(function(x){return '<option value="'+temiz(x.kod)+'">'+temiz(x.ad)+' · '+say(x.maliyet)+' milyar ₺</option>';}).join('')+'</select><p class="ic-help" id="icIcraatDetay">Her icraatın harcaması, etkisi ve bekleme süresi mevcut Bakanlık Masası sistemiyle kaydedilir.</p><label>Hedef il (ülke çapındaki kararlarda kullanılmaz)</label><select name="p_il"><option value="">Tüm Türkiye</option>'+(d.iller||[]).map(function(x){return '<option value="'+Number(x.id)+'">'+temiz(x.ad)+'</option>';}).join('')+'</select><button type="submit" class="btn altin">Bakanlık kararı uygula</button></form><button class="btn ikinci" type="button" data-ic-eylem="1">🚓 Eylemler, polis müdahaleleri ve uzlaşma</button></div>');
+   h.push('<div class="ic-kart"><h3>🎁 Vatandaş destek kararları</h3><p>Günlük en çok 8 onay. Yardım 3.000 ₺, eğitim desteği +1 kıdem. Her onay bakanlık kasasına gider yazılır.</p></div>');
+  }
+  h.push('<div class="ic-kart"><h3>🙋 Oyuncu destek başvurusu</h3><form data-ic="basvur"><label>Başvuru türü</label><select name="p_tur"><option value="yardim">3.000 ₺ sosyal destek</option><option value="egitim">+1 kıdem eğitim programı</option></select>'+formAlan("p_gerekce","Neden destek istiyorsun? (25–600 karakter)","",25)+'<button type="submit" class="btn altin">Bakanlığa başvur</button></form></div>');
+  if(d.yetki){
+   h.push('<div class="ic-kart"><h3>🔎 Oyuncu hakkında inceleme</h3><p class="ic-help">Suç isnadı değil, gerekçeli oyun içi incelemedir. İşlem günlük 5 dosya ve oyuncu başına 7 günde 1 dosya ile sınırlıdır. İnceleme 48 saat sonra karar verilmezse sonuçsuz kalır.</p><label>Oyuncu adıyla ara</label><input type="search" id="icAra" placeholder="En az 2 karakter"><button class="btn ikinci" data-ic-search="1" type="button">Oyuncu ara</button><form data-ic="sorusturma"><label>Oyuncu seç</label><select name="p_hedef" id="icHedef" required><option value="">Önce oyuncu arayın</option></select><label>İncelemenin konusu</label><input name="p_konu" minlength="20" maxlength="180" placeholder="İncelemenin somut konusu" required>'+formAlan("p_delil","Oyun içi delil, işlem ve olay bağlantısı (40–800 karakter)","",40)+'<button type="submit" class="btn altin">Gerekçeli inceleme aç</button></form></div>');
+  }
+  if(d.yetki){
+    h.push('<div class="ic-kart"><h3>🏅 Oyuncuya valilik veya emniyet müdürlüğü teklif et</h3><p>Atamalar gerçek oyunculara teklif edilir. Oyuncu kabul ederse 7 gün yetki alır; kendi ilinde güvenlik emri ve uzlaşma çalışması yapar. Teklif 24 saat geçerlidir.</p><form data-ic="atama"><label>Hedef il</label><select name="p_il">'+(d.iller||[]).map(function(i){return '<option value="'+Number(i.id)+'">'+temiz(i.ad)+'</option>';}).join('')+'</select><label>Görev</label><select name="p_tur"><option value="vali">Vali</option><option value="emniyet">İl emniyet müdürü</option></select><label>Oyuncu (aşağıdaki oyuncu arama alanından bulun)</label><select name="p_hedef" id="icAtamaHedef" required><option value="">Önce oyuncu arayın</option></select>'+formAlan('p_gerekce','Atamanın gerekçesi','',20)+'<button type="submit" class="btn altin">Görev teklif et · 50.000 ₺</button></form></div>');
+  }
+  if((d.atamalar||[]).length){
+    h.push('<div class="ic-kart"><h3>🏛️ Valilik ve emniyet görev kayıtları</h3>');
+    (d.atamalar||[]).forEach(function(a){
+      h.push('<details><summary>#'+Number(a.id)+' · '+temiz(a.il)+' · '+(a.tur==='vali'?'Vali':'Emniyet Müdürü')+' · '+temiz(a.oyuncu)+' · '+temiz(a.durum)+'</summary><p>'+temiz(a.gerekce)+'</p><p class="ic-help">Görev bitişi: '+tarih(a.bitis)+'</p>');
+      if(a.durum==='teklif'&&a.benim)h.push('<form data-ic="atama_yanit"><input type="hidden" name="p_id" value="'+Number(a.id)+'"><label>Atama teklifine cevabın</label><select name="p_kabul"><option value="true">Kabul et</option><option value="false">Reddet</option></select><button type="submit" class="btn altin">Yanıtla</button></form>');
+      if(a.durum==='aktif'&&(a.benim||d.yetki)){
+        h.push('<form data-ic="il_emir"><input type="hidden" name="p_atama" value="'+Number(a.id)+'"><label>İl güvenliği emri</label><select name="p_tur"><option value="devriye">Devriye gönder · 150.000 ₺</option><option value="takviye">Takviye gönder · 500.000 ₺ (kamuoyu tepkisi olabilir)</option><option value="uzlasma">Uzlaşma görevlileri gönder · 100.000 ₺</option></select>'+formAlan('p_gerekce','Somut güvenlik ve kamu yararı gerekçesi','',25)+'<button class="btn altin" type="submit">İl emrini uygula</button></form>');
+        h.push('<form data-ic="atama_kapat"><input type="hidden" name="p_id" value="'+Number(a.id)+'">'+formAlan('p_gerekce',a.benim?'Görevden ayrılma gerekçesi':'Görevden alma gerekçesi','',20)+'<button class="btn ikinci" type="submit">'+(a.benim?'İstifa et':'Görevi bitir')+'</button></form>');
+      }
+      if(a.durum==='teklif'&&d.yetki)h.push('<form data-ic="atama_kapat"><input type="hidden" name="p_id" value="'+Number(a.id)+'">'+formAlan('p_gerekce','Teklifi geri çekme gerekçesi','',20)+'<button class="btn ikinci" type="submit">Teklifi geri çek</button></form>');
+      h.push('</details>');
+    });
+    h.push('</div>');
+  }
+  if(d.kriz&&(d.kriz.bakan||d.kriz.yurutme)){
+    h.push('<div class="ic-kart"><h3>🚨 Cumhurbaşkanlığı onaylı özel il güvenlik tedbirleri</h3><p class="ic-help">İçişleri Bakanı teklif eder, Cumhurbaşkanı gerekçeli kararla onaylar veya reddeder. Onaylanan tedbir 12 saat sürer, 2 milyon ₺ bakanlık ödeneği gerektirir ve ilin güvenlik/itibar göstergelerini etkiler. Oyuncuların oy, hesap, şirket ve iletişim haklarını kısıtlamaz.</p>');
+    if(d.kriz.bakan){
+      h.push('<form data-ic="kriz_teklif"><label>Özel tedbir önerilen il</label><select name="p_il">'+(d.kriz.iller||[]).map(function(i){return '<option value="'+Number(i.id)+'">'+temiz(i.ad)+'</option>';}).join('')+'</select>'+formAlan('p_gerekce','Kriz gerekçesi ve somut risk','',40)+'<button class="btn altin" type="submit">Cumhurbaşkanlığına teklif sun</button></form>');
+    }
+    (d.kriz.kararlar||[]).forEach(function(x){
+      h.push('<details><summary>#'+Number(x.id)+' · '+temiz(x.il)+' · '+temiz(x.durum)+'</summary><p>'+temiz(x.gerekce)+'</p><p class="ic-help">Açılış: '+tarih(x.acilis)+' · Bitiş: '+tarih(x.bitis)+'</p>');
+      if(d.kriz.yurutme&&x.durum==='onay_bekliyor'){
+        h.push('<form data-ic="kriz_karar"><input type="hidden" name="p_id" value="'+Number(x.id)+'"><label>Cumhurbaşkanlığı kararı</label><select name="p_kabul"><option value="true">Onayla · 12 saat</option><option value="false">Reddet</option></select>'+formAlan('p_gerekce','Cumhurbaşkanlığı karar gerekçesi','',25)+'<button class="btn altin" type="submit">Kararı ilan et</button></form>');
+      }else if(x.karar_gerekce) h.push('<p><b>Karar gerekçesi:</b> '+temiz(x.karar_gerekce)+'</p>');
+      h.push('</details>');
+    });
+    h.push('</div>');
+  }
+  if((d.basvurular||[]).length){
+   h.push('<div class="ic-kart"><h3>📨 Destek başvuruları</h3>');
+   (d.basvurular||[]).forEach(function(b){
+    h.push('<details><summary>#'+Number(b.id)+' · '+temiz(b.oyuncu)+' · '+(b.tur==='yardim'?'Sosyal yardım':'Eğitim')+' · '+temiz(b.durum)+'</summary><p>'+temiz(b.gerekce)+'</p><small>'+tarih(b.acilis)+'</small>');
+    if(b.durum==='bekliyor'&&d.yetki){
+     h.push('<form data-ic="basvuru_karar"><input name="p_id" type="hidden" value="'+Number(b.id)+'"><label>Karar</label><select name="p_kabul"><option value="true">Onayla</option><option value="false">Reddet</option></select>'+formAlan("p_gerekce","Gerekçeli karar","",20)+'<button class="btn altin" type="submit">Başvuruyu sonuçlandır</button></form>');
+    }else if(b.karar_gerekce) h.push('<p>Karar gerekçesi: '+temiz(b.karar_gerekce)+'</p>');
+    h.push('</details>');
+   });
+   h.push('</div>');
+  }
+  if((d.dosyalar||[]).length){
+   h.push('<div class="ic-kart"><h3>⚖️ İncelemeler, savunmalar ve itirazlar</h3>');
+   (d.dosyalar||[]).forEach(function(x){
+    var durum=x.durum, benim=!!x.benim;
+    h.push('<details><summary>#'+Number(x.id)+' · '+temiz(x.oyuncu)+' · '+temiz(x.konu)+' · <span class="ic-durum">'+temiz(durum)+'</span></summary><p><b>Dayanak:</b> '+temiz(x.delil)+'</p><p class="ic-help">Açılış: '+tarih(x.acilis)+' · Karar: '+tarih(x.karar_at)+'</p>');
+    if(x.savunma)h.push('<p><b>Oyuncu savunması:</b> '+temiz(x.savunma)+'</p>');
+    if(x.karar_gerekce)h.push('<p><b>Mahkeme:</b> '+temiz(x.karar_gerekce)+' · '+say(x.ceza)+' ₺ / '+say(x.kidem_kaybi)+' kıdem</p>');
+    if(durum==='inceleme'&&benim&&!x.savunma)h.push('<form data-ic="savunma"><input type="hidden" name="p_id" value="'+Number(x.id)+'">'+formAlan("p_metin","Savunmanız (25–1000 karakter)","",25)+'<button type="submit" class="btn altin">Savunmamı sun</button></form>');
+    if(durum==='inceleme'&&d.yargi)h.push(kararForm('hakim',x.id,'<label>Bağımsız hâkim kararı</label><select name="p_karar"><option value="aklandi">İnceleme kapansın / yaptırım yok</option><option value="ceza">Gerekçeli, azami 1.000 ₺ ve 1 kıdem cezası</option></select>','Hâkim kararını ver'));
+    if(durum==='ceza'&&benim&&!x.itiraz_metni)h.push('<form data-ic="itiraz"><input type="hidden" name="p_id" value="'+Number(x.id)+'">'+formAlan("p_metin","Mahkemeye itiraz gerekçeniz","",25)+'<button type="submit" class="btn altin">24 saat içinde itiraz et</button></form>');
+    if(durum==='itiraz'&&d.yargi)h.push(kararForm('itiraz_karar',x.id,'<label>İkinci hâkim kararı</label><select name="p_kaldir"><option value="true">Yaptırımı kaldır ve iade et</option><option value="false">İtirazı reddet</option></select>','İtiraz kararını açıkla'));
+    if(x.itiraz_karar)h.push('<p><b>İtiraz sonucu:</b> '+temiz(x.itiraz_karar)+'</p>');
+    h.push('</details>');
+   });
+   h.push('</div>');
+  }
+  h.push('<div class="ic-kart"><h3>📜 Devlet yetkilerinin sınırları</h3><p>Bakan denetim açabilir, kolluk için bütçe ayırabilir, uzlaşma teklif edebilir ve oyunculara yardım sağlayabilir. Oy kullanma, mesajlaşma, parti değiştirme, hesap erişimi, banka ve şirket faaliyetleri bu yeni denetimle otomatik kısıtlanmaz.</p></div></div>');
+  return h.join('');
+ }
+ window.icisleriKomutaEkrani=async function(){
+  if(!window.API||typeof API.rpc!=="function")return;
+  if(typeof window.yukleniyor==="function")yukleniyor("İçişleri Bakanlığı");
+  try{var d=await API.rpc("icisleri_komuta_panel");try{d.kriz=await API.rpc("icisleri_kriz_panel");}catch(_){d.kriz=null;}iskelet("İçişleri · Komuta Merkezi",render(d),{geri:true});}
+  catch(err){iskelet("İçişleri · Komuta Merkezi",'<div class="kart"><p>'+temiz(err.message||err)+'</p><button class="btn" onclick="icisleriKomutaEkrani()">Yeniden dene</button></div>',{geri:true});}
+ };
+ window.icisleriKomutaAc=function(){if(typeof window.ekranAc==="function")return ekranAc(window.icisleriKomutaEkrani);return window.icisleriKomutaEkrani();};
+ document.addEventListener("submit",async function(ev){
+  var f=ev.target.closest&&ev.target.closest('#icKomuta form[data-ic]');if(!f)return;
+  ev.preventDefault();var cmd=f.getAttribute('data-ic'),b=f.querySelector('button[type="submit"]');if(b)b.disabled=true;
+  var d=new FormData(f),fn,args;
+  if(cmd==='icraat'){fn='icraat_yap';args={p_kod:d.get('p_kod'),p_il:d.get('p_il')?Number(d.get('p_il')):null};}
+  else if(cmd==='basvur'){fn='icisleri_basvur';args={p_tur:d.get('p_tur'),p_gerekce:d.get('p_gerekce')};}
+  else if(cmd==='basvuru_karar'){fn='icisleri_basvuru_karar';args={p_id:Number(d.get('p_id')),p_kabul:d.get('p_kabul')==='true',p_gerekce:d.get('p_gerekce')};}
+  else if(cmd==='sorusturma'){fn='icisleri_sorusturma_ac';args={p_hedef:d.get('p_hedef'),p_konu:d.get('p_konu'),p_delil:d.get('p_delil')};}
+  else if(cmd==='atama'){fn='icisleri_atama_teklif';args={p_il:Number(d.get('p_il')),p_tur:d.get('p_tur'),p_hedef:d.get('p_hedef'),p_gerekce:d.get('p_gerekce')};}
+  else if(cmd==='atama_yanit'){fn='icisleri_atama_yanit';args={p_id:Number(d.get('p_id')),p_kabul:d.get('p_kabul')==='true'};}
+  else if(cmd==='atama_kapat'){fn='icisleri_atama_kapat';args={p_id:Number(d.get('p_id')),p_gerekce:d.get('p_gerekce')};}
+  else if(cmd==='il_emir'){fn='icisleri_il_emir_ver';args={p_atama:Number(d.get('p_atama')),p_tur:d.get('p_tur'),p_gerekce:d.get('p_gerekce')};}
+
+  else if(cmd==='kriz_teklif'){fn='icisleri_kriz_teklif';args={p_il:Number(d.get('p_il')),p_gerekce:d.get('p_gerekce')};}
+  else if(cmd==='kriz_karar'){fn='icisleri_kriz_karar';args={p_id:Number(d.get('p_id')),p_kabul:d.get('p_kabul')==='true',p_gerekce:d.get('p_gerekce')};}
+  else if(cmd==='savunma'){fn='icisleri_savunma';args={p_id:Number(d.get('p_id')),p_metin:d.get('p_metin')};}
+  else if(cmd==='hakim'){fn='icisleri_hakim_karar';args={p_id:Number(d.get('p_id')),p_karar:d.get('p_karar'),p_gerekce:d.get('p_gerekce')};}
+  else if(cmd==='itiraz'){fn='icisleri_itiraz';args={p_id:Number(d.get('p_id')),p_metin:d.get('p_metin')};}
+  else if(cmd==='itiraz_karar'){fn='icisleri_itiraz_karar';args={p_id:Number(d.get('p_id')),p_kaldir:d.get('p_kaldir')==='true',p_gerekce:d.get('p_gerekce')};}
+  if(!fn){if(b)b.disabled=false;return;}
+  try{await API.rpc(fn,args);if(typeof toast==="function")toast("İçişleri işlemi kaydedildi.");await window.icisleriKomutaEkrani();}
+  catch(err){if(typeof toast==="function")toast(typeof hataCevir==="function"?hataCevir(err.message):err.message,true);if(b)b.disabled=false;}
+ },true);
+ document.addEventListener('click',async function(ev){
+  var src=ev.target.closest&&ev.target.closest('[data-ic-search]');if(src){
+   src.disabled=true;try{var sonuc=await API.rpc('icisleri_oyuncu_ara',{p_ara:document.getElementById('icAra').value});var s=document.getElementById('icHedef');var html='<option value="">Oyuncu seç</option>'+sonuc.map(function(x){return '<option value="'+temiz(x.id)+'">'+temiz(x.kad)+' · '+temiz(x.il)+'</option>';}).join('');if(s)s.innerHTML=html;var at=document.getElementById('icAtamaHedef');if(at)at.innerHTML=html;if(!sonuc.length&&typeof toast==="function")toast("Oyuncu bulunamadı");}catch(ex){if(typeof toast==="function")toast(ex.message,true);}finally{src.disabled=false;}
+  }
+  var ey=ev.target.closest&&ev.target.closest('[data-ic-eylem]');if(ey&&typeof window.sokakHareketleriEkrani==='function')return window.ekranAc?ekranAc(window.sokakHareketleriEkrani):sokakHareketleriEkrani();
+ },true);
+ function bagla(){
+  if(typeof window.iskelet!=="function"||window.iskelet.__icKomuta)return;
+  var onceki=window.iskelet;
+  var yeni=function(baslik,govde,opt){
+   if(typeof govde==='string'&&/^(?:Devlet|Yönetim|İçişleri Bakanlığı|Bakanlık Masası)$/.test(String(baslik))&&!govde.includes('icisleriKomutaAc')){
+    govde='<div class="kart"><button class="btn ikinci" style="width:100%;min-height:48px;font-weight:750" onclick="window.icisleriKomutaAc()">🛡️ İçişleri Bakanlığı · Komuta Merkezi / Oyuncu Başvuruları</button></div>'+govde;
+   }
+   return onceki.call(this,baslik,govde,opt);
+  };
+  yeni.__icKomuta=true;window.iskelet=yeni;
+ }
+ bagla();
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bagla,{once:true});
+})();
+</script><script>/* SEÇİM ONLINE · İÇİŞLERİ KOMUTA MERKEZİ EK SİSTEMLER V2
+   Koruma, ihbar, mahkeme, kurum denetimi, ödül, kamu anlaşması, siyasi sorumluluk.
+   Yalnız sunucu RPC'lerini kullanır; yetkiler SQL tarafında denetlenir.
+*/
+(function(){
+'use strict';
+if(window.SO_ICISLERI_EK_V2)return;
+window.SO_ICISLERI_EK_V2=true;
+if(typeof window.icisleriKomutaEkrani!=='function')return;
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function n(v){return Number(v||0).toLocaleString('tr-TR');}
+function date(v){return v?new Date(v).toLocaleString('tr-TR'):'—';}
+function area(name,min=40,max=900){return '<label>'+esc(name)+'</label><textarea name="'+esc(name==='Gerekçe'?'p_gerekce':name==='Rapor'?'p_rapor':'p_metin')+'" minlength="'+min+'" maxlength="'+max+'" required></textarea>';}
+function field(name,label,min=25,max=800){return '<label>'+esc(label)+'</label><textarea name="'+esc(name)+'" minlength="'+min+'" maxlength="'+max+'" required></textarea>';}
+function sel(name,label,opts){return '<label>'+esc(label)+'</label><select name="'+esc(name)+'">'+opts.map(a=>'<option value="'+esc(a[0])+'">'+esc(a[1])+'</option>').join('')+'</select>';}
+function hidden(name,val){return '<input type="hidden" name="'+esc(name)+'" value="'+esc(val)+'">';}
+function form(fn,content,btn){return '<form data-ic-extra="'+esc(fn)+'">'+content+'<button type="submit" class="btn altin">'+esc(btn)+'</button></form>';}
+function textRow(title,content){return '<div class="ic-kart"><h3>'+title+'</h3>'+content+'</div>';}
+function choice(id){return '<select name="p_hedef" class="ic-extra-kisi" required><option value="">Aşağıdan oyuncu arayıp seç</option></select>';}
+function linkedTarget(){return '<label>Hedef oyuncu</label>'+choice();}
+function section(title,body){return textRow(title,body);}
+function judgeSelect(){return sel('p_onay','Mahkeme kararı',[['true','Onayla'],['false','Reddet']]);}
+function minister(d){return !!d.bakan;}
+function formTitle(text){return '<p class="ic-help">'+esc(text)+'</p>';}
+function render(d){
+ let html='<div id="icExtraUI">';
+ html+=section('📋 Dosya ve oyuncu arama',
+ '<p class="ic-help">İhbar kesin hüküm değildir. Kurum dosyalarında gerçek oyun şirketleri, dernekler, belediyeler ve makamlar seçilir.</p>'+
+ formTitle('Bakan veya oyuncu, olay dosyasını bu menüden görüntüleyebilir. Gerekçeli ve kayıtlı işlemler uygulanır.')+
+ '<label>Oyuncu ara</label><input id="icExKisiAra" type="search" placeholder="Oyuncu adının en az 2 harfi" autocomplete="off"><button type="button" class="btn ikinci" data-ic-x-search="kisi">Oyuncu bul</button>'+
+ '<label>Şirket, dernek, belediye veya makam ara</label>'+
+ sel('kurum_ara_tur','Kurum türü',[['sirket','Şirket'],['dernek','Dernek'],['belediye','Belediye'],['makam','Kamu makamı']])+
+ '<input id="icExKurumAra" type="search" placeholder="Kurum adı veya oyuncu" autocomplete="off"><button type="button" class="btn ikinci" data-ic-x-search="kurum">Kurum bul</button>'+
+ '<select class="ic-extra-kurum" aria-label="Bulunan kurum"><option value="">Önce kurum ara</option></select>');
+ html+=section('📣 Tehdit, yolsuzluk ve usulsüzlük ihbarı',
+ form('olay_bildir',
+ sel('p_tur','İhbar türü', [['tehdit','Tehdit'],['ihbar','Oyun içi kural ihlali'],['yolsuzluk','Yolsuzluk'],['denetim','Şirket/dernek denetim talebi'],['siyasi','Belediye/siyasi makam sorunu'],['kriz','Güvenlik krizi']])+
+ sel('p_kurum_tur','Şikâyet edilen tür', [['oyuncu','Oyuncu'],['sirket','Şirket'],['dernek','Dernek'],['belediye','Belediye'],['makam','Siyasi makam']])+
+ '<label>İlgili oyuncu (oyuncu türünde zorunlu)</label>'+choice()+
+ '<label>İlgili kurum (kurum türünde zorunlu)</label><select name="p_kurum_id" class="ic-extra-kurum"><option value="">Önce kurum ara</option></select>'+
+ '<label>Dosya konusu</label><input name="p_baslik" minlength="18" maxlength="180" required placeholder="Oyun içi olayın kısa açıklaması">'+
+ field('p_delil','Olay, işlem numarası, oyun içi delil ve zaman bilgileri (en az 40 karakter)',40,1200),
+ 'İhbar kaydet'));
+ html+=section('🛡️ Oyuncu koruma ve tanık güvenliği',
+ form('koruma_basvur',sel('p_tur','Koruma türü',[['koruma','24 saat polis koruması'],['tanik','Tanık koruma (kendi dosyası gerekli)']])+
+ '<label>İlgili dosya numarası (tanık korumasında zorunlu)</label><input type="number" min="1" step="1" name="p_olay" placeholder="Dosya #">'+
+ field('p_gerekce','Somut koruma gerekçesi (40–800 karakter)',40,800),'Koruma talep et')+
+ '<p class="ic-help">Koruma rastgele protesto gözaltısı riskini azaltır; yargı kararıyla yapılan işlemleri engellemez.</p>');
+ if(minister(d)){
+ html+=section('🏅 Oyuncuyu devlet nişanıyla ödüllendir',
+ '<p>Onaylanan ödül: 2.000 TL, +1 kıdem ve oyuncu profilinde devlet nişanı. Günlük sınır 3, aynı oyuncuya 7 günlük bekleme.</p>'+
+ form('odul',linkedTarget()+sel('p_tur','Ödül türü',[['kahramanlik','Kamu Güvenliği Kahramanlığı'],['afet','Afet Dayanışma Nişanı'],['kamu_hizmeti','Kamu Hizmeti Nişanı']])+
+ field('p_gerekce','Gerçek oyun içi başarı ve resmi gerekçe',40,800),'Ödülü ver'));
+ html+=section('🤝 Gerçek oyuncuya kamu hizmeti anlaşması',
+ '<p>Gerçek oyuncuya teklif gönderilir, oyuncu kabul eder, faaliyet raporu sunar; Bakanlık tamamlanan işi inceler. Onaylanan faaliyete 4.000 TL ve 0,5 kıdem ödenir.</p>'+
+ form('anlasma_teklif',linkedTarget()+sel('p_kurum_tur','Kurum türü',[['oyuncu','Oyuncu'],['sirket','Şirket (kurucusu/yöneticisi olmalı)'],['dernek','Dernek (başkanı olmalı)'],['belediye','Belediye başkanı']])+
+ '<label>Şirket / dernek / belediye (oyuncu türünde boş)</label><select name="p_kurum_id" class="ic-extra-kurum"><option value="">Oyuncu / kurum seç</option></select>'+
+ sel('p_tur','Proje türü',[['afet','Afet dayanışması'],['guvenlik','Toplumsal güvenlik'],['toplum','Kamu hizmeti']])+
+ field('p_aciklama','İşin kapsamı ve teslim şartı (60–900 karakter)',60,900),'Resmî anlaşma teklif et'));
+ }
+ html+=section('🏛️ Bakanlık hesap verme ve siyasi sorumluluk',
+ form('sorumluluk_sor',
+ '<label>Özel güvenlik kararı numarası (isteğe bağlı)</label><input name="p_karar" type="number" min="1" step="1">'+
+ '<label>Kendi ihbar dosyamın numarası (isteğe bağlı)</label><input name="p_olay" type="number" min="1" step="1">'+
+ '<label>Somut siyasi soru</label><input name="p_konu" maxlength="180" minlength="25" required>'+
+ field('p_metin','İçişleri Bakanlığının yanıtlaması gereken konu (50–1000 karakter)',50,1000),
+ 'Yazılı soru gönder')+
+ '<p class="ic-help">Siyasi kriz, gösteri müdahalesi ve belediye soruşturmaları için açıklama isteyebilirsin. Yanıtlar Resmî Gazete kaydına girer.</p>');
+ const cases=d.olaylar||[];
+ html+=section('📂 İhbar, inceleme ve kurum soruşturması dosyaları ('+cases.length+')',
+ cases.length?cases.map(x=>{
+ let s='<details><summary>#'+Number(x.id)+' · '+esc(x.baslik)+' · '+esc(x.durum)+'</summary>'+
+ '<p><b>Tür:</b> '+esc(x.tur)+' / '+esc(x.kurum_tur)+(x.kurum_id?' #'+Number(x.kurum_id):'')+
+ ' · <b>Hedef:</b> '+esc(x.hedef_ad||'Belirlenmedi')+'</p>'+
+ '<p><b>Delil:</b> '+esc(x.delil)+'</p><p class="ic-help">Açılış: '+date(x.acilis)+' · Bildiren: '+esc(x.basvuran_ad)+'</p>';
+ if(x.savunma)s+='<p><b>Oyuncu savunması:</b> '+esc(x.savunma)+'</p>';
+ if(x.bakan_gerekce)s+='<p><b>Bakanlık gerekçesi:</b> '+esc(x.bakan_gerekce)+'</p>';
+ if(x.beni_ilgilendirir&&['inceleme','adliye'].includes(x.durum)&&!x.savunma)s+=form('olay_savun',hidden('p_id',x.id)+field('p_metin','Savunma ve oyun içi deliller',30,1200),'Savunmamı kaydet');
+ if(minister(d)&&['ihbar','inceleme','adliye'].includes(x.durum)){
+  s+=form('olay_sevk',hidden('p_id',x.id)+sel('p_islem','Bakanlık işlemi',
+   [['inceleme','İncelemeye al'],['adliye','Adliyeye sevk et (önce inceleme)'],['reddedildi','İhbarı reddet'],['kapandi','Dosyayı kapat']])+
+   field('p_gerekce','Gerekçeli ve kayıtlı işlem (25–700 karakter)',25,700),'Dosyayı güncelle');
+  if(x.durum==='adliye'&&x.hedef){
+   s+=form('tedbir_iste',hidden('p_olay',x.id)+sel('p_tur','Bağımsız hâkime önerilecek tedbir',
+    [['ifade','Oyuncuyu ifadeye çağır (12 saat)'],['arama','Kurum kayıtlarını inceleme izni'],['gozalti','1 saatlik gözaltı talebi'],['faaliyet','2 saat şirket kamu işi/ihale kısıtı'],['ihale','6 saat şirket ihale kısıtı'],['ceza','Sınırlı para cezası'],['tazminat','Haksız işlem tazminatı']])+
+    '<label>Para cezası veya tazminat (yalnız bunlarda zorunlu, diğerlerinde 0)</label><input type="number" name="p_tutar" min="0" step="1" value="0">'+
+    field('p_gerekce','Somut delil ve hâkimden istenen karar (40–1000 karakter)',40,1000),'Hâkime tedbir öner');
+  }
+ }
+ return s+'</details>';
+ }).join(''):'<p>Şimdilik görüntülenebilen dosya yok.</p>');
+ const protects=d.korumalar||[];
+ html+=section('🔐 Koruma kararları ('+protects.length+')',
+ protects.map(x=>'<details><summary>#'+Number(x.id)+' · '+esc(x.hedef_ad)+' · '+esc(x.tur)+' · '+esc(x.durum)+'</summary><p>'+esc(x.gerekce)+'</p>'+
+ '<p class="ic-help">Başvuru: '+date(x.basvuru_at)+' · Bitiş: '+date(x.bitis)+'</p>'+
+ (x.karar_gerekce?'<p>Karar: '+esc(x.karar_gerekce)+'</p>':'')+
+ (minister(d)&&x.durum==='bekliyor'?form('koruma_karar',hidden('p_id',x.id)+sel('p_kabul','Karar',[['true','Koruma tahsis et'],['false','Reddet']])+field('p_gerekce','Kararın gerekçesi',25,600),'Koruma kararını ver'):'')+'</details>').join('')||'<p>Henüz koruma kaydı yok.</p>');
+ const measures=d.tedbirler||[];
+ html+=section('⚖️ Mahkeme, ifade ve avukat ('+measures.length+')',
+ measures.map(x=>{
+ let s='<details><summary>#'+Number(x.id)+' · '+esc(x.tur)+' · '+esc(x.hedef_ad)+' · '+esc(x.durum)+'</summary>'+
+ '<p><b>İlgili dosya:</b> #'+Number(x.olay_id)+' · '+esc(x.gerekce)+'</p>'+
+ '<p class="ic-help">Başvuru: '+date(x.acilis)+' · Bitiş: '+date(x.bitis)+' · Tutar: '+n(x.tutar)+' TL</p>';
+ if(x.karar_gerekce)s+='<p><b>Hâkim kararı:</b> '+esc(x.karar_gerekce)+'</p>';
+ if(x.inceleme_ozet)s+='<p><b>İzinli kurum incelemesi:</b> '+esc(x.inceleme_ozet)+'</p>';
+ if(x.ifade)s+='<p><b>Oyuncu ifadesi:</b> '+esc(x.ifade)+'</p>';
+ if(x.avukat)s+='<p><b>Avukat:</b> '+esc(x.avukat)+' · '+esc(x.avukat_durum)+'</p>';
+ if(x.itiraz_metin)s+='<p><b>İtiraz:</b> '+esc(x.itiraz_metin)+'</p>';
+ if(x.itiraz_karar)s+='<p><b>İtiraz kararı:</b> '+esc(x.itiraz_karar)+'</p>';
+ if(x.durum==='talep'&&d.hakim)s+=form('tedbir_karar',hidden('p_id',x.id)+judgeSelect()+field('p_gerekce','Bağımsız hâkimin gerekçeli kararı',30,900),'Mahkeme kararını ver');
+ if(x.durum==='onay'&&x.tur==='ifade'&&x.benim&&!x.ifade)s+=form('ifade_ver',hidden('p_id',x.id)+field('p_metin','Oyun içi resmî ifade',30,1000),'İfademi gönder');
+ if(x.benim&&['talep','onay','itiraz'].includes(x.durum)&&x.avukat_durum!=='kabul'){
+  s+=form('avukat_cagir',hidden('p_id',x.id)+
+   '<label>Avukat seç</label><select name="p_avukat">'+(d.avukatlar||[]).map(a=>'<option value="'+esc(a.id)+'">'+esc(a.ad)+'</option>').join('')+'</select>'+
+   '<button type="button" style="display:none"></button>','Ruhsatlı avukat çağır');
+ }
+ if(x.avukatim&&x.avukat_durum==='cagrildi')s+=form('avukat_yanit',hidden('p_id',x.id)+sel('p_kabul','Avukatlık daveti',[['true','Kabul et'],['false','Reddet']]),'Davete yanıt ver');
+ if(x.durum==='onay'&&x.benim&&x.tur!=='tazminat')s+=form('tedbir_itiraz',hidden('p_id',x.id)+field('p_metin','Mahkemeye itiraz / oyuncunun hakları',30,800),'Karara itiraz et');
+ if(x.durum==='itiraz'&&d.hakim)s+=form('tedbir_itiraz_karar',hidden('p_id',x.id)+sel('p_kaldir','İkinci hâkim kararı',[['true','Kaldır / para iadesi'],['false','Mevcut kararı onayla']])+field('p_gerekce','İkinci hâkim gerekçesi',30,800),'İtirazı sonuçlandır');
+ return s+'</details>';
+ }).join('')||'<p>Aktif mahkeme tedbiri yok. Dosyalara otomatik yaptırım uygulanmaz.</p>');
+ const deals=d.anlasmalar||[];
+ html+=section('🤝 Kamu hizmeti anlaşmaları ('+deals.length+')',
+ deals.map(x=>{
+ let s='<details><summary>#'+Number(x.id)+' · '+esc(x.oyuncu_ad)+' · '+esc(x.tur)+' · '+esc(x.durum)+'</summary><p>'+esc(x.aciklama)+'</p>'+
+ '<p class="ic-help">'+date(x.olusturma)+' · Destek: '+n(x.odeme)+' TL</p>';
+ if(x.rapor)s+='<p><b>Faaliyet raporu:</b> '+esc(x.rapor)+'</p>';
+ if(x.karar_gerekce)s+='<p><b>Bakanlık kararı:</b> '+esc(x.karar_gerekce)+'</p>';
+ if(x.benim&&x.durum==='teklif')s+=form('anlasma_yanit',hidden('p_id',x.id)+sel('p_kabul','Teklif cevabı',[['true','Kabul et'],['false','Reddet']]),'Yanıtla');
+ if(x.benim&&x.durum==='kabul')s+=form('anlasma_rapor',hidden('p_id',x.id)+field('p_rapor','Gerçekleştirdiğin kamu hizmeti',60,900),'Faaliyet raporunu sun');
+ if(minister(d)&&x.durum==='tamamlandi')s+=form('anlasma_kapat',hidden('p_id',x.id)+sel('p_onay','Bakanlık kontrolü',[['true','Hizmeti onayla ve öde'],['false','Raporu reddet']])+field('p_gerekce','Gerekçeli inceleme kararı',25,800),'Sonuçlandır');
+ return s+'</details>';
+ }).join('')||'<p>Henüz anlaşma kaydı yok.</p>');
+ html+=section('🗣️ İçişleri Bakanına yöneltilen sorular',
+ (d.sorular||[]).map(x=>{
+ let s='<details><summary>#'+Number(x.id)+' · '+esc(x.konu)+' · '+esc(x.durum)+'</summary><p>'+esc(x.metin)+'</p><p class="ic-help">'+esc(x.basvuran_ad)+' · '+date(x.zaman)+'</p>';
+ if(x.yanit)s+='<p><b>Bakanın cevabı:</b> '+esc(x.yanit)+'</p>';
+ if(minister(d)&&x.durum==='bekliyor')s+=form('sorumluluk_yanit',hidden('p_id',x.id)+field('p_metin','Resmî bakanlık yanıtı',50,1200),'Resmî yanıt ver');
+ return s+'</details>';
+ }).join('')||'<p>Yazılı soru kaydı bulunmuyor.</p>');
+ html+=section('🏅 Son kamu ödülleri', (d.oduller||[]).map(x=>
+ '<p><b>'+esc(x.hedef_ad)+'</b> · '+esc(x.tur)+' · '+n(x.para)+' TL <small>'+date(x.zaman)+'</small><br>'+esc(x.gerekce)+'</p>').join('')||'<p>Henüz nişan verilmedi.</p>');
+ html+=section('⚖️ Haklar ve denetim',
+ '<p class="ic-help">İçişleri Bakanının başlattığı soruşturmalar otomatik ceza vermez. Deliller ve gerekçeli kararlar arşivlenir. Hâkim onayı gereken tedbirlerde savunma, ruhsatlı avukat çağrısı ve itiraz hakkı vardır. İtiraz süresince yeni kısıtlayıcı tedbir askıya alınır. Hiçbir yeni işlem oy verme, mesajlaşma, banka veya hesap erişimini kapatmaz. Kolluk ve kamu harcamaları bütçe ve sıklık sınırlarına tabidir.</p>');
+ return html+'</div>';
+}
+const old=window.icisleriKomutaEkrani;
+window.icisleriKomutaEkrani=async function(){
+ await old.apply(this,arguments);
+ const node=document.getElementById('icKomuta');
+ if(!node)return;
+ try{
+  const d=await API.rpc('icisleri_ek_panel');
+  const root=document.getElementById('icKomuta');
+  if(!root||root.querySelector('#icExtraUI'))return;
+  root.insertAdjacentHTML('beforeend',render(d));
+ }catch(err){
+  const root=document.getElementById('icKomuta');
+  if(root&&!root.querySelector('#icExtraUI'))root.insertAdjacentHTML('beforeend','<div class="ic-kart"><h3>Yeni İçişleri sistemleri</h3><p>'+esc(err.message||String(err))+'</p></div>');
+ }
+};
+const rpcMap={
+ olay_bildir:['icisleri_olay_bildir',['p_tur','p_kurum_tur','p_kurum_id','p_hedef','p_baslik','p_delil']],
+ olay_sevk:['icisleri_olay_sevk',['p_id','p_islem','p_gerekce']],
+ olay_savun:['icisleri_olay_savun',['p_id','p_metin']],
+ koruma_basvur:['icisleri_koruma_basvur',['p_tur','p_gerekce','p_olay']],
+ koruma_karar:['icisleri_koruma_karar',['p_id','p_kabul','p_gerekce']],
+ tedbir_iste:['icisleri_tedbir_iste',['p_olay','p_tur','p_gerekce','p_tutar']],
+ tedbir_karar:['icisleri_tedbir_karar',['p_id','p_onay','p_gerekce']],
+ ifade_ver:['icisleri_ifade_ver',['p_id','p_metin']],
+ avukat_cagir:['icisleri_avukat_cagir',['p_id','p_avukat']],
+ avukat_yanit:['icisleri_avukat_yanit',['p_id','p_kabul']],
+ tedbir_itiraz:['icisleri_tedbir_itiraz',['p_id','p_metin']],
+ tedbir_itiraz_karar:['icisleri_tedbir_itiraz_karar',['p_id','p_kaldir','p_gerekce']],
+ odul:['icisleri_odul_ver',['p_hedef','p_tur','p_gerekce']],
+ anlasma_teklif:['icisleri_anlasma_teklif',['p_oyuncu','p_kurum_tur','p_kurum_id','p_tur','p_aciklama']],
+ anlasma_yanit:['icisleri_anlasma_yanit',['p_id','p_kabul']],
+ anlasma_rapor:['icisleri_anlasma_rapor',['p_id','p_rapor']],
+ anlasma_kapat:['icisleri_anlasma_kapat',['p_id','p_onay','p_gerekce']],
+ sorumluluk_sor:['icisleri_sorumluluk_sor',['p_karar','p_olay','p_konu','p_metin']],
+ sorumluluk_yanit:['icisleri_sorumluluk_yanit',['p_id','p_metin']]
+};
+document.addEventListener('submit',async ev=>{
+ const f=ev.target.closest&&ev.target.closest('#icExtraUI form[data-ic-extra]');
+ if(!f)return;
+ ev.preventDefault();ev.stopImmediatePropagation();
+ const entry=rpcMap[f.dataset.icExtra];if(!entry)return;
+ const data=new FormData(f),args={},button=f.querySelector('button[type="submit"]');
+ for(const key of entry[1]){
+  let v=data.has(key)?data.get(key):null;
+  if(key==='p_oyuncu'&&!v)v=data.get('p_hedef');
+  if(key==='p_hedef'&&f.dataset.icExtra==='olay_bildir'&&data.get('p_kurum_tur')!=='oyuncu')v=null;
+  if(key==='p_kurum_id'&&data.get('p_kurum_tur')==='oyuncu')v=null;
+  if(['p_id','p_olay','p_karar','p_kurum_id','p_tutar'].includes(key))v=v===''||v==null?(key==='p_tutar'?0:null):Number(v);
+  if(['p_onay','p_kabul','p_kaldir'].includes(key))v=v==='true';
+  args[key]=v;
+ }
+ if(button)button.disabled=true;
+ try{await API.rpc(entry[0],args);if(typeof toast==='function')toast('İşlem kaydedildi.');await window.icisleriKomutaEkrani();}
+ catch(err){if(typeof toast==='function')toast(typeof hataCevir==='function'?hataCevir(err.message):err.message,true);if(button)button.disabled=false;}
+},true);
+document.addEventListener('click',async ev=>{
+ const btn=ev.target.closest&&ev.target.closest('#icExtraUI [data-ic-x-search]');
+ if(!btn)return;
+ btn.disabled=true;
+ try{
+  const root=document.getElementById('icExtraUI');
+  const kind=btn.dataset.icXSearch, search=kind==='kisi'?root.querySelector('#icExKisiAra').value:root.querySelector('#icExKurumAra').value;
+  const t=kind==='kisi'?'':root.querySelector('select[name="kurum_ara_tur"]').value;
+  const data=await API.rpc(kind==='kisi'?'icisleri_kisi_ara':'icisleri_kurum_ara',kind==='kisi'?{p_ara:search}:{p_tur:t,p_ara:search});
+  const options='<option value="">Seç</option>'+(data||[]).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.ad)+'</option>').join('');
+  root.querySelectorAll(kind==='kisi'?'.ic-extra-kisi':'.ic-extra-kurum').forEach(s=>s.innerHTML=options);
+  if(typeof toast==='function')toast(data.length?'Arama sonuçları yüklendi':'Sonuç bulunamadı',!data.length);
+ }catch(err){if(typeof toast==='function')toast(err.message,true);}
+ finally{btn.disabled=false;}
+},true);
+})();
+</script><script defer src="halk-org-davet.js?v=20261107-2"></script>
+</body>
 </html>
