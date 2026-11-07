@@ -43,6 +43,9 @@
     return g > 0 ? g + ' gün ' + s + ' sa' : s > 0 ? s + ' sa ' + d + ' dk' : d + ' dk';
   };
 
+  // Sunucu tarafı henüz açılmadıysa (izin/işlev yok) oyuncuya ham hata yerine sade bir mesaj göster
+  var hazirlikMi = function (err) { return /permission denied|does not exist|could not find the function|PGRST202|42883|42501/i.test(String(err && err.message || err || '')); };
+  var hazirlikHTML = '<div class="kart"><h3 style="font-size:18px">Reklam panoları açılıyor</h3><p class="alt" style="margin-top:6px">Afiş Stüdyosu ve reklam panoları son hazırlıkları tamamlanınca burada olacak. Biraz sonra tekrar dene.</p></div>';
   /* Renk yardımcıları */
   function hexRgb(h) { h = renkOk(h, '#7B61FF').slice(1); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
   function rgbHex(r) { return '#' + r.map(function (x) { return Math.round(sinir(x, 0, 255, 0)).toString(16).padStart(2, '0'); }).join(''); }
@@ -694,7 +697,7 @@
       var r = await Promise.all([merkezYukle(), vitrinYukle(EKR.il, true)]);
       m = r[0]; v = r[1];
     } catch (err) {
-      iskelet('Reklam Panoları', '<div class="kart">' + esc(typeof hataCevir === 'function' ? hataCevir(err.message) : err.message) + '</div>', { geri: true });
+      iskelet('Reklam Panoları', hazirlikMi(err) ? hazirlikHTML : '<div class="kart">' + esc(typeof hataCevir === 'function' ? hataCevir(err.message) : err.message) + '</div>', { geri: true });
       return;
     }
     var gok = gokSvg(Number(v.il_id) || 7), ul = (v.ulke || []), yer = (v.yerel || []), hepsi = ul.concat(yer);
@@ -1034,7 +1037,7 @@
   var ST = null;
   async function afisStudyosu(f) {
     stilKur();
-    if (!RP.merkez) { yukleniyor('Afiş Stüdyosu'); try { await merkezYukle(); } catch (err) { iskelet('Afiş Stüdyosu', '<div class="kart">' + esc(err.message) + '</div>', { geri: true }); return; } }
+    if (!RP.merkez) { yukleniyor('Afiş Stüdyosu'); try { await merkezYukle(); } catch (err) { iskelet('Afiş Stüdyosu', hazirlikMi(err) ? hazirlikHTML : '<div class="kart">' + esc(typeof hataCevir === 'function' ? hataCevir(err.message) : err.message) + '</div>', { geri: true }); return; } }
     // Aynı ekran yeniden çizilirse (kiralama penceresinden ya da başka ekrandan geri dönüş) düzenleme korunur;
     // yeni bir "Afiş tasarla" dokunuşu her zaman yeni bir çalışma açar.
     var yiginUst = (typeof D !== 'undefined' && D && D.yigin) ? D.yigin[D.yigin.length - 1] : null;
