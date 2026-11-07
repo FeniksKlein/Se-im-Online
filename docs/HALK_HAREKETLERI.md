@@ -42,3 +42,13 @@ Cumhurbaşkanı ve İçişleri Bakanı eylem kartındaki müdahale bölümünü 
 Her eylemde kararlar arasında 6 saat; hükümetin ülke çapında 24 saatte en fazla 4 kararı. Bir eylemde en fazla 3 yaptırım, aynı kişiye 7 günde bir. Yaptırım hesap kapatmaz, para cezası kesmez, oy kullanmayı engellemez. Hedef oyuncu itiraz edince uygulama durur. Mevcut adliye hakimi onaylar/kaldırır; karar veren ve hedef kendi dosyasını inceleyemez. Onay asıl 6 saatlik bitişi uzatmaz. Açıklama ve kararlar bildirim/eylem geçmişine yazılır.
 
 Doğrulama: `halk_hukumet.sql` rollback testinde CB/İçişleri yetkileri, kamu tahsilatı, bekleme, uzlaşma kabul/ret, yönlendirme, uyarı/geri tepme, yaptırım/itiraz/yargı ve dağıtma kontrol edildi. DOM testi yeni karar ve uzlaşma yanıtı formlarını da kapsar. Gerçek cihaz testi yapılmadı.
+
+## Somut talepler ve oylamalı uzlaşma — 2026.11.07-4
+
+Yeni eylemde değiştirilemeyen bir talep seçilir: il hizmet memnuniyeti +5 puan, ulusal işsizlik −0,5 puan veya yürürlükteki vergi −1 puan. Eski eylemin organizatörü talebini bir kez kesinleştirebilir.
+
+Hükümet somut teklif sunduğunda başlangıç/hedef kaydedilir ve en az üç yerel katılımcıdan oluşan seçmen listesi sabitlenir. Oylar tek seferliktir. On iki saatte tüm seçmenlerin yarısından fazlası kabul ederse eylem 24 saat askıya alınır; fonlama ve yeni hükümet müdahalesi durur. Organizatör tek başına kabul ederek bu süreci atlayamaz. Ret veya yetersiz kabul eylemi kapatmaz.
+
+Mevcut beş dakikalık halk hareketleri kontrolü, 24 saat sonunda göstergeyi ölçer. Hedef sağlanırsa eylem kapanır ve hükümet memnuniyeti +1 olur. Sağlanmazsa memnuniyet −3 olur; eylem kalan süresiyle devam eder. Askıda geçirilen 24 saat eylemin bitişine bir kez eklenir; aynı eylemde tekrar uzlaşmayla sınırsız süre uzatılamaz. Göstergeler mevcut ekonomi/belediye kararlarından değişir; uzlaşma düğmesi tek başına vaadi gerçekleştirmez.
+
+`halk_uzlasma.sql`: rollback ile çoğunluk, tekrar oy, tek kişiyle atlama engeli, askı, sözün tutulması/tutulmaması ve iç fonksiyon yetkileri doğrulandı. DOM testi teklif/oylama arayüzünü kapsar. Gerçek cihaz testi yapılmadı.
