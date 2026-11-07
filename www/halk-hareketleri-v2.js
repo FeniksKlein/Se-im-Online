@@ -1,6 +1,101 @@
 /* SEÇİM ONLINE · HALK HAREKETLERİ V2 · olay, polis, hukuk */
 (function(){
 'use strict';
+
+// Halk Hareketleri: iOS/Safari ve küçük ekranlarda erişilebilir form görünümü.
+// Stiller yalnızca bu ekrandaki eylem/katılım formlarına uygulanır.
+const hhStyleId='so-hh-form-okunurluk-v1';
+if(!document.getElementById(hhStyleId)){
+ const style=document.createElement('style');
+ style.id=hhStyleId;
+ style.textContent=`
+ #hhOrgUI form, #so-v2 form {
+   display:flex !important;
+   flex-direction:column !important;
+   align-items:stretch !important;
+   gap:10px !important;
+   width:100% !important;
+   min-width:0 !important;
+   box-sizing:border-box !important;
+ }
+ #hhOrgUI form > label, #so-v2 form > label {
+   display:block !important;
+   position:static !important;
+   width:100% !important;
+   margin:5px 0 0 !important;
+   color:#eef2ff !important;
+   font-size:15px !important;
+   font-weight:600 !important;
+   line-height:1.5 !important;
+   white-space:normal !important;
+ }
+ #hhOrgUI form input:not([type="checkbox"]):not([type="radio"]),
+ #hhOrgUI form select, #hhOrgUI form textarea,
+ #so-v2 form input:not([type="checkbox"]):not([type="radio"]),
+ #so-v2 form select, #so-v2 form textarea {
+   display:block !important;
+   position:static !important;
+   width:100% !important;
+   min-width:0 !important;
+   max-width:100% !important;
+   box-sizing:border-box !important;
+   min-height:48px !important;
+   margin:0 !important;
+   padding:12px 14px !important;
+   font:400 16px/1.45 system-ui,-apple-system,sans-serif !important;
+   color:#f5f7ff !important;
+   -webkit-text-fill-color:#f5f7ff !important;
+   background-color:#111a34 !important;
+   border:1px solid #7180ab !important;
+   border-radius:12px !important;
+   opacity:1 !important;
+   box-shadow:none !important;
+   vertical-align:middle !important;
+ }
+ #hhOrgUI form select, #so-v2 form select {
+   color-scheme:dark !important;
+   appearance:auto !important;
+   -webkit-appearance:menulist !important;
+   text-overflow:ellipsis !important;
+ }
+ #hhOrgUI form option, #so-v2 form option {
+   color:#f5f7ff !important;
+   background:#111a34 !important;
+ }
+ #hhOrgUI form textarea, #so-v2 form textarea {
+   min-height:112px !important;
+   height:auto !important;
+   resize:vertical !important;
+   overflow-wrap:anywhere !important;
+ }
+ #hhOrgUI form input::placeholder, #hhOrgUI form textarea::placeholder,
+ #so-v2 form input::placeholder, #so-v2 form textarea::placeholder {
+   color:#b6c1da !important;
+   -webkit-text-fill-color:#b6c1da !important;
+   opacity:1 !important;
+ }
+ #hhOrgUI form button, #so-v2 form button {
+   display:block !important;
+   width:100% !important;
+   max-width:100% !important;
+   box-sizing:border-box !important;
+   min-height:48px !important;
+   margin:10px 0 0 !important;
+   padding:12px 14px !important;
+   white-space:normal !important;
+   line-height:1.4 !important;
+   overflow-wrap:anywhere !important;
+ }
+ #hhOrgUI form :is(select,input,textarea):focus-visible,
+ #so-v2 form :is(select,input,textarea):focus-visible {
+   outline:2px solid #bea5f5 !important;
+   outline-offset:2px !important;
+ }
+ #hhOrgUI .kart, #so-v2 .kart { min-width:0; overflow-wrap:anywhere; }
+ `;
+ document.head.appendChild(style);
+}
+
 const eskiIskelet=iskelet;
 iskelet=function(baslik,govde,opt){
  if(baslik==='Halk Hareketleri'&&!String(govde).includes('id="so-v2"')) govde='<div id="so-v2"></div>'+govde;
