@@ -33,10 +33,10 @@ const shot = process.argv[2];
         yerel: [{ id: 9, ad: 'Sabah afişi', tasarim: t1, sahip_tur: 'parti', sahip_ad: 'Milli Çelişki Partisi', kapsam: 'il', il: 'İzmir', slot: 1, bas, bit, gosterim: 18, begeni: 4, begendim: true, durum: 'aktif' }],
         fiyat_il: { gunluk: 20450 }, fiyat_ulke: { gunluk: 124600 } };
       const saat = h => new Date(Date.now() + h * 3600e3).toISOString();
-      window.IHALE = { ayar: { acik: true, teklif_saat: 48, isletme_gun: 14, asgari_oran: 0.5, teminat_oran: 0.03, en_fazla: 3, vergi: 0.1 },
+      window.IHALE = { ayar: { acik: true, teklif_saat: 48, isletme_gun: 14, asgari_oran: 0.5, teminat_oran: 1, en_fazla: 3, vergi: 0.1, artis_oran: 0.02, artis_min: 500, uzatma_dk: 5, usul: 'acik' },
         ihaleler: [
-          { id: 30, kapsam: 'ulke', il_id: null, il: null, idare: 'Ulaştırma ve Altyapı Bakanlığı (Karayolları)', slot: 3, isletme_gun: 14, isletme_bas: saat(48), muhammen: 969000, asgari: 484500, teminat_oran: 0.03, bas: saat(-1), bit: saat(47), durum: 'acik', teklif_say: 2, yetkili: false, benim: null, kazanan: null },
-          { id: 31, kapsam: 'il', il_id: 35, il: 'İzmir', idare: 'İzmir Belediyesi', slot: 5, isletme_gun: 14, isletme_bas: saat(48), muhammen: 265000, asgari: 132500, teminat_oran: 0.03, bas: saat(-1), bit: saat(47), durum: 'acik', teklif_say: 0, yetkili: false, benim: null, kazanan: null },
+          { id: 30, kapsam: 'ulke', il_id: null, il: null, idare: 'Ulaştırma ve Altyapı Bakanlığı (Karayolları)', slot: 3, isletme_gun: 14, isletme_bas: saat(48), muhammen: 969000, asgari: 484500, teminat_oran: 0.03, bas: saat(-1), bit: saat(47), durum: 'acik', teklif_say: 2, katilimci: 2, yetkili: false, benim: [{ ad: 'ArvenTora', tur: 'oyuncu', tutar: 520000, teminat: 520000, durum: 'bekliyor' }], lider: { ad: 'ArvenTora', tutar: 520000, zaman: saat(-0.3), benim: true }, sonraki: 530400, gecmis: [{ ad: 'ArvenTora', tutar: 520000, zaman: saat(-0.3), benim: true }, { ad: 'Atlas Medya', tutar: 484500, zaman: saat(-0.8), benim: false }], kazanan: null },
+          { id: 31, kapsam: 'il', il_id: 35, il: 'İzmir', idare: 'İzmir Belediyesi', slot: 5, isletme_gun: 14, isletme_bas: saat(48), muhammen: 265000, asgari: 132500, teminat_oran: 0.03, bas: saat(-1), bit: saat(0.12), durum: 'acik', teklif_say: 3, katilimci: 2, yetkili: false, benim: [{ ad: 'Feniks Bank', tur: 'sirket', id: 203, tutar: 132500, teminat: 0, durum: 'gecildi' }], lider: { ad: 'Ege Reklam A.Ş.', tutar: 137000, zaman: saat(-0.05), benim: false }, sonraki: 140000, gecmis: [{ ad: 'Ege Reklam A.Ş.', tutar: 137000, zaman: saat(-0.05), benim: false }, { ad: 'Feniks Bank', tutar: 134500, zaman: saat(-0.4), benim: true }, { ad: 'Ege Reklam A.Ş.', tutar: 132500, zaman: saat(-2), benim: false }], kazanan: null },
           { id: 20, kapsam: 'il', il_id: 34, il: 'İstanbul', idare: 'İstanbul Belediyesi', slot: 6, isletme_gun: 14, isletme_bas: saat(-20), muhammen: 900000, asgari: 450000, teminat_oran: 0.03, bas: saat(-70), bit: saat(-22), durum: 'sonuclandi', teklif_say: 3, yetkili: false, benim: null, kazanan: { ad: 'Feniks Bank', tutar: 610000 } }],
         isletmelerim: [{ id: 7, kapsam: 'il', il_id: 34, il: 'İstanbul', isletmeci_ad: 'Feniks Bank', isletmeci_tur: 'sirket', bas: saat(-20), bit: saat(300), slot: 6, fiyatlar: [30000, 30000, 25000, 25000, 20000, 20000], bedel: 610000, gelir: 54000, vergi: 6000, devlet_gunluk: 50750, dolu: 2, kiralama: 3 }],
         isletmeler: [{ kapsam: 'il', il_id: 34, il: 'İstanbul', ad: 'Feniks Bank', bas: saat(-20), bit: saat(300), bedel: 610000 }],
@@ -45,7 +45,7 @@ const shot = process.argv[2];
         if (ad === 'pano_merkez') return MERKEZ; if (ad === 'pano_vitrin') return VITRIN;
         if (ad === 'kimlikler') return { ArvenTora: { avatar: '3-4-1-0-2-5-1' } };
         if (ad === 'pano_ihale_merkez') return IHALE;
-        if (ad === 'pano_ihale_teklif_ver') return { tamam: true, teminat: args.p_tutar, bloke: args.p_tutar };
+        if (ad === 'pano_ihale_teklif_ver') return { tamam: true, tutar: args.p_tutar, teminat: args.p_tutar, bloke: args.p_tutar, uzadi: true };
         if (ad === 'pano_isletme_fiyat') return { tamam: true, fiyatlar: args.p_fiyatlar };
         if (ad === 'pano_teklif_v2') return { slot: args.p_slot || 2, slotlar: [{ slot: 1, fiyat: 20450, bos: bit }, { slot: 2, fiyat: 20450, bos: new Date().toISOString() }, { slot: 3, fiyat: 20450, bos: new Date().toISOString() }],  kapsam: args.p_kapsam, il: 'İzmir', gun: args.p_gun, gunluk: 20450, indirim: args.p_gun >= 7 ? 0.1 : args.p_gun >= 3 ? 0.04 : 0, toplam: Math.round(20450 * args.p_gun * (args.p_gun >= 7 ? 0.9 : args.p_gun >= 3 ? 0.96 : 1)), bas: new Date().toISOString(), bit, hemen: true, sira_dolu: false, slot: 2, gelir_yeri: 'İzmir Belediyesi kasası', yasak_uyari: true, fiyat: { sezon: true, sezon_carpan: 1.35, dolu: 1, slot: 5 } };
         if (ad === 'afis_kaydet') return { id: 6, tamam: true };
@@ -65,15 +65,16 @@ const shot = process.argv[2];
     assert.equal(await page.locator('.rp-harita path').count(), 81);
     if (shot) { await page.screenshot({ path: path.join(shot, '1_panolar.png') }); await page.screenshot({ path: path.join(shot, '1b_panolar_tam.png'), fullPage: true }); }
     // İhaleler: kapalı teklif ve işletme fiyatları
-    assert.match(t, /Pano ihaleleri[\s\S]*Ülke geneli 3 dev pano işletme hakkı/); assert.match(t, /İşletmelerim/); assert.match(t, /İDARE[\s\S]*İzmir Belediyesi/);
+    assert.match(t, /Pano ihaleleri[\s\S]*AÇIK ARTIRMA[\s\S]*Ülke geneli 3 dev pano işletme hakkı[\s\S]*En yüksek teklif SENDE[\s\S]*Artırımı izle/); assert.match(t, /Teklifin \(132\.500 ₺\) geçildi/); assert.match(t, /İşletmelerim/); assert.match(t, /İDARE[\s\S]*İzmir Belediyesi/);
     await page.locator('[data-rp="ihale"][data-id="31"]').click();
     await page.waitForSelector('#rpIhTutar');
     await page.waitForTimeout(350); if (shot) await page.screenshot({ path: path.join(shot, '11_ihale_teklif.png') });
     await page.locator('#rpIhIc [data-k="1"]').click();
-    await page.locator('[data-hizli="muhammen"]').click();
+    assert.match(await page.textContent('#rpIhIc'), /Ege Reklam A\.Ş\.[\s\S]*137\.000/);
+    await page.locator('[data-hizli="10"]').click();
     await page.click('#rpIhGonder');
     await page.waitForFunction(() => calls.some(c => c.ad === 'pano_ihale_teklif_ver'));
-    assert.deepEqual(await page.evaluate(() => calls.find(c => c.ad === 'pano_ihale_teklif_ver').args), { p_ihale: 31, p_tur: 'sirket', p_id: 203, p_tutar: 265000 });
+    assert.deepEqual(await page.evaluate(() => calls.find(c => c.ad === 'pano_ihale_teklif_ver').args), { p_ihale: 31, p_tur: 'sirket', p_id: 203, p_tutar: 154000 });
     await page.waitForSelector('text=Pano ihaleleri');
     await page.locator('[data-rp="isletme"][data-id="7"]').click();
     await page.waitForSelector('#rpIsF0');
