@@ -18,7 +18,7 @@ function form(fn,content,btn){return '<form data-ic-extra="'+esc(fn)+'">'+conten
 function textRow(title,content){return '<div class="ic-kart"><h3>'+title+'</h3>'+content+'</div>';}
 function choice(id){return '<select name="p_hedef" class="ic-extra-kisi" required><option value="">Aşağıdan oyuncu arayıp seç</option></select>';}
 function linkedTarget(){return '<label>Hedef oyuncu</label>'+choice();}
-function section(title,body){return textRow(title,body);}
+function section(title,body){return '<details class="ic-kart" style="margin:10px 0;padding:12px;border:1px solid var(--line2,#556587);border-radius:13px"><summary style="cursor:pointer;font-weight:800;font-size:17px;padding:9px 0">'+esc(title)+'</summary>'+body+'</details>';}
 function judgeSelect(){return sel('p_onay','Mahkeme kararı',[['true','Onayla'],['false','Reddet']]);}
 function minister(d){return !!d.bakan;}
 function formTitle(text){return '<p class="ic-help">'+esc(text)+'</p>';}
@@ -82,7 +82,7 @@ function render(d){
    field('p_gerekce','Gerekçeli ve kayıtlı işlem (25–700 karakter)',25,700),'Dosyayı güncelle');
   if(x.durum==='adliye'&&x.hedef){
    s+=form('tedbir_iste',hidden('p_olay',x.id)+sel('p_tur','Bağımsız hâkime önerilecek tedbir',
-    [['ifade','Oyuncuyu ifadeye çağır (12 saat)'],['arama','Kurum kayıtlarını inceleme izni'],['gozalti','1 saatlik gözaltı talebi'],['faaliyet','2 saat şirket kamu işi/ihale kısıtı'],['ihale','6 saat şirket ihale kısıtı'],['ceza','Sınırlı para cezası'],['tazminat','Haksız işlem tazminatı']])+
+    [['ifade','Oyuncuyu ifadeye çağır (12 saat)'],['arama','Kurum kayıtlarını inceleme izni'],['gozalti','30 dakikalık gözaltı talebi'],['faaliyet','2 saat şirket kamu işi/ihale kısıtı'],['ihale','12 saat şirket ihale kısıtı'],['ceza','Sınırlı para cezası'],['tazminat','Haksız işlem tazminatı']])+
     '<label>Para cezası veya tazminat (yalnız bunlarda zorunlu, diğerlerinde 0)</label><input type="number" name="p_tutar" min="0" step="1" value="0">'+
     field('p_gerekce','Somut delil ve hâkimden istenen karar (40–1000 karakter)',40,1000),'Hâkime tedbir öner');
   }
