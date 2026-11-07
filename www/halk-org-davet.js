@@ -287,7 +287,7 @@ sokakHareketleriEkrani=async function(){
   const money=x=>fmt(x)+' TL';
   let html='<section id="hhFinansUI"><div class="kart"><h2>⚖️ Eylem ve hükümet bütçe rekabeti</h2>'+
     '<p>Eylem daha çok fonlandıkça gücü artar. Hükümet de kamu bütçesinden daha fazla harcayarak 12 saat boyunca eylemin gücünü azaltabilir. Harcama arttıkça etki yükselir ama ek paranın verimi azalır; yüksek harcama sonrasında kamuoyu tepkisi oluşabilir.</p>'+
-    '<p><small>Para tek başına otomatik kırmızı eylem oluşturmaz; bunun için en az 3 gerçek yerel katılımcı gerekir. Müdahale gözaltı içermez, etkisi süre sonunda biter. Her harcama kayıtlara işlenir.</small></p></div>';
+    '<p><small>Para tek başına otomatik kırmızı eylem oluşturmaz; bunun için Türkiye genelinden en az 3 gerçek katılımcı gerekir. Müdahale gözaltı içermez, etkisi süre sonunda biter. Her harcama kayıtlara işlenir.</small></p></div>';
   const list=(d.eylemler||[]).filter(x=>x.durum==='aktif'&&Date.parse(x.bitis)>Date.now());
   for(const x of list){
    const max=Number(x.max_butce||d.baslatma_bedeli||50000);
@@ -450,7 +450,7 @@ sokakHareketleriEkrani=async function(){
  '<div class="hh-stat"><strong>'+pending.length+'</strong><span>Aktif gözaltı</span></div></div></div>'+
  '<nav class="hh-tabs" role="tablist" aria-label="Eylem yönetimi">'+link('events','🔥 Eylemler')+link('create','✊ Yeni eylem')+link('invite','🤝 Davetler')+link('legal','⚖️ Hukuk')+link('state','🏛️ Hükümet')+link('history','📰 Geçmiş')+link('tools','🧰 Diğer işlemler')+'</nav>';
  const pan=(name,content)=>'<div data-hh-panel="'+name+'" role="tabpanel" hidden>'+content+'</div>';
- let evhtml='<div class="hh-box"><h3>Canlı eylem haritası</h3><p>Parti ve dernek desteği ayrı; her oyuncu kendi adına, parti üyeliğinden bağımsız olarak da katılabilir. Fiziki katılım için mevcut il ve ikamet koşulları geçerlidir.</p></div>';
+ let evhtml='<div class="hh-box"><h3>Canlı eylem haritası</h3><p>Parti ve dernek desteği ayrı; her oyuncu kendi adına, parti üyeliğinden bağımsız olarak da katılabilir. Katılım için eylemin ilinde yaşama şartı yoktur; Türkiye’nin 81 ilinden oyuncular katılabilir. Katılım eylemin gücüne sayılır.</p></div>';
  if(!live.length)evhtml+='<div class="hh-empty">Şu anda aktif eylem yok. Yeni Eylem bölümünden bir hareket başlatılabilir.</div>';
  for(const x of live){
   const id=Number(x.id), pct=Math.max(0,Math.min(100,Number(x.seviye||0)));
