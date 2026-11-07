@@ -477,3 +477,13 @@
 
 /* Dinamik bankacılık modülü, docs ve mobil için ortak. */
 (function(){if(document.getElementById("kartBankacilikModul"))return;var s=document.createElement("script");s.id="kartBankacilikModul";s.src="kart_bankacilik.js?v=20261025-2";s.async=false;document.body.appendChild(s);})();
+
+/* İçişleri Komuta Merkezi: ekrana göre güvenli tekil yükleyici. */
+(function(){
+  if (document.getElementById('icisleri-komuta-loader')) return;
+  var s=document.createElement('script');
+  s.id='icisleri-komuta-loader';
+  s.src='./icisleri_komuta.js?v=20261107-1';
+  s.async=false;
+  (document.body||document.head).appendChild(s);
+})();
