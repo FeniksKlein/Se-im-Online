@@ -181,3 +181,81 @@ sokakHareketleriEkrani=async function(){
  document.querySelectorAll('[data-hh-reject]').forEach(btn=>btn.addEventListener('click',()=>send(btn,'sokak_davet_yanit',{p_davet:Number(btn.dataset.hhReject),p_kabul:false})));
 };
 })();
+
+
+/* SO_HALK_FINANS_V1 — Protesto vs hükümet bütçe rekabeti */
+(function(){
+ 'use strict';
+ const previous=sokakHareketleriEkrani;
+ sokakHareketleriEkrani=async function(){
+  await previous();
+  const root=document.getElementById('hhOrgAnchor')||document.getElementById('so-v2');
+  if(!root||document.getElementById('hhFinansUI'))return;
+  let d;
+  try{d=await API.rpc('sokak_finans_panel');}
+  catch(err){console.warn('Halk bütçe paneli',err);return;}
+  const esc=x=>e(String(x??''));
+  const fmt=x=>Number(x||0).toLocaleString('tr-TR',{maximumFractionDigits:2});
+  const money=x=>fmt(x)+' TL';
+  let html='<section id="hhFinansUI"><div class="kart"><h2>⚖️ Eylem ve hükümet bütçe rekabeti</h2>'+
+    '<p>Eylem daha çok fonlandıkça gücü artar. Hükümet de kamu bütçesinden daha fazla harcayarak 12 saat boyunca eylemin gücünü azaltabilir. Harcama arttıkça etki yükselir ama ek paranın verimi azalır; yüksek harcama sonrasında kamuoyu tepkisi oluşabilir.</p>'+
+    '<p><small>Para tek başına otomatik kırmızı eylem oluşturmaz; bunun için en az 3 gerçek yerel katılımcı gerekir. Müdahale gözaltı içermez, etkisi süre sonunda biter. Her harcama kayıtlara işlenir.</small></p></div>';
+  const list=(d.eylemler||[]).filter(x=>x.durum==='aktif'&&Date.parse(x.bitis)>Date.now());
+  for(const x of list){
+   const max=Number(x.max_butce||d.baslatma_bedeli||50000);
+   const min=Number(d.baslatma_bedeli||50000);
+   const base=Number(x.muhalefet_fonu||0);
+   const oldReduction=Number(x.mudahale_puani||0);
+   const pct=Math.min(100,Math.max(0,Number(x.seviye||0)));
+   html+='<div class="kart"><h3>⚔️ '+esc(x.il)+' · '+esc(x.kurulus)+' · Eylem #'+Number(x.id)+'</h3>'+
+    '<p><b>Mevcut eylem gücü: '+fmt(x.seviye)+'/100</b></p>'+
+    '<div style="width:100%;height:13px;background:rgba(128,128,128,.24);border-radius:9px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#e3b151,#ef5959);border-radius:9px"></div></div>'+
+    '<p>Protesto fonu: <b>'+money(x.muhalefet_fonu)+'</b> · Fona bağlı güç: <b>+'+fmt(x.fon_guc_puani)+'</b> / 60</p>'+
+    '<p>Hükümet uzlaşma fonu: <b>'+money(x.iktidar_fonu)+'</b> · Güncel müdahale katkısı: <b>'+fmt(oldReduction)+'</b> puan</p>'+
+    '<p><small>Hükümetin bütçeli müdahale harcaması: '+money(x.harcanan)+'. Polis: '+money(x.polis_gider)+'. Diğer kararlar: '+money(x.karar_gider)+'.</small></p>';
+   if(d.mudahale_yetki){
+    html+='<details><summary><b>🏛️ Kamu bütçesiyle müdahaleyi artır</b></summary>'+
+     '<p>İçişleri kullanılabilir bütçesi: '+money(d.icisleri_kasa_tl)+'. İşlem başına '+money(min)+' – '+money(max)+'. Her 6 saatte bir müdahale; ülke çapında 24 saatte toplam 4 müdahale sınırı.</p>'+
+     '<form class="hhFinButce" data-id="'+Number(x.id)+'" data-protesto="'+base+'" data-min="'+min+'" data-max="'+max+'">'+
+     '<label>Hükümetin harcayacağı tutar (TL)</label><input name="tutar" type="number" min="'+min+'" max="'+max+'" step="1000" value="'+min+'" required>'+
+     '<p class="hhFinTahmin">Tahmini etkisi hesaplanıyor...</p>'+
+     '<label>Müdahalenin kamu güvenliği ve diyalog gerekçesi</label>'+
+     '<textarea name="gerekce" minlength="25" maxlength="500" required placeholder="Somut gerekçenizi ve uygulanacak önlemleri belirtin."></textarea>'+
+     '<button class="btn altin">Kamu bütçesinden harca ve uygula</button></form></details>';
+   }
+   if((x.mudahaleler||[]).length){
+    html+='<details><summary>📒 Kamu müdahale geçmişi ('+x.mudahaleler.length+')</summary>';
+    for(const m of x.mudahaleler){
+     html+='<p><b>'+money(m.bedel)+'</b> · '+esc(m.durum)+' · -'+fmt(m.etki)+' puan'+(Number(m.tepki)>0?' · sonrasında +'+fmt(m.tepki)+' tepki':'')+
+      '<br><small>'+esc(new Date(m.zaman).toLocaleString('tr-TR'))+' · '+esc(m.gerekce)+'</small></p>';
+    }
+    html+='</details>';
+   }
+   html+='</div>';
+  }
+  if(!list.length)html+='<div class="kart">Aktif eylem olduğunda protesto fonu, hükümet harcamaları ve anlık güç dengesi burada gösterilecek.</div>';
+  html+='</section>';
+  root.insertAdjacentHTML('afterbegin',html);
+  root.querySelectorAll('.hhFinButce').forEach(form=>{
+   const amount=form.querySelector('[name=tutar]'),out=form.querySelector('.hhFinTahmin');
+   const calc=()=>{
+    const val=Number(amount.value||0),base=Math.max(1,Number(d.baslatma_bedeli||50000)),protesto=Math.max(1,Number(form.dataset.protesto));
+    const effect=Math.min(40,12*Math.log(1+Math.max(0,val)/base))*(.75+.25*Math.min(1,Math.max(0,val)/protesto));
+    const backlash=Math.min(12,Math.max(0,3*Math.log(1+Math.max(0,val)/base)-4));
+    out.textContent='Tahmin: -'+fmt(effect)+' puan / 12 saat · ardından +'+fmt(backlash)+' puan kamuoyu tepkisi / 12 saat';
+   };
+   amount.addEventListener('input',calc);calc();
+   form.addEventListener('submit',async ev=>{
+    ev.preventDefault();
+    const btn=form.querySelector('button'),val=Number(amount.value);
+    if(!Number.isFinite(val)||val<Number(form.dataset.min)||val>Number(form.dataset.max))return toast('Geçersiz müdahale tutarı',true);
+    btn.disabled=true;
+    try{
+     const result=await API.rpc('sokak_butce_mudahale',{p_eylem:Number(form.dataset.id),p_tutar:val,p_gerekce:String(new FormData(form).get('gerekce'))});
+     toast('Kamu bütçesinden '+money(result?.bedel)+' harcandı. Etki -'+fmt(result?.etki)+' puan.');
+     await sokakHareketleriEkrani();
+    }catch(err){toast(hataCevir(err.message||String(err)),true);btn.disabled=false;}
+   });
+  });
+ };
+})();
