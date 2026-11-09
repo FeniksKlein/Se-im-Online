@@ -90,7 +90,7 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','icisleri_ek.js'),'utf8')+'</script></body>');
 // Eski tek dosyalik kurum/dava modalinde kalan 500.000 TL istemci sinirlarini guncelle.
 // Diger mali limitlere (banka, sigorta, sirket degerleri) dokunulmaz.
-const _mahkemeTutarEski=[...html.matchAll(/500000|500\\.000/g)];
+const _mahkemeTutarEski=[...html.matchAll(/500000|500\.000/g)];
 for(let i=_mahkemeTutarEski.length-1;i>=0;i--){
  const es=_mahkemeTutarEski[i],p=es.index,cevre=html.slice(Math.max(0,p-220),Math.min(html.length,p+200));
  if(/tazminat|tazmin|hiTaz|adlTaz|adlKararTaz/i.test(cevre))
