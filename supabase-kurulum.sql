@@ -65733,6 +65733,8 @@ declare
     'sokak_katilim_ayril', 'sokak_katilim_liste', 'sokak_hamle_kisi_katil',
     'sokak_cagri_ac', 'sokak_cagri_imza', 'sokak_cagri_tamamla', 'sokak_denge_panel',
     'sokak_kaynak_aktar', 'sokak_kaynak_ozet',
+    -- 09.11.2026 Halk Hareketleri 4.0 Eylem Meydanı (supabase/migrations/20261109270000_halk_eylem_meydani.sql)
+    'sokak_eylem_akis', 'sokak_sohbet_akis', 'sokak_sohbet_sabitle', 'sokak_sohbet_tepki', 'sokak_sirket_ara',
     'ek_is_baslat', 'ek_is_paneli', 'ek_is_ucret_al', 'eko_emlak_islem', 'eko_emlak_panel', 'eko_gunluk_kar_cek',
     'eko_islem', 'eko_magaza_hazirla', 'eko_otomasyon_ayarla', 'eko_otomasyon_panel', 'eko_panel', 'eko_ticaret_islem',
     'eko_ticaret_panel', 'eko_vergi_kanun_teklif', 'eko_vergi_panel', 'ekonomi_yasa_durum', 'ekonomi_yasa_teklif', 'emlak_pazarlik_alici_yanit',
