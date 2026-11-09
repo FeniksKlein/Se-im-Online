@@ -275,7 +275,7 @@ async function adliyeDosya(id){
    +(d.durum==="acik"&&sozHak?'<button class="btn altin" onclick="adlBeyanModal('+id+')">Savunma / beyan ver</button>':'')
    +(d.durum==="acik"&&yetki?'<button class="btn ikinci" onclick="adlTemsil('+id+','+(!d.temsil_iznim)+')">'+(d.temsil_iznim?"Parti sözcüsü temsil iznini kaldır":"Parti sözcünü savunmaya yetkilendir")+'</button>':'')
    +'</div>';
-  const karar=d.durum==="karar"?'<div class="kart"><h3>Gerekçeli karar</h3><b>'+e(ADL_CEZALAR[d.karar]||"—")+'</b>'
+  const karar=d.durum==="karar"?'<div class="kart"><h3>Gerekçeli karar</h3><b>'+e(ADL_CEZALAR[d.karar]||"—")+((d.karar==="para_tutar"||d.karar==="tazminat")&&Number(d.tazminat_tutar)>0?" · "+tlYaz(d.tazminat_tutar):"")+'</b>'
    +(ek&&ek.ilk_karar&&ek.ilk_karar!==d.karar?'<p class="kucuk">İlk derece kararı: '+e(ADL_CEZALAR[ek.ilk_karar]||ek.ilk_karar)+' (istinafta bozuldu)</p>':'')
    +(mus&&d.karar!=="beraat"?'<div class="kart"><b>Hazineye iade / müsadere: '+tlYaz(mus.tutar)+'</b><p class="alt">Sorumlu: '+e(mus.sorumlu)+(mus.sirket?' · Kaynak şirket: '+e(mus.sirket):'')+'</p><p class="alt">Hazineye aktarılan: '+tlYaz(mus.tahsil)+' · Kalan: '+tlYaz(mus.kalan)+' · '+(mus.kesin?'Kesinleşmiş karar':'İstinaf tamamlanınca uygulanacak')+'</p></div>':'')
    +'<p style="white-space:pre-wrap;margin-top:8px">'+e(d.gerekce||"")+'</p><p class="alt">Kararı yazan üye: '+e(d.hakim||"—")+' · '+adlTarih(d.karar_at)+'</p>'
