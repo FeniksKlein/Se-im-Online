@@ -160,7 +160,7 @@ window.adlDavaModal=async function(){
   +'<div id="hiKurumKutu" style="display:none"><div class="alan"><label>Kurum ara</label><input id="hiKurumAra" placeholder="Ad, şehir veya makam"></div><div class="alan"><label>Davalı kurum</label><select id="hiKurum"></select></div>'
   +'<p class="kucuk">Kurum adına savunmayı kurumun yetkilisinin tuttuğu avukat yapar; parasal yaptırımlar kurum kasasından tahsil edilir.</p></div>'
   +'<div class="alan"><label>Dava türü</label><select id="hiTur">'+turler+'</select></div><p class="kucuk" id="hiSuc"></p>'
-  +'<div class="alan" id="hiTazKutu" style="display:none"><label>Talep edilen tazminat (₺)</label><input id="hiTaz" type="number" min="1000" max="500000" step="1" placeholder="1000–500000"></div>'
+  +'<div class="alan" id="hiTazKutu" style="display:none"><label>Talep edilen tazminat (₺)</label><input id="hiTaz" type="number" min="1000" max="1000000" step="1" placeholder="1000–1000000"></div>'
   +'<div class="alan"><label>Davacı (müvekkil)</label><select id="hiDavaci"><option value="">Kendi adıma</option>'+gbPartiler.map(x=>'<option value="'+x.id+'">'+h(x.ad)+' adına (genel başkan olarak)</option>').join('')+'</select></div>'
   +'<div class="alan"><label>İddia (20–1600 karakter) — avukatın dilekçeyi bunun üzerinden hazırlar</label><textarea id="hiIddia" rows="4" maxlength="1600" '+TA+'></textarea></div>'
   +'<div class="alan"><label>Delil ve işlem kayıtları</label><textarea id="hiDelil" rows="3" maxlength="1600" '+TA+' placeholder="Örn. mesajın tarihi ve kanalı"></textarea></div>'
@@ -181,7 +181,7 @@ window.adlDavaModal=async function(){
   const taz=tur.querySelector('option[value="tazminat"]');
   if(taz){taz.disabled=s==='parti'||s==='makam'||(s==='oyuncu'&&dv.value!=='');if(taz.disabled&&tur.value==='tazminat')tur.value='diger';}
   m.querySelector('#hiTazKutu').style.display=tur.value==='tazminat'?'block':'none';
-  m.querySelector('#hiSuc').textContent=tur.value==='tazminat'?'Kanıtlanabilir oyun içi zararın için 1.000–500.000 ₺ isteyebilirsin. Avukatla tahsil edilen tazminattan en fazla %25 başarı primi kararlaştırabilirsin.':((typeof ADL_SUCLAR!=='undefined'&&ADL_SUCLAR[tur.value])||'');
+  m.querySelector('#hiSuc').textContent=tur.value==='tazminat'?'Kanıtlanabilir oyun içi zararın için 1.000–1.000.000 ₺ isteyebilirsin. Avukatla tahsil edilen tazminattan en fazla %25 başarı primi kararlaştırabilirsin.':((typeof ADL_SUCLAR!=='undefined'&&ADL_SUCLAR[tur.value])||'');
   if(kurum)listele();
  }
  sec.onchange=guncelle;tur.onchange=guncelle;dv.onchange=guncelle;m.querySelector('#hiKurumAra').oninput=listele;guncelle();
@@ -190,7 +190,7 @@ window.adlDavaModal=async function(){
   const hedef=kurum?ks.value:s==='parti'?m.querySelector('#hiHedefParti').value:m.querySelector('#hiHedef').value.trim();
   if(!hedef)return toast('Davalıyı seç.',true);
   const taz=tur.value==='tazminat'?Number(m.querySelector('#hiTaz').value):null;
-  if(tur.value==='tazminat'&&(!Number.isInteger(taz)||taz<1000||taz>500000))return toast('Tazminat talebi 1.000–500.000 ₺ arasında olmalı.',true);
+  if(tur.value==='tazminat'&&(!Number.isInteger(taz)||taz<1000||taz>1000000))return toast('Tazminat talebi 1.000–1.000.000 ₺ arasında olmalı.',true);
   try{
    const r=await RPC('hukuk_is_olustur',{p_tur:'dava',p_parti:dv.value?Number(dv.value):null,p_hedef_tur:s,p_hedef:String(hedef),p_dava_tur:tur.value,p_tazminat:taz,
     p_secim:null,p_pkd:null,p_metin:m.querySelector('#hiIddia').value,p_delil:m.querySelector('#hiDelil').value});
