@@ -437,6 +437,20 @@ begin
  return jsonb_build_object('tamam',true,'eylemler',arr);
 end $$;
 
+-- Yeni eylem yasağı açılış fonksiyonunun metnine bağlı değildir.
+-- Canlıda sokak_eylem_baslat, sokak_org_baslat için ince bir sarmalayıcıdır.
+create or replace function oyun.sokak_eylem_ohal_engel() returns trigger
+language plpgsql set search_path='' as $$
+begin
+ if oyun.sokak_ohal_aktif(new.il_id) then
+  raise exception 'Bu ilde OHAL var; yeni eylem açılamaz';
+ end if;
+ return new;
+end $$;
+drop trigger if exists sokak_eylem_ohal_engel on oyun.sokak_eylem;
+create trigger sokak_eylem_ohal_engel before insert on oyun.sokak_eylem
+ for each row execute function oyun.sokak_eylem_ohal_engel();
+
 create or replace function oyun.sokak_sert_tick() returns void
 language plpgsql set search_path='' as $$
 declare t timestamptz:=oyun.simdi(); r record; n int;
@@ -507,14 +521,6 @@ begin
    '''muhbir'',count(*) filter(where tur=''muhbir''),''sert'',count(*) filter(where tur=''sert'')');
   execute s;
  end if;
- s:=pg_get_functiondef('public.sokak_eylem_baslat(integer,text)'::regprocedure);
- if position('sokak_ohal_aktif' in s)=0 then
-  if position('Sokak hareketleri kapalı' in s)=0 then raise exception 'Eylem açılış çapası bulunamadı'; end if;
-  s:=replace(s,'raise exception ''Sokak hareketleri kapalı''; end if;',
-   'raise exception ''Sokak hareketleri kapalı''; end if;
- if oyun.sokak_ohal_aktif(p_il) then raise exception ''Bu ilde OHAL var; yeni eylem açılamaz''; end if;');
-  execute s;
- end if;
  s:=pg_get_functiondef('oyun.sokak_tick()'::regprocedure);
  if position('sokak_sert_tick' in s)=0 then
   if position('perform oyun.sokak_meydan_tick();' in s)=0 then raise exception 'Sokak tick çapası bulunamadı'; end if;
@@ -542,6 +548,7 @@ end $$;
 revoke all on function oyun.sokak_sert_yetkili(uuid,integer),oyun.sokak_ohal_aktif(integer),oyun.sokak_giris_kapali(bigint),
  oyun.sokak_fon_kapali(bigint),oyun.sokak_cift_bedel(bigint),oyun.sokak_disarida(uuid,bigint),oyun.sokak_sesi_kapali(uuid,bigint),
  oyun.sokak_sert_ad(text),oyun.sokak_sert_bedel(text,integer),oyun.sokak_eylemi_kapat(bigint,text),oyun.sokak_sert_tick(),
+ oyun.sokak_eylem_ohal_engel(),
  public.sokak_sert_islem(bigint,text,jsonb),public.sokak_sert_panel()
  from public,anon,authenticated;
 grant execute on function public.sokak_sert_islem(bigint,text,jsonb),public.sokak_sert_panel() to authenticated;
