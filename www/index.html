@@ -37001,6 +37001,8 @@ async function sokakHareketleriEkrani(){
  yukleniyor('Halk Hareketleri');
  try {
   const d=await API.rpc('sokak_uzlasma_panel'),a=d.ayar||{},fmt=n=>Number(n||0).toLocaleString('tr-TR'),date=t=>t?new Date(t).toLocaleString('tr-TR'):'—';
+  let td={eylemler:[]}; try{const p=await API.rpc('sokak_tedbir_panel'); if(p&&p.eylemler) td=p;}catch(ex){}
+  const tb={}; (td.eylemler||[]).forEach(r=>{tb[Number(r.id)]=r;});
   let h='<div class="kart"><h2>📢 Halk Hareketleri</h2><p>Barışçıl gösteriler, ortak fonlama ve hükümetle uzlaşma.</p><details><summary>Kurallar ve kötüye kullanım sınırları</summary><p>Başlatma: muhalefet genel başkanı, 7 günlük hesap, ilde en az 3 aktif oyuncu ve 35/100 memnuniyetsizlik. Parti kasasından '+fmt(a.baslatma_bedeli)+' TL.</p><p>İlde tek eylem; kapanıştan sonra 7 gün bekleme. Parti başına tek aktif eylem ve 72 saat bekleme. Ülkede en fazla 6 eylem. Her kişi/kurum en fazla 3 eylemi destekleyebilir.</p><p>İlk süre 24 saat. Her '+fmt(a.baslatma_bedeli)+' TL ek protesto fonu 12 saat kazandırır; toplam en fazla 5 gün. Katılım için 3 günlük hesap gerekir. Türkiye’nin 81 ilinden katılım serbesttir.</p><p>Son 24 saat fon limiti: kişi '+fmt(a.baslatma_bedeli*2)+' TL, kurum '+fmt(a.baslatma_bedeli*5)+' TL. Uzlaşma tarafında bu limitler üç kattır. Eylem protesto fonu en fazla '+fmt(a.baslatma_bedeli*20)+' TL. Harcamalar iade edilmez.</p><p>Kırmızı: en az 75 puan ve Türkiye genelinden en az 3 gerçek katılımcı. Para tek başına yeterli değildir. Uzlaşma fonu protesto fonunun 3 katına ulaşınca eylem kapanır.</p><p>Erken seçim: en az 3 kırmızı il ve aktif ülkenin %20’si (en az 15 kişi), kesintisiz 72 saat. Yakın seçim, yeni hükümetin ilk 7 günü ve 14 günlük kriz seçimi beklemesi korunur. Cumhurbaşkanı seçimle devredene kadar görevde kalır.</p><p>Kırmızı eylemler büyümeyi ve hükümet memnuniyetini sınırlı etkiler; şirketlerin kâr beklentisi değerine en fazla %6 risk indirimi uygulanır. Hükümet açıklaması tek başına sayacı sıfırlamaz; fon veya gerçek hizmet iyileşmesi gerekir.</p></details></div>';
   if(d.kriz?.kirmizi_baslangic)h+='<div class="kart"><b>Ulusal kriz sayacı</b><p>Başlangıç: '+e(date(d.kriz.kirmizi_baslangic))+'</p><p>Koşullar bozulursa 72 saat sayacı sıfırlanır.</p></div>';
   if(!d.aktif)h+='<div class="kart">Halk hareketleri şu anda kapalı.</div>';
@@ -37015,13 +37017,13 @@ async function sokakHareketleriEkrani(){
     h+='<form class="hhFon" data-id="'+Number(x.id)+'"><label>Taraf</label><select name="taraf">'+(!d.iktidar?'<option value="muhalefet">Protestoyu destekle</option>':'')+'<option value="iktidar">Uzlaşmayı destekle</option></select><label>Ödeme kaynağı</label><select name="kaynak">'+kaynak+'</select><label>Tutar (TL)</label><input name="tutar" type="number" min="1000" step="0.01" required><button class="btn altin">Fonu öde</button></form>';
     if(d.hukumet)h+='<form class="hhYanit" data-id="'+Number(x.id)+'"><label>Hükümetin çözüm yanıtı</label><textarea name="metin" minlength="20" maxlength="500" required></textarea><button class="btn">Yanıtı yayımla</button></form>';
    }
-   h+=hhSozHTML(x,d)+hhHukumetHTML(x,d);
+   h+=hhSozHTML(x,d)+hhHukumetHTML(x,d)+hhTedbirHTML(x,tb[Number(x.id)],fmt);
    h+='<details><summary>Destekçiler</summary>'+(x.destekler||[]).map(k=>'<p>'+e(k.ad||k.tur)+' · '+e(k.taraf==='iktidar'?'Uzlaşma':'Protesto')+' · '+fmt(k.tutar)+' TL</p>').join('')+'</details></div>';
   }
   if(!(d.eylemler||[]).length)h+='<div class="kart">Henüz eylem yok. Yeni eylem için ilin memnuniyetsizlik ve katılım şartlarını sağlaması gerekir.</div>';
   iskelet('Halk Hareketleri',h,{geri:true});
   async function run(b,fn,args){b.disabled=true;try{await API.rpc(fn,args);toast('İşlem tamamlandı');await sokakHareketleriEkrani();}catch(err){toast(hataCevir(err.message),true);b.disabled=false;}}
-  hhHukumetBagla(run); hhSozBagla(run);
+  hhHukumetBagla(run); hhSozBagla(run); hhTedbirBagla(run);
   document.getElementById('hhYeni')?.addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(ev.currentTarget);run(ev.currentTarget.querySelector('button'),'sokak_talepli_baslat',{p_il:Number(f.get('il')),p_gerekce:String(f.get('metin')),p_tur:String(f.get('talep'))});});
   document.querySelectorAll('[data-hh-katil]').forEach(b=>b.addEventListener('click',()=>run(b,'sokak_destek',{p_eylem:Number(b.dataset.hhKatil),p_taraf:'muhalefet'})));
   document.querySelectorAll('.hhFon').forEach(form=>form.addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(form),k=d.kaynaklar[Number(f.get('kaynak'))];run(form.querySelector('button'),'sokak_destek',{p_eylem:Number(form.dataset.id),p_taraf:String(f.get('taraf')),p_kaynak:k.tur,p_kaynak_id:k.id,p_tutar:Number(f.get('tutar'))});}));
@@ -37030,6 +37032,60 @@ async function sokakHareketleriEkrani(){
 }
 // Kaynak derlemesine kalıcı menü bağlantısı.
 (function(){const eski=iskelet;iskelet=function(baslik,govde,opt){if(baslik==='Partiler')govde='<div class="kart"><button class="btn altin" onclick="ekranAc(sokakHareketleriEkrani)">📢 Halk Hareketleri · Protestolar ve uzlaşma</button></div>'+govde;return eski(baslik,govde,opt);};})();
+const HH_TEDBIR={
+ hizmet:['Acil Hizmet Seferberliği','Hizmet talebinde il memnuniyeti +4, 12 saat yoğunluk −8. Söz tutulmazsa ülke memnuniyeti −3.'],
+ vergi_tatil:['Bölgesel Vergi Tatili','48 saat kent vergisi −1. Büyüme −0,2; diğer iller ve ülke memnuniyeti geriler.'],
+ istihdam:['İstihdam Taahhüt Paketi','İşsizlik −0,3. Şirket sözü gelmezse indirim geri gelir, memnuniyet −2.'],
+ brifing:['Resmi Basın Brifingi','12 saat tarafsız nabız hükümete eğilir. Karşı brifing etkiyi ters çevirir.'],
+ sosyal_kart:['Acil Sosyal Destek Kartı','Kişi başı 4.000 TL, en çok 15 kişi. Oy satın alma şüphesi doğurur.'],
+ guzergah:['Güvenli Alan / Güzergâh','Kabulde güç aynı kalır, kırmızı ekonomik hasar 24 saat sayılmaz. Ret veya dayatma inat artırır.'],
+ komisyon:['Meclis Araştırma Komisyonu','24 saat yeni kırmızı yok. Muhalefet devralırsa talep kısmen uygulanır.'],
+ gozlemci:['Bağımsız Gözlemci','Avukat katılınca 12 saat polis ve barikat kapalı. Sert müdahale ağır ceza yer.'],
+ kapi:['İktidar Kapı Kapı','Açılıştan sonra üye başı 8.000 TL ve 3 saat bekleme. Muhalefet aynı ilde karşı çağrı yapar.'],
+ gece:['Gece Toplanma Kısıtı','48 saat, 22.00–06.00 yeni katılım ve taktik kapalı. İl memnuniyeti −1, gündüz inat +2.'],
+ iletisim:['İletişim Yavaşlatma','6 saat çağrı ve nabız durur. Mesaj ve oy hakkı durmaz. Ülke −2, kriz sayacı +6 saat.'],
+ festival:['Kültür-Festival','Tarafsız oyuncu festivale gider. Ekmek yok oyun var tepkisi doğar; sahne işgal edilebilir.']
+};
+const HH_HAMLE={
+ yetersiz:['Yetersiz buluyorum',false], ikna_olmadim:['İkna olmadım',false], slogan:['Sloganla yanıtla',true],
+ basin_hukumet:['Brifinge katıl',false], basin_karsi:['Karşı brifing yaz',true], kart_cagri:['Kartı reddedin',false], kart_iade:['Kartı iade et',false],
+ guzergah_kabul:['Güzergâhı kabul et',false], guzergah_ret:['Güzergâhı reddet',false], dayat:['Güzergâhı dayat',false],
+ komisyon_iktidar:['Komisyona katıl',false], komisyon_muhalefet:['Komisyona muhalefet olarak katıl',false], komisyon_devral:['Komisyonu devral',false],
+ gozlemci:['Gözlemci ol',false], gozlemci_ret:['Protokolü reddet',false], kapi_iktidar:['Kapı kapı dolaş',false], kapi_muhalefet:['Karşı çağrı yap',false],
+ istihdam_grev:['Greve çağır',false], istihdam_soz:['Şirket sözü ver',false], otobus:['Miting otobüsü',false], dernek_davet:['Dernek daveti',false],
+ festival:['Festivale git',false], festival_ayril:['Festivalden ayrıl',false], sahne:['Sahneyi işgal et',true], kisit_itiraz:['Kısıtı tanımıyorum',false]
+};
+function hhTedbirHTML(x,row,fmt){
+ if(!row) return '';
+ const id=Number(x.id); let h='<details class="hhTedbirKutu"><summary>🏛️ Yeni hükümet araçları</summary><p>Her aracın bedeli, riski ve karşı hamlesi vardır. Mesajlaşma ve seçim oyu kapanmaz.</p>';
+ const ac=row.acabilir||[];
+ if(row.yonetebilir&&ac.length){
+  h+='<form class="hhTedbir" data-id="'+id+'"><label>Araç ve kamu gideri</label><select name="tur">'+ac.map(k=>{
+   const ad=(HH_TEDBIR[k]||[k])[0], bed=k==='sosyal_kart'?'4.000 TL × en çok 15 kişi':fmt(row.bedeller&&row.bedeller[k])+' TL'+(k==='kapi'?' açılış':'');
+   return '<option value="'+k+'">'+e(ad)+' · '+e(bed)+'</option>';
+  }).join('')+'</select><p>'+ac.map(k=>'<span><b>'+e((HH_TEDBIR[k]||[k])[0])+':</b> '+e((HH_TEDBIR[k]||['',''])[1])+'</span>').join('<br>')+'</p><label>Gerekçe</label><textarea name="metin" minlength="20" maxlength="500" required></textarea><button class="btn altin">Kamu bütçesinden uygula</button></form>';
+ }else if(row.yonetebilir) h+='<p>Şu an açılabilecek yeni araç yok. Talep türü, bekleme veya 12 saatte 3 araç sınırı dolmuş olabilir.</p>';
+ for(const t of row.tedbirler||[]){
+  h+='<div class="kart"><b>'+e(t.ad||t.tur)+'</b> · '+e(t.durum)+'<p>'+e(t.gerekce)+'</p><small>'+fmt(t.bedel)+' TL</small>';
+  const karsi=(t.karsi||[]).filter(k=>k!=='istihdam_soz');
+  if(karsi.length) h+='<div>'+karsi.map(k=>{
+   const meta=HH_HAMLE[k]||[k,false];
+   if(meta[1]) return '<form class="hhTedbirHamle" data-id="'+id+'" data-tur="'+e(k)+'"><label>'+e(meta[0])+'</label><textarea name="metin" minlength="'+(k==='basin_karsi'?20:6)+'" maxlength="'+(k==='basin_karsi'?500:90)+'" required></textarea><button class="btn">'+e(meta[0])+'</button></form>';
+   return '<button class="btn" data-hh-hamle="'+id+'" data-hh-tur="'+e(k)+'" data-hh-parent="'+e(t.tur)+'">'+e(meta[0])+'</button>';
+  }).join(' ')+'</div>';
+  if((t.karsi||[]).includes('istihdam_soz')&&(row.sirketler||[]).length){
+   h+='<form class="hhTedbirSoz" data-id="'+id+'"><label>Söz veren şirket</label><select name="sirket">'+(row.sirketler||[]).map(s=>'<option value="'+Number(s.id)+'">'+e(s.ad)+'</option>').join('')+'</select><button class="btn">İstihdam sözü ver</button></form>';
+  }
+  h+='</div>';
+ }
+ return h+'</details>';
+}
+function hhTedbirBagla(run){
+ document.querySelectorAll('.hhTedbir').forEach(form=>form.addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(form);run(form.querySelector('button'),'sokak_tedbir_ac',{p_eylem:Number(form.dataset.id),p_tur:String(f.get('tur')),p_gerekce:String(f.get('metin'))});}));
+ document.querySelectorAll('.hhTedbirHamle').forEach(form=>form.addEventListener('submit',ev=>{ev.preventDefault();run(form.querySelector('button'),'sokak_tedbir_hamle',{p_eylem:Number(form.dataset.id),p_tur:form.dataset.tur,p_metin:String(new FormData(form).get('metin'))});}));
+ document.querySelectorAll('.hhTedbirSoz').forEach(form=>form.addEventListener('submit',ev=>{ev.preventDefault();run(form.querySelector('button'),'sokak_tedbir_hamle',{p_eylem:Number(form.dataset.id),p_tur:'istihdam_soz',p_metin:String(new FormData(form).get('sirket'))});}));
+ document.querySelectorAll('[data-hh-hamle]').forEach(b=>b.addEventListener('click',()=>run(b,'sokak_tedbir_hamle',{p_eylem:Number(b.dataset.hhHamle),p_tur:b.dataset.hhTur,p_metin:b.dataset.hhTur==='yetersiz'?b.dataset.hhParent:null})));
+}
 function hhHukumetHTML(x,d){
  const fmt=n=>Number(n||0).toLocaleString('tr-TR'),active=d.aktif&&x.durum==='aktif';
  const names={masa:'Uzlaşma masası',yonlendirme:'Bilgilendirme ve yönlendirme',uyari:'Sert siyasi uyarı',dagitma:'Ek bütçeyle dağıtma',yaptirim:'6 saatlik eylem yaptırımı'};
@@ -37425,6 +37481,6 @@ document.addEventListener('click',async ev=>{
  finally{btn.disabled=false;}
 },true);
 })();
-</script><script defer src="halk-org-davet.js?v=20261109-2"></script>
+</script><script defer src="halk-org-davet.js?v=20261108-1"></script>
 </body>
 </html>
