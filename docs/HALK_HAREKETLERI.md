@@ -116,3 +116,5 @@ Sembolik işgal belediye ya da valilik binasını tutar. Yeni bina kararı ve va
 Her yeni hükümet müdahalesi İçişleri kasasından düşer. Kasada para yoksa işlem açılmaz. Eski yumuşak ve sert araçlar da zaten bu kasadan ödenir. Süren her eylem hazineye saatlik borç yazar. Kalabalık, grev, yol, vergi ve işgal bedeli büyütür. Tutar deftere işlenir ve iki tarafta da görünür.
 
 Şema `20261109230000_halk_eylem_merkezi.sql`. Canlı fonksiyonların içine yama yok. Canlı veritabanına bu dosyayla uygulanmamıştır.
+
+Katılımcı, Eylem Merkezi’ndeki her aktif katılımın yanında Ayrıl düğmesini görür. Onaydan sonra yalnız kendi payı biter: açlık grevinin taktik yasağı hemen kalkar, bina ve kuşatma nöbeti, dayanışma ziyareti, tahliye sayımı, gece ışığı, sızma rolü, şafak nöbet listesi ve süren taktik düşer. Genel grev, yol kapatma ve vergi itaatsizliğinde kişi listesinden çıkılır; ödenen bedel ve hamlenin süresi durur, kesinti ise yazılan kimse kalmayınca kesilir. Eylem katılımı ve sahadaki görev zaten olan ayrılma kurallarını kullanır. Ayrılmak parayı iade etmez. Aynı yere dönmek için kısa bir bekleme vardır. Şema `20261109240000_halk_katilim_ayril.sql`.
