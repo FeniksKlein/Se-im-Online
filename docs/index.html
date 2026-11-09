@@ -7919,7 +7919,7 @@ async function adliyeDosya(id){
    +(d.durum==="acik"&&sozHak?'<button class="btn altin" onclick="adlBeyanModal('+id+')">Savunma / beyan ver</button>':'')
    +(d.durum==="acik"&&yetki?'<button class="btn ikinci" onclick="adlTemsil('+id+','+(!d.temsil_iznim)+')">'+(d.temsil_iznim?"Parti sözcüsü temsil iznini kaldır":"Parti sözcünü savunmaya yetkilendir")+'</button>':'')
    +'</div>';
-  const karar=d.durum==="karar"?'<div class="kart"><h3>Gerekçeli karar</h3><b>'+e(ADL_CEZALAR[d.karar]||"—")+'</b>'
+  const karar=d.durum==="karar"?'<div class="kart"><h3>Gerekçeli karar</h3><b>'+e(ADL_CEZALAR[d.karar]||"—")+((d.karar==="para_tutar"||d.karar==="tazminat")&&Number(d.tazminat_tutar)>0?" · "+tlYaz(d.tazminat_tutar):"")+'</b>'
    +(ek&&ek.ilk_karar&&ek.ilk_karar!==d.karar?'<p class="kucuk">İlk derece kararı: '+e(ADL_CEZALAR[ek.ilk_karar]||ek.ilk_karar)+' (istinafta bozuldu)</p>':'')
    +(mus&&d.karar!=="beraat"?'<div class="kart"><b>Hazineye iade / müsadere: '+tlYaz(mus.tutar)+'</b><p class="alt">Sorumlu: '+e(mus.sorumlu)+(mus.sirket?' · Kaynak şirket: '+e(mus.sirket):'')+'</p><p class="alt">Hazineye aktarılan: '+tlYaz(mus.tahsil)+' · Kalan: '+tlYaz(mus.kalan)+' · '+(mus.kesin?'Kesinleşmiş karar':'İstinaf tamamlanınca uygulanacak')+'</p></div>':'')
    +'<p style="white-space:pre-wrap;margin-top:8px">'+e(d.gerekce||"")+'</p><p class="alt">Kararı yazan üye: '+e(d.hakim||"—")+' · '+adlTarih(d.karar_at)+'</p>'
@@ -16274,7 +16274,7 @@ window.addEventListener("online",()=>{guncelle(false);});
    +'<div class="alan"><label>Dava türü</label><select id="adlTur">'+secenek+'</select></div>'
    +'<p class="alt" id="adlSucAciklamasi"></p>'
    +'<div class="alan" id="adlTazKutu" style="display:none"><label>Talep edilen tazminat (₺)</label>'
-   +'<input id="adlTazTutar" type="number" min="1000" max="1000000" step="1" placeholder="1000–1000000"></div>'
+   +'<input id="adlTazTutar" type="number" min="1000" max="500000" step="1" placeholder="1000–500000"></div>'
    +'<div class="alan"><label>Davacı olarak</label><select id="adlDavaciParti"><option value="">Kendi adıma</option>'
    +ben.map(x=>'<option value="'+x.id+'">'+e(x.ad)+' adına</option>').join("")+'</select></div>'
    +adlAlan("İddia (20–1600 karakter)","adlIddia","textarea")
@@ -16298,7 +16298,7 @@ window.addEventListener("online",()=>{guncelle(false);});
    if(tazOption.disabled&&turSec.value==="tazminat")turSec.value="diger";
    m.querySelector("#adlTazKutu").style.display=kurum&&turSec.value==="tazminat"?"block":"none";
    m.querySelector("#adlSucAciklamasi").textContent=turSec.value==="tazminat"
-    ?"Kurumun oyun içinde sebep olduğu kanıtlanabilir zararlar için 1.000–1.000.000 ₺ talep edilebilir."
+    ?"Kurumun oyun içinde sebep olduğu kanıtlanabilir zararlar için 1.000–500.000 ₺ talep edilebilir."
     :(ADL_SUCLAR[turSec.value]||"");
    if(kurum)listele();
   }
@@ -16311,7 +16311,7 @@ window.addEventListener("online",()=>{guncelle(false);});
    const davali=kurum?ksec.value:secim==="parti"?m.querySelector("#adlHedefParti").value:m.querySelector("#adlHedef").value.trim();
    if(!davali){toast("Davalıyı seçmelisiniz.",true);return;}
    const taz=turSec.value==="tazminat",tutar=taz?Number(m.querySelector("#adlTazTutar").value):null;
-   if(taz&&(!Number.isInteger(tutar)||tutar<1000||tutar>1000000)){toast("Tazminat talebi 1.000–1.000.000 ₺ arasında olmalıdır.",true);return;}
+   if(taz&&(!Number.isInteger(tutar)||tutar<1000||tutar>500000)){toast("Tazminat talebi 1.000–500.000 ₺ arasında olmalıdır.",true);return;}
    const args={p_hedef_tur:secim,p_hedef:String(davali),p_tur:turSec.value,
     p_iddia:m.querySelector("#adlIddia").value,p_delil:m.querySelector("#adlDelil").value,
     p_davaci_parti:m.querySelector("#adlDavaciParti").value||null};
@@ -16326,35 +16326,31 @@ window.addEventListener("online",()=>{guncelle(false);});
  window.adlKararModal=function(id){
   const dv=(ADL.davalar||[]).find(x=>x.id===id)||{};
   if(!dv.davali_kurum_tur)return eskiKarar(id);
-  const secenekler=["beraat","uyari",...(dv.davali_kurum_tur==="makam"||dv.tur==="tazminat"?[]:["para_tutar"]),
+  const secenekler=["beraat","uyari",...(dv.davali_kurum_tur==="makam"?[]:["para_10b","para_50b"]),
    ...(dv.tur==="tazminat"&&dv.davali_kurum_tur!=="makam"?["tazminat"]:[])];
   const m=modal('<p class="alt">Davalı: '+e(dv.davali_kurum_ad||"Kurum")
    +'. Kuruma verilen parasal yaptırımlar kurum kasasından tahsil edilir.</p>'
    +'<div class="alan"><label>Mahkeme kararı</label><select id="adlCeza">'
-   +secenekler.map(k=>'<option value="'+k+'">'+e(k==="tazminat"?"Kurumdan tazminat (tutarı yaz)":k==="para_tutar"?"Para cezası (tutarı yaz)":ADL_CEZALAR[k]||k)+'</option>').join("")+'</select></div>'
+   +secenekler.map(k=>'<option value="'+k+'">'+e(k==="tazminat"?"Kurumdan tazminat":ADL_CEZALAR[k]||k)+'</option>').join("")+'</select></div>'
    +(secenekler.includes("tazminat")?'<div class="alan" id="adlKurumTazKutu" style="display:none">'
-    +'<label>Hükmedilecek tazminat (üst sınır '+tlYaz(dv.tazminat_talep||1000000)+')</label>'
-    +'<input id="adlKararTazTutar" type="number" min="1000" max="'+Number(dv.tazminat_talep||1000000)+'" step="1"></div>':"")
-   +(secenekler.includes("para_tutar")?'<div class="alan" id="adlKurumParaKutu" style="display:none"><label for="adlKararParaTutar">Hükmedilecek para cezası (₺)</label><input id="adlKararParaTutar" type="number" inputmode="numeric" min="1000" max="1000000" step="1" placeholder="1.000 – 1.000.000 ₺" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px"></div>':"")
+    +'<label>Hükmedilecek tazminat (üst sınır '+tlYaz(dv.tazminat_talep||500000)+')</label>'
+    +'<input id="adlKararTazTutar" type="number" min="1000" max="'+Number(dv.tazminat_talep||500000)+'" step="1"></div>':"")
    +adlAlan("Gerekçeli karar (20–2000 karakter)","adlGerekce","textarea")
    +'<p class="alt">Oy çoğunluğu sağlanırsa karar yayımlanır. İstinaf hakkı ve süresi devam eder.</p>'
    +'<button class="btn altin" id="adlKarar">Oyumu ver</button>');
   adlFormBaslik(m,"Yüksek Mahkeme · Kurum Davası #"+id);
   const karar=m.querySelector("#adlCeza");
-  karar.onchange=()=>{
-   const t=m.querySelector("#adlKurumTazKutu");if(t)t.style.display=karar.value==="tazminat"?"block":"none";
-   const p=m.querySelector("#adlKurumParaKutu");if(p)p.style.display=karar.value==="para_tutar"?"block":"none";
+  if(secenekler.includes("tazminat"))karar.onchange=()=>{
+   m.querySelector("#adlKurumTazKutu").style.display=karar.value==="tazminat"?"block":"none";
   };
   m.querySelector("#adlKarar").onclick=async()=>{
    if(!await onayla("Oyunu ver","Heyette çoğunluk sağlanırsa gerekçeli karar açıklanır.","Oyumu ver",true))return;
-   const k=karar.value,tutar=k==="tazminat"?Number(m.querySelector("#adlKararTazTutar").value):k==="para_tutar"?Number(m.querySelector("#adlKararParaTutar").value):null;
-   if(k==="tazminat"&&(!Number.isInteger(tutar)||tutar<1000||tutar>Number(dv.tazminat_talep||1000000))){
+   const k=karar.value,tutar=k==="tazminat"?Number(m.querySelector("#adlKararTazTutar").value):null;
+   if(k==="tazminat"&&(!Number.isInteger(tutar)||tutar<1000||tutar>Number(dv.tazminat_talep||500000))){
     toast("Tazminat miktarı geçerli sınırlar içinde olmalıdır.",true);return;
    }
-   if(k==="para_tutar"&&(!Number.isInteger(tutar)||tutar<1000||tutar>1000000)){toast("Para cezası 1.000–1.000.000 ₺ arasında olmalıdır.",true);return;}
    adlIslem(()=>k==="tazminat"
     ?API.rpc("adliye_tazminat_oy",{p_dava:id,p_tutar:tutar,p_gerekce:m.querySelector("#adlGerekce").value})
-    :k==="para_tutar"?API.rpc("adliye_para_oy",{p_dava:id,p_tutar:tutar,p_gerekce:m.querySelector("#adlGerekce").value})
     :API.rpc("adliye_oy_ver",{p_dava:id,p_karar:k,p_gerekce:m.querySelector("#adlGerekce").value}),"Oyun kaydedildi.",id);
   };
  };
