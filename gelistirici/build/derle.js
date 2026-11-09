@@ -88,6 +88,14 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 // İçişleri Komuta Merkezi: güvenli oyuncu dosyaları ve görev ekranı.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','icisleri_komuta.js'),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','icisleri_ek.js'),'utf8')+'</script></body>');
+// Eski tek dosyalik kurum/dava modalinde kalan 500.000 TL istemci sinirlarini guncelle.
+// Diger mali limitlere (banka, sigorta, sirket degerleri) dokunulmaz.
+const _mahkemeTutarEski=[...html.matchAll(/500000|500\\.000/g)];
+for(let i=_mahkemeTutarEski.length-1;i>=0;i--){
+ const es=_mahkemeTutarEski[i],p=es.index,cevre=html.slice(Math.max(0,p-220),Math.min(html.length,p+200));
+ if(/tazminat|tazmin|hiTaz|adlTaz|adlKararTaz/i.test(cevre))
+  html=html.slice(0,p)+(es[0]==='500000'?'1000000':'1.000.000')+html.slice(p+es[0].length);
+}
 // Mahkeme serbest tutar modulu diger dava override'larindan SONRA yuklenir.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','adliye_kurum_ceza.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
