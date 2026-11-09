@@ -16298,7 +16298,7 @@ window.addEventListener("online",()=>{guncelle(false);});
    if(tazOption.disabled&&turSec.value==="tazminat")turSec.value="diger";
    m.querySelector("#adlTazKutu").style.display=kurum&&turSec.value==="tazminat"?"block":"none";
    m.querySelector("#adlSucAciklamasi").textContent=turSec.value==="tazminat"
-    ?"Kurumun oyun içinde sebep olduğu kanıtlanabilir zararlar için 1.000–500.000 ₺ talep edilebilir."
+    ?"Kurumun oyun içinde sebep olduğu kanıtlanabilir zararlar için 1.000–1.000.000 ₺ talep edilebilir."
     :(ADL_SUCLAR[turSec.value]||"");
    if(kurum)listele();
   }
@@ -16311,7 +16311,7 @@ window.addEventListener("online",()=>{guncelle(false);});
    const davali=kurum?ksec.value:secim==="parti"?m.querySelector("#adlHedefParti").value:m.querySelector("#adlHedef").value.trim();
    if(!davali){toast("Davalıyı seçmelisiniz.",true);return;}
    const taz=turSec.value==="tazminat",tutar=taz?Number(m.querySelector("#adlTazTutar").value):null;
-   if(taz&&(!Number.isInteger(tutar)||tutar<1000||tutar>1000000)){toast("Tazminat talebi 1.000–500.000 ₺ arasında olmalıdır.",true);return;}
+   if(taz&&(!Number.isInteger(tutar)||tutar<1000||tutar>1000000)){toast("Tazminat talebi 1.000–1.000.000 ₺ arasında olmalıdır.",true);return;}
    const args={p_hedef_tur:secim,p_hedef:String(davali),p_tur:turSec.value,
     p_iddia:m.querySelector("#adlIddia").value,p_delil:m.querySelector("#adlDelil").value,
     p_davaci_parti:m.querySelector("#adlDavaciParti").value||null};
