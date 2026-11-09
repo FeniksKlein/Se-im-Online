@@ -1170,3 +1170,143 @@ sokakHareketleriEkrani=async function(){
 };
 if(window.__hhSar)sokakHareketleriEkrani=window.__hhSar('meydan',sokakHareketleriEkrani);
 })();
+
+/* Asset refresh: 20261109-5 (eylem merkezi) */
+(function(){
+'use strict';
+if(typeof sokakHareketleriEkrani!=='function')return;
+if(!document.getElementById('em-stil')){
+ const st=document.createElement('style'); st.id='em-stil';
+ st.textContent='.em{margin:12px 0;padding:12px;border:1px solid #3d4d78;border-radius:16px;background:#10182e;color:#eef2ff}.em-ust{display:grid;gap:8px}.em-kicker{margin:0;letter-spacing:.08em;text-transform:uppercase;font-size:11px;color:#9eb0da}.em-sayi{font-size:28px;line-height:1.1}.em-bar{height:10px;border-radius:99px;background:#243154;overflow:hidden}.em-bar>span{display:block;height:100%;background:linear-gradient(90deg,#d46a4c,#e7b15a)}.em-ticker small{display:block;color:#b7c3e4}.em-oneri{margin:0;padding:8px 10px;border-radius:12px;background:#1a2748}.em-sekme{display:flex;gap:6px;overflow:auto;margin:10px 0}.em-sekme button{border:0;border-radius:999px;padding:8px 12px;background:#243154;color:#eef2ff}.em-sekme button.acik{background:#e7b15a;color:#1b1408}.em-grid{display:grid;grid-template-columns:1fr;gap:8px}@media(min-width:720px){.em-grid{grid-template-columns:1fr 1fr}}.em-kart{text-align:left;border:1px solid #3d4d78;border-radius:14px;padding:10px;background:#16213c;color:#eef2ff}.em-kart.secili{border-color:#e7b15a}.em-kart b{display:block}.em-kart small{color:#b7c3e4}.em-form{display:flex;flex-direction:column;gap:8px;margin-top:8px}.em-form textarea,.em-form select,.em-form input{width:100%;box-sizing:border-box;min-height:44px;border-radius:12px;border:1px solid #7180ab;background:#0d1428;color:#f5f7ff;padding:10px}.em-cekis{display:flex;height:16px;border-radius:99px;overflow:hidden;background:#243154}.em-cekis i{display:block;height:100%}.em-sayac{font-variant-numeric:tabular-nums;font-size:22px}.em-arsiv{margin-top:8px}';
+ document.head.appendChild(st);
+}
+const HAMLE=[
+ ['grev','✊','Genel Grev','İl kasasına giren para azalır.','150.000 TL'],
+ ['yol','🚧','Yol Kapatma','İl geliri ve memnuniyet geriler.','80.000 TL'],
+ ['aclik','🕯️','Açlık Grevi','Sempati saatle artar. Taktik kapanır.','0 TL'],
+ ['vergi','🧾','Vergi İtaatsizliği','İl geliri düşer. Para cezası riski var.','120.000 TL'],
+ ['oturma','🏛️','Bakanlık Önü Oturma','Seçilen bakanın itibarı geriler.','60.000 TL'],
+ ['uluslararasi','🌍','Uluslararası Kamuoyu','Manşet ve memnuniyet bedeli.','100.000 TL'],
+ ['zincir','🔗','Sivil İtaatsizlik Zinciri','Üç ilde eylem ister.','80.000 TL'],
+ ['gensoru','📜','Gensoru Baskısı','İçişleri için meclis önergesi.','70.000 TL'],
+ ['kalkan','🛡️','Boykot Kalkanı','İhale ve mali kuşatmayı durdurur.','90.000 TL'],
+ ['isgal','🏢','Sembolik İşgal','Belediye veya valilik kararları durur.','200.000 TL']
+];
+const tl=n=>Number(n||0).toLocaleString('tr-TR')+' TL';
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function oneri(r){
+ const t=r.isgal&&r.isgal.tahliye;
+ if(t&&t.durum==='geri_sayim') return (r.yetkili||r.iktidar)?'Önerilen: operasyona katıl. Geri sayım sürüyor.':'Önerilen: binayı savun. Geri sayım sürüyor.';
+ if(r.isgal&&r.isgal.durum==='aktif'&&r.katilimci&&Number(r.isgal.nobet)<2) return 'Önerilen: bina nöbeti. Nöbet seyrelirse işgal dağılır.';
+ if(Number(r.saat)===0&&r.katilimci) return 'Önerilen: gece meşalesi. Işığını yak.';
+ if(r.yetkili&&Number(r.seviye)>=60) return 'Önerilen: kuşatma ya da tahliye. Meydan kalabalık.';
+ if(r.katilimci) return 'Önerilen: genel grev. İl gelirini keser, bedeli büyüktür.';
+ return 'Önerilen: önce eyleme katıl. Hükümet yetkisi varsa bütçe sekmesine bak.';
+}
+function merkezHTML(r,td,sd){
+ const id=Number(r.id); const h=r.hazine||{}; const ig=r.isgal||null; const tv=ig&&ig.tahliye;
+ const sem=Math.max(0,Math.min(100,Number(r.nabiz)||0));
+ let x='<section class="em" data-em="'+id+'"><header class="em-ust"><div><p class="em-kicker">Eylem Merkezi</p><div class="em-sayi">'+Number(r.katilim||0)+' kişi</div><small>İl memnuniyeti '+esc(r.memnuniyet)+' · nabız '+esc(r.nabiz)+'</small></div>';
+ x+='<div class="em-bar" aria-label="Nabız"><span style="width:'+sem+'%"></span></div>';
+ x+='<div class="em-ticker">Eylemin hazineye maliyeti <b>'+tl(h.toplam_tl)+'</b><small>Saatlik '+tl(h.saatlik_tl)+'</small></div>';
+ x+='<p class="em-oneri">'+esc(oneri(r))+'</p></header>';
+ if(tv&&tv.durum==='geri_sayim'){
+  const g=Number(tv.hukumet||0), s=Number(tv.savun||0)+(ig.nobet||0); const top=Math.max(1,g+s); const yuz=Math.round(100*g/top);
+  x+='<div class="em-sayac" data-em-bit="'+esc(tv.bitis)+'">Tahliye geri sayımı</div><div class="em-cekis" aria-label="Tahliye dengesi"><i style="width:'+yuz+'%;background:#8ea2d6"></i><i style="width:'+(100-yuz)+'%;background:#d46a4c"></i></div><small>Operasyon '+g+' · Savunma '+(s)+'</small>';
+ }
+ x+='<div class="em-sekme"><button type="button" class="acik" data-em-tab="eylem">Eylemci</button><button type="button" data-em-tab="hukumet">Hükümet</button><button type="button" data-em-tab="isgal">Kuşatma</button><button type="button" data-em-tab="butce">Bütçe</button></div>';
+ x+='<div data-em-panel="eylem"><div class="em-grid">'+HAMLE.map(k=>'<button type="button" class="em-kart" data-em-kart="'+k[0]+'"><b>'+k[1]+' '+k[2]+'</b><small>'+k[3]+'</small><small>Bedel '+k[4]+'</small></button>').join('')+'</div>';
+ x+='<div class="em-grid"><button type="button" class="em-kart" data-em-islem="mesale">🌙 Gece meşalesi · 00.00</button><button type="button" class="em-kart" data-em-islem="aclik">Açlık grevine yazıl</button><button type="button" class="em-kart" data-em-islem="nobet">Bina nöbeti · 1 saat</button><button type="button" class="em-kart" data-em-islem="ziyaret">Dayanışma ziyareti</button><button type="button" class="em-kart" data-em-islem="savun">Binayı savun</button><button type="button" class="em-kart" data-em-islem="katil">Eyleme katıl</button></div>';
+ x+='<form class="em-form" data-em-form="hamle"><input type="hidden" name="tur" value="grev"><label>Seçilen hamle</label><p class="em-secim">Genel Grev</p><label>Bina, yalnız işgalde</label><select name="bina"><option value="belediye">Belediye</option><option value="valilik">Valilik</option></select><label>Bakanlık, yalnız oturmada</label><input name="bakanlik" value="icisleri" maxlength="40"><label>Gerekçe</label><textarea name="gerekce" minlength="20" maxlength="300" required>Bu hamle ortak kararımızdır.</textarea><button class="hh-action hh-primary" type="submit">Hamleyi başlat</button></form>';
+ x+='<form class="em-form" data-em-form="sizma"><label>İçeriden sızan not</label><textarea name="metin" maxlength="400" required placeholder="Hükümet planı"></textarea><button class="hh-action" type="submit">Notu eylem sohbetine bırak</button></form>';
+ x+='</div>';
+ const YAD={hizmet:'Acil Hizmet Seferberliği',vergi_tatil:'Bölgesel Vergi Tatili',istihdam:'İstihdam Taahhüt Paketi',brifing:'Resmi Basın Brifingi',sosyal_kart:'Acil Sosyal Destek Kartı',guzergah:'Güvenli Alan',komisyon:'Meclis Araştırma Komisyonu',gozlemci:'Bağımsız Gözlemci',kapi:'İktidar Kapı Kapı',gece:'Gece Toplanma Kısıtı',iletisim:'İletişim Yavaşlatma',festival:'Kültür-Festival'};
+ const SAD={safak:'Şafak Operasyonu',elebasi:'Elebaşı Gözaltısı',mali:'Mali Kuşatma',kapatma:'Kapatma Davası Tehdidi',ohal:'OHAL',propaganda:'Kara Propaganda',bol:'Böl ve Yönet',kusatma:'Kuşatma Çemberi',ihale:'İhale ve Lisans Kılıcı',sanal:'Toplu Sanal Gözaltı'};
+ const yumusak=(td&&td.acabilir)||Object.keys(YAD);
+ const sert=(sd&&sd.bedeller)?Object.keys(sd.bedeller):Object.keys(SAD);
+ x+='<div data-em-panel="hukumet" hidden><p>Yumuşak ve sert araçlar İçişleri bütçesinden düşer. Kasada para yoksa işlem açılmaz.</p>';
+ x+='<form class="em-form" data-em-form="tedbir"><label>Yumuşak araç</label><select name="tur">'+yumusak.map(k=>'<option value="'+esc(k)+'">'+esc(YAD[k]||k)+'</option>').join('')+'</select><textarea name="gerekce" minlength="20" maxlength="500" required>Bu aracı kamu bütçesinden uyguluyoruz.</textarea><button class="hh-action" type="submit">Yumuşak aracı uygula</button></form>';
+ x+='<form class="em-form" data-em-form="sert"><label>Sert önlem</label><select name="tur">'+sert.map(k=>'<option value="'+esc(k)+'">'+esc(SAD[k]||k)+'</option>').join('')+'</select><textarea name="gerekce" minlength="20" maxlength="500" required>Bu sert önlemin gerekçesi kamuoyuna açıktır.</textarea><button class="hh-action" type="submit">Sert önlemi uygula</button></form></div>';
+ x+='<div data-em-panel="isgal" hidden><p>'+(ig?esc(ig.bina)+' · '+esc(ig.durum)+' · güç '+esc(ig.guc)+' · nöbet '+Number(ig.nobet||0)+' · kuşatma '+Number(ig.kusatma||0):'Henüz işgal yok.')+'</p>';
+ if(ig&&ig.teklif) x+='<p>Teklif: '+esc(ig.teklif.metin)+'</p><div class="em-grid"><button type="button" class="em-kart" data-em-islem="muzakere_oy" data-oy="evet">Teklifi kabul et</button><button type="button" class="em-kart" data-em-islem="muzakere_oy" data-oy="hayir">Teklifi reddet</button></div>';
+ x+='<div class="em-grid"><button type="button" class="em-kart" data-em-islem="kusatma">Kuşatma başlat · 200.000 TL</button><button type="button" class="em-kart" data-em-islem="kusatma_nobet">Kuşatma nöbeti · 1 saat</button><button type="button" class="em-kart" data-em-islem="tahliye">Tahliye emri · 250.000 TL</button><button type="button" class="em-kart" data-em-islem="operasyon">Operasyona katıl</button></div>';
+ x+='<form class="em-form" data-em-form="muzakere"><label>Müzakere teklifi · 100.000 TL</label><textarea name="metin" minlength="20" maxlength="400" required>Binayı boşaltırsanız talebin bir kısmını uygularız.</textarea><button class="hh-action" type="submit">Teklifi gönder</button></form></div>';
+ x+='<div data-em-panel="butce" hidden><p>Her hükümet müdahalesi İçişleri kasasından çıkar. Eylem sürdükçe hazine, kalabalık ve sert hamleyle artan bir saatlik bedel yazar. Tutar iki tarafta da görünür.</p><p>Biriken: <b>'+tl(h.toplam_tl)+'</b></p><p>Saatlik: <b>'+tl(h.saatlik_tl)+'</b></p><a href="#hhMeydanEk">Sohbet ve muhbir avı</a></div></section>';
+ return x;
+}
+const onceki=sokakHareketleriEkrani;
+sokakHareketleriEkrani=async function(){
+ await onceki.apply(this,arguments);
+ const root=document.getElementById('hhCommand'); if(!root)return;
+ let m=null,td=null,sd=null;
+ try{m=await API.rpc('sokak_eylem_merkezi');}catch(err){console.warn('Eylem merkezi',err);}
+ try{td=await API.rpc('sokak_tedbir_panel');}catch(err){}
+ try{sd=await API.rpc('sokak_sert_panel');}catch(err){}
+ const harita={}; ((m&&m.eylemler)||[]).forEach(r=>{harita[Number(r.id)]=r;});
+ const tdHarita={}; ((td&&td.eylemler)||[]).forEach(r=>{tdHarita[Number(r.id)]=r;});
+ const sdHarita={}; ((sd&&sd.eylemler)||[]).forEach(r=>{sdHarita[Number(r.id)]=r;});
+ root.querySelectorAll('article.hh-event').forEach(art=>{
+  const id=Number(art.getAttribute('data-hh-event')); const row=harita[id]; if(!row)return;
+  art.querySelector(':scope > .em')?.remove();
+  art.insertAdjacentHTML('afterbegin',merkezHTML(row,tdHarita[id],sdHarita[id]));
+  if(!art.querySelector(':scope > .em-arsiv')){
+   const arsiv=document.createElement('details'); arsiv.className='em-arsiv';
+   arsiv.innerHTML='<summary>Eski düğme listesi</summary>';
+   art.querySelectorAll(':scope > .hh-saha, :scope > details.hh-detail').forEach(n=>arsiv.appendChild(n));
+   if(arsiv.children.length>1) art.appendChild(arsiv);
+  }
+ });
+ const kos=async(btn,fn,args)=>{
+  if(btn)btn.disabled=true;
+  try{await API.rpc(fn,args); toast('Kaydedildi'); await sokakHareketleriEkrani();}
+  catch(ex){toast((typeof hataCevir==='function'?hataCevir(ex.message||String(ex)):String(ex.message||ex)),true); if(btn)btn.disabled=false;}
+ };
+ root.querySelectorAll('.em').forEach(kutu=>{
+  const id=Number(kutu.getAttribute('data-em'));
+  kutu.querySelectorAll('[data-em-tab]').forEach(b=>b.addEventListener('click',()=>{
+   kutu.querySelectorAll('[data-em-tab]').forEach(x=>x.classList.toggle('acik',x===b));
+   kutu.querySelectorAll('[data-em-panel]').forEach(p=>{p.hidden=p.getAttribute('data-em-panel')!==b.getAttribute('data-em-tab');});
+  }));
+  kutu.querySelectorAll('[data-em-kart]').forEach(b=>b.addEventListener('click',()=>{
+   kutu.querySelectorAll('[data-em-kart]').forEach(x=>x.classList.toggle('secili',x===b));
+   const tur=b.getAttribute('data-em-kart'); const form=kutu.querySelector('[data-em-form=hamle]');
+   form.querySelector('[name=tur]').value=tur;
+   const ad=HAMLE.find(k=>k[0]===tur);
+   form.querySelector('.em-secim').textContent=ad?ad[1]+' '+ad[2]:tur;
+  }));
+  kutu.querySelectorAll('[data-em-islem]').forEach(b=>b.addEventListener('click',()=>{
+   const ad=b.getAttribute('data-em-islem');
+   if(ad==='katil'){kos(b,'sokak_destek',{p_eylem:id,p_taraf:'muhalefet'});return;}
+   if(ad==='muzakere_oy'){kos(b,'sokak_eylem_merkezi_islem',{p_eylem:id,p_islem:'muzakere_oy',p_veri:{oy:b.getAttribute('data-oy')}});return;}
+   kos(b,'sokak_eylem_merkezi_islem',{p_eylem:id,p_islem:ad,p_veri:{}});
+  }));
+  kutu.querySelector('[data-em-form=hamle]')?.addEventListener('submit',ev=>{
+   ev.preventDefault(); const f=new FormData(ev.currentTarget);
+   kos(ev.currentTarget.querySelector('button'),'sokak_eylem_merkezi_islem',{p_eylem:id,p_islem:'hamle',p_veri:{tur:String(f.get('tur')),gerekce:String(f.get('gerekce')),bina:String(f.get('bina')),bakanlik:String(f.get('bakanlik'))}});
+  });
+  kutu.querySelector('[data-em-form=sizma]')?.addEventListener('submit',ev=>{
+   ev.preventDefault(); kos(ev.currentTarget.querySelector('button'),'sokak_eylem_merkezi_islem',{p_eylem:id,p_islem:'sizma',p_veri:{metin:String(new FormData(ev.currentTarget).get('metin'))}});
+  });
+  kutu.querySelector('[data-em-form=tedbir]')?.addEventListener('submit',ev=>{
+   ev.preventDefault(); const f=new FormData(ev.currentTarget);
+   kos(ev.currentTarget.querySelector('button'),'sokak_tedbir_ac',{p_eylem:id,p_tur:String(f.get('tur')),p_gerekce:String(f.get('gerekce'))});
+  });
+  kutu.querySelector('[data-em-form=sert]')?.addEventListener('submit',ev=>{
+   ev.preventDefault(); const f=new FormData(ev.currentTarget);
+   kos(ev.currentTarget.querySelector('button'),'sokak_sert_islem',{p_eylem:id,p_islem:'ac',p_veri:{tur:String(f.get('tur')),gerekce:String(f.get('gerekce'))}});
+  });
+  kutu.querySelector('[data-em-form=muzakere]')?.addEventListener('submit',ev=>{
+   ev.preventDefault(); kos(ev.currentTarget.querySelector('button'),'sokak_eylem_merkezi_islem',{p_eylem:id,p_islem:'muzakere',p_veri:{metin:String(new FormData(ev.currentTarget).get('metin'))}});
+  });
+ });
+ if(window.__emSayac) clearInterval(window.__emSayac);
+ window.__emSayac=setInterval(()=>{
+  document.querySelectorAll('[data-em-bit]').forEach(el=>{
+   const ms=new Date(el.getAttribute('data-em-bit')).getTime()-Date.now();
+   const sn=Math.max(0,Math.floor(ms/1000));
+   el.textContent='Tahliye geri sayımı '+String(Math.floor(sn/60)).padStart(2,'0')+':'+String(sn%60).padStart(2,'0');
+  });
+ },1000);
+};
+if(window.__hhSar)sokakHareketleriEkrani=window.__hhSar('merkez2',sokakHareketleriEkrani);
+})();

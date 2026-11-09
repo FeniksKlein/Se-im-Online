@@ -104,3 +104,15 @@ Cumhurbaşkanı, İçişleri Bakanı veya eylemin ilindeki vali kullanır. Para 
 | Toplu Sanal Gözaltı | 8 kat (400.000 TL) | En az 4 katılımcı varken, en çok 5 kişi (biri içeride kalacak şekilde) 6 saat oy ve sohbet kullanamaz. Eylemde kalırlar. | Ülke memnuniyeti −5, 12 saat +12 sempati ve basın skandalı. En ağır siyasi bedel budur. | Süre dolunca haklar geri gelir. Bu önlemin kısaltan bir itirazı yoktur; bedeli memnuniyet ve seçim kaydıdır. |
 
 Yeni çağrılar `sokak_sert_islem` ve `sokak_sert_panel`. Yalnız authenticated rolüne açıktır. Şema `20261109210000_halk_sert_onlem.sql` içindedir ve bu değişiklikle canlı veritabanına uygulanmamıştır.
+
+## Eylem Merkezi — 2026.11.09
+
+Ekranın başında tek kart vardır: kalabalık, nabız, hazinenin biriken bedeli ve önerilen hamle. Eski düğmeler altta kapalı durur; kaybolmaz.
+
+Eylemci on iki sert hamle açabilir. Genel grev, yol kapatma ve vergi itaatsizliği il kasasına giren parayı keser. Açlık grevi sempatiyi saatle artırır ve o kişinin taktiğini kapatır. Bakanlık önü oturma ilgili bakanın itibarını düşürür. Üç ilde eylem varsa zincir kurulur. Hükümetteki biri not sızdırır; kabine oyu onu açığa çıkarır. Gensoru baskısı İçişleri için meclis önergesi açar. Boykot kalkanı ihale kılıcını ve mali kuşatmayı durdurur. Gece meşalesi yalnız 00.00–01.00 arasında yanar.
+
+Sembolik işgal belediye ya da valilik binasını tutar. Yeni bina kararı ve valilik ataması yazılamaz. İşgalciler birer saatlik nöbet tutar. Nöbet seyrelirse işgal dağılır. Başka ilden gelen dayanışma ziyareti güç katar. Cumhurbaşkanı, İçişleri Bakanı veya vali kuşatmayı İçişleri bütçesinden başlatır. İktidar oyuncuları kuşatma nöbeti tutar. Müzakere teklifini işgalciler oylar. Tahliye emrinden sonra 30 dakika sayılır. Sonuç, katılan insan sayısı ağır basacak şekilde nöbet, ziyaret, kuşatma ve nabızla hesaplanır. Hükümet kazanırsa bina boşalır ve savunanlar 6 saat hamle kullanamaz. Eylemci kazanırsa hükümet sempati kaybeder ve 12 saat yeniden deneyemez. Nabız eylemciden yanaysa hükümet kazansa da memnuniyet düşer.
+
+Her yeni hükümet müdahalesi İçişleri kasasından düşer. Kasada para yoksa işlem açılmaz. Eski yumuşak ve sert araçlar da zaten bu kasadan ödenir. Süren her eylem hazineye saatlik borç yazar. Kalabalık, grev, yol, vergi ve işgal bedeli büyütür. Tutar deftere işlenir ve iki tarafta da görünür.
+
+Şema `20261109230000_halk_eylem_merkezi.sql`. Canlı fonksiyonların içine yama yok. Canlı veritabanına bu dosyayla uygulanmamıştır.

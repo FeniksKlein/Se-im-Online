@@ -1,0 +1,10 @@
+const fs=require('fs'),path=require('path'),assert=require('node:assert/strict');
+const kok=path.join(__dirname,'..','..');
+const js=fs.readFileSync(path.join(kok,'docs/halk-org-davet.js'),'utf8');
+assert.equal(js,fs.readFileSync(path.join(kok,'www/halk-org-davet.js'),'utf8'));
+for(const s of ['Eylem Merkezi','Eylemin hazineye maliyeti','Genel Grev','Sembolik İşgal','Tahliye geri sayımı','Önerilen','sokak_eylem_merkezi','Boykot Kalkanı','İçeriden sızan not']) assert.ok(js.includes(s),s);
+const sql=fs.readFileSync(path.join(kok,'supabase/migrations/20261109230000_halk_eylem_merkezi.sql'),'utf8');
+for(const s of ['sokak_hazine_defter','sokak_il_gelir_kirp','sokak_bina_karar_engel','sokak_kalkan_engel','İçişleri bütçesi yetersiz','pg_cron']) assert.ok(sql.includes(s),s);
+assert.equal(sql.includes('pg_get_functiondef'),false);
+assert.equal(sql.includes('yedek_'),false);
+console.log('PASS: eylem merkezi metinleri ve yamasız şema');
