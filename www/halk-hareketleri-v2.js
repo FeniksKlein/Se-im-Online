@@ -96,6 +96,50 @@ if(!document.getElementById(hhStyleId)){
  document.head.appendChild(style);
 }
 
+const SO_TEDBIR={
+ hizmet:['Acil Hizmet Seferberliği','Hizmet talebinde il memnuniyeti +4, 12 saat yoğunluk −8. Söz tutulmazsa ülke memnuniyeti −3.'],
+ vergi_tatil:['Bölgesel Vergi Tatili','48 saat kent vergisi −1. Büyüme −0,2; diğer iller kızar.'],
+ istihdam:['İstihdam Taahhüt Paketi','İşsizlik −0,3. Şirket sözü yoksa indirim geri gelir.'],
+ brifing:['Resmi Basın Brifingi','12 saat nabız hükümete eğilir. Karşı brifing ters çevirir.'],
+ sosyal_kart:['Acil Sosyal Destek Kartı','4.000 TL × en çok 15 kişi. Oy satın alma şüphesi doğurur.'],
+ guzergah:['Güvenli Alan / Güzergâh','Kabulde güç aynı, ekonomik hasar durur. Ret ve dayatma inat artırır.'],
+ komisyon:['Meclis Araştırma Komisyonu','24 saat yeni kırmızı yok. Muhalefet devralırsa talep kısmen uygulanır.'],
+ gozlemci:['Bağımsız Gözlemci','Avukat katılınca 12 saat polis ve barikat kapalı.'],
+ kapi:['İktidar Kapı Kapı','Üye başı 8.000 TL, 3 saatte bir. Muhalefet karşı çağrı yapar.'],
+ gece:['Gece Toplanma Kısıtı','22.00–06.00 katılım ve taktik kapalı. İl memnuniyeti −1.'],
+ iletisim:['İletişim Yavaşlatma','Çağrı ve nabız 6 saat durur. Mesaj ve oy hakkı açık kalır.'],
+ festival:['Kültür-Festival','Tarafsızı çeker. Ekmek yok oyun var tepkisi ve sahne işgali vardır.']
+};
+const SO_HAMLE={
+ yetersiz:'Yetersiz buluyorum',ikna_olmadim:'İkna olmadım',slogan:'Sloganla yanıtla',basin_hukumet:'Brifinge katıl',basin_karsi:'Karşı brifing yaz',
+ kart_cagri:'Kartı reddedin',kart_iade:'Kartı iade et',guzergah_kabul:'Güzergâhı kabul et',guzergah_ret:'Güzergâhı reddet',dayat:'Güzergâhı dayat',
+ komisyon_iktidar:'Komisyona katıl',komisyon_muhalefet:'Muhalefet olarak katıl',komisyon_devral:'Komisyonu devral',gozlemci:'Gözlemci ol',gozlemci_ret:'Protokolü reddet',
+ kapi_iktidar:'Kapı kapı dolaş',kapi_muhalefet:'Karşı çağrı yap',istihdam_grev:'Greve çağır',istihdam_soz:'Şirket sözü ver',otobus:'Miting otobüsü',
+ dernek_davet:'Dernek daveti',festival:'Festivale git',festival_ayril:'Festivalden ayrıl',sahne:'Sahneyi işgal et',kisit_itiraz:'Kısıtı tanımıyorum'
+};
+function soTedbirHTML(x,row,esc,num){
+ if(!row) return '';
+ const id=Number(x.id), ac=row.acabilir||[];
+ let h='<details open><summary>🏛️ Yeni hükümet araçları</summary><p>Bedeli, riski ve karşı hamlesi olan on iki araç. Mesaj ve seçim oyu kapanmaz.</p>';
+ if(row.yonetebilir&&ac.length){
+  h+='<form data-so-fn="sokak_tedbir_ac" data-so-id="'+id+'"><label>Araç</label><select name="p_tur">'+ac.map(k=>{
+   const bed=k==='sosyal_kart'?'4.000 TL × en çok 15 kişi':num(row.bedeller&&row.bedeller[k])+' TL';
+   return '<option value="'+k+'">'+esc(SO_TEDBIR[k][0])+' · '+esc(bed)+'</option>';
+  }).join('')+'</select><p>'+ac.map(k=>'<b>'+esc(SO_TEDBIR[k][0])+':</b> '+esc(SO_TEDBIR[k][1])).join('<br>')+'</p><label>Gerekçe</label><textarea name="p_gerekce" minlength="20" maxlength="500" required></textarea><button class="btn altin">Kamu bütçesinden uygula</button></form>';
+ }
+ for(const t of row.tedbirler||[]){
+  h+='<div class="kart"><b>'+esc(t.ad||t.tur)+'</b> · '+esc(t.durum)+'<p>'+esc(t.gerekce)+'</p>';
+  for(const k of t.karsi||[]){
+   if(k==='istihdam_soz'){
+    h+='<form data-so-fn="sokak_tedbir_hamle" data-so-id="'+id+'"><label>Şirket sözü</label><select name="p_metin">'+(row.sirketler||[]).map(s=>'<option value="'+Number(s.id)+'">'+esc(s.ad)+'</option>').join('')+'</select><input type="hidden" name="p_tur" value="istihdam_soz"><button class="btn">Şirket adına söz ver</button></form>';
+   }else if(k==='slogan'||k==='sahne'||k==='basin_karsi'){
+    h+='<form data-so-fn="sokak_tedbir_hamle" data-so-id="'+id+'"><label>'+esc(SO_HAMLE[k])+'</label><input type="hidden" name="p_tur" value="'+k+'"><textarea name="p_metin" minlength="'+(k==='basin_karsi'?20:6)+'" maxlength="'+(k==='basin_karsi'?500:90)+'" required></textarea><button class="btn">'+esc(SO_HAMLE[k])+'</button></form>';
+   }else h+='<button class="btn" data-so-hamle="'+id+'" data-so-tur="'+k+'" data-so-parent="'+esc(t.tur)+'">'+esc(SO_HAMLE[k]||k)+'</button> ';
+  }
+  h+='</div>';
+ }
+ return h+'</details>';
+}
 const eskiIskelet=iskelet;
 iskelet=function(baslik,govde,opt){
  if(baslik==='Halk Hareketleri'&&!String(govde).includes('id="so-v2"')) govde='<div id="so-v2"></div>'+govde;
@@ -109,6 +153,8 @@ sokakHareketleriEkrani=async function(){
  mount.innerHTML='<div class="kart">🛡️ Olaylar, ortak eylemler ve gözaltı/mahkeme kayıtları yükleniyor...</div>';
  try{
   const d=await API.rpc('sokak_ek_panel');
+  let td={eylemler:[]}; try{const p=await API.rpc('sokak_tedbir_panel'); if(p&&p.eylemler) td=p;}catch(ex){}
+  const tdMap={}; (td.eylemler||[]).forEach(r=>{tdMap[Number(r.id)]=r;});
   const esc=t=>e(String(t??'')),num=t=>Number(t||0).toLocaleString('tr-TR');
   const saat=t=>t?new Date(t).toLocaleString('tr-TR'):'—';
   const aktif=x=>x.durum==='aktif'&&Date.parse(x.bitis)>Date.now();
@@ -182,6 +228,7 @@ sokakHareketleriEkrani=async function(){
     }
     h+='</details>';
    }
+   h+=soTedbirHTML(x,tdMap[Number(x.id)],esc,num);
    h+='<details><summary>🎙️ Açıklamalar ve kamuoyu ('+(x.aciklamalar||[]).length+')</summary>';
    h+='<form data-so-fn="sokak_basina_aciklama" data-so-id="'+Number(x.id)+'"><label>Açıklama sıfatı</label><select name="p_taraf"><option value="basin">Basın / oyuncu yorumu</option><option value="muhalefet">Eylem katılımcısı veya örgütleyen parti</option><option value="hukuk">Ruhsatlı avukat</option>'+(d.mudahale_yetki?'<option value="hukumet">Hükümet</option>':'')+'</select><textarea name="p_metin" minlength="30" maxlength="600" placeholder="Halka açık açıklama metni" required></textarea><button class="btn">Basın açıklamasını yayımla</button></form>';
    h+=(x.aciklamalar||[]).map(y=>'<blockquote><b>'+esc(y.ad)+' · '+esc(y.taraf)+'</b><br>'+esc(y.metin)+'<br><small>'+esc(saat(y.zaman))+'</small></blockquote>').join('');
@@ -204,7 +251,7 @@ sokakHareketleriEkrani=async function(){
    event.preventDefault();
    const args=Object.fromEntries(new FormData(form).entries());
    const fn=form.dataset.soFn,id=Number(form.dataset.soId);
-   if(['sokak_polis_gonder','sokak_basina_aciklama'].includes(fn)) args.p_eylem=id;
+   if(['sokak_polis_gonder','sokak_basina_aciklama','sokak_tedbir_ac','sokak_tedbir_hamle'].includes(fn)) args.p_eylem=id;
    if(['sokak_polis_geri_cek'].includes(fn))args.p_polis=id;
    if(['sokak_avukat_cagir','sokak_gozalti_itiraz','sokak_gozalti_mahkeme'].includes(fn)) args.p_gozalti=id;
    if(fn==='sokak_olay_baslat'){args.p_il=Number(args.p_il);args.p_olay=Number(args.p_olay);}
@@ -213,6 +260,7 @@ sokakHareketleriEkrani=async function(){
   mount.querySelectorAll('[data-so-join]').forEach(btn=>btn.addEventListener('click',()=>rpc(btn,'sokak_koalisyon_katil',{p_cagri:Number(btn.dataset.soJoin)})));
   mount.querySelectorAll('[data-so-law]').forEach(btn=>btn.addEventListener('click',()=>rpc(btn,'sokak_avukat_cevap',{p_gozalti:Number(btn.dataset.soLaw),p_kabul:btn.dataset.soAccept==='true'})));
   mount.querySelectorAll('[data-so-pay]').forEach(btn=>btn.addEventListener('click',()=>rpc(btn,'sokak_gozalti_tazminat_tahsil',{p_gozalti:Number(btn.dataset.soPay)})));
+  mount.querySelectorAll('[data-so-hamle]').forEach(btn=>btn.addEventListener('click',()=>rpc(btn,'sokak_tedbir_hamle',{p_eylem:Number(btn.dataset.soHamle),p_tur:btn.dataset.soTur,p_metin:btn.dataset.soTur==='yetersiz'?btn.dataset.soParent:null})));
  }catch(err){
   mount.innerHTML='<div class="kart">Yeni halk hareketleri paneli yüklenemedi: '+e(hataCevir(err.message||String(err)))+'</div>';
  }
