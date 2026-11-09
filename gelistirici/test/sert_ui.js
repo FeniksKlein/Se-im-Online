@@ -13,7 +13,8 @@ for(const dosya of ['gelistirici/www/halk_hareketleri.js','www/halk-hareketleri-
  assert.ok(src.includes('sokak_sert_islem')&&src.includes('sokak_sert_panel'),dosya);
 }
 const sql=fs.readFileSync(path.join(kok,'supabase/migrations/20261109210000_halk_sert_onlem.sql'),'utf8');
-for(const s of ['sokak_sert_yetkili','04.00–06.00','salt_cogunluk','sokak_ohal_aktif','Dayanışma','100000','adliye_dava_ac','sokak_sert_tick']) assert.ok(sql.includes(s),s);
+for(const s of ['sokak_sert_yetkili','04.00–06.00','salt_cogunluk','sokak_ohal_aktif','Dayanışma','100000','adliye_dava_ac','sokak_sert_tick','sokak_eylem_ohal_engel']) assert.ok(sql.includes(s),s);
+assert.equal(sql.includes('Eylem açılış çapası'),false);
 assert.ok(fs.readFileSync(path.join(kok,'docs/HALK_HAREKETLERI.md'),'utf8').includes('On sert önlem'));
 assert.ok(fs.readFileSync(path.join(kok,'gelistirici/sql/159_rpc_yuzey.sql'),'utf8').includes('sokak_sert_panel'));
 

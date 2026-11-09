@@ -11,7 +11,9 @@ do $$ begin create role anon nologin; exception when duplicate_object then null;
 do $$ begin create role authenticated nologin; exception when duplicate_object then null; end $$;
 
 create table if not exists oyun.profiller(id uuid primary key, kad text, yasakli boolean default false, susturma_bitis timestamptz);
-create table if not exists oyun.partiler(id bigint generated always as identity primary key, kasa numeric default 0, kapali boolean default false);
+create table if not exists oyun.partiler(id bigint generated always as identity primary key, kasa numeric default 0, kapali boolean default false, gb uuid, ad text);
+create table if not exists oyun.dernekler(id bigint generated always as identity primary key, kasa numeric default 0, kapali boolean default false, baskan uuid, ad text);
+create table if not exists oyun.sokak_olay(id bigint primary key, il_id integer, son_kullanim timestamptz, kaynak_tur text, kaynak_id text);
 create table if not exists oyun.sokak_eylem(
  id bigint generated always as identity primary key, il_id integer, parti_id bigint, baslatan uuid,
  gerekce text, durum text, baslangic timestamptz, bitis timestamptz, kapandi timestamptz,
@@ -106,11 +108,79 @@ declare u uuid;
 begin
  return jsonb_build_object('pusula',(select jsonb_build_object('sahada',count(*) filter(where tur='sahada'),'yasak',count(*) filter(where tur='yasak'),'anlasma',count(*) filter(where tur='anlasma'),'saf',count(*) filter(where tur='saf'),'muhbir',count(*) filter(where tur='muhbir')) from oyun.sokak_sicil where user_id=u));
 end $$;
-create or replace function public.sokak_eylem_baslat(p_il integer, p_gerekce text) returns jsonb language plpgsql as $$
+-- Canlı tanım: sokak_eylem_baslat ince bir sarmalayıcıdır ve 'Sokak hareketleri kapalı' içermez.
+create or replace function public.sokak_org_baslat(p_il integer, p_gerekce text, p_tur text, p_kaynak text, p_kaynak_id bigint, p_olay bigint default null)
+ returns jsonb language plpgsql security definer set search_path to '' as $$
+declare
+ u uuid:=auth.uid(); p oyun.profiller; a oyun.sokak_eylem_ayar; t timestamptz:=oyun.simdi();
+ oid bigint; org_ad text; eid bigint; o oyun.sokak_olay;
 begin
- if true then raise exception 'Sokak hareketleri kapalı'; end if;
- return '{}'::jsonb;
+ if u is null then raise exception 'Oturum gerekli';end if;
+ perform pg_advisory_xact_lock(781231,1);
+ p:=oyun.profilim();
+ if p.yasakli or p.olusturma>t-interval '7 days' then raise exception 'Kısıtsız ve en az 7 günlük hesap gerekli';end if;
+ select * into a from oyun.sokak_eylem_ayar where id=1;
+ if not a.aktif then raise exception 'Halk hareketleri kapalı';end if;
+ if p_il is null or p_il not between 1 and 81 then raise exception 'Geçersiz il';end if;
+ if p_tur is null or p_tur not in ('genel','hizmet','issizlik','vergi') then raise exception 'Geçersiz talep';end if;
+ if length(btrim(coalesce(p_gerekce,''))) not between (case when p_olay is null then 15 else 20 end) and 400 then raise exception 'Gerekçe 15–400 karakter olmalı';end if;
+ if p_kaynak is null or p_kaynak not in ('parti','dernek') or p_kaynak_id is null then raise exception 'Parti veya dernek seç';end if;
+ if p_kaynak='parti' then
+  select pa.id,pa.ad into oid,org_ad from oyun.partiler pa where pa.id=p_kaynak_id and pa.gb=u and not pa.kapali for update;
+ else
+  select de.id,de.ad into oid,org_ad from oyun.dernekler de where de.id=p_kaynak_id and de.baskan=u and not de.kapali for update;
+ end if;
+ if oid is null then raise exception 'Yalnız seçilen parti veya derneğin lideri başlatabilir';end if;
+ if p_olay is not null then
+  select * into o from oyun.sokak_olay where id=p_olay and son_kullanim>t;
+  if o.id is null or (o.il_id is not null and o.il_id<>p_il) then raise exception 'Geçersiz veya bu ile ait olmayan olay';end if;
+  if o.kaynak_tur='koalisyon' and p_kaynak='parti' and not exists(
+   select 1 from oyun.sokak_koalisyon_parti where koalisyon_id=o.kaynak_id::bigint and parti_id=oid
+  ) then raise exception 'Partiniz bu ortak çağrıda yer almıyor';end if;
+ end if;
+ if exists(select 1 from oyun.sokak_eylem where il_id=p_il and
+  ((durum='aktif' and bitis>t) or coalesce(kapandi,bitis)>t-make_interval(hours=>a.il_cooldown_saat)))
+ then raise exception 'İlde eylem var veya 7 günlük bekleme sürüyor';end if;
+ if exists(select 1 from oyun.sokak_eylem where org_tur=p_kaynak and org_id=oid and
+  (baslangic>t-make_interval(hours=>a.parti_cooldown_saat) or (durum='aktif' and bitis>t)))
+ then raise exception 'Kuruluşun aktif eylemi var veya 72 saatlik bekleme sürüyor';end if;
+ if (select count(*) from oyun.sokak_eylem where durum='aktif' and bitis>t)>=a.ulke_es_zamanli_ust_sinir then raise exception 'Ülke eşzamanlı eylem sınırı dolu';end if;
+ if exists(select 1 from oyun.sokak_kriz where son_secim>t-interval '7 days') then raise exception 'Seçim sonrası 7 günlük istikrar süresi';end if;
+ if p_kaynak='parti' then
+  update oyun.partiler set kasa=kasa-a.baslatma_bedeli where id=oid and kasa>=a.baslatma_bedeli;
+ else
+  update oyun.dernekler set kasa=kasa-a.baslatma_bedeli where id=oid and kasa>=a.baslatma_bedeli;
+ end if;
+ if not found then raise exception 'Kuruluş kasasında yeterli para yok';end if;
+ insert into oyun.sokak_eylem(il_id,parti_id,org_tur,org_id,baslatan,gerekce,baslangic,bitis,muhalefet_fonu,son_etki,olay_id)
+ values(p_il,case when p_kaynak='parti' then oid else null end,p_kaynak,oid,u,btrim(p_gerekce),t,t+interval '24 hours',a.baslatma_bedeli,t,p_olay) returning id into eid;
+ if p_kaynak='parti' then
+  insert into oyun.parti_hareket(parti_id,zaman,tutar,tur,aciklama) values(oid,t,-a.baslatma_bedeli,'gider','Halk hareketi #'||eid);
+ else
+  insert into oyun.dernek_hareket(dernek_id,zaman,tutar,tur,aciklama,user_id) values(oid,t,-a.baslatma_bedeli,'gider','Halk hareketi #'||eid,u);
+ end if;
+ insert into oyun.sokak_eylem_fon(eylem_id,oyuncu_id,taraf,tutar,zaman,kaynak_tur,kaynak_id)
+ values(eid,u,'muhalefet',a.baslatma_bedeli,t,p_kaynak,oid::text);
+ insert into oyun.sokak_eylem_destek(eylem_id,destekci_tur,destekci_id,taraf,temsilci,destek_turu,tutar)
+ values(eid,p_kaynak,oid::text,'muhalefet',u,'fon',a.baslatma_bedeli);
+ if p_tur<>'genel' then perform public.sokak_talep_sec(eid,p_tur);end if;
+ perform oyun.sokak_yenile(eid);
+ perform oyun.sokak_duyur(eid,org_ad||' barışçıl eylem #'||eid||' başlattı: '||left(p_gerekce,300));
+ return jsonb_build_object('tamam',true,'eylem_id',eid);
 end $$;
+create or replace function public.sokak_eylem_baslat(p_il integer, p_gerekce text)
+ returns jsonb language plpgsql security definer set search_path to '' as $$
+declare u uuid:=auth.uid(); tur text; org bigint;
+begin
+ if u is null then raise exception 'Oturum gerekli';end if;
+ select 'parti',id into tur,org from oyun.partiler where gb=u and not kapali order by id limit 1;
+ if org is null then select 'dernek',id into tur,org from oyun.dernekler where baskan=u and not kapali order by id limit 1;end if;
+ return public.sokak_org_baslat(p_il,p_gerekce,'genel',tur,org,null);
+end $$;
+create temp table live_acilis as
+ select 'baslat' as ad, pg_get_functiondef('public.sokak_eylem_baslat(integer,text)'::regprocedure) as def
+ union all
+ select 'org', pg_get_functiondef('public.sokak_org_baslat(integer,text,text,text,bigint,bigint)'::regprocedure);
 create or replace function oyun.sokak_meydan_tick() returns void language sql as $$ select null $$;
 create or replace function oyun.sokak_tick() returns void language plpgsql as $$
 begin perform oyun.sokak_meydan_tick(); end $$;
@@ -202,8 +272,26 @@ begin
  if has_function_privilege('anon','public.sokak_sert_islem(bigint,text,jsonb)','execute') then raise exception 'Anon açık'; end if;
  if not has_function_privilege('authenticated','public.sokak_sert_panel()','execute') then raise exception 'Panel kapalı'; end if;
  if has_function_privilege('authenticated','oyun.sokak_sert_tick()','execute') then raise exception 'İç tick açık'; end if;
- if position('sokak_ohal_aktif' in pg_get_functiondef('public.sokak_eylem_baslat(integer,text)'::regprocedure))=0 then raise exception 'OHAL açılışa bağlanmadı'; end if;
+ if (select def from live_acilis where ad='baslat') is distinct from pg_get_functiondef('public.sokak_eylem_baslat(integer,text)'::regprocedure) then raise exception 'sokak_eylem_baslat değişti'; end if;
+ if (select def from live_acilis where ad='org') is distinct from pg_get_functiondef('public.sokak_org_baslat(integer,text,text,text,bigint,bigint)'::regprocedure) then raise exception 'sokak_org_baslat değişti'; end if;
+ if position('Sokak hareketleri kapalı' in pg_get_functiondef('public.sokak_eylem_baslat(integer,text)'::regprocedure))>0 then raise exception 'Canlı sarmalayıcı bozuldu'; end if;
+ insert into oyun.sokak_ohal(il_id,eylem_id,yapan,durum,zaman,bitis) values(6,e,cb,'yururluk',oyun.simdi(),oyun.simdi()+interval '72 hours');
+ begin
+  insert into oyun.sokak_eylem(il_id,parti_id,baslatan,gerekce,durum,baslangic,bitis) values(6,pid,lider,'OHAL sırasında açılmamalı','aktif',oyun.simdi(),oyun.simdi()+interval '1 day');
+  raise exception 'TEST ohal insert';
+ exception when others then if sqlerrm like 'TEST%' or sqlerrm not like '%OHAL%' then raise; end if; end;
+ insert into oyun.sokak_eylem(il_id,parti_id,baslatan,gerekce,durum,baslangic,bitis) values(7,pid,lider,'Başka ilde eylem açılır','aktif',oyun.simdi(),oyun.simdi()+interval '1 day');
+ if not exists(select 1 from pg_trigger where tgname='sokak_eylem_ohal_engel' and not tgisinternal) then raise exception 'OHAL tetikleyicisi yok'; end if;
  if position('sokak_sert_tick' in pg_get_functiondef('oyun.sokak_tick()'::regprocedure))=0 then raise exception 'Tick bağlanmadı'; end if;
  if position('sokak_ohal_aktif' in pg_get_functiondef('public.sokak_tedbir_ac(bigint,text,text)'::regprocedure))=0 then raise exception 'Yarı fiyat bağlanmadı'; end if;
 end $$;
 select 'PASS: şafak, nöbet, elebaşı, avukat, mali kuşatma, tazminat, yetki' result;
+
+-- Aynı dosya ikinci kez uygulanınca açılış fonksiyonları ve tek tetikleyici durur.
+\i supabase/migrations/20261109210000_halk_sert_onlem.sql
+do $$ begin
+ if (select def from live_acilis where ad='baslat') is distinct from pg_get_functiondef('public.sokak_eylem_baslat(integer,text)'::regprocedure) then raise exception 'İkinci uygulamada sokak_eylem_baslat değişti'; end if;
+ if (select def from live_acilis where ad='org') is distinct from pg_get_functiondef('public.sokak_org_baslat(integer,text,text,text,bigint,bigint)'::regprocedure) then raise exception 'İkinci uygulamada sokak_org_baslat değişti'; end if;
+ if (select count(*) from pg_trigger where tgname='sokak_eylem_ohal_engel' and not tgisinternal)<>1 then raise exception 'OHAL tetikleyicisi çoğaldı'; end if;
+end $$;
+select 'PASS: migration ikinci kez de açılışı bozmadan uygulanır' result;
