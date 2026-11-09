@@ -77,3 +77,11 @@ Cumhurbaşkanı ve İçişleri Bakanı kullanır. Para İçişleri kasasından d
 | Kültür-Festival | 3 kat (150.000 TL) | 8 saat. Festivale giden her tarafsız oyuncu nabızdan çekilir, en çok 12 karşı ağırlık. | Her zaman “ekmek yok oyun var” +5. Ülke memnuniyeti −0,5. | Katılımcı sahneyi pankartla işgal eder: +4, en çok +12. |
 
 Güç dökümünde bu satırlar görünür. Nabız eğimi, katılımcı çarpanının içinde “ağırlık” satırı olarak da yazılır. Yeni RPC’ler `sokak_tedbir_ac`, `sokak_tedbir_hamle` ve `sokak_tedbir_panel`; yalnız authenticated rolüne açıktır. Şema `20261109150000_halk_hukumet_yeni_tedbirler.sql` içindedir ve bu değişiklikle canlı veritabanına uygulanmamıştır.
+
+## Meydan sohbeti, muhbir ve kriz oyunları — 2026.11.09
+
+Aktif eylemin sohbetini yalnız o an içindeki katılımcılar okur ve yazar. Satır güvenliği (RLS) ve canlı yayın sinyali bunu tutar. Küfür süzgeci mevcut sohbet süzgeciyle aynıdır. Gözaltındaki oyuncu yazamaz.
+
+Muhbirlik gizli bir anlaşmadır. Hükümet para (en çok 80.000 TL) ve bir makam sözü teklif eder. Oyuncu kabul eder, reddeder ya da teklifi kendi adıyla ifşa eder. Kabulden 3 saat sonra herkese “Eylem alanında bir muhbir var” denir; isim yoktur. Sızıntı şüphe puanını yükseltir. İfşa oyu günde bir, en az 3 oy ve katılımcıların yarısından fazlasıdır. Doğru ifşa muhbiri çıkarır, hükümetin memnuniyetini düşürür. Yanlış ifşa 10.000 TL tazminat, eyleme küçük ceza ve oy verenlere bir gün oy yasağı getirir. İktidardan biri eyleme katılırsa hükümet onu içeriden kişi olarak işaretleyebilir.
+
+Ayrıca: 21.00’de 60 dakikalık son gece yayını, kabine notunun gazeteciye sızması ve soruşturma, vekilin partiden ayrılıp sandalyesinin bağımsız renge dönmesi, kırmızı hat, şirket boykotu, sahadan gazeteci notu, en çok 9 kişilik halk jürisi, bir hafta sonra açılan kabine oyu, hesap günü pusulası, biten eylemin adı ve “Oradaydım” rozeti, iline meşale, 81 ilin kriz haritası ve imzasız iktidar mektubu. Ayrıntı çekme isteğinde `20261109183000_meydan_sohbet_muhbir.sql` içindedir. Canlı veritabanına bu dosyayla uygulanmamıştır. Şehir maketi bu dalda yoktur.
