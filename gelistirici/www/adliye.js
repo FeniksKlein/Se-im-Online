@@ -5,7 +5,7 @@ async function adliyeEkrani(){
   catch(err){iskelet("Adliye",'<div class="bos">'+e(hataCevir(err.message))+'</div>');}
 }
 const ADL_TURLER={hakaret:"Hakaret",iftira:"İftira",rusvet:"Rüşvet",yolsuzluk:"Yolsuzluk",usulsuzluk:"Usulsüz işlem",dolandiricilik:"Dolandırıcılık",diger:"Diğer"};
-const ADL_CEZALAR={beraat:"Beraat",uyari:"Uyarı",sustur_1s:"1 saat sohbetten susturma",sustur_1g:"1 gün sohbetten susturma",sustur_1h:"1 hafta sohbetten susturma",para_10b:"10.000 ₺ para cezası",para_50b:"50.000 ₺ para cezası",aday_yasagi:"30 gün adaylık yasağı",vekillik_dusur:"Milletvekilliğinin düşürülmesi",parti_para:"Partiye 25.000 ₺ hazine yardımı kesintisi",musadere:"Yolsuzluk parası Hazine'ye devredilsin",dusme:"Dava düştü (süre doldu)"};
+const ADL_CEZALAR={beraat:"Beraat",uyari:"Uyarı",sustur_1s:"1 saat sohbetten susturma",sustur_1g:"1 gün sohbetten susturma",sustur_1h:"1 hafta sohbetten susturma",para_10b:"10.000 ₺ para cezası",para_50b:"50.000 ₺ para cezası",para_tutar:"Tutarı belirlenen para cezası",aday_yasagi:"30 gün adaylık yasağı",vekillik_dusur:"Milletvekilliğinin düşürülmesi",parti_para:"Partiye 25.000 ₺ hazine yardımı kesintisi",musadere:"Yolsuzluk parası Hazine'ye devredilsin",dusme:"Dava düştü (süre doldu)"};
 const ADL_PARTI_CEZA=["beraat","uyari","parti_para"];
 
 const ADL_SUCLAR={
@@ -334,12 +334,15 @@ async function adlAiOnerModal(id,m){
 function adlKararModal(id){
  const dv=(ADL.davalar||[]).find(x=>x.id===id)||{};
  const musadereUygun=["yolsuzluk","rusvet","usulsuzluk","dolandiricilik"].includes(dv.tur);
- const ustTutar=Math.min(500000,Number(dv.tazminat_talep||0));
+ const ustTutar=Math.min(1000000,Number(dv.tazminat_talep||0));
  const tazminatUygun=dv.tur==="tazminat"&&!!dv.davali&&ustTutar>=1000;
- const opts=Object.entries(ADL_CEZALAR).filter(([k])=>k!=="dusme"&&(k==="musadere"?musadereUygun:(dv.davali?k!=="parti_para":ADL_PARTI_CEZA.includes(k)))).map(([k,v])=>'<option value="'+k+'">'+e(v)+'</option>').join("")
-  +(tazminatUygun?'<option value="tazminat">Tazminata hükmet (tutarı kendin gir)</option>':"");
+ const paraUygun=!!dv.davali&&dv.tur!=="tazminat";
+ const opts=Object.entries(ADL_CEZALAR).filter(([k])=>k!=="dusme"&&k!=="para_10b"&&k!=="para_50b"&&(k==="musadere"?musadereUygun:(dv.davali?k!=="parti_para":ADL_PARTI_CEZA.includes(k)))).map(([k,v])=>'<option value="'+k+'">'+e(v)+'</option>').join("")
+  +(tazminatUygun?'<option value="tazminat">Tazminata hükmet (tutarı kendin gir)</option>':"")
+  +(paraUygun?'<option value="para_tutar">Para cezası (tutarı kendin gir)</option>':"");
  const m=modal('<div class="alan"><label>Mahkeme kararı</label><select id="adlCeza">'+opts+'</select></div>'
   +(tazminatUygun?'<div class="alan" id="adlTazminatKutu" style="display:none"><label for="adlTazminatTutar">Hükmedilecek tazminat tutarı (₺)</label><input id="adlTazminatTutar" type="number" inputmode="numeric" min="1000" max="'+ustTutar+'" step="1" placeholder="Tutarı yazın, en fazla '+tlYaz(ustTutar)+'" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px" autocomplete="off"><p class="alt">Tutarı kendiniz yazın. En az 1.000 ₺, en fazla davacının talep ettiği '+tlYaz(ustTutar)+'.</p></div>':"")
+  +(paraUygun?'<div class="alan" id="adlParaKutu" style="display:none"><label for="adlParaTutar">Hükmedilecek para cezası (₺)</label><input id="adlParaTutar" type="number" inputmode="numeric" min="1000" max="1000000" step="1" placeholder="1.000 – 1.000.000 ₺" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px" autocomplete="off"><p class="alt">Para cezası Hazineye tahsil edilir. Tutarı hâkim belirler; üst sınır 1.000.000 ₺.</p></div>':"")
   +(musadereUygun?'<div id="adlMusadereKutu" style="display:none"><div class="alan"><label>Kanıtlanan yolsuzluk tutarı (₺)</label><input id="adlMusadereTutar" type="number" min="1" step="1"></div><div class="alan"><label>Sorumlu oyuncunun kullanıcı adı</label><input id="adlMusadereKad" value="'+e(dv.davali||'')+'"></div><div class="alan"><label>Paranın aktarıldığı şirket ID (varsa)</label><input id="adlMusadereSirket" type="number" min="1" step="1"></div><p class="alt">Somut delillerdeki para hareketlerini ve miktarı gerekçenizde belirtin. Karar kesinleştiğinde Hazineye tahsil edilir.</p></div>':'')
   +'<button type="button" class="btn ikinci" id="adlAiOner">Yapay zekâdan ceza önerisi al</button>'
   +'<div id="adlAiSonuc" role="status" class="alt" style="padding:8px 0">Bu öneri mahkeme kararı değildir.</div>'
@@ -352,6 +355,7 @@ function adlKararModal(id){
   const karar=m.querySelector("#adlCeza").value;
   if(musadereUygun)m.querySelector("#adlMusadereKutu").style.display=karar==="musadere"?"block":"none";
   if(tazminatUygun)m.querySelector("#adlTazminatKutu").style.display=karar==="tazminat"?"block":"none";
+  if(paraUygun)m.querySelector("#adlParaKutu").style.display=karar==="para_tutar"?"block":"none";
  });
  m.querySelector("#adlKarar").onclick=async()=>{
   const kararTuru=m.querySelector("#adlCeza").value;
@@ -364,9 +368,18 @@ function adlKararModal(id){
     alan.focus();return;
    }
   }
+  let paraTutar=null;
+  if(kararTuru==="para_tutar"){
+   const alan=m.querySelector("#adlParaTutar");paraTutar=Number(alan.value);
+   if(alan.value.trim()===""||!Number.isInteger(paraTutar)||paraTutar<1000||paraTutar>1000000){
+    toast("Para cezasını 1.000–1.000.000 ₺ arasında tam sayı olarak yazmalısınız.",true);alan.focus();return;
+   }
+  }
   if(!await onayla("Oyunu ver","Çoğunluk oluşursa karar hemen açıklanır. Ağır cezalar istinaf süresi bitince uygulanır.","Oyumu ver",true))return;
   adlIslem(()=>kararTuru==="tazminat"
    ?API.rpc("adliye_tazminat_oy",{p_dava:id,p_tutar:tazminatTutar,p_gerekce:m.querySelector("#adlGerekce").value})
+   :kararTuru==="para_tutar"
+   ?API.rpc("adliye_para_oy",{p_dava:id,p_tutar:paraTutar,p_gerekce:m.querySelector("#adlGerekce").value})
    :kararTuru==="musadere"
    ?API.rpc("adliye_musadere_oy",{p_dava:id,p_tutar:Number(m.querySelector("#adlMusadereTutar").value),p_sorumlu_kad:m.querySelector("#adlMusadereKad").value,p_sirket_id:Number(m.querySelector("#adlMusadereSirket").value)||null,p_gerekce:m.querySelector("#adlGerekce").value})
    :API.rpc("adliye_oy_ver",{p_dava:id,p_karar:kararTuru,p_gerekce:m.querySelector("#adlGerekce").value}),"Oyun kaydedildi.",id);
