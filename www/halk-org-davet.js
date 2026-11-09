@@ -529,11 +529,11 @@ sokakHareketleriEkrani=async function(){
  '<div class="hh-stat"><strong>'+pending.length+'</strong><span>Aktif gözaltı</span></div></div></div>'+
  '<nav class="hh-tabs" role="tablist" aria-label="Eylem yönetimi">'+link('events','🔥 Eylemler')+link('create','✊ Yeni eylem')+link('invite','🤝 Davetler')+link('legal','⚖️ Hukuk')+link('state','🏛️ Hükümet')+link('history','📰 Geçmiş')+link('tools','🧰 Diğer işlemler')+'</nav>';
  const pan=(name,content)=>'<div data-hh-panel="'+name+'" role="tabpanel" hidden>'+content+'</div>';
- let evhtml='<div class="hh-box"><h3>Canlı eylem haritası</h3><p>Parti ve dernek desteği ayrı; her oyuncu kendi adına, parti üyeliğinden bağımsız olarak da katılabilir. Katılım için eylemin ilinde yaşama şartı yoktur; Türkiye’nin 81 ilinden oyuncular katılabilir. Katılım eylemin gücüne sayılır.</p></div>';
+ let evhtml='<div class="hh-box"><h3>Canlı eylem haritası</h3><p>Parti ve dernek desteği ayrı; her oyuncu kendi adına, parti üyeliğinden bağımsız olarak da katılabilir. Katılım için eylemin ilinde yaşama şartı yoktur; Türkiye’nin 81 ilinden oyuncular katılabilir.</p><p><b>Eylemin gücü yalnız gerçek oyunculardan gelir:</b> katılımcılar ve taktikleri, tarafsız oyuncuların kamuoyu nabzı, karşı tarafta duranlar ve sahadaki görevliler. Para yalnız süreyi uzatır. İstediğin an eylemden ayrılabilirsin.</p></div>';
  if(!live.length)evhtml+='<div class="hh-empty">Şu anda aktif eylem yok. Yeni Eylem bölümünden bir hareket başlatılabilir.</div>';
  for(const x of live){
   const id=Number(x.id), pct=Math.max(0,Math.min(100,Number(x.seviye||0)));
-  evhtml+='<article class="hh-box hh-event"><div><span class="hh-pill live">● AKTİF</span><span class="hh-pill">'+esc(x.il)+'</span><span class="hh-pill">#'+id+'</span></div>'+
+  evhtml+='<article class="hh-box hh-event" data-hh-event="'+id+'"><div><span class="hh-pill live">● AKTİF</span><span class="hh-pill">'+esc(x.il)+'</span><span class="hh-pill">#'+id+'</span></div>'+
    '<h3>'+esc(x.parti||'Bağımsız eylem')+'</h3><p>'+esc(x.gerekce)+'</p>'+
    '<div class="hh-meter" aria-label="Eylem gücü '+num(x.seviye)+' / 100"><i style="width:'+pct+'%"></i></div>'+
    '<p><strong>Güç: '+num(x.seviye)+'/100</strong> · '+num(x.katilim)+' katılımcı</p>'+
@@ -548,7 +548,7 @@ sokakHareketleriEkrani=async function(){
    '<p class="hh-muted">Katılanların örgütlü veya bağımsız katılım biçimleri</p>'+
    (x.katilim_ayrintilari||[]).map(y=>'<div class="hh-log">'+esc(y.ad)+' · '+esc(y.sifat)+'</div>').join('')+
    ((x.destekler||[]).length?(x.destekler||[]).map(y=>'<div class="hh-log"><b>'+esc(y.ad||y.tur)+'</b> · '+esc(y.taraf==='iktidar'?'Uzlaşma':'Eylem')+' · '+tl(y.tutar)+'</div>').join(''):'<p>Henüz destekçi yok.</p>')+'</details>'+
-   '<details class="hh-detail"><summary>💰 Eylemi fonla ve güçlendir</summary>'+
+   '<details class="hh-detail"><summary>💰 Eylemi fonla (süreyi uzatır)</summary><p class="hh-muted">Fon eylemin gücünü artırmaz; gücü yalnız gerçek katılımcılar belirler. Fon eylemin süresini uzatır.</p>'+
    '<form data-hh-fn="sokak_destek" data-hh-id="'+id+'"><label>Fon kaynağı: oyuncu / parti / dernek</label><select name="kaynak" required>'+
    opts(sources,x=>x.tur+':'+(x.id??''),x=>x.ad)+'</select>'+
    '<label>Fon tutarı (TL, en az 1.000)</label><input name="p_tutar" type="number" min="1000" step="1000" required placeholder="Örn. 10000">'+
@@ -645,12 +645,12 @@ sokakHareketleriEkrani=async function(){
  if(d.mudahale_yetki)for(const x of live)state+='<div class="hh-box"><h3>'+esc(x.il)+' · '+esc(x.parti)+'</h3><p>Hükümet uzlaşma fonu: '+tl(x.iktidar_fonu)+'</p>'+
  '<form data-hh-fn="sokak_yanit" data-hh-id="'+Number(x.id)+'"><label>Hükümetin açıklaması ve çözüm önerisi</label><textarea name="p_metin" minlength="20" maxlength="600" required></textarea>'+
  '<button class="hh-action hh-primary">Hükümet yanıtını yayımla</button></form>'+
- '<details class="hh-detail"><summary>💼 Bütçeyle müdahale</summary><form data-hh-fn="sokak_butce_mudahale" data-hh-id="'+Number(x.id)+'">'+
+ '<details class="hh-detail"><summary>💼 Bütçeyle müdahale</summary><p class="hh-muted">Bütçe tek başına etki etmez; tam etki için sahada 3 gerçek görevli gerekir.</p><form data-hh-fn="sokak_butce_mudahale" data-hh-id="'+Number(x.id)+'">'+
  '<label>Harcama (TL)</label><input type="number" name="p_tutar" min="'+Number(d.ayar?.baslatma_bedeli||50000)+'" max="2000000" step="1000" required>'+
  '<label>Somut gerekçe</label><textarea name="p_gerekce" minlength="25" maxlength="500" required></textarea>'+
  '<button class="hh-action">Bütçeyi kullan</button></form></details>'+
  '<details class="hh-detail"><summary>🚓 Polis sevki ve gözaltı</summary><form data-hh-fn="sokak_polis_gonder" data-hh-id="'+Number(x.id)+'">'+
- '<label>Sevk seviyesi</label><select name="p_seviye"><option value="dusuk">Düşük – gözaltı yok</option><option value="orta">Orta – en çok 2 kişi</option><option value="yuksek">Yüksek – en çok 4 kişi</option></select>'+
+ '<p class="hh-muted">Polis sahadaki gerçek görevlilerle çalışır: emri verdiğinde sen de sahaya çıkmış sayılırsın. Her görevli en çok 1 kişiyi gözaltına alır; etki görevli sayısıyla büyür, bütçeyle değil.</p><label>Sevk seviyesi</label><select name="p_seviye"><option value="dusuk">Düşük – gözaltı yok</option><option value="orta">Orta – en çok 2 kişi (sahadaki görevli kadar)</option><option value="yuksek">Yüksek – en çok 4 kişi (sahadaki görevli kadar)</option></select>'+
  '<label>Kamu güvenliği gerekçesi</label><textarea name="p_gerekce" minlength="25" maxlength="500" required></textarea>'+
  '<button class="hh-action">Polis sevk et</button></form></details></div>';
  if(!d.mudahale_yetki)state+='<div class="hh-empty">Bu alanda işlem yapma yetkisi Cumhurbaşkanı ve İçişleri Bakanındadır. Eylemlerin durumunu Eylemler sekmesinden herkes görebilir.</div>';
@@ -747,3 +747,243 @@ if(window.__hhSar&&typeof sokakHareketleriEkrani==='function')sokakHareketleriEk
 /* Deployment asset version: 20261107-4; source of truth for GitHub Pages. */
 
 /* Asset refresh: 20261107-4b */
+
+/* ═══════════════════════════════════════════════════════════════════
+   HALK HAREKETLERİ 3.0 · SAHA KATMANI (09.11.2026)
+   Eylemi büyüten de durduran da yalnız gerçek oyuncunun yaptığı bir şey.
+   Sunucu: supabase/migrations/20261109090000_sokak_gercek_oyuncu.sql
+   · Eylemden istediğin an ayrıl (katılımcı, karşı taraf, görevli)
+   · Katılımcı taktikleri: nöbet, pankart (kendi sloganın), duran insan,
+     barikat, çağrı, genel grev
+   · Tarafsız oyuncuların kamuoyu nabzı, karşı tarafta yer alma
+   · Görevli olarak sahaya çık / görevden ayrıl / kalkanı bırak
+   · Devlet: valilik yasağı, gözaltı jesti, arabulucu heyeti,
+     ulusa sesleniş, karşı miting çağrısı
+   · Güç dökümü ve gerçek veriyle gece meydanı sinematiği
+   ═══════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+if(typeof sokakHareketleriEkrani!=='function')return;
+const SAHA_CSS='so-hh-saha-v1';
+if(!document.getElementById(SAHA_CSS)){
+ const st=document.createElement('style');st.id=SAHA_CSS;
+ st.textContent=[
+ '#hhCommand .hh-saha{margin:12px 0 4px;padding:13px 12px;border:1px solid #4b5a8a;border-radius:15px;background:linear-gradient(160deg,rgba(40,34,92,.55),rgba(12,20,48,.55))}',
+ '#hhCommand .hh-saha h4{margin:0 0 8px;font-size:15px;color:#fff;letter-spacing:.2px}',
+ '#hhCommand .hh-chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}',
+ '#hhCommand .hh-chip{background:#26305a;border:1px solid #47548a;border-radius:10px;padding:5px 9px;font-size:13px;color:#dbe3f7}',
+ '#hhCommand .hh-chip b{color:#fff}',
+ '#hhCommand .hh-band{border-radius:12px;padding:10px 12px;margin:8px 0;font-size:14px;line-height:1.45}',
+ '#hhCommand .hh-band.yasak{background:#4a2a1c;border:1px solid #a8653e;color:#ffd9c2}',
+ '#hhCommand .hh-band.jest{background:#1d3f35;border:1px solid #3f8f73;color:#cff5e6}',
+ '#hhCommand .hh-band.kalkan{background:#3b2a59;border:1px solid #a58cf0;color:#efe8ff}',
+ '#hhCommand .hh-band.ben{background:#1f3a2f;border:1px solid #4ea47e;color:#d6f8e6}',
+ '#hhCommand .hh-band.karsi{background:#402433;border:1px solid #b45f86;color:#ffdcec}',
+ '#hhCommand .hh-band.gorev{background:#1f2f4f;border:1px solid #5d7fc5;color:#dbe7ff}',
+ '#hhCommand .hh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0}',
+ '#hhCommand .hh-grid button.hh-action{font-size:14px!important}',
+ '#hhCommand button.hh-ayril{background:#4b2232!important;border-color:#c0607f!important;color:#ffe3ec!important}',
+ '#hhCommand .hh-seslenis{border:1px solid #c9a24a;background:#2d2817;border-radius:13px;padding:11px 12px;margin:8px 0;color:#fff2cf}',
+ '#hhCommand .hh-seslenis blockquote{margin:6px 0 10px;padding:0 0 0 10px;border-left:3px solid #c9a24a;color:#fff6dc;white-space:pre-wrap}',
+ '#hhCommand .hh-pankart{display:inline-block;background:#f2ead2;color:#2b2414;font-weight:800;border-radius:6px;padding:6px 10px;margin:4px 6px 4px 0;font-size:13px;transform:rotate(-1deg);box-shadow:0 2px 0 rgba(0,0,0,.35)}',
+ '#hhCommand .hh-pankart small{display:block;font-weight:600;color:#6b5c38;font-size:11px}',
+ '#hhCommand .hh-dokum{width:100%;border-collapse:collapse;font-size:13px}',
+ '#hhCommand .hh-dokum td{padding:6px 4px;border-bottom:1px solid #34406a;color:#dbe3f7;vertical-align:top}',
+ '#hhCommand .hh-dokum td:last-child{text-align:right;font-weight:800;white-space:nowrap}',
+ '#hhCommand .hh-dokum td.art{color:#f0a0a8}#hhCommand .hh-dokum td.eks{color:#8fe0b5}',
+ '@media(max-width:390px){#hhCommand .hh-grid{grid-template-columns:1fr}}',
+ '#hhMeydan{position:fixed;inset:0;z-index:99999;background:#05060c;overflow:hidden;color:#fff;font:400 15px/1.5 -apple-system,BlinkMacSystemFont,system-ui,sans-serif}',
+ '#hhMeydan .mg{position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 0%,#2a1f47 0%,#120f22 45%,#05060c 100%)}',
+ '#hhMeydan svg{position:absolute;left:0;right:0;bottom:0;width:100%;height:60%}',
+ '#hhMeydan .mt{position:absolute;left:0;right:0;top:12%;text-align:center;padding:0 22px}',
+ '#hhMeydan .mu{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#ffe2b8;font-weight:800}',
+ '#hhMeydan .ms{font-size:30px;font-weight:900;line-height:1.2;margin:10px 0;text-shadow:0 2px 24px rgba(255,170,80,.6);min-height:2.4em;transition:opacity .5s}',
+ '#hhMeydan .mn{font-size:15px;color:#ffd98a;font-weight:800;font-variant-numeric:tabular-nums}',
+ '#hhMeydan .mk{font-size:12.5px;color:#d7c9ff;margin-top:6px}',
+ '#hhMeydan .mx{position:absolute;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));min-height:46px;padding:10px 20px;border-radius:99px;background:rgba(0,0,0,.5);color:#fff;border:1px solid rgba(255,255,255,.35);font-weight:800;font-size:15px}',
+ '#hhMeydan .pen{animation:hhPen 3.6s ease-in-out infinite}@keyframes hhPen{0%,100%{opacity:.25}45%{opacity:.95}}',
+ '#hhMeydan .tel{animation:hhSalla 2.4s ease-in-out infinite}@keyframes hhSalla{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}',
+ '@media(prefers-reduced-motion:reduce){#hhMeydan .pen,#hhMeydan .tel{animation:none}}'
+ ].join('\n');
+ document.head.appendChild(st);
+}
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const num=x=>Number(x||0).toLocaleString('tr-TR',{maximumFractionDigits:1});
+const saat=x=>x?new Date(x).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):'—';
+const TAKTIK=[
+ {tur:'nobet',ik:'⛺',ad:'Nöbet tut',alt:'6 saat +2'},
+ {tur:'duran',ik:'🧍',ad:'Duran insan',alt:'6 saat +3 · polis bedeli 2×'},
+ {tur:'barikat',ik:'🧱',ad:'Barikat kur',alt:'+4 · sertleşme artar'},
+ {tur:'cagri',ik:'📣',ad:'Çağrı yap',alt:'8 oyuncuya davet'}
+];
+let sonVeri=null;
+
+function sahaHTML(x){
+ const dk=x.dokum||{};const id=Number(x.id);
+ let h='<div class="hh-saha" data-saha="'+id+'"><h4>🧭 Sahada kim var?</h4>';
+ h+='<div class="hh-chips">'+
+  '<span class="hh-chip">👥 <b>'+num(dk.katilimci)+'</b> gerçek katılımcı</span>'+
+  '<span class="hh-chip">🛡️ <b>'+num(dk.gorevli)+'</b> görevli</span>'+
+  '<span class="hh-chip">🚩 <b>'+num(dk.karsi)+'</b> karşı tarafta</span>'+
+  '<span class="hh-chip">❤️ Kamuoyu <b>'+num(dk.sempati)+'</b> <small>('+num(dk.destek)+' destek · '+num(dk.karsi_nabiz)+' karşı)</small></span>'+
+  '<span class="hh-chip">🔥 Sertleşme <b>'+num(dk.sertlesme)+'</b></span></div>';
+ (x.kalkan_birakanlar||[]).forEach(k=>{h+='<div class="hh-band kalkan">🫡 <b>'+esc(k.unvan)+' '+esc(k.ad)+'</b> kalkanını bırakıp meydana katıldı ('+esc(saat(k.zaman))+').</div>';});
+ if(x.yasak)h+='<div class="hh-band yasak">🚧 <b>'+esc(x.yasak.unvan)+'</b> gösteri yasağı ilan etti · bitiş '+esc(saat(x.yasak.bitis))+'. Yeni katılım kapalı; meydandakiler kalabilir.<br><small>'+esc(x.yasak.gerekce)+'</small></div>';
+ if(x.jest)h+='<div class="hh-band jest">🕊️ Hükümet jest yaptı: '+num(x.jest.serbest)+' gözaltı sona erdi · '+esc(saat(x.jest.bitis))+' saatine kadar gerilim düşük.</div>';
+ if(x.grev_bitis)h+='<div class="hh-band yasak">🛑 <b>Genel grev</b> çağrısı sürüyor · '+esc(saat(x.grev_bitis))+' saatine kadar katılımcılar greve katılabilir.</div>';
+ if(x.gorevliler&&x.gorevliler.length)h+='<p class="hh-muted">Sahadaki görevliler: '+x.gorevliler.map(g=>esc(g.unvan)+' '+esc(g.ad)).join(' · ')+'</p>';
+ if(x.karsidakiler&&x.karsidakiler.length)h+='<p class="hh-muted">Karşı tarafta: '+x.karsidakiler.map(esc).join(', ')+'</p>';
+ // ulusa sesleniş
+ if(x.seslenis){const s=x.seslenis;
+  h+='<div class="hh-seslenis">📺 <b>Ulusa sesleniş</b> · '+esc(s.yapan)+' · tepki süresi '+esc(saat(s.bitis))+'<blockquote>'+esc(s.metin)+'</blockquote>'+
+   '<p class="hh-muted" style="color:#ffe9b3!important">'+num(s.ikna)+' kişi ikna oldu · '+num(s.olmadi)+' kişi olmadı'+(s.tepkim===true?' · senin tepkin: ikna oldum':s.tepkim===false?' · senin tepkin: olmadım':'')+'</p>';
+  if(!(sonVeri&&sonVeri.cb))h+='<div class="hh-grid"><button class="hh-action" data-saha-fn="sokak_seslenis_tepki" data-p=\'{"p_seslenis":'+Number(s.id)+',"p_ikna":true}\'>👍 İkna oldum</button><button class="hh-action" data-saha-fn="sokak_seslenis_tepki" data-p=\'{"p_seslenis":'+Number(s.id)+',"p_ikna":false}\'>👎 İkna olmadım</button></div>';
+  h+='</div>';
+ }
+ // benim yerim
+ if(x.taraf==='muhalefet'){
+  h+='<div class="hh-band ben">✊ <b>Bu eylemdesin.</b> Taktikler gücü artırır; her 3 saatte bir taktik uygulayabilirsin.'+(x.sonraki_taktik?' Sıradaki taktik: <b>'+esc(saat(x.sonraki_taktik))+'</b>.':'')+(x.gozaltindayim?' <b>Gözaltındasın</b>; süre bitene kadar taktik uygulayamazsın.':'')+'</div>';
+  const kapali=!!x.sonraki_taktik||x.gozaltindayim;
+  h+='<div class="hh-grid">'+TAKTIK.map(t=>'<button class="hh-action" '+(kapali?'disabled ':'')+'data-saha-fn="sokak_taktik_yap" data-p=\'{"p_eylem":'+id+',"p_tur":"'+t.tur+'"}\'>'+t.ik+' '+t.ad+'<br><small>'+t.alt+'</small></button>').join('')+
+   (x.grev_bitis?'<button class="hh-action hh-primary" '+(kapali?'disabled ':'')+'data-saha-fn="sokak_taktik_yap" data-p=\'{"p_eylem":'+id+',"p_tur":"grev"}\'>🛑 Greve katıl<br><small>12 saat +1,5 · ekonomi yavaşlar</small></button>':'')+'</div>';
+  h+='<details class="hh-detail"><summary>✍️ Pankartını yaz (kendi sloganın meydanda görünür)</summary><form data-saha-form="pankart" data-id="'+id+'"><label>Pankart yazısı (6–90 karakter)</label><input name="p_metin" maxlength="90" minlength="6" required placeholder="Örn. Ekmek, adalet, özgürlük!"><button class="hh-action hh-primary" '+(kapali?'disabled':'')+'>Pankartı kaldır</button></form></details>';
+  if(x.ben_baslattim&&!x.grev_yapildi)h+='<button class="hh-action" data-saha-fn="sokak_grev_cagri" data-p=\'{"p_eylem":'+id+'}\' data-onay="Genel grev çağrısı eylem başına bir kez yapılır ve en az 5 gerçek katılımcı ister. Çağrı yapılsın mı?">🛑 Genel grev çağrısı yap (organizatör)</button>';
+  h+='<button class="hh-action hh-ayril" style="margin-top:8px!important" data-saha-fn="sokak_eylemden_ayril" data-p=\'{"p_eylem":'+id+'}\' data-onay="Eylemden ayrılmak istediğine emin misin? Aynı eyleme 1 saat sonra yeniden katılabilirsin.">🚪 Eylemden ayrıl</button>';
+ }else if(x.taraf==='iktidar'){
+  h+='<div class="hh-band karsi">🚩 <b>Karşı taraftasın.</b> Burada durduğun sürece eylemin gücü azalır.</div>';
+  h+='<button class="hh-action hh-ayril" data-saha-fn="sokak_eylemden_ayril" data-p=\'{"p_eylem":'+id+'}\' data-onay="Karşı taraftan ayrılmak istiyor musun? Aynı eyleme 1 saat sonra dönebilirsin.">🚪 Karşı taraftan ayrıl</button>';
+ }else if(x.gorevdeyim){
+  h+='<div class="hh-band gorev">🛡️ <b>Sahada görevdesin.</b> Burada durduğun sürece eylemin gücü azalır ve polis müdahalesi sahadaki görevli sayısıyla yapılır.</div>';
+  h+='<button class="hh-action hh-ayril" data-saha-fn="sokak_gorevden_ayril" data-p=\'{"p_eylem":'+id+'}\' data-onay="Görevden ayrılmak istiyor musun?">🚪 Görevden ayrıl</button>';
+  if(x.kalkan_hakki)h+='<details class="hh-detail"><summary>🫡 Kalkanı bırak ve meydana katıl</summary><p class="hh-muted">Görevi bırakıp eyleme katılırsın. Herkese duyurulur; İçişleri Bakanı bilgilendirilir.</p><form data-saha-form="kalkan" data-id="'+id+'"><label>Kamuoyuna söyleyeceğin söz (20–400 karakter)</label><textarea name="p_aciklama" minlength="20" maxlength="400" required></textarea><button class="hh-action hh-ayril">Kalkanımı bırakıyorum</button></form></details>';
+ }else{
+  const nb=x.nabzim;
+  const devlet=!!(sonVeri&&sonVeri.yonetebilir);
+  h+=(devlet?'<p class="hh-muted">Kamuoyu nabzı tarafsız oyuncuların sesidir; devlet yöneticileri oy veremez.</p><div class="hh-grid">':'<p class="hh-muted"><b>Kamuoyu nabzı:</b> eyleme taraf değilsen görüşün eylemin kamuoyu desteğini belirler.</p><div class="hh-grid">')+
+   (devlet?'':'<button class="hh-action'+(nb===1?' hh-primary':'')+'" data-saha-fn="sokak_nabiz_ver" data-p=\'{"p_eylem":'+id+',"p_tavir":1}\'>❤️ Destekliyorum</button>'+
+   '<button class="hh-action'+(nb===-1?' hh-primary':'')+'" data-saha-fn="sokak_nabiz_ver" data-p=\'{"p_eylem":'+id+',"p_tavir":-1}\'>👎 Karşıyım</button>')+
+   (nb&&!devlet?'<button class="hh-action" data-saha-fn="sokak_nabiz_ver" data-p=\'{"p_eylem":'+id+',"p_tavir":0}\'>◌ Görüşümü geri al</button>':'')+
+   '<button class="hh-action" data-saha-fn="sokak_karsi_katil" data-p=\'{"p_eylem":'+id+'}\' data-onay="Karşı tarafta yer almak istiyor musun? Bu eylemde artık katılımcı olamazsın; istediğin an ayrılabilirsin.">🚩 Karşı tarafta yer al</button>'+
+   (sonVeri&&sonVeri.gorev_unvanim?'<button class="hh-action hh-primary" data-saha-fn="sokak_goreve_cik" data-p=\'{"p_eylem":'+id+'}\'>🛡️ '+esc(sonVeri.gorev_unvanim)+' olarak sahaya çık</button>':'')+
+   '</div>';
+ }
+ if(x.yeniden_katilim)h+='<p class="hh-muted">Bu eylemden yakın zamanda ayrıldın; yeniden katılım <b>'+esc(saat(x.yeniden_katilim))+'</b> sonrası açılır.</p>';
+ // heyet
+ if((x.heyet||[]).length){
+  h+='<details class="hh-detail" open><summary>🧓 Arabulucu heyeti</summary>';
+  x.heyet.forEach(m=>{
+   h+='<div class="hh-log"><b>'+esc(m.ad)+'</b> · '+esc(m.durum==='davet'?'yanıt bekleniyor':m.durum==='kabul'?'heyette':'reddetti')+(m.rapor?'<p>'+esc(m.rapor)+'</p>':'')+'</div>';
+   if(m.ben&&m.durum==='davet')h+='<div class="hh-grid"><button class="hh-action hh-primary" data-saha-fn="sokak_heyet_yanit" data-p=\'{"p_eylem":'+id+',"p_kabul":true}\'>✓ Heyete katıl</button><button class="hh-action" data-saha-fn="sokak_heyet_yanit" data-p=\'{"p_eylem":'+id+',"p_kabul":false}\'>✕ Reddet</button></div>';
+   if(m.ben&&m.durum==='kabul'&&!m.rapor)h+='<form data-saha-form="rapor" data-id="'+id+'"><label>Heyet raporun (40–1200 karakter)</label><textarea name="p_metin" minlength="40" maxlength="1200" required></textarea><button class="hh-action hh-primary">Raporu açıkla</button></form>';
+  });
+  h+='</details>';
+ }
+ // devlet araçları
+ const V=sonVeri||{};
+ if(x.yasak_yetki||V.yonetebilir||V.cb||V.karsi_cagri_yetki){
+  h+='<details class="hh-detail"><summary>🏛️ Devletin sahadaki araçları</summary><p class="hh-muted">Hepsi gerçek kişilerle çalışır; etkisi güç dökümünde görünür.</p>';
+  if(x.yasak_yetki&&!x.yasak)h+='<form data-saha-form="yasak" data-id="'+id+'"><label>🚧 Valilik gösteri yasağı (6 saat yeni katılım kapalı; kalanlar inatlaşır) · gerekçe</label><textarea name="p_gerekce" minlength="25" maxlength="500" required></textarea><button class="hh-action">Yasağı ilan et</button></form>';
+  if(V.yonetebilir&&!x.jest)h+='<form data-saha-form="jest" data-id="'+id+'"><label>🕊️ Gözaltı jesti (tüm gözaltılar serbest, 6 saat gerilim düşer) · gerekçe</label><textarea name="p_gerekce" minlength="20" maxlength="500" required></textarea><button class="hh-action">Jest yap</button></form>';
+  if(V.cb)h+='<form data-saha-form="heyet" data-id="'+id+'"><label>🧓 Arabulucu heyetine davet et (en çok 3, eylemde taraf olmayan) · kullanıcı adı</label><input name="p_kad" required maxlength="40" placeholder="Oyuncunun kullanıcı adı"><button class="hh-action">Heyete davet et</button></form>';
+  if(V.cb&&!x.seslenis)h+='<form data-saha-form="seslenis" data-id="'+id+'"><label>📺 Ulusa sesleniş (oyuncular ikna olup olmadığını söyler; geri tepebilir) · konuşma metni</label><textarea name="p_metin" minlength="60" maxlength="1500" required></textarea><button class="hh-action hh-primary">Ulusa seslen</button></form>';
+  if(V.karsi_cagri_yetki)h+='<button class="hh-action" data-saha-fn="sokak_karsi_cagri" data-p=\'{"p_eylem":'+id+'}\' data-onay="Parti üyelerine karşı miting çağrısı gönderilsin mi?">🚩 Parti üyelerini karşı mitinge çağır</button>';
+  h+='</details>';
+ }
+ // pankartlar
+ if((x.pankartlar||[]).length){
+  h+='<details class="hh-detail" open><summary>📜 Meydandan sesler</summary><div>'+x.pankartlar.map(p=>'<span class="hh-pankart">'+esc(p.metin)+'<small>— '+esc(p.ad)+'</small></span>').join('')+'</div></details>';
+ }
+ // döküm
+ if(dk.satirlar){
+  h+='<details class="hh-detail"><summary>📊 Güç dökümü · toplam '+num(dk.toplam)+'</summary><table class="hh-dokum">'+
+   dk.satirlar.filter(r=>Number(r.puan)!==0||/katılımcı/i.test(r.ad)).map(r=>'<tr><td>'+esc(r.ad)+'</td><td class="'+(Number(r.puan)>0?'art':Number(r.puan)<0?'eks':'')+'">'+(Number(r.puan)>0?'+':'')+num(r.puan)+'</td></tr>').join('')+
+   '</table><p class="hh-muted">Para eylemi güçlendirmez; yalnız süreyi uzatır. Kırmızı seviye için en az 3 gerçek katılımcı ve 75 puan gerekir.</p></details>';
+ }
+ if(Number(dk.katilimci)>0)h+='<button class="hh-action" style="margin-top:6px!important" data-saha-meydan="'+id+'">🌙 Meydanı izle</button>';
+ h+='</div>';
+ return h;
+}
+
+function meydanAc(id){
+ const x=(sonVeri&&sonVeri.eylemler||[]).find(e=>Number(e.id)===Number(id)); if(!x)return;
+ document.getElementById('hhMeydan')?.remove();
+ const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const n=Number(x.dokum&&x.dokum.katilimci||0), g=Number(x.dokum&&x.dokum.gorevli||0);
+ const W=400,H=300; let bina='',pen='',kal='',isik='',xx=0; const R=(a,b)=>a+Math.random()*(b-a);
+ while(xx<W){const bw=Math.round(R(18,42)),bh=Math.round(R(30,95)),by=H-118-bh;bina+='<rect x="'+xx+'" y="'+by+'" width="'+bw+'" height="'+(bh+118)+'" fill="#0c0b16"/>';
+  for(let wy=by+8;wy<H-125;wy+=11)for(let wx=xx+4;wx<xx+bw-5;wx+=8)if(Math.random()<.28)pen+='<rect class="pen" x="'+wx+'" y="'+wy+'" width="3.2" height="4.4" fill="#ffcf7a" style="animation-delay:'+R(0,4).toFixed(2)+'s"/>';
+  xx+=bw+Math.round(R(1,4));}
+ // Kalabalık gerçek katılımcı sayısıyla çizilir: her kafa bir oyuncu (en çok 60).
+ const kisi=Math.min(60,n), sira=[{y:H-70,r:5},{y:H-40,r:7},{y:H-8,r:10}];
+ // Dar ekranda kadraj ortadaki ~220 birimi gösterir: kalabalık ortada, kişi sayısı kadar genişlikte toplanır.
+ const gen=Math.min(380,Math.max(70,kisi*16)), sol=W/2-gen/2;
+ for(let i=0;i<kisi;i++){const s=sira[i%3];const cx=sol+(i+0.5)*gen/kisi+R(-4,4),cy=s.y+R(-2,2);
+  kal+='<g fill="'+(i%3===2?'#06050c':i%3===1?'#100e1e':'#1b1730')+'"><circle cx="'+cx.toFixed(1)+'" cy="'+(cy-s.r*1.6).toFixed(1)+'" r="'+s.r+'"/><rect x="'+(cx-s.r*1.5).toFixed(1)+'" y="'+(cy-s.r*.7).toFixed(1)+'" width="'+(s.r*3)+'" height="'+(s.r*3)+'" rx="'+(s.r*1.2)+'"/></g>';
+  const hy=cy-s.r*4.2; isik+='<g class="tel" style="animation-delay:'+R(0,2.2).toFixed(2)+'s;transform-origin:'+cx.toFixed(1)+'px '+cy.toFixed(1)+'px"><line x1="'+cx.toFixed(1)+'" y1="'+(cy-s.r*.4).toFixed(1)+'" x2="'+cx.toFixed(1)+'" y2="'+hy.toFixed(1)+'" stroke="#100e1e" stroke-width="'+(s.r*.55).toFixed(1)+'" stroke-linecap="round"/><circle cx="'+cx.toFixed(1)+'" cy="'+hy.toFixed(1)+'" r="'+(s.r*.45+.6).toFixed(1)+'" fill="#fff2cf" filter="url(#hhG)"/></g>';}
+ // Sahadaki görevliler: mavi kalkan siluetleri (her biri gerçek bir oyuncu)
+ let kalkan='';const gk=Math.min(8,g);for(let i=0;i<gk;i++){const cx=W/2-gk*14+i*28;kalkan+='<rect x="'+cx+'" y="'+(H-128)+'" width="16" height="22" rx="4" fill="#20325e" stroke="#6d8fd6" stroke-width="1.2"/>';}
+ const svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><defs><filter id="hhG" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><radialGradient id="hhH" cx="50%" cy="100%" r="70%"><stop offset="0" stop-color="#ffb35c" stop-opacity=".28"/><stop offset="1" stop-color="#ffb35c" stop-opacity="0"/></radialGradient></defs><rect width="'+W+'" height="'+H+'" fill="url(#hhH)"/>'+bina+pen+kalkan+kal+isik+'</svg>';
+ const sloganlar=(x.pankartlar||[]).map(p=>({m:p.metin,a:p.ad}));
+ if(!sloganlar.length)sloganlar.push({m:'Meydan seni bekliyor',a:''});
+ const w=document.createElement('div');w.id='hhMeydan';w.setAttribute('role','dialog');w.setAttribute('aria-label','Meydan görünümü');
+ w.innerHTML='<div class="mg"></div>'+svg+'<div class="mt"><div class="mu">Eylem #'+Number(id)+' · gerçek oyuncular</div><div class="ms" id="hhMs"></div><div class="mn"><span id="hhMn">0</span> kişi meydanda'+(g?' · '+g+' görevli sahada':'')+'</div><div class="mk" id="hhMk"></div></div><button class="mx" type="button">Kapat ▸</button>';
+ document.body.appendChild(w);
+ const kapat=()=>{clearInterval(w._t);w.remove();};
+ w.querySelector('.mx').addEventListener('click',kapat);
+ let i=0;const ms=w.querySelector('#hhMs'),mk=w.querySelector('#hhMk');
+ const goster=()=>{const s=sloganlar[i%sloganlar.length];ms.style.opacity=0;setTimeout(()=>{ms.textContent=s.m;mk.textContent=s.a?'— '+s.a:'';ms.style.opacity=1;},reduce?0:350);i++;};
+ goster(); if(sloganlar.length>1)w._t=setInterval(goster,3200);
+ const mn=w.querySelector('#hhMn'); if(reduce){mn.textContent=n;}else{let t0=null;const adim=t=>{if(!document.getElementById('hhMeydan'))return;if(t0===null)t0=t;const p=Math.min(1,(t-t0)/1600);mn.textContent=Math.round(n*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(adim);};requestAnimationFrame(adim);}
+}
+
+const onceki=sokakHareketleriEkrani;
+sokakHareketleriEkrani=async function(){
+ await onceki.apply(this,arguments);
+ const root=document.getElementById('hhCommand'); if(!root)return;
+ let d; try{d=await API.rpc('sokak_saha_panel');}catch(err){console.warn('Saha paneli',err);return;}
+ sonVeri=d||{};
+ (sonVeri.eylemler||[]).forEach(x=>{
+  const art=root.querySelector('article.hh-event[data-hh-event="'+Number(x.id)+'"]'); if(!art)return;
+  art.querySelector('.hh-saha')?.remove();
+  // Katılımcıysan eski "Katılıyorsun" rozetinin altına; değilsen katıl formunun hemen altına yerleş.
+  const yer=art.querySelector('form.hh-participate')||art.querySelector(':scope > .hh-pill.live')||art.querySelector('.hh-meter');
+  // Karşı taraftaysan ya da görevliysen muhalefet "katıl" formu yanıltıcı olur: gizle.
+  if((x.taraf==='iktidar'||x.gorevdeyim)&&art.querySelector('form.hh-participate'))art.querySelector('form.hh-participate').style.display='none';
+  if(x.yasak&&!x.taraf&&art.querySelector('form.hh-participate'))art.querySelector('form.hh-participate').insertAdjacentHTML('beforebegin','<p class="hh-muted">🚧 Gösteri yasağı sürerken yeni katılım kapalı.</p>');
+  (yer||art.firstElementChild).insertAdjacentHTML('afterend',sahaHTML(x));
+ });
+ const run=async(btn,fn,args,okMsg)=>{
+  if(btn)btn.disabled=true;
+  try{const r=await API.rpc(fn,args);
+   let m=okMsg||'İşlem kaydedildi';
+   if(fn==='sokak_eylemden_ayril')m=r&&r.gozalti_suruyor?'Eylemden ayrıldın. Gözaltı süreci hukuken devam ediyor.':'Eylemden ayrıldın. 1 saat sonra yeniden katılabilirsin.';
+   if(fn==='sokak_taktik_yap'&&args.p_tur==='cagri')m=(r&&r.cagrilan||0)+' oyuncuya çağrı gönderildi';
+   if(fn==='sokak_goreve_cik')m='Sahadasın: '+(r&&r.unvan||'görevli');
+   toast(m);await sokakHareketleriEkrani();
+  }catch(ex){toast((typeof hataCevir==='function'?hataCevir(ex.message||String(ex)):(ex.message||String(ex))),true);if(btn)btn.disabled=false;}
+ };
+ root.querySelectorAll('[data-saha-fn]').forEach(b=>b.addEventListener('click',()=>{
+  if(b.dataset.onay&&!window.confirm(b.dataset.onay))return;
+  let p={};try{p=JSON.parse(b.dataset.p||'{}');}catch(_){}
+  run(b,b.dataset.sahaFn,p);
+ }));
+ const FORM={pankart:['sokak_taktik_yap',f=>({p_tur:'pankart',p_metin:f.p_metin}),'Pankartın meydanda'],
+  kalkan:['sokak_kalkan_birak',f=>({p_aciklama:f.p_aciklama}),'Kalkanını bıraktın; artık meydandasın'],
+  rapor:['sokak_heyet_rapor',f=>({p_metin:f.p_metin}),'Heyet raporu açıklandı'],
+  yasak:['sokak_yasak_koy',f=>({p_gerekce:f.p_gerekce}),'Gösteri yasağı ilan edildi'],
+  jest:['sokak_jest_yap',f=>({p_gerekce:f.p_gerekce}),'Gözaltılar serbest bırakıldı'],
+  heyet:['sokak_heyet_davet',f=>({p_kad:f.p_kad}),'Heyet daveti gönderildi'],
+  seslenis:['sokak_seslenis_yap',f=>({p_metin:f.p_metin}),'Ulusa seslendin']};
+ root.querySelectorAll('form[data-saha-form]').forEach(f=>f.addEventListener('submit',ev=>{
+  ev.preventDefault();const k=FORM[f.dataset.sahaForm];if(!k)return;
+  if(f.dataset.sahaForm==='kalkan'&&!window.confirm('Kalkanını bırakıp eyleme katılmak istediğine emin misin? Herkese duyurulur.'))return;
+  const v=Object.fromEntries(new FormData(f).entries());
+  run(f.querySelector('button'),k[0],Object.assign({p_eylem:Number(f.dataset.id)},k[1](v)),k[2]);
+ }));
+ root.querySelectorAll('[data-saha-meydan]').forEach(b=>b.addEventListener('click',()=>meydanAc(b.dataset.sahaMeydan)));
+};
+if(window.__hhSar)sokakHareketleriEkrani=window.__hhSar('saha',sokakHareketleriEkrani);
+window.__hhMeydanAc=meydanAc;
+})();
+
+/* Asset refresh: 20261109-1 (Halk Hareketleri 3.0 saha katmanı) */
