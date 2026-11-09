@@ -17866,7 +17866,7 @@ window.adlDavaModal=async function(){
   +'<div class="alan" id="hiPartiKutu" style="display:none"><label>Davalı parti</label><select id="hiHedefParti">'+partiler.map(x=>'<option value="'+x.id+'">'+h(x.ad)+'</option>').join('')+'</select></div>'
   +'<div id="hiKurumKutu" style="display:none"><div class="alan"><label>Kurum ara</label><input id="hiKurumAra" placeholder="Kurum adı veya şehir"></div><div class="alan"><label>Davalı kurum</label><select id="hiKurum"></select></div></div>'
   +'<div class="alan"><label>Dava türü</label><select id="hiTur">'+turler+'</select></div><p class="kucuk" id="hiSuc"></p>'
-  +'<div class="alan" id="hiTazKutu" style="display:none"><label>Talep edilen tazminat (₺)</label><input id="hiTaz" type="number" min="1000" max="500000" step="1" placeholder="1000–500000"></div>'
+  +'<div class="alan" id="hiTazKutu" style="display:none"><label>Talep edilen tazminat (₺)</label><input id="hiTaz" type="number" min="1000" max="1000000" step="1" placeholder="1000–1000000"></div>'
   +'<div class="alan"><label>Davacı olarak</label><select id="hiDavaci"><option value="">Kendi adıma</option>'+gbPartiler.map(x=>'<option value="'+x.id+'">'+h(x.ad)+' adına (genel başkan olarak)</option>').join('')+'</select></div>'
   +'<div class="alan"><label>İddia ve dava gerekçesi (20–1600 karakter)</label><textarea id="hiIddia" rows="5" maxlength="1600" '+TA+' placeholder="Olayı ve hangi oyun kuralının ihlal edildiğini açıkla"></textarea></div>'
   +'<div class="alan"><label>Deliller ve işlem kayıtları</label><textarea id="hiDelil" rows="4" maxlength="1600" '+TA+' placeholder="Oyun içi mesaj, işlem, tarih ve kanıtları belirt"></textarea></div>'
@@ -17887,7 +17887,7 @@ window.adlDavaModal=async function(){
   taz.disabled=s==='parti'||s==='makam'||(s==='oyuncu'&&dv.value!=='');
   if(taz.disabled&&tur.value==='tazminat')tur.value='diger';
   m.querySelector('#hiTazKutu').style.display=tur.value==='tazminat'?'block':'none';
-  m.querySelector('#hiSuc').textContent=tur.value==='tazminat'?'Kanıtlanabilir oyun içi zarar için 1.000–500.000 ₺ tazminat isteyebilirsin.':((typeof ADL_SUCLAR!=='undefined'&&ADL_SUCLAR[tur.value])||'');
+  m.querySelector('#hiSuc').textContent=tur.value==='tazminat'?'Kanıtlanabilir oyun içi zarar için 1.000–1.000.000 ₺ tazminat isteyebilirsin.':((typeof ADL_SUCLAR!=='undefined'&&ADL_SUCLAR[tur.value])||'');
   if(kurum)listele();
  }
  sec.onchange=guncelle;tur.onchange=guncelle;dv.onchange=guncelle;m.querySelector('#hiKurumAra').oninput=listele;guncelle();
@@ -17899,7 +17899,7 @@ window.adlDavaModal=async function(){
   if(!hedef)return toast('Davalı oyuncu, parti veya kurum seç.',true);
   if(iddia.length<20)return toast('İddiayı en az 20 karakterle açıkla.',true);
   const taz=tur.value==='tazminat'?Number(m.querySelector('#hiTaz').value):null;
-  if(tur.value==='tazminat'&&(!Number.isInteger(taz)||taz<1000||taz>500000))return toast('Tazminat talebi 1.000–500.000 ₺ olmalı.',true);
+  if(tur.value==='tazminat'&&(!Number.isInteger(taz)||taz<1000||taz>1000000))return toast('Tazminat talebi 1.000–1.000.000 ₺ olmalı.',true);
   const btn=m.querySelector('#hiGonder');btn.disabled=true;
   try {
    let r;
