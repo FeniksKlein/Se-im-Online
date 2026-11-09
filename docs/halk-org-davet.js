@@ -2147,7 +2147,7 @@ if(window.__hhSar)sokakHareketleriEkrani=window.__hhSar('meydan4',sokakHareketle
 (function(){
  "use strict";
  if(window.SO_BAKAN_FEZLEKE_V1)return;
- if(typeof window.adliyeHtml!=="function"||typeof window.API==="undefined")return;
+ if(typeof window.adliyeHtml!=="function"||typeof API==="undefined")return;
  window.SO_BAKAN_FEZLEKE_V1=true;
  function kac(x){return String(x==null?"":x).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
  function gun(x){try{return x?new Date(x).toLocaleString("tr-TR"):"—";}catch(_){return "—";}}
