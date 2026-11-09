@@ -65729,6 +65729,7 @@ declare
     'sokak_tedbir_ac', 'sokak_tedbir_hamle', 'sokak_tedbir_panel',
     'sokak_sohbet_oku', 'sokak_sohbet_yaz', 'sokak_meydan_islem', 'sokak_meydan_panel', 'sokak_kriz_harita', 'sokak_denetim_oku',
     'sokak_sert_islem', 'sokak_sert_panel',
+    'sokak_eylem_merkezi', 'sokak_eylem_merkezi_islem',
     'ek_is_baslat', 'ek_is_paneli', 'ek_is_ucret_al', 'eko_emlak_islem', 'eko_emlak_panel', 'eko_gunluk_kar_cek',
     'eko_islem', 'eko_magaza_hazirla', 'eko_otomasyon_ayarla', 'eko_otomasyon_panel', 'eko_panel', 'eko_ticaret_islem',
     'eko_ticaret_panel', 'eko_vergi_kanun_teklif', 'eko_vergi_panel', 'ekonomi_yasa_durum', 'ekonomi_yasa_teklif', 'emlak_pazarlik_alici_yanit',
