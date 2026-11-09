@@ -1036,4 +1036,92 @@ if(window.__hhSar)sokakHareketleriEkrani=window.__hhSar('saha',sokakHareketleriE
 window.__hhMeydanAc=meydanAc;
 })();
 
-/* Asset refresh: 20261109-1 (Halk Hareketleri 3.0 saha katmanı) */
+/* Asset refresh: 20261109-3 (eylem sohbeti, muhbir ve meydan) */
+(function(){
+'use strict';
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const saat=t=>t?new Date(t).toLocaleString('tr-TR',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}):'';
+function kart(bas,ic){return '<details class="hh-detail" open><summary>'+bas+'</summary>'+ic+'</details>';}
+function islem(btn,eylem,ad,veri,mesaj){
+ if(btn)btn.disabled=true;
+ return API.rpc('sokak_meydan_islem',{p_eylem:eylem,p_islem:ad,p_veri:veri||{}}).then(()=>{toast(mesaj||'Kaydedildi');return sokakHareketleriEkrani();}).catch(ex=>{toast((typeof hataCevir==='function'?hataCevir(ex.message||String(ex)):String(ex.message||ex)),true);if(btn)btn.disabled=false;});
+}
+const onceki=sokakHareketleriEkrani;
+sokakHareketleriEkrani=async function(){
+ await onceki.apply(this,arguments);
+ const root=document.getElementById('hhCommand')||document.getElementById('icerik');
+ if(!root)return;
+ let p; try{p=await API.rpc('sokak_meydan_panel');}catch(err){return;}
+ let harita=null; try{harita=await API.rpc('sokak_kriz_harita');}catch(err){}
+ let denetim=[]; try{denetim=await API.rpc('sokak_denetim_oku');}catch(err){}
+ let h='<section id="hhMeydanEk">';
+ (p.manset||[]).forEach(m=>{h+='<div class="hh-band yasak">SON DAKİKA · '+esc(m)+'</div>';});
+ if(harita){
+  h+=kart('🗺️ Canlı Türkiye kriz haritası','<div class="hh-chips">'+(harita.iller||[]).map(i=>{
+   const renk=Number(i.memnuniyetsizlik)>=60?'#8c2f39':Number(i.memnuniyetsizlik)>=35?'#8a5a20':'#1d3b34';
+   return '<span class="hh-chip" style="background:'+renk+(i.eylem?';animation:nabiz 1.6s ease-in-out infinite':'')+'">'+esc(i.ad)+' '+esc(i.memnuniyetsizlik)+(i.eylem?' · eylem':'')+'</span>';
+  }).join('')+'</div><p class="hh-muted">'+(harita.serit||[]).map(esc).join(' · ')+'</p>');
+ }
+ h+=kart('📜 Meydanın hafızası',(p.hafiza||[]).map(x=>'<p><b>'+esc(x.ad)+'</b>'+(x.oradaydim?' · Oradaydım':'')+'<br>'+esc(x.slogan||'')+' · '+esc(x.sonuc||'')+'</p>').join('')||'<p class="hh-muted">Bitmiş eylemler burada adını ve sloganını saklar.</p>');
+ (p.mesale||[]).forEach(m=>{h+='<p class="hh-muted">🔥 Meşale: il '+esc(m.kaynak)+' → il '+esc(m.hedef)+' · '+esc(m.durum)+' · '+esc(saat(m.varis))+'</p>';});
+ const pus=p.pusula||{};
+ h+='<p class="hh-muted">Hesap günü pusulası: sahada '+Number(pus.sahada||0)+' · yasak '+Number(pus.yasak||0)+' · anlaşma '+Number(pus.anlasma||0)+' · saf değiştirme '+Number(pus.saf||0)+'</p>';
+ for(const e of p.eylemler||[]){
+  const id=Number(e.id);
+  h+='<article class="kart" data-meydan="'+id+'"><h3>Eylem #'+id+' meydanı</h3>';
+  if(e.son_gece){const s=e.son_gece; h+='<div class="hh-band">📡 Meydanda son gece · '+esc(s.durum)+' · '+esc(saat(s.bas))+' – '+esc(saat(s.bit))+(s.sonuc?' · '+esc(s.sonuc):'')+'</div><p>Güç: '+esc(e.seviye)+'/100</p>';}
+  if(e.sohbet_hak){
+   h+=kart('💬 Eylem sohbeti','<div class="hh-sohbet" data-sohbet="'+id+'">Yükleniyor…</div><form data-meydan-form="sohbet" data-id="'+id+'"><textarea name="metin" maxlength="400" required placeholder="Yalnız bu eylemin içindeki oyuncular görür"></textarea><button class="hh-action hh-primary">Gönder</button></form>');
+  }
+  if(e.muhbir_teklif) h+='<div class="hh-band">Gizli teklif: '+esc(e.muhbir_teklif.para)+' TL. Vaat: '+esc(e.muhbir_teklif.makam||'yok')+'<div class="hh-grid"><button class="hh-action" data-meydan-islem="muhbir_yanit" data-id="'+id+'" data-v=\'{"kabul":true}\'>Kabul</button><button class="hh-action" data-meydan-islem="muhbir_yanit" data-id="'+id+'" data-v=\'{"kabul":false}\'>Ret</button><button class="hh-action hh-ayril" data-meydan-islem="muhbir_yanit" data-id="'+id+'" data-v=\'{"ifsa":true}\'>İfşa et</button></div></div>';
+  if(e.muhbirim) h+=kart('İçeriden bilgi','<form data-meydan-form="muhbir_sizdir" data-id="'+id+'"><textarea name="metin" maxlength="400" required placeholder="Sohbet ya da plan. Her sızıntı şüpheyi artırır."></textarea><button class="hh-action">Hükümete ilet</button></form>');
+  if(p.yonetebilir&&e.iceri) h+=kart('İçeriden bilgi', (e.iceri||[]).map(s=>'<p><b>'+esc(s.ad)+'</b> · '+esc(s.metin)+'</p>').join('')||'<p class="hh-muted">Henüz sızıntı yok.</p>');
+  if(e.katilimci) h+='<form data-meydan-form="muhbir_oy" data-id="'+id+'"><label>İfşa oyu (günde 1, en az 3 oy ve çoğunluk)</label><input name="kad" required placeholder="Şüphelinin kullanıcı adı"><button class="hh-action">Oy ver</button></form>';
+  if(p.yonetebilir) h+='<form data-meydan-form="muhbir_teklif" data-id="'+id+'"><label>Muhbir teklifi</label><input name="kad" required placeholder="Katılımcının kullanıcı adı"><input name="para" type="number" min="0" max="80000" value="0" placeholder="TL"><input name="metin" maxlength="120" placeholder="Vaadedilen makam (zorunlu değil)"><button class="hh-action">Gizli teklif gönder</button></form><form data-meydan-form="muhbir_dik" data-id="'+id+'"><input name="kad" required placeholder="İktidardan, eyleme katılmış oyuncu"><button class="hh-action">İçeriden kişi olarak işaretle</button></form>';
+  if(e.kirmizi_hat&&e.kirmizi_hat.durum==='bekliyor'&&e.baslatan) h+='<div class="hh-band">Kırmızı hat: '+esc(e.kirmizi_hat.teklif)+'<br>'+esc(e.kirmizi_hat.metin)+'<div class="hh-grid"><button class="hh-action" data-meydan="kirmizi_yanit" data-id="'+id+'" data-v=\'{"yanit":"kabul"}\'>Gizlice kabul</button><button class="hh-action" data-meydan="kirmizi_yanit" data-id="'+id+'" data-v=\'{"yanit":"ret"}\'>Ret</button><button class="hh-action hh-ayril" data-meydan="kirmizi_yanit" data-id="'+id+'" data-v=\'{"yanit":"ifsa"}\'>İfşa</button></div></div>';
+  if(p.yonetebilir) h+='<form data-meydan-form="kirmizi_hat" data-id="'+id+'"><label>Kırmızı hat</label><select name="tur"><option value="bakanlik">Bakanlık sözü</option><option value="yatirim">İle yatırım</option><option value="af">Af</option></select><textarea name="metin" required></textarea><button class="hh-action">Gizli teklif</button></form>';
+  (e.basin||[]).forEach(b=>{h+='<blockquote><b>'+esc(b.ad)+'</b> · güvenilir '+b.guvenilir+' · taraflı '+b.tarafli+'<br>'+esc(b.metin)+'<div class="hh-grid"><button class="hh-action" data-meydan-islem="basin_oy" data-id="'+id+'" data-v=\'{"id":'+Number(b.id)+',"oy":"guvenilir"}\'>Güvenilir</button><button class="hh-action" data-meydan-islem="basin_oy" data-id="'+id+'" data-v=\'{"id":'+Number(b.id)+',"oy":"tarafli"}\'>Taraflı</button></div></blockquote>';});
+  if(p.gazeteci) h+='<form data-meydan-form="basin_yaz" data-id="'+id+'"><textarea name="metin" required placeholder="Sahadan canlı not"></textarea><button class="hh-action">Yayınla</button></form>';
+  if(e.juri) h+='<p>Halk jürisi: '+esc(e.juri.durum)+' '+(e.juri.sonuc?esc(e.juri.sonuc):'')+'</p>'+(e.juri.sozler||[]).map(s=>'<p><b>'+esc(s.taraf)+':</b> '+esc(s.metin)+'</p>').join('')+(e.juri.uyeyim&&e.juri.durum==='oy'?'<div class="hh-grid"><button class="hh-action" data-meydan-islem="juri_oy" data-id="'+id+'" data-v=\'{"oy":"meydan"}\'>Meydan</button><button class="hh-action" data-meydan-islem="juri_oy" data-id="'+id+'" data-v=\'{"oy":"hukumet"}\'>Hükümet</button></div>':'')+(e.baslatan||p.yonetebilir?'<form data-meydan-form="juri_savun" data-id="'+id+'"><input name="metin" maxlength="180" required placeholder="Kısa söz"><button class="hh-action">Sözü yaz</button></form>':'');
+  (e.boykot||[]).forEach(b=>{h+='<p>Boykot şirket #'+Number(b.sirket)+' · söz '+Number(b.soz||0)+' · müşteri '+esc(b.musteri??100)+' · '+esc(b.taraf||'yanıt yok')+' <button class="hh-action" data-meydan-islem="boykot_soz" data-id="'+id+'" data-v=\'{"id":'+Number(b.id)+'}\'>Söz veriyorum</button></p><form data-meydan-form="boykot_taraf" data-id="'+id+'"><input type="hidden" name="id" value="'+Number(b.id)+'"><select name="taraf"><option value="destekliyorum">Destekliyorum</option><option value="tarafsizim">Tarafsızım</option><option value="hukumetin_yanindayim">Hükümetin yanındayım</option></select><button class="hh-action">Şirket açıklaması</button></form>';});
+  if(e.katilimci) h+='<form data-meydan-form="boykot_ac" data-id="'+id+'"><input name="sirket" type="number" required placeholder="Şirket numarası"><button class="hh-action">Boykot aç</button></form>';
+  (p.hafiza||[]).filter(x=>x.oradaydim).forEach(x=>{h+='<form data-meydan-form="hafiza_oy" data-id="'+Number(x.eylem)+'"><input name="ad" maxlength="40" placeholder="'+esc(x.ad)+' için yeni ad"><button class="hh-action">Eylemin adını oyla</button></form>';});
+  (e.belgeler||[]).forEach(b=>{h+='<p>İç not #'+Number(b.id)+' · '+esc(b.tur)+' · '+esc(b.metin)+(b.yayin?' · yayımlandı':'')+'</p>'+(p.kabine&&!b.yayin?'<form data-meydan-form="belge_sizdir" data-id="'+id+'"><input type="hidden" name="id" value="'+Number(b.id)+'"><input name="kad" required placeholder="Gazetecinin kullanıcı adı"><button class="hh-action">Belgeyi sızdır</button></form>':'')+(p.yonetebilir&&b.yayin&&!b.sorusturma?'<form data-meydan-form="belge_sorustur" data-id="'+id+'"><input type="hidden" name="id" value="'+Number(b.id)+'"><input name="kad" required placeholder="Şüphelinin kullanıcı adı"><button class="hh-action">Soruşturma aç</button></form>':'');});
+  (e.mektuplar||[]).forEach(m=>{h+='<blockquote>'+esc(m.sahip)+': '+esc(m.metin)+'</blockquote>';});
+  if(p.yonetebilir&&Number(e.seviye)>=60) h+='<button class="hh-action" data-meydan-islem="juri_baslat" data-id="'+id+'">Halk jürisini kur</button>';
+  if(p.iktidar) h+='<form data-meydan-form="mektup_yaz" data-id="'+id+'"><textarea name="metin" required placeholder="İmzasız destek mektubu"></textarea><button class="hh-action">Mektubu bırak</button></form><form data-meydan-form="mektup_sor" data-id="'+id+'"><input name="id" type="number" required placeholder="Mektup no"><input name="kad" required placeholder="Şüphelinin kullanıcı adı"><button class="hh-action">Mektup soruşturması</button></form>';
+  if(e.katilimci) h+='<form data-meydan-form="mesale_gonder" data-id="'+id+'"><input name="il" type="number" min="1" max="81" required placeholder="Meşalenin gideceği il"><button class="hh-action">Meşaleyi yolla</button></form>';
+  h+='</article>';
+ }
+ if(p.vekil&&p.iktidar&&p.eylemler&&p.eylemler[0]) h+='<button class="hh-action" data-meydan-islem="meclis_gec" data-id="'+Number(p.eylemler[0].id)+'">Mecliste saf değiştirip meydana geç</button>';
+ if(p.bakan) h+='<form data-meydan-form="istifa"><textarea name="metin" required placeholder="İstifa mektubu"></textarea><button class="hh-action hh-ayril">İstifayı yayımla</button></form>';
+ (p.kabine_gizli||[]).forEach(k=>{h+='<p>Gizli kabine oyu #'+Number(k.id)+': '+esc(k.metin)+' · açıklanma '+esc(saat(k.aciklama))+'<button class="hh-action" data-meydan-islem="kabine_oy" data-v=\'{"id":'+Number(k.id)+',"oy":"evet"}\'>Evet</button><button class="hh-action" data-meydan-islem="kabine_oy" data-v=\'{"id":'+Number(k.id)+',"oy":"hayir"}\'>Hayır</button></p>';});
+ if(p.meclis_hak) h+='<form data-meydan-form="gensoru_ac"><textarea name="metin" required placeholder="Gensoru gerekçesi"></textarea><button class="hh-action">Gensoru aç</button></form>';
+ (p.mesale||[]).filter(m=>m.durum==='yolda'&&p.yonetebilir).forEach(m=>{h+='<button class="hh-action" data-meydan-islem="mesale_kir" data-v=\'{"id":'+Number(m.id)+'}\'>Meşale zincirini kes</button>';});
+ if(Array.isArray(denetim)&&denetim.length) h+=kart('Denetim kaydı',denetim.map(d=>'<p>'+esc(saat(d.zaman))+' · '+esc(d.tur)+' · '+esc(d.yapan||'')+' → '+esc(d.hedef||'')+' · '+esc(d.metin||'')+'</p>').join(''));
+ h+='</section>';
+ const eski=root.querySelector('#hhMeydanEk'); if(eski)eski.remove();
+ root.insertAdjacentHTML('afterbegin',h);
+ async function sohbetCek(id){
+  const kutu=root.querySelector('[data-sohbet="'+id+'"]'); if(!kutu)return;
+  try{const rows=await API.rpc('sokak_sohbet_oku',{p_eylem:id}); kutu.innerHTML=(rows||[]).slice().reverse().map(m=>'<p><b>'+esc(m.ad)+'</b> '+esc(m.metin)+'</p>').join('')||'<p class="hh-muted">Henüz mesaj yok.</p>';}
+  catch(ex){kutu.textContent='Sohbet açılamadı';}
+ }
+ (p.eylemler||[]).forEach(e=>{if(e.sohbet_hak)sohbetCek(Number(e.id));});
+ const rt=typeof API!=='undefined'&&API.realtimeClient;
+ if(rt){(p.eylemler||[]).forEach(e=>{if(!e.sohbet_hak)return; const id=Number(e.id); try{rt.channel('eylem-sohbet-'+id).on('postgres_changes',{event:'INSERT',schema:'public',table:'sokak_eylem_sohbet',filter:'eylem_id=eq.'+id},()=>sohbetCek(id)).subscribe();}catch(err){}}); }
+ root.querySelectorAll('[data-meydan-islem]').forEach(b=>b.addEventListener('click',()=>{
+  let v={}; try{v=JSON.parse(b.dataset.v||'{}');}catch(_){}
+  islem(b,b.dataset.id?Number(b.dataset.id):null,b.dataset.meydanIslem,v);
+ }));
+ root.querySelectorAll('form[data-meydan-form]').forEach(f=>f.addEventListener('submit',ev=>{
+  ev.preventDefault(); const ad=f.dataset.meydanForm; const v=Object.fromEntries(new FormData(f).entries()); const id=f.dataset.id?Number(f.dataset.id):null;
+  if(ad==='sohbet'){const btn=f.querySelector('button'); btn.disabled=true; API.rpc('sokak_sohbet_yaz',{p_eylem:id,p_metin:v.metin}).then(()=>{f.reset();btn.disabled=false;sohbetCek(id);}).catch(ex=>{toast(ex.message,true);btn.disabled=false;});return;}
+  if(ad==='muhbir_teklif') v.para=Number(v.para||0);
+  if(ad==='boykot_ac') v.sirket=Number(v.sirket);
+  if(ad==='hafiza_oy'){islem(f.querySelector('button'),id,'hafiza_oy',{ad:v.ad});return;}
+  islem(f.querySelector('button'),id,ad,v);
+ }));
+};
+if(window.__hhSar)sokakHareketleriEkrani=window.__hhSar('meydan',sokakHareketleriEkrani);
+})();
