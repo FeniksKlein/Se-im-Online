@@ -201,6 +201,7 @@ declare
     'sokak_sert_islem', 'sokak_sert_panel',
     'sokak_eylem_merkezi', 'sokak_eylem_merkezi_islem',
     'sokak_katilim_ayril', 'sokak_katilim_liste', 'sokak_hamle_kisi_katil',
+    'sokak_cagri_ac', 'sokak_cagri_imza', 'sokak_cagri_tamamla', 'sokak_denge_panel',
     'ek_is_baslat', 'ek_is_paneli', 'ek_is_ucret_al', 'eko_emlak_islem', 'eko_emlak_panel', 'eko_gunluk_kar_cek',
     'eko_islem', 'eko_magaza_hazirla', 'eko_otomasyon_ayarla', 'eko_otomasyon_panel', 'eko_panel', 'eko_ticaret_islem',
     'eko_ticaret_panel', 'eko_vergi_kanun_teklif', 'eko_vergi_panel', 'ekonomi_yasa_durum', 'ekonomi_yasa_teklif', 'emlak_pazarlik_alici_yanit',
