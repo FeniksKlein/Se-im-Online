@@ -58,7 +58,7 @@ returns trigger language plpgsql security definer set search_path to '' as $$
 declare v jsonb; k text; islem text; x numeric; eski numeric; eski_ad text; nowt timestamptz;
 begin
  if new.durum<>'yururlukte' or old.durum='yururlukte'
-    or new.veri->>'ozel_tur'<>'sirket_vergisi'
+    or (new.veri->>'ozel_tur') IS DISTINCT FROM 'sirket_vergisi'
  then return new;end if;
  v:=new.veri;k:=v->>'kod';islem:=v->>'islem';
  x:=(v->>'oran')::numeric;nowt:=coalesce(new.sonuc_at,oyun.simdi());
