@@ -2140,3 +2140,63 @@ if(window.__hhSar)sokakHareketleriEkrani=window.__hhSar('meydan4',sokakHareketle
 })();
 
 /* Asset refresh: 20261109-9 (Halk Hareketleri 4.0 · Eylem Meydanı) */
+
+
+/* 09.11.2026 · Kesinleşen mahkeme kararı → Bakan fezlekesi → Cumhurbaşkanı incelemesi.
+   Canlı dış modülde ve derlenmiş kaynakta aynı kod kullanılabilir. */
+(function(){
+ "use strict";
+ if(window.SO_BAKAN_FEZLEKE_V1)return;
+ if(typeof window.adliyeHtml!=="function"||typeof window.API==="undefined")return;
+ window.SO_BAKAN_FEZLEKE_V1=true;
+ function kac(x){return String(x==null?"":x).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+ function gun(x){try{return x?new Date(x).toLocaleString("tr-TR"):"—";}catch(_){return "—";}}
+ function durum(x){return ({bekliyor:"Cumhurbaşkanlığı incelemesinde",gorevden_alindi:"Bakan görevden alındı",gorevde_tutuldu:"Bakan görevde tutuldu",gorev_sona_erdi:"Görev süresi sona erdi"})[x]||x;}
+ var eski=window.adliyeHtml;
+ window.adliyeHtml=async function(){
+   var ana=await eski.apply(this,arguments),veri;
+   try{veri=await API.rpc("bakan_fezleke_listesi");}catch(err){console.warn("Bakan fezlekeleri okunamadı",err);return ana;}
+   var dosyalar=Array.isArray(veri&&veri.dosyalar)?veri.dosyalar:[];
+   if(!dosyalar.length&&!veri.cb_miyim)return ana;
+   var h='<section class="kart" aria-label="Cumhurbaşkanlığı bakan fezlekeleri"><h3>⚖️ Bakan Fezlekeleri · Cumhurbaşkanlığı</h3>'
+    +'<p class="alt">Mahkemenin <b>kesinleşmiş</b> kararı sonrası düzenlenen fezlekeler burada incelenir. Fezleke tek başına bakanı görevden almaz.</p>'
+    +(veri.cb_miyim?'<p class="alt">İşlem bekleyen: <b>'+Number(veri.bekleyen||0)+'</b></p>':'');
+   if(!dosyalar.length)h+='<p class="alt">Bekleyen fezleke bulunmuyor.</p>';
+   dosyalar.forEach(function(f){
+     h+='<article class="kart" style="margin-top:12px;padding:14px;overflow-wrap:anywhere">'
+       +'<b>Fezleke #'+Number(f.id)+' · '+kac(f.bakan)+'</b>'
+       +'<div class="kucuk">'+kac(f.bakanlik)+' · Dava #'+Number(f.dava_id)+'</div>'
+       +'<div class="kucuk">'+kac(durum(f.durum))+' · '+kac(gun(f.iletilme))+'</div>'
+       +'<div class="kucuk"><b>Mahkeme kararı:</b> '+kac(f.karar)+' · '+kac(f.mahkeme_gerekce)+'</div>'
+       +(f.cb_gerekce?'<p class="alt"><b>Cumhurbaşkanlığı gerekçesi:</b> '+kac(f.cb_gerekce)+'</p>':'')
+       +'<button class="btn ikinci" style="width:100%;min-height:44px;margin-top:10px" onclick="adliyeDosya('+Number(f.dava_id)+')">Mahkeme dosyasını aç</button>'
+       +(f.islem_yapabilirim
+          ?'<button class="btn tehlike" style="width:100%;min-height:44px;margin-top:8px" onclick="bakanFezlekeKarar('+Number(f.id)+',\'gorevden_al\')">Bakanı görevden al</button>'
+           +'<button class="btn ikinci" style="width:100%;min-height:44px;margin-top:8px" onclick="bakanFezlekeKarar('+Number(f.id)+',\'gorevde_tut\')">Görevde tut</button>'
+          :'')+'</article>';
+   });
+   return h+'</section>'+ana;
+ };
+ window.bakanFezlekeKarar=function(id,karar){
+   if(karar!=="gorevden_al"&&karar!=="gorevde_tut")return;
+   var bas=karar==="gorevden_al"?"Bakanı görevden al":"Bakanı görevde tut";
+   var m=modal('<div class="alan" style="display:block;width:100%;max-width:100%;box-sizing:border-box">'
+      +'<label for="bfGerekce" style="display:block;font-size:15px;margin-bottom:8px">Cumhurbaşkanlığı karar gerekçesi</label>'
+      +'<textarea id="bfGerekce" rows="5" minlength="20" maxlength="1200" placeholder="Mahkeme kararını değerlendirip gerekçenizi yazın..." style="display:block;width:100%;min-width:0;box-sizing:border-box;font-size:16px;line-height:1.5;background:#17233b;color:#fff;border:1px solid #778bad;border-radius:9px;padding:12px"></textarea>'
+      +'</div><p class="alt">Bu karar resmi oyuna kaydedilir ve ilgili bakana bildirilir.</p>'
+      +'<button class="btn altin" id="bfKaydet" style="width:100%;min-height:48px">'+bas+'</button>');
+   if(typeof adlFormBaslik==="function")adlFormBaslik(m,"Fezleke #"+id+" · "+bas);
+   m.querySelector("#bfKaydet").onclick=async function(){
+     var g=m.querySelector("#bfGerekce").value.trim();
+     if(g.length<20){toast("Gerekçe en az 20 karakter olmalıdır.",true);return;}
+     if(typeof onayla==="function"&&!await onayla("Fezleke kararı",bas+" kararı verilsin mi?","Kararı onayla",true))return;
+     var btn=m.querySelector("#bfKaydet");btn.disabled=true;
+     try{
+       await API.rpc("bakan_fezleke_karar",{p_id:id,p_karar:karar,p_gerekce:g});
+       modalKapat();
+       toast(karar==="gorevden_al"?"Bakan görevden alındı.":"Bakanın görevde kalması kararlaştırıldı.");
+       if(typeof adliyeEkrani==="function")await adliyeEkrani();
+     }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message||err),true);btn.disabled=false;}
+   };
+ };
+})();
