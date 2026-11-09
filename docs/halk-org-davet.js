@@ -863,6 +863,46 @@ function tedbirHTML(row){
  }
  return h+'</details>';
 }
+const SERT_AD={
+ safak:['Şafak Operasyonu','Yalnız 04.00–06.00. Nöbette az kişi varsa eylem hemen biter. Yeterli nöbet varsa operasyon tutmaz ve eylem güçlenir.'],
+ elebasi:['Elebaşı Gözaltısı','Organizatör ve en hareketli iki kişi 12 saat dışarıda. Kalanlar yeni sözcü seçer. Avukat süreyi bir kez yarıya indirir.'],
+ mali:['Mali Kuşatma','48 saat parti ve dernek kasasıyla süre uzatılamaz. Mahkeme aykırı derse 100.000 TL tazminat.'],
+ kapatma:['Kapatma Davası Tehdidi','Dava sürerken partinin eylem harcaması iki kat. Hükümet kaybederse prestij ve memnuniyet düşer.'],
+ ohal:['OHAL','Teklif Meclis onayına gider. Onaylanırsa 72 saat o ilde eylem ve yeni katılım yasak, hükümet araçları yarı fiyat. Ülke memnuniyeti düşer, erken seçim riski artar.'],
+ propaganda:['Kara Propaganda','İktidar gazetecisi yabancı destek manşeti yazınca tarafsızlar soğur. Avukat ya da muhalif gazeteci çürütürse skandal olur.'],
+ bol:['Böl ve Yönet','Katılımcılar kabul ve direniş diye ikiye ayrılır, güç düşer. Birlik oyu bunu bozar.'],
+ kusatma:['Kuşatma Çemberi','Yeni katılım durur. İçeridekiler 6 saatte bir güç kaybeder. Dışarıdan dayanışma ziyareti çemberi bozar.'],
+ ihale:['İhale ve Lisans Kılıcı','Destekleyen şirket sahiplerinin kamu ihalesi 48 saat askıya alınır. Çekilince baskı kalkar. İş dünyası tepki gösterir.'],
+ sanal:['Toplu Sanal Gözaltı','Beş kişi 6 saat oy ve sohbet kullanamaz. Ülke memnuniyeti sert düşer, eyleme sempati ve basın skandalı doğar.']
+};
+function sertHTML(row){
+ if(!row) return '';
+ const id=Number(row.id), keys=Object.keys(SERT_AD);
+ let h='<details class="hh-detail"><summary>⛔ On sert önlem</summary><p class="hh-muted">Çabuk sonuç verir, sonra oy kaybettirir. Cumhurbaşkanı, İçişleri Bakanı veya ilin valisi kullanır. 12 saatte en çok 2, aralarında 3 saat.</p>';
+ if(row.yetkili){
+  h+='<form data-saha-form="sert" data-id="'+id+'"><label>Önlem ve gider</label><select name="tur">'+keys.map(k=>'<option value="'+k+'">'+esc(SERT_AD[k][0])+' · '+num(row.bedeller&&row.bedeller[k])+' TL</option>').join('')+'</select><p class="hh-muted">'+keys.map(k=>'<b>'+esc(SERT_AD[k][0])+':</b> '+esc(SERT_AD[k][1])).join('<br>')+'</p><p class="hh-muted">İstanbul saati '+Number(row.saat)+'. Şafak yalnız 04–06 arasında.</p><label>Gerekçe (20–500)</label><textarea name="gerekce" minlength="20" maxlength="500" required></textarea><button class="hh-action hh-primary">İçişleri bütçesinden uygula</button></form>';
+ }
+ for(const t of row.onlemler||[]) h+='<div class="hh-log"><b>'+esc(t.ad||t.tur)+'</b> · '+esc(t.durum)+' · '+num(t.bedel)+' TL<p>'+esc(t.gerekce)+'</p></div>';
+ if(row.ohal&&row.vekil&&row.ohal.durum==='onay'){
+  h+='<div class="hh-band">OHAL oylaması · evet '+Number(row.ohal.evet||0)+' · hayır '+Number(row.ohal.hayir||0)+'<div class="hh-grid"><button class="hh-action" data-saha-fn="sokak_sert_islem" data-p=\'{"p_eylem":'+id+',"p_islem":"ohal_oy","p_veri":{"id":'+Number(row.ohal.id)+',"oy":"evet"}}\'>OHAL\'e evet</button><button class="hh-action" data-saha-fn="sokak_sert_islem" data-p=\'{"p_eylem":'+id+',"p_islem":"ohal_oy","p_veri":{"id":'+Number(row.ohal.id)+',"oy":"hayir"}}\'>OHAL\'e hayır</button></div></div>';
+ }
+ if(row.yargi){
+  for(const t of row.onlemler||[]) if((t.tur==='mali'||t.tur==='kapatma')&&t.durum==='aktif'){
+   h+='<div class="hh-grid"><button class="hh-action" data-saha-fn="sokak_sert_islem" data-p=\'{"p_eylem":'+id+',"p_islem":"yargi","p_veri":{"id":'+Number(t.id)+',"oy":"aykiri"}}\'>'+esc(t.ad)+' hukuka aykırı</button><button class="hh-action" data-saha-fn="sokak_sert_islem" data-p=\'{"p_eylem":'+id+',"p_islem":"yargi","p_veri":{"id":'+Number(t.id)+',"oy":"uygun"}}\'>Uygun bul</button></div>';
+  }
+ }
+ if(row.katilimci){
+  h+='<div class="hh-grid"><button class="hh-action" data-saha-fn="sokak_sert_islem" data-p=\'{"p_eylem":'+id+',"p_islem":"nobet"}\'>Nöbet listesine yazıl</button><button class="hh-action" data-saha-fn="sokak_sert_islem" data-p=\'{"p_eylem":'+id+',"p_islem":"birlik"}\'>Birlik oyu</button></div>';
+  h+='<form data-saha-form="sertlider" data-id="'+id+'"><label>Yeni sözcü</label><input name="kad" required placeholder="Katılımcının kullanıcı adı"><button class="hh-action">Sözcüye oy ver</button></form>';
+  if(row.fraksiyon) h+='<p class="hh-muted">Fraksiyonun: '+(row.fraksiyon==='kabul'?'kabul':'direniş')+'</p>';
+  h+='<button class="hh-action" data-saha-fn="sokak_sert_islem" data-onay="Eylemden çekilince ihale baskısı da kalkar. Emin misin?" data-p=\'{"p_eylem":'+id+',"p_islem":"cek"}\'>İhale baskısından çekil</button>';
+ }
+ if(row.avukat) h+='<button class="hh-action" data-saha-fn="sokak_sert_islem" data-p=\'{"p_eylem":'+id+',"p_islem":"avukat"}\'>Elebaşı süresini yarıya indir</button>';
+ if(row.gazeteci&&row.iktidar) h+='<button class="hh-action" data-saha-fn="sokak_sert_islem" data-p=\'{"p_eylem":'+id+',"p_islem":"manset"}\'>Yabancı destek manşetini yaz</button>';
+ if((row.gazeteci&&!row.iktidar)||row.avukat) h+='<form data-saha-form="sertcurut" data-id="'+id+'"><label>Propagandayı çürüt</label><textarea name="metin" minlength="12" maxlength="400" required></textarea><button class="hh-action">Kanıtla çürüt</button></form>';
+ if(!row.katilimci&&!row.yetkili) h+='<button class="hh-action" data-saha-fn="sokak_sert_islem" data-p=\'{"p_eylem":'+id+',"p_islem":"ziyaret"}\'>Dayanışma ziyareti</button>';
+ return h+'</details>';
+}
 function sahaHTML(x){
  const dk=x.dokum||{};const id=Number(x.id);
  let h='<div class="hh-saha" data-saha="'+id+'"><h4>🧭 Sahada kim var?</h4>';
@@ -988,6 +1028,8 @@ sokakHareketleriEkrani=async function(){
  let d; try{d=await API.rpc('sokak_saha_panel');}catch(err){console.warn('Saha paneli',err);return;}
  let td=null; try{td=await API.rpc('sokak_tedbir_panel');}catch(err){console.warn('Tedbir paneli',err);}
  const tedbirHarita={}; ((td&&td.eylemler)||[]).forEach(r=>{tedbirHarita[Number(r.id)]=r;});
+ let sd=null; try{sd=await API.rpc('sokak_sert_panel');}catch(err){console.warn('Sert önlem paneli',err);}
+ const sertHarita={}; ((sd&&sd.eylemler)||[]).forEach(r=>{sertHarita[Number(r.id)]=r;});
  sonVeri=d||{};
  (sonVeri.eylemler||[]).forEach(x=>{
   const art=root.querySelector('article.hh-event[data-hh-event="'+Number(x.id)+'"]'); if(!art)return;
@@ -997,7 +1039,7 @@ sokakHareketleriEkrani=async function(){
   // Karşı taraftaysan ya da görevliysen muhalefet "katıl" formu yanıltıcı olur: gizle.
   if((x.taraf==='iktidar'||x.gorevdeyim)&&art.querySelector('form.hh-participate'))art.querySelector('form.hh-participate').style.display='none';
   if(x.yasak&&!x.taraf&&art.querySelector('form.hh-participate'))art.querySelector('form.hh-participate').insertAdjacentHTML('beforebegin','<p class="hh-muted">🚧 Gösteri yasağı sürerken yeni katılım kapalı.</p>');
-  (yer||art.firstElementChild).insertAdjacentHTML('afterend',sahaHTML(x)+tedbirHTML(tedbirHarita[Number(x.id)]));
+  (yer||art.firstElementChild).insertAdjacentHTML('afterend',sahaHTML(x)+tedbirHTML(tedbirHarita[Number(x.id)])+sertHTML(sertHarita[Number(x.id)]));
  });
  const run=async(btn,fn,args,okMsg)=>{
   if(btn)btn.disabled=true;
@@ -1023,7 +1065,10 @@ sokakHareketleriEkrani=async function(){
   seslenis:['sokak_seslenis_yap',f=>({p_metin:f.p_metin}),'Ulusa seslendin'],
   tedbir:['sokak_tedbir_ac',f=>({p_tur:f.p_tur,p_gerekce:f.p_gerekce}),'Hükümet aracı uygulandı'],
   tedbirmetin:['sokak_tedbir_hamle',f=>({p_tur:f.p_tur,p_metin:f.p_metin}),'Karşı hamle kaydedildi'],
-  tedbirsoz:['sokak_tedbir_hamle',f=>({p_tur:'istihdam_soz',p_metin:f.p_metin}),'Şirket sözü kaydedildi']};
+  tedbirsoz:['sokak_tedbir_hamle',f=>({p_tur:'istihdam_soz',p_metin:f.p_metin}),'Şirket sözü kaydedildi'],
+  sert:['sokak_sert_islem',f=>({p_islem:'ac',p_veri:{tur:f.tur,gerekce:f.gerekce}}),'Sert önlem uygulandı'],
+  sertlider:['sokak_sert_islem',f=>({p_islem:'lider_oy',p_veri:{kad:f.kad}}),'Sözcü oyu kaydedildi'],
+  sertcurut:['sokak_sert_islem',f=>({p_islem:'curut',p_veri:{metin:f.metin}}),'Çürütme kaydedildi']};
  root.querySelectorAll('form[data-saha-form]').forEach(f=>f.addEventListener('submit',ev=>{
   ev.preventDefault();const k=FORM[f.dataset.sahaForm];if(!k)return;
   if(f.dataset.sahaForm==='kalkan'&&!window.confirm('Kalkanını bırakıp eyleme katılmak istediğine emin misin? Herkese duyurulur.'))return;
@@ -1036,7 +1081,7 @@ if(window.__hhSar)sokakHareketleriEkrani=window.__hhSar('saha',sokakHareketleriE
 window.__hhMeydanAc=meydanAc;
 })();
 
-/* Asset refresh: 20261109-3 (eylem sohbeti, muhbir ve meydan) */
+/* Asset refresh: 20261109-4 (on sert önlem) */
 (function(){
 'use strict';
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1065,7 +1110,7 @@ sokakHareketleriEkrani=async function(){
  h+=kart('📜 Meydanın hafızası',(p.hafiza||[]).map(x=>'<p><b>'+esc(x.ad)+'</b>'+(x.oradaydim?' · Oradaydım':'')+'<br>'+esc(x.slogan||'')+' · '+esc(x.sonuc||'')+'</p>').join('')||'<p class="hh-muted">Bitmiş eylemler burada adını ve sloganını saklar.</p>');
  (p.mesale||[]).forEach(m=>{h+='<p class="hh-muted">🔥 Meşale: il '+esc(m.kaynak)+' → il '+esc(m.hedef)+' · '+esc(m.durum)+' · '+esc(saat(m.varis))+'</p>';});
  const pus=p.pusula||{};
- h+='<p class="hh-muted">Hesap günü pusulası: sahada '+Number(pus.sahada||0)+' · yasak '+Number(pus.yasak||0)+' · anlaşma '+Number(pus.anlasma||0)+' · saf değiştirme '+Number(pus.saf||0)+'</p>';
+ h+='<p class="hh-muted">Hesap günü pusulası: sahada '+Number(pus.sahada||0)+' · yasak '+Number(pus.yasak||0)+' · anlaşma '+Number(pus.anlasma||0)+' · saf değiştirme '+Number(pus.saf||0)+' · sert önlem '+Number(pus.sert||0)+'</p>';
  for(const e of p.eylemler||[]){
   const id=Number(e.id);
   h+='<article class="kart" data-meydan="'+id+'"><h3>Eylem #'+id+' meydanı</h3>';

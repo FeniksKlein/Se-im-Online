@@ -140,6 +140,32 @@ function soTedbirHTML(x,row,esc,num){
  }
  return h+'</details>';
 }
+const SO_SERT={
+ safak:['Şafak Operasyonu','04.00–06.00. Nöbet azsa eylem biter, yeterli nöbet varsa güçlenir.'],
+ elebasi:['Elebaşı Gözaltısı','Organizatör ve iki kişi 12 saat dışarıda. Avukat süreyi yarıya indirir.'],
+ mali:['Mali Kuşatma','48 saat parti ve dernek fonu kapalı. Aykırı kararda tazminat.'],
+ kapatma:['Kapatma Davası Tehdidi','Parti harcaması iki kat. Kaybedilirse prestij düşer.'],
+ ohal:['OHAL','Meclis oyuyla 72 saat il yasağı ve yarı fiyat. Memnuniyet düşer.'],
+ propaganda:['Kara Propaganda','Yabancı destek manşeti. Çürütülürse skandal.'],
+ bol:['Böl ve Yönet','Kabul ve direniş. Birlik oyu bozar.'],
+ kusatma:['Kuşatma Çemberi','Yeni katılım yok. Dayanışma ziyareti bozar.'],
+ ihale:['İhale ve Lisans Kılıcı','Şirket ihalesi askıda. Çekilmek kaldırır.'],
+ sanal:['Toplu Sanal Gözaltı','Beş kişi 6 saat oy ve sohbet kullanamaz.']
+};
+function soSertHTML(row,esc,num){
+ if(!row) return '';
+ const id=Number(row.id), keys=Object.keys(SO_SERT);
+ let h='<details open><summary>⛔ On sert önlem</summary><p>Çabuk sonuç, sonra oy kaybı. Cumhurbaşkanı, İçişleri Bakanı veya vali.</p>';
+ if(row.yetkili){
+  h+='<form data-so-fn="sokak_sert_islem" data-so-id="'+id+'"><input type="hidden" name="p_islem" value="ac"><label>Önlem</label><select name="tur">'+keys.map(k=>'<option value="'+k+'">'+esc(SO_SERT[k][0])+' · '+num(row.bedeller&&row.bedeller[k])+' TL</option>').join('')+'</select><p>'+keys.map(k=>'<b>'+esc(SO_SERT[k][0])+':</b> '+esc(SO_SERT[k][1])).join('<br>')+'</p><label>Gerekçe</label><textarea name="gerekce" minlength="20" maxlength="500" required></textarea><button class="btn altin">İçişleri bütçesinden uygula</button></form>';
+ }
+ if(row.katilimci) h+='<button class="btn" data-so-sert="nobet" data-so-id="'+id+'">Nöbet listesine yazıl</button> <button class="btn" data-so-sert="birlik" data-so-id="'+id+'">Birlik oyu</button> <button class="btn" data-so-sert="cek" data-so-id="'+id+'">İhale baskısından çekil</button>';
+ if(row.avukat) h+='<button class="btn" data-so-sert="avukat" data-so-id="'+id+'">Elebaşı süresini yarıya indir</button>';
+ if(row.gazeteci&&row.iktidar) h+='<button class="btn" data-so-sert="manset" data-so-id="'+id+'">Yabancı destek manşetini yaz</button>';
+ if((row.gazeteci&&!row.iktidar)||row.avukat) h+='<form data-so-fn="sokak_sert_islem" data-so-id="'+id+'"><input type="hidden" name="p_islem" value="curut"><label>Propagandayı çürüt</label><textarea name="metin" minlength="12" maxlength="400" required></textarea><button class="btn">Kanıtla çürüt</button></form>';
+ if(!row.katilimci&&!row.yetkili) h+='<button class="btn" data-so-sert="ziyaret" data-so-id="'+id+'">Dayanışma ziyareti</button>';
+ return h+'</details>';
+}
 const eskiIskelet=iskelet;
 iskelet=function(baslik,govde,opt){
  if(baslik==='Halk Hareketleri'&&!String(govde).includes('id="so-v2"')) govde='<div id="so-v2"></div>'+govde;
@@ -155,6 +181,8 @@ sokakHareketleriEkrani=async function(){
   const d=await API.rpc('sokak_ek_panel');
   let td={eylemler:[]}; try{const p=await API.rpc('sokak_tedbir_panel'); if(p&&p.eylemler) td=p;}catch(ex){}
   const tdMap={}; (td.eylemler||[]).forEach(r=>{tdMap[Number(r.id)]=r;});
+  let sd={eylemler:[]}; try{const p=await API.rpc('sokak_sert_panel'); if(p&&p.eylemler) sd=p;}catch(ex){}
+  const sdMap={}; (sd.eylemler||[]).forEach(r=>{sdMap[Number(r.id)]=r;});
   const esc=t=>e(String(t??'')),num=t=>Number(t||0).toLocaleString('tr-TR');
   const saat=t=>t?new Date(t).toLocaleString('tr-TR'):'—';
   const aktif=x=>x.durum==='aktif'&&Date.parse(x.bitis)>Date.now();
@@ -228,7 +256,7 @@ sokakHareketleriEkrani=async function(){
     }
     h+='</details>';
    }
-   h+=soTedbirHTML(x,tdMap[Number(x.id)],esc,num);
+   h+=soTedbirHTML(x,tdMap[Number(x.id)],esc,num)+soSertHTML(sdMap[Number(x.id)],esc,num);
    h+='<details><summary>🎙️ Açıklamalar ve kamuoyu ('+(x.aciklamalar||[]).length+')</summary>';
    h+='<form data-so-fn="sokak_basina_aciklama" data-so-id="'+Number(x.id)+'"><label>Açıklama sıfatı</label><select name="p_taraf"><option value="basin">Basın / oyuncu yorumu</option><option value="muhalefet">Eylem katılımcısı veya örgütleyen parti</option><option value="hukuk">Ruhsatlı avukat</option>'+(d.mudahale_yetki?'<option value="hukumet">Hükümet</option>':'')+'</select><textarea name="p_metin" minlength="30" maxlength="600" placeholder="Halka açık açıklama metni" required></textarea><button class="btn">Basın açıklamasını yayımla</button></form>';
    h+=(x.aciklamalar||[]).map(y=>'<blockquote><b>'+esc(y.ad)+' · '+esc(y.taraf)+'</b><br>'+esc(y.metin)+'<br><small>'+esc(saat(y.zaman))+'</small></blockquote>').join('');
@@ -252,6 +280,7 @@ sokakHareketleriEkrani=async function(){
    const args=Object.fromEntries(new FormData(form).entries());
    const fn=form.dataset.soFn,id=Number(form.dataset.soId);
    if(['sokak_polis_gonder','sokak_basina_aciklama','sokak_tedbir_ac','sokak_tedbir_hamle'].includes(fn)) args.p_eylem=id;
+   if(fn==='sokak_sert_islem') args={p_eylem:id,p_islem:args.p_islem,p_veri:{tur:args.tur,gerekce:args.gerekce,metin:args.metin}};
    if(['sokak_polis_geri_cek'].includes(fn))args.p_polis=id;
    if(['sokak_avukat_cagir','sokak_gozalti_itiraz','sokak_gozalti_mahkeme'].includes(fn)) args.p_gozalti=id;
    if(fn==='sokak_olay_baslat'){args.p_il=Number(args.p_il);args.p_olay=Number(args.p_olay);}
@@ -261,6 +290,7 @@ sokakHareketleriEkrani=async function(){
   mount.querySelectorAll('[data-so-law]').forEach(btn=>btn.addEventListener('click',()=>rpc(btn,'sokak_avukat_cevap',{p_gozalti:Number(btn.dataset.soLaw),p_kabul:btn.dataset.soAccept==='true'})));
   mount.querySelectorAll('[data-so-pay]').forEach(btn=>btn.addEventListener('click',()=>rpc(btn,'sokak_gozalti_tazminat_tahsil',{p_gozalti:Number(btn.dataset.soPay)})));
   mount.querySelectorAll('[data-so-hamle]').forEach(btn=>btn.addEventListener('click',()=>rpc(btn,'sokak_tedbir_hamle',{p_eylem:Number(btn.dataset.soHamle),p_tur:btn.dataset.soTur,p_metin:btn.dataset.soTur==='yetersiz'?btn.dataset.soParent:null})));
+  mount.querySelectorAll('[data-so-sert]').forEach(btn=>btn.addEventListener('click',()=>rpc(btn,'sokak_sert_islem',{p_eylem:Number(btn.dataset.soId),p_islem:btn.dataset.soSert,p_veri:{}})));
  }catch(err){
   mount.innerHTML='<div class="kart">Yeni halk hareketleri paneli yüklenemedi: '+e(hataCevir(err.message||String(err)))+'</div>';
  }
