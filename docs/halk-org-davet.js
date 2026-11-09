@@ -1219,6 +1219,7 @@ function merkezHTML(r,td,sd,ben){
   if(d.not) x+='<p class="em-oneri">'+esc(d.not)+'</p>';
  }
  x+='<div class="em-ticker">Eylemin hazineye maliyeti <b>'+tl(h.toplam_tl)+'</b><small>Saatlik '+tl(h.saatlik_tl)+'</small></div>';
+ if(arguments[5]) x+='<div class="em-ticker">Eyleme aktarılan kaynak <b>'+tl(arguments[5].toplam)+'</b>'+(arguments[5].sinyal?'<small>Eyleme büyük kaynak aktarılıyor</small>':'')+'</div>';
  x+='<p class="em-oneri">'+esc(oneri(r))+'</p></header>';
  if(tv&&tv.durum==='geri_sayim'){
   const g=Number(tv.hukumet||0), s=Number(tv.savun||0)+(ig.nobet||0); const top=Math.max(1,g+s); const yuz=Math.round(100*g/top);
@@ -1228,6 +1229,7 @@ function merkezHTML(r,td,sd,ben){
  const eng=(arguments[4]&&arguments[4].engel)||{};
  x+='<div data-em-panel="eylem">'+ayrilSatiri(ben)+'<div class="em-grid">'+HAMLE.map(k=>'<button type="button" class="em-kart" data-em-kart="'+k[0]+'"'+(eng[k[0]]?' disabled':'')+'><b>'+k[1]+' '+k[2]+'</b><small>'+k[3]+'</small><small>'+(eng[k[0]]?esc(eng[k[0]]):'Bedel '+k[4])+'</small></button>').join('')+'</div>';
  x+='<div class="em-grid"><button type="button" class="em-kart" data-em-islem="mesale">🌙 Gece meşalesi · 00.00</button><button type="button" class="em-kart" data-em-islem="aclik">Açlık grevine yazıl</button><button type="button" class="em-kart" data-em-islem="nobet">Bina nöbeti · 1 saat</button><button type="button" class="em-kart" data-em-islem="ziyaret">Dayanışma ziyareti</button><button type="button" class="em-kart" data-em-islem="savun">Binayı savun</button><button type="button" class="em-kart" data-em-islem="katil">Eyleme katıl</button></div>';
+ x+='<form class="em-form" data-em-form="kaynak"><label>Eyleme kaynak aktar</label><select name="kalem"><option value="ses">Ses sistemi</option><option value="ulasim">Ulaşım</option><option value="yemek">Yemek</option><option value="pankart">Pankart</option></select><select name="kaynak"><option value="parti">Örgütleyen parti</option><option value="dernek">Örgütleyen dernek</option><option value="oyuncu">Kendi cüzdanım</option></select><input name="kaynak_id" type="number" placeholder="Parti veya dernek no"><input name="tutar" type="number" min="10000" step="1" required placeholder="TL"><button class="hh-action hh-primary" type="submit">Kaynağı aktar</button></form>';
  x+='<form class="em-form" data-em-form="hamle"><input type="hidden" name="tur" value="grev"><label>Seçilen hamle</label><p class="em-secim">Genel Grev</p><label>Bina, yalnız işgalde</label><select name="bina"><option value="belediye">Belediye</option><option value="valilik">Valilik</option></select><label>Bakanlık, yalnız oturmada</label><input name="bakanlik" value="icisleri" maxlength="40"><label>Gerekçe</label><textarea name="gerekce" minlength="20" maxlength="300" required>Bu hamle ortak kararımızdır.</textarea><button class="hh-action hh-primary" type="submit">Hamleyi başlat</button></form>';
  x+='<form class="em-form" data-em-form="sizma"><label>İçeriden sızan not</label><textarea name="metin" maxlength="400" required placeholder="Hükümet planı"></textarea><button class="hh-action" type="submit">Notu eylem sohbetine bırak</button></form>';
  x+='</div>';
@@ -1235,7 +1237,7 @@ function merkezHTML(r,td,sd,ben){
  const SAD={safak:'Şafak Operasyonu',elebasi:'Elebaşı Gözaltısı',mali:'Mali Kuşatma',kapatma:'Kapatma Davası Tehdidi',ohal:'OHAL',propaganda:'Kara Propaganda',bol:'Böl ve Yönet',kusatma:'Kuşatma Çemberi',ihale:'İhale ve Lisans Kılıcı',sanal:'Toplu Sanal Gözaltı'};
  const yumusak=(td&&td.acabilir)||Object.keys(YAD);
  const sert=(sd&&sd.bedeller)?Object.keys(sd.bedeller):Object.keys(SAD);
- x+='<div data-em-panel="hukumet" hidden><p>Yumuşak ve sert araçlar İçişleri bütçesinden düşer. Kasada para yoksa işlem açılmaz.</p>';
+ x+='<div data-em-panel="hukumet" hidden><p>Yumuşak ve sert araçlar İçişleri bütçesinden düşer. Kasada para yoksa işlem açılmaz.</p>'+(arguments[5]&&arguments[5].sinyal?'<p class="em-oneri">Eyleme büyük kaynak aktarılıyor. Mali kuşatma ve ihale kılıcı bu izi daha sert kullanır.</p>':'');
  x+='<form class="em-form" data-em-form="tedbir"><label>Yumuşak araç</label><select name="tur">'+yumusak.map(k=>'<option value="'+esc(k)+'">'+esc(YAD[k]||k)+'</option>').join('')+'</select><textarea name="gerekce" minlength="20" maxlength="500" required>Bu aracı kamu bütçesinden uyguluyoruz.</textarea><button class="hh-action" type="submit">Yumuşak aracı uygula</button></form>';
  x+='<form class="em-form" data-em-form="sert"><label>Sert önlem</label><select name="tur">'+sert.map(k=>'<option value="'+esc(k)+'">'+esc(SAD[k]||k)+'</option>').join('')+'</select><textarea name="gerekce" minlength="20" maxlength="500" required>Bu sert önlemin gerekçesi kamuoyuna açıktır.</textarea><button class="hh-action" type="submit">Sert önlemi uygula</button></form></div>';
  x+='<div data-em-panel="isgal" hidden><p>'+(ig?esc(ig.bina)+' · '+esc(ig.durum)+' · güç '+esc(ig.guc)+' · nöbet '+Number(ig.nobet||0)+' · kuşatma '+Number(ig.kusatma||0):'Henüz işgal yok.')+'</p>';
@@ -1249,9 +1251,11 @@ const onceki=sokakHareketleriEkrani;
 sokakHareketleriEkrani=async function(){
  await onceki.apply(this,arguments);
  const root=document.getElementById('hhCommand'); if(!root)return;
- let m=null,td=null,sd=null,denge=null; const listeler={};
+ let m=null,td=null,sd=null,denge=null,kaynak=null; const listeler={}; const kaynakHarita={};
  try{m=await API.rpc('sokak_eylem_merkezi');}catch(err){console.warn('Eylem merkezi',err);}
  try{denge=await API.rpc('sokak_denge_panel');}catch(err){console.warn('Denge',err);}
+ try{kaynak=await API.rpc('sokak_kaynak_ozet');}catch(err){}
+ ((kaynak&&kaynak.eylemler)||[]).forEach(r=>{kaynakHarita[Number(r.id)]=r;});
  try{td=await API.rpc('sokak_tedbir_panel');}catch(err){}
  try{sd=await API.rpc('sokak_sert_panel');}catch(err){}
  await Promise.all(((m&&m.eylemler)||[]).map(async r=>{try{listeler[Number(r.id)]=await API.rpc('sokak_katilim_liste',{p_eylem:Number(r.id)});}catch(err){}}));
@@ -1273,7 +1277,7 @@ sokakHareketleriEkrani=async function(){
  root.querySelectorAll('article.hh-event').forEach(art=>{
   const id=Number(art.getAttribute('data-hh-event')); const row=harita[id]; if(!row)return;
   art.querySelector(':scope > .em')?.remove();
-  art.insertAdjacentHTML('afterbegin',merkezHTML(row,tdHarita[id],sdHarita[id],(listeler[id]&&listeler[id].ben)||[],dengeHarita[id]));
+  art.insertAdjacentHTML('afterbegin',merkezHTML(row,tdHarita[id],sdHarita[id],(listeler[id]&&listeler[id].ben)||[],dengeHarita[id],kaynakHarita[id]));
   if(!art.querySelector(':scope > .em-arsiv')){
    const arsiv=document.createElement('details'); arsiv.className='em-arsiv';
    arsiv.innerHTML='<summary>Eski düğme listesi</summary>';
@@ -1312,6 +1316,11 @@ sokakHareketleriEkrani=async function(){
    if(!window.confirm('Bu katılımdan ayrılmak istediğine emin misin? Ödenen bedel geri gelmez.')) return;
    kos(b,'sokak_katilim_ayril',{p_eylem:id,p_tur:b.getAttribute('data-em-ayril'),p_alt:b.getAttribute('data-em-alt')||null});
   }));
+  kutu.querySelector('[data-em-form=kaynak]')?.addEventListener('submit',ev=>{
+   ev.preventDefault(); const f=new FormData(ev.currentTarget);
+   if(!window.confirm('Bu para eyleme aktarılacak ve geri gelmez. Emin misin?')) return;
+   kos(ev.currentTarget.querySelector('button'),'sokak_kaynak_aktar',{p_eylem:id,p_kaynak:String(f.get('kaynak')),p_kaynak_id:f.get('kaynak_id')?Number(f.get('kaynak_id')):null,p_kalem:String(f.get('kalem')),p_tutar:Number(f.get('tutar'))});
+  });
   kutu.querySelector('[data-em-form=hamle]')?.addEventListener('submit',ev=>{
    ev.preventDefault(); const f=new FormData(ev.currentTarget); const tur=String(f.get('tur'));
    const suruyor=(harita[id].hamleler||[]).some(h=>h.tur===tur&&h.durum==='aktif');
