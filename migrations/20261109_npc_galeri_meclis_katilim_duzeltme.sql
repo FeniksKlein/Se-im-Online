@@ -115,7 +115,7 @@ begin
   end loop;
  end loop;
  return jsonb_build_object('satilan',v_n,'ciro',v_ciro,'zaman',t);
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION oyun.kanun_tick(t timestamp with time zone)
@@ -213,7 +213,7 @@ begin
     update oyun.ayarlar set baraj = (select bekleyen_baraj from oyun.ulke where id = 1) where id = 1;
     update oyun.ulke set bekleyen_baraj = null where id = 1;
   end if;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION public.kanun_detay(p_id bigint)
@@ -257,5 +257,5 @@ begin
                               'aykiri', o.asama <> 'imza' and exists (select 1 from oyun.grup_kararlari g where g.kanun_id = k.id and g.parti_id = o.parti_id
                                                                          and g.karar in ('kabul','ret') and g.karar <> o.oy)) order by o.parti_id, o.zaman) end) j
        from oyun.kanun_oylari o where o.kanun_id = k.id group by o.asama) a));
-end $function$
+end $function$;
 
