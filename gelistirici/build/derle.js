@@ -98,6 +98,8 @@ for(let i=_mahkemeTutarEski.length-1;i>=0;i--){
 }
 // Mahkeme serbest tutar modulu diger dava override'larindan SONRA yuklenir.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','adliye_kurum_ceza.js'),'utf8')+'</script></body>');
+// Tasarim v4 ("Gece yayini"): butun gorunum katmanlarindan SONRA yuklenir; yalniz CSS.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','tasarim_v4.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
