@@ -22,6 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Karikatur dergisi JavaScript syntax
+        run: node --check gelistirici/www/karikatur_dergisi.js
       - name: Derle
         run: |
           node gelistirici/build/derle.js
