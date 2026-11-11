@@ -769,3 +769,9 @@ Twitter flood metni sohbette hazırlandı (12 tweet). Oyun ~1 ay içinde, ilgi y
 ## 2026-11-11 · 2026.11.11-8 Kredi ödeme gücü kalibrasyonu (canlıya uygulandı, modül 192)
 - Ercan "mantıklı olan neyse öyle yap" dedi. `sql/192_kredi_kalibrasyon.sql` (migration `kredi_kalibrasyon_192_20261111`): (1) limit artık faiz dahil geri ödemeye göre — tampon = max(1,20; 1 + o vadenin gerçek faizi); kişi 1 yılda ~1,65–1,70, şirket 1 yılda ~1,45. Kısa vadeler değişmedi. (2) kişisel teminatta şirket payı piyasa değeri yerine defter değeri (ciro şişirerek limit büyütülemesin). (3) `kredi_limiti(u)` = vadeler içindeki en yüksek limit (uzun vadede faiz arttığı için 1 yıl her zaman en yüksek değil). İstemci: kredi penceresi metni.
 - Canlı örnek (30 g / 90 g / 1 yıl): TuranRiver 759 bin / 1,26 mn / 2,15 mn; halilmutlu 10,4 / 14,4 / 17,2 mn; uygarzk 21,8 / 25,0 / 26,4 mn. Uygulama anında yeni sistemle çekilmiş kişisel ya da şirket kredisi yoktu.
+
+## 2026-11-11 · Kredi ödeme gücü kalibrasyonu (modül 192, yalnız sunucu; sürüm 2026.11.11-7 aynı)
+- Ercan: "Mantıklı olan neyse o şekil yap." `sql/192_kredi_kalibrasyon.sql` (migration `kredi_kalibrasyon_192_20261111`, canlıda):
+  - Limit faiz dahil geri ödemeye göre: tampon = max(1,20 ; 1 + vadenin gerçek faizi). 191'de sabit 1,20 idi; 1 yıllık kişisel kredide faiz ~%65 olduğundan uzun vadede geri ödeme ödeme gücünü aşıyordu. Kısa vadeler değişmedi (ör. TuranRiver 30 gün 760 bin aynı, 1 yıl 3,75 → 2,15 milyon; halilmutlu 1 yıl 27 → 17,2 milyon).
+  - Kişisel teminatta şirket payı = min(defter, piyasa değeri) × pay (ciro şişirerek limit büyütülemesin).
+- Canlıdaki işlev gövdeleri dosyadakiyle aynı, yalnız yorum satırları yok (md5 bu yüzden farklı). Şirket toplamları etkilenmedi.
