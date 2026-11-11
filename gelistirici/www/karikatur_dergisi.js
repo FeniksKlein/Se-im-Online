@@ -50,12 +50,12 @@ function drStil(){
  '.dr-sahne-ad{font-size:12px;letter-spacing:1px;text-align:center;font-weight:900;color:#fff;background:#131b43bf;padding:5px;border-radius:8px;margin-bottom:10px}',
  '.dr-figurlar{display:flex;align-items:flex-end;justify-content:space-evenly;gap:8px;margin:4px 0 0}',
  '.dr-figur{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:10px}',
- '.dr-figur .dr-yuz{font-size:52px;filter:drop-shadow(2px 4px 0 #0005);line-height:1.1}',
+ '.dr-figur .dr-yuz{width:100%;display:flex;justify-content:center;filter:drop-shadow(2px 4px 0 #0005)}.dr-figur .dr-vektor{width:min(100%,126px);height:auto;display:block}',
  '.dr-figur b{display:block;color:#fff;background:#18234fdb;border:1px solid #fff6;border-radius:9px;padding:4px 6px;text-align:center;font-size:12px;min-height:21px;overflow-wrap:anywhere}',
  '.dr-figur .dr-balon{width:100%;box-sizing:border-box}.dr-figur .dr-balon:empty{display:none}',
  '.dr-ortab{margin:0 auto 10px;max-width:75%}.dr-sahne-alt{margin-top:10px;text-align:center;color:#fff;font-weight:900;font-size:12px;letter-spacing:1px}',
  '.dr-sayfagecis{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0}.dr-sayfagecis button{min-height:43px;padding:9px 12px}',
- '@media(max-width:380px){.dr-raflar{grid-template-columns:1fr}.dr-sablonlar{grid-template-columns:1fr 1fr}.dr-figur .dr-yuz{font-size:42px}.dr-balon{font-size:14px}}'
+ '@media(max-width:380px){.dr-raflar{grid-template-columns:1fr}.dr-sablonlar{grid-template-columns:1fr 1fr}.dr-figur .dr-vektor{width:min(100%,98px)}.dr-balon{font-size:14px}}'
  ];
  var el=document.createElement('style');el.id='drStil';el.textContent=css.join('');document.head.appendChild(el);
 }
@@ -71,12 +71,31 @@ window.basinYayinRafEkrani=function(){
  '<div class="dr-kart"><h3>🗞️ Türkiye Gündem</h3><p>Oyunun ücretsiz otomatik haberlerini oku.</p><button class="btn ikinci" onclick="otomatikGazeteEkrani()">Türkiye Gündem aç</button></div>',{geri:true});
 };
 function drTemaIco(t){return {meclis:'🏛️',tv:'📺',eylem:'📢',adliye:'⚖️',kapak:'🪑'}[t]||'🖍️';}
+function drVektorKarakter(tur,no){
+ var ceket=['#1b326c','#53295c','#283e53'][no%3],sac=['#29232d','#59545e','#51372f'][no%3];
+ var ten=['#ffd3a0','#ffbd86','#efb983'][no%3],kizgin=no===0,hakim=tur==='adliye'&&no===2;
+ var mimik=kizgin?'<path d="M42 66l22 -10M82 56l24 10" stroke="#332331" stroke-width="6" stroke-linecap="round"/>':'<path d="M42 58l23 3M84 62l23 -4" stroke="#332331" stroke-width="5" stroke-linecap="round"/>';
+ var agiz=kizgin?'<path d="M60 111q20 -12 39 1q-12 22 -30 15z" fill="#692536" stroke="#37222d" stroke-width="3"/>':'<path d="M61 113Q81 126 101 109" fill="none" stroke="#6b3736" stroke-width="5" stroke-linecap="round"/>';
+ var aksesuar=tur==='eylem'&&no===0?'<path d="M15 119l34 -21v30l-34 13z" fill="#ed3845" stroke="#29202b" stroke-width="5"/>':tur==='tv'?'<path d="M124 167V127" stroke="#2c2736" stroke-width="5"/><circle cx="124" cy="125" r="8" fill="#c7d6ec" stroke="#292333" stroke-width="3"/>':hakim?'<path d="M108 146l24 -27" stroke="#532b21" stroke-width="8" stroke-linecap="round"/>':'';
+ return '<svg class="dr-vektor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 155 175" role="img" aria-label="Çizgi karakter">'+
+ '<ellipse cx="79" cy="165" rx="68" ry="10" fill="#110d22" opacity=".25"/>'+
+ '<path d="M7 173Q8 138 44 125l27 12 26 -12q42 0 52 48z" fill="'+(hakim?'#202330':ceket)+'" stroke="#2d2232" stroke-width="6"/>'+
+ '<path d="M58 126l19 22 20 -22 12 47H47z" fill="'+(hakim?'#30333c':'#f7e7d8')+'" stroke="#30222f" stroke-width="3"/>'+
+ '<path d="M74 139l10 -1 7 26 -10 9 -10 -10z" fill="#d43249" stroke="#352432" stroke-width="2"/>'+
+ '<path d="M39 56q-8 24 0 46q10 26 42 28q34 0 44 -32q10 -25 -4 -48q-22 -31 -45 -28q-28 1 -37 34z" fill="'+ten+'" stroke="#342632" stroke-width="5"/>'+
+ '<path d="M37 64Q19 36 41 23q13 -16 34 -9q19 -10 38 4q24 12 10 46q-12 -16 -22 -28Q80 50 61 36Q46 51 37 64Z" fill="'+sac+'" stroke="#2f2632" stroke-width="5"/>'+
+ '<ellipse cx="58" cy="79" rx="16" ry="14" fill="#fff" stroke="#332432" stroke-width="3"/><ellipse cx="97" cy="79" rx="16" ry="14" fill="#fff" stroke="#332432" stroke-width="3"/>'+
+ '<circle cx="'+(kizgin?'65':'58')+'" cy="78" r="5" fill="#292330"/><circle cx="'+(kizgin?'104':'96')+'" cy="78" r="5" fill="#292330"/>'+
+ mimik+'<ellipse cx="79" cy="101" rx="17" ry="13" fill="#eaa071" stroke="#4d2c36" stroke-width="3"/>'+agiz+
+ (no===1?'<path d="M120 105q12 12 -2 20q-12 -8 2 -20z" fill="#80d6f6" stroke="#276d87" stroke-width="2"/>':'')+
+ aksesuar+'</svg>';
+}
 function drPanelHTML(p){
  p=p||{};var t=DR_SABLON[p.sablon]||DR_SABLON.meclis;
  var k1=drEsc(p.karakter1||t.karakter1||'Kişi 1'),k2=drEsc(p.karakter2||t.karakter2||'Kişi 2'),k3=drEsc(p.karakter3||t.karakter3||'Moderatör');
- var f1='<div class="dr-figur"><div class="dr-balon">'+drEsc(p.sol||'')+'</div><div class="dr-yuz">'+(p.sablon==='eylem'?'😠':p.sablon==='kapak'?'😰':'😤')+'</div><b>'+k1+'</b></div>';
- var f2='<div class="dr-figur"><div class="dr-balon">'+drEsc(p.sag||'')+'</div><div class="dr-yuz">'+(p.sablon==='adliye'?'😨':'😅')+'</div><b>'+k2+'</b></div>';
- var mid=(p.sablon==='tv'||p.sablon==='adliye')?'<div class="dr-figur"><div class="dr-balon">'+drEsc(p.orta||'')+'</div><div class="dr-yuz">👩‍⚖️</div><b>'+k3+'</b></div>':'';
+ var f1='<div class="dr-figur"><div class="dr-balon">'+drEsc(p.sol||'')+'</div><div class="dr-yuz">'+drVektorKarakter(p.sablon,0)+'</div><b>'+k1+'</b></div>';
+ var f2='<div class="dr-figur"><div class="dr-balon">'+drEsc(p.sag||'')+'</div><div class="dr-yuz">'+drVektorKarakter(p.sablon,1)+'</div><b>'+k2+'</b></div>';
+ var mid=(p.sablon==='tv'||p.sablon==='adliye')?'<div class="dr-figur"><div class="dr-balon">'+drEsc(p.orta||'')+'</div><div class="dr-yuz">'+drVektorKarakter(p.sablon,2)+'</div><b>'+k3+'</b></div>':'';
  return '<article class="dr-cizim '+drEsc(t.zemin)+'"><div class="dr-baslik">'+drEsc(p.baslik||t.ad)+'</div><div class="dr-sahne-ad">'+drEsc(t.sahne)+'</div>'+
  '<div class="dr-figurlar">'+f1+(p.sablon==='kapak'?'':mid+f2)+'</div><div class="dr-sahne-alt">SEÇİM ONLINE • SİYASİ MİZAH</div></article>';
 }
