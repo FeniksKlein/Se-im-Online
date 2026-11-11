@@ -4209,7 +4209,7 @@ function bankaCiz(b){
     secenek: { ad: "Saatlik vade", liste: [[1, `1 saat · getiri ${yuzde(o.vadeli1s)}`], [3, `3 saat · getiri ${yuzde(o.vadeli3s)}`], [6, `6 saat · getiri ${yuzde(o.vadeli6s)}`], [12, `12 saat · getiri ${yuzde(o.vadeli12s)}`], [24, `24 saat · getiri ${yuzde(o.vadeli24s)}`]] },
     onizle: (m, g) => { const r = ({1:o.vadeli1s,3:o.vadeli3s,6:o.vadeli6s,12:o.vadeli12s,24:o.vadeli24s})[g] || 0, f = Math.round(m * r / 100); return `${g} saat sonunda <b>${tlYaz(m + f)}</b> alırsın (<b class="iyi">+${tlYaz(f)}</b> faiz).`; },
     buton: "Vadeli hesabı aç", gonder: (m, g) => API.rpc("vadeli_ac", { p_miktar: m, p_gun: g }), basari: "Saatlik vadeli hesabın açıldı." }));
-  bagla("kCek", () => tutarModal({ baslik: "Kredi çek", aciklama: `En uzun vadede limitin ${tlYaz(b.kredi_limit)}, faizin aylık ${yuzde(b.kredi_oran)}. Para hemen cüzdanına geçer; yarından itibaren her gece taksit otomatik ödenir.`,
+  bagla("kCek", () => tutarModal({ baslik: "Kredi çek", aciklama: `Limitin en çok ${tlYaz(b.kredi_limit)} (vadeye göre değişir), faizin aylık ${yuzde(b.kredi_oran)}. Para hemen cüzdanına geçer; yarından itibaren her gece taksit otomatik ödenir.`,
     deger: Math.min(b.kredi_limit, 10000), secenek: { ad: "Geri ödeme vadesi", liste: [[7, "1 hafta (7 gün)"], [14, "2 hafta (14 gün)"], [21, "3 hafta (21 gün)"], [28, "4 hafta (28 gün)"], [60, "2 ay (60 gün)"], [90, "3 ay (90 gün)"], [180, "6 ay (180 gün)"], [365, "1 yıl (365 gün)"]] },
     onizle: (m, g) => { const top = Math.round(m * (1 + b.kredi_oran / 100 * g / 30 + ([7,14,21,28].includes(g) ? 0.0025 * (g/7-1) : 0))), tak = Math.ceil(top / g);
       const lim=(b.kredi_butce&&b.kredi_butce["vade"+g]) ? b.kredi_butce["vade"+g].azami_kredi:b.kredi_limit;

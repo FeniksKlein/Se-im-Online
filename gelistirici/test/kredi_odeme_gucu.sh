@@ -8,6 +8,7 @@ create table if not exists oyun.eko_arsalar(id bigint, il_id smallint, kademe sm
 create table if not exists oyun.eko_yapilar(id bigint, arsa_id bigint, sirket_id bigint, il_id smallint, ad text, daire_sayisi integer, dukkan_sayisi integer, maliyet numeric, baslangic timestamptz, bitis timestamptz);
 create table if not exists oyun.eko_isletmeler(sirket_id bigint, tur text, il_id smallint, urun text);
 \i sql/191_kredi_odeme_gucu.sql
+\i sql/192_kredi_kalibrasyon.sql
 select set_config('t.a', (select id::text from oyun.profiller order by kad limit 1), true);
 select set_config('request.jwt.claim.sub', current_setting('t.a'), true);
 -- yerel test veritabanında banka_json yok: banka() yerine bütçe doğrudan, kredi_cek dönüşü için saplama
