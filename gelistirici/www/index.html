@@ -1086,8 +1086,8 @@ async function gundemEkrani(){
     ${typeof gundemEkUst === "function" ? gundemEkUst(EK) : ""}
     ${typeof krizGundemHtml === "function" ? krizGundemHtml(krizBilgi) : ""}
     ${sahneHtml(d.takvim)}
-    <div class="kart vit-gazete"><h2>📰 Gazeteler</h2>
-      <div class="vit-dugme"><button class="btn altin" onclick="ekranAc(basinEkrani)">Oyuncu gazeteleri</button><button class="btn ikinci" onclick="otomatikGazeteEkrani()">Türkiye Gündem</button></div>
+    <div class="kart vit-gazete"><h2>📰 Gazeteler ve Dergiler</h2>
+      <div class="vit-dugme"><button class="btn altin" onclick="ekranAc(basinYayinRafEkrani)">Gazeteler ve Dergiler</button><button class="btn ikinci" onclick="otomatikGazeteEkrani()">Türkiye Gündem</button></div>
       <p class="kucuk">Haberler, köşe yazıları ve canlı siyasi gelişmeler</p></div>
     <div class="bolum-bas"><h2>Bugün</h2><span class="kucuk">${is.length ? is.length + " iş" : ""}</span></div>
     <div class="kart">${is.length ? is.map(yapilacakSatir).join("") : `<div class="bos" style="padding:8px 0">Bugün acil bir işin yok. Sohbete uğra ya da gazeteleri oku.</div>`}</div>
