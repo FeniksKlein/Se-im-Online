@@ -228,10 +228,10 @@ sokakHareketleriEkrani=async function(){
    '<label>Eylemin muhatabı / taleplerin yöneltildiği makam</label><select name="muhatap" required>'+
    ['Cumhurbaşkanlığı','Hükümet','İçişleri Bakanlığı','İlgili Bakanlık','TBMM','Belediye','Kamu Kurumu','İşverenler','Kamuoyu'].map(v=>'<option>'+esc(v)+'</option>').join('')+'</select>'+
    '<label>Hangi karar veya olay eyleme sebep oldu?</label><textarea name="olay" minlength="12" maxlength="200" required placeholder="Somut karar, zam, atama, ekonomik gelişme veya yaşanan olayı açıkla."></textarea>'+
-   '<label>Hükümetten / muhataptan somut talepler</label><textarea name="talepler" minlength="20" maxlength="500" required placeholder="Örn. Zam kararının geri alınması, yeni bir çözüm takvimi açıklanması, kamuoyuna hesap verilmesi."></textarea>'+
+   '<label>Hükümetten / muhataptan somut talepler</label><textarea name="talepler" minlength="20" maxlength="1500" required placeholder="Örn. Zam kararının geri alınması, yeni bir çözüm takvimi açıklanması, kamuoyuna hesap verilmesi."></textarea>'+
    '<label>Oyun içi talep ve etkisi</label><select name="tur"><option value="genel">Genel siyasi / toplumsal talep</option><option value="hizmet">İl hizmet memnuniyeti +5</option><option value="issizlik">İşsizlik −0,5</option><option value="vergi">Vergi −1</option></select>'+
    '<label>Eylem sloganı (isteğe bağlı)</label><input name="slogan" maxlength="90" placeholder="Örn. Geçim İçin, Adalet İçin!">'+
-   '<label>Halka açıklanacak eylem bildirisi</label><textarea name="bildiri" minlength="60" maxlength="600" required placeholder="Kuruluşumuz adına halkımıza sesleniyoruz... Neden toplandığımızı ve taleplerimizi açıklayın."></textarea>'+
+   '<label>Halka açıklanacak eylem bildirisi</label><textarea name="bildiri" minlength="60" maxlength="2000" required placeholder="Kuruluşumuz adına halkımıza sesleniyoruz... Neden toplandığımızı ve taleplerimizi açıklayın."></textarea>'+
    '<small id="hhBildiriSayac">0 / 600 karakter · Bildiri kamuoyuna yayımlanır.</small>'+
    '<div class="kart hhBildirOnizleme" aria-live="polite"><b>📰 Kamuoyuna duyuru önizlemesi</b><div id="hhBildiriOnizleme"><p>Başlık, sebep, talepler ve bildiri yazdıkça burada görünecek.</p></div></div>'+
    '<button type="submit" class="btn altin">Kuruluş kasasından '+trNum(d.ayar?.baslatma_bedeli)+' TL öde, eylemi ve bildiriyi yayımla</button></form>'+
@@ -386,7 +386,7 @@ if(window.__hhSar&&typeof sokakHareketleriEkrani==='function')sokakHareketleriEk
      '<label>Hükümetin harcayacağı tutar (TL)</label><input name="tutar" type="number" min="'+min+'" max="'+max+'" step="1000" value="'+min+'" required>'+
      '<p class="hhFinTahmin">Tahmini etkisi hesaplanıyor...</p>'+
      '<label>Müdahalenin kamu güvenliği ve diyalog gerekçesi</label>'+
-     '<textarea name="gerekce" minlength="25" maxlength="500" required placeholder="Somut gerekçenizi ve uygulanacak önlemleri belirtin."></textarea>'+
+     '<textarea name="gerekce" minlength="25" maxlength="1500" required placeholder="Somut gerekçenizi ve uygulanacak önlemleri belirtin."></textarea>'+
      '<button class="btn altin">Kamu bütçesinden harca ve uygula</button></form></details>';
    }
    if((x.mudahaleler||[]).length){
@@ -562,14 +562,14 @@ sokakHareketleriEkrani=async function(){
     ((x.davet_ozeti||[]).length?'<h3>Davet yanıtları</h3>'+x.davet_ozeti.map(y=>'<div class="hh-log">'+esc(y.kurulus)+' · <b>'+esc(y.durum)+'</b></div>').join(''):'')+'</details>'+
     '<details class="hh-detail"><summary>🛑 Eylemi sonlandır</summary><p>Sonlandırma kalıcıdır; geri açılmaz. Fon iadeleri otomatik yapılmaz.</p>'+
     '<form data-hh-fn="sokak_eylem_sonlandir" data-hh-id="'+id+'"><label>Sonlandırma gerekçesi</label>'+
-    '<textarea name="p_gerekce" minlength="15" maxlength="500" required placeholder="Talepler karşılandı, strateji değişikliği, uzlaşma..."></textarea>'+
+    '<textarea name="p_gerekce" minlength="15" maxlength="1500" required placeholder="Talepler karşılandı, strateji değişikliği, uzlaşma..."></textarea>'+
     '<button class="hh-action hh-danger">Eylemi bitir ve duyur</button></form></details>';
   }
   evhtml+='<details class="hh-detail"><summary>🎙️ Basın açıklaması yap</summary>'+
    '<form data-hh-fn="sokak_basina_aciklama" data-hh-id="'+id+'"><label>Açıklama sıfatı</label><select name="p_taraf">'+
    '<option value="basin">Oyuncu / basın</option><option value="muhalefet">Eylem destekçisi</option><option value="hukuk">Avukat</option>'+
    (d.mudahale_yetki?'<option value="hukumet">Hükümet</option>':'')+'</select>'+
-   '<label>Halka açık açıklaman</label><textarea name="p_metin" minlength="30" maxlength="600" required></textarea>'+
+   '<label>Halka açık açıklaman</label><textarea name="p_metin" minlength="30" maxlength="2000" required></textarea>'+
    '<button class="hh-action">Açıklamayı yayımla</button></form></details></article>';
  }
  html+=pan('events',evhtml);
@@ -579,8 +579,8 @@ sokakHareketleriEkrani=async function(){
   opts(d.baslatma_kaynaklari,x=>x.tur+':'+x.id,x=>x.ad)+'</select>'+
   '<label>Eylem yapılacak il</label><select name="p_il" required>'+opts(d.iller||[],x=>x.id,x=>x.ad)+'</select>'+
   '<label>Somut talep</label><select name="p_tur"><option value="genel">Siyasi/toplumsal düzenleme</option><option value="hizmet">Belediye hizmetleri iyileşsin</option><option value="issizlik">İşsizlik azalsın</option><option value="vergi">Vergi indirilsin</option></select>'+
-  '<label>Eylemin gerekçesi</label><textarea name="p_gerekce" minlength="15" maxlength="400" required placeholder="Eylem hangi olaya ya da karara tepki?"></textarea>'+
-  '<label>Halka açık eylem bildirisi</label><textarea name="p_bildiri" minlength="30" maxlength="600" required placeholder="Taleplerimizi açıklıyor, tüm oyuncuları barışçıl eyleme çağırıyoruz..."></textarea>'+
+  '<label>Eylemin gerekçesi</label><textarea name="p_gerekce" minlength="15" maxlength="1500" required placeholder="Eylem hangi olaya ya da karara tepki?"></textarea>'+
+  '<label>Halka açık eylem bildirisi</label><textarea name="p_bildiri" minlength="30" maxlength="2000" required placeholder="Taleplerimizi açıklıyor, tüm oyuncuları barışçıl eyleme çağırıyoruz..."></textarea>'+
   '<p class="hh-muted">Kuruluş kasasından '+tl(d.ayar?.baslatma_bedeli)+' alınır; eylem ve bildiri tek işlemde yayınlanır.</p>'+
   '<button class="hh-action hh-primary">🚩 Eylemi başlat ve bildiriyi yayımla</button></form></div>';
  }else create+='<div class="hh-empty">Eylem başlatmak için açık bir parti veya derneğin lideri olman gerekiyor.</div>';
@@ -611,20 +611,20 @@ sokakHareketleriEkrani=async function(){
   if(g.ben_avukat&&g.avukat_durum==='cagrildi')law+='<div class="hh-actions"><button class="hh-action hh-primary" data-hh-law="'+id+'" data-hh-law-accept="1">Avukatlığı kabul et</button><button class="hh-action" data-hh-law="'+id+'" data-hh-law-accept="0">Reddet</button></div>';
   if(!g.itiraz&&(g.benim||(g.ben_avukat&&g.avukat_durum==='kabul'))&&Date.parse(g.baslangic)>now-86400000){
    law+='<details class="hh-detail"><summary>📝 Gözaltına itiraz et</summary><form data-hh-fn="sokak_gozalti_itiraz" data-hh-id="'+id+'">'+
-   '<label>Savunma ve itiraz gerekçesi</label><textarea name="p_metin" minlength="20" maxlength="600" required></textarea>'+
+   '<label>Savunma ve itiraz gerekçesi</label><textarea name="p_metin" minlength="20" maxlength="2000" required></textarea>'+
    '<button class="hh-action hh-primary">İtiraz et, mahkemeye gönder</button></form></details>';
   }
   if(g.mahkeme_yetki&&isLive&&!g.on_inceleme&&!g.karar){
    law+='<details class="hh-detail"><summary>⚖️ Hâkim ön incelemesi – gözaltı kararı</summary><form data-hh-fn="sokak_gozalti_hakim_incele" data-hh-id="'+id+'">'+
    '<label>Gözaltı inceleme kararı</label><select name="p_karar"><option value="serbest">Derhal serbest bırak</option><option value="devam">Kalan gözaltı süresini onayla</option></select>'+
-   '<label>Gerekçeli hâkim kararı</label><textarea name="p_gerekce" minlength="25" maxlength="700" required></textarea>'+
+   '<label>Gerekçeli hâkim kararı</label><textarea name="p_gerekce" minlength="25" maxlength="2000" required></textarea>'+
    '<p class="hh-muted">Bu karar bir tutuklama hükmü değildir; mevcut bir saatlik sürenin üzerine çıkmaz. İtiraz hakkı korunur.</p>'+
    '<button class="hh-action hh-primary">Gerekçeli kararı kaydet</button></form></details>';
   }
   if(g.mahkeme_yetki&&g.itiraz&&!g.karar){
    law+='<details class="hh-detail"><summary>⚖️ Hâkim kararı ver</summary><form data-hh-fn="sokak_gozalti_mahkeme" data-hh-id="'+id+'">'+
    '<label>Gerekçeli karar türü</label><select name="p_karar"><option value="haksiz">Haksız gözaltı / tazminat</option><option value="uygun">Gözaltı hukuka uygun</option></select>'+
-   '<label>Hâkim gerekçesi</label><textarea name="p_gerekce" minlength="25" maxlength="700" required></textarea>'+
+   '<label>Hâkim gerekçesi</label><textarea name="p_gerekce" minlength="25" maxlength="2000" required></textarea>'+
    '<button class="hh-action hh-primary">Mahkeme kararını açıkla</button></form></details>';
   }
   if(g.benim&&Number(g.tazminat)>Number(g.tazminat_odendi))law+='<button class="hh-action" data-hh-comp="'+id+'">Tazminatı tahsil et ('+tl(Number(g.tazminat)-Number(g.tazminat_odendi))+')</button>';
@@ -643,15 +643,15 @@ sokakHareketleriEkrani=async function(){
  html+=pan('legal',law);
  let state='<div class="hh-box"><h3>Hükümet karşı hamleleri</h3><p>Uzlaşma, kamuoyu açıklaması ve bütçeli müdahaleler kamu kaynaklarına bağlıdır. Polis müdahalesi ve hukuki kararlar ayrı kaydedilir.</p></div>';
  if(d.mudahale_yetki)for(const x of live)state+='<div class="hh-box"><h3>'+esc(x.il)+' · '+esc(x.parti)+'</h3><p>Hükümet uzlaşma fonu: '+tl(x.iktidar_fonu)+'</p>'+
- '<form data-hh-fn="sokak_yanit" data-hh-id="'+Number(x.id)+'"><label>Hükümetin açıklaması ve çözüm önerisi</label><textarea name="p_metin" minlength="20" maxlength="600" required></textarea>'+
+ '<form data-hh-fn="sokak_yanit" data-hh-id="'+Number(x.id)+'"><label>Hükümetin açıklaması ve çözüm önerisi</label><textarea name="p_metin" minlength="20" maxlength="2000" required></textarea>'+
  '<button class="hh-action hh-primary">Hükümet yanıtını yayımla</button></form>'+
  '<details class="hh-detail"><summary>💼 Bütçeyle müdahale</summary><p class="hh-muted">Bütçe tek başına etki etmez; tam etki için sahada 3 gerçek görevli gerekir.</p><form data-hh-fn="sokak_butce_mudahale" data-hh-id="'+Number(x.id)+'">'+
  '<label>Harcama (TL)</label><input type="number" name="p_tutar" min="'+Number(d.ayar?.baslatma_bedeli||50000)+'" max="2000000" step="1000" required>'+
- '<label>Somut gerekçe</label><textarea name="p_gerekce" minlength="25" maxlength="500" required></textarea>'+
+ '<label>Somut gerekçe</label><textarea name="p_gerekce" minlength="25" maxlength="1500" required></textarea>'+
  '<button class="hh-action">Bütçeyi kullan</button></form></details>'+
  '<details class="hh-detail"><summary>🚓 Polis sevki ve gözaltı</summary><form data-hh-fn="sokak_polis_gonder" data-hh-id="'+Number(x.id)+'">'+
  '<p class="hh-muted">Polis sahadaki gerçek görevlilerle çalışır: emri verdiğinde sen de sahaya çıkmış sayılırsın. Her görevli en çok 1 kişiyi gözaltına alır; etki görevli sayısıyla büyür, bütçeyle değil.</p><label>Sevk seviyesi</label><select name="p_seviye"><option value="dusuk">Düşük – gözaltı yok</option><option value="orta">Orta – en çok 2 kişi (sahadaki görevli kadar)</option><option value="yuksek">Yüksek – en çok 4 kişi (sahadaki görevli kadar)</option></select>'+
- '<label>Kamu güvenliği gerekçesi</label><textarea name="p_gerekce" minlength="25" maxlength="500" required></textarea>'+
+ '<label>Kamu güvenliği gerekçesi</label><textarea name="p_gerekce" minlength="25" maxlength="1500" required></textarea>'+
  '<button class="hh-action">Polis sevk et</button></form></details></div>';
  if(!d.mudahale_yetki)state+='<div class="hh-empty">Bu alanda işlem yapma yetkisi Cumhurbaşkanı ve İçişleri Bakanındadır. Eylemlerin durumunu Eylemler sekmesinden herkes görebilir.</div>';
  html+=pan('state',state);
@@ -847,7 +847,7 @@ function tedbirHTML(row){
   h+='<form data-saha-form="tedbir" data-id="'+id+'"><label>Araç ve gider</label><select name="p_tur">'+ac.map(k=>{
    const bed=k==='sosyal_kart'?'4.000 TL × en çok 15 kişi':num(row.bedeller&&row.bedeller[k])+' TL';
    return '<option value="'+k+'">'+esc(TD_AD[k][0])+' · '+esc(bed)+'</option>';
-  }).join('')+'</select><p class="hh-muted">'+ac.map(k=>'<b>'+esc(TD_AD[k][0])+':</b> '+esc(TD_AD[k][1])).join('<br>')+'</p><label>Gerekçe (20–500)</label><textarea name="p_gerekce" minlength="20" maxlength="500" required></textarea><button class="hh-action hh-primary">Kamu bütçesinden uygula</button></form>';
+  }).join('')+'</select><p class="hh-muted">'+ac.map(k=>'<b>'+esc(TD_AD[k][0])+':</b> '+esc(TD_AD[k][1])).join('<br>')+'</p><label>Gerekçe (20–500)</label><textarea name="p_gerekce" minlength="20" maxlength="1500" required></textarea><button class="hh-action hh-primary">Kamu bütçesinden uygula</button></form>';
  }
  for(const t of row.tedbirler||[]){
   h+='<div class="hh-log"><b>'+esc(t.ad||t.tur)+'</b> · '+esc(t.durum)+' · '+num(t.bedel)+' TL<p>'+esc(t.gerekce)+'</p>';
@@ -880,7 +880,7 @@ function sertHTML(row){
  const id=Number(row.id), keys=Object.keys(SERT_AD);
  let h='<details class="hh-detail"><summary>⛔ On sert önlem</summary><p class="hh-muted">Çabuk sonuç verir, sonra oy kaybettirir. Cumhurbaşkanı, İçişleri Bakanı veya ilin valisi kullanır. 12 saatte en çok 2, aralarında 3 saat.</p>';
  if(row.yetkili){
-  h+='<form data-saha-form="sert" data-id="'+id+'"><label>Önlem ve gider</label><select name="tur">'+keys.map(k=>'<option value="'+k+'">'+esc(SERT_AD[k][0])+' · '+num(row.bedeller&&row.bedeller[k])+' TL</option>').join('')+'</select><p class="hh-muted">'+keys.map(k=>'<b>'+esc(SERT_AD[k][0])+':</b> '+esc(SERT_AD[k][1])).join('<br>')+'</p><p class="hh-muted">İstanbul saati '+Number(row.saat)+'. Şafak yalnız 04–06 arasında.</p><label>Gerekçe (20–500)</label><textarea name="gerekce" minlength="20" maxlength="500" required></textarea><button class="hh-action hh-primary">İçişleri bütçesinden uygula</button></form>';
+  h+='<form data-saha-form="sert" data-id="'+id+'"><label>Önlem ve gider</label><select name="tur">'+keys.map(k=>'<option value="'+k+'">'+esc(SERT_AD[k][0])+' · '+num(row.bedeller&&row.bedeller[k])+' TL</option>').join('')+'</select><p class="hh-muted">'+keys.map(k=>'<b>'+esc(SERT_AD[k][0])+':</b> '+esc(SERT_AD[k][1])).join('<br>')+'</p><p class="hh-muted">İstanbul saati '+Number(row.saat)+'. Şafak yalnız 04–06 arasında.</p><label>Gerekçe (20–500)</label><textarea name="gerekce" minlength="20" maxlength="1500" required></textarea><button class="hh-action hh-primary">İçişleri bütçesinden uygula</button></form>';
  }
  for(const t of row.onlemler||[]) h+='<div class="hh-log"><b>'+esc(t.ad||t.tur)+'</b> · '+esc(t.durum)+' · '+num(t.bedel)+' TL<p>'+esc(t.gerekce)+'</p></div>';
  if(row.ohal&&row.vekil&&row.ohal.durum==='onay'){
@@ -899,7 +899,7 @@ function sertHTML(row){
  }
  if(row.avukat) h+='<button class="hh-action" data-saha-fn="sokak_sert_islem" data-p=\'{"p_eylem":'+id+',"p_islem":"avukat"}\'>Elebaşı süresini yarıya indir</button>';
  if(row.gazeteci&&row.iktidar) h+='<button class="hh-action" data-saha-fn="sokak_sert_islem" data-p=\'{"p_eylem":'+id+',"p_islem":"manset"}\'>Yabancı destek manşetini yaz</button>';
- if((row.gazeteci&&!row.iktidar)||row.avukat) h+='<form data-saha-form="sertcurut" data-id="'+id+'"><label>Propagandayı çürüt</label><textarea name="metin" minlength="12" maxlength="400" required></textarea><button class="hh-action">Kanıtla çürüt</button></form>';
+ if((row.gazeteci&&!row.iktidar)||row.avukat) h+='<form data-saha-form="sertcurut" data-id="'+id+'"><label>Propagandayı çürüt</label><textarea name="metin" minlength="12" maxlength="1500" required></textarea><button class="hh-action">Kanıtla çürüt</button></form>';
  if(!row.katilimci&&!row.yetkili) h+='<button class="hh-action" data-saha-fn="sokak_sert_islem" data-p=\'{"p_eylem":'+id+',"p_islem":"ziyaret"}\'>Dayanışma ziyareti</button>';
  return h+'</details>';
 }
@@ -940,7 +940,7 @@ function sahaHTML(x){
  }else if(x.gorevdeyim){
   h+='<div class="hh-band gorev">🛡️ <b>Sahada görevdesin.</b> Burada durduğun sürece eylemin gücü azalır ve polis müdahalesi sahadaki görevli sayısıyla yapılır.</div>';
   h+='<button class="hh-action hh-ayril" data-saha-fn="sokak_gorevden_ayril" data-p=\'{"p_eylem":'+id+'}\' data-onay="Görevden ayrılmak istiyor musun?">🚪 Görevden ayrıl</button>';
-  if(x.kalkan_hakki)h+='<details class="hh-detail"><summary>🫡 Kalkanı bırak ve meydana katıl</summary><p class="hh-muted">Görevi bırakıp eyleme katılırsın. Herkese duyurulur; İçişleri Bakanı bilgilendirilir.</p><form data-saha-form="kalkan" data-id="'+id+'"><label>Kamuoyuna söyleyeceğin söz (20–400 karakter)</label><textarea name="p_aciklama" minlength="20" maxlength="400" required></textarea><button class="hh-action hh-ayril">Kalkanımı bırakıyorum</button></form></details>';
+  if(x.kalkan_hakki)h+='<details class="hh-detail"><summary>🫡 Kalkanı bırak ve meydana katıl</summary><p class="hh-muted">Görevi bırakıp eyleme katılırsın. Herkese duyurulur; İçişleri Bakanı bilgilendirilir.</p><form data-saha-form="kalkan" data-id="'+id+'"><label>Kamuoyuna söyleyeceğin söz (20–1500 karakter)</label><textarea name="p_aciklama" minlength="20" maxlength="1500" required></textarea><button class="hh-action hh-ayril">Kalkanımı bırakıyorum</button></form></details>';
  }else{
   const nb=x.nabzim;
   const devlet=!!(sonVeri&&sonVeri.yonetebilir);
@@ -959,7 +959,7 @@ function sahaHTML(x){
   x.heyet.forEach(m=>{
    h+='<div class="hh-log"><b>'+esc(m.ad)+'</b> · '+esc(m.durum==='davet'?'yanıt bekleniyor':m.durum==='kabul'?'heyette':'reddetti')+(m.rapor?'<p>'+esc(m.rapor)+'</p>':'')+'</div>';
    if(m.ben&&m.durum==='davet')h+='<div class="hh-grid"><button class="hh-action hh-primary" data-saha-fn="sokak_heyet_yanit" data-p=\'{"p_eylem":'+id+',"p_kabul":true}\'>✓ Heyete katıl</button><button class="hh-action" data-saha-fn="sokak_heyet_yanit" data-p=\'{"p_eylem":'+id+',"p_kabul":false}\'>✕ Reddet</button></div>';
-   if(m.ben&&m.durum==='kabul'&&!m.rapor)h+='<form data-saha-form="rapor" data-id="'+id+'"><label>Heyet raporun (40–1200 karakter)</label><textarea name="p_metin" minlength="40" maxlength="1200" required></textarea><button class="hh-action hh-primary">Raporu açıkla</button></form>';
+   if(m.ben&&m.durum==='kabul'&&!m.rapor)h+='<form data-saha-form="rapor" data-id="'+id+'"><label>Heyet raporun (40–3000 karakter)</label><textarea name="p_metin" minlength="40" maxlength="3000" required></textarea><button class="hh-action hh-primary">Raporu açıkla</button></form>';
   });
   h+='</details>';
  }
@@ -967,10 +967,10 @@ function sahaHTML(x){
  const V=sonVeri||{};
  if(x.yasak_yetki||V.yonetebilir||V.cb||V.karsi_cagri_yetki){
   h+='<details class="hh-detail"><summary>🏛️ Devletin sahadaki araçları</summary><p class="hh-muted">Hepsi gerçek kişilerle çalışır; etkisi güç dökümünde görünür.</p>';
-  if(x.yasak_yetki&&!x.yasak)h+='<form data-saha-form="yasak" data-id="'+id+'"><label>🚧 Valilik gösteri yasağı (6 saat yeni katılım kapalı; kalanlar inatlaşır) · gerekçe</label><textarea name="p_gerekce" minlength="25" maxlength="500" required></textarea><button class="hh-action">Yasağı ilan et</button></form>';
-  if(V.yonetebilir&&!x.jest)h+='<form data-saha-form="jest" data-id="'+id+'"><label>🕊️ Gözaltı jesti (tüm gözaltılar serbest, 6 saat gerilim düşer) · gerekçe</label><textarea name="p_gerekce" minlength="20" maxlength="500" required></textarea><button class="hh-action">Jest yap</button></form>';
+  if(x.yasak_yetki&&!x.yasak)h+='<form data-saha-form="yasak" data-id="'+id+'"><label>🚧 Valilik gösteri yasağı (6 saat yeni katılım kapalı; kalanlar inatlaşır) · gerekçe</label><textarea name="p_gerekce" minlength="25" maxlength="1500" required></textarea><button class="hh-action">Yasağı ilan et</button></form>';
+  if(V.yonetebilir&&!x.jest)h+='<form data-saha-form="jest" data-id="'+id+'"><label>🕊️ Gözaltı jesti (tüm gözaltılar serbest, 6 saat gerilim düşer) · gerekçe</label><textarea name="p_gerekce" minlength="20" maxlength="1500" required></textarea><button class="hh-action">Jest yap</button></form>';
   if(V.cb)h+='<form data-saha-form="heyet" data-id="'+id+'"><label>🧓 Arabulucu heyetine davet et (en çok 3, eylemde taraf olmayan) · kullanıcı adı</label><input name="p_kad" required maxlength="40" placeholder="Oyuncunun kullanıcı adı"><button class="hh-action">Heyete davet et</button></form>';
-  if(V.cb&&!x.seslenis)h+='<form data-saha-form="seslenis" data-id="'+id+'"><label>📺 Ulusa sesleniş (oyuncular ikna olup olmadığını söyler; geri tepebilir) · konuşma metni</label><textarea name="p_metin" minlength="60" maxlength="1500" required></textarea><button class="hh-action hh-primary">Ulusa seslen</button></form>';
+  if(V.cb&&!x.seslenis)h+='<form data-saha-form="seslenis" data-id="'+id+'"><label>📺 Ulusa sesleniş (oyuncular ikna olup olmadığını söyler; geri tepebilir) · konuşma metni</label><textarea name="p_metin" minlength="60" maxlength="4000" required></textarea><button class="hh-action hh-primary">Ulusa seslen</button></form>';
   if(V.karsi_cagri_yetki)h+='<button class="hh-action" data-saha-fn="sokak_karsi_cagri" data-p=\'{"p_eylem":'+id+'}\' data-onay="Parti üyelerine karşı miting çağrısı gönderilsin mi?">🚩 Parti üyelerini karşı mitinge çağır</button>';
   h+='</details>';
  }
@@ -1116,10 +1116,10 @@ sokakHareketleriEkrani=async function(){
   h+='<article class="kart" data-meydan="'+id+'"><h3>Eylem #'+id+' meydanı</h3>';
   if(e.son_gece){const s=e.son_gece; h+='<div class="hh-band">📡 Meydanda son gece · '+esc(s.durum)+' · '+esc(saat(s.bas))+' – '+esc(saat(s.bit))+(s.sonuc?' · '+esc(s.sonuc):'')+'</div><p>Güç: '+esc(e.seviye)+'/100</p>';}
   if(e.sohbet_hak){
-   h+=kart('💬 Eylem sohbeti','<div class="hh-sohbet" data-sohbet="'+id+'">Yükleniyor…</div><form data-meydan-form="sohbet" data-id="'+id+'"><textarea name="metin" maxlength="400" required placeholder="Yalnız bu eylemin içindeki oyuncular görür"></textarea><button class="hh-action hh-primary">Gönder</button></form>');
+   h+=kart('💬 Eylem sohbeti','<div class="hh-sohbet" data-sohbet="'+id+'">Yükleniyor…</div><form data-meydan-form="sohbet" data-id="'+id+'"><textarea name="metin" maxlength="1500" required placeholder="Yalnız bu eylemin içindeki oyuncular görür"></textarea><button class="hh-action hh-primary">Gönder</button></form>');
   }
   if(e.muhbir_teklif) h+='<div class="hh-band">Gizli teklif: '+esc(e.muhbir_teklif.para)+' TL. Vaat: '+esc(e.muhbir_teklif.makam||'yok')+'<div class="hh-grid"><button class="hh-action" data-meydan-islem="muhbir_yanit" data-id="'+id+'" data-v=\'{"kabul":true}\'>Kabul</button><button class="hh-action" data-meydan-islem="muhbir_yanit" data-id="'+id+'" data-v=\'{"kabul":false}\'>Ret</button><button class="hh-action hh-ayril" data-meydan-islem="muhbir_yanit" data-id="'+id+'" data-v=\'{"ifsa":true}\'>İfşa et</button></div></div>';
-  if(e.muhbirim) h+=kart('İçeriden bilgi','<form data-meydan-form="muhbir_sizdir" data-id="'+id+'"><textarea name="metin" maxlength="400" required placeholder="Sohbet ya da plan. Her sızıntı şüpheyi artırır."></textarea><button class="hh-action">Hükümete ilet</button></form>');
+  if(e.muhbirim) h+=kart('İçeriden bilgi','<form data-meydan-form="muhbir_sizdir" data-id="'+id+'"><textarea name="metin" maxlength="1500" required placeholder="Sohbet ya da plan. Her sızıntı şüpheyi artırır."></textarea><button class="hh-action">Hükümete ilet</button></form>');
   if(p.yonetebilir&&e.iceri) h+=kart('İçeriden bilgi', (e.iceri||[]).map(s=>'<p><b>'+esc(s.ad)+'</b> · '+esc(s.metin)+'</p>').join('')||'<p class="hh-muted">Henüz sızıntı yok.</p>');
   if(e.katilimci) h+='<form data-meydan-form="muhbir_oy" data-id="'+id+'"><label>İfşa oyu (günde 1, en az 3 oy ve çoğunluk)</label><input name="kad" required placeholder="Şüphelinin kullanıcı adı"><button class="hh-action">Oy ver</button></form>';
   if(p.yonetebilir) h+='<form data-meydan-form="muhbir_teklif" data-id="'+id+'"><label>Muhbir teklifi</label><input name="kad" required placeholder="Katılımcının kullanıcı adı"><input name="para" type="number" min="0" max="80000" value="0" placeholder="TL"><input name="metin" maxlength="120" placeholder="Vaadedilen makam (zorunlu değil)"><button class="hh-action">Gizli teklif gönder</button></form><form data-meydan-form="muhbir_dik" data-id="'+id+'"><input name="kad" required placeholder="İktidardan, eyleme katılmış oyuncu"><button class="hh-action">İçeriden kişi olarak işaretle</button></form>';
@@ -1231,20 +1231,20 @@ function merkezHTML(r,td,sd,ben){
  x+='<div data-em-panel="eylem">'+ayrilSatiri(ben)+'<div class="em-grid">'+HAMLE.map(k=>'<button type="button" class="em-kart" data-em-kart="'+k[0]+'"'+(eng[k[0]]?' disabled':'')+'><b>'+k[1]+' '+k[2]+'</b><small>'+k[3]+'</small><small>'+(eng[k[0]]?esc(eng[k[0]]):'Bedel '+k[4])+'</small></button>').join('')+'</div>';
  x+='<div class="em-grid"><button type="button" class="em-kart" data-em-islem="mesale">🌙 Gece meşalesi · 00.00</button><button type="button" class="em-kart" data-em-islem="aclik">Açlık grevine yazıl</button><button type="button" class="em-kart" data-em-islem="nobet">Bina nöbeti · 1 saat</button><button type="button" class="em-kart" data-em-islem="ziyaret">Dayanışma ziyareti</button><button type="button" class="em-kart" data-em-islem="savun">Binayı savun</button><button type="button" class="em-kart" data-em-islem="katil">Eyleme katıl</button></div>';
  x+='<form class="em-form" data-em-form="kaynak"><label>Eyleme kaynak aktar</label><select name="kalem"><option value="ses">Ses sistemi</option><option value="ulasim">Ulaşım</option><option value="yemek">Yemek</option><option value="pankart">Pankart</option></select><select name="kaynak"><option value="parti">Örgütleyen parti</option><option value="dernek">Örgütleyen dernek</option><option value="oyuncu">Kendi cüzdanım</option></select><input name="kaynak_id" type="number" placeholder="Parti veya dernek no"><input name="tutar" type="number" min="10000" step="1" required placeholder="TL"><button class="hh-action hh-primary" type="submit">Kaynağı aktar</button></form>';
- x+='<form class="em-form" data-em-form="hamle"><input type="hidden" name="tur" value="grev"><label>Seçilen hamle</label><p class="em-secim">Genel Grev</p><label>Bina, yalnız işgalde</label><select name="bina"><option value="belediye">Belediye</option><option value="valilik">Valilik</option></select><label>Bakanlık, yalnız oturmada</label><input name="bakanlik" value="icisleri" maxlength="40"><label>Gerekçe</label><textarea name="gerekce" minlength="20" maxlength="300" required>Bu hamle ortak kararımızdır.</textarea><button class="hh-action hh-primary" type="submit">Hamleyi başlat</button></form>';
- x+='<form class="em-form" data-em-form="sizma"><label>İçeriden sızan not</label><textarea name="metin" maxlength="400" required placeholder="Hükümet planı"></textarea><button class="hh-action" type="submit">Notu eylem sohbetine bırak</button></form>';
+ x+='<form class="em-form" data-em-form="hamle"><input type="hidden" name="tur" value="grev"><label>Seçilen hamle</label><p class="em-secim">Genel Grev</p><label>Bina, yalnız işgalde</label><select name="bina"><option value="belediye">Belediye</option><option value="valilik">Valilik</option></select><label>Bakanlık, yalnız oturmada</label><input name="bakanlik" value="icisleri" maxlength="40"><label>Gerekçe</label><textarea name="gerekce" minlength="20" maxlength="1000" required>Bu hamle ortak kararımızdır.</textarea><button class="hh-action hh-primary" type="submit">Hamleyi başlat</button></form>';
+ x+='<form class="em-form" data-em-form="sizma"><label>İçeriden sızan not</label><textarea name="metin" maxlength="1500" required placeholder="Hükümet planı"></textarea><button class="hh-action" type="submit">Notu eylem sohbetine bırak</button></form>';
  x+='</div>';
  const YAD={hizmet:'Acil Hizmet Seferberliği',vergi_tatil:'Bölgesel Vergi Tatili',istihdam:'İstihdam Taahhüt Paketi',brifing:'Resmi Basın Brifingi',sosyal_kart:'Acil Sosyal Destek Kartı',guzergah:'Güvenli Alan',komisyon:'Meclis Araştırma Komisyonu',gozlemci:'Bağımsız Gözlemci',kapi:'İktidar Kapı Kapı',gece:'Gece Toplanma Kısıtı',iletisim:'İletişim Yavaşlatma',festival:'Kültür-Festival'};
  const SAD={safak:'Şafak Operasyonu',elebasi:'Elebaşı Gözaltısı',mali:'Mali Kuşatma',kapatma:'Kapatma Davası Tehdidi',ohal:'OHAL',propaganda:'Kara Propaganda',bol:'Böl ve Yönet',kusatma:'Kuşatma Çemberi',ihale:'İhale ve Lisans Kılıcı',sanal:'Toplu Sanal Gözaltı'};
  const yumusak=(td&&td.acabilir)||Object.keys(YAD);
  const sert=(sd&&sd.bedeller)?Object.keys(sd.bedeller):Object.keys(SAD);
  x+='<div data-em-panel="hukumet" hidden><p>Yumuşak ve sert araçlar İçişleri bütçesinden düşer. Kasada para yoksa işlem açılmaz.</p>'+(arguments[5]&&arguments[5].sinyal?'<p class="em-oneri">Eyleme büyük kaynak aktarılıyor. Mali kuşatma ve ihale kılıcı bu izi daha sert kullanır.</p>':'');
- x+='<form class="em-form" data-em-form="tedbir"><label>Yumuşak araç</label><select name="tur">'+yumusak.map(k=>'<option value="'+esc(k)+'">'+esc(YAD[k]||k)+'</option>').join('')+'</select><textarea name="gerekce" minlength="20" maxlength="500" required>Bu aracı kamu bütçesinden uyguluyoruz.</textarea><button class="hh-action" type="submit">Yumuşak aracı uygula</button></form>';
- x+='<form class="em-form" data-em-form="sert"><label>Sert önlem</label><select name="tur">'+sert.map(k=>'<option value="'+esc(k)+'">'+esc(SAD[k]||k)+'</option>').join('')+'</select><textarea name="gerekce" minlength="20" maxlength="500" required>Bu sert önlemin gerekçesi kamuoyuna açıktır.</textarea><button class="hh-action" type="submit">Sert önlemi uygula</button></form></div>';
+ x+='<form class="em-form" data-em-form="tedbir"><label>Yumuşak araç</label><select name="tur">'+yumusak.map(k=>'<option value="'+esc(k)+'">'+esc(YAD[k]||k)+'</option>').join('')+'</select><textarea name="gerekce" minlength="20" maxlength="1500" required>Bu aracı kamu bütçesinden uyguluyoruz.</textarea><button class="hh-action" type="submit">Yumuşak aracı uygula</button></form>';
+ x+='<form class="em-form" data-em-form="sert"><label>Sert önlem</label><select name="tur">'+sert.map(k=>'<option value="'+esc(k)+'">'+esc(SAD[k]||k)+'</option>').join('')+'</select><textarea name="gerekce" minlength="20" maxlength="1500" required>Bu sert önlemin gerekçesi kamuoyuna açıktır.</textarea><button class="hh-action" type="submit">Sert önlemi uygula</button></form></div>';
  x+='<div data-em-panel="isgal" hidden><p>'+(ig?esc(ig.bina)+' · '+esc(ig.durum)+' · güç '+esc(ig.guc)+' · nöbet '+Number(ig.nobet||0)+' · kuşatma '+Number(ig.kusatma||0):'Henüz işgal yok.')+'</p>';
  if(ig&&ig.teklif) x+='<p>Teklif: '+esc(ig.teklif.metin)+'</p><div class="em-grid"><button type="button" class="em-kart" data-em-islem="muzakere_oy" data-oy="evet">Teklifi kabul et</button><button type="button" class="em-kart" data-em-islem="muzakere_oy" data-oy="hayir">Teklifi reddet</button></div>';
  x+='<div class="em-grid"><button type="button" class="em-kart" data-em-islem="kusatma">Kuşatma başlat · 200.000 TL</button><button type="button" class="em-kart" data-em-islem="kusatma_nobet">Kuşatma nöbeti · 1 saat</button><button type="button" class="em-kart" data-em-islem="tahliye">Tahliye emri · 250.000 TL</button><button type="button" class="em-kart" data-em-islem="operasyon">Operasyona katıl</button></div>';
- x+='<form class="em-form" data-em-form="muzakere"><label>Müzakere teklifi · 100.000 TL</label><textarea name="metin" minlength="20" maxlength="400" required>Binayı boşaltırsanız talebin bir kısmını uygularız.</textarea><button class="hh-action" type="submit">Teklifi gönder</button></form></div>';
+ x+='<form class="em-form" data-em-form="muzakere"><label>Müzakere teklifi · 100.000 TL</label><textarea name="metin" minlength="20" maxlength="1500" required>Binayı boşaltırsanız talebin bir kısmını uygularız.</textarea><button class="hh-action" type="submit">Teklifi gönder</button></form></div>';
  x+='<div data-em-panel="butce" hidden><p>Her hükümet müdahalesi İçişleri kasasından çıkar. Eylem sürdükçe hazine, kalabalık ve sert hamleyle artan bir saatlik bedel yazar. Tutar iki tarafta da görünür.</p><p>Biriken: <b>'+tl(h.toplam_tl)+'</b></p><p>Saatlik: <b>'+tl(h.saatlik_tl)+'</b></p><a href="#hhMeydanEk">Sohbet ve muhbir avı</a></div></section>';
  return x;
 }
@@ -1270,7 +1270,7 @@ sokakHareketleriEkrani=async function(){
  const ay=denge&&denge.ayar||{};
  let cagri='<section class="em" id="emCagri"><p class="em-kicker">Eylem çağrısı</p><p>Eylem keyfi açılmaz. İlde memnuniyet '+esc(ay.memnuniyet_esik)+' altında olmalı ya da son '+esc(ay.olay_saat)+' saatte sert önlem, skandal veya manşet olmalı. Depozito '+tl(ay.depozito)+' çağrı düşerse yanar. '+esc(ay.imza_sayisi)+' ayrı il sakini '+esc(ay.imza_saat)+' saat içinde imzalar. İlde '+esc(ay.il_bekleme_saat)+' saatte bir, organizatörde '+esc(ay.orgut_bekleme_saat)+' saatte bir yeni eylem. Ülke tavanı '+esc(ay.ulke_tavan)+'.</p>';
  cagri+=(denge&&denge.cagrilar||[]).map(c=>'<div class="em-kart"><b>Çağrı #'+Number(c.id)+' · '+esc(c.durum)+'</b><p>'+esc(c.gerekce)+'</p><p>İmza '+Number(c.imza||0)+' / '+Number(c.gerek||0)+'</p>'+(c.hata?'<p>'+esc(c.hata)+'</p>':'')+(c.benim&&c.durum==='hazir'?'<button type="button" class="hh-action" data-em-cagri="tamamla" data-id="'+Number(c.id)+'">Çağrıyı eyleme çevir</button>':'')+(!c.benim&&!c.imzaladim&&c.durum==='imza'?'<button type="button" class="hh-action" data-em-cagri="imza" data-id="'+Number(c.id)+'">İmza ver</button>':'')+'</div>').join('');
- cagri+='<form class="em-form" data-em-form="cagri"><label>İl numarası</label><input name="il" type="number" min="1" max="81" required><label>Talep</label><select name="talep"><option value="genel">Genel</option><option value="hizmet">Hizmet</option><option value="issizlik">İşsizlik</option><option value="vergi">Vergi</option></select><label>Kuruluş</label><select name="kaynak"><option value="parti">Parti</option><option value="dernek">Dernek</option></select><label>Kuruluş numarası</label><input name="kaynak_id" type="number" required><label>Gerekçe</label><textarea name="gerekce" minlength="20" maxlength="400" required></textarea><button class="hh-action hh-primary" type="submit"'+(ay.depozito==null?' disabled':'')+'>Çağrıyı aç</button></form></section>';
+ cagri+='<form class="em-form" data-em-form="cagri"><label>İl numarası</label><input name="il" type="number" min="1" max="81" required><label>Talep</label><select name="talep"><option value="genel">Genel</option><option value="hizmet">Hizmet</option><option value="issizlik">İşsizlik</option><option value="vergi">Vergi</option></select><label>Kuruluş</label><select name="kaynak"><option value="parti">Parti</option><option value="dernek">Dernek</option></select><label>Kuruluş numarası</label><input name="kaynak_id" type="number" required><label>Gerekçe</label><textarea name="gerekce" minlength="20" maxlength="1500" required></textarea><button class="hh-action hh-primary" type="submit"'+(ay.depozito==null?' disabled':'')+'>Çağrıyı aç</button></form></section>';
  root.querySelector('#emCagri')?.remove();
  root.insertAdjacentHTML('afterbegin',cagri);
  const tdHarita={}; ((td&&td.eylemler)||[]).forEach(r=>{tdHarita[Number(r.id)]=r;});
@@ -1982,7 +1982,7 @@ function sohbetKabuk(E){
   '<div data-hh4-sabit="'+E.id+'">'+sabitHTML(E.id)+'</div>'+
   '<div class="hh4-mesajlar" data-hh4-mesajlar="'+E.id+'">'+mesajlarHTML(E.id)+'</div>'+
   '<div class="hh4-hizli">'+HIZLI.map(t=>'<button type="button" data-hh4-hizli="'+esc(t)+'">'+esc(t)+'</button>').join('')+'</div>'+
-  '<form class="hh4-yaz" data-hh4-yaz="'+E.id+'"><textarea name="m" maxlength="400" rows="1" placeholder="Meydana yaz… (Enter gönderir)"'+(C.yazabilir===false?' disabled':'')+'>'+esc(S.taslak[E.id]||'')+'</textarea><button class="hh4-btn ana" aria-label="Gönder"'+(C.yazabilir===false?' disabled':'')+'>➤</button></form>'+
+  '<form class="hh4-yaz" data-hh4-yaz="'+E.id+'"><textarea name="m" maxlength="1500" rows="1" placeholder="Meydana yaz… (Enter gönderir)"'+(C.yazabilir===false?' disabled':'')+'>'+esc(S.taslak[E.id]||'')+'</textarea><button class="hh4-btn ana" aria-label="Gönder"'+(C.yazabilir===false?' disabled':'')+'>➤</button></form>'+
   (C.neden?'<p class="m" style="padding:0 12px 10px;margin:0">'+esc(C.neden)+'</p>':'')+'</div>';
 }
 function sabitHTML(id){
@@ -2182,7 +2182,7 @@ if(window.__hhSar)sokakHareketleriEkrani=window.__hhSar('meydan4',sokakHareketle
    var bas=karar==="gorevden_al"?"Bakanı görevden al":"Bakanı görevde tut";
    var m=modal('<div class="alan" style="display:block;width:100%;max-width:100%;box-sizing:border-box">'
       +'<label for="bfGerekce" style="display:block;font-size:15px;margin-bottom:8px">Cumhurbaşkanlığı karar gerekçesi</label>'
-      +'<textarea id="bfGerekce" rows="5" minlength="20" maxlength="1200" placeholder="Mahkeme kararını değerlendirip gerekçenizi yazın..." style="display:block;width:100%;min-width:0;box-sizing:border-box;font-size:16px;line-height:1.5;background:#17233b;color:#fff;border:1px solid #778bad;border-radius:9px;padding:12px"></textarea>'
+      +'<textarea id="bfGerekce" rows="5" minlength="20" maxlength="3000" placeholder="Mahkeme kararını değerlendirip gerekçenizi yazın..." style="display:block;width:100%;min-width:0;box-sizing:border-box;font-size:16px;line-height:1.5;background:#17233b;color:#fff;border:1px solid #778bad;border-radius:9px;padding:12px"></textarea>'
       +'</div><p class="alt">Bu karar resmi oyuna kaydedilir ve ilgili bakana bildirilir.</p>'
       +'<button class="btn altin" id="bfKaydet" style="width:100%;min-height:48px">'+bas+'</button>');
    if(typeof adlFormBaslik==="function")adlFormBaslik(m,"Fezleke #"+id+" · "+bas);
