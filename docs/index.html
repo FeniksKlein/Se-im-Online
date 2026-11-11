@@ -20030,13 +20030,13 @@ if(typeof oncekiBelediye==="function"){
   var sayi = function (n, d) {
     return Number(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 });
   };
-  var tl = function (n, d) { return n == null || isNaN(Number(n)) ? "—" : sayi(n, d) + " ₺"; };
+  var tl = function (n, d) { return n == null || isNaN(Number(n)) ? "—" : sayi(n, d == null && Math.abs(Number(n) % 1) > 0.0000001 ? 2 : d) + " ₺"; };
   var tlKisa = function (n) {
     n = Number(n || 0); var a = Math.abs(n);
     if (a >= 1e9) return sayi(n / 1e9, 1) + " Mr ₺";
     if (a >= 1e6) return sayi(n / 1e6, a >= 1e7 ? 1 : 2) + " Mn ₺";
     if (a >= 1e4) return sayi(n / 1e3, 0) + " B ₺";
-    return sayi(n) + " ₺";
+    return sayi(n, Math.abs(n % 1) > 0.0000001 ? 2 : 0) + " ₺";
   };
   var sektorAd = function (k) {
     if (!k) return "";
@@ -20652,12 +20652,13 @@ if(typeof oncekiBelediye==="function"){
       (gec > 0 ? '<button type="button" onclick="document.getElementById(\'kdT\').value=\'' + gec.toFixed(2) + '\'">Geciken ' + tl(gec, 2) + '</button>' : '') +
       (sira > 0 ? '<button type="button" onclick="document.getElementById(\'kdT\').value=\'' + sira.toFixed(2) + '\'">Sıradaki ' + tl(sira, 2) + '</button>' : '') +
       '<button type="button" onclick="document.getElementById(\'kdT\').value=\'' + Number(k.kalan).toFixed(2) + '\'">Tümü ' + tl(k.kalan, 2) + '</button></div>' +
-      '<div class="alan"><label for="kdT">Tutar (₺)</label><input id="kdT" inputmode="decimal"></div>' +
+      '<div class="alan"><label for="kdT">Tutar (₺)</label><input id="kdT" inputmode="decimal" placeholder="0,14"></div>' +
       '<button class="btn" onclick="msKrediOdeYap(this,' + Number(id) + ')">Öde</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
   };
   window.msKrediOdeYap = async function (btn, id) {
-    var t = parse(val("kdT")); if (!(t > 0)) return bildir("Ödeme tutarını gir.", true);
-    try { await calis(btn, function () { return API.rpc("oyb_kredi_ode", { p_id: id, p_tutar: Math.round(t * 100) / 100 }); }, "Ödeme alındı."); kapat(); mobilSube("krediler"); } catch (_) {}
+    var t = parse(val("kdT")); if (!(t >= 0.01) || Math.abs(t * 100 - Math.round(t * 100)) > 0.000001) return bildir("En az 0,01 ₺ gir; en fazla iki ondalık kullan.", true);
+    t = Math.round(t * 100) / 100;
+    try { await calis(btn, function () { return API.rpc("oyb_kredi_ode", { p_id: id, p_tutar: t }); }, "Ödeme alındı."); kapat(); mobilSube("krediler"); } catch (_) {}
   };
   window.msErkenKapat = async function (id, tutar) {
     if (!await sor("Krediyi erken kapat", "Kalan borcun " + tl(tutar) + " ödenerek kapanacak. Kullanılmayan günlerin faizi alınmaz.", "Kapat")) return;
@@ -20671,12 +20672,13 @@ if(typeof oncekiBelediye==="function"){
     bmodal('<h3 style="font-size:19px;font-weight:800">Devlet Bankası kredisi</h3>' +
       '<div class="bk-cips"><button type="button" onclick="document.getElementById(\'dkT\').value=\'' + Number(dk.taksit || 0) + '\'">Günlük taksit ' + tl(dk.taksit) + '</button>' +
       (dk.erken_kapama ? '<button type="button" onclick="document.getElementById(\'dkT\').value=\'' + Number(dk.erken_kapama) + '\'">Erken kapama ' + tl(dk.erken_kapama) + '</button>' : '') + '</div>' +
-      '<div class="alan"><label for="dkT">Tutar (₺)</label><input id="dkT" inputmode="numeric"></div>' +
+      '<div class="alan"><label for="dkT">Tutar (₺)</label><input id="dkT" inputmode="decimal" placeholder="0,14"></div>' +
       '<button class="btn" onclick="msDevletKrediOdeYap(this)">Öde</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
   };
   window.msDevletKrediOdeYap = async function (btn) {
-    var t = parse(val("dkT")); if (!(t > 0)) return bildir("Ödeme tutarını gir.", true);
-    try { await calis(btn, function () { return API.rpc("kredi_ode", { p_miktar: Math.round(t) }); }, "Ödeme alındı."); kapat(); mobilSube("krediler"); } catch (_) {}
+    var t = parse(val("dkT")); if (!(t >= 0.01) || Math.abs(t * 100 - Math.round(t * 100)) > 0.000001) return bildir("En az 0,01 ₺ gir; en fazla iki ondalık kullan.", true);
+    t = Math.round(t * 100) / 100;
+    try { await calis(btn, function () { return API.rpc("kredi_ode", { p_miktar: t }); }, "Ödeme alındı."); kapat(); mobilSube("krediler"); } catch (_) {}
   };
 
   // Kredi başvurusu sihirbazı: banka → paket → tutar → plan → onay
