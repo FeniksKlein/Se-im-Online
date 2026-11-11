@@ -4181,12 +4181,9 @@ function bankaCiz(b){
           <div class="satir"><button class="btn yarim altin" id="kKapat">Tamamını öde</button><button class="btn yarim ikinci" id="kAra">Ara ödeme</button></div></div>`
         : `<div class="kv"><span class="k">Kredi limitin</span><span class="v">${tlYaz(b.kredi_limit)}</span></div>
           <div class="kv"><span class="k">Sana uygulanacak faiz</span><span class="v">aylık ${yuzde(b.kredi_oran)}</span></div>
-          ${b.kredi_butce?`<div class="kv"><span class="k">7 gün vadeli limit</span><span class="v">${tlYaz(Math.min(b.kredi_limit,b.kredi_butce.vade7.azami_kredi))}</span></div>
-          <div class="kv"><span class="k">14 gün vadeli limit</span><span class="v">${tlYaz(Math.min(b.kredi_limit,(b.kredi_butce.vade14||b.kredi_butce.vade15).azami_kredi))}</span></div>
-          <div class="kv"><span class="k">21 gün vadeli limit</span><span class="v">${tlYaz(Math.min(b.kredi_limit,(b.kredi_butce.vade21||b.kredi_butce.vade30).azami_kredi))}</span></div>
-          <div class="kv"><span class="k">28 gün vadeli limit</span><span class="v">${tlYaz(Math.min(b.kredi_limit,(b.kredi_butce.vade28||b.kredi_butce.vade30).azami_kredi))}</span></div>
-          <div class="kv"><span class="k">30 gün vadeli limit</span><span class="v">${tlYaz(Math.min(b.kredi_limit,b.kredi_butce.vade30.azami_kredi))}</span></div>`:""}
-          <p class="kucuk" style="margin-top:6px">Kredi limitin maaşına, haftalık kira ve şirket gelirine, nakit bütçene, mevcut borçlarına ve kredi notuna göre hesaplanır. Vade 1, 2, 3 veya 4 hafta; her vadenin limiti farklı olabilir.</p>
+          ${b.kredi_butce?[[7,"1 hafta"],[28,"4 hafta"],[90,"3 ay"],[180,"6 ay"],[365,"1 yıl"]].filter(([g])=>b.kredi_butce["vade"+g]||(g===28&&b.kredi_butce.vade30)).map(([g,ad])=>`<div class="kv"><span class="k">${ad} vadeli limit</span><span class="v">${tlYaz((b.kredi_butce["vade"+g]||b.kredi_butce.vade30).azami_kredi)}</span></div>`).join(""):""}
+          ${b.kredi_teminat?`<div class="kv"><span class="k">Teminat (nakit, mevduat, mülk, şirket payı)</span><span class="v">${tlYaz((+b.kredi_teminat.likit||0)+(+b.kredi_teminat.duran||0))}</span></div>`:""}
+          <p class="kucuk" style="margin-top:6px">Sabit bir tavan yok: limitin <b>ödeme gücüne</b> göre hesaplanır. Maaşın, kira ve şirket kârı payın vade boyunca taksite ayrılabilecek kısmı ile nakdin, vadeli mevduatın, 60 gün ve üzeri vadede mülklerin ve şirket payların teminat sayılır; açık borçların düşülür, kredi notun katsayı olarak uygulanır. Vade 1–4 hafta ya da 60 gün, 3 ay, 6 ay, 1 yıl olabilir.</p>
           ${b.kara_liste ? `<p class="kucuk" style="color:var(--acc);font-weight:700">Takibe düşen kredin nedeniyle ${tarih(b.kara_liste)} tarihine kadar yeni kredi alamazsın.</p>`
             : b.kredi_engel ? `<p class="kucuk" style="color:var(--gold2)">Kredi için seçmen kartın hazır olmalı: ${e(b.kredi_engel)}</p>` : ""}
           <button class="btn altin" id="kCek" ${!b.acik || b.kara_liste || b.kredi_engel || b.kredi_limit < 1000 ? "disabled" : ""}>Kredi çek</button>`}
@@ -4212,10 +4209,10 @@ function bankaCiz(b){
     secenek: { ad: "Saatlik vade", liste: [[1, `1 saat · getiri ${yuzde(o.vadeli1s)}`], [3, `3 saat · getiri ${yuzde(o.vadeli3s)}`], [6, `6 saat · getiri ${yuzde(o.vadeli6s)}`], [12, `12 saat · getiri ${yuzde(o.vadeli12s)}`], [24, `24 saat · getiri ${yuzde(o.vadeli24s)}`]] },
     onizle: (m, g) => { const r = ({1:o.vadeli1s,3:o.vadeli3s,6:o.vadeli6s,12:o.vadeli12s,24:o.vadeli24s})[g] || 0, f = Math.round(m * r / 100); return `${g} saat sonunda <b>${tlYaz(m + f)}</b> alırsın (<b class="iyi">+${tlYaz(f)}</b> faiz).`; },
     buton: "Vadeli hesabı aç", gonder: (m, g) => API.rpc("vadeli_ac", { p_miktar: m, p_gun: g }), basari: "Saatlik vadeli hesabın açıldı." }));
-  bagla("kCek", () => tutarModal({ baslik: "Kredi çek", aciklama: `Limitin ${tlYaz(b.kredi_limit)}, faizin aylık ${yuzde(b.kredi_oran)}. Para hemen cüzdanına geçer; yarından itibaren her gece taksit otomatik ödenir.`,
-    deger: Math.min(b.kredi_limit, 10000), secenek: { ad: "Geri ödeme vadesi", liste: [[7, "1 hafta (7 gün)"], [14, "2 hafta (14 gün)"], [21, "3 hafta (21 gün)"], [28, "4 hafta (28 gün)"]] },
-    onizle: (m, g) => { const top = Math.round(m * (1 + b.kredi_oran / 100 * g / 30 + 0.0025 * (g/7-1))), tak = Math.ceil(top / g);
-      const lim=(b.kredi_butce&&b.kredi_butce["vade"+g]) ? Math.min(b.kredi_limit,b.kredi_butce["vade"+g].azami_kredi):b.kredi_limit;
+  bagla("kCek", () => tutarModal({ baslik: "Kredi çek", aciklama: `En uzun vadede limitin ${tlYaz(b.kredi_limit)}, faizin aylık ${yuzde(b.kredi_oran)}. Para hemen cüzdanına geçer; yarından itibaren her gece taksit otomatik ödenir.`,
+    deger: Math.min(b.kredi_limit, 10000), secenek: { ad: "Geri ödeme vadesi", liste: [[7, "1 hafta (7 gün)"], [14, "2 hafta (14 gün)"], [21, "3 hafta (21 gün)"], [28, "4 hafta (28 gün)"], [60, "2 ay (60 gün)"], [90, "3 ay (90 gün)"], [180, "6 ay (180 gün)"], [365, "1 yıl (365 gün)"]] },
+    onizle: (m, g) => { const top = Math.round(m * (1 + b.kredi_oran / 100 * g / 30 + ([7,14,21,28].includes(g) ? 0.0025 * (g/7-1) : 0))), tak = Math.ceil(top / g);
+      const lim=(b.kredi_butce&&b.kredi_butce["vade"+g]) ? b.kredi_butce["vade"+g].azami_kredi:b.kredi_limit;
       return `Bu vadede limitin <b>${tlYaz(lim)}</b>. Toplam geri ödeme <b>${tlYaz(top)}</b> (${tlYaz(top-m)} faiz) · ${g} günlük plan: her gece yaklaşık <b>${tlYaz(tak)}</b>. Vade uzadıkça faiz artar. ${m>lim?'<b class="kotu">Bu tutar limitini aşıyor.</b>':''}`; },
     buton: "Krediyi çek", gonder: (m, g) => API.rpc("kredi_cek", { p_miktar: m, p_gun: g }), basari: "Kredin cüzdanına geçti." }));
   bagla("kAra", () => tutarModal({ baslik: "Ara ödeme", aciklama: `Kalan borcun ${tlYaz(k.kalan)}. Ödeme önce cüzdanından, yetmezse vadesiz hesabından alınır; önce gecikmiş kısım kapanır, kredi daha erken biter.`,

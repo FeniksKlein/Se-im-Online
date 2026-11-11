@@ -729,9 +729,9 @@
     } catch (_) {}
   };
   window.msDevletKredi = function () {
-    bmodal('<h3 style="font-size:19px;font-weight:800">Devlet Bankası kredisi</h3><p class="alt" style="margin:4px 0 10px">Günlük eşit taksitle geri ödenir; gecikirse günlük %1 gecikme faizi işler.</p>' +
+    bmodal('<h3 style="font-size:19px;font-weight:800">Devlet Bankası kredisi</h3><p class="alt" style="margin:4px 0 10px">Limit ödeme gücüne (gelir + teminat) göre; vade 1 yıla kadar. Günlük eşit taksitle geri ödenir; gecikirse günlük %1 gecikme faizi işler.</p>' +
       '<div class="alan"><label for="dvT">Tutar (₺)</label><input id="dvT" inputmode="numeric"></div>' +
-      '<div class="alan"><label for="dvG">Vade</label><select id="dvG"><option value="7">7 gün</option><option value="14">14 gün</option><option value="15">15 gün</option><option value="21">21 gün</option><option value="28">28 gün</option><option value="30" selected>30 gün</option></select></div>' +
+      '<div class="alan"><label for="dvG">Vade</label><select id="dvG"><option value="7">7 gün</option><option value="14">14 gün</option><option value="15">15 gün</option><option value="21">21 gün</option><option value="28">28 gün</option><option value="30" selected>30 gün</option><option value="60">60 gün</option><option value="90">90 gün</option><option value="180">180 gün</option><option value="365">1 yıl</option></select></div>' +
       '<button class="btn" onclick="msDevletKrediCek(this)">Krediyi çek</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
   };
   window.msDevletKrediCek = async function (btn) {

@@ -20,6 +20,7 @@
       + kv("Serbest kâr", tl(v.serbest)) + kv("Payın", "%" + k(v.pay))
       + kv("Çekebileceğin tutar", "<b>" + tl(v.limit) + "</b>");
     if (Number(v.acik_cek) > 0) h += kv("Açık çek borçları (ayrılır)", tl(v.acik_cek));
+    if (Number(v.kredi_borcu) > 0) h += kv("Banka kredisi borcu (ayrılır)", tl(v.kredi_borcu));
     if (Number(v.borc) > 0) {
       h += '<div class="oc-borc">' + kv("Cari hesap borcun", "<b>" + tl(v.borc) + "</b>") + kv("Günlük adat faizi", tl(v.gunluk_faiz))
         + kv("Bugüne kadar ödenen faiz", tl(v.toplam_faiz)) + "</div>";

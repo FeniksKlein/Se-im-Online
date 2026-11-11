@@ -28,10 +28,10 @@
     if (!v.uygun) return kap.insertAdjacentHTML("beforeend", h + '<p class="kucuk">' + k(v.neden) + "</p></div>");
     var s = v.sube; if (!s) return kap.insertAdjacentHTML("beforeend", h + '<p class="kucuk">' + k(v.sube_hata || "Bu il için plan alınamadı.") + "</p></div>");
     var azami = Number(s.azami_kredi) || 0;
-    h += kv("Yatırım bedeli", tl(s.acilis)) + kv("Azami kredi (%70)", "<b>" + tl(azami) + "</b>")
+    h += kv("Yatırım bedeli", tl(s.acilis)) + kv("Azami kredi (en fazla %70, ödeme gücü kadar)", "<b>" + tl(azami) + "</b>")
       + kv("İşletme rezervi (kasada kalır)", tl(s.rezerv)) + kv("Yıllık faiz (politika faizi + 4)", yuzde(v.oran))
       + '<div class="alan" style="margin-top:10px"><label for="ykTutar">Kredi tutarı (₺)</label><input id="ykTutar" type="number" inputmode="numeric" min="10000" step="1000" max="' + azami + '" value="' + azami + '"></div>'
-      + '<div class="alan"><label for="ykVade">Vade</label><select id="ykVade"><option value="30">30 gün</option><option value="60" selected>60 gün</option><option value="90">90 gün</option></select></div>'
+      + '<div class="alan"><label for="ykVade">Vade</label><select id="ykVade"><option value="30">30 gün</option><option value="60" selected>60 gün</option><option value="90">90 gün</option><option value="180">180 gün</option><option value="365">1 yıl</option></select></div>'
       + '<div id="ykOzet"></div>'
       + '<button class="btn altin" id="ykAc">Kredili şube aç</button></div>';
     kap.insertAdjacentHTML("beforeend", h);
@@ -67,18 +67,56 @@
     yeni._yk = true; window.sirketMerkezSubeTeklif = yeni; return true;
   }
 
+  var VADE = [[30, "30 gün"], [60, "60 gün"], [90, "90 gün"], [180, "180 gün"], [365, "1 yıl"]];
   async function krediListesi(id) {
     var v; try { v = await API.rpc("yatirim_kredisi_panel", { p_sirket: Number(id) }); } catch (_) { return ""; }
-    var l = (v && v.krediler || []).filter(function (x) { return x.durum !== "kapandi"; });
-    if (!l.length) return "";
-    return '<section class="kart" id="ykListe"><h3>Yatırım kredileri</h3>' + l.map(function (x) {
+    if (!v) return "";
+    var l = (v.krediler || []).filter(function (x) { return x.durum !== "kapandi"; });
+    var kap = v.isletme_kapasite || {};
+    if (!l.length && !v.yonetici) return "";
+    var h = '<section class="kart" id="ykListe"><h3>Banka kredileri</h3>'
+      + '<p class="alt">Şirket, ödeme gücü kadar <b>işletme kredisi</b> çekebilir: son 28 günlük faaliyet kârının vade boyunca taksite ayrılabilecek kısmı ile stok, arsa, yapı ve kasanın bir bölümü teminat sayılır; açık kredi ve çek borçları düşülür. '
+      + "Para şirket kasasına girer; taksit her gün kasadan ödenir. Kredi parası kâr payı, temettü ya da ortaklar cari hesabıyla ortaklara dağıtılamaz.</p>";
+    if (v.yonetici) {
+      if (!v.uygun) h += '<p class="kucuk">' + k(v.neden) + "</p>";
+      else {
+        h += VADE.map(function (x) { return kv(x[1] + " vadeli işletme kredisi limiti", tl(kap[x[0]])); }).join("")
+          + kv("Yıllık faiz (politika faizi + 4)", yuzde(v.oran))
+          + '<div class="alan" style="margin-top:10px"><label for="ikTutar">Kredi tutarı (₺)</label><input id="ikTutar" type="number" inputmode="numeric" min="10000" step="1000"></div>'
+          + '<div class="alan"><label for="ikVade">Vade</label><select id="ikVade">' + VADE.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === 90 ? " selected" : "") + ">" + x[1] + "</option>"; }).join("") + "</select></div>"
+          + '<div id="ikOzet"></div><button class="btn altin" onclick="isletmeKredisiAl(' + Number(id) + ')">İşletme kredisi çek</button>';
+      }
+    }
+    h += l.map(function (x) {
       return '<div class="kart" style="margin:10px 0;background:var(--panel2)"><b>#' + x.id + " · " + k(x.amac) + "</b>"
         + kv("Durum", (x.durum === "gecikmede" ? '<span style="color:var(--bad)">' : "") + k(DURUM[x.durum] || x.durum) + (x.durum === "gecikmede" ? "</span>" : ""))
         + kv("Kalan borç", "<b>" + tl(x.kalan) + "</b>") + (Number(x.gecikmis) > 0 ? kv("Gecikmiş taksit", tl(x.gecikmis)) : "")
         + kv("Günlük taksit", tl(x.taksit)) + kv("Vade", x.odenen_gun + " / " + x.vade + " gün") + kv("Yıllık faiz", yuzde(x.oran))
         + (v.yonetici ? '<button class="btn ikinci" onclick="yatirimKredisiOde(' + x.id + "," + Number(id) + ')">Erken / gecikmiş ödeme yap</button>' : "") + "</div>";
-    }).join("") + "</section>";
+    }).join("");
+    window._ikPanel = v;
+    return h + "</section>";
   }
+  function ikOzet() {
+    var v = window._ikPanel || {}, t = document.getElementById("ikTutar"), g = document.getElementById("ikVade"), o = document.getElementById("ikOzet");
+    if (!t || !g || !o) return;
+    var vd = Number(g.value) || 90, lim = Number((v.isletme_kapasite || {})[vd]) || 0, kr = Math.round(Number(t.value) || 0);
+    t.max = lim; t.placeholder = "En fazla " + tl(lim);
+    var top = Math.round(kr * (1 + (Number(v.oran) || 0) / 100 * vd / 365));
+    o.innerHTML = kr > 0 ? kv("Toplam geri ödeme", tl(top)) + kv("Günlük taksit", tl(Math.ceil(top / vd)) + " × " + vd + " gün")
+      + (kr > lim ? '<p class="kucuk" style="color:var(--bad)">Bu vadede limit ' + tl(lim) + ".</p>" : "") : "";
+  }
+  document.addEventListener("input", function (e) { if (e.target && (e.target.id === "ikTutar" || e.target.id === "ikVade")) ikOzet(); });
+  document.addEventListener("change", function (e) { if (e.target && e.target.id === "ikVade") ikOzet(); });
+  window.isletmeKredisiAl = async function (sid) {
+    var t = document.getElementById("ikTutar"), g = document.getElementById("ikVade");
+    var kr = Math.round(Number(t && t.value) || 0), vd = Number(g && g.value) || 90;
+    if (kr < 10000) { toast("En az 10.000 ₺ gir.", true); return; }
+    if (!await sor("İşletme kredisi", tl(kr) + " şirket kasasına geçecek (" + vd + " gün vade). Taksitler her gün şirket kasasından otomatik ödenir; kredi parası ortaklara dağıtılamaz.", "Krediyi çek")) return;
+    try { var r = await API.rpc("sirket_kredi_al", { p_sirket: Number(sid), p_tutar: kr, p_vade: vd });
+      toast(tl(r.kredi) + " kasaya geçti. Günlük taksit: " + tl(r.gunluk_taksit)); await window.sirketTekSirketEkrani(Number(sid), "para"); }
+    catch (e) { hata(e); }
+  };
   window.yatirimKredisiOde = async function (kid, sid) {
     var raw = prompt("Şirket kasasından ödenecek tutar (boş bırakılırsa kalan borcun tamamı):", "");
     if (raw === null) return;
