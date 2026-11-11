@@ -67770,37 +67770,48 @@ end; $f$;
 
 create or replace function public.dergi_sayi_yayinla(p_dergi bigint,p_baslik text,p_fiyat numeric,p_sayfalar jsonb)
 returns jsonb language plpgsql security definer set search_path='' as $f$
-declare u uuid:=auth.uid(); d oyun.karikatur_dergi; s jsonb; n int; k text; bas text; alan text; fld text; sid bigint;
+declare
+  u uuid := auth.uid();
+  d oyun.karikatur_dergi;
+  item jsonb;
+  n integer;
+  sid bigint;
 begin
- if u is null then raise exception 'Oturum gerekli.';end if;
- select * into d from oyun.karikatur_dergi where id=p_dergi and aktif for update;
- if d.id is null or d.sahip<>u then raise exception 'Bu dergiyi yayinlama yetkin yok.';end if;
- p_baslik:=btrim(coalesce(p_baslik,''));
- if char_length(p_baslik) not between 4 and 90 then raise exception 'Sayi basligi 4-90 karakter olmali.';end if;
- if p_fiyat is null or p_fiyat<>trunc(p_fiyat) or p_fiyat not between 1 and 100000 then
-   raise exception 'Sayi fiyati 1-100000 TL arasinda tam sayi olmali.';
- end if;
- if p_sayfalar is null or jsonb_typeof(p_sayfalar)<>'array' then raise exception 'Gecerli sayfalar gerekli.';end if;
- if jsonb_array_length(p_sayfalar) not between 1 and 4 or length(p_sayfalar::text)>9000 then
-  raise exception 'Bir sayida 1-4 karikatur olabilir; metin uzunluklarini kisalt.';
- end if;
- for s in select value from jsonb_array_elements(p_sayfalar) loop
-   if jsonb_typeof(s)<>'object' then raise exception 'Sayfa yapisi gecersiz.';end if;
-   k:=coalesce(s->>'sablon','');
-   if k not in ('meclis','tv','eylem','adliye','kapak') then raise exception 'Gecerli bir sablon sec.';end if;
-   foreach fld in array array['baslik','sol','sag','orta','karakter1','karakter2','karakter3'] loop
-    if jsonb_typeof(s->fld) not in ('string','null') and s ? fld then raise exception 'Metin alani hatali.';end if;
-    alan:=coalesce(s->>fld,'');
-    if char_length(alan)>case when fld in ('sol','sag','orta') then 200 when fld='baslik' then 90 else 45 end then
-     raise exception 'Karikatur metni cok uzun: %',fld;
+  if u is null then raise exception 'Oturum gerekli.'; end if;
+  select * into d from oyun.karikatur_dergi where id=p_dergi and aktif for update;
+  if d.id is null or d.sahip is distinct from u then raise exception 'Bu dergiyi yayinlama yetkin yok.'; end if;
+  p_baslik := btrim(coalesce(p_baslik,''));
+  if length(p_baslik)<4 or length(p_baslik)>90 then raise exception 'Sayi basligi 4-90 karakter olmali.'; end if;
+  if p_fiyat is null or p_fiyat<>trunc(p_fiyat) or p_fiyat<1 or p_fiyat>100000 then
+    raise exception 'Sayi fiyati 1-100000 TL arasinda tam sayi olmali.';
+  end if;
+  if p_sayfalar is null or jsonb_typeof(p_sayfalar) <> 'array' then
+    raise exception 'Gecerli sayfalar gerekli.';
+  end if;
+  if jsonb_array_length(p_sayfalar)<1 or jsonb_array_length(p_sayfalar)>4 or length(p_sayfalar::text)>9000 then
+    raise exception 'Bir sayida 1-4 karikatur olabilir.';
+  end if;
+  for item in select value from jsonb_array_elements(p_sayfalar) loop
+    if jsonb_typeof(item) <> 'object' then raise exception 'Sayfa yapisi gecersiz.'; end if;
+    if coalesce(item->>'sablon','') not in ('meclis','tv','eylem','adliye','kapak') then
+      raise exception 'Gecerli bir sablon sec.';
     end if;
-   end loop;
- end loop;
- select coalesce(max(no),0)+1 into n from oyun.karikatur_sayi where dergi_id=d.id;
- insert into oyun.karikatur_sayi(dergi_id,no,baslik,fiyat,sayfalar,yayin)
- values(d.id,n,p_baslik,p_fiyat,p_sayfalar,oyun.simdi()) returning id into sid;
- return jsonb_build_object('id',sid,'no',n,'dergi',d.ad,'fiyat',p_fiyat);
-end; $f$;
+    if length(coalesce(item->>'baslik',''))>90
+      or length(coalesce(item->>'sol',''))>200
+      or length(coalesce(item->>'sag',''))>200
+      or length(coalesce(item->>'orta',''))>200
+      or length(coalesce(item->>'karakter1',''))>45
+      or length(coalesce(item->>'karakter2',''))>45
+      or length(coalesce(item->>'karakter3',''))>45 then
+      raise exception 'Karikatur metinleri cok uzun.';
+    end if;
+  end loop;
+  select coalesce(max(no),0)+1 into n from oyun.karikatur_sayi where dergi_id=d.id;
+  insert into oyun.karikatur_sayi(dergi_id,no,baslik,fiyat,sayfalar,yayin)
+    values(d.id,n,p_baslik,p_fiyat,p_sayfalar,oyun.simdi()) returning id into sid;
+  return jsonb_build_object('id',sid,'no',n,'dergi',d.ad,'fiyat',p_fiyat);
+end;
+$f$;
 
 create or replace function public.dergi_sayi_detay(p_sayi bigint)
 returns jsonb language plpgsql security definer set search_path='' as $f$
