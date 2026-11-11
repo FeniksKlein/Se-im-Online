@@ -172,27 +172,78 @@ window.cekDuzenleModal=async function(hesapId){
   var hs=(p.hesaplar||[]).filter(function(h){return h.yaprak>0;});
   if(!hs.length){toast('Önce çek defteri al.',true);return window.cekDefterModal();}
   var options=hs.map(function(h){
-   var s=(p.sirketler||[]).find(function(x){return x.id===h.sirket;});
-   return '<option value="'+h.id+'"'+(Number(hesapId)===h.id?' selected':'')+'>'+(h.sirket?esc(s?s.ad:'Şirket #'+h.sirket):'Şahsi')+' · '+h.yaprak+' yaprak</option>';
+   var s=(p.sirketler||[]).find(function(x){return Number(x.id)===Number(h.sirket);});
+   return '<option value="'+Number(h.id)+'" data-sirket="'+(h.sirket?1:0)+'"'+(Number(hesapId)===Number(h.id)?' selected':'')+'>'+(h.sirket?esc(s?s.ad:'Şirket #'+h.sirket):'Şahsi')+' · '+Number(h.yaprak)+' yaprak</option>';
   }).join('');
-  var m=modal('<h3>Çek düzenle</h3><p class="alt">Bağımsız çek düzenleme menüsüdür; mülk veya hisse satın almaz. Ticaret ödemelerinde önce satıcının onayına sunulan “Çekle ödeme teklif et” seçeneğini kullanmalısın.</p>'+
-    '<div class="alan"><label>Çek defterim</label><select id="ckHesap">'+options+'</select></div>'+
-    '<div class="alan"><label>Alıcı oyuncunun kullanıcı adı</label><input id="ckAlici" placeholder="Kullanıcı adı"></div>'+
-    '<div class="alan"><label>Veya alıcı şirket ID (isteğe bağlı)</label><input id="ckSirket" type="number" min="1"></div>'+
-    '<div class="alan"><label>Çek tutarı (₺)</label><input id="ckTutar" type="number" min="100" max="1000000000" step="0.01"></div>'+
-    '<div class="alan"><label>Çek / ödeme tarihi</label><input id="ckVade" type="date" min="'+p.bugun+'" max="'+bugunArtir(p.bugun,365)+'" value="'+bugunArtir(p.bugun,7)+'"></div>'+
-    '<div class="alan"><label>Açıklama</label><input id="ckAciklama" maxlength="180"></div>'+
-    '<button id="ckYaz" class="btn altin">Çeki düzenle ve teslim et</button>');
+  var m=modal('<h3>Çek düzenle</h3>'+
+    '<p class="alt">Şahsi çekini bir oyuncuya veya şirkete yazabilirsin. Şirket çekleri yalnız şirketlere düzenlenebilir. Çek düzenlemek mülk ya da hisse devri yapmaz.</p>'+
+    '<div class="alan"><label>Çek defterim</label><select id="ckHesap" style="width:100%;min-height:46px">'+options+'</select></div>'+
+    '<div class="alan"><label>Çek alıcısı türü</label><select id="ckAliciTur" style="width:100%;min-height:46px"><option value="oyuncu">Oyuncu</option><option value="sirket">Şirket</option></select></div>'+
+    '<p class="alt" id="ckSirketNot" hidden>Şirket adına kişiye çek yazılamaz veya ciro edilemez. Şirketler arası çeklerde ticari ilişki ve kasa karşılığı aranır.</p>'+
+    '<div class="alan"><label>Alıcı adıyla ara</label><input id="ckHedefArama" maxlength="60" autocomplete="off" placeholder="Kullanıcı veya şirket adı" style="width:100%;min-width:0;font-size:16px"></div>'+
+    '<button type="button" id="ckHedefBul" class="btn ikinci" style="min-height:46px;width:100%">Alıcıları ara</button>'+
+    '<div id="ckHedefSonuclar" aria-live="polite"></div>'+
+    '<p id="ckHedefSecilen" class="alt">Henüz alıcı seçilmedi.</p>'+
+    '<div class="alan"><label>Çek tutarı (₺)</label><input id="ckTutar" type="number" min="100" max="1000000000" step="0.01" style="font-size:16px;width:100%"></div>'+
+    '<div class="alan"><label>Çek / ödeme tarihi</label><input id="ckVade" type="date" min="'+p.bugun+'" max="'+bugunArtir(p.bugun,365)+'" value="'+bugunArtir(p.bugun,7)+'" style="font-size:16px;width:100%"></div>'+
+    '<div class="alan"><label>Açıklama</label><input id="ckAciklama" maxlength="180" style="font-size:16px;width:100%"></div>'+
+    '<button type="button" id="ckYaz" class="btn altin" style="min-height:48px;width:100%">Çeki düzenle ve teslim et</button>');
+  var hesap=m.querySelector('#ckHesap'), tur=m.querySelector('#ckAliciTur');
+  var arama=m.querySelector('#ckHedefArama'), sonuclar=m.querySelector('#ckHedefSonuclar');
+  var secilen=m.querySelector('#ckHedefSecilen'), hedef=null, sorguSirasi=0;
+  var sirketHesabi=function(){var opt=hesap.selectedOptions[0];return !!(opt&&opt.getAttribute('data-sirket')==='1');};
+  function sifirla(){
+   hedef=null;arama.value='';sonuclar.textContent='';secilen.textContent='Henüz alıcı seçilmedi.';
+   sorguSirasi++;
+  }
+  function alanlariYenile(){
+   var sk=sirketHesabi();tur.querySelector('option[value="oyuncu"]').disabled=sk;
+   if(sk)tur.value='sirket';
+   m.querySelector('#ckSirketNot').hidden=!sk;
+   arama.placeholder=tur.value==='sirket'?'Şirket adını yaz':'Oyuncu kullanıcı adını yaz';
+   sifirla();
+  }
+  hesap.onchange=alanlariYenile;
+  tur.onchange=function(){if(sirketHesabi()&&tur.value!=='sirket')tur.value='sirket';alanlariYenile();};
+  arama.oninput=function(){hedef=null;secilen.textContent='Alıcı seçmek için arama yap.';sonuclar.textContent='';sorguSirasi++;};
+  async function hedefAra(){
+   var q=arama.value.trim();
+   if(q.length<2){toast('Alıcı aramak için en az 2 karakter yaz.',true);return;}
+   var sira=++sorguSirasi;sonuclar.textContent='Aranıyor…';hedef=null;
+   try{
+    var r=await API.rpc('cek_hedef_ara',{p_ara:q});
+    if(sira!==sorguSirasi)return;
+    var tip=tur.value, liste=tip==='sirket'?(r.sirketler||[]):(r.oyuncular||[]);
+    sonuclar.textContent='';
+    if(!liste.length){sonuclar.textContent='Bu adla alıcı bulunamadı.';return;}
+    liste.forEach(function(item){
+     var b=document.createElement('button');b.type='button';b.className='btn ikinci';
+     b.style.cssText='display:block;width:100%;min-height:46px;margin:6px 0;text-align:left;white-space:normal';
+     b.textContent=(tip==='sirket'?'🏢 ':'👤 ')+item.ad;
+     b.onclick=function(){
+      hedef={tur:tip,ad:item.ad,id:item.id};
+      secilen.textContent='Seçilen alıcı: '+item.ad+(tip==='sirket'?' (şirket)':' (oyuncu)');
+      sonuclar.textContent='';
+     };
+     sonuclar.appendChild(b);
+    });
+   }catch(err){if(sira===sorguSirasi){sonuclar.textContent='Alıcı araması yapılamadı.';hata(err);}}
+  }
+  m.querySelector('#ckHedefBul').onclick=hedefAra;
+  arama.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();hedefAra();}};
+  alanlariYenile();
   m.querySelector('#ckYaz').onclick=async function(){
-    this.disabled=true;
-    var v={hesap:m.querySelector('#ckHesap').value,alici:m.querySelector('#ckAlici').value.trim(),
-      alici_sirket:m.querySelector('#ckSirket').value,tutar:m.querySelector('#ckTutar').value,
-      tarih:m.querySelector('#ckVade').value,aciklama:m.querySelector('#ckAciklama').value};
-    try{var r=await API.rpc('cek_islem',{p_eylem:'duzenle',p_veri:v});
-       modalKapat();toast('Çek #'+r.id+' düzenlendi.');await yenile();
-    }catch(er){hata(er);this.disabled=false;}
+   if(!hedef||hedef.tur!==tur.value){toast('Önce alıcı oyuncuyu veya şirketi arayıp seç.',true);return;}
+   if(sirketHesabi()&&hedef.tur!=='sirket'){toast('Şirketler kişilere çek yazamaz.',true);return;}
+   var v={hesap:hesap.value,alici:hedef.tur==='oyuncu'?hedef.ad:'',
+     alici_sirket:hedef.tur==='sirket'?String(hedef.id):'',tutar:m.querySelector('#ckTutar').value,
+     tarih:m.querySelector('#ckVade').value,aciklama:m.querySelector('#ckAciklama').value};
+   this.disabled=true;
+   try{var r=await API.rpc('cek_islem',{p_eylem:'duzenle',p_veri:v});
+      modalKapat();toast('Çek #'+r.id+' düzenlendi.');await yenile();
+   }catch(err){hata(err);this.disabled=false;}
   };
- }catch(er){hata(er);}
+ }catch(err){hata(err);}
 };
 
 window.cekHareket=async function(id,eylem){
