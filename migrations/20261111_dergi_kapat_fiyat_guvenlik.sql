@@ -20,14 +20,14 @@ begin
     'sayi_sayisi',(select count(*) from oyun.karikatur_sayi s where s.dergi_id=d.id),
     'son_sayi',(select max(no) from oyun.karikatur_sayi s where s.dergi_id=d.id))
     order by d.kurulus desc) from oyun.karikatur_dergi d
-    left join oyun.profiller p on p.id=d.sahip where d.aktif or d.sahip=u or exists(select 1 from oyun.karikatur_satin_alma own where own.sayi_id=s.id and own.user_id=u)),'[]'::jsonb),
+    left join oyun.profiller p on p.id=d.sahip where d.aktif),'[]'::jsonb),
   'sayilar', coalesce((select jsonb_agg(jsonb_build_object(
     'id',s.id,'dergi_id',d.id,'dergi',d.ad,'no',s.no,'baslik',s.baslik,'fiyat',s.fiyat,
     'sablon',s.sayfalar->0->>'sablon',
     'sayfa_sayisi',jsonb_array_length(s.sayfalar),'yayin',s.yayin,'satis',s.satis,
     'sahibim',d.sahip=u,'satin_aldim',exists(select 1 from oyun.karikatur_satin_alma x where x.sayi_id=s.id and x.user_id=u)
     ) order by s.yayin desc)
-    from oyun.karikatur_sayi s join oyun.karikatur_dergi d on d.id=s.dergi_id where d.aktif),'[]'::jsonb)
+    from oyun.karikatur_sayi s join oyun.karikatur_dergi d on d.id=s.dergi_id where d.aktif or d.sahip=u or exists (select 1 from oyun.karikatur_satin_alma x where x.sayi_id=s.id and x.user_id=u)),'[]'::jsonb)
  ) into sonuc;
  return sonuc;
 end; $f$;
