@@ -158,8 +158,8 @@ BEGIN
   SELECT pg_catalog.pg_get_functiondef(
     'public.resmi_program_yap(text,integer,text,text)'::pg_catalog.regprocedure
   ) INTO fn;
-  IF pg_catalog.position('INSERT INTO oyun.resmi_kabul_davetleri' IN fn) = 0 THEN
-    IF pg_catalog.position(marker IN fn) = 0 THEN
+  IF pg_catalog.strpos(fn, 'INSERT INTO oyun.resmi_kabul_davetleri') = 0 THEN
+    IF pg_catalog.strpos(fn, marker) = 0 THEN
       RAISE EXCEPTION 'resmi_program_yap imzası değişmiş; güvenli otomatik yama durduruldu.';
     END IF;
     fn := pg_catalog.replace(fn, marker, ek || E'\n' || marker);
