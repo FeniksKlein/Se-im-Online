@@ -213,7 +213,7 @@ declare
     'emlak_pazarlik_satici_yanit', 'emlak_pazarlik_teklif', 'emlak_pazarliklarim', 'engel_kaldir', 'engelle', 'engellenenler',
     'erken_secim_oy', 'erken_secim_teklif', 'eyetkin_parti_kur', 'fiyat_tarifesi', 'gazete', 'gazete_abone_ol',
     'gazete_ayar', 'gazete_detay', 'gazete_kose_yorum_sil', 'gazete_kose_yorum_yaz', 'gazete_kose_yorumlar', 'gazete_kur',
-    'dergi_raf', 'dergi_kur', 'dergi_sayi_yayinla', 'dergi_sayi_detay', 'dergi_sayi_satinal', 'dergi_kazanc_cek',
+    'dergi_raf', 'dergi_kur', 'dergi_sayi_yayinla', 'dergi_sayi_detay', 'dergi_sayi_satinal', 'dergi_kapat',
     'gazete_para_cek', 'gazete_yayinla', 'gazete_yazar_cikar', 'gazete_yazar_teklif', 'gazete_yazar_yanit', 'gby_ata',
     'gby_gorev_ver', 'gby_gorevleri', 'gby_miting_yetkisi', 'gecmis_secimler', 'genel_baskanlik_uslen', 'genel_kurul_ac',
     'genel_kurul_oy', 'gensoru_oy', 'gensoru_ver', 'golge_ata', 'golge_kabine', 'golge_rapor_yaz',
