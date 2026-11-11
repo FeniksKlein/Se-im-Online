@@ -937,7 +937,7 @@
     e('ara', '#2e86de', 'Oyuncu ara', 'Kullanıcı adı, il ve partiye göre bul', ['ara'], 'oyuncu ara bul kişi profil', 'Kişiler');
     e('yeniMesaj', '#2e86de', 'Yeni özel mesaj', 'Bir oyuncuya yaz', ['yeniMesaj'], 'mesaj yaz dm özel', 'Kişiler');
     e('kisiler', '#2e86de', 'Çevrimiçi oyuncular', 'Şu an oyunda olanlar', ['cevrimici'], 'çevrimiçi online', 'Kişiler');
-    if (g('soYayinGit')) { e('gazete', '#d8425e', 'Gazeteler', 'Oyuncu gazeteleri ve köşe yazıları', ['kod', 'soYayinGit("basin")'], 'gazete köşe yazısı basın yayın', 'Basın'); e('kitap', '#d8425e', 'Kitaplar ve yayınevleri', 'Kitap oku, satın al, yayımla', ['kod', 'soYayinGit("kitap")'], 'kitap yayınevi yazar', 'Basın'); }
+    if (g('soYayinGit')) { e('gazete', '#d8425e', 'Gazeteler ve Dergiler', 'Gazeteler ve karikatür dergileri', ['kod', 'soYayinGit("basin")'], 'gazete köşe yazısı dergi karikatür mizah basın yayın', 'Basın'); e('kitap', '#d8425e', 'Kitaplar ve yayınevleri', 'Kitap oku, satın al, yayımla', ['kod', 'soYayinGit("kitap")'], 'kitap yayınevi yazar', 'Basın'); }
     if (g('soGundemTakvimAc')) e('sandik', '#16a0a6', 'Seçim takvimi', 'Yaklaşan seçimler ve eski sonuçlar', ['kod', 'soGundemTakvimAc()'], 'seçim takvim aday başvuru sandık sonuç', 'Siyaset');
     e('kalp', B.dernek.a1, 'Sosyal etki merkezi', 'Bağış kampanyaları, gönüllü etkinlikler', ['sosyal'], 'bağış kampanya gönüllü yardım', 'Dernekler');
     if (g('stkKurModal')) e('dernekKur', B.dernek.a1, 'Dernek kur', 'Yeni dernek ya da vakıf kur', ['dernekKur'], 'dernek vakıf kur', 'Dernekler');
