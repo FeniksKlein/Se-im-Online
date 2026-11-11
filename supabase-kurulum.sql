@@ -67750,7 +67750,7 @@ begin
     from oyun.karikatur_sayi s join oyun.karikatur_dergi d on d.id=s.dergi_id where d.aktif),'[]'::jsonb)
  ) into sonuc;
  return sonuc;
-end $f$;
+end; $f$;
 
 create or replace function public.dergi_kur(p_ad text,p_slogan text default '')
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -67766,7 +67766,7 @@ begin
  perform oyun.para_islem(u,-ucret,'dergi_kur',format('%s karikatur dergisi kuruldu',p_ad),t);
  insert into oyun.karikatur_dergi(ad,slogan,sahip,kurulus) values(p_ad,p_slogan,u,t) returning id into idd;
  return jsonb_build_object('id',idd,'ad',p_ad,'kurulus_ucreti',ucret);
-end $f$;
+end; $f$;
 
 create or replace function public.dergi_sayi_yayinla(p_dergi bigint,p_baslik text,p_fiyat numeric,p_sayfalar jsonb)
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -67800,7 +67800,7 @@ begin
  insert into oyun.karikatur_sayi(dergi_id,no,baslik,fiyat,sayfalar,yayin)
  values(d.id,n,p_baslik,p_fiyat,p_sayfalar,oyun.simdi()) returning id into sid;
  return jsonb_build_object('id',sid,'no',n,'dergi',d.ad,'fiyat',p_fiyat);
-end $f$;
+end; $f$;
 
 create or replace function public.dergi_sayi_detay(p_sayi bigint)
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -67814,7 +67814,7 @@ begin
  return jsonb_build_object('id',s.id,'dergi_id',d.id,'dergi',d.ad,'no',s.no,'baslik',s.baslik,
    'fiyat',s.fiyat,'yayin',s.yayin,'satis',s.satis,'erisim',var,'sahibim',d.sahip=u,
    'sayfa_sayisi',jsonb_array_length(s.sayfalar),'sayfalar',case when var then s.sayfalar else null end);
-end $f$;
+end; $f$;
 
 create or replace function public.dergi_sayi_satinal(p_sayi bigint)
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -67833,7 +67833,7 @@ begin
  update oyun.karikatur_dergi set kasa=kasa+s.fiyat where id=d.id;
  update oyun.karikatur_sayi set satis=satis+1 where id=s.id;
  return public.dergi_sayi_detay(s.id);
-end $f$;
+end; $f$;
 
 create or replace function public.dergi_kazanc_cek(p_dergi bigint,p_tutar numeric)
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -67848,7 +67848,7 @@ begin
  update oyun.karikatur_dergi set kasa=kasa-p_tutar where id=d.id;
  perform oyun.para_islem(u,p_tutar,'dergi_kazanc',format('%s dergisi satis geliri',d.ad),t);
  return jsonb_build_object('kasa',d.kasa-p_tutar,'cekilen',p_tutar);
-end $f$;
+end; $f$;
 revoke all on function public.dergi_raf(),public.dergi_kur(text,text),public.dergi_sayi_yayinla(bigint,text,numeric,jsonb),
  public.dergi_sayi_detay(bigint),public.dergi_sayi_satinal(bigint),public.dergi_kazanc_cek(bigint,numeric)
  from public,anon,authenticated;
