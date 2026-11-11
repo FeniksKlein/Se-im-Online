@@ -215,7 +215,9 @@
       ])}
       ${grup("Ekonomi kurumları", "Herkes izleyebilir", [
         satir("mb", "🏛️ Devlet bütçesi", "Bakanlık ödeneklerini incele ve paylaştır", "ekranAc(kamuButceEkrani)", "kamuButceEkrani"),
+        satir("mb", "Ticaret Odası ve işveren sendikaları", "Zorunlu üyelik, aidat, şirket başına 1 oyla başkanlık seçimi, icraatlar", "ekranAc(function(){return ticaretOdasiEkrani()})", "ticaretOdasiEkrani"),
         satir("terazi", "Kamu kurumu atamaları", "Vali, emniyet, SPK, vergi idaresi ve genel sekreter", "ekranAc(kamuAtamaEkrani)", "kamuAtamaEkrani"),
+        satir("terazi", "Valilik", "Valilik sınavı, vali havuzu ve Cumhurbaşkanı atamaları", "ekranAc(valilikEkrani)", "valilikEkrani"),
         satir("terazi", "⚖️ İcra ve haciz", "Ödeme emri, itiraz, e-haciz ve açık artırmalar", "ekranAc(icraMerkeziEkrani)", "icraMerkeziEkrani"),
         satir("mb", "Merkez Bankası", "Politika faizi ve PPK kararları", "ekranAc(merkezBankasiEkrani)", "merkezBankasiEkrani"),
         satir("spk", "Sermaye Piyasası Kurulu", "Borsa gözetimi ve cezalar", "ekranAc(spkEkrani)", "spkEkrani"),

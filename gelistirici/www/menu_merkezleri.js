@@ -69,6 +69,8 @@
       ["🪧","İlan Meydanı","Satılık ev, dükkân, arsa, şirket ve hisse ilanları","soMenuGit('ilanMeydaniEkrani')","ilan sahibinden satılık ev daire konut dükkan işyeri arsa tapu emlak şirket hisse teklif pazarlık vitrin"],
       ["📝","İlan ver","Evini, dükkânını, şirketini ya da hisseni sat","ilanVerEkrani()","ilan ver sat satış satmak öne çıkar"],
       ["🔨","Müzayede Evi","Koleksiyon eserlerine pey ver, açık artırmayla al ve sat","soMenuGit('muzayedeEkrani')","müzayede açık artırma pey koleksiyon tablo sikke pul antika saat mücevher halı klasik otomobil eser"],
+      ["🏛️","Ticaret Odası","İl odası ve Odalar Birliği: aidat, başkanlık seçimi, icraatlar","soMenuGit('ticaretOdasiEkrani')","ticaret odası oda odalar birliği aidat oda başkanı seçim şirket oyu fuar destek fonu"],
+      ["🤝","İşveren sendikaları","Sendika kur, şirketini üye yap, muhalefet et","soMenuGit('ticaretOdasiEkrani')","sendika işveren sendikası sendikalaş muhalefet bildiri kampanya erken seçim"],
       ["🏢","Şirketlerim","Kasaya para, şubelerim, inşaat ve finans","soMenuSec('ekonomi','sirketlerim')","müteahhit firma kasa sermaye"],
       ["🏛️","İnternet Bankacılığı","Tüm hesaplarım, kart ve krediler","soMenuGit('internetBankaciligiEkrani')","devlet bankası mevduat"],
       ["🏦","Oyuncu bankaları","Özel bankalar, kredi ve faizler","soMenuGit('bankaRehberiEkrani')","özel banka kredi"],
@@ -474,6 +476,7 @@
       eTile("➕","Şirket kur","Yeni şirket kuruluşu","soMenuGit('sirketKurulumFormuAc')",true),
       eTile("🪧","İlan Meydanı","Satılık ev, dükkân, arsa, şirket ve hisse","soMenuGit('ilanMeydaniEkrani')"),
       eTile("🔨","Müzayede Evi","Koleksiyon eserlerine pey ver","soMenuGit('muzayedeEkrani')"),
+      (typeof window.ticaretOdasiEkrani==="function"?eTile("🏛️","Ticaret Odası","Oda seçimi, aidat, sendikalar","soMenuGit('ticaretOdasiEkrani')"):""),
       eTile("💸","Para gönder","Oyuncuya banka transferi","soMenuGit('paraGonderModal')"),
       eTile("🤝","Ortaklık işlemleri","Davetler, ortaklık, hisse devri","soMenuGit('ortaklikEkrani')"),
       eTile("📋","İhaleye katıl","Kamu ihalesine teklif ver","soMenuGit('ihaleEkrani')")

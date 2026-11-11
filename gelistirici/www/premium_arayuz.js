@@ -451,6 +451,9 @@
     ilan: function () { var f = g('ilanMeydaniEkrani'); f ? ac(f) : hata(); },
     magaza: function () { var f = g('magazaEkrani'); f ? ac(f) : hata(); },
     muzayede: function () { var f = g('muzayedeEkrani'); f ? ac(f) : hata(); },
+    tv: function () { var f = g('tvKanallariEkrani'); f ? ac(f) : hata(); },
+    oda: function () { var f = g('ticaretOdasiEkrani'); f ? ac(function () { return f(); }) : hata(); },
+    valilik: function () { var f = g('valilikEkrani'); f ? ac(f) : hata(); },
     bildirim: function () { var f = g('bildirimEkrani'); f ? ac(f) : hata(); },
     yonetici: function () { var f = g('yoneticiEkrani'); f ? ac(f) : hata(); },
     ara: function () { var f = g('oyuncuAramaAc'); f ? f() : hata(); },
@@ -840,9 +843,9 @@
   /* ---------- Menü çekmecesi ---------- */
   function karo(k, ad, alt, eylem, rz) {
     var b = bolum(k === '@banka' ? 'hayat' : k), ak = aktifSekme() === k;
-    var renk = { '@banka': ['#b33a5c', '#3b1832'], '@ilan': ['#d99a2b', '#45301a'], '@muzayede': ['#c99a3a', '#4a1a2e'], '@kursu': ['#8b6cff', '#3d1650'], '@magaza': ['#7a5af0', '#2a1f5e'], '@bildirim': ['#e0565b', '#45182a'], '@yonetici': ['#7b8bb8', '#232b4c'], '@pano': ['#ff8a3d', '#4a1d2e'] }[k];
+    var renk = { '@banka': ['#b33a5c', '#3b1832'], '@ilan': ['#d99a2b', '#45301a'], '@muzayede': ['#c99a3a', '#4a1a2e'], '@kursu': ['#8b6cff', '#3d1650'], '@magaza': ['#7a5af0', '#2a1f5e'], '@bildirim': ['#e0565b', '#45182a'], '@yonetici': ['#7b8bb8', '#232b4c'], '@pano': ['#ff8a3d', '#4a1d2e'], '@tv': ['#e5484d', '#3d1626'], '@oda': ['#2f9e8f', '#143a3c'], '@valilik': ['#4c7bd9', '#1b2a52'] }[k];
     var a1 = renk ? renk[0] : b.a1, a2 = renk ? renk[1] : b.a2;
-    var ik = { '@banka': 'banka', '@ilan': 'ilan', '@muzayede': 'cekic', '@kursu': 'kursu', '@magaza': 'magaza', '@bildirim': 'zil', '@yonetici': 'ayar', '@pano': 'pano' }[k] || (B[k] && B[k].ik) || k;
+    var ik = { '@banka': 'banka', '@ilan': 'ilan', '@muzayede': 'cekic', '@kursu': 'kursu', '@magaza': 'magaza', '@bildirim': 'zil', '@yonetici': 'ayar', '@pano': 'pano', '@tv': 'tv', '@oda': 'sehir', '@valilik': 'bayrak' }[k] || (B[k] && B[k].ik) || k;
     return '<button type="button" class="pa-karo' + (ak ? ' aktif' : '') + (k === '@kursu' ? ' pa-karo-genis' : '') + '" style="--k1:' + a1 + ';--k2:' + a2 + '" onclick="' + eylem + '"><span class="pa-ki">' + ikon(ik) + '</span><span><b>' + esc(ad) + '</b><small>' + esc(alt) + '</small></span>' + (rz || '') + '</button>';
   }
   function menuHtml() {
@@ -856,6 +859,8 @@
       ['Siyaset', [
         g('kursuEkrani') ? karo('@kursu', 'Kürsü', 'Takip et, paylaş, gündem', on('kursu')) : '',
         g('reklamPanolariEkrani') ? karo('@pano', 'Reklam Panoları', 'Afiş tasarla, il il yayınla', on('pano')) : '',
+        g('tvKanallariEkrani') ? karo('@tv', 'TV Kanalları', 'Canlı yayın, siyasi düello', on('tv')) : '',
+        g('valilikEkrani') ? karo('@valilik', 'Valilik', 'Sınav, havuz, atama', on('valilik')) : '',
         karo('meclis', 'Meclis', m && m.dolu != null ? m.dolu + '/' + (m.toplam || 600) + ' sandalye' : 'Kanun ve oylama', on('sekme', 'meclis')),
         karo('parti', 'Partiler', p.parti ? p.parti.kisa + ' ve ittifaklar' : 'Katıl ya da kur', on('sekme', 'parti')),
         karo('adliye', 'Adliye', 'Dava ve avukat', on('sekme', 'adliye')),
@@ -869,6 +874,7 @@
         karo('@banka', 'Mobil Şube', 'Hesap, kart, kredi', on('mobilSube')),
         karo('@ilan', 'İlan Meydanı', 'Ev, dükkân, hisse', on('ilan')),
         karo('@muzayede', 'Müzayede', 'Pey ver, koleksiyon yap', on('muzayede')),
+        g('ticaretOdasiEkrani') ? karo('@oda', 'Ticaret Odası', 'Oda seçimi, sendikalar', on('oda')) : '',
         karo('ekonomi', 'Ekonomi', 'Şirket ve piyasa', on('sekme', 'ekonomi')),
         karo('@magaza', 'Mağaza', 'Kart ve paketler', on('magaza'))
       ]],
@@ -901,6 +907,15 @@
       e('pano', '#ff8a3d', 'Reklam Panoları', 'Afiş Stüdyosu, il panoları, ülke geneli dev panolar', ['pano'], 'reklam pano billboard afiş poster tasarım kampanya ilan tanıtım propaganda seçim afişi slogan', 'Bölüm');
       e('pano', '#ff8a3d', 'Afiş Stüdyosu', 'Şablonla afiş tasarla, slogan üret', ['pano'], 'afiş tasarla stüdyo şablon slogan poster logo amblem', 'Reklam');
     }
+    if (g('tvKanallariEkrani')) {
+      e('tv', '#e5484d', 'TV Kanalları', 'Canlı yayınlar, siyasi düellolar, yayın akışı', ['tv'], 'tv televizyon kanal canlı yayın izle düello tartışma program söyleşi haber sunucu konuk stüdyo izleyici', 'Bölüm');
+      e('tv', '#e5484d', 'TV kanalı kur', 'Kendi kanalını kur, program yap, reklam al', ['tv'], 'tv kanal kur yayın lisansı sunucu al maaşlı sunucu reklam geliri reklam ver sponsor', 'TV');
+    }
+    if (g('ticaretOdasiEkrani')) {
+      e('sehir', '#2f9e8f', 'Ticaret Odası', 'İl odaları ve Türkiye Odalar Birliği: aidat, seçim, icraat', ['oda'], 'ticaret odası oda odalar birliği tobb aidat oda başkanı seçim şirket oyu fuar destek fonu üye', 'Para');
+      e('sehir', '#2f9e8f', 'İşveren sendikaları', 'Sendika kur, şirketini üye yap, muhalefet et', ['oda'], 'sendika işveren sendikası sendikalaş muhalefet bildiri kampanya erken seçim imza', 'Para');
+    }
+    if (g('valilikEkrani')) e('bayrak', '#4c7bd9', 'Valilik', 'Valilik sınavı, vali havuzu, Cumhurbaşkanı atamaları', ['valilik'], 'vali valilik mülki idare akademi sınav havuz atama görevden al il emri kaymakam', 'Devlet');
     e('gundem', B.gundem.a1, 'Gündem', 'Akış, haberler, seçim takvimi', ['sekme', 'gundem'], 'ana sayfa haber akış paylaşım', 'Bölüm');
     e('devlet', B.devlet.a1, 'Devlet', 'Makamım, hükümet, mevzuat, gazete, tarih', ['sekme', 'devlet'], 'hükümet kabine bakanlık makam yönetim belediye cumhurbaşkanı', 'Bölüm');
     e('meclis', B.meclis.a1, 'Meclis', 'Sandalyeler, kanunlar, oylamalar', ['sekme', 'meclis'], 'tbmm milletvekili kanun yasa oylama grup başkanlık', 'Bölüm');

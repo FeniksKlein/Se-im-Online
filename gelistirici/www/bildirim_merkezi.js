@@ -56,6 +56,9 @@
       return "bakanlik";
     }
     if (/^muzayede:/.test(t)) return "muzayede";
+    if (/tv kanallari|tv kanali|tv programina|kanalindaki "|kanalinda "|" programi|" programin|sunuculu|studyoya gir|duellosunu/.test(t)) return "tv";
+    if (/ticaret odasi|odalar birligi|sendikasi/.test(t)) return "oda";
+    if (/valiligi|valilik|vali havuzu/.test(t)) return "valilik";
     if (/^kursu:|paylasimina yanit verdi/.test(t)) return "kursu";
     if (/ilan meydani|ilanina .{0,40}teklif|ilani icin karsi teklif|ilani baska bir aliciya|ilani yayindan kalkti|ilaninin 30 gunluk|ilanin oyun yonetimi|^satis tamamlandi: |artik senin \(/.test(t)) return "ilan";
     if (/kriz masasi|yonetim ›|yonetim >|ruhsat merkezi/.test(t)) return "yonetim";
@@ -88,6 +91,9 @@
     banka:   { ad: "Bankaya git", ac: () => ekranAc(bankaEkrani), var: () => typeof bankaEkrani === "function" },
     kursu:   { ad: "Kürsü’ye git", ac: () => ekranAc(() => kursuEkrani("bildirim")), var: () => typeof kursuEkrani === "function" },
     muzayede:{ ad: "Müzayede’ye git", ac: () => ekranAc(muzayedeEkrani), var: () => typeof muzayedeEkrani === "function" },
+    tv:      { ad: "TV Kanalları’na git", ac: () => ekranAc(tvKanallariEkrani), var: () => typeof tvKanallariEkrani === "function" },
+    oda:     { ad: "Ticaret Odası’na git", ac: () => ekranAc(() => ticaretOdasiEkrani()), var: () => typeof ticaretOdasiEkrani === "function" },
+    valilik: { ad: "Valiliğe git", ac: () => ekranAc(valilikEkrani), var: () => typeof valilikEkrani === "function" },
     ilan:    { ad: "İlan Meydanı’na git", ac: () => ekranAc(ilanMeydaniEkrani), var: () => typeof ilanMeydaniEkrani === "function" },
     meclis:  { ad: "Meclis'e git", ac: () => sekmeAc("meclis"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.meclis === "function" },
     parti:   { ad: "Partilere git", ac: () => sekmeAc("parti"), var: () => typeof EKRAN === "object" && EKRAN && typeof EKRAN.parti === "function" },
