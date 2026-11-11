@@ -2200,3 +2200,30 @@ if(window.__hhSar)sokakHareketleriEkrani=window.__hhSar('meydan4',sokakHareketle
    };
  };
 })();
+
+/* 12.11.2026 · İçişleri Komuta Merkezi: tek dosyalık web sürümünde
+   API global let olarak tanımlı; eski panel window.API kontrolü yüzünden sessizce kapanıyordu.
+   Yayındaki verileri ve makam yetkilerini değiştirmeden menü girişinde bağlantıyı eşitle. */
+(function(){
+ 'use strict';
+ if(window.__soIcMenuApiBridge20261112)return;
+ window.__soIcMenuApiBridge20261112=true;
+ function baglantiEsitle(){
+  try{
+   if(typeof API!=='undefined'&&API&&typeof API.rpc==='function')window.API=API;
+  }catch(_){}
+ }
+ function bagla(){
+  var eski=window.icisleriKomutaAc;
+  if(typeof eski!=='function'||eski.__soApiBridge20261112)return;
+  var yeni=function(){baglantiEsitle();return eski.apply(this,arguments);};
+  yeni.__soApiBridge20261112=true;
+  window.icisleriKomutaAc=yeni;
+ }
+ bagla();
+ document.addEventListener('click',function(ev){
+  var hedef=ev.target&&ev.target.closest&&ev.target.closest('[onclick*="icisleriKomutaAc"]');
+  if(hedef){baglantiEsitle();bagla();}
+ },true);
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bagla,{once:true});
+})();

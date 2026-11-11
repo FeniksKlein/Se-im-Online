@@ -91,7 +91,7 @@
   return h.join('');
  }
  window.icisleriKomutaEkrani=async function(){
-  if(!window.API||typeof API.rpc!=="function")return;
+  if(typeof API==="undefined"||!API||typeof API.rpc!=="function"){if(typeof window.toast==="function")window.toast("Sunucu bağlantısı hazır değil. Tekrar giriş yapın.",true);return;}
   if(typeof window.yukleniyor==="function")yukleniyor("İçişleri Bakanlığı");
   try{var d=await API.rpc("icisleri_komuta_panel");try{d.kriz=await API.rpc("icisleri_kriz_panel");}catch(_){d.kriz=null;}iskelet("İçişleri · Komuta Merkezi",render(d),{geri:true});}
   catch(err){iskelet("İçişleri · Komuta Merkezi",'<div class="kart"><p>'+temiz(err.message||err)+'</p><button class="btn" onclick="icisleriKomutaEkrani()">Yeniden dene</button></div>',{geri:true});}
