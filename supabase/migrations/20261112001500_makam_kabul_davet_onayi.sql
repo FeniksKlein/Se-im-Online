@@ -82,7 +82,7 @@ BEGIN
       SET durum = 'suresi_doldu', cevap_zaman = t WHERE id = d.id;
     RETURN jsonb_build_object('durum', 'suresi_doldu', 'id', d.id);
   END IF;
-  IF NOT p_kabul THEN
+  IF p_kabul IS DISTINCT FROM true THEN
     UPDATE oyun.resmi_kabul_davetleri SET durum = 'ret', cevap_zaman = t WHERE id = d.id;
     PERFORM oyun.bildir(d.davet_eden, format('%s, %s makam kabul davetini reddetti.', p.kad, d.unvan), t);
     RETURN jsonb_build_object('durum', 'ret', 'id', d.id);
