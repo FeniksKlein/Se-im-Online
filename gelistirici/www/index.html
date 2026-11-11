@@ -2986,13 +2986,14 @@ async function oyuncuKart(kad){
 }
 async function bildirimEkrani(){
   yukleniyor("Bildirimler");
-  let liste, haklar, bakanTeklifleri = [], cbyTeklifleri = [], hedefler = {};
+  let liste, haklar, bakanTeklifleri = [], cbyTeklifleri = [], hedefler = {}, makamDavetleri = { gelen: [], giden: [] };
   let hy = null;
-  try { [liste, haklar, bakanTeklifleri, cbyTeklifleri] = await Promise.all([
+  try { [liste, haklar, bakanTeklifleri, cbyTeklifleri, makamDavetleri] = await Promise.all([
     API.rpc("bildirim_kutusu", { p_limit: 60 }),
     API.rpc("yayin_haklari"),
     API.rpc("bakan_tekliflerim").catch(() => []),
-    API.rpc("cb_yardimcisi_tekliflerim").catch(() => [])
+    API.rpc("cb_yardimcisi_tekliflerim").catch(() => []),
+    API.rpc("resmi_kabul_davetlerim").catch(() => ({ gelen: [], giden: [] }))
   ]); if (haklar.length) { hy = await API.rpc("hayat"); D._hayat = hy; } }
   catch (err) { iskelet("Bildirimler", `<div class="bos">${e(hataCevir(err.message))}</div>`, { geri: true }); return; }
   // Yalnız sahibi olduğumuz kişisel bildirimler için gerçek yayın kimliğini al.
@@ -3006,6 +3007,12 @@ async function bildirimEkrani(){
   D._haklar = haklar;
   const yayinTurAd = { cb: "Ulusa sesleniş", bakan: "Bakanlık açıklaması", parti: "Parti genelgesi", vekil: "Milletvekili mesajı", belediye: "Belediye duyurusu", aday: "Seçim propagandası" };
   iskelet("Bildirimler", `
+    ${(makamDavetleri.gelen || []).length ? `<div class="kart"><h2>Resmî makam davetlerin (${makamDavetleri.gelen.length})</h2><p class="alt">Makam görüşmesi yalnızca sen kabul edersen gerçekleşir. Yanıt vermezsen davet 72 saat sonunda geçersiz olur.</p>
+      ${makamDavetleri.gelen.map(t => `<div class="liste-satir" style="display:block"><b>${e(t.unvan)} · ${e(t.gonderen)}</b><div class="kucuk">${e(t.metin || "Makamda görüşme daveti")} · ${zamanKisa(t.zaman)}</div><div class="satir" style="gap:8px;margin-top:9px">
+        <button class="btn altin" style="flex:1" onclick="resmiKabulYanit(${Number(t.id)},true)">Kabul et</button>
+        <button class="btn ikinci" style="flex:1" onclick="resmiKabulYanit(${Number(t.id)},false)">Reddet</button>
+      </div></div>`).join("")}</div>` : ""}
+    ${(makamDavetleri.giden || []).length ? `<div class="kart"><h2>Yanıt bekleyen makam davetlerin</h2>${makamDavetleri.giden.map(t => `<div class="liste-satir" style="display:block"><b>${e(t.hedef)}</b><div class="kucuk">Davet gönderildi · ${zamanKisa(t.zaman)} · Onay bekleniyor</div></div>`).join("")}</div>` : ""}
     ${typeof window.cbYrdTeklifKarti === "function" ? window.cbYrdTeklifKarti(cbyTeklifleri) : ""}
     ${bakanTeklifleri.length ? `<div class="kart"><h2>Bakanlık tekliflerin (${bakanTeklifleri.length})</h2>
       <p class="alt">Teklifi kabul edersen mevcut görevlerin ve makamların korunur. Bakanlık ek görev olarak başlar.</p>
@@ -3031,6 +3038,15 @@ async function bildirimEkrani(){
     if (!await onayla("Ek yayın hakkı", `Cüzdanından ${tlYaz(hy.fiyat.reklam)} düşer. Bugünkü günlük hakkın bitince bu ek hakla bir yayın daha gönderebilirsin (günde en fazla 3 ek hak).`, "Satın al")) return;
     try { await islem(() => API.rpc("reklam_al"), "Ek yayın hakkı alındı."); bildirimEkrani(); } catch (_) {}
   };
+}
+async function resmiKabulYanit(id, kabul) {
+  if (!Number.isSafeInteger(Number(id)) || Number(id) <= 0) return;
+  if (!await onayla("Makam görüşmesi", kabul ? "Resmî makam davetini kabul edersen görüşme tamamlanır ve protokole kaydedilir." : "Bu makam davetini reddetmek istiyor musun?", kabul ? "Kabul et" : "Reddet")) return;
+  try {
+    const yanit = await API.rpc("resmi_kabul_yanit", { p_id: Number(id), p_kabul: !!kabul });
+    toast(yanit.durum === "kabul" ? "Daveti kabul ettin. Görüşme resmî kayda geçti." : yanit.durum === "ret" ? "Daveti reddettin. Makam sahibine bilgi verildi." : "Davetin süresi dolmuş.");
+    bildirimEkrani();
+  } catch (err) { toast(hataCevir(err.message), true); }
 }
 function bildirimGoster(tur, id) {
   if (tur === "dernek_eylem" && Number.isSafeInteger(+id) && +id > 0) {
