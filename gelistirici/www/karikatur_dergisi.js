@@ -106,6 +106,8 @@ window.dergiRafEkrani=async function(){
  var own=benim?'<div class="dr-kart"><h3>✒️ '+drEsc(benim.ad)+'</h3><p>Satış kazancı: '+drEsc(drTL(benim.kasa))+' • Toplam satılan sayı: '+Number(benim.toplam_satis||0)+'</p><button class="btn altin" onclick="dergiSayiEditor('+Number(benim.id)+')">Yeni sayı hazırla</button> <button class="btn ikinci" onclick="dergiKazancModal('+Number(benim.id)+','+Number(benim.kasa||0)+')">Kazancımı çek</button></div>'
  :'<div class="dr-kart"><h3>✒️ Kendi mizah dergini aç</h3><p>Kuruluş bedeli: '+drEsc(drTL(d.kurulus_ucreti))+'. Her sayıya ayrı fiyat belirlersin, alıcılar yalnız satın aldıkları sayıyı okur.</p><button class="btn altin" onclick="dergiKurModal('+Number(d.kurulus_ucreti||0)+')">Karikatür dergisi kur</button></div>';
  var html='<div class="dr-hero"><h2>🎭 Karikatür Dergileri</h2><p>Çizim bilmeden hazır sahneler ve konuşma balonlarıyla siyasi mizah. Satın almadan sayfa içeriği görünmez.</p></div>'+drKisayol()+own;
+ var alinmis=sayilar.filter(function(x){return x.satin_aldim;});
+ if(alinmis.length) html+='<section class="dr-kart"><h3>📚 Satın aldığım sayılar</h3><p>Bir kez aldığın sayılar kitaplığında kalır; yeniden ödeme yapmadan açabilirsin.</p><div class="dr-sayilar">'+alinmis.map(function(x){return '<button class="dr-sayi" onclick="dergiSayiEkrani('+Number(x.id)+')"><span class="dr-kapak-min">'+drTemaIco(x.sablon)+'</span><b>'+drEsc(x.dergi)+'</b><small>'+Number(x.no)+'. sayı • '+drEsc(x.baslik)+'</small><small>✅ Okumaya hazır</small></button>';}).join('')+'</div></section>';
  if(!list.length) html+='<div class="dr-kart"><p>Henüz dergi yok. İlk dergiyi sen kurabilirsin.</p></div>';
  list.forEach(function(g){
    var ss=sayilar.filter(function(s){return Number(s.dergi_id)===Number(g.id);});
