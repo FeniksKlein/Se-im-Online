@@ -189,21 +189,21 @@ function bsKagitHtml(g, t) {
 }
 async function basinEkrani() {
   bsStil();
-  yukleniyor('Basın / Gazeteler');
+  yukleniyor('Gazeteler ve Dergiler / Gazeteler');
   let d, tj = null;
   try {
     const s = await Promise.allSettled([API.rpc('basin'), API.rpc('basin_tiraj')]);
     if (s[0].status !== 'fulfilled') throw s[0].reason;
     d = s[0].value || {};
     tj = s[1].status === 'fulfilled' && s[1].value && typeof s[1].value === 'object' ? s[1].value : null;
-  } catch (err) { iskelet('Basın / Gazeteler', `<div class="kart"><p>${e(hataCevir(err && err.message || String(err)))}</p><button class="btn ikinci" onclick="basinEkrani()">Tekrar dene</button></div>`, { geri: true }); return; }
+  } catch (err) { iskelet('Gazeteler ve Dergiler / Gazeteler', `<div class="kart"><p>${e(hataCevir(err && err.message || String(err)))}</p><button class="btn ikinci" onclick="basinEkrani()">Tekrar dene</button></div>`, { geri: true }); return; }
   const tmap = {};
   (tj && tj.canli || []).filter(x => Number(x.tiraj) > 0).forEach((x, i) => { tmap[Number(x.gazete_id)] = Object.assign({}, x, { sira: i + 1 }); });
   const bugun = bsZaman(tj && tj.simdi || simdi());
   const benimT = d.benim ? tmap[Number(d.benim.id)] : null;
   const benimHam = d.benim && tj ? (tj.canli || []).find(x => Number(x.gazete_id) === Number(d.benim.id)) : null;
   const gazeteler = (d.gazeteler || []).slice().sort((a, b) => ((tmap[b.id] || {}).tiraj || 0) - ((tmap[a.id] || {}).tiraj || 0));
-  iskelet('Basın / Gazeteler', `<header class="bs-kunye">
+  iskelet('Gazeteler ve Dergiler / Gazeteler', `<header class="bs-kunye">
       <div class="bs-kunye-ust"><span>${e(bugun.hg)}, ${e(bugun.g + ' ' + bugun.a + ' ' + bugun.y)}</span><span>${tj && tj.hafta ? e(tj.hafta.no) + '. hafta' : 'Oyuncu basını'}</span></div>
       <h1>Basın Meydanı</h1>
       <p>Oyuncuların gazeteleri, köşe yazıları ve açıkça etiketlenmiş siyasi yayınlar.</p></header>
@@ -214,7 +214,7 @@ async function basinEkrani() {
         <div class="bs-gz-sayi"><div><b>${fmt(benimHam ? benimHam.tiraj : 0, 0)}</b><small>Bu hafta</small></div><div><b>${benimT ? benimT.sira + '.' : '—'}</b><small>Sıra</small></div><div><b>${fmt(d.benim.abone || 0, 0)}</b><small>Abone</small></div><div><b>${e(tlYaz(d.benim.kasa || 0))}</b><small>Kasa</small></div></div>`
       : `<span class="bs-etiket">Kendi gazeten</span><h3>Gazeteni kur, tiraj yarışına katıl</h3><p>Kuruluş bedeli ${e(tlYaz(d.kurulus_ucreti))}. Ücretsiz ya da abonelikli yayın yapabilir, köşe yazarı tutabilirsin.</p>`}</section>
     <div id="basinTeklifler"></div><div id="basinYazarlik"></div>
-    <div class="bs-bufe-bas"><h2>Gazete büfesi</h2><span>${fmt(gazeteler.length, 0)} gazete · tiraja göre</span></div>
+    <div class="bs-bufe-bas"><h2>Gazeteler rafı</h2><span>${fmt(gazeteler.length, 0)} gazete · tiraja göre</span></div>
     <div id="basinListe" class="bs-bufe">${gazeteler.map(g => bsKagitHtml(g, tmap[Number(g.id)])).join('')}</div>`, { geri: true });
   $('#basinBenim').appendChild(basinDugme(d.benim ? 'Gazetemi yönet' : 'Gazete kur', () => d.benim ? ekranAc(() => gazeteEkrani(d.benim.id)) : gazeteKurModal(d.kurulus_ucreti), d.benim ? 'ikinci' : ''));
   for (const t of d.teklifler || []) {
@@ -252,7 +252,7 @@ async function gazeteEkrani(id, veri) {
   bsStil();
   const tjd = g.tiraj && typeof g.tiraj === 'object' ? g.tiraj : null, bz = bsZaman(simdi());
   const tjSerit = tjd ? `<div class="bs-tiraj-serit"><div><b>${fmt(tjd.hafta && tjd.hafta.tiraj || 0, 0)}</b><small>Bu hafta tiraj</small></div><div><b>${tjd.gecen && tjd.gecen.tiraj > 0 ? tjd.gecen.sira + '.' : '—'}</b><small>Geçen hafta sıra</small></div><div><b>${fmt(tjd.birincilik || 0, 0)}</b><small>Birincilik</small></div></div>` : '';
-  iskelet('Basın / Gazeteler', `<header class="bs-onsayfa"><div class="bs-os-ust"><span>Sahibi: ${e(g.sahip)}</span><span>${g.abonelik_ucret > 0 ? e(tlYaz(g.abonelik_ucret)) + ' / ay' : 'Ücretsiz gazete'}</span></div><h1>${e(g.ad)}</h1>${g.slogan ? `<p class="slogan">${e(g.slogan)}</p>` : ''}<div class="bs-os-alt"><span>${e(bz.g + ' ' + bz.a + ' ' + bz.y)}</span><span>${fmt(g.abone, 0)} abone${g.abonelik_bitis ? ' · abonelik bitişi ' + e(tarihSaat(g.abonelik_bitis)) : ''}</span></div></header>${tjSerit}<div id="gazEylem"></div>
+  iskelet('Gazeteler ve Dergiler / Gazeteler', `<header class="bs-onsayfa"><div class="bs-os-ust"><span>Sahibi: ${e(g.sahip)}</span><span>${g.abonelik_ucret > 0 ? e(tlYaz(g.abonelik_ucret)) + ' / ay' : 'Ücretsiz gazete'}</span></div><h1>${e(g.ad)}</h1>${g.slogan ? `<p class="slogan">${e(g.slogan)}</p>` : ''}<div class="bs-os-alt"><span>${e(bz.g + ' ' + bz.a + ' ' + bz.y)}</span><span>${fmt(g.abone, 0)} abone${g.abonelik_bitis ? ' · abonelik bitişi ' + e(tarihSaat(g.abonelik_bitis)) : ''}</span></div></header>${tjSerit}<div id="gazEylem"></div>
     <div id="gazYonetim"></div><div id="gazYayinlar">${(g.yayinlar || []).map(y => `<article class="kart basin-yazi"><span class="rozet ${y.tur === 'propaganda' ? 'kirmizi' : ''}">${e(BASIN_TUR[y.tur] || y.tur)}</span>${y.tur === 'propaganda' ? `<p class="basin-propaganda">Bu yayın siyasi propagandadır. Hedef parti: ${e(y.hedef_parti && (y.hedef_parti.ad || y.hedef_parti.kisa) || 'Belirtilmemiş')}</p>` : ''}<h2>${e(y.baslik)}</h2><div class="kucuk">${e(y.yazar)} · ${e(tarihSaat(y.zaman))}</div><div class="basin-metin">${e(y.metin)}</div>${y.kilitli ? '<div class="basin-kilit">Önizleme · Tam yazıyı okumak için gazeteye abone ol.</div>' : ''}${y.tur==='kose' && !y.kilitli && g.erisim ? `<div style="margin-top:10px"><button class="btn ikinci" onclick="gazeteKoseYorumGoster(${Number(y.id)},${Number(g.id)})">Yorumları gör / yorum yaz</button><div id="gaz_kose_yorum_${Number(y.id)}"></div></div>` : ''}</article>`).join('') || '<div class="bos">Henüz yazı yayımlanmamış.</div>'}</div>`, { geri: true });
   const eylem = $('#gazEylem');
   if (!g.erisim && g.abonelik_ucret > 0) eylem.appendChild(basinDugme('Abone ol · ' + tlYaz(g.abonelik_ucret), () => {
