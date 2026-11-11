@@ -504,6 +504,9 @@ sokakHareketleriEkrani=async function(){
  let d;
  try{d=await API.rpc('sokak_merkez_panel');}
  catch(err){console.warn('Halk Hareketleri merkez paneli',err);return;}
+ let cbGozaltilar={cb_miyim:false,gozaltilar:[]};
+ try{cbGozaltilar=await API.rpc('sokak_cb_gozaltilar');}
+ catch(err){console.warn('Cumhurbaşkanlığı gözaltı listesi yüklenemedi',err);}
  document.getElementById('hhCommand')?.remove();
  const esc=x=>e(String(x??''));
  const num=x=>Number(x||0).toLocaleString('tr-TR',{maximumFractionDigits:1});
@@ -642,6 +645,17 @@ sokakHareketleriEkrani=async function(){
  }
  html+=pan('legal',law);
  let state='<div class="hh-box"><h3>Hükümet karşı hamleleri</h3><p>Uzlaşma, kamuoyu açıklaması ve bütçeli müdahaleler kamu kaynaklarına bağlıdır. Polis müdahalesi ve hukuki kararlar ayrı kaydedilir.</p></div>';
+ if(cbGozaltilar&&cbGozaltilar.cb_miyim){
+  const cbListe=cbGozaltilar.gozaltilar||[];
+  state+='<div class="hh-box"><h3>🏛️ Cumhurbaşkanlığı · Gözaltıları Serbest Bırak</h3>'+
+   '<p class="hh-muted">Eyleme katıldığı için polis tarafından gözaltına alınmış oyuncuları, süre dolmadan istediğin an serbest bırakabilirsin. Mahkeme kararları ve mevcut itirazlar silinmez; oyuncuya ve eylem taraflarına bildirim gider.</p>'+
+   (cbListe.length?cbListe.map(g=>'<div class="hh-box"><b>Gözaltı #'+Number(g.id)+' · '+esc(g.hedef)+'</b>'+
+    '<p class="hh-muted">Eylem #'+Number(g.eylem_id)+' · '+esc(g.il)+' · Bitiş: '+esc(dt(g.bitis))+'</p>'+
+    '<form data-hh-fn="sokak_cb_serbest_birak" data-hh-id="'+Number(g.id)+'">'+
+    '<label>Cumhurbaşkanlığı karar gerekçesi (isteğe bağlı)</label><textarea name="p_gerekce" maxlength="500" placeholder="Örn. Toplumsal uzlaşma amacıyla serbest bırakılmasına karar verilmiştir."></textarea>'+
+    '<button class="hh-action hh-primary">Oyuncuyu derhal serbest bırak</button></form></div>').join(''):
+    '<div class="hh-empty">Şu anda devam eden eylem gözaltısı bulunmuyor.</div>')+'</div>';
+ }
  if(d.mudahale_yetki)for(const x of live)state+='<div class="hh-box"><h3>'+esc(x.il)+' · '+esc(x.parti)+'</h3><p>Hükümet uzlaşma fonu: '+tl(x.iktidar_fonu)+'</p>'+
  '<form data-hh-fn="sokak_yanit" data-hh-id="'+Number(x.id)+'"><label>Hükümetin açıklaması ve çözüm önerisi</label><textarea name="p_metin" minlength="20" maxlength="2000" required></textarea>'+
  '<button class="hh-action hh-primary">Hükümet yanıtını yayımla</button></form>'+
@@ -735,7 +749,8 @@ sokakHareketleriEkrani=async function(){
    args.p_tutar=Number(args.p_tutar);args.p_taraf='muhalefet';args.p_eylem=id;
   }
   if(['sokak_eylem_sonlandir','sokak_basina_aciklama','sokak_yanit','sokak_butce_mudahale','sokak_polis_gonder'].includes(fn))args.p_eylem=id;
-  if(['sokak_avukat_cagir','sokak_gozalti_itiraz','sokak_gozalti_mahkeme','sokak_baro_ata','sokak_gozalti_hakim_incele'].includes(fn))args.p_gozalti=id;
+  if(['sokak_avukat_cagir','sokak_gozalti_itiraz','sokak_gozalti_mahkeme','sokak_baro_ata','sokak_gozalti_hakim_incele','sokak_cb_serbest_birak'].includes(fn))args.p_gozalti=id;
+  if(fn==='sokak_cb_serbest_birak'&&!window.confirm('Bu oyuncuyu Cumhurbaşkanlığı kararıyla derhal serbest bırakmak istiyor musun?'))return;
   if(fn==='sokak_eylem_sonlandir'&&!window.confirm('Bu eylemi kesin olarak sonlandırmak istiyor musun?'))return;
   if(fn==='sokak_butce_mudahale')args.p_tutar=Number(args.p_tutar);
   run(form.querySelector('button'),fn,args);
