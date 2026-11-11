@@ -100,7 +100,7 @@ for(let i=_mahkemeTutarEski.length-1;i>=0;i--){
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','adliye_kurum_ceza.js'),'utf8')+'</script></body>');
 // Tasarim v4 ("Gece yayini"): butun gorunum katmanlarindan SONRA yuklenir; yalniz CSS.
 // 11.11.2026: Yüksek Mahkeme fezlekesi → TBMM (Adliye + Meclis › Yasama) ve borsanın ekonomiye etkisi kartı.
-for (const m of ['ym_fezleke.js','borsa_etki.js'])
+for (const m of ['ym_fezleke.js','borsa_etki.js','ortak_cari.js'])
   html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www',m),'utf8')+'</script></body>');
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','tasarim_v4.js'),'utf8')+'</script></body>');
 // Tasarim v5 ("Devlet Salonu"): v4'ten SONRA, en son. Emoji yerine cizgi ikon tablosu + ortak bilesen dili + hareket; yalniz gorunum.

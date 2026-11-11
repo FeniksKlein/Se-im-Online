@@ -173,19 +173,25 @@ window.cekDuzenleModal=async function(hesapId){
   if(!hs.length){toast('Önce çek defteri al.',true);return window.cekDefterModal();}
   var options=hs.map(function(h){
    var s=(p.sirketler||[]).find(function(x){return x.id===h.sirket;});
-   return '<option value="'+h.id+'"'+(Number(hesapId)===h.id?' selected':'')+'>'+(h.sirket?esc(s?s.ad:'Şirket #'+h.sirket):'Şahsi')+' · '+h.yaprak+' yaprak</option>';
+   return '<option value="'+h.id+'" data-sirket="'+(h.sirket?1:0)+'"'+(Number(hesapId)===h.id?' selected':'')+'>'+(h.sirket?esc(s?s.ad:'Şirket #'+h.sirket):'Şahsi')+' · '+h.yaprak+' yaprak</option>';
   }).join('');
   var m=modal('<h3>Çek düzenle</h3><p class="alt">Bağımsız çek düzenleme menüsüdür; mülk veya hisse satın almaz. Ticaret ödemelerinde önce satıcının onayına sunulan “Çekle ödeme teklif et” seçeneğini kullanmalısın.</p>'+
     '<div class="alan"><label>Çek defterim</label><select id="ckHesap">'+options+'</select></div>'+
-    '<div class="alan"><label>Alıcı oyuncunun kullanıcı adı</label><input id="ckAlici" placeholder="Kullanıcı adı"></div>'+
-    '<div class="alan"><label>Veya alıcı şirket ID (isteğe bağlı)</label><input id="ckSirket" type="number" min="1"></div>'+
+    '<div class="alan" id="ckAliciAlan"><label>Alıcı oyuncunun kullanıcı adı</label><input id="ckAlici" placeholder="Kullanıcı adı"></div>'+
+    '<p class="kucuk" id="ckSirketNot" hidden>Şirket çeki yalnız bir şirkete yazılabilir. Kişilere ödeme maaş, kâr payı, temettü ya da sermaye azaltımıyla yapılır.</p>'+
+    '<div class="alan"><label id="ckSirketEtiket">Veya alıcı şirket ID (isteğe bağlı)</label><input id="ckSirket" type="number" min="1"></div>'+
     '<div class="alan"><label>Çek tutarı (₺)</label><input id="ckTutar" type="number" min="100" max="1000000000" step="0.01"></div>'+
     '<div class="alan"><label>Çek / ödeme tarihi</label><input id="ckVade" type="date" min="'+p.bugun+'" max="'+bugunArtir(p.bugun,365)+'" value="'+bugunArtir(p.bugun,7)+'"></div>'+
     '<div class="alan"><label>Açıklama</label><input id="ckAciklama" maxlength="180"></div>'+
     '<button id="ckYaz" class="btn altin">Çeki düzenle ve teslim et</button>');
+  var ckSirketMi=function(){var o=m.querySelector('#ckHesap').selectedOptions[0];return !!(o&&o.getAttribute('data-sirket')==='1');};
+  var ckAlanlar=function(){var sk=ckSirketMi();m.querySelector('#ckAliciAlan').hidden=sk;m.querySelector('#ckSirketNot').hidden=!sk;
+    m.querySelector('#ckSirketEtiket').textContent=sk?'Alıcı şirket ID':'Veya alıcı şirket ID (isteğe bağlı)';if(sk)m.querySelector('#ckAlici').value='';};
+  m.querySelector('#ckHesap').onchange=ckAlanlar;ckAlanlar();
   m.querySelector('#ckYaz').onclick=async function(){
+    if(ckSirketMi()&&!m.querySelector('#ckSirket').value){toast('Şirket çeki için alıcı şirketi gir.',true);return;}
     this.disabled=true;
-    var v={hesap:m.querySelector('#ckHesap').value,alici:m.querySelector('#ckAlici').value.trim(),
+    var v={hesap:m.querySelector('#ckHesap').value,alici:ckSirketMi()?'':m.querySelector('#ckAlici').value.trim(),
       alici_sirket:m.querySelector('#ckSirket').value,tutar:m.querySelector('#ckTutar').value,
       tarih:m.querySelector('#ckVade').value,aciklama:m.querySelector('#ckAciklama').value};
     try{var r=await API.rpc('cek_islem',{p_eylem:'duzenle',p_veri:v});

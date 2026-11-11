@@ -66318,6 +66318,318 @@ drop trigger if exists cek_dongu_engel_trg on oyun.cekler;
 create trigger cek_dongu_engel_trg before insert or update of hamil on oyun.cekler
   for each row execute function oyun.cek_dongu_engel();
 -- =====================================================================
+--  187 (11.11.2026) · ŞİRKET ÇEKİ KURALLARI (Ercan)
+--  1) Şirketler kişilere çek yazamaz; şirket çeki ciro yoluyla da bir kişiye geçemez.
+--     Şirketten kişilere para maaş, kâr payı/temettü, sermaye azaltımı ya da ortaklar cari hesabıyla (188) çıkar.
+--  2) Şirketten şirkete çek yalnız gerçek ticarete dayanır:
+--     a) Ticari ilişki: son 60 günde borçlu şirket, lehtar şirketten mal/hizmet almış olmalı
+--        (eko_b2b alımları + kabul edilmiş toptan sipariş çekleri). Toptan sipariş çekinin kendisi ticarettir.
+--     b) Tutar sınırı: son 60 günde o şirkete yazılan serbest çeklerin toplamı aradaki ticaret hacmini aşamaz.
+--     c) Karşılık: şirketin açık (ödenmemiş) çek borçları + yeni çek, şirket kasasını aşamaz (karşılıksız çek yazılamaz).
+--     d) Bir şirkete ciro: ciro eden şirket, çeki devrettiği şirketten son 60 günde ticaret hacmi kadar mal almış olmalı.
+--        Bankaya iskonto (hamil banka) serbesttir.
+--  3) 186'daki karşılıklı çek engeli (kişi → şirketin ortağı) aynen sürer.
+--  Etkilenmeyenler: kişisel çekler; daha önce düzenlenmiş çeklerin ödeme, ibraz, iade, takip işlemleri.
+--  Yalnız tetikleyici ve yardımcı fonksiyon; tablo ve veri değişmez.
+-- =====================================================================
+
+-- Alıcı şirketin satıcı şirketten son p_gun gündeki alımları (₺)
+create or replace function oyun.sirket_ticaret_hacmi(p_alici bigint, p_satici bigint, p_gun int default 60) returns numeric
+language sql stable set search_path = '' as $$
+  select coalesce((select sum(b.tutar) from oyun.eko_b2b b
+                    where b.alici = p_alici and b.satici = p_satici and b.zaman > now() - make_interval(days => p_gun)), 0)
+       + coalesce((select sum(c.tutar) from oyun.cekler c
+                    where c.borclu_sirket = p_alici and c.ilk_lehtar_sirket = p_satici and c.durum <> 'iptal'
+                      and c.aciklama like 'Toptan mal bedeli%' and c.keside_at > now() - make_interval(days => p_gun)), 0)
+$$;
+
+create or replace function oyun.cek_dongu_engel() returns trigger
+language plpgsql set search_path = '' as $$
+declare lehtar uuid; lehtar_s bigint; hacim numeric; kullanilan numeric; acik numeric; kasa numeric; kalan numeric;
+begin
+  if tg_op = 'INSERT' then
+    if new.borclu_sirket is not null then
+      lehtar_s := coalesce(new.ilk_lehtar_sirket, new.hamil_sirket);
+      -- 1) şirket çeki yalnız şirkete
+      if lehtar_s is null then
+        raise exception 'Şirketler kişilere çek yazamaz. Şirket çeki yalnız bir şirkete düzenlenebilir; kişilere ödeme maaş, kâr payı, temettü, sermaye azaltımı ya da ortaklar cari hesabıyla yapılır.';
+      end if;
+      -- 2c) karşılık: açık çek borçları + yeni çek ≤ kasa
+      select coalesce(s.kasa, 0) into kasa from oyun.sirketler s where s.id = new.borclu_sirket;
+      select coalesce(sum(greatest(0, c.tutar - coalesce(c.odenen, 0))), 0) into acik
+        from oyun.cekler c where c.borclu_sirket = new.borclu_sirket and c.durum in ('aktif', 'karsiliksiz');
+      if acik + new.tutar > coalesce(kasa, 0) then
+        raise exception 'Karşılıksız çek yazılamaz: şirketin açık çek borçları (% ₺) ile bu çek (% ₺) kasadaki parayı (% ₺) aşıyor.',
+          oyun.tl(acik), oyun.tl(new.tutar), oyun.tl(coalesce(kasa, 0));
+      end if;
+      -- 2a/2b) ticari ilişki ve tutar sınırı (toptan sipariş çeki ticaretin kendisidir)
+      if coalesce(new.aciklama, '') not like 'Toptan mal bedeli%' then
+        hacim := oyun.sirket_ticaret_hacmi(new.borclu_sirket, lehtar_s, 60);
+        if hacim <= 0 then
+          raise exception 'Şirketler arası çek için ticari ilişki gerekir: son 60 günde bu şirketten mal ya da hizmet almadınız.';
+        end if;
+        select coalesce(sum(c.tutar), 0) into kullanilan from oyun.cekler c
+         where c.borclu_sirket = new.borclu_sirket and c.ilk_lehtar_sirket = lehtar_s and c.durum <> 'iptal'
+           and coalesce(c.aciklama, '') not like 'Toptan mal bedeli%' and c.keside_at > now() - interval '60 days';
+        if kullanilan + new.tutar > hacim then
+          raise exception 'Çek tutarı aradaki ticareti aşamaz: son 60 günde bu şirketten % ₺ alım yaptınız, % ₺ çek yazılabilir.',
+            oyun.tl(hacim), oyun.tl(greatest(0, hacim - kullanilan));
+        end if;
+      end if;
+    elsif new.ilk_lehtar_sirket is null and new.duzenleyen is not null then
+      -- 3) 186: karşılıklı çek (kişi → şirketin ortağı/yöneticisi)
+      lehtar := coalesce(new.ilk_lehtar, new.hamil);
+      if exists (select 1 from oyun.cekler c
+                  where c.borclu_sirket is not null and c.ilk_lehtar_sirket is null and c.durum <> 'iptal'
+                    and coalesce(c.ilk_lehtar, c.hamil) = new.duzenleyen
+                    and c.keside_at > now() - interval '7 days'
+                    and oyun.cek_sirket_ilgilisi(c.borclu_sirket, lehtar)) then
+        raise exception 'Karşılıklı çek engeli: son 7 günde bu kişinin şirketinden çek aldın. Şirket kasası çapraz çekle ortaklara aktarılamaz.';
+      end if;
+    end if;
+  elsif tg_op = 'UPDATE' and new.borclu_sirket is not null then
+    -- 1) şirket çeki kişiye ciro edilemez
+    if new.hamil_sirket is null and new.hamil is not null and new.hamil is distinct from old.hamil then
+      raise exception 'Şirket çeki ciro yoluyla bir kişiye geçemez; yalnız bir şirkete ciro edilebilir.';
+    end if;
+    -- 2d) şirketten şirkete ciro ticarete dayanır (bankaya iskonto serbest)
+    if new.hamil_sirket is not null and old.hamil_sirket is not null and new.hamil_sirket is distinct from old.hamil_sirket
+       and not exists (select 1 from oyun.sirketler s where s.id = new.hamil_sirket and s.sektor = 'banka') then
+      kalan := greatest(0, new.tutar - coalesce(new.odenen, 0));
+      if oyun.sirket_ticaret_hacmi(old.hamil_sirket, new.hamil_sirket, 60) < kalan then
+        raise exception 'Çek ancak son 60 günde çek tutarı kadar mal/hizmet aldığınız bir şirkete ciro edilebilir.';
+      end if;
+    end if;
+  end if;
+  return new;
+end $$;
+revoke all on function oyun.cek_dongu_engel(), oyun.sirket_ticaret_hacmi(bigint, bigint, int) from public, anon, authenticated;
+drop trigger if exists cek_dongu_engel_trg on oyun.cekler;
+create trigger cek_dongu_engel_trg before insert or update of hamil, hamil_sirket on oyun.cekler
+  for each row execute function oyun.cek_dongu_engel();
+-- =====================================================================
+--  188 (11.11.2026) · ORTAKLAR CARİ HESABI (adat faizli borçlanma)
+--  Gerçek hayattaki karşılığı: "131 Ortaklardan Alacaklar" + adat faizi; TTK m.358 (pay sahibi şirkete ancak
+--  sermaye korunarak ve serbest kâr ölçüsünde borçlanabilir).
+--  Kurallar:
+--   • Yalnız hakim ortak (en az %50 pay) çekebilir. Halka açık şirketler ve bankalar kullanamaz (azınlık
+--     yatırımcısı ve mevduat sahibi korunur).
+--   • Limit = payı × serbest kâr. Serbest kâr = kasa − sermaye − açık çek borçları − saklı günlük ortak hakları.
+--     Sermaye ve alacaklıların parası çekilemez; kâr payı dağıtımıyla aynı koruma.
+--   • Borca her gün adat faizi işler: yıllık Merkez Bankası politika faizi (çekildiği andaki oran kayda geçer,
+--     faiz her gün güncel orandan hesaplanır). Faiz ortağın cüzdanından şirket kasasına gider; cüzdan
+--     yetmezse borca eklenir.
+--   • Ortak borcunu istediği zaman kısmen ya da tamamen öder. Borç, şirketin defter değerinde alacak olarak
+--     durur (çekim şirket değerini ve borsa endeksini düşürmez; faiz geliri değeri artırır).
+--   • Diğer ortaklara bildirim gider; tüm hareketler şirket hareketlerine ve oyun.ortak_cari_hareket'e yazılır.
+--  Mevcut tablolara ve verilere dokunmaz; yalnız sirket_defter'e cari alacak eklenir.
+-- =====================================================================
+
+create table if not exists oyun.ortak_cari (
+  sirket_id      bigint  not null references oyun.sirketler(id),
+  user_id        uuid    not null references oyun.profiller(id),
+  borc           numeric not null default 0 check (borc >= 0),
+  toplam_cekilen numeric not null default 0,
+  toplam_odenen  numeric not null default 0,
+  toplam_faiz    numeric not null default 0,
+  son_faiz       date,
+  acilis         timestamptz not null default now(),
+  guncelleme     timestamptz not null default now(),
+  primary key (sirket_id, user_id)
+);
+create table if not exists oyun.ortak_cari_hareket (
+  id        bigint generated by default as identity primary key,
+  sirket_id bigint  not null,
+  user_id   uuid    not null,
+  zaman     timestamptz not null default now(),
+  tur       text    not null check (tur in ('cekim','odeme','faiz_odendi','faiz_borca')),
+  tutar     numeric not null,
+  oran      numeric,
+  borc_sonra numeric not null
+);
+create index if not exists ortak_cari_hareket_sirket on oyun.ortak_cari_hareket(sirket_id, zaman desc);
+create index if not exists ortak_cari_hareket_user on oyun.ortak_cari_hareket(user_id, zaman desc);
+alter table oyun.ortak_cari enable row level security;
+alter table oyun.ortak_cari_hareket enable row level security;
+revoke all on oyun.ortak_cari, oyun.ortak_cari_hareket from public, anon, authenticated;
+grant select, insert, update on oyun.ortak_cari, oyun.ortak_cari_hareket to service_role;
+
+create or replace function oyun.ortak_cari_alacak(p_sirket bigint) returns numeric
+language sql stable set search_path = '' as $$
+  select coalesce((select sum(borc) from oyun.ortak_cari where sirket_id = p_sirket), 0)
+$$;
+
+-- Şirket defter değeri: ortaklardan alacak da varlıktır
+create or replace function oyun.sirket_defter(p_sirket bigint)
+ returns numeric language plpgsql stable set search_path to ''
+as $function$
+declare s oyun.sirketler; d numeric;
+begin
+  select * into s from oyun.sirketler where id = p_sirket;
+  if s.id is null then return 0; end if;
+  d := s.kasa
+     + coalesce((select sum(adet * maliyet_birim) from oyun.eko_urun_stok where sirket_id = s.id), 0)
+     + coalesce((select sum(fiyat) from oyun.eko_arsalar where sahibi_sirket = s.id), 0)
+     + coalesce((select sum(maliyet) from oyun.eko_yapilar where sirket_id = s.id), 0)
+     + oyun.ortak_cari_alacak(s.id);
+  if s.sektor = 'banka' then
+    d := d + coalesce((select sum(kalan) from oyun.oyb_kredi where banka_id = s.id and durum in ('aktif','takip')), 0)
+           + coalesce((select sum(borc) from oyun.kredi_kartlari where banka_id = s.id and borc > 0), 0)
+           + coalesce((select sum(tutar) from oyun.banka_dibs where banka_id = s.id and durum = 'acik'), 0)
+           - coalesce((select sum(round(m.anapara * (1 + m.faiz / 100), 2)) from oyun.banka_mevduat m where m.banka_id = s.id and not m.kapandi), 0)
+           - oyun.banka_vadesiz_toplam(s.id);
+  end if;
+  return greatest(0, d);
+end $function$;
+
+-- Ortağın çekebileceği tutar ve gerekçesi
+create or replace function oyun.ortak_cari_durum(p_sirket bigint, u uuid) returns jsonb
+language plpgsql stable set search_path = '' as $$
+declare s oyun.sirketler; pay numeric; acik numeric; hak numeric; serbest numeric; limit_ numeric; neden text;
+begin
+  select * into s from oyun.sirketler where id = p_sirket;
+  select coalesce(o.pay, 0) into pay from oyun.sirket_ortaklari o where o.sirket_id = p_sirket and o.user_id = u;
+  pay := coalesce(pay, 0);
+  select coalesce(sum(greatest(0, c.tutar - coalesce(c.odenen, 0))), 0) into acik
+    from oyun.cekler c where c.borclu_sirket = p_sirket and c.durum in ('aktif','karsiliksiz');
+  select coalesce(sum(greatest(0, h.hak - h.cekilen)), 0) into hak from oyun.eko_ortak_gunluk_hak h where h.sirket_id = p_sirket;
+  serbest := greatest(0, coalesce(s.kasa, 0) - coalesce(s.sermaye, 0) - acik - hak);
+  limit_ := floor(least(100000000, serbest * pay / 100));
+  neden := case
+    when s.id is null or not s.aktif then 'Şirket faal değil.'
+    when s.sektor = 'banka' then 'Bankalarda ortaklar cari hesabı kullanılamaz (mevduat sahipleri korunur).'
+    when s.halka_acik then 'Halka açık şirketlerde ortaklar cari hesabı kullanılamaz (küçük yatırımcı korunur).'
+    when pay < 50 then 'Cari hesaptan yalnız en az %50 paya sahip hakim ortak borç çekebilir.'
+    when exists (select 1 from oyun.cekler c where c.borclu_sirket = p_sirket and c.durum = 'karsiliksiz') then 'Şirketin karşılıksız çeki varken ortağa borç verilemez.'
+    when limit_ < 1000 then 'Serbest kâr yetersiz: sermaye ve şirketin borçları çekilemez.'
+    else null end;
+  return jsonb_build_object('pay', pay, 'kasa', round(coalesce(s.kasa, 0)), 'sermaye', round(coalesce(s.sermaye, 0)), 'acik_cek', round(acik),
+    'sakli_hak', round(hak), 'serbest', round(serbest), 'limit', case when neden is null then limit_ else 0 end, 'neden', neden,
+    'oran', oyun.politika_faizi());
+end $$;
+
+-- ---------- oyuncu işlemleri ----------
+create or replace function public.ortak_cari_cek(p_sirket bigint, p_tutar numeric) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare u uuid := auth.uid(); t timestamptz := oyun.simdi(); s oyun.sirketler; d jsonb; r numeric; yeni numeric; x record;
+begin
+  if u is null then raise exception 'İşlem için giriş yapmalısın.'; end if;
+  if p_tutar is null or p_tutar <> round(p_tutar) or p_tutar < 1000 then raise exception 'En az 1.000 ₺, tam sayı tutar gir.'; end if;
+  perform pg_advisory_xact_lock(98763, pg_catalog.hashtext(p_sirket::text));
+  begin perform oyun.sirket_hesapla(p_sirket); exception when undefined_function then null; end;
+  select * into s from oyun.sirketler where id = p_sirket for update;
+  d := oyun.ortak_cari_durum(p_sirket, u);
+  if d->>'neden' is not null then raise exception '%', d->>'neden'; end if;
+  if p_tutar > (d->>'limit')::numeric then
+    raise exception 'Bu tutar çekilemez. Payına düşen serbest kâr: % ₺ (kasa − sermaye − açık çekler − saklı haklar = % ₺, payın %%%).',
+      oyun.tl((d->>'limit')::numeric), oyun.tl((d->>'serbest')::numeric), d->>'pay';
+  end if;
+  r := oyun.politika_faizi();
+  update oyun.sirketler set kasa = kasa - p_tutar, son_islem = t where id = p_sirket;
+  perform oyun.para_islem(u, p_tutar, 'sirket', format('%s: ortaklar cari hesabından adat faizli borç (yıllık %%%s)', s.ad, r), t);
+  insert into oyun.ortak_cari(sirket_id, user_id, borc, toplam_cekilen, son_faiz, guncelleme)
+  values (p_sirket, u, p_tutar, p_tutar, (t at time zone 'Europe/Istanbul')::date, t)
+  on conflict (sirket_id, user_id) do update set borc = oyun.ortak_cari.borc + excluded.borc,
+    toplam_cekilen = oyun.ortak_cari.toplam_cekilen + excluded.toplam_cekilen,
+    son_faiz = case when oyun.ortak_cari.borc <= 0 or oyun.ortak_cari.son_faiz is null then excluded.son_faiz else oyun.ortak_cari.son_faiz end, guncelleme = t
+  returning borc into yeni;
+  insert into oyun.ortak_cari_hareket(sirket_id, user_id, zaman, tur, tutar, oran, borc_sonra) values (p_sirket, u, t, 'cekim', p_tutar, r, yeni);
+  insert into oyun.sirket_hareket(sirket_id, zaman, tutar, aciklama)
+  values (p_sirket, t, -p_tutar, format('Ortaklar cari hesabı: %s adat faizli borç çekti (yıllık %%%s). Şirketin ortaktan alacağı: %s ₺.', oyun.kad(u), r, oyun.tl(yeni)));
+  for x in select o.user_id from oyun.sirket_ortaklari o where o.sirket_id = p_sirket and o.user_id <> u and o.pay > 0 loop
+    perform oyun.bildir(x.user_id, format('%s, %s kasasından ortaklar cari hesabıyla %s ₺ borç çekti (yıllık %%%s adat faizi). Şirketin ortaktan toplam alacağı %s ₺.',
+      oyun.kad(u), s.ad, oyun.tl(p_tutar), r, oyun.tl(yeni)), t);
+  end loop;
+  return jsonb_build_object('tamam', true, 'borc', yeni, 'oran', r);
+end $$;
+
+create or replace function public.ortak_cari_ode(p_sirket bigint, p_tutar numeric default null) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare u uuid := auth.uid(); t timestamptz := oyun.simdi(); c oyun.ortak_cari; tutar numeric; yeni numeric;
+begin
+  if u is null then raise exception 'İşlem için giriş yapmalısın.'; end if;
+  perform pg_advisory_xact_lock(98763, pg_catalog.hashtext(p_sirket::text));
+  select * into c from oyun.ortak_cari where sirket_id = p_sirket and user_id = u for update;
+  if c.sirket_id is null or c.borc <= 0 then raise exception 'Bu şirkete cari hesap borcun yok.'; end if;
+  tutar := round(coalesce(p_tutar, c.borc));
+  if tutar < 1 then raise exception 'Geçerli bir tutar gir.'; end if;
+  tutar := least(tutar, ceil(c.borc));
+  perform oyun.para_islem(u, -tutar, 'sirket', format('%s: ortaklar cari hesabı borç ödemesi', (select ad from oyun.sirketler where id = p_sirket)), t);
+  update oyun.sirketler set kasa = kasa + tutar, son_islem = t where id = p_sirket;
+  update oyun.ortak_cari set borc = greatest(0, borc - tutar), toplam_odenen = toplam_odenen + tutar, guncelleme = t
+   where sirket_id = p_sirket and user_id = u returning borc into yeni;
+  insert into oyun.ortak_cari_hareket(sirket_id, user_id, zaman, tur, tutar, borc_sonra) values (p_sirket, u, t, 'odeme', tutar, yeni);
+  insert into oyun.sirket_hareket(sirket_id, zaman, tutar, aciklama)
+  values (p_sirket, t, tutar, format('Ortaklar cari hesabı: %s borcunu ödedi. Kalan alacak: %s ₺.', oyun.kad(u), oyun.tl(yeni)));
+  return jsonb_build_object('tamam', true, 'odenen', tutar, 'borc', yeni);
+end $$;
+
+create or replace function public.ortak_cari_panel(p_sirket bigint) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare u uuid := auth.uid(); c oyun.ortak_cari;
+begin
+  if not exists (select 1 from oyun.sirket_ortaklari o where o.sirket_id = p_sirket and o.user_id = u)
+     and not exists (select 1 from oyun.ortak_cari x where x.sirket_id = p_sirket and x.user_id = u)
+     and not coalesce(oyun.sirket_yonetici_mi(p_sirket, u), false) then
+    raise exception 'Bu şirketin ortağı değilsin.';
+  end if;
+  select * into c from oyun.ortak_cari where sirket_id = p_sirket and user_id = u;
+  return oyun.ortak_cari_durum(p_sirket, u) || jsonb_build_object(
+    'borc', round(coalesce(c.borc, 0)), 'toplam_cekilen', round(coalesce(c.toplam_cekilen, 0)),
+    'toplam_odenen', round(coalesce(c.toplam_odenen, 0)), 'toplam_faiz', round(coalesce(c.toplam_faiz, 0)),
+    'gunluk_faiz', round(coalesce(c.borc, 0) * oyun.politika_faizi() / 100 / 365),
+    'sirket_alacak', round(oyun.ortak_cari_alacak(p_sirket)),
+    'ortaklar', coalesce((select jsonb_agg(jsonb_build_object('kad', oyun.kad(x.user_id), 'borc', round(x.borc)) order by x.borc desc)
+                  from oyun.ortak_cari x where x.sirket_id = p_sirket and x.borc > 0), '[]'::jsonb),
+    'hareketler', coalesce((select jsonb_agg(jsonb_build_object('zaman', h.zaman, 'tur', h.tur, 'tutar', round(h.tutar), 'oran', h.oran, 'borc', round(h.borc_sonra)) order by h.zaman desc)
+                  from (select * from oyun.ortak_cari_hareket where sirket_id = p_sirket and user_id = u order by zaman desc limit 20) h), '[]'::jsonb));
+end $$;
+
+-- ---------- günlük adat faizi ----------
+create or replace function oyun.ortak_cari_tick() returns int
+language plpgsql security definer set search_path = '' as $$
+declare t timestamptz := oyun.simdi(); bugun date := (oyun.simdi() at time zone 'Europe/Istanbul')::date; r numeric := oyun.politika_faizi();
+  c record; gun int; faiz numeric; yeni numeric; n int := 0; ad text;
+begin
+  if not pg_try_advisory_xact_lock(hashtext('oyun.ortak_cari_tick')) then return 0; end if;
+  for c in select * from oyun.ortak_cari where borc > 0 and coalesce(son_faiz, bugun) < bugun order by sirket_id, user_id loop
+    gun := least(31, bugun - c.son_faiz);
+    faiz := round(c.borc * r / 100 / 365 * gun);
+    select s.ad into ad from oyun.sirketler s where s.id = c.sirket_id;
+    if faiz < 1 then update oyun.ortak_cari set son_faiz = bugun where sirket_id = c.sirket_id and user_id = c.user_id; continue; end if;
+    begin
+      perform oyun.para_islem(c.user_id, -faiz, 'sirket', format('%s: ortaklar cari hesabı adat faizi (%s gün, yıllık %%%s)', ad, gun, r), t);
+      update oyun.sirketler set kasa = kasa + faiz where id = c.sirket_id;
+      update oyun.ortak_cari set toplam_faiz = toplam_faiz + faiz, son_faiz = bugun, guncelleme = t
+       where sirket_id = c.sirket_id and user_id = c.user_id returning borc into yeni;
+      insert into oyun.ortak_cari_hareket(sirket_id, user_id, zaman, tur, tutar, oran, borc_sonra) values (c.sirket_id, c.user_id, t, 'faiz_odendi', faiz, r, yeni);
+      insert into oyun.sirket_hareket(sirket_id, zaman, tutar, aciklama)
+      values (c.sirket_id, t, faiz, format('Ortaklar cari hesabı adat faizi geliri: %s (%s gün, yıllık %%%s)', oyun.kad(c.user_id), gun, r));
+    exception when others then
+      update oyun.ortak_cari set borc = borc + faiz, toplam_faiz = toplam_faiz + faiz, son_faiz = bugun, guncelleme = t
+       where sirket_id = c.sirket_id and user_id = c.user_id returning borc into yeni;
+      insert into oyun.ortak_cari_hareket(sirket_id, user_id, zaman, tur, tutar, oran, borc_sonra) values (c.sirket_id, c.user_id, t, 'faiz_borca', faiz, r, yeni);
+      perform oyun.bildir(c.user_id, format('%s cari hesap borcunun %s ₺ adat faizi cüzdanından ödenemedi ve borca eklendi. Güncel borç: %s ₺.', ad, oyun.tl(faiz), oyun.tl(yeni)), t);
+    end;
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+
+revoke all on function oyun.ortak_cari_alacak(bigint), oyun.ortak_cari_durum(bigint, uuid), oyun.ortak_cari_tick() from public, anon, authenticated;
+revoke all on function public.ortak_cari_cek(bigint, numeric), public.ortak_cari_ode(bigint, numeric), public.ortak_cari_panel(bigint) from public, anon;
+grant execute on function public.ortak_cari_cek(bigint, numeric), public.ortak_cari_ode(bigint, numeric), public.ortak_cari_panel(bigint) to authenticated, service_role;
+
+do $z$
+begin
+  if to_regclass('oyun.zamanlayici_adim') is not null then
+    insert into oyun.zamanlayici_adim(adim, sira, periyot_dk, ofset_dk, komut, aktif)
+    values ('ortak_cari', 79, 60, 11, 'select oyun.ortak_cari_tick()', true)
+    on conflict (adim) do nothing;
+  end if;
+exception when others then raise notice 'ortak_cari zamanlanamadı: %', sqlerrm;
+end $z$;
+-- =====================================================================
 --  184 (11.11.2026) · YAZI KARAKTER SINIRLARI ARTIRILDI
 --  Oyuncuların yazdığı gövde metinlerinin (sohbet, Kürsü/akış, özel mesaj, gerekçe, savunma, dava iddiası,
 --  dilekçe, rapor, gazete yazısı, kitap…) üst sınırı büyütülür. Ad, başlık, slogan gibi kısa alanlar
@@ -66745,7 +67057,7 @@ do $izin$
 declare
   izin text[] := array[
     'bakan_fezleke_listesi', 'bakan_fezleke_karar',
-    'ym_fezleke_panel', 'ym_fezleke_yaz', 'ym_fezleke_imzala', 'ym_fezleke_geri_cek', 'ym_fezleke_onerge_imzala', 'ym_fezleke_oy', 'ym_fezleke_savunma', 'borsa_etki_durum',
+    'ym_fezleke_panel', 'ym_fezleke_yaz', 'ym_fezleke_imzala', 'ym_fezleke_geri_cek', 'ym_fezleke_onerge_imzala', 'ym_fezleke_oy', 'ym_fezleke_savunma', 'borsa_etki_durum', 'ortak_cari_panel', 'ortak_cari_cek', 'ortak_cari_ode',
     'sokak_talep_sec', 'sokak_talepli_baslat', 'sokak_soz_teklif', 'sokak_soz_oyla', 'sokak_uzlasma_panel', 'sokak_hukumet_panel', 'sokak_hukumet_karar', 'sokak_karar_yanit', 'sokak_eylemler', 'sokak_eylem_baslat', 'sokak_destek', 'sokak_yanit',
     'aday_ol', 'adaylik_geri_cek', 'adaylik_vazgec', 'adayliklarim', 'adliye_af_cikar', 'adliye_beyan_ver',
     'adliye_dava_ac', 'adliye_dava_ek', 'adliye_detay', 'adliye_durum', 'adliye_hakim_al', 'adliye_hakim_ata',
