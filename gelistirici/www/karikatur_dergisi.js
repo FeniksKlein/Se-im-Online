@@ -103,11 +103,13 @@ window.dergiRafEkrani=async function(){
  drStil();yukleniyor('Karikatür Dergileri');
  var d;try{d=await API.rpc('dergi_raf');}catch(err){iskelet('Karikatür Dergileri','<div class="kart">'+drEsc(hataCevir(err.message))+'</div>',{geri:true});return;}
  var list=d.dergiler||[], sayilar=d.sayilar||[], benim=d.benim;
- var own=benim?'<div class="dr-kart"><h3>✒️ '+drEsc(benim.ad)+'</h3><p>Satış kazancı: '+drEsc(drTL(benim.kasa))+' • Toplam satılan sayı: '+Number(benim.toplam_satis||0)+'</p><button class="btn altin" onclick="dergiSayiEditor('+Number(benim.id)+')">Yeni sayı hazırla</button> <button class="btn ikinci" onclick="dergiKazancModal('+Number(benim.id)+','+Number(benim.kasa||0)+')">Kazancımı çek</button></div>'
- :'<div class="dr-kart"><h3>✒️ Kendi mizah dergini aç</h3><p>Kuruluş bedeli: '+drEsc(drTL(d.kurulus_ucreti))+'. Her sayıya ayrı fiyat belirlersin, alıcılar yalnız satın aldıkları sayıyı okur.</p><button class="btn altin" onclick="dergiKurModal('+Number(d.kurulus_ucreti||0)+')">Karikatür dergisi kur</button></div>';
- var html='<div class="dr-hero"><h2>🎭 Karikatür Dergileri</h2><p>Çizim bilmeden hazır sahneler ve konuşma balonlarıyla siyasi mizah. Satın almadan sayfa içeriği görünmez.</p></div>'+drKisayol()+own;
+ var own=benim?'<div class="dr-kart"><h3>✒️ '+drEsc(benim.ad)+'</h3><p>Toplam dergi satışları: '+drEsc(drTL(benim.kasa))+' • Satılan sayı: '+Number(benim.toplam_satis||0)+'</p><p>🔒 Satış bedelleri dergi kayıtlarında tutulur; cüzdana çekilemez veya başka oyuncuya aktarılamaz.</p><button class="btn altin" onclick="dergiSayiEditor('+Number(benim.id)+')">Yeni sayı hazırla</button> <button class="btn ikinci" onclick="dergiKapat('+Number(benim.id)+')">Dergiyi kapat</button></div>'
+ :'<div class="dr-kart"><h3>✒️ Kendi mizah dergini aç</h3><p>Kuruluş bedeli: '+drEsc(drTL(d.kurulus_ucreti))+'. Her sayıya 1-1.000 TL fiyat belirlersin. Sayıları yalnız satın alanlar okur.</p><button class="btn altin" onclick="dergiKurModal('+Number(d.kurulus_ucreti||0)+')">Karikatür dergisi kur</button></div>';
+ var html='<div class="dr-hero"><h2>🎭 Karikatür Dergileri</h2><p>Çizim bilmeden hazır sahneler ve konuşma balonlarıyla siyasi mizah. En fazla 1.000 TL. Satın almadan sayfa içeriği görünmez.</p></div>'+drKisayol()+own;
  var alinmis=sayilar.filter(function(x){return x.satin_aldim;});
  if(alinmis.length) html+='<section class="dr-kart"><h3>📚 Satın aldığım sayılar</h3><p>Bir kez aldığın sayılar kitaplığında kalır; yeniden ödeme yapmadan açabilirsin.</p><div class="dr-sayilar">'+alinmis.map(function(x){return '<button class="dr-sayi" onclick="dergiSayiEkrani('+Number(x.id)+')"><span class="dr-kapak-min">'+drTemaIco(x.sablon)+'</span><b>'+drEsc(x.dergi)+'</b><small>'+Number(x.no)+'. sayı • '+drEsc(x.baslik)+'</small><small>✅ Okumaya hazır</small></button>';}).join('')+'</div></section>';
+ var kapananSayilar=sayilar.filter(function(x){return x.sahibim&&!list.some(function(g){return Number(g.id)===Number(x.dergi_id);});});
+ if(kapananSayilar.length) html+='<section class="dr-kart"><h3>📕 Kapattığım dergilerin arşivi</h3><p>Yeni satışa kapalıdır. Yayımladığın eski sayılarını inceleyebilirsin.</p><div class="dr-sayilar">'+kapananSayilar.map(function(x){return '<button class="dr-sayi" onclick="dergiSayiEkrani('+Number(x.id)+')"><span class="dr-kapak-min">'+drTemaIco(x.sablon)+'</span><b>'+drEsc(x.dergi)+'</b><small>'+Number(x.no)+'. sayı • '+drEsc(x.baslik)+'</small><small>🔒 Yayını durduruldu</small></button>';}).join('')+'</div></section>';
  if(!list.length) html+='<div class="dr-kart"><p>Henüz dergi yok. İlk dergiyi sen kurabilirsin.</p></div>';
  list.forEach(function(g){
    var ss=sayilar.filter(function(s){return Number(s.dergi_id)===Number(g.id);});
@@ -125,10 +127,13 @@ window.dergiKurModal=function(ucret){
   basinAlan('drSlogan','Dergi sloganı','maxlength="100"'),
  'Dergiyi kur','dergi_kur',function(m){return {p_ad:$('#drAd',m).value.trim(),p_slogan:$('#drSlogan',m).value.trim()};},function(){ekranAc(dergiRafEkrani);});
 };
-window.dergiKazancModal=function(id,kasa){
- basinForm('Dergi kazancımı çek','<p class="alt">Dergi kasası: '+drEsc(drTL(kasa))+'</p>'+
- basinAlan('drCek','Cüzdana aktarılacak miktar','type="number" min="1" step="1" max="'+Number(kasa)+'" required'),
- 'Kazancı çek','dergi_kazanc_cek',function(m){return {p_dergi:id,p_tutar:Number($('#drCek',m).value)};},function(){ekranAc(dergiRafEkrani);});
+window.dergiKapat=async function(id){
+ if(!await onayla('Dergiyi kapat','Yeni sayi ve satis durur. Daha once satin alinan sayilar oyuncunun kitapliginda kalir. Kalan satis geliri cekilemez.','Dergiyi kapat'))return;
+ try{
+  await API.rpc('dergi_kapat',{p_dergi:id});
+  toast('Dergin kapatildi; satin alinan sayilar okunmaya devam edecek.');
+  ekranAc(dergiRafEkrani);
+ }catch(err){toast(hataCevir(err.message),true);}
 };
 window.dergiSayiEkrani=async function(id,d0){
  drStil();yukleniyor('Karikatür dergisi');
@@ -166,7 +171,7 @@ function drEditorCiz(){
  var cards=DR_SABLONLAR.map(function(k){return '<button type="button" class="dr-sablon '+(k===p.sablon?'secili':'')+'" onclick="drSablonSec(\''+k+'\')">'+drTemaIco(k)+' '+drEsc(DR_SABLON[k].ad)+'</button>';}).join('');
  var html=drKisayol()+'<div class="dr-hero"><h2>✒️ Yeni dergi sayısı</h2><p>Hazır şablonları düzenle. Bir sayıda 1-4 karikatür olabilir. Yayımlandıktan sonra içeriği değiştirilmez.</p></div>'+
  '<div class="dr-kart dr-editor">'+drField('drSayiBas','Sayı başlığı',window.__drBaslik||'Haftanın Siyasi Mizahı',90,false)+
- '<div><label for="drSayiFiyat">Tek sayı fiyatı (₺)</label><input id="drSayiFiyat" type="number" min="1" max="100000" step="1" value="'+Number(window.__drFiyat||500)+'" oninput="drOku()"/></div>'+
+ '<div><label for="drSayiFiyat">Tek sayı fiyatı (₺)</label><input id="drSayiFiyat" type="number" min="1" max="1000" step="1" value="'+Number(window.__drFiyat||500)+'" oninput="drOku()"/></div>'+
  '<h3>Karikatür '+(DR_AKTIF+1)+' / '+DR_SAYFALAR.length+'</h3><div class="dr-sayfagecis">'+tabs+'</div>'+
  '<div class="dr-sablonlar">'+cards+'</div>'+
  drField('drKarBas','Karikatür başlığı',p.baslik,90,false)+
@@ -199,7 +204,7 @@ window.drSayiYayinla=async function(){
  drOku();if(DR_KAYDEDILIYOR)return;
  var bas=String(window.__drBaslik||'').trim(),fiyat=Number(window.__drFiyat);
  if(bas.length<4||bas.length>90){toast('Sayı başlığı 4-90 karakter olmalı.',true);return;}
- if(!Number.isInteger(fiyat)||fiyat<1||fiyat>100000){toast('Sayı fiyatı 1-100000 TL arasında olmalı.',true);return;}
+ if(!Number.isInteger(fiyat)||fiyat<1||fiyat>1000){toast('Sayı fiyatı 1-1000 TL arasında olmalı.',true);return;}
  DR_KAYDEDILIYOR=true;var b=document.getElementById('drYayinBtn');if(b){b.disabled=true;b.textContent='Yayımlanıyor…';}
  try{
   var r=await API.rpc('dergi_sayi_yayinla',{p_dergi:DR_DERGI,p_baslik:bas,p_fiyat:fiyat,p_sayfalar:DR_SAYFALAR});
