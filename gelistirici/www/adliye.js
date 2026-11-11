@@ -121,7 +121,7 @@ function adlSecimItirazModal(secim){
  if(!se||!partiler.length)return toast('Partiniz adına sonuç itirazı yapma yetkiniz yok.',true);
  const m=modal('<p class="alt">Yalnız sonuç açıklanmış seçimlere, açıklamadan itibaren 48 saat içinde başvuru yapılır. Somut iddia ve delil ekleyin.</p>'
  +'<div class="alan"><label>İtiraz eden parti</label><select id="adlItParti">'+partiler.map(p=>'<option value="'+p.id+'">'+e(p.ad)+'</option>').join('')+'</select></div>'
- +adlAlan('İtiraz gerekçesi (30–1600 karakter)','adlItGerekce','textarea')
+ +adlAlan('İtiraz gerekçesi (30–5000 karakter)','adlItGerekce','textarea')
  +adlAlan('Deliller, olay tarihleri ve kayıtlar','adlItDelil','textarea')
  +'<button class="btn altin" id="adlItGonder">Seçim sonucuna itiraz et</button>');
  adlFormBaslik(m,'Seçim #'+se.id+' · '+se.tur+' · '+se.donem);
@@ -226,7 +226,7 @@ function adlDavaModal(){
   +'<div class="alan"><label>Dava türü</label><select id="adlTur">'+secenek+'</select></div>'
   +'<p class="alt" id="adlSucAciklamasi">'+e(ADL_SUCLAR.hakaret)+'</p>'
   +'<div class="alan"><label>Davacı olarak</label><select id="adlDavaciParti"><option value="">Kendi adıma</option>'+ben.map(p=>'<option value="'+p.id+'">'+e(p.ad)+' adına</option>').join("")+'</select></div>'
-  +adlAlan("İddia (20–1600 karakter)","adlIddia","textarea")
+  +adlAlan("İddia (20–5000 karakter)","adlIddia","textarea")
   +adlAlan("Deliller ve olayın detayları","adlDelil","textarea","Örn. sohbet mesajının tarihi ve kanalı")
   +'<button class="btn altin" id="adlDavaAc">Davayı aç</button>');
  adlFormBaslik(m,"Adliyede yeni dava");
@@ -457,7 +457,7 @@ function adlIstinafHtml(d,ek){
   h+='<div class="kart"><h3>İstinaf</h3><p class="alt">'+e(i.basvuran)+' itiraz etti: '+e(i.gerekce)+'</p>'
    +'<p class="kucuk">Jüri: '+i.juri_sayi+' kişi · '+i.onay+' onay · '+i.boz+' boz · '+(i.durum==="acik"?'son '+adlTarih(i.bit):i.durum==="bozuldu"?'karar bozuldu':'karar onaylandı')+'</p>'
    +(i.juri?i.juri.map(j=>'<div class="kucuk">• '+e(j.kad)+': '+e(j.oy==="boz"?"boz":j.oy==="onay"?"onayla":"oy vermedi")+(j.gerekce?' — '+e(j.gerekce):'')+'</div>').join(''):'')
-   +(i.durum==="acik"&&i.juri_miyim&&!i.juri_oyum?'<div class="alan"><label>Kısa gerekçe (isteğe bağlı)</label><input id="adlJuriNot" maxlength="800"></div><div class="vit-dugme"><button class="btn altin" onclick="adlJuriOy('+d.id+',\'onay\')">Kararı onayla</button><button class="btn ikinci" onclick="adlJuriOy('+d.id+',\'boz\')">Kararı boz</button></div>':'')
+   +(i.durum==="acik"&&i.juri_miyim&&!i.juri_oyum?'<div class="alan"><label>Kısa gerekçe (isteğe bağlı)</label><input id="adlJuriNot" maxlength="2000"></div><div class="vit-dugme"><button class="btn altin" onclick="adlJuriOy('+d.id+',\'onay\')">Kararı onayla</button><button class="btn ikinci" onclick="adlJuriOy('+d.id+',\'boz\')">Kararı boz</button></div>':'')
    +(i.juri_oyum?'<p class="kucuk">Oyun: '+e(i.juri_oyum==="boz"?"boz":"onayla")+'</p>':'')+'</div>';
  } else if(d.durum==="karar"&&ek.kesin===false){
   h+='<div class="kart"><h3>İstinaf</h3><p class="alt">Karar henüz kesinleşmedi. Kaybeden taraf '+adlTarih(ek.istinaf_son)+' tarihine kadar bir kez itiraz edebilir; itiraz yoksa karar kesinleşir ve ağır cezalar o zaman uygulanır.</p>'
@@ -568,7 +568,7 @@ function adlAymOyModal(id){
    var bas=karar==="gorevden_al"?"Bakanı görevden al":"Bakanı görevde tut";
    var m=modal('<div class="alan" style="display:block;width:100%;max-width:100%;box-sizing:border-box">'
       +'<label for="bfGerekce" style="display:block;font-size:15px;margin-bottom:8px">Cumhurbaşkanlığı karar gerekçesi</label>'
-      +'<textarea id="bfGerekce" rows="5" minlength="20" maxlength="1200" placeholder="Mahkeme kararını değerlendirip gerekçenizi yazın..." style="display:block;width:100%;min-width:0;box-sizing:border-box;font-size:16px;line-height:1.5;background:#17233b;color:#fff;border:1px solid #778bad;border-radius:9px;padding:12px"></textarea>'
+      +'<textarea id="bfGerekce" rows="5" minlength="20" maxlength="3000" placeholder="Mahkeme kararını değerlendirip gerekçenizi yazın..." style="display:block;width:100%;min-width:0;box-sizing:border-box;font-size:16px;line-height:1.5;background:#17233b;color:#fff;border:1px solid #778bad;border-radius:9px;padding:12px"></textarea>'
       +'</div><p class="alt">Bu karar resmi oyuna kaydedilir ve ilgili bakana bildirilir.</p>'
       +'<button class="btn altin" id="bfKaydet" style="width:100%;min-height:48px">'+bas+'</button>');
    if(typeof adlFormBaslik==="function")adlFormBaslik(m,"Fezleke #"+id+" · "+bas);

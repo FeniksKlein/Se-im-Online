@@ -251,7 +251,7 @@ adliyeDosya=async function(id){
  }catch(err){console.warn('Hukuk paneli:',err.message);}
 };
 window.avukatTeklifModal=id=>{
- const m=modal('<p class="alt">Ücret serbest pazarlıkla belirlenir. Peşin ücret kabulde doğrudan cüzdanına aktarılır; tahsil edilen tazminat üzerinden başarı primi en fazla %25 olabilir (Avukatlık Kanunu m.164).</p><div class="alan"><label>Temsil edeceğin taraf</label><select id="hukTaraf">'+op('davaci','Davacı')+op('davali','Davalı')+'</select></div><div class="alan"><label>Peşin ücret (₺)</label><input id="hukFiyat" type="number" min="0" step="1" value="100000"></div><div class="alan"><label>Tahsil edilen tazminat üzerinden prim (%)</label><input id="hukPrim" type="number" min="0" max="25" step="1" value="0"></div><div class="alan"><label>Teklif mesajı</label><textarea id="hukAcik" maxlength="500" rows="3" '+TA+'></textarea></div><button class="btn altin" id="hukTeklifGonder">Teklifi gönder</button>');
+ const m=modal('<p class="alt">Ücret serbest pazarlıkla belirlenir. Peşin ücret kabulde doğrudan cüzdanına aktarılır; tahsil edilen tazminat üzerinden başarı primi en fazla %25 olabilir (Avukatlık Kanunu m.164).</p><div class="alan"><label>Temsil edeceğin taraf</label><select id="hukTaraf">'+op('davaci','Davacı')+op('davali','Davalı')+'</select></div><div class="alan"><label>Peşin ücret (₺)</label><input id="hukFiyat" type="number" min="0" step="1" value="100000"></div><div class="alan"><label>Tahsil edilen tazminat üzerinden prim (%)</label><input id="hukPrim" type="number" min="0" max="25" step="1" value="0"></div><div class="alan"><label>Teklif mesajı</label><textarea id="hukAcik" maxlength="1500" rows="3" '+TA+'></textarea></div><button class="btn altin" id="hukTeklifGonder">Teklifi gönder</button>');
  adlFormBaslik(m,'Dava #'+id+' avukatlık teklifi');
  m.querySelector('#hukTeklifGonder').onclick=async()=>{
   try{await RPC('avukat_teklif_ver',{p_dava:id,p_taraf:m.querySelector('#hukTaraf').value,p_tutar:Number(m.querySelector('#hukFiyat').value),p_prim:Number(m.querySelector('#hukPrim').value),p_aciklama:m.querySelector('#hukAcik').value});modalKapat();toast('Avukatlık teklifi gönderildi.');await adliyeDosya(id);}catch(err){error(err);}
@@ -266,7 +266,7 @@ window.avukatVekaletIptal=async(vid,id)=>{
  try{await RPC('avukat_vekalet_iptal',{p_vekalet:vid});toast('Vekâlet sonlandırıldı.');await adliyeDosya(id);}catch(err){error(err);}
 };
 window.avukatSavunmaModal=id=>{
- const m=modal('<div class="alan"><label>Hukuki savunma ve gerekçeler (20–2500 karakter)</label><textarea id="hukSavunma" rows="6" maxlength="2500" '+TA+'></textarea></div><button class="btn altin" id="hukSavGonder">Mahkemeye savunma sun</button>');
+ const m=modal('<div class="alan"><label>Hukuki savunma ve gerekçeler (20–6000 karakter)</label><textarea id="hukSavunma" rows="6" maxlength="6000" '+TA+'></textarea></div><button class="btn altin" id="hukSavGonder">Mahkemeye savunma sun</button>');
  adlFormBaslik(m,'Dava #'+id+' · Avukat savunması');
  m.querySelector('#hukSavGonder').onclick=async()=>{try{await RPC('avukat_savunma_ver',{p_dava:id,p_metin:m.querySelector('#hukSavunma').value});modalKapat();toast('Avukat savunması mahkemeye sunuldu.');await adliyeDosya(id);}catch(err){error(err);}};
 };

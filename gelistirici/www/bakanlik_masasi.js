@@ -984,7 +984,7 @@
   window.bmAciklamaModal = function () {
     var m = bmModal('<h3 style="font-size:19px;font-weight:800">Bakanlık açıklaması</h3><p class="alt" style="margin:4px 0 10px">Açıklama Resmî Gazete\'de duyuru olarak yayımlanır ve Gündem\'de görünür. Bağlantı paylaşılamaz.</p>' +
       '<div class="alan"><label>Başlık</label><input id="bmABas" maxlength="120" placeholder="Örn. Okullarda ücretsiz öğle yemeği başlıyor"></div>' +
-      '<div class="alan"><label>Açıklama</label><textarea id="bmAMetin" maxlength="1200" placeholder="Kamuoyuna ne duyurmak istiyorsun?"></textarea><div class="bkm-say" id="bmASay">0 / 1200</div></div>' +
+      '<div class="alan"><label>Açıklama</label><textarea id="bmAMetin" maxlength="3000" placeholder="Kamuoyuna ne duyurmak istiyorsun?"></textarea><div class="bkm-say" id="bmASay">0 / 1200</div></div>' +
       '<button class="btn altin" id="bmAOk">Yayımla</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
     var ta = m.querySelector("#bmAMetin"); ta.oninput = function () { m.querySelector("#bmASay").textContent = ta.value.length + " / 1200"; };
     m.querySelector("#bmAOk").onclick = async function () {
@@ -1000,7 +1000,7 @@
     var m = bmModal('<h3 style="font-size:19px;font-weight:800">Ek ödenek talebi</h3><p class="alt" style="margin:4px 0 10px">Talep ' + esc(v.yurutme || "yürütmeye") + '\'e gider. ' + Number(ta.sure_saat || 72) + ' saat içinde karar verilmezse düşer. Onaylanırsa tutar Hazine\'den kasana aktarılır.</p>' +
       '<div class="alan"><label>Tutar (1 – ' + sayi(ust, 0) + ' milyar ₺)</label><input id="bmTTutar" type="number" min="1" max="' + ust + '" step="0.5" value="' + oner + '" inputmode="decimal"></div>' +
       '<div class="bkm-cips">' + [5, 10, 15, ust].filter(function (x, i, a) { return x <= ust && a.indexOf(x) === i; }).map(function (x) { return '<button type="button" data-t="' + x + '">' + sayi(x, 0) + ' milyar</button>'; }).join("") + '</div>' +
-      '<div class="alan"><label>Gerekçe (Resmî Gazete\'de yayımlanabilir)</label><textarea id="bmTGer" maxlength="400" placeholder="Örn. Deprem bölgesindeki adliyelerin yeniden inşası için"></textarea></div>' +
+      '<div class="alan"><label>Gerekçe (Resmî Gazete\'de yayımlanabilir)</label><textarea id="bmTGer" maxlength="1500" placeholder="Örn. Deprem bölgesindeki adliyelerin yeniden inşası için"></textarea></div>' +
       '<button class="btn altin" id="bmTOk">Talebi gönder</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
     m.querySelectorAll("[data-t]").forEach(function (b) { b.onclick = function () { m.querySelector("#bmTTutar").value = b.dataset.t; }; });
     m.querySelector("#bmTOk").onclick = async function () {
@@ -1168,7 +1168,7 @@
           '<div class="bkm-ozet">Hazine: <b>' + mr(hz, 1) + '</b> → <b>' + mr(son, 1) + '</b>' +
           (son < 0 ? '<br><b>Hazine\'de yeterli nakit yok.</b>' : '<br>Bakanlık bu parayı harcadığında, devlet gelirinden fazla harcıyorsa bütçe açığı büyür; açık sürerse enflasyon yükselir.') + '</div>';
       })() : "") +
-      '<div class="alan"><label>' + (kabul ? "Not (isteğe bağlı)" : "Ret gerekçesi (isteğe bağlı)") + '</label><input id="bmKNot" maxlength="300"></div>' +
+      '<div class="alan"><label>' + (kabul ? "Not (isteğe bağlı)" : "Ret gerekçesi (isteğe bağlı)") + '</label><input id="bmKNot" maxlength="1000"></div>' +
       '<button class="btn ' + (kabul ? "altin" : "tehlike") + '" id="bmKOk">' + (kabul ? "Onayla ve aktar" : "Reddet") + '</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
     m.querySelector("#bmKOk").onclick = async function () {
       this.disabled = true;

@@ -69,7 +69,7 @@ async function stkKurModal() {
   const m = modal(`<h3>Dernek kur</h3><p class="alt">Kurucusu olarak başkan olursun; kayıtlı olduğun il merkez şube olur. Bir oyuncu yalnız bir derneğin başkanı olabilir.${harc ? ` Kuruluş harcı: <b>${tlYaz(harc)}</b>.` : ""}</p>
     <div class="alan"><label for="dkAd">Derneğin adı</label><input id="dkAd" maxlength="50" placeholder="Örnek: Ege Doğa Derneği"></div>
     <div class="alan"><label for="dkAlan">Çalışma alanı</label><select id="dkAlan">${STK_ALAN.map(([k, v]) => `<option value="${k}">${e(v)}</option>`).join("")}</select></div>
-    <div class="alan"><label for="dkAmac">Amacı (isteğe bağlı)</label><textarea id="dkAmac" class="alanmetin" maxlength="600" placeholder="Derneğin neyi savunduğu, neler yapacağı…"></textarea></div>
+    <div class="alan"><label for="dkAmac">Amacı (isteğe bağlı)</label><textarea id="dkAmac" class="alanmetin" maxlength="2000" placeholder="Derneğin neyi savunduğu, neler yapacağı…"></textarea></div>
     <div class="hata-metin" id="dkHata"></div><button class="btn altin" id="dkTamam">Derneği kur</button>`);
   $("#dkTamam", m).onclick = async () => {
     const b = $("#dkTamam", m); b.disabled = true;
@@ -162,7 +162,7 @@ async function stkEylemModal(id, tur) {
     ${tur === "protesto" ? `<div class="alan"><label for="deIl">İl (şubesi olan iller)</label><select id="deIl">${d.subeler.map(s => `<option value="${s.il_id}">${e(s.il)}</option>`).join("")}</select></div>
       <div class="alan"><label for="deZaman">Başlangıç (Türkiye saati)</label><input id="deZaman" type="datetime-local" value="${pz.y}-${iki(pz.a)}-${iki(pz.g)}T${pz.s}:00"></div>` : ""}
     <div class="alan"><label for="deBaslik">Başlık</label><input id="deBaslik" maxlength="100" placeholder="${tur === "protesto" ? "Örnek: Kordon'da büyük buluşma" : "Kısa ve net bir başlık"}"></div>
-    <div class="alan"><label for="deMetin">Metin</label><textarea id="deMetin" class="alanmetin" maxlength="2000" placeholder="Derneğin görüşü, talepleri, çağrısı…"></textarea></div>
+    <div class="alan"><label for="deMetin">Metin</label><textarea id="deMetin" class="alanmetin" maxlength="5000" placeholder="Derneğin görüşü, talepleri, çağrısı…"></textarea></div>
     <div class="hata-metin" id="deHata"></div><button class="btn ${tur === "protesto" ? "canli" : "altin"}" id="deTamam">${tur === "protesto" ? "Protestoyu duyur" : "Yayımla"}</button>`);
   const hedefCiz = () => {
     const k = $("#deKonu", m).value, al = $("#deHedefAlan", m);

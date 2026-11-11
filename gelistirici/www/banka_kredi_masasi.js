@@ -223,7 +223,7 @@ function kmTeklifModal(kad){
     <div class="alan"><label>Vade (gün)</label><input id="ktVade" type="number" min="1" max="30" value="7"></div>
     <div class="alan"><label>Taksit sayısı</label><select id="ktTaksit"></select></div>
     <div class="alan"><label>Faiz (vadenin tamamı için, %)</label><input id="ktFaiz" type="number" min="0" max="20" step="0.1" value="5"></div>
-    <div class="alan"><label>Mesajın (isteğe bağlı)</label><input id="ktMesaj" maxlength="300"></div>
+    <div class="alan"><label>Mesajın (isteğe bağlı)</label><input id="ktMesaj" maxlength="1000"></div>
     <div id="ktPlan"></div>
     <p class="kucuk">Teklif 48 saat geçerlidir; oyuncu ödeme planını görüp kabul ederse kredi banka kasasından kullandırılır.</p>
     <button class="btn altin" id="ktGonder">Teklifi gönder</button>`);
@@ -242,7 +242,7 @@ function kmDavaModal(id, kad){
   const m = modal(`<h3 style="font-size:19px;font-weight:800">${e(kad)} hakkında icra davası</h3>
     <p class="alt">Dava Adliye'ye gider; borçlu 24 saat içinde savunma yapar, mahkeme karar verir. Kabul edilirse seçtiğin yoldan tahsil edilir.</p>
     <div class="alan"><label>Tahsil yolu</label><select id="kdTur"><option value="gelir">Gelirine haciz (maaş, kira, şirket gelirinin %25'i)</option><option value="mulk">Gayrimenkulüne haciz</option><option value="hisse">Şirket hissesine haciz</option><option value="karma">Hepsi</option></select></div>
-    <div class="alan"><label>Gerekçe (en az 20 karakter)</label><textarea class="alanmetin" id="kdGerekce" maxlength="1500">Borçlu kredi taksitini vadesinde ödemedi; alacağımızın tahsili için icra talep ediyoruz.</textarea></div>
+    <div class="alan"><label>Gerekçe (en az 20 karakter)</label><textarea class="alanmetin" id="kdGerekce" maxlength="4000">Borçlu kredi taksitini vadesinde ödemedi; alacağımızın tahsili için icra talep ediyoruz.</textarea></div>
     <button class="btn tehlike" id="kdAc">Davayı aç</button>`);
   $("#kdAc", m).onclick = async () => {
     try { await islem(() => API.rpc("oyb_icra_baslat", { p_kredi: id, p_tur: $("#kdTur", m).value, p_gerekce: $("#kdGerekce", m).value }), "Dava Adliye'ye iletildi."); modalKapat(); oybKrediMasasiEkrani(null, true); } catch (_) {}

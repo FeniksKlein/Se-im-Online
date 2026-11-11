@@ -74,7 +74,7 @@ async function sosEkran(k){if((k==="dilekce"||k==="cimer")&&typeof cimerEkrani==
   iskelet(SOS_BASLIK[k],h,{geri:D.yigin.length>0});
  }catch(err){iskelet(SOS_BASLIK[k],sosMenu(k)+'<div class="kart"><p>'+e(hataCevir(err.message))+'</p></div>',{geri:D.yigin.length>0});}
 }
-function sosBasitModal(baslik,metinEtiket,onay,fn,min=10,max=3000){
+function sosBasitModal(baslik,metinEtiket,onay,fn,min=10,max=5000){
  const m=modal('<h3>'+e(baslik)+'</h3><div class="alan"><label>'+e(metinEtiket)+'</label><textarea id="sosMet" class="alanmetin" minlength="'+min+'" maxlength="'+max+'" rows="5"></textarea></div><button class="btn altin" id="sosOK">'+e(onay)+'</button>');
  $('#sosOK',m).onclick=async()=>{const b=$('#sosOK',m);b.disabled=true;try{await fn($('#sosMet',m).value);modalKapat();}catch(err){toast(hataCevir(err.message),true);b.disabled=false;}};
 }
@@ -83,7 +83,7 @@ function sosBasvuruModal(tur){
  const m=modal('<h3>'+e(tur==="imza"?"İmza kampanyası aç":"Resmî dilekçe yaz")+'</h3><div class="alan"><label>İlgili makam</label><select id="sosMakam"><option value="cb">Cumhurbaşkanı</option><option value="bel">Belediye başkanı</option><option value="mv">Milletvekili</option></select></div>'+
  '<div class="alan" id="sosIlKut" style="display:none"><label>Belediye ili</label><select id="sosIl">'+il+'</select></div><div class="alan" id="sosKadKut" style="display:none"><label>Milletvekilinin kullanıcı adı</label><input id="sosKad" maxlength="30"></div>'+
  '<div class="alan"><label>Konu başlığı</label><input id="sosBaslik" maxlength="120" placeholder="Örneğin: Muğla’da ulaşım desteği"></div>'+
- '<div class="alan"><label>Talep metni</label><textarea id="sosAciklama" class="alanmetin" maxlength="3000" rows="5"></textarea></div>'+
+ '<div class="alan"><label>Talep metni</label><textarea id="sosAciklama" class="alanmetin" maxlength="8000" rows="5"></textarea></div>'+
  '<button class="btn altin" id="sosOK">'+(tur==="imza"?"Kampanyayı başlat":"Dilekçeyi gönder")+'</button>');
  const upd=()=>{$('#sosIlKut',m).style.display=$('#sosMakam',m).value==="bel"?"block":"none";$('#sosKadKut',m).style.display=$('#sosMakam',m).value==="mv"?"block":"none"};
  $('#sosMakam',m).onchange=upd;upd();
@@ -103,7 +103,7 @@ async function sosRopDavetModal(){
  const m=modal('<h3>Röportaj daveti gönder</h3><div class="alan"><label>Gazete</label><select id="sosGazete">'+g.map(x=>'<option value="'+x.id+'">'+e(x.ad)+'</option>').join('')+'</select></div>'+
  '<div class="alan"><label>Konuk kullanıcı adı</label><input id="sosKonuk" maxlength="30"></div>'+
  '<div class="alan"><label>Röportaj başlığı</label><input id="sosBaslik" maxlength="120"></div>'+
- '<div class="alan"><label>Soru</label><textarea class="alanmetin" id="sosSoru" maxlength="3000"></textarea></div><button class="btn altin" id="sosOK">Daveti gönder</button>');
+ '<div class="alan"><label>Soru</label><textarea class="alanmetin" id="sosSoru" maxlength="8000"></textarea></div><button class="btn altin" id="sosOK">Daveti gönder</button>');
  $('#sosOK',m).onclick=async()=>{const btn=$('#sosOK',m);btn.disabled=true;try{
  await API.rpc("sos_roportaj_davet",{p_gazete:Number($('#sosGazete',m).value),p_kad:$('#sosKonuk',m).value.trim(),p_baslik:$('#sosBaslik',m).value.trim(),p_soru:$('#sosSoru',m).value.trim()});
  modalKapat();toast("Röportaj daveti gönderildi.");sosEkran("roportaj");
@@ -115,7 +115,7 @@ function sosHaberCevapModal(id){sosBasitModal("Resmî cevap hakkı","Habere bir 
 function sosDuelloDavetModal(){const m=modal('<h3>Siyasi düelloya davet et</h3><p class="alt">Parti genel başkanı, aday veya görevdeki siyasetçi olmalısın.</p><div class="alan"><label>Rakip kullanıcı adı</label><input id="sosKad" maxlength="30"></div><div class="alan"><label>Tartışma konusu</label><input id="sosBaslik" maxlength="120"></div><button class="btn altin" id="sosOK">Davet gönder</button>');$('#sosOK',m).onclick=async()=>{const b=$('#sosOK',m);b.disabled=true;try{await API.rpc("sos_duello_davet",{p_kad:$('#sosKad',m).value.trim(),p_baslik:$('#sosBaslik',m).value.trim()});modalKapat();toast("Tartışma daveti gönderildi.");sosEkran("duello");}catch(err){toast(hataCevir(err.message),true);b.disabled=false;}};}
 function sosDuelloKonusModal(id){sosBasitModal("Söz sırası sende","Tartışmadaki konuşman","Konuşmayı yayımla",async m=>{await API.rpc("sos_duello_konus",{p_id:id,p_metin:m});sosEkran("duello");},10,2000);}
 async function sosDuelloOy(id,user){try{await API.rpc("sos_duello_oyla",{p_id:id,p_aday:user});toast("Oyun kaydedildi.");sosEkran("duello");}catch(err){toast(hataCevir(err.message),true);}}
-function sosDilekceYanitModal(id){const m=modal('<h3>Resmî dilekçe yanıtı</h3><div class="alan"><label>İşlem durumu</label><select id="sosDurum"><option value="islemde">İşleme alındı</option><option value="kabul">Kabul edildi</option><option value="ret">Reddedildi</option></select></div><div class="alan"><label>Gerekçeli cevap</label><textarea class="alanmetin" id="sosMet" maxlength="3000"></textarea></div><button class="btn altin" id="sosOK">Yanıtı yayımla</button>');$('#sosOK',m).onclick=async()=>{const b=$('#sosOK',m);b.disabled=true;try{await API.rpc("sos_dilekce_yanit",{p_id:id,p_durum:$('#sosDurum',m).value,p_cevap:$('#sosMet',m).value});modalKapat();toast("Resmî yanıt kaydedildi.");sosEkran("dilekce");}catch(err){toast(hataCevir(err.message),true);b.disabled=false;}};}
+function sosDilekceYanitModal(id){const m=modal('<h3>Resmî dilekçe yanıtı</h3><div class="alan"><label>İşlem durumu</label><select id="sosDurum"><option value="islemde">İşleme alındı</option><option value="kabul">Kabul edildi</option><option value="ret">Reddedildi</option></select></div><div class="alan"><label>Gerekçeli cevap</label><textarea class="alanmetin" id="sosMet" maxlength="8000"></textarea></div><button class="btn altin" id="sosOK">Yanıtı yayımla</button>');$('#sosOK',m).onclick=async()=>{const b=$('#sosOK',m);b.disabled=true;try{await API.rpc("sos_dilekce_yanit",{p_id:id,p_durum:$('#sosDurum',m).value,p_cevap:$('#sosMet',m).value});modalKapat();toast("Resmî yanıt kaydedildi.");sosEkran("dilekce");}catch(err){toast(hataCevir(err.message),true);b.disabled=false;}};}
 async function sosDernekPanel(id){
  yukleniyor("Dernek genel kurulu");
  try{

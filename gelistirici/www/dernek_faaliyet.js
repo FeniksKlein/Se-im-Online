@@ -175,7 +175,7 @@
         alan("Katılım / ödeme kaydı",'<select id="udKanit"></select>')+
         alan("Başvuru tutarı (oyun TL)",'<input type="number" id="udTutar" min="100" max="4000" step="1" value="1000">')+
         '<p class="kucuk" id="udLimit"></p>'+
-        alan("Başvuru gerekçesi",'<textarea id="udGerekce" class="alanmetin" maxlength="350" placeholder="Yardıma neden ihtiyacın var? (en az 5 karakter)"></textarea>')+
+        alan("Başvuru gerekçesi",'<textarea id="udGerekce" class="alanmetin" maxlength="1000" placeholder="Yardıma neden ihtiyacın var? (en az 5 karakter)"></textarea>')+
         sorun+buton("Başvuruyu yönetim kuruluna ilet","udBasvur"));
       var sonTur="";
       var yenile=function(){
@@ -233,7 +233,7 @@
     var m = modal('<h3>Yardım kampanyası aç</h3><p class="alt">Oyuncuların bağışları yalnız seçilen sosyal amaç için kullanılabilir. Aynı anda en fazla dört açık kampanya.</p>' +
       alan("Kampanya türü",'<select id="sfTur">' + turOps(TUR) + '</select>') +
       alan("Başlık",'<input id="sfBaslik" maxlength="100" placeholder="Örnek: Muğla Hatıra Ormanı">') +
-      alan("Açıklama",'<textarea id="sfAciklama" class="alanmetin" maxlength="1000" placeholder="Toplanan paranın nasıl kullanılacağını açıkla"></textarea>') +
+      alan("Açıklama",'<textarea id="sfAciklama" class="alanmetin" maxlength="3000" placeholder="Toplanan paranın nasıl kullanılacağını açıkla"></textarea>') +
       alan("Bağış hedefi (TL)",'<input id="sfHedef" type="number" step="1" min="1000" max="100000000" value="25000">') +
       alan("Süre (gün)",'<input id="sfGun" type="number" step="1" min="1" max="30" value="7">') +
       sorun + buton("Kampanyayı başlat","sfKaydet"));
@@ -343,7 +343,7 @@
         alan("Etkinlik türü",'<select id="sfTur">' + turOps(GON) + '</select>') +
         alan("İl",'<select id="sfIl">' + iller.map(function(x){return '<option value="' + x.id + '">' + e(x.ad) + '</option>';}).join("") + '</select>') +
         alan("Başlık",'<input id="sfBaslik" maxlength="100" placeholder="Örnek: Kıyı temizliği gönüllüleri">') +
-        alan("Açıklama",'<textarea id="sfAciklama" class="alanmetin" maxlength="1000"></textarea>') +
+        alan("Açıklama",'<textarea id="sfAciklama" class="alanmetin" maxlength="3000"></textarea>') +
         alan("Başlangıç · Türkiye saati",'<input id="sfTarih" type="datetime-local" value="' + tarihGir(1) + '">') +
         sorun + buton("Etkinliği duyur","sfKaydet"));
       islem(m,"sfKaydet",function(){return API.rpc("dernek_etkinlik_ac",{p_dernek:id,p_tur:input(m,"sfTur"),p_il:Number(input(m,"sfIl")),
@@ -361,7 +361,7 @@
       var partiler = await API.rpc("partiler");
       var m = modal('<h3>Parti ziyareti talep et</h3><p class="alt">Talep parti genel başkanına bildirilir. Kabul edilirse belirlenen tarihte ziyaret gerçekleştirilebilir.</p>' +
         alan("Ziyaret edilecek parti",'<select id="sfParti">' + partiler.map(function(x){return '<option value="' + x.id + '">' + e(x.ad) + '</option>';}).join("") + '</select>') +
-        alan("Ziyaret ve görüşme konusu",'<textarea id="sfKonu" class="alanmetin" maxlength="600" placeholder="Derneğin taleplerini ve görüşme gündemini yaz"></textarea>') +
+        alan("Ziyaret ve görüşme konusu",'<textarea id="sfKonu" class="alanmetin" maxlength="2000" placeholder="Derneğin taleplerini ve görüşme gündemini yaz"></textarea>') +
         alan("Önerilen tarih · Türkiye saati",'<input id="sfTarih" type="datetime-local" value="' + tarihGir(1) + '">') +
         sorun + buton("Ziyaret talebini gönder","sfKaydet"));
       islem(m,"sfKaydet",function(){return API.rpc("dernek_ziyaret_teklif",{p_dernek:id,p_parti:Number(input(m,"sfParti")),

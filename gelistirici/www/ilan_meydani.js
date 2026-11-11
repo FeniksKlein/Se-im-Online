@@ -582,7 +582,7 @@
     var h = '<h3>' + (t ? "Teklifini güncelle" : "Teklif ver") + '</h3><p class="im-ipucu">' + esc(v.baslik) + ' · İlan fiyatı ' + tl(v.fiyat) + '</p>' +
       '<div class="alan"><label for="imTk">Teklifin (₺)</label><input id="imTk" inputmode="numeric" value="' + sayi(oneri) + '" oninput="imTeklifOzet()"></div>' +
       '<div class="im-cips">' + [5, 10, 15, 20].map(function (o) { return '<button type="button" onclick="imTkYuzde(' + o + ')">%' + o + ' aşağı</button>'; }).join("") + '</div>' +
-      '<div class="alan" style="margin-top:10px"><label for="imTkNot">Satıcıya not (isteğe bağlı)</label><textarea id="imTkNot" maxlength="280" placeholder="Örneğin: Bugün devralabilirim.">' + esc(t && t.not ? t.not : "") + '</textarea></div>' +
+      '<div class="alan" style="margin-top:10px"><label for="imTkNot">Satıcıya not (isteğe bağlı)</label><textarea id="imTkNot" maxlength="1000" placeholder="Örneğin: Bugün devralabilirim.">' + esc(t && t.not ? t.not : "") + '</textarea></div>' +
       '<div class="im-toplam" id="imTkOzet"></div><div class="im-hata" id="imTkHata"></div>' +
       '<p class="im-ipucu">Tutar Güvenli Ödeme ile bloke edilir; kabul edilmezse ya da 48 saatte yanıt gelmezse iade edilir.</p>' +
       '<div class="im-dg"><button class="btn" id="imTkBtn" onclick="imTeklifGonder(' + Number(id) + ',this)">Teklifi gönder</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button></div>';
@@ -667,7 +667,7 @@
       '<div class="alan"><label for="imDf">Fiyat (₺)</label><input id="imDf" inputmode="numeric" value="' + sayi(v.fiyat) + '"></div>' +
       (bant.alt ? '<p class="im-ipucu">İzin verilen aralık: ' + tl(bant.alt) + ' – ' + tl(bant.ust) + '. Fiyatı düşürürsen ilanda “Fiyatı düştü” etiketi görünür.</p>' : '') +
       '<div class="alan"><label for="imDb">Başlık</label><input id="imDb" maxlength="70" value="' + esc(v.baslik) + '"></div>' +
-      '<div class="alan"><label for="imDa">Açıklama</label><textarea id="imDa" maxlength="1200">' + esc(v.aciklama || "") + '</textarea></div>' +
+      '<div class="alan"><label for="imDa">Açıklama</label><textarea id="imDa" maxlength="3000">' + esc(v.aciklama || "") + '</textarea></div>' +
       '<label class="im-anahtar"><input type="checkbox" id="imDp"' + (v.pazarlik ? " checked" : "") + '><span>Teklif kabul ediyorum<small>Kapatırsan alıcılar yalnız ilan fiyatından alabilir.</small></span></label>' +
       (v.varlik === "sirket" || v.varlik === "hisse" ? '<label class="im-anahtar"><input type="checkbox" id="imDm"' + (v.mali_goster ? " checked" : "") + '><span>Kasa ve sermayeyi ilanda göster<small>Kapalıyken şirket kasası alıcılardan gizli kalır.</small></span></label>' : '') +
       '<div class="im-dg"><button class="btn" onclick="imDuzenleKaydet(' + Number(id) + ',this)">Kaydet</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button></div>';
@@ -792,7 +792,7 @@
     h += '<p class="im-ipucu" id="ivBant">' + bantMetni(b) + '</p>';
     if (b.rayic) h += '<div class="im-cips" style="margin:-4px 0 12px"><button type="button" onclick="imIvFiyat(' + b.rayic + ')">Rayiç</button><button type="button" onclick="imIvFiyat(' + Math.round(b.rayic * 0.9) + ')">%10 altı</button><button type="button" onclick="imIvFiyat(' + Math.round(b.rayic * 1.2) + ')">%20 üstü</button></div>';
     h += '<div class="alan"><label for="ivBaslik">İlan başlığı</label><input id="ivBaslik" maxlength="70" value="' + esc(F.baslik) + '" oninput="imIvAlan(\'baslik\',this.value)"></div>';
-    h += '<div class="alan"><label for="ivAciklama">Açıklama (isteğe bağlı)</label><textarea id="ivAciklama" maxlength="1200" placeholder="' + (s.varlik === "sirket" || s.varlik === "hisse" ? "Şirketin işleri, müşterileri, neden sattığın…" : "Konumu, kira durumu, neden sattığın…") + '" oninput="imIvAlan(\'aciklama\',this.value)">' + esc(F.aciklama) + '</textarea></div>';
+    h += '<div class="alan"><label for="ivAciklama">Açıklama (isteğe bağlı)</label><textarea id="ivAciklama" maxlength="3000" placeholder="' + (s.varlik === "sirket" || s.varlik === "hisse" ? "Şirketin işleri, müşterileri, neden sattığın…" : "Konumu, kira durumu, neden sattığın…") + '" oninput="imIvAlan(\'aciklama\',this.value)">' + esc(F.aciklama) + '</textarea></div>';
     h += '<label class="im-anahtar"><input type="checkbox"' + (F.pazarlik ? " checked" : "") + ' onchange="imIvAlan(\'pazarlik\',this.checked)"><span>Teklif kabul ediyorum<small>Alıcılar pazarlık yapabilir; teklif tutarı Güvenli Ödeme ile bloke edilir.</small></span></label>';
     if (s.varlik === "sirket" || s.varlik === "hisse") {
       h += '<label class="im-anahtar"><input type="checkbox"' + (F.mali ? " checked" : "") + ' onchange="imIvAlan(\'mali\',this.checked)"><span>Kasa ve sermayeyi ilanda göster<small>Kapalı kalırsa şirket kasası alıcılardan gizli kalır.</small></span></label>';

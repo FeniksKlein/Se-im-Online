@@ -173,7 +173,7 @@ window.addEventListener("online",()=>{guncelle(false);});
    +'<input id="adlTazTutar" type="number" min="1000" max="500000" step="1" placeholder="1000–500000"></div>'
    +'<div class="alan"><label>Davacı olarak</label><select id="adlDavaciParti"><option value="">Kendi adıma</option>'
    +ben.map(x=>'<option value="'+x.id+'">'+e(x.ad)+' adına</option>').join("")+'</select></div>'
-   +adlAlan("İddia (20–1600 karakter)","adlIddia","textarea")
+   +adlAlan("İddia (20–5000 karakter)","adlIddia","textarea")
    +adlAlan("Delil ve işlem kayıtları","adlDelil","textarea","Örn. işlem zamanı, işlem numarası")
    +'<button class="btn altin" id="adlDavaAc">Davayı aç</button>');
   adlFormBaslik(m,"Adliyede yeni dava");
@@ -231,7 +231,7 @@ window.addEventListener("online",()=>{guncelle(false);});
    +(secenekler.includes("tazminat")?'<div class="alan" id="adlKurumTazKutu" style="display:none">'
     +'<label>Hükmedilecek tazminat (üst sınır '+tlYaz(dv.tazminat_talep||500000)+')</label>'
     +'<input id="adlKararTazTutar" type="number" min="1000" max="'+Number(dv.tazminat_talep||500000)+'" step="1"></div>':"")
-   +adlAlan("Gerekçeli karar (20–2000 karakter)","adlGerekce","textarea")
+   +adlAlan("Gerekçeli karar (20–5000 karakter)","adlGerekce","textarea")
    +'<p class="alt">Oy çoğunluğu sağlanırsa karar yayımlanır. İstinaf hakkı ve süresi devam eder.</p>'
    +'<button class="btn altin" id="adlKarar">Oyumu ver</button>');
   adlFormBaslik(m,"Yüksek Mahkeme · Kurum Davası #"+id);

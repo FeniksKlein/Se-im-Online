@@ -154,7 +154,7 @@
     else if (p.il_mod === 'kendi' && m.il) h += '<p class="dk-yer">' + sv('<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>') + esc(m.il) + '</p>';
     if (p.hedef) h += '<div class="alan"><label>' + (p.nisan ? 'Kime verilecek?' : 'Kimi kabul edeceksin?') + '</label><input id="dkAra" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Oyuncu adıyla ara"></div><div id="dkSonuc" class="dk-sonuc"></div>';
     if (p.secenekler) h += '<div class="alan"><label>' + (p.kategori === 'Diplomasi' ? 'Hangi ülke?' : 'Seçim') + '</label><select id="dkSec">' + p.secenekler.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join('') + '</select></div>';
-    else h += '<div class="alan"><label>' + esc(p.metin_ipucu || 'Not') + (p.nisan ? '' : ' <span class="kucuk">(isteğe bağlı)</span>') + '</label><textarea id="dkMetin" rows="2" maxlength="280" placeholder="' + esc(p.metin_ipucu || '') + '"></textarea></div>';
+    else h += '<div class="alan"><label>' + esc(p.metin_ipucu || 'Not') + (p.nisan ? '' : ' <span class="kucuk">(isteğe bağlı)</span>') + '</label><textarea id="dkMetin" rows="2" maxlength="1000" placeholder="' + esc(p.metin_ipucu || '') + '"></textarea></div>';
     if (p.nisan) h += '<div id="dkBerat">' + beratOnizle(p, m, '', '') + '</div>';
     h += '<button class="btn altin dk-onay" id="dkOnay"' + (hazir ? '' : ' disabled') + '>' + (hazir ? (p.nisan ? 'Beratı imzala ve tevcih et' : 'Programı onayla') : 'Yeniden düzenlenebilir: ' + esc(saatYaz(p.hazir))) + '</button></div>';
     var md = modal(h);

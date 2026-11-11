@@ -156,8 +156,8 @@ window.adlDavaModal=async function(){
   +'<div class="alan"><label>Dava türü</label><select id="hiTur">'+turler+'</select></div><p class="kucuk" id="hiSuc"></p>'
   +'<div class="alan" id="hiTazKutu" style="display:none"><label>Talep edilen tazminat (₺)</label><input id="hiTaz" type="number" min="1000" max="1000000" step="1" placeholder="1000–1000000"></div>'
   +'<div class="alan"><label>Davacı olarak</label><select id="hiDavaci"><option value="">Kendi adıma</option>'+gbPartiler.map(x=>'<option value="'+x.id+'">'+h(x.ad)+' adına (genel başkan olarak)</option>').join('')+'</select></div>'
-  +'<div class="alan"><label>İddia ve dava gerekçesi (20–1600 karakter)</label><textarea id="hiIddia" rows="5" maxlength="1600" '+TA+' placeholder="Olayı ve hangi oyun kuralının ihlal edildiğini açıkla"></textarea></div>'
-  +'<div class="alan"><label>Deliller ve işlem kayıtları</label><textarea id="hiDelil" rows="4" maxlength="1600" '+TA+' placeholder="Oyun içi mesaj, işlem, tarih ve kanıtları belirt"></textarea></div>'
+  +'<div class="alan"><label>İddia ve dava gerekçesi (20–5000 karakter)</label><textarea id="hiIddia" rows="5" maxlength="5000" '+TA+' placeholder="Olayı ve hangi oyun kuralının ihlal edildiğini açıkla"></textarea></div>'
+  +'<div class="alan"><label>Deliller ve işlem kayıtları</label><textarea id="hiDelil" rows="4" maxlength="5000" '+TA+' placeholder="Oyun içi mesaj, işlem, tarih ve kanıtları belirt"></textarea></div>'
   +'<button class="btn altin" id="hiGonder">Davayı doğrudan aç</button>');
  adlFormBaslik(m,'Yeni dava · avukat zorunlu değil');
  const sec=m.querySelector('#hiHedefTur'), tur=m.querySelector('#hiTur'), ks=m.querySelector('#hiKurum'), dv=m.querySelector('#hiDavaci');
@@ -209,8 +209,8 @@ window.adlSecimItirazModal=function(secim){
  if(!partiler.length)return toast('Seçim itirazını ilgili partinin genel başkanı yapabilir.',true);
  const m=modal('<p class="alt">Genel başkan olarak itirazını kendin sunabilirsin. Avukat tutmak isteğe bağlıdır. Sonuçlardan itibaren 48 saatlik süre geçerlidir.</p>'
   +'<div class="alan"><label>İtiraz eden parti</label><select id="hsParti">'+partiler.map(p=>'<option value="'+p.id+'">'+h(p.ad)+'</option>').join('')+'</select></div>'
-  +'<div class="alan"><label>İtiraz gerekçesi (30–1600 karakter)</label><textarea id="hsGerekce" rows="4" maxlength="1600" '+TA+'></textarea></div>'
-  +'<div class="alan"><label>Deliller ve olay kayıtları</label><textarea id="hsDelil" rows="4" maxlength="3000" '+TA+'></textarea></div>'
+  +'<div class="alan"><label>İtiraz gerekçesi (30–5000 karakter)</label><textarea id="hsGerekce" rows="4" maxlength="5000" '+TA+'></textarea></div>'
+  +'<div class="alan"><label>Deliller ve olay kayıtları</label><textarea id="hsDelil" rows="4" maxlength="8000" '+TA+'></textarea></div>'
   +'<button class="btn altin" id="hsGonder">İtirazı doğrudan gönder</button>');
  adlFormBaslik(m,'Seçim #'+se.id+' · '+h(se.tur)+' · '+h(se.donem));
  m.querySelector('#hsGonder').onclick=async()=>{
@@ -243,7 +243,7 @@ window.hukukIsTeklifModal=id=>{
  const m=modal('<p class="alt">'+h(TUR_AD[j.tur]||'')+(j.hedef_ad?' · '+h(j.hedef_ad):'')+' · Müvekkil: '+h(j.muvekkil||'')+'</p>'
   +'<div class="alan"><label>Ücret (₺) — kabul edilirse emanete alınır, dilekçeyi sunduğunda sana geçer</label><input id="htTutar" type="number" min="0" step="1" value="10000"></div>'
   +(taz?'<div class="alan"><label>Tahsil edilen tazminattan başarı primi (%0–25)</label><input id="htPrim" type="number" min="0" max="25" step="1" value="0"></div>':'')
-  +'<div class="alan"><label>Müvekkile notun</label><textarea id="htNot" rows="3" maxlength="500" '+TA+'></textarea></div><button class="btn altin" id="htGonder">Teklifi gönder</button>');
+  +'<div class="alan"><label>Müvekkile notun</label><textarea id="htNot" rows="3" maxlength="1500" '+TA+'></textarea></div><button class="btn altin" id="htGonder">Teklifi gönder</button>');
  adlFormBaslik(m,'Hukuki iş #'+id+' · teklif');
  m.querySelector('#htGonder').onclick=async()=>{
   try{await RPC('hukuk_is_teklif_ver',{p_is:id,p_tutar:Number(m.querySelector('#htTutar').value),p_prim:taz?Number(m.querySelector('#htPrim').value):0,p_aciklama:m.querySelector('#htNot').value});
@@ -255,8 +255,8 @@ window.hukukIsSunModal=id=>{
  const dava=j.tur==='dava';
  const m=modal('<p class="alt">'+h(TUR_AD[j.tur]||'')+(j.hedef_ad?' · '+h(j.hedef_ad):'')+' · Müvekkil: '+h(j.muvekkil||'')+'</p>'
   +'<p class="kucuk">Dilekçe müvekkilin adına mahkemeye verilir'+(dava?'; dava harcı müvekkilin cüzdanından alınır ve dosyada davacı vekili olarak görünürsün':'')+'. Sunduğunda emanetteki '+money(j.emanet)+' sana ödenir.</p>'
-  +'<div class="alan"><label>'+(j.tur==='pkd_savunma'?'Savunma metni (50–3000)':dava?'Dilekçe / iddia (20–1600)':'İtiraz gerekçesi (30–1600)')+'</label><textarea id="hsMetin" rows="7" maxlength="3000" '+TA+'></textarea></div>'
-  +(j.tur!=='pkd_savunma'?'<div class="alan"><label>Deliller</label><textarea id="hsDl" rows="3" maxlength="3000" '+TA+'></textarea></div>':'')
+  +'<div class="alan"><label>'+(j.tur==='pkd_savunma'?'Savunma metni (50–3000)':dava?'Dilekçe / iddia (20–1600)':'İtiraz gerekçesi (30–1600)')+'</label><textarea id="hsMetin" rows="7" maxlength="8000" '+TA+'></textarea></div>'
+  +(j.tur!=='pkd_savunma'?'<div class="alan"><label>Deliller</label><textarea id="hsDl" rows="3" maxlength="8000" '+TA+'></textarea></div>':'')
   +'<button class="btn altin" id="hsSun">Mahkemeye sun</button>');
  adlFormBaslik(m,'Hukuki iş #'+id+' · dilekçe');
  m.querySelector('#hsMetin').value=j.metin||'';
@@ -293,7 +293,7 @@ adliyeDosya=async function(id){
  }catch(err){console.warn('İsteğe bağlı avukat gösterimi:',err.message);}
 };
 window.avukatIstinafModal=id=>{
- const m=modal('<p class="alt">Müvekkilin adına istinaf başvurusu yaparsın. Kurayla seçilen 3 kişilik tarafsız jüri kararı onaylar ya da bozar; her davada bir kez başvurulur.</p><div class="alan"><label>İstinaf gerekçesi (20–1500)</label><textarea id="aiGerekce" rows="5" maxlength="1500" '+TA+'></textarea></div><button class="btn altin" id="aiGonder">İstinafa başvur</button>');
+ const m=modal('<p class="alt">Müvekkilin adına istinaf başvurusu yaparsın. Kurayla seçilen 3 kişilik tarafsız jüri kararı onaylar ya da bozar; her davada bir kez başvurulur.</p><div class="alan"><label>İstinaf gerekçesi (20–1500)</label><textarea id="aiGerekce" rows="5" maxlength="4000" '+TA+'></textarea></div><button class="btn altin" id="aiGonder">İstinafa başvur</button>');
  adlFormBaslik(m,'Dava #'+id+' · vekil istinafı');
  m.querySelector('#aiGonder').onclick=async()=>{try{const r=await RPC('avukat_istinaf',{p_dava:id,p_gerekce:m.querySelector('#aiGerekce').value});modalKapat();toast('İstinaf başvurusu alındı; '+(r.juri||3)+' kişilik jüri belirlendi.');await adliyeDosya(id);}catch(err){error(err);}};
 };
@@ -311,7 +311,7 @@ if(typeof window.partiDetay==='function'){
    if(kart){const p=[...kart.querySelectorAll('p.alt')].find(x=>x.textContent.includes('sözcüsünün görevi')||x.textContent.includes('sözcüsü ne yapar'));if(p)p.outerHTML=SOZCU_METNI;}
    const yeni=document.createElement('div');yeni.className='kart';yeni.id='partiAciklamaKart';
    yeni.innerHTML='<h3>📢 Resmî açıklamalar</h3>'
-    +(v.yazabilirim?'<div class="alan"><label>Başlık</label><input id="paBaslik" maxlength="120"></div><div class="alan"><label>Açıklama (10–2000)</label><textarea id="paMetin" rows="4" maxlength="2000" '+TA+'></textarea></div>'
+    +(v.yazabilirim?'<div class="alan"><label>Başlık</label><input id="paBaslik" maxlength="120"></div><div class="alan"><label>Açıklama (10–2000)</label><textarea id="paMetin" rows="4" maxlength="5000" '+TA+'></textarea></div>'
       +'<button class="btn altin" onclick="partiAciklamaYap('+id+')">Parti adına açıkla</button><p class="kucuk">Açıklama Gündem akışına düşer ve bütün üyelere bildirilir. 15 dakikada bir açıklama yapılabilir.</p>':'')
     +((v.aciklamalar||[]).map(a=>'<div class="liste-satir"><div class="orta"><b>'+h(a.baslik)+'</b><div class="kucuk">'+(a.rol==='sozcu'?'Parti Sözcüsü':'Genel Başkan')+' '+h(a.yazar)+' · '+h(stamp(a.zaman))+'</div><p style="white-space:pre-wrap;margin-top:4px">'+h(a.metin)+'</p></div>'
       +(a.silebilirim?'<button class="btn ikinci" style="width:auto" onclick="partiAciklamaSil('+a.id+','+id+')">Kaldır</button>':'')+'</div>').join('')||'<p class="alt">Henüz resmî açıklama yapılmadı.</p>');

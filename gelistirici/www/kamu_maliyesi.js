@@ -247,7 +247,7 @@
       '<div class="bkm-ozet">' + (cek ? 'Bu dönem kalan çekim hakkı: <b>' + mr(vf.kalan_hak, 1) + '</b>. Aktarım finansmandır: Hazine nakdini artırır ama bütçe açığını kapatmaz; açık sürerse enflasyon baskısı devam eder.'
         : 'Hazine nakdi: <b>' + mr(o.hazine, 1) + '</b>. Bütçe fazlasını fona yatırmak nakdi korur; fon Hazine\'ye temettü öder.') + '</div>' +
       '<div class="alan"><label>Tutar (milyar ₺)</label><input id="kmFT" type="number" min="1" step="1" value="' + Math.max(1, Math.min(10, Math.floor(ust))) + '" inputmode="decimal"></div>' +
-      '<div class="alan"><label>Gerekçe (Resmî Gazete\'de yayımlanır, isteğe bağlı)</label><input id="kmFG" maxlength="500"></div>' +
+      '<div class="alan"><label>Gerekçe (Resmî Gazete\'de yayımlanır, isteğe bağlı)</label><input id="kmFG" maxlength="1500"></div>' +
       '<button class="btn altin" id="kmFOk">Kararı imzala</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button></div>');
     m.querySelector("#kmFOk").onclick = async function () {
       var t = Number(m.querySelector("#kmFT").value);

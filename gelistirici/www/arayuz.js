@@ -275,7 +275,7 @@ async function mitingMeydanEkrani(id) {
     <div id="mtSahne">${MT_SAHNE = mtSahneHtml(d)}</div>
     <div class="bolum-bas"><h2>Kürsü</h2><span class="kucuk" id="mtKursuNot">${mtKursuNot(d)}</span></div>
     ${d.benim ? `<div class="kart mt-yaz" id="mtYazKart" ${d.canli ? "" : "hidden"}>
-        <textarea id="mtMetin" maxlength="400" rows="3" placeholder="Meydana seslen: vaadini, hikâyeni, çağrını anlat…"></textarea>
+        <textarea id="mtMetin" maxlength="1500" rows="3" placeholder="Meydana seslen: vaadini, hikâyeni, çağrını anlat…"></textarea>
         ${d.slogan ? `<button class="mt-cip" onclick="$('#mtMetin').value+=(($('#mtMetin').value?' ':'')+${e(JSON.stringify(d.slogan))})">Parti sloganı: ${e(d.slogan)}</button>` : ""}
         <button class="btn canli" id="mtKonus">${IKON.megafon} Kürsüden söyle</button></div>` : ""}
     <div id="mtKursu">${MT_KURSU = mtKursuHtml(d)}</div>

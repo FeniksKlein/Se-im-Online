@@ -163,7 +163,7 @@
   };
   window.saRaporYaz = function (kod) {
     var m = modal('<h3 style="font-size:19px;font-weight:800">Denetim raporu</h3><p class="alt">Bakanlığın icraatını, bütçesini, ihalelerini değerlendir. Rapor Gündem\'de yayımlanır ve bakana bildirilir.</p>' +
-      '<div class="alan"><label>Başlık</label><input id="saRB" maxlength="90"></div><div class="alan"><label>Rapor (en az 40 karakter)</label><textarea id="saRM" maxlength="1200" rows="6"></textarea></div>' +
+      '<div class="alan"><label>Başlık</label><input id="saRB" maxlength="90"></div><div class="alan"><label>Rapor (en az 40 karakter)</label><textarea id="saRM" maxlength="3000" rows="6"></textarea></div>' +
       '<button class="btn altin" id="saROk">Yayımla</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
     var kok = m && m.querySelector ? m : document;
     kok.querySelector('#saROk').onclick = async function () {

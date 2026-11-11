@@ -829,7 +829,7 @@
     if (R) {
       var kok = $1('.shk-kanal'); if (kok) kok.classList.add('shk-resmi', 'shr-' + kanal);
       var ust = $1('.shk-ust'); if (ust) ust.insertAdjacentHTML('afterend', '<div class="shr-serit" style="--ar:' + R.renk + '"><span>' + esc(R.kurum) + '</span><b>' + esc(R.oturum) + '</b></div>');
-      var ta0 = $1('#yaz'); if (ta0) { ta0.placeholder = R.yer; ta0.maxLength = 500; }
+      var ta0 = $1('#yaz'); if (ta0) { ta0.placeholder = R.yer; ta0.maxLength = 1500; }
     }
     S.yaz = function (metin) { return API.rpc('sohbet_yaz', { p_kanal: kanal, p_metin: metin }); };
     S.yeniGetir = async function () {

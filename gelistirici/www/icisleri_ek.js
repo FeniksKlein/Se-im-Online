@@ -11,7 +11,7 @@ function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function n(v){return Number(v||0).toLocaleString('tr-TR');}
 function date(v){return v?new Date(v).toLocaleString('tr-TR'):'—';}
 function area(name,min=40,max=900){return '<label>'+esc(name)+'</label><textarea name="'+esc(name==='Gerekçe'?'p_gerekce':name==='Rapor'?'p_rapor':'p_metin')+'" minlength="'+min+'" maxlength="'+max+'" required></textarea>';}
-function field(name,label,min=25,max=800){return '<label>'+esc(label)+'</label><textarea name="'+esc(name)+'" minlength="'+min+'" maxlength="'+max+'" required></textarea>';}
+function field(name,label,min=25,max=2000){return '<label>'+esc(label)+'</label><textarea name="'+esc(name)+'" minlength="'+min+'" maxlength="'+max+'" required></textarea>';}
 function sel(name,label,opts){return '<label>'+esc(label)+'</label><select name="'+esc(name)+'">'+opts.map(a=>'<option value="'+esc(a[0])+'">'+esc(a[1])+'</option>').join('')+'</select>';}
 function hidden(name,val){return '<input type="hidden" name="'+esc(name)+'" value="'+esc(val)+'">';}
 function form(fn,content,btn){return '<form data-ic-extra="'+esc(fn)+'">'+content+'<button type="submit" class="btn altin">'+esc(btn)+'</button></form>';}
@@ -39,31 +39,31 @@ function render(d){
  '<label>İlgili oyuncu (oyuncu türünde zorunlu)</label>'+choice()+
  '<label>İlgili kurum (kurum türünde zorunlu)</label><select name="p_kurum_id" class="ic-extra-kurum"><option value="">Önce kurum ara</option></select>'+
  '<label>Dosya konusu</label><input name="p_baslik" minlength="18" maxlength="180" required placeholder="Oyun içi olayın kısa açıklaması">'+
- field('p_delil','Olay, işlem numarası, oyun içi delil ve zaman bilgileri (en az 40 karakter)',40,1200),
+ field('p_delil','Olay, işlem numarası, oyun içi delil ve zaman bilgileri (en az 40 karakter)',40,3000),
  'İhbar kaydet'));
  html+=section('🛡️ Oyuncu koruma ve tanık güvenliği',
  form('koruma_basvur',sel('p_tur','Koruma türü',[['koruma','24 saat polis koruması'],['tanik','Tanık koruma (kendi dosyası gerekli)']])+
  '<label>İlgili dosya numarası (tanık korumasında zorunlu)</label><input type="number" min="1" step="1" name="p_olay" placeholder="Dosya #">'+
- field('p_gerekce','Somut koruma gerekçesi (40–800 karakter)',40,800),'Koruma talep et')+
+ field('p_gerekce','Somut koruma gerekçesi (40–2000 karakter)',40,2000),'Koruma talep et')+
  '<p class="ic-help">Koruma rastgele protesto gözaltısı riskini azaltır; yargı kararıyla yapılan işlemleri engellemez.</p>');
  if(minister(d)){
  html+=section('🏅 Oyuncuyu devlet nişanıyla ödüllendir',
  '<p>Onaylanan ödül: 2.000 TL, +1 kıdem ve oyuncu profilinde devlet nişanı. Günlük sınır 3, aynı oyuncuya 7 günlük bekleme.</p>'+
  form('odul',linkedTarget()+sel('p_tur','Ödül türü',[['kahramanlik','Kamu Güvenliği Kahramanlığı'],['afet','Afet Dayanışma Nişanı'],['kamu_hizmeti','Kamu Hizmeti Nişanı']])+
- field('p_gerekce','Gerçek oyun içi başarı ve resmi gerekçe',40,800),'Ödülü ver'));
+ field('p_gerekce','Gerçek oyun içi başarı ve resmi gerekçe',40,2000),'Ödülü ver'));
  html+=section('🤝 Gerçek oyuncuya kamu hizmeti anlaşması',
  '<p>Gerçek oyuncuya teklif gönderilir, oyuncu kabul eder, faaliyet raporu sunar; Bakanlık tamamlanan işi inceler. Onaylanan faaliyete 4.000 TL ve 0,5 kıdem ödenir.</p>'+
  form('anlasma_teklif',linkedTarget()+sel('p_kurum_tur','Kurum türü',[['oyuncu','Oyuncu'],['sirket','Şirket (kurucusu/yöneticisi olmalı)'],['dernek','Dernek (başkanı olmalı)'],['belediye','Belediye başkanı']])+
  '<label>Şirket / dernek / belediye (oyuncu türünde boş)</label><select name="p_kurum_id" class="ic-extra-kurum"><option value="">Oyuncu / kurum seç</option></select>'+
  sel('p_tur','Proje türü',[['afet','Afet dayanışması'],['guvenlik','Toplumsal güvenlik'],['toplum','Kamu hizmeti']])+
- field('p_aciklama','İşin kapsamı ve teslim şartı (60–900 karakter)',60,900),'Resmî anlaşma teklif et'));
+ field('p_aciklama','İşin kapsamı ve teslim şartı (60–2500 karakter)',60,2500),'Resmî anlaşma teklif et'));
  }
  html+=section('🏛️ Bakanlık hesap verme ve siyasi sorumluluk',
  form('sorumluluk_sor',
  '<label>Özel güvenlik kararı numarası (isteğe bağlı)</label><input name="p_karar" type="number" min="1" step="1">'+
  '<label>Kendi ihbar dosyamın numarası (isteğe bağlı)</label><input name="p_olay" type="number" min="1" step="1">'+
  '<label>Somut siyasi soru</label><input name="p_konu" maxlength="180" minlength="25" required>'+
- field('p_metin','İçişleri Bakanlığının yanıtlaması gereken konu (50–1000 karakter)',50,1000),
+ field('p_metin','İçişleri Bakanlığının yanıtlaması gereken konu (50–3000 karakter)',50,3000),
  'Yazılı soru gönder')+
  '<p class="ic-help">Siyasi kriz, gösteri müdahalesi ve belediye soruşturmaları için açıklama isteyebilirsin. Yanıtlar Resmî Gazete kaydına girer.</p>');
  const cases=d.olaylar||[];
@@ -75,16 +75,16 @@ function render(d){
  '<p><b>Delil:</b> '+esc(x.delil)+'</p><p class="ic-help">Açılış: '+date(x.acilis)+' · Bildiren: '+esc(x.basvuran_ad)+'</p>';
  if(x.savunma)s+='<p><b>Oyuncu savunması:</b> '+esc(x.savunma)+'</p>';
  if(x.bakan_gerekce)s+='<p><b>Bakanlık gerekçesi:</b> '+esc(x.bakan_gerekce)+'</p>';
- if(x.beni_ilgilendirir&&['inceleme','adliye'].includes(x.durum)&&!x.savunma)s+=form('olay_savun',hidden('p_id',x.id)+field('p_metin','Savunma ve oyun içi deliller',30,1200),'Savunmamı kaydet');
+ if(x.beni_ilgilendirir&&['inceleme','adliye'].includes(x.durum)&&!x.savunma)s+=form('olay_savun',hidden('p_id',x.id)+field('p_metin','Savunma ve oyun içi deliller',30,3000),'Savunmamı kaydet');
  if(minister(d)&&['ihbar','inceleme','adliye'].includes(x.durum)){
   s+=form('olay_sevk',hidden('p_id',x.id)+sel('p_islem','Bakanlık işlemi',
    [['inceleme','İncelemeye al'],['adliye','Adliyeye sevk et (önce inceleme)'],['reddedildi','İhbarı reddet'],['kapandi','Dosyayı kapat']])+
-   field('p_gerekce','Gerekçeli ve kayıtlı işlem (25–700 karakter)',25,700),'Dosyayı güncelle');
+   field('p_gerekce','Gerekçeli ve kayıtlı işlem (25–2000 karakter)',25,2000),'Dosyayı güncelle');
   if(x.durum==='adliye'&&x.hedef){
    s+=form('tedbir_iste',hidden('p_olay',x.id)+sel('p_tur','Bağımsız hâkime önerilecek tedbir',
     [['ifade','Oyuncuyu ifadeye çağır (12 saat)'],['arama','Kurum kayıtlarını inceleme izni'],['gozalti','1 saatlik gözaltı talebi'],['faaliyet','2 saat şirket kamu işi/ihale kısıtı'],['ihale','6 saat şirket ihale kısıtı'],['ceza','Sınırlı para cezası'],['tazminat','Haksız işlem tazminatı']])+
     '<label>Para cezası veya tazminat (yalnız bunlarda zorunlu, diğerlerinde 0)</label><input type="number" name="p_tutar" min="0" step="1" value="0">'+
-    field('p_gerekce','Somut delil ve hâkimden istenen karar (40–1000 karakter)',40,1000),'Hâkime tedbir öner');
+    field('p_gerekce','Somut delil ve hâkimden istenen karar (40–3000 karakter)',40,3000),'Hâkime tedbir öner');
   }
  }
  return s+'</details>';
@@ -94,7 +94,7 @@ function render(d){
  protects.map(x=>'<details><summary>#'+Number(x.id)+' · '+esc(x.hedef_ad)+' · '+esc(x.tur)+' · '+esc(x.durum)+'</summary><p>'+esc(x.gerekce)+'</p>'+
  '<p class="ic-help">Başvuru: '+date(x.basvuru_at)+' · Bitiş: '+date(x.bitis)+'</p>'+
  (x.karar_gerekce?'<p>Karar: '+esc(x.karar_gerekce)+'</p>':'')+
- (minister(d)&&x.durum==='bekliyor'?form('koruma_karar',hidden('p_id',x.id)+sel('p_kabul','Karar',[['true','Koruma tahsis et'],['false','Reddet']])+field('p_gerekce','Kararın gerekçesi',25,600),'Koruma kararını ver'):'')+'</details>').join('')||'<p>Henüz koruma kaydı yok.</p>');
+ (minister(d)&&x.durum==='bekliyor'?form('koruma_karar',hidden('p_id',x.id)+sel('p_kabul','Karar',[['true','Koruma tahsis et'],['false','Reddet']])+field('p_gerekce','Kararın gerekçesi',25,2000),'Koruma kararını ver'):'')+'</details>').join('')||'<p>Henüz koruma kaydı yok.</p>');
  const measures=d.tedbirler||[];
  html+=section('⚖️ Mahkeme, ifade ve avukat ('+measures.length+')',
  measures.map(x=>{
@@ -107,16 +107,16 @@ function render(d){
  if(x.avukat)s+='<p><b>Avukat:</b> '+esc(x.avukat)+' · '+esc(x.avukat_durum)+'</p>';
  if(x.itiraz_metin)s+='<p><b>İtiraz:</b> '+esc(x.itiraz_metin)+'</p>';
  if(x.itiraz_karar)s+='<p><b>İtiraz kararı:</b> '+esc(x.itiraz_karar)+'</p>';
- if(x.durum==='talep'&&d.hakim)s+=form('tedbir_karar',hidden('p_id',x.id)+judgeSelect()+field('p_gerekce','Bağımsız hâkimin gerekçeli kararı',30,900),'Mahkeme kararını ver');
- if(x.durum==='onay'&&x.tur==='ifade'&&x.benim&&!x.ifade)s+=form('ifade_ver',hidden('p_id',x.id)+field('p_metin','Oyun içi resmî ifade',30,1000),'İfademi gönder');
+ if(x.durum==='talep'&&d.hakim)s+=form('tedbir_karar',hidden('p_id',x.id)+judgeSelect()+field('p_gerekce','Bağımsız hâkimin gerekçeli kararı',30,2500),'Mahkeme kararını ver');
+ if(x.durum==='onay'&&x.tur==='ifade'&&x.benim&&!x.ifade)s+=form('ifade_ver',hidden('p_id',x.id)+field('p_metin','Oyun içi resmî ifade',30,3000),'İfademi gönder');
  if(x.benim&&['talep','onay','itiraz'].includes(x.durum)&&x.avukat_durum!=='kabul'){
   s+=form('avukat_cagir',hidden('p_id',x.id)+
    '<label>Avukat seç</label><select name="p_avukat">'+(d.avukatlar||[]).map(a=>'<option value="'+esc(a.id)+'">'+esc(a.ad)+'</option>').join('')+'</select>'+
    '<button type="button" style="display:none"></button>','Ruhsatlı avukat çağır');
  }
  if(x.avukatim&&x.avukat_durum==='cagrildi')s+=form('avukat_yanit',hidden('p_id',x.id)+sel('p_kabul','Avukatlık daveti',[['true','Kabul et'],['false','Reddet']]),'Davete yanıt ver');
- if(x.durum==='onay'&&x.benim&&x.tur!=='tazminat')s+=form('tedbir_itiraz',hidden('p_id',x.id)+field('p_metin','Mahkemeye itiraz / oyuncunun hakları',30,800),'Karara itiraz et');
- if(x.durum==='itiraz'&&d.hakim)s+=form('tedbir_itiraz_karar',hidden('p_id',x.id)+sel('p_kaldir','İkinci hâkim kararı',[['true','Kaldır / para iadesi'],['false','Mevcut kararı onayla']])+field('p_gerekce','İkinci hâkim gerekçesi',30,800),'İtirazı sonuçlandır');
+ if(x.durum==='onay'&&x.benim&&x.tur!=='tazminat')s+=form('tedbir_itiraz',hidden('p_id',x.id)+field('p_metin','Mahkemeye itiraz / oyuncunun hakları',30,2000),'Karara itiraz et');
+ if(x.durum==='itiraz'&&d.hakim)s+=form('tedbir_itiraz_karar',hidden('p_id',x.id)+sel('p_kaldir','İkinci hâkim kararı',[['true','Kaldır / para iadesi'],['false','Mevcut kararı onayla']])+field('p_gerekce','İkinci hâkim gerekçesi',30,2000),'İtirazı sonuçlandır');
  return s+'</details>';
  }).join('')||'<p>Aktif mahkeme tedbiri yok. Dosyalara otomatik yaptırım uygulanmaz.</p>');
  const deals=d.anlasmalar||[];
@@ -127,15 +127,15 @@ function render(d){
  if(x.rapor)s+='<p><b>Faaliyet raporu:</b> '+esc(x.rapor)+'</p>';
  if(x.karar_gerekce)s+='<p><b>Bakanlık kararı:</b> '+esc(x.karar_gerekce)+'</p>';
  if(x.benim&&x.durum==='teklif')s+=form('anlasma_yanit',hidden('p_id',x.id)+sel('p_kabul','Teklif cevabı',[['true','Kabul et'],['false','Reddet']]),'Yanıtla');
- if(x.benim&&x.durum==='kabul')s+=form('anlasma_rapor',hidden('p_id',x.id)+field('p_rapor','Gerçekleştirdiğin kamu hizmeti',60,900),'Faaliyet raporunu sun');
- if(minister(d)&&x.durum==='tamamlandi')s+=form('anlasma_kapat',hidden('p_id',x.id)+sel('p_onay','Bakanlık kontrolü',[['true','Hizmeti onayla ve öde'],['false','Raporu reddet']])+field('p_gerekce','Gerekçeli inceleme kararı',25,800),'Sonuçlandır');
+ if(x.benim&&x.durum==='kabul')s+=form('anlasma_rapor',hidden('p_id',x.id)+field('p_rapor','Gerçekleştirdiğin kamu hizmeti',60,2500),'Faaliyet raporunu sun');
+ if(minister(d)&&x.durum==='tamamlandi')s+=form('anlasma_kapat',hidden('p_id',x.id)+sel('p_onay','Bakanlık kontrolü',[['true','Hizmeti onayla ve öde'],['false','Raporu reddet']])+field('p_gerekce','Gerekçeli inceleme kararı',25,2000),'Sonuçlandır');
  return s+'</details>';
  }).join('')||'<p>Henüz anlaşma kaydı yok.</p>');
  html+=section('🗣️ İçişleri Bakanına yöneltilen sorular',
  (d.sorular||[]).map(x=>{
  let s='<details><summary>#'+Number(x.id)+' · '+esc(x.konu)+' · '+esc(x.durum)+'</summary><p>'+esc(x.metin)+'</p><p class="ic-help">'+esc(x.basvuran_ad)+' · '+date(x.zaman)+'</p>';
  if(x.yanit)s+='<p><b>Bakanın cevabı:</b> '+esc(x.yanit)+'</p>';
- if(minister(d)&&x.durum==='bekliyor')s+=form('sorumluluk_yanit',hidden('p_id',x.id)+field('p_metin','Resmî bakanlık yanıtı',50,1200),'Resmî yanıt ver');
+ if(minister(d)&&x.durum==='bekliyor')s+=form('sorumluluk_yanit',hidden('p_id',x.id)+field('p_metin','Resmî bakanlık yanıtı',50,3000),'Resmî yanıt ver');
  return s+'</details>';
  }).join('')||'<p>Yazılı soru kaydı bulunmuyor.</p>');
  html+=section('🏅 Son kamu ödülleri', (d.oduller||[]).map(x=>

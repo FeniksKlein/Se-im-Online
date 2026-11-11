@@ -92,7 +92,7 @@
     const m=modal(`<h3>Yeni Cumhurbaşkanlığı koordinasyon dosyası</h3>
       <div class="alan"><label>İşlem</label><select id="cytur">${Object.entries(TUR).map(([k,v])=>`<option value="${k}">${e(v)}</option>`).join('')}</select></div>
       <div class="alan"><label>Başlık</label><input id="cybas" maxlength="120" placeholder="En az 5 karakter"></div>
-      <div class="alan"><label>Gerekçe, çalışma veya toplantı gündemi</label><textarea id="cyac" maxlength="2000" rows="5" placeholder="En az 15 karakter"></textarea></div>
+      <div class="alan"><label>Gerekçe, çalışma veya toplantı gündemi</label><textarea id="cyac" maxlength="5000" rows="5" placeholder="En az 15 karakter"></textarea></div>
       <div class="alan" id="cybakanalan"><label>Sorumlu bakanlık</label><select id="cybakan"><option value="">Tüm bakanlıklar / seçilmedi</option>${bakanlar.map(([k,v])=>`<option value="${k}">${e(v)}</option>`).join('')}</select></div>
       <div class="alan" id="cyilalan"><label>İl</label><select id="cyil"><option value="">Ülke geneli</option>${iller.map(i=>`<option value="${Number(i.id)}">${e(i.ad)}</option>`).join('')}</select></div>
       <div class="alan" id="cykalan"><label>Kararname türü</label><select id="cykt"><option value="serbest">Serbest karar (mali etkisi yok)</option><option value="odenek">Bakanlığa ek ödenek</option><option value="il_destek">İl kalkınma desteği</option></select></div>
@@ -126,13 +126,13 @@
   };
   window.cbYrdDosyaYanit = function (id) {
     const m=modal(`<h3>#${id} · Görev yanıtı</h3><div class="alan"><label>Durum</label><select id="cydur"><option value="calisiliyor">Çalışılıyor</option><option value="tamamlandi">Tamamlandı</option></select></div>
-      <div class="alan"><label>Açıklama ve sonuç</label><textarea id="cyyan" rows="4" maxlength="1000" placeholder="Ne yapıldığını somut olarak anlat"></textarea></div>
+      <div class="alan"><label>Açıklama ve sonuç</label><textarea id="cyyan" rows="4" maxlength="3000" placeholder="Ne yapıldığını somut olarak anlat"></textarea></div>
       <button id="cyy" class="btn altin">Yanıtla</button>`);
     $('#cyy',m).onclick=async()=>{try{await islem(()=>API.rpc('cb_yrd_dosya_yanitla',{p_id:id,p_durum:$('#cydur',m).value,p_yanit:$('#cyyan',m).value}),'Görev güncellendi.');modalKapat();await yenile();}catch(_){}};
   };
   window.cbYrdToplantiOyla = function (id) {
     const m=modal(`<h3>#${id} · Kabine görüşü</h3><div class="alan"><label>Oy</label><select id="cyoy"><option value="true">Kabul</option><option value="false">Ret</option></select></div>
-      <div class="alan"><label>Görüşün</label><textarea id="cygor" maxlength="500" rows="3" placeholder="En az 10 karakter"></textarea></div><button id="cyok" class="btn altin">Oyumu kaydet</button>`);
+      <div class="alan"><label>Görüşün</label><textarea id="cygor" maxlength="1500" rows="3" placeholder="En az 10 karakter"></textarea></div><button id="cyok" class="btn altin">Oyumu kaydet</button>`);
     $('#cyok',m).onclick=async()=>{try{await islem(()=>API.rpc('cb_yrd_toplanti_oyla',{p_id:id,p_oy:$('#cyoy',m).value==='true',p_gerekce:$('#cygor',m).value}),'Kabine oyun kaydedildi.');modalKapat();await yenile();}catch(_){}};
   };
   window.cbYrdDosyaKarar = async function (id,kabul) {

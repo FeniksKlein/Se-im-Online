@@ -140,6 +140,7 @@ do $izin$
 declare
   izin text[] := array[
     'bakan_fezleke_listesi', 'bakan_fezleke_karar',
+    'ym_fezleke_panel', 'ym_fezleke_yaz', 'ym_fezleke_imzala', 'ym_fezleke_geri_cek', 'ym_fezleke_onerge_imzala', 'ym_fezleke_oy', 'ym_fezleke_savunma', 'borsa_etki_durum',
     'sokak_talep_sec', 'sokak_talepli_baslat', 'sokak_soz_teklif', 'sokak_soz_oyla', 'sokak_uzlasma_panel', 'sokak_hukumet_panel', 'sokak_hukumet_karar', 'sokak_karar_yanit', 'sokak_eylemler', 'sokak_eylem_baslat', 'sokak_destek', 'sokak_yanit',
     'aday_ol', 'adaylik_geri_cek', 'adaylik_vazgec', 'adayliklarim', 'adliye_af_cikar', 'adliye_beyan_ver',
     'adliye_dava_ac', 'adliye_dava_ek', 'adliye_detay', 'adliye_durum', 'adliye_hakim_al', 'adliye_hakim_ata',

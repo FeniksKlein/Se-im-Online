@@ -119,7 +119,7 @@ async function bkIcraBasvur(kredi){
  const types=[["gelir","Gelir haczi"],["mulk","Gayrimenkul icra satışı"],["hisse","Şirket hissesi icra satışı"],["karma","Gelir ve varlık haczi"]];
  const m=modal('<p class="alt">Başvuru Adliye’ye iletilir. Borçlu 24 saat içinde savunma yapabilir. Yargıçların en az ikisi onaylamadan ve karar kesinleşmeden haciz uygulanmaz. Kredinin vadesi üzerinden en az 12 saat geçmiş olmalı.</p>'+
  '<div class="alan"><label>Talep edilen icra yolu</label><select id="bk_icra_tur">'+types.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select></div>'+
- '<div class="alan"><label>Dava gerekçesi (20–1500 karakter)</label><textarea id="bk_icra_gerekce" rows="3">Kredi #'+Number(kredi)+' vadesinde ödenmedi. Kalan borcun tahsili için icra takibi talep ediyorum.</textarea></div>'+
+ '<div class="alan"><label>Dava gerekçesi (20–4000 karakter)</label><textarea id="bk_icra_gerekce" rows="3">Kredi #'+Number(kredi)+' vadesinde ödenmedi. Kalan borcun tahsili için icra takibi talep ediyorum.</textarea></div>'+
  '<button class="btn tehlike" id="bk_icra_submit">Adliye icra davası aç</button>');
  if(typeof adlFormBaslik==='function')adlFormBaslik(m,"İcra davası · Kredi #"+kredi);
  m.querySelector("#bk_icra_submit").onclick=async()=>{
@@ -140,7 +140,7 @@ async function icraAdliyeKarti(){
     '<p>'+e(d.gerekce)+'</p><p class="alt">Savunma: '+e(d.savunma||"Henüz sunulmadı")+'</p>'+
     '<p class="alt">Savunma sonu: '+bkTarih(d.savunma_son)+' · Kesinleşme: '+bkTarih(d.kesin_son)+'</p>';
    if(d.borclu_muyum&&d.durum==='acik'&&Date.parse(d.savunma_son)>Date.now())
-    h+='<div class="alan"><label>Savunmam (10–1500 karakter)</label><textarea id="bk_sav_'+d.id+'" rows="3"></textarea></div><button class="btn ikinci" onclick="bkIcraSavun('+d.id+')">Savunmayı gönder</button>';
+    h+='<div class="alan"><label>Savunmam (10–4000 karakter)</label><textarea id="bk_sav_'+d.id+'" rows="3"></textarea></div><button class="btn ikinci" onclick="bkIcraSavun('+d.id+')">Savunmayı gönder</button>';
    if(d.borclu_muyum&&d.durum==='kabul'&&Date.parse(d.kesin_son)>Date.now()&&!d.itiraz_at)
     h+='<div class="alan"><label>İtiraz gerekçesi</label><textarea id="bk_it_'+d.id+'" rows="2"></textarea></div><button class="btn ikinci" onclick="bkIcraItiraz('+d.id+')">İtiraz et</button>';
    if(d.hakim_miyim&&['acik','itiraz'].includes(d.durum)){

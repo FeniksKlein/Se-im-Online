@@ -50,7 +50,7 @@ async function partiAdayTanitModal(pid){
   const m=modal(`<h3>Aday tanıtımı</h3><p class="alt">24 saatte en fazla 3 aday tanıtımı. Kitleyi genel başkan seçer.</p>
    <div class="alan"><label>Aday</label><select id="adt_kisi">${a.map(x=>`<option value="${x.id}">${e(x.kad)} · ${e(x.il||"Türkiye")}</option>`).join("")}</select></div>
    <div class="alan"><label>Kim görsün?</label><select id="adt_kitle"><option value="herkes">Herkes</option><option value="uyeler">Yalnız parti üyeleri</option></select></div>
-   <div class="alan"><label>Aday tanıtımı (20–600 karakter)</label><textarea id="adt_metin" class="alanmetin" maxlength="600" placeholder="Adayın tecrübesi, çalışmaları ve hedefleri..."></textarea></div>
+   <div class="alan"><label>Aday tanıtımı (20–2000 karakter)</label><textarea id="adt_metin" class="alanmetin" maxlength="2000" placeholder="Adayın tecrübesi, çalışmaları ve hedefleri..."></textarea></div>
    <button class="btn altin" id="adt_yayin">Tanıtımı yayınla</button>`);
   document.getElementById("adt_yayin").onclick=async()=>{
    try{await API.rpc("parti_aday_tanit",{p_aday:+document.getElementById("adt_kisi").value,p_kitle:document.getElementById("adt_kitle").value,p_metin:document.getElementById("adt_metin").value});

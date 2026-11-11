@@ -74,7 +74,7 @@ function masakKarar(id, karar){
   const md = modal(`<h3 style="font-size:19px;font-weight:800">${karar === "ihtar" ? "İhtar ver" : "Paraya el koy"}</h3>
     <p class="alt" style="margin-top:6px">${e(m.kad || "")} · ${e(GV_TUR[m.tur] || "")}. Oyuncuya gerekçeyle bildirim gider${karar === "el_koy" ? "; para hazineye aktarılır ve karar herkese açık listede görünür" : ""}.</p>
     ${karar === "el_koy" ? `<div class="alan"><label>El konulacak tutar (₺) · cüzdanında ${gvTL(m.para)}</label><input id="gvTutar" type="number" min="1" step="1000" value="${Math.round(Math.min(+m.tutar || 0, +m.para || 0))}"></div>` : ""}
-    <div class="alan"><label>Gerekçe (en az 10 karakter)</label><textarea id="gvNot" rows="3" maxlength="300"></textarea></div>
+    <div class="alan"><label>Gerekçe (en az 10 karakter)</label><textarea id="gvNot" rows="3" maxlength="1000"></textarea></div>
     <button class="btn ${karar === "el_koy" ? "tehlike" : ""}" id="gvOnay">${karar === "ihtar" ? "İhtarı gönder" : "El koy"}</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
   $("#gvOnay", md).onclick = () => { const n = $("#gvNot", md).value.trim(); if (n.length < 10) { toast("Gerekçe en az 10 karakter olmalı.", true); return; } modalKapat(); masakGonder(id, karar, karar === "el_koy" ? Math.round(+$("#gvTutar", md).value || 0) : null, n); };
 }

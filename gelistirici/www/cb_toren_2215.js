@@ -43,12 +43,12 @@ function yeminSayfa(t){
 }
 function hitapSayfa(t){
  if(t.hitap_at){bitisSayfa(t);return;}
- const d=ekran("İlk Ulusa Sesleniş",'<p>Cumhurbaşkanlığı kürsüsündesiniz. Konuşmanızı yazın; ülke gündeminde ve tüm oyuncuların okuyabileceği arşivde yayımlansın.</p><textarea id="cbHitap" maxlength="2000" class="cbtor-textarea" aria-label="Ulusa sesleniş metni"></textarea><p>30–2000 karakter · Metni dilediğiniz gibi değiştirebilirsiniz.</p><button class="cbtor-btn" id="cbYayin">🎙️ Ulusa seslenişi yayımla</button><button class="cbtor-alt" id="cbSonra">Konuşmayı sonra yapacağım</button>');
+ const d=ekran("İlk Ulusa Sesleniş",'<p>Cumhurbaşkanlığı kürsüsündesiniz. Konuşmanızı yazın; ülke gündeminde ve tüm oyuncuların okuyabileceği arşivde yayımlansın.</p><textarea id="cbHitap" maxlength="5000" class="cbtor-textarea" aria-label="Ulusa sesleniş metni"></textarea><p>30–5000 karakter · Metni dilediğiniz gibi değiştirebilirsiniz.</p><button class="cbtor-btn" id="cbYayin">🎙️ Ulusa seslenişi yayımla</button><button class="cbtor-alt" id="cbSonra">Konuşmayı sonra yapacağım</button>');
  d.querySelector("#cbHitap").value=taslak;
  d.querySelector("#cbSonra").onclick=kapat;
  d.querySelector("#cbYayin").onclick=async function(){
   const b=this,metin=d.querySelector("#cbHitap").value.trim();
-  if(metin.length<30||metin.length>2000){toast("Konuşma 30–2000 karakter olmalı.",true);return;}
+  if(metin.length<30||metin.length>5000){toast("Konuşma 30–5000 karakter olmalı.",true);return;}
   b.disabled=true;b.textContent="Yayımlanıyor…";
   try{const r=await API.rpc("cb_ulusa_seslen",{p_metin:metin});t.hitap_at=r.hitap_at;ses();bitisSayfa(t);}
   catch(err){b.disabled=false;b.textContent="🎙️ Ulusa seslenişi yayımla";toast(hataCevir(err.message),true);}

@@ -105,11 +105,11 @@ function bakanSoruCiz(d){
 }
 function bakanSoruModal(){
   const d=D._bakanSoru||{bakanliklar:[]};
-  const m=modal('<h3>Yazılı soru önergesi</h3><div class="alan"><label>Hangi bakanlık?</label><select id="soruBakan">'+(d.bakanliklar||[]).map(x=>'<option value="'+e(x.kod)+'">'+e(x.ad)+'</option>').join('')+'</select></div><div class="alan"><label>Konu</label><input id="soruKonu" maxlength="100"></div><div class="alan"><label>Soru metni</label><textarea id="soruMetin" class="alanmetin" maxlength="2000"></textarea></div><button class="btn altin" id="soruOK">Soruyu gönder</button>');
+  const m=modal('<h3>Yazılı soru önergesi</h3><div class="alan"><label>Hangi bakanlık?</label><select id="soruBakan">'+(d.bakanliklar||[]).map(x=>'<option value="'+e(x.kod)+'">'+e(x.ad)+'</option>').join('')+'</select></div><div class="alan"><label>Konu</label><input id="soruKonu" maxlength="100"></div><div class="alan"><label>Soru metni</label><textarea id="soruMetin" class="alanmetin" maxlength="5000"></textarea></div><button class="btn altin" id="soruOK">Soruyu gönder</button>');
   $("#soruOK",m).onclick=async()=>{let b=$("#soruOK",m);b.disabled=true;try{await API.rpc("bakan_soru_sor",{p_bakanlik:$("#soruBakan",m).value,p_konu:$("#soruKonu",m).value,p_soru:$("#soruMetin",m).value});modalKapat();toast("Soru önergesi kaydedildi.");bakanSoruEkrani();}catch(err){b.disabled=false;toast(hataCevir(err.message),true);}};
 }
 function bakanYanitModal(id){
-  const m=modal('<h3>Yazılı soruya yanıt</h3><div class="alan"><label>Bakanlık yanıtı</label><textarea class="alanmetin" maxlength="3000" id="bakanYanit"></textarea></div><button class="btn altin" id="bakanOK">Yanıtı yayımla</button>');
+  const m=modal('<h3>Yazılı soruya yanıt</h3><div class="alan"><label>Bakanlık yanıtı</label><textarea class="alanmetin" maxlength="8000" id="bakanYanit"></textarea></div><button class="btn altin" id="bakanOK">Yanıtı yayımla</button>');
   $("#bakanOK",m).onclick=async()=>{let b=$("#bakanOK",m);b.disabled=true;try{await API.rpc("bakan_soru_yanit",{p_id:id,p_yanit:$("#bakanYanit",m).value});modalKapat();toast("Bakanlık yanıtı yayımlandı.");bakanSoruEkrani();}catch(err){b.disabled=false;toast(hataCevir(err.message),true);}};
 }
 async function anketEkrani(){

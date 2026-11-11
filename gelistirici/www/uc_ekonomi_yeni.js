@@ -121,8 +121,8 @@ function bookDialog(mode,id){
    select("ucPress","Yayınevi",arr.map(x=>[x.id,x.ad]))+
    field("ucTitle","Kitap başlığı","")+
    select("ucGenre","Tür",[["Siyasi hatırat","Siyasi hatırat"],["Araştırma","Araştırma"],["Roman","Roman"],["Ekonomi","Ekonomi"],["Anı","Anı"]])+
-   area("ucSummary","Kitap tanıtımı (en fazla 600 karakter)","",3)+
-   area("ucContent","Kitabın tam metni (100–15.000 karakter)","",10)+
+   area("ucSummary","Kitap tanıtımı (en fazla 2000 karakter)","",3)+
+   area("ucContent","Kitabın tam metni (100–50.000 karakter)","",10)+
    field("ucAuthorPrice","Kitabın satış fiyatı (100–2.000 ₺)",300,"number",100,2000)+
    note("Satış fiyatını sen belirlersin. Yayınevi baskı ücretini ödeyip kitabını onaylar; diğer oyuncular cüzdanlarından satın alabilir. Her satıştan %15 telif alırsın."),
    "Yayınevine gönder",async el=>{

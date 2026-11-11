@@ -81,11 +81,11 @@ window.baroSekme=k=>{SEKME=k;baroEkrani();};
 
 function panoHtml(d){
  let z='<div class="kart"><h3>📌 Duyurular</h3>';
- if(d.baskanim)z+='<div class="alan"><textarea id="baroDuyuruMetin" rows="3" maxlength="1000" placeholder="Bütün üyelere bildirim olarak gider" '+TA+'></textarea></div><button class="btn altin" onclick="baroMesaj(true)">Duyuru yayımla</button>';
+ if(d.baskanim)z+='<div class="alan"><textarea id="baroDuyuruMetin" rows="3" maxlength="3000" placeholder="Bütün üyelere bildirim olarak gider" '+TA+'></textarea></div><button class="btn altin" onclick="baroMesaj(true)">Duyuru yayımla</button>';
  z+=(d.duyurular||[]).map(m=>'<div class="liste-satir"><div class="orta"><b>Başkan Av. '+h(m.yazar)+'</b><p style="white-space:pre-wrap;margin-top:4px">'+h(m.metin)+'</p><div class="kucuk">'+h(stamp(m.zaman))+'</div></div>'+(m.silebilirim?'<button class="btn ikinci" style="width:auto" onclick="baroMesajSil('+m.id+')">Sil</button>':'')+'</div>').join('')
   +(!(d.duyurular||[]).length?'<p class="alt">Henüz duyuru yok.</p>':'')+'</div>';
  z+='<div class="kart"><h3>💬 Meslektaşlar panosu</h3><p class="alt">Yalnız levhaya kayıtlı avukatlar okur ve yazar.</p>';
- if(d.uyeyim)z+='<div class="alan"><textarea id="baroMesajMetin" rows="2" maxlength="1000" placeholder="Meslektaşlarına yaz…" '+TA+'></textarea></div><button class="btn" onclick="baroMesaj(false)">Gönder</button>';
+ if(d.uyeyim)z+='<div class="alan"><textarea id="baroMesajMetin" rows="2" maxlength="3000" placeholder="Meslektaşlarına yaz…" '+TA+'></textarea></div><button class="btn" onclick="baroMesaj(false)">Gönder</button>';
  z+=(d.mesajlar||[]).map(m=>'<div class="liste-satir"><div class="orta"><b>Av. '+h(m.yazar)+(m.benim?' (sen)':'')+'</b><p style="white-space:pre-wrap;margin-top:4px">'+h(m.metin)+'</p><div class="kucuk">'+h(stamp(m.zaman))+'</div></div>'+(m.silebilirim?'<button class="btn ikinci" style="width:auto" onclick="baroMesajSil('+m.id+')">Sil</button>':'')+'</div>').join('')
   +(!(d.mesajlar||[]).length?'<p class="alt">Pano boş. İlk mesajı sen yaz.</p>':'')+'</div>';
  return z;
@@ -130,8 +130,8 @@ window.baroAdliKararModal=id=>{
  const g=d.gonulluler||[];
  const m=modal('<p class="alt">Dosya #'+y.dava+' · '+h(y.talep_eden)+' · '+(y.taraf==='davaci'?'davacı':'davalı')+' tarafı</p><p class="alt">Talep: '+h(y.gerekce)+'</p>'
   +(g.length?'<div class="alan"><label>Görevlendirilecek avukat</label><select id="baroAdliAvukat">'+g.map(a=>'<option value="'+h(a.id)+'">Av. '+h(a.kad)+(a.baskan?' (kendim · ücretsiz)':' · gönüllü')+'</option>').join('')+'</select></div>'
-    +'<div class="alan"><label>Not (isteğe bağlı)</label><input id="baroAdliNot" maxlength="300"></div><button class="btn altin" id="baroAdliAta">Görevlendir</button>':'<p class="alt">Gönüllü avukat yok. Üyeler Hesabım sekmesinden adli yardım gönüllüsü olabilir.</p>')
-  +'<div class="alan"><label>Ret gerekçesi</label><input id="baroAdliRet" maxlength="500" placeholder="En az 10 karakter"></div><button class="btn tehlike" id="baroAdliReddet">Talebi reddet</button>');
+    +'<div class="alan"><label>Not (isteğe bağlı)</label><input id="baroAdliNot" maxlength="1000"></div><button class="btn altin" id="baroAdliAta">Görevlendir</button>':'<p class="alt">Gönüllü avukat yok. Üyeler Hesabım sekmesinden adli yardım gönüllüsü olabilir.</p>')
+  +'<div class="alan"><label>Ret gerekçesi</label><input id="baroAdliRet" maxlength="1500" placeholder="En az 10 karakter"></div><button class="btn tehlike" id="baroAdliReddet">Talebi reddet</button>');
  adlFormBaslik(m,'Adli yardım talebi');
  const ata=m.querySelector('#baroAdliAta');
  if(ata)ata.onclick=async()=>{try{const r=await RPC('baro_adli_yardim_karar',{p_talep:id,p_avukat:m.querySelector('#baroAdliAvukat').value,p_gerekce:m.querySelector('#baroAdliNot').value});modalKapat();toast(r.durum==='atandi'?'Avukat görevlendirildi.':'Talep düştü (dava kapandı ya da taraf avukat tuttu).');yenile();}catch(err){error(err);}};
@@ -175,7 +175,7 @@ function secimHtml(d){
  return z+'</div>';
 }
 window.baroAdayModal=()=>{
- const m=modal('<p class="alt">Vaadin bütün üyelere görünür. Adaylık döneminde istediğin kadar güncelleyebilirsin.</p><div class="alan"><label>Seçim vaadi (10–600 karakter)</label><textarea id="baroVaat" rows="5" maxlength="600" '+TA+'></textarea></div><button class="btn altin" id="baroAdayGonder">Adaylığımı açıkla</button>');
+ const m=modal('<p class="alt">Vaadin bütün üyelere görünür. Adaylık döneminde istediğin kadar güncelleyebilirsin.</p><div class="alan"><label>Seçim vaadi (10–2000 karakter)</label><textarea id="baroVaat" rows="5" maxlength="2000" '+TA+'></textarea></div><button class="btn altin" id="baroAdayGonder">Adaylığımı açıkla</button>');
  adlFormBaslik(m,'Baro başkanlığı adaylığı');
  m.querySelector('#baroAdayGonder').onclick=async()=>{try{await RPC('baro_aday_ol',{p_vaat:m.querySelector('#baroVaat').value});modalKapat();toast('Adaylığın açıklandı.');yenile();}catch(err){error(err);}};
 };
@@ -203,7 +203,7 @@ window.baroDisiplinModal=id=>{
  const x=((SON||{}).disiplin||[]).find(k=>k.id===id);if(!x)return;
  const m=modal('<p class="alt">Av. '+h(x.avukat)+' · Dosya #'+h(x.dava||'—')+'</p><p class="alt" style="white-space:pre-wrap">'+h(x.metin||'')+'</p>'
   +'<div class="alan"><label>Karar</label><select id="baroDisCeza">'+Object.entries(CEZA).map(([k,v])=>'<option value="'+k+'">'+h(v)+'</option>').join('')+'</select></div>'
-  +'<div class="alan"><label>Gerekçe (20–1000 karakter, üyelere açık)</label><textarea id="baroDisGerekce" rows="4" maxlength="1000" '+TA+'></textarea></div><button class="btn altin" id="baroDisGonder">Kararı açıkla</button>');
+  +'<div class="alan"><label>Gerekçe (20–3000 karakter, üyelere açık)</label><textarea id="baroDisGerekce" rows="4" maxlength="3000" '+TA+'></textarea></div><button class="btn altin" id="baroDisGonder">Kararı açıkla</button>');
  adlFormBaslik(m,'Disiplin kararı');
  m.querySelector('#baroDisGonder').onclick=async()=>{try{await RPC('baro_sikayet_karar',{p_sikayet:id,p_ceza:m.querySelector('#baroDisCeza').value,p_gerekce:m.querySelector('#baroDisGerekce').value});modalKapat();toast('Disiplin kararı açıklandı.');yenile();}catch(err){error(err);}};
 };
@@ -263,12 +263,12 @@ adliyeDosya=async function(id){
  }catch(err){console.warn('Baro dosya kartı:',err.message);}
 };
 window.baroAdliIste=id=>{
- const m=modal('<p class="alt">Talebin baro başkanına ve gönüllü avukatlara bildirilir. Görevlendirilen avukat sana ücretsiz vekâlet eder; ücretini baro kasası öder.</p><div class="alan"><label>Neden avukata ihtiyacın var? (10–500 karakter)</label><textarea id="baroAdliGerekce" rows="4" maxlength="500" '+TA+'></textarea></div><button class="btn altin" id="baroAdliGonder">Talep gönder</button>');
+ const m=modal('<p class="alt">Talebin baro başkanına ve gönüllü avukatlara bildirilir. Görevlendirilen avukat sana ücretsiz vekâlet eder; ücretini baro kasası öder.</p><div class="alan"><label>Neden avukata ihtiyacın var? (10–1500 karakter)</label><textarea id="baroAdliGerekce" rows="4" maxlength="1500" '+TA+'></textarea></div><button class="btn altin" id="baroAdliGonder">Talep gönder</button>');
  adlFormBaslik(m,'Dava #'+id+' · Adli yardım talebi');
  m.querySelector('#baroAdliGonder').onclick=async()=>{try{await RPC('baro_adli_yardim_iste',{p_dava:id,p_gerekce:m.querySelector('#baroAdliGerekce').value});modalKapat();toast('Adli yardım talebin baroya iletildi.');await adliyeDosya(id);}catch(err){error(err);}};
 };
 window.baroSikayetModal=(avukat,dava,ad)=>{
- const m=modal('<p class="alt">Şikâyetin baro başkanına gider; avukata şikâyet yapıldığı bildirilir. Asılsız şikâyetler reddedilir. Aynı avukat hakkında aynı anda yalnız bir bekleyen şikâyetin olabilir.</p><div class="alan"><label>Şikâyet (30–1500 karakter)</label><textarea id="baroSikayetMetin" rows="5" maxlength="1500" '+TA+'></textarea></div><button class="btn tehlike" id="baroSikayetGonder">Şikâyeti gönder</button>');
+ const m=modal('<p class="alt">Şikâyetin baro başkanına gider; avukata şikâyet yapıldığı bildirilir. Asılsız şikâyetler reddedilir. Aynı avukat hakkında aynı anda yalnız bir bekleyen şikâyetin olabilir.</p><div class="alan"><label>Şikâyet (30–4000 karakter)</label><textarea id="baroSikayetMetin" rows="5" maxlength="4000" '+TA+'></textarea></div><button class="btn tehlike" id="baroSikayetGonder">Şikâyeti gönder</button>');
  adlFormBaslik(m,'Av. '+ad+' · Baroya şikâyet');
  m.querySelector('#baroSikayetGonder').onclick=async()=>{try{await RPC('baro_sikayet_et',{p_avukat:avukat,p_dava:dava,p_metin:m.querySelector('#baroSikayetMetin').value});modalKapat();toast('Şikâyetin baroya iletildi.');}catch(err){error(err);}};
 };

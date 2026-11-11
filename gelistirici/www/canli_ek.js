@@ -217,17 +217,17 @@ function akisSatirHtml(a, opt){
       <button data-menu="${a.id}" aria-label="Seçenekler">${AKIS_IKON.menu}</button></div></div></div>`;
 }
 function akisYazHtml(id, yer){
-  return `<div class="akis-yaz"><textarea id="${id}Metin" maxlength="280" placeholder="${e(yer)}"></textarea>
-    <div class="akis-gonder"><span class="kucuk" id="${id}Sayac">0/280</span><button class="btn" id="${id}Gonder">Paylaş</button></div></div>`;
+  return `<div class="akis-yaz"><textarea id="${id}Metin" maxlength="1000" placeholder="${e(yer)}"></textarea>
+    <div class="akis-gonder"><span class="kucuk" id="${id}Sayac">0/1000</span><button class="btn" id="${id}Gonder">Paylaş</button></div></div>`;
 }
 function akisYazBagla(id, sonra, yanitId){
   const t = $("#" + id + "Metin"), b = $("#" + id + "Gonder"); if (!t || !b) return;
-  t.oninput = () => { $("#" + id + "Sayac").textContent = `${t.value.length}/280`; };
+  t.oninput = () => { $("#" + id + "Sayac").textContent = `${t.value.length}/1000`; };
   b.onclick = async () => {
     b.disabled = true;
     try {
       if (yanitId) await API.rpc("akis_yanit_yaz", { p_id: yanitId, p_metin: t.value }); else await API.rpc("akis_yaz", { p_metin: t.value });
-      t.value = ""; $("#" + id + "Sayac").textContent = "0/280"; HAPTIK.hafif(); toast(yanitId ? "Yanıtın gönderildi." : "Paylaşıldı.");
+      t.value = ""; $("#" + id + "Sayac").textContent = "0/1000"; HAPTIK.hafif(); toast(yanitId ? "Yanıtın gönderildi." : "Paylaşıldı.");
       if (sonra) await sonra();
     } catch (err) { toast(hataCevir(err.message), true); }
     b.disabled = false;

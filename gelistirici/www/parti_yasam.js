@@ -13,7 +13,7 @@ function grupToplantiCiz(pid,d){
   iskelet("Grup Toplantıları",h,{geri:true});
 }
 function grupKonusmaModal(pid){
-  const m=modal('<h3>Yeni grup konuşması</h3><div class="alan"><label>Konuşma başlığı</label><input maxlength="120" id="grupBaslik" placeholder="Örnek: Ekonomi gündemi"></div><div class="alan"><label>Konuşma metni</label><textarea class="alanmetin" id="grupMetin" maxlength="3000"></textarea></div><button class="btn altin" id="grupOK">Yayımla</button>');
+  const m=modal('<h3>Yeni grup konuşması</h3><div class="alan"><label>Konuşma başlığı</label><input maxlength="120" id="grupBaslik" placeholder="Örnek: Ekonomi gündemi"></div><div class="alan"><label>Konuşma metni</label><textarea class="alanmetin" id="grupMetin" maxlength="8000"></textarea></div><button class="btn altin" id="grupOK">Yayımla</button>');
   $("#grupOK",m).onclick=async()=>{let b=$("#grupOK",m);b.disabled=true;try{await API.rpc("grup_duyuru_yayinla",{p_baslik:$("#grupBaslik",m).value,p_metin:$("#grupMetin",m).value});modalKapat();toast("Konuşma üyelere duyuruldu.");grupToplantiEkrani(pid);}catch(err){b.disabled=false;toast(hataCevir(err.message),true);}};
 }
 async function partiDisiplinEkrani(pid){
@@ -36,7 +36,7 @@ function partiDisiplinCiz(pid,d){
   iskelet("Parti Disiplin Kurulu",h,{geri:true});
 }
 function partiDisiplinModal(pid){
-  const m=modal('<h3>Üyeyi disipline sevk et</h3><p class="alt">Partinin üyeleri 24 saat oy kullanacak. İhraç için üye çoğunluğu gerekir.</p><div class="alan"><label>Üyenin kullanıcı adı</label><input id="disKad" maxlength="40"></div><div class="alan"><label>Gerekçe</label><textarea class="alanmetin" id="disGerekce" maxlength="500"></textarea></div><button class="btn tehlike" id="disOK">Oylamayı başlat</button>');
+  const m=modal('<h3>Üyeyi disipline sevk et</h3><p class="alt">Partinin üyeleri 24 saat oy kullanacak. İhraç için üye çoğunluğu gerekir.</p><div class="alan"><label>Üyenin kullanıcı adı</label><input id="disKad" maxlength="40"></div><div class="alan"><label>Gerekçe</label><textarea class="alanmetin" id="disGerekce" maxlength="1500"></textarea></div><button class="btn tehlike" id="disOK">Oylamayı başlat</button>');
   $("#disOK",m).onclick=async()=>{let b=$("#disOK",m);b.disabled=true;try{await API.rpc("disiplin_baslat",{p_hedef:$("#disKad",m).value,p_gerekce:$("#disGerekce",m).value});modalKapat();toast("Disiplin oylaması başladı.");partiDisiplinEkrani(pid);}catch(err){b.disabled=false;toast(hataCevir(err.message),true);}};
 }
 async function partiDisiplinOy(pid,id,oy){

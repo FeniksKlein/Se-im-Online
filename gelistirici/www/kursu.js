@@ -745,7 +745,7 @@
     var w = document.createElement('div'); w.className = 'kr-yaz-arka'; w.id = 'krYaz';
     w.innerHTML = '<div class="kr-yaz" role="dialog" aria-modal="true" aria-label="' + (tur === 'yanit' ? 'Yanıt yaz' : 'Gönderi yaz') + '">' +
       '<div class="kr-yaz-ust"><button type="button" class="kr-yaz-iptal" id="krYazIptal">Vazgeç</button><span class="kr-yaz-tur">' + (tur === 'yanit' ? 'Yanıt' : tur === 'alinti' ? 'Alıntı' : 'Yeni gönderi') + '</span><button type="button" class="kr-yaz-gonder" id="krYazGonder" disabled>' + (tur === 'yanit' ? 'Yanıtla' : 'Paylaş') + '</button></div>' +
-      '<div class="kr-yaz-govde">' + baglam + '<div class="kr-yaz-satir"><span class="kr-av">' + av(p.kad, p.parti && p.parti.renk, 40) + '</span><textarea id="krYazMetin" maxlength="280" rows="3" placeholder="' + yer + '"></textarea></div>' +
+      '<div class="kr-yaz-govde">' + baglam + '<div class="kr-yaz-satir"><span class="kr-av">' + av(p.kad, p.parti && p.parti.renk, 40) + '</span><textarea id="krYazMetin" maxlength="1000" rows="3" placeholder="' + yer + '"></textarea></div>' +
       (tur === 'alinti' && g ? '<div class="kr-yaz-alinti">' + alintiHtml(g) + '</div>' : '') + '</div>' +
       '<div class="kr-yaz-alt">' + (et.length ? '<div class="kr-yaz-et">' + et.map(function (x) { return '<button type="button" data-ekle="' + esc(x.ad) + '">' + esc(x.ad) + '</button>'; }).join('') + '</div>' : '<div class="kr-yaz-ipucu">#etiket ile gündeme gir, @isim ile birini an.</div>') +
       '<span class="kr-halka" id="krHalka"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" class="z"/><circle cx="12" cy="12" r="9.5" class="d" id="krHalkaD"/></svg><b id="krKalan"></b></span></div></div>';
@@ -756,8 +756,8 @@
     var cevre = 2 * Math.PI * 9.5;
     var guncelle = function () {
       t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 280) + 'px';
-      var l = t.value.length, kalan = 280 - l, d = w.querySelector('#krHalkaD'), kb = w.querySelector('#krKalan'), h = w.querySelector('#krHalka');
-      d.setAttribute('stroke-dasharray', cevre); d.setAttribute('stroke-dashoffset', cevre * (1 - Math.min(1, l / 280)));
+      var l = t.value.length, kalan = 1000 - l, d = w.querySelector('#krHalkaD'), kb = w.querySelector('#krKalan'), h = w.querySelector('#krHalka');
+      d.setAttribute('stroke-dasharray', cevre); d.setAttribute('stroke-dashoffset', cevre * (1 - Math.min(1, l / 1000)));
       h.className = 'kr-halka' + (kalan <= 20 ? ' az' : '') + (l === 0 ? ' bos' : '');
       kb.textContent = kalan <= 20 ? kalan : '';
       gb.disabled = !t.value.trim();

@@ -57,7 +57,7 @@ async function merkezBankasiEkrani(){
       ${m.ben_baskan ? `<div class="kart"><h2>Para Politikası Kurulu kararı</h2>
         <p class="alt">Haftada bir karar verebilirsin; tek seferde en fazla 10 puan. Karar devlet bankasının mevduat ve kredi faizlerini hemen değiştirir, borsayı oynatır ve Resmî Gazete'de yayımlanır.</p>
         <div class="alan"><label>Yeni politika faizi (%)</label><input id="ekFaiz" type="number" min="0" max="100" step="0.25" value="${+m.politika_faiz}"></div>
-        <div class="alan ek-alan"><label>Gerekçe (isteğe bağlı)</label><textarea id="ekGerekce" maxlength="500" placeholder="Enflasyondaki gidişat, büyüme, beklentiler…"></textarea></div>
+        <div class="alan ek-alan"><label>Gerekçe (isteğe bağlı)</label><textarea id="ekGerekce" maxlength="1500" placeholder="Enflasyondaki gidişat, büyüme, beklentiler…"></textarea></div>
         <button class="btn" onclick="ppkKarar()">Kararı açıkla</button></div>` : ""}
       ${m.ben_atayabilir ? `<div class="kart"><h2>Başkan ata</h2>
         <p class="alt">${e(m.yurutme_unvan || "Cumhurbaşkanı")} olarak başkanı sen atarsın. Aday teklifi kabul etmelidir ve aktif siyasi görevi olmamalıdır.</p>
@@ -174,7 +174,7 @@ async function spkEkrani(){
       ${v.yetkili ? `<div class="kart"><h2>İnceleme başlat</h2><p class="alt">Hazine ve Maliye Bakanı olarak manipülasyon şüphesiyle inceleme açabilirsin. Bedel 0,5 milyar ₺ (bakanlık kasası). Günde en fazla 3.</p>
         <div class="alan"><label>Şirket</label><select id="ekSpkSirket">${(v.sirketler || []).map(s => `<option value="${s.id}">${e(s.ad)}</option>`).join("")}</select></div>
         <div class="alan"><label>Şüpheli oyuncu</label><input id="ekSpkKad" type="text" autocomplete="off" placeholder="kullanıcı adı"></div>
-        <div class="alan ek-alan"><label>İddia</label><textarea id="ekSpkIddia" maxlength="500" placeholder="Ne gördün? Fiyat hareketi, zamanlama…"></textarea></div>
+        <div class="alan ek-alan"><label>İddia</label><textarea id="ekSpkIddia" maxlength="1500" placeholder="Ne gördün? Fiyat hareketi, zamanlama…"></textarea></div>
         <button class="btn" onclick="spkAc()">İncelemeyi başlat</button></div>` : ""}
       <div class="kart"><h2>İncelemeler</h2>${(v.incelemeler || []).map(x => `<div class="pz-satir" style="align-items:flex-start"><span class="sol"><b>${e(x.sirket || "—")} · ${e(x.tur_ad)}</b>
           <span class="kucuk" style="display:block">${e(x.taraf1)}${x.taraf2 ? " ↔ " + e(x.taraf2) : ""} · ${e(x.acan)} · ${tarihSaat(x.bas)}</span>
@@ -201,7 +201,7 @@ async function spkKarar(id, ceza){
   const m = modal(`<h3 style="font-size:19px;font-weight:800">SPK #${id} · ${ceza ? "Ceza kararı" : "Cezasız kapatma"}</h3>
     <p class="alt" style="margin-top:8px">${e(inceleme.sirket)} · ${e(inceleme.taraf1)}. ${ceza ? "Sunucuda doğrulanan ters yönlü işlemler dışında hiçbir iddia tek başına kanıt sayılmaz. Ceza: doğrulanan hacmin %20'si (en az 10.000 ₺) ve 7 gün borsa yasağı." : "Dosya ceza verilmeksizin kapatılır."}</p>
     ${ceza ? `<p class="pz-not">İşlem numaraları: ${(delil.islem_idleri || []).map(x => "#" + e(x)).join(" ve ")} · Delil tutarı: ${ekTL(delil.toplam_tutar)}</p>` : ""}
-    <div class="alan ek-alan"><label>Karar gerekçesi — zorunlu (en az 40 karakter)</label><textarea id="ekSpkKararNot" maxlength="500" rows="5" placeholder="Delilleri, inceleme bulgularını ve ceza veya beraat gerekçeni en az 40 karakterle açıkla."></textarea></div>
+    <div class="alan ek-alan"><label>Karar gerekçesi — zorunlu (en az 40 karakter)</label><textarea id="ekSpkKararNot" maxlength="1500" rows="5" placeholder="Delilleri, inceleme bulgularını ve ceza veya beraat gerekçeni en az 40 karakterle açıkla."></textarea></div>
     <p class="kucuk" id="ekSpkKararSayac">0 / 40 karakter</p>
     <button class="btn ${ceza ? "tehlike" : ""}" id="ekSpkKararOnay">${ceza ? "Gerekçeli ceza ver" : "Gerekçeyle kapat"}</button>
     <button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);

@@ -17,7 +17,7 @@
    +'<div class="alan"><label for="adlCeza">Mahkeme kararı</label><select id="adlCeza">'+secenekler.map(([k,v])=>'<option value="'+k+'">'+v+'</option>').join('')+'</select></div>'
    +(paraUygun?'<div class="alan" id="adlKurumParaKutu" style="display:none"><label for="adlKararParaTutar">Para cezası tutarı (₺)</label><input id="adlKararParaTutar" type="number" inputmode="numeric" min="1000" max="1000000" step="1" placeholder="1.000 – 1.000.000 ₺" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px;color:var(--txt);background:var(--panel2)" autocomplete="off"></div>':'')
    +(tazminatUygun?'<div class="alan" id="adlKurumTazKutu" style="display:none"><label for="adlKararTazTutar">Tazminat tutarı (₺), üst sınır '+tlYaz(talep)+'</label><input id="adlKararTazTutar" type="number" inputmode="numeric" min="1000" max="'+talep+'" step="1" placeholder="Tutarı yazın" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px;color:var(--txt);background:var(--panel2)" autocomplete="off"></div>':'')
-   +'<div class="alan"><label for="adlGerekce">Gerekçeli karar (20–2000 karakter)</label><textarea id="adlGerekce" maxlength="2000" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px" rows="4"></textarea></div>'
+   +'<div class="alan"><label for="adlGerekce">Gerekçeli karar (20–5000 karakter)</label><textarea id="adlGerekce" maxlength="5000" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px" rows="4"></textarea></div>'
    +'<p class="alt">Heyetin çoğunluğu aynı karar ve tutarda birleşirse karar açıklanır. İstinaf hakkı korunur.</p>'
    +'<button class="btn altin" id="adlKarar">Oyumu ver</button>');
   adlFormBaslik(m,"Yüksek Mahkeme · Kurum Davası #"+id);

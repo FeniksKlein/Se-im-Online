@@ -64,10 +64,10 @@
       <p class="alt">Seçmenin seni hangi sözle hatırlayacağını belirle. Vizyon ve vaatler diğer tüm oyunculara görünür.</p>
       <div class="alan"><label for="cbkSlogan">Kampanya sloganı (3–80 karakter)</label>
         <input id="cbkSlogan" maxlength="80" placeholder="Örnek: Birlikte daha güçlü Türkiye" value="${e(ben.slogan || "")}"></div>
-      <div class="alan"><label for="cbkVizyon">Seçim bildirgesi / vizyon (en fazla 1000 karakter)</label>
-        <textarea id="cbkVizyon" maxlength="1000" rows="5" placeholder="Hedeflerini, ekonomi ve demokrasi yaklaşımını anlat">${e(ben.vizyon || "")}</textarea></div>
+      <div class="alan"><label for="cbkVizyon">Seçim bildirgesi / vizyon (en fazla 3000 karakter)</label>
+        <textarea id="cbkVizyon" maxlength="3000" rows="5" placeholder="Hedeflerini, ekonomi ve demokrasi yaklaşımını anlat">${e(ben.vizyon || "")}</textarea></div>
       <div class="alan"><label for="cbkVaat">Öne çıkan vaatler (en fazla 5; her satır ayrı vaat)</label>
-        <textarea id="cbkVaat" maxlength="850" rows="5" placeholder="Ekonomide istikrar\nEğitimde fırsat eşitliği">${e((ben.vaatler || []).join("\n"))}</textarea></div>
+        <textarea id="cbkVaat" maxlength="2000" rows="5" placeholder="Ekonomide istikrar\nEğitimde fırsat eşitliği">${e((ben.vaatler || []).join("\n"))}</textarea></div>
       <div class="hata-metin" id="cbkHata"></div><button class="btn altin" id="cbkKaydet">Kampanyamı yayımla</button>`);
     $("#cbkKaydet", m).onclick = async () => {
       const dugme = $("#cbkKaydet", m);

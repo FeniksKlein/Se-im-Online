@@ -50,7 +50,7 @@ function cimerYeniHtml(v){
     <div class="kucuk" id="cmCbNot" hidden style="margin-top:6px">${k.cb ? `Başvurun Cumhurbaşkanı ${e(k.cb)} makamına iletilir.` : "Cumhurbaşkanlığı makamı boş; başvurun seçilecek Cumhurbaşkanına iletilir."}</div>
     <div class="alan"><label>Başvuru türü</label><div class="cimer-kat" id="cmKat">${Object.entries(CIMER_KAT).map(([kk, ad], i) => `<button type="button" data-kat="${kk}" class="${i === 0 ? "secili" : ""}">${ad}</button>`).join("")}</div></div>
     <div class="alan"><label>Konu</label><input id="cmKonu" maxlength="100" placeholder="Kısa bir başlık"></div>
-    <div class="alan"><label>Başvurun</label><textarea class="alanmetin" id="cmMetin" maxlength="2000" placeholder="Sorunu, ne istediğini ve nerede olduğunu açıkça yaz."></textarea><div class="kucuk" id="cmSayac">0/2000</div></div>
+    <div class="alan"><label>Başvurun</label><textarea class="alanmetin" id="cmMetin" maxlength="5000" placeholder="Sorunu, ne istediğini ve nerede olduğunu açıkça yaz."></textarea><div class="kucuk" id="cmSayac">0/2000</div></div>
     <button class="btn" id="cmGonder"${v.bugun_kalan ? "" : " disabled"}>Başvuruyu gönder</button>
     <p class="kucuk" style="margin-top:8px">Kurumların 72 saat içinde yanıt vermesi beklenir; yanıt süreleri herkese açık kurum karnesinde görünür. Hakaret içeren başvurular kabul edilmez.</p></div>`;
 }
@@ -104,7 +104,7 @@ function cimerYanitModal(id){
   const b = ((CIMER.veri || {}).gelen || []).find(x => x.id === id); if (!b) return;
   const m = modal(`<h3 style="font-size:19px;font-weight:800">Resmî yanıt</h3><p class="alt">${e(b.kurum)} adına “${e(b.konu)}” başvurusunu yanıtlıyorsun.</p>
     <div class="alan"><label>Sonuç</label><select id="cmSonuc"><option value="olumlu">Olumlu — talep karşılandı</option><option value="olumsuz">Olumsuz — karşılanamadı</option><option value="bilgi">Bilgi verildi</option></select></div>
-    <div class="alan"><label>Yanıt metni</label><textarea class="alanmetin" id="cmCevap" maxlength="2000"></textarea></div>
+    <div class="alan"><label>Yanıt metni</label><textarea class="alanmetin" id="cmCevap" maxlength="5000"></textarea></div>
     <button class="btn altin" id="cmYanitGonder">Yanıtı gönder</button>`);
   $("#cmYanitGonder", m).onclick = async () => {
     try { await islem(() => API.rpc("cimer_yanitla", { p_id: id, p_durum: "sonuclandi", p_sonuc: $("#cmSonuc", m).value, p_cevap: $("#cmCevap", m).value }), "Yanıtın başvurana iletildi."); modalKapat(); cimerEkrani(true); } catch (_) {}
