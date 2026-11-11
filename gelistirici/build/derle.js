@@ -106,6 +106,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 // Tasarim v5 ("Devlet Salonu"): v4'ten SONRA, en son. Emoji yerine cizgi ikon tablosu + ortak bilesen dili + hareket; yalniz gorunum.
 for (const m of ['tasarim_v5_ikon.js','tasarim_v5.js'])
   html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www',m),'utf8')+'</script></body>');
+// 11.11.2026: Karikatur dergileri (sayi bazli kilit, raf, bes sahne sablonu) web ve mobil derlemede.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','karikatur_dergisi.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
