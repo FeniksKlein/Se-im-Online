@@ -33290,7 +33290,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
     // Varlık Fonu
     var vfIc = '<div class="bkm-tablo" style="margin-top:10px"><div><small>Fon varlığı</small><b>' + sayi(vf.bakiye, 0) + '</b></div><div><small>Hazine\'ye temettü</small><b>+' + sayi(vf.gunluk_temettu, 2) + '/gün</b></div>' +
       '<div><small>' + Number(vf.aktarim_gun || 30) + ' günlük çekim hakkı</small><b>' + sayi(vf.kalan_hak, 1) + ' / ' + sayi(vf.aktarim_tavan, 0) + '</b></div><div><small>Son aktarım</small><b style="font-size:13px">' + (vf.son_islem ? zaman(vf.son_islem) : "—") + '</b></div></div>' +
-      '<p class="km-not">Eski hesap hatasından Hazine\'de biriken fazla nakit silinmedi, bu fonda duruyor. Fon her gün Hazine\'ye temettü öder. ' + yur + ' fondan ' + Number(vf.aktarim_gun || 30) + ' günde en çok ' + sayi(vf.aktarim_tavan, 0) + ' milyar ₺ çekebilir ya da bütçe fazlasını fona yatırabilir (24 saatte bir, Resmî Gazete\'de yayımlanır).</p>';
+      '<p class="km-not">Eski hesap hatasından Hazine\'de biriken fazla nakit silinmedi, bu fonda duruyor. Fon her gün Hazine\'ye temettü öder. ' + yur + ' fondan ' + Number(vf.aktarim_gun || 30) + ' günde en çok ' + sayi(vf.aktarim_tavan, 0) + ' milyar ₺ çekebilir ya da bütçe fazlasını fona yatırabilir (çekimler 6 saatte bir; fona iade/yatırım beklemesizdir; Resmî Gazete\'de yayımlanır).</p>';
     if (v.yetkili) vfIc += '<div class="km-dugmeler"><button class="bkm-mini" onclick="kmFonModal(\'cek\')">Fondan Hazine\'ye</button><button class="bkm-mini ikinci" onclick="kmFonModal(\'yatir\')">Hazine\'den fona</button></div>';
     var vfh = vf.hareketler || [];
     if (vfh.length) vfIc += vfh.slice(0, 5).map(function (x) {
@@ -33335,12 +33335,12 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
     var m = modal('<div class="bkm-modal"><h3 style="font-size:19px;font-weight:800">' + (cek ? "Varlık Fonu'ndan Hazine'ye aktarım" : "Hazine'den Varlık Fonu'na aktarım") + '</h3>' +
       '<div class="bkm-ozet">' + (cek ? 'Bu dönem kalan çekim hakkı: <b>' + mr(vf.kalan_hak, 1) + '</b>. Aktarım finansmandır: Hazine nakdini artırır ama bütçe açığını kapatmaz; açık sürerse enflasyon baskısı devam eder.'
         : 'Hazine nakdi: <b>' + mr(o.hazine, 1) + '</b>. Bütçe fazlasını fona yatırmak nakdi korur; fon Hazine\'ye temettü öder.') + '</div>' +
-      '<div class="alan"><label>Tutar (milyar ₺)</label><input id="kmFT" type="number" min="1" step="1" value="' + Math.max(1, Math.min(10, Math.floor(ust))) + '" inputmode="decimal"></div>' +
+      '<div class="alan"><label>Tutar (milyar ₺)</label><input id="kmFT" type="number" min="0.1" step="0.1" value="' + Math.max(0.1, Math.min(10, Math.floor(ust * 10) / 10)) + '" inputmode="decimal"></div>' +
       '<div class="alan"><label>Gerekçe (Resmî Gazete\'de yayımlanır, isteğe bağlı)</label><input id="kmFG" maxlength="1500"></div>' +
       '<button class="btn altin" id="kmFOk">Kararı imzala</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button></div>');
     m.querySelector("#kmFOk").onclick = async function () {
       var t = Number(m.querySelector("#kmFT").value);
-      if (!(t >= 1)) { bildir("Tutar en az 1 milyar ₺ olmalı.", true); return; }
+      if (!(t >= 0.1)) { bildir("Tutar en az 0,1 milyar ₺ (100 milyon ₺) olmalı.", true); return; }
       this.disabled = true;
       try {
         KM.v = await rpc("varlik_fonu_aktar", { p_yon: yon, p_tutar: t, p_gerekce: m.querySelector("#kmFG").value || null });
