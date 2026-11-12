@@ -1257,6 +1257,8 @@ function merkezHTML(r,td,sd,ben){
  x+='<form class="em-form" data-em-form="tedbir"><label>Yumuşak araç</label><select name="tur">'+yumusak.map(k=>'<option value="'+esc(k)+'">'+esc(YAD[k]||k)+'</option>').join('')+'</select><textarea name="gerekce" minlength="20" maxlength="1500" required>Bu aracı kamu bütçesinden uyguluyoruz.</textarea><button class="hh-action" type="submit">Yumuşak aracı uygula</button></form>';
  x+='<form class="em-form" data-em-form="sert"><label>Sert önlem</label><select name="tur">'+sert.map(k=>'<option value="'+esc(k)+'">'+esc(SAD[k]||k)+'</option>').join('')+'</select><textarea name="gerekce" minlength="20" maxlength="1500" required>Bu sert önlemin gerekçesi kamuoyuna açıktır.</textarea><button class="hh-action" type="submit">Sert önlemi uygula</button></form></div>';
  x+='<div data-em-panel="isgal" hidden><p>'+(ig?esc(ig.bina)+' · '+esc(ig.durum)+' · güç '+esc(ig.guc)+' · nöbet '+Number(ig.nobet||0)+' · kuşatma '+Number(ig.kusatma||0):'Henüz işgal yok.')+'</p>';
+ if(!ig) x+='<p class="em-oneri">Bina işgali başlatmak için Eylemci sekmesinden Sembolik İşgal seçin; belediye veya valilik belirleyin. En az 4 katılımcı ve örgüt kasasında 200.000 TL gerekir.</p>';
+ if(ig&&ig.durum==='aktif') x+='<p class="em-oneri">İşgalin sürmesi için '+Math.max(2,Math.ceil(Number(r.katilim||0)/5))+' oyuncunun bina nöbetine katılması gerekir. İlk 15 dakika hazırlık süresidir; nöbet 1 saat sürer.</p>';
  if(ig&&ig.teklif) x+='<p>Teklif: '+esc(ig.teklif.metin)+'</p><div class="em-grid"><button type="button" class="em-kart" data-em-islem="muzakere_oy" data-oy="evet">Teklifi kabul et</button><button type="button" class="em-kart" data-em-islem="muzakere_oy" data-oy="hayir">Teklifi reddet</button></div>';
  x+='<div class="em-grid"><button type="button" class="em-kart" data-em-islem="kusatma">Kuşatma başlat · 200.000 TL</button><button type="button" class="em-kart" data-em-islem="kusatma_nobet">Kuşatma nöbeti · 1 saat</button><button type="button" class="em-kart" data-em-islem="tahliye">Tahliye emri · 250.000 TL</button><button type="button" class="em-kart" data-em-islem="operasyon">Operasyona katıl</button></div>';
  x+='<form class="em-form" data-em-form="muzakere"><label>Müzakere teklifi · 100.000 TL</label><textarea name="metin" minlength="20" maxlength="1500" required>Binayı boşaltırsanız talebin bir kısmını uygularız.</textarea><button class="hh-action" type="submit">Teklifi gönder</button></form></div>';
@@ -1279,7 +1281,11 @@ sokakHareketleriEkrani=async function(){
  const dengeHarita={}; ((denge&&denge.eylemler)||[]).forEach(r=>{
   const kat=Number(r.katilim||0), nab=Number(r.nabiz||0), iv=Number(r.ivme||0);
   const buyuk=iv<(denge.ayar&&denge.ayar.buyuk_ivme)||kat<(denge.ayar&&denge.ayar.buyuk_katilim)||nab<(denge.ayar&&denge.ayar.buyuk_nabiz);
-  r.engel=buyuk?{grev:'İvme, kalabalık ya da nabız büyük hamle için yetersiz',isgal:'İvme, kalabalık ya da nabız büyük hamle için yetersiz',zincir:'İvme, kalabalık ya da nabız büyük hamle için yetersiz'}:{};
+  // İşgal için sunucu ivme/nabız/eşik 8 şartı aramaz; asıl kural en az 4 eylemci.
+  // Aksi halde tüm canlı eylemlerde işgal düğmesi yanlışlıkla kilitli kalıyordu.
+  const isgalGerek=Math.max(4,Math.ceil(kat/3));
+  r.engel=buyuk?{grev:'İvme, kalabalık ya da nabız büyük hamle için yetersiz',zincir:'İvme, kalabalık ya da nabız büyük hamle için yetersiz'}:{};
+  if(kat<isgalGerek) r.engel.isgal='Bina işgali için '+isgalGerek+' eylemci gerekli (şu an '+kat+').';
   dengeHarita[Number(r.id)]=r;
  });
  const ay=denge&&denge.ayar||{};
