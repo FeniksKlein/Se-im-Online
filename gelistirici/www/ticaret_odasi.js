@@ -34,7 +34,27 @@
       .to-bar{height:8px;border-radius:6px;background:var(--panel2);overflow:hidden;margin:4px 0 2px}
       .to-bar i{display:block;height:100%;background:var(--gold)}
       .to-iki{display:flex;gap:8px;flex-wrap:wrap}
-      .to-iki .btn{flex:1;min-width:130px;margin:0}`;
+      .to-iki .btn{flex:1;min-width:130px;margin:0}
+      .to-hub{padding-bottom:18px}
+      .to-hub-kapak{padding:19px 17px 17px;border-radius:20px;border:1px solid rgba(92,211,192,.45);background:linear-gradient(135deg,#174a51,#1b2c4c 70%,#253254);margin-bottom:12px;box-shadow:0 12px 24px -19px #000}
+      .to-hub-eyebrow{display:block;font-size:11px;font-weight:800;letter-spacing:.09em;color:#91e6d5;margin-bottom:9px}
+      .to-hub-kapak h2{font-size:25px;line-height:1.2;margin:0 0 8px;color:#f5fffb}
+      .to-hub-kapak p{font-size:13px;line-height:1.5;color:#d0e4ea;margin:0 0 12px}
+      .to-hub-satir{display:flex;gap:8px;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid rgba(173,244,231,.18);font-size:13px;color:#bdd9e3}
+      .to-hub-satir b{color:#fff;text-align:right}
+      .to-hub-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      .to-hub-buttons .btn{margin:0;min-width:0;padding:10px 8px}
+      .to-hub-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:14px}
+      .to-hub-kpis>div{min-width:0;background:linear-gradient(135deg,#21384b,#1c2a47);border:1px solid rgba(156,209,229,.22);border-radius:15px;padding:12px}
+      .to-hub-kpis small{display:block;font-size:11px;color:#afc7d7;margin-bottom:5px}
+      .to-hub-kpis b{font-size:20px;color:#f1f8ff;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+      .to-hub-panel{border-radius:18px;margin-bottom:12px}
+      .to-hub-panel h2{font-size:20px;line-height:1.25;margin:0 0 8px}
+      .to-hub-panel .btn{width:100%;margin:11px 0 0}
+      .to-hub-uyari{font-size:12.5px;color:#f6dfaa;padding:10px;background:rgba(227,184,88,.10);border-radius:10px}
+      #toKok .to-atla{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 0 12px}
+      #toKok .to-atla button{white-space:nowrap;flex:none;border:1px solid rgba(153,189,235,.3);color:#dce8f8;background:#202b49;border-radius:999px;padding:9px 12px;font-size:12px;font-weight:750}
+      #toKok [id^="toBolum"]{scroll-margin-top:90px}
     document.head.appendChild(s);
   }
 
@@ -43,14 +63,14 @@
     const s = d.secim, il = d.il, benimSirket = (d.benim.sirketler || []).filter(x => x.bu_oda);
     if (!s) {
       const ss = d.son_secim;
-      let h = `<section class="kart"><h2>Başkanlık seçimi</h2>`;
+      let h = `<section class="kart" id="toBolumSecim"><h2>Başkanlık seçimi</h2>`;
       if (d.oda.baskan) h += `<p class="alt">Görev süresi 21 gündür. Sonraki seçim: <b>${tarihSaat(d.oda.donem_bitis)}</b> dolayında açılır.</p>`;
       else h += `<p class="alt">${d.oda.uye > 0 ? "Seçim birkaç dakika içinde kendiliğinden açılır" + (d.oda.sonraki_secim ? " (en erken " + tarihSaat(d.oda.sonraki_secim) + ")" : "") + "." : "Bu odanın henüz üyesi yok; ilk şirket kurulunca seçim açılır."}</p>`;
       if (ss) h += `<div class="kucuk" style="margin-top:6px">Son seçim (${tarihSaat(ss.bitis)}): ${(ss.sonuc || []).map(x => `${e(x.aday)}${x.sendika ? " (" + e(x.sendika) + ")" : ""} ${x.oy} oy`).join(" · ") || "aday çıkmadı"}</div>`;
       return h + `</section>`;
     }
     const adaylik = s.durum === "aday";
-    let h = `<section class="kart"><h2>Başkanlık seçimi · ${adaylik ? "adaylık dönemi" : "oylama"}</h2>
+    let h = `<section class="kart" id="toBolumSecim"><h2>Başkanlık seçimi · ${adaylik ? "adaylık dönemi" : "oylama"}</h2>
       <p class="alt">${adaylik ? `Oylama <b>${tarihSaat(s.oy_bas)}</b> tarihinde başlar (kalan ${sure(s.oy_bas)}).` : `Oylama <b>${tarihSaat(s.oy_son)}</b> tarihinde biter (kalan ${sure(s.oy_son)}).`}
       Her şirketin 1 oyu vardır; oyu şirketin yöneticisi kullanır. En çok oyu alan kazanır.${s.neden ? " <i>" + e(s.neden) + "</i>" : ""}</p>`;
     if (!adaylik) h += `<div class="to-bar"><i style="width:${Math.min(100, Math.round(100 * s.kullanilan / Math.max(1, s.oy_hakki)))}%"></i></div><div class="kucuk">${s.kullanilan} / ${s.oy_hakki} şirket oy kullandı · sonuçlar oylama bitince açıklanır</div>`;
@@ -75,7 +95,7 @@
     const turler = d.ulusal
       ? [["destek", "Üye destek fonu (bütün üyelere eşit)"], ["fuar", "Türkiye Ticaret Fuarı (üyesi olan illerde gelişim)"], ["il_destek", "Bir il odasına kaynak aktar"], ["rapor", "Başkanlık açıklaması yayımla"]]
       : [["destek", "Üye destek fonu (aidat borcu olmayanlara eşit)"], ["fuar", "Ticaret fuarı (il gelişimi)"], ["egitim", "Mesleki eğitim (il memnuniyeti)"], ["aidat", "Haftalık aidatı belirle"], ["rapor", "Başkanlık açıklaması yayımla"]];
-    return `<section class="kart" style="border:2px solid var(--gold)"><h2>Başkanlık masası</h2>
+    return `<section class="kart" id="toBolumMasa" style="border:2px solid var(--gold)"><h2>Başkanlık masası</h2>
       <p class="alt">Oda kasası: <b>${tl(d.oda.kasa)}</b>. Fuar ve eğitim 48 saatte bir yapılır; harcamanın %20'si KDV olarak Hazine'ye gider. Oda kasasından kişilere ödeme yapılamaz.</p>
       <div class="alan"><label for="toTur">İcraat</label><select id="toTur" onchange="toIcraatAlan()">${turler.map(x => `<option value="${x[0]}">${x[1]}</option>`).join("")}</select></div>
       <div class="alan" id="toTutarK"><label for="toTutar">Tutar (₺)</label><input id="toTutar" type="number" inputmode="numeric" min="0" step="1000"></div>
@@ -150,7 +170,80 @@
   }
   if (!ekonomiBagla()) setTimeout(ekonomiBagla, 1500);
 
-  window.ticaretOdasiEkrani = async function (il) {
+  window.odaSekmeHtml = async function () {
+  stil();
+  let d;
+  try {
+    d = await rpc("oda_ozet");
+  } catch (err) {
+    return `<section class="kart"><h2>Ticaret Odası</h2><p class="alt">${e(hataCevir(err.message))}</p>
+      <button type="button" class="btn ikinci" onclick="ekranAc(function(){return ticaretOdasiEkrani()})">Ayrıntılı odayı aç</button></section>`;
+  }
+  const il = Number((d || {}).il) || Number((D.durum || {}).profil?.il_id) || 6;
+  const ad = (d || {}).ad || "İl Ticaret Odası";
+  const s = (d || {}).secim;
+  const birlik = (d || {}).birlik;
+  const n = x => (Number(x) || 0).toLocaleString("tr-TR");
+  const odaAc = bolum => `ekranAc(function(){return ticaretOdasiEkrani(${il},'${bolum}')})`;
+  const birlikAc = `ekranAc(function(){return ticaretOdasiEkrani(0)})`;
+  const secimBas = !s ? "Seçim takvimini incele" : s.durum === "aday" ? "Başkanlık adaylığı açık" : "Başkanlık oylaması sürüyor";
+  const secimAcik = !s
+    ? "Adaylık, oylama, geçmiş sonuçlar ve erken seçim işlemleri oda ekranında."
+    : s.durum === "aday"
+      ? `${n(s.aday)} aday · Oylama ${tarihSaat(s.oy_bas)} tarihinde başlayacak.`
+      : `${n(s.aday)} aday · Oylama ${tarihSaat(s.oy_son)} tarihinde sona erecek.`;
+  const secimDugme = s && s.durum === "aday" && Number(d.sirketim) ? "Adaylık işlemlerine git"
+    : s && s.durum === "oy" && Number(d.oy_bekleyen) ? "Oylarımı kullan" : "Seçim ekranını aç";
+  const borc = Number((d || {}).aidat_borc) || 0;
+  return `<div class="to-hub">
+    <section class="to-hub-kapak">
+      <span class="to-hub-eyebrow">TİCARET ODALARI · 81 İL VE TÜRKİYE ODALAR BİRLİĞİ</span>
+      <h2>${e(ad)}</h2>
+      <p>Şirketlerin oda üyeliğini, seçimleri, oda başkanlığını ve işveren sendikalarını buradan yönet.</p>
+      <div class="to-hub-satir"><span>Oda başkanı</span><b>${e((d || {}).baskan || "Henüz seçilmedi")}</b></div>
+      <div class="to-hub-buttons">
+        <button type="button" class="btn altin" onclick="${odaAc("oda")}">İl odamı aç</button>
+        <button type="button" class="btn ikinci" onclick="${birlikAc}">Odalar Birliği</button>
+      </div>
+    </section>
+    <div class="to-hub-kpis">
+      <div><small>Üye şirket</small><b>${n((d || {}).uye)}</b></div>
+      <div><small>Şirketlerim</small><b>${n((d || {}).sirketim)}</b></div>
+      <div><small>Oy hakkım</small><b>${n((d || {}).oy_hakki)}</b></div>
+      <div><small>Haftalık aidat</small><b>${tl((d || {}).aidat)}</b></div>
+    </div>
+    <section class="kart to-hub-panel">
+      <span class="to-hub-eyebrow">SEÇİM VE DEMOKRASİ</span>
+      <h2>${e(secimBas)}</h2><p class="alt">${e(secimAcik)}</p>
+      ${(d || {}).baskanim ? '<p class="to-hub-uyari">Oda başkanı sensin. Başkanlık masasında destek fonu, fuar, eğitim ve aidat kararlarını yönetebilirsin.</p>' : ""}
+      <button type="button" class="btn altin" onclick="${odaAc("secim")}">${secimDugme}</button>
+    </section>
+    <section class="kart to-hub-panel">
+      <span class="to-hub-eyebrow">ŞİRKETLER VE AİDATLAR</span>
+      <h2>${borc ? "Ödenmemiş oda aidatı" : "Şirket üyeliklerim"}</h2>
+      <p class="alt">${borc
+        ? `${tl(borc)} borç bulunuyor. Borçlu şirketler oda seçimlerinde oy kullanamaz; borcu şirket kasasından ödeyebilirsin.`
+        : Number((d || {}).sirketim) ? `${n(d.sirketim)} şirketin oda kaydında. Aidatları, temsil ve oy haklarını ayrıntılı gör.` : "Şirketin bulunmuyorsa, kurduğun faal şirket merkez ilinin odasına otomatik kaydedilir."}</p>
+      <button type="button" class="btn ikinci" onclick="${odaAc("sirket")}">${borc ? "Aidat borçlarını öde" : "Şirket kayıtlarını incele"}</button>
+    </section>
+    <section class="kart to-hub-panel">
+      <span class="to-hub-eyebrow">İŞVEREN SENDİKALARI</span>
+      <h2>Sendikalar ve oda yönetimi</h2>
+      <p class="alt">Sendika kur veya katıl, bildiri yayımla, oda başkanlığına aday göster, gerektiğinde erken seçim için imza topla.</p>
+      <button type="button" class="btn ikinci" onclick="${odaAc("sendika")}">Sendikaları aç</button>
+    </section>
+    <section class="kart to-hub-panel">
+      <span class="to-hub-eyebrow">TÜRKİYE ODALAR BİRLİĞİ</span>
+      <h2>${e((d || {}).birlik_baskan || "Birlik başkanlığı")}</h2>
+      <p class="alt">${birlik
+        ? `Birlik seçiminde ${n(birlik.aday)} aday var. ${birlik.durum === "aday" ? "Adaylık devam ediyor." : "Oylama devam ediyor."}`
+        : "İl odalarının çatı kuruluşunda başkanlık seçimi, ulusal fuar, kaynak aktarımı ve sendika faaliyetlerini incele."}</p>
+      <button type="button" class="btn ikinci" onclick="${birlikAc}">Türkiye Odalar Birliğini aç</button>
+    </section>
+  </div>`;
+};
+
+  window.ticaretOdasiEkrani = async function (il, bolum) {
     stil();
     if (il === undefined && D._toIl !== undefined) il = D._toIl;
     if (il === undefined) il = null;
@@ -160,11 +253,12 @@
     const o = d.oda, benim = d.benim.sirketler || [], evIl = (benim[0] || {}).il_id || (D.durum && D.durum.profil && D.durum.profil.il_id) || 6;
     const borclu = benim.filter(x => x.aidat_borc > 0);
     iskelet(d.ulusal ? "Odalar Birliği" : "Ticaret Odası", `<div id="toKok">
+      <nav class="to-atla" aria-label="Ticaret odası bölümleri"><button type="button" onclick="toAtla('oda')">Oda</button><button type="button" onclick="toAtla('sirket')">Şirketler</button><button type="button" onclick="toAtla('secim')">Seçimler</button><button type="button" onclick="toAtla('masa')">Başkanlık</button><button type="button" onclick="toAtla('sendika')">Sendikalar</button></nav>
       <div class="to-gezin">
         <button class="btn ${d.ulusal ? "ikinci" : "altin"}" onclick="ticaretOdasiEkrani(${evIl})">İl odam</button>
         <button class="btn ${d.ulusal ? "altin" : "ikinci"}" onclick="ticaretOdasiEkrani(0)">Türkiye Odalar Birliği</button>
       </div>
-      <section class="kart"><h2>${e(d.ad)}</h2>
+      <section class="kart" id="toBolumOda"><h2>${e(d.ad)}</h2>
         <p class="alt">${d.ulusal ? "81 il odasının çatı kuruluşu. Bütün şirketler üyesidir; il odalarına ödenen aidatın %25'i Birlik kasasına gelir." : "Bu ildeki bütün faal şirketler odanın zorunlu üyesidir. Aidat her hafta şirket kasasından alınır."}</p>
         ${kv("Başkan", o.baskan ? kisi(o.baskan) + (o.baskan_sendika ? " " + rozet(o.baskan_sendika.ad, "var(--ink2,#a995ff)") : "") : "Seçilmedi")}
         ${kv("Üye şirket", o.uye + (o.borclu > 0 ? ` <span class="kucuk">(${o.borclu} aidat borçlu)</span>` : ""))}
@@ -174,7 +268,7 @@
         ${(d.iller || []).length > 1 ? `<div class="alan" style="margin-top:10px"><label for="toIlSec">Başka bir odaya bak</label><select id="toIlSec" onchange="toIlDegis(this.value)">
           ${d.iller.map(x => `<option value="${x.il_id}" ${x.il_id === d.il ? "selected" : ""}>${e(x.ad)} · ${x.uye} üye${x.baskan ? " · " + e(x.baskan) : ""}</option>`).join("")}</select></div>` : ""}
       </section>
-      ${benim.length ? `<section class="kart"><h2>Şirketlerim</h2>${benim.map(x => `<div class="to-satir"><b>${e(x.ad)}</b> <span class="kucuk">${e(x.il || "")} Ticaret Odası${x.sendika ? " · " + e(x.sendika.ad) : " · sendikasız"}</span>
+      ${benim.length ? `<section class="kart" id="toBolumSirket"><h2>Şirketlerim</h2>${benim.map(x => `<div class="to-satir"><b>${e(x.ad)}</b> <span class="kucuk">${e(x.il || "")} Ticaret Odası${x.sendika ? " · " + e(x.sendika.ad) : " · sendikasız"}</span>
           ${x.aidat_borc > 0 ? `<div class="kucuk" style="color:var(--bad)">Aidat borcu ${tl(x.aidat_borc)} · oy kullanamaz</div><button class="btn ikinci" onclick="toAidatOde(${x.id})">Aidat borcunu şirket kasasından öde</button>` : ""}</div>`).join("")}
           ${borclu.length ? "" : `<p class="kucuk" style="margin-top:6px">Aidat borcun yok; ${benim.filter(x => x.bu_oda).length} oy hakkın var.</p>`}</section>`
         : `<section class="kart"><p class="alt">Yöneticisi olduğun faal bir şirket yok. Şirket kurduğunda merkez ilinin odasına kendiliğinden kaydolur; şirket başına 1 oy hakkın olur.</p></section>`}
@@ -190,13 +284,14 @@
       <section class="kart"><h2>Sendikalardan</h2>${(d.bildiriler || []).map(b => `<div class="to-satir"><b>${e(b.baslik)}</b> ${konumRozet(b.konum)}
         <div class="kucuk">${e(b.sendika)} · ${e(b.yazar || "")} · ${tarihSaat(b.zaman)}${b.tur === "kampanya" ? " · kampanya" : ""}</div>
         <p style="margin:4px 0 0;font-size:14.5px;line-height:1.45;overflow-wrap:anywhere">${e(b.metin)}</p></div>`).join("") || bos("Bu odaya yönelik sendika bildirisi yok.")}</section>
-      <section class="kart"><h2>İşveren sendikaları</h2>
+      <section class="kart" id="toBolumSendika"><h2>İşveren sendikaları</h2>
         <p class="alt">Şirketler serbestçe sendikalaşır (şirket başına tek sendika). Sendikalar oda seçimlerinde aday çıkarır; Birlik başkanlığını alamayanlar muhalefette kalır.</p>
         ${(d.sendikalar || []).map(s => `<button class="giris-satir" onclick="ekranAc(()=>sendikaEkrani(${s.id}))"><span class="orta"><b>${e(s.ad)}</b> ${konumRozet(s.konum)}<span class="kucuk">${s.uye} üye şirket · başkan ${e(s.baskan || "—")}${s.aidat > 0 ? " · aidat " + tl(s.aidat) + "/hafta" : ""}</span></span><span class="ok">›</span></button>`).join("") || bos("Henüz sendika kurulmadı.")}
         ${benim.some(x => !x.sendika) ? `<button class="btn ikinci" style="margin-top:10px" onclick="toSendikaKur()">İşveren sendikası kur (50.000 ₺)</button>` : ""}</section>
       <section class="kart"><details><summary><b>Üye şirketler (${o.uye})</b></summary>${(d.uyeler || []).map(u => `<div class="to-satir">${e(u.ad)} <span class="kucuk">${u.il ? e(u.il) + " · " : ""}${e(u.yonetici || "")}${u.sendika ? " · " + e(u.sendika) : ""}${u.borclu ? " · aidat borçlu" : ""}</span></div>`).join("") || bos("Üye yok.")}</details></section>
     </div>`, { geri: D.yigin.length > 0 });
     window._toPanel = d;
+    if (bolum) setTimeout(() => window.toAtla(bolum), 80);
     if (d.benim.baskan) window.toIcraatAlan();
     if (d.secim) {                                    // geri sayım ve durum geçişi için hafif tazeleme
       const taz = async () => { if (!document.getElementById("toKok") || document.hidden || $("#modal")) return; const ta = $("#toVaat"); if (ta && ta.value.trim()) return; try { await window.ticaretOdasiEkrani(d.il); } catch (_) {} };
@@ -204,6 +299,11 @@
     }
   };
 
+  window.toAtla = function (bolum) {
+    const ids = { oda:"toBolumOda", sirket:"toBolumSirket", secim:"toBolumSecim", masa:"toBolumMasa", sendika:"toBolumSendika" };
+    const el = document.getElementById(ids[bolum] || ids.oda) || document.getElementById("toKok");
+    if (el) el.scrollIntoView({ behavior:"smooth", block:"start" });
+  };
   window.toIlDegis = v => { eylem(); return window.ticaretOdasiEkrani(Number(v)); };
   const calis = async (fn, basari, il) => { try { const r = await fn(); ozetOn.t = 0; if (basari) toast(typeof basari === "function" ? basari(r) : basari); await window.ticaretOdasiEkrani(il); return r; } catch (err) { toast(hataCevir(err.message), true); } };
   window.toAdayOl = il => { const v = ($("#toVaat") || {}).value || "", s = ($("#toSen") || {}).value; return calis(() => rpc("oda_aday_ol", { p_il: il, p_vaat: v.trim(), p_sendika: s ? Number(s) : null }), "Adaylığın açıklandı.", il); };
