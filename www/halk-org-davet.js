@@ -1949,7 +1949,7 @@ function gucHTML(E){
  h+='<div class="hh4-panel" style="margin-top:10px"><h4 style="margin-bottom:6px">Denge</h4><table class="hh4-tablo">'+
   '<tr><td>Kamuoyu nabzı (destek · karşı)</td><td>'+num(dk.destek,0)+' · '+num(dk.karsi_nabiz,0)+'</td></tr>'+
   (dg.ivme!=null?'<tr><td>İvme / yorgunluk</td><td>'+num(dg.ivme,0)+' / '+num(dg.yorgunluk,0)+'</td></tr>':'')+
-  (dg.tavan!=null?'<tr><td>İldeki katılımcı tavanı</td><td>'+num(dg.tavan,0)+'</td></tr>':'')+
+  '<tr><td>Katılım kuralı</td><td>İl ve oyuncu sınırı yok · Türkiye geneli</td></tr>'+
   '<tr><td>Eylem fonu · uzlaşma fonu</td><td>'+tl(x.muhalefet_fonu)+' · '+tl(x.iktidar_fonu)+'</td></tr>'+
   (ky.toplam!=null?'<tr><td>Aktarılan kaynak</td><td>'+tl(ky.toplam)+'</td></tr>':'')+
   (hz.toplam_tl!=null?'<tr><td>Hazine bedeli (saatlik)</td><td>'+tl(hz.toplam_tl)+' ('+tl(hz.saatlik_tl)+')</td></tr>':'')+
