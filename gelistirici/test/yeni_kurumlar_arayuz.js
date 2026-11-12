@@ -106,6 +106,10 @@ const STUDYO = (o) => Object.assign(P(), { simdi: S(0), rolum: 'izleyici', kanal
   }, { oda: ODA, sendika: SENDIKA, vali: VALI, tvliste: TVLISTE, kanal: KANAL, studyo: STUDYO() });
   const bekle = (ms) => page.waitForTimeout(ms || 350);
   const metin = () => page.evaluate(() => document.querySelector('#app').innerText);
+  // sekmeli ekranlarda gizli sekmelerin metni de dahil (içeriğin varlığı için)
+  const tumMetin = () => page.evaluate(() => document.querySelector('#app').textContent.replace(/\s+/g, ' '));
+  const sekme = async (ad, k) => { await page.click(`[data-kx="${ad}"] button[data-k="${k}"]`); await bekle(150);
+    assert.ok(await page.evaluate(({ ad, k }) => { const p = document.querySelector(`[data-kx-pan="${ad}"][data-k="${k}"]`); return !!p && !p.hidden && [...document.querySelectorAll(`[data-kx-pan="${ad}"]`)].filter(x => !x.hidden).length === 1; }, { ad, k }), 'sekme açılmalı: ' + ad + '/' + k); };
   const sahte = (k, v) => page.evaluate(({ k, v }) => { window.SAHTE[k] = v; }, { k, v });
   const cagri = (ad) => page.evaluate((ad) => calls.filter(c => c.ad === ad).pop(), ad);
   let no = 0;
@@ -120,41 +124,66 @@ const STUDYO = (o) => Object.assign(P(), { simdi: S(0), rolum: 'izleyici', kanal
 
   /* ---------------- Ticaret Odası ---------------- */
   await page.evaluate(() => ekranAc(() => ticaretOdasiEkrani())); await bekle(500);
-  t = await metin();
+  t = await tumMetin();
+  assert.equal(await page.evaluate(() => document.querySelector('[data-kx="to"] button[aria-selected=true]').dataset.k), 'oda', 'bekleyen oy yokken Oda sekmesi açık gelmeli (şirketlerden biri oy kullandı, diğeri borçlu)');
+  assert.ok(await page.locator('.tox-muhur').count() >= 1, 'oda mührü');
   for (const b of ['Ankara Ticaret Odası', 'Başkanlık seçimi · oylama', '5 / 14 şirket oy kullandı', 'Başkanlık masası', 'Aidat borcu 6.000 ₺', 'İşveren sendikaları', 'Muhalefet', 'Yönetimde', 'Adaylıktan çekil']) assert.ok(t.includes(b), 'oda: ' + b);
-  await yaz('oda_ust');
+  await yaz('oda_gundem');
+  await sekme('to', 'secim'); await yaz('oda_secim');
+  await sekme('to', 'sirket'); assert.match(await metin(), /Aidat borcu 6\.000 ₺/); await yaz('oda_sirket');
+  await sekme('to', 'sendika'); await yaz('oda_sendika');
+  await sekme('to', 'secim');
   await page.evaluate(() => toOyVer(6, 'Mert')); await bekle();
   assert.deepEqual((await cagri('oda_oy_ver')).args, { p_il: 6, p_aday: 'Mert', p_sirket: null });
-  await page.evaluate(() => document.querySelector('#toTur').scrollIntoView()); await yaz('oda_masa');
-  await page.selectOption('#toTur', 'fuar'); await page.fill('#toTutar', '250000');
+  await sekme('to', 'masa');
+  await page.click('[data-to-tur="fuar"]'); await page.fill('#toTutar', '250000');
+  assert.match(await page.evaluate(() => document.querySelector('#toEtki').innerText), /gelişimi \+0,1,[\s\S]*etki azalır[\s\S]*50\.000 ₺[\s\S]*yapılamaz[\s\S]*karşılanamaz/, 'fuar etkisi önizlemesi (sunucu formülü, 48 sa kuralı, kasa uyarısı)');
+  await yaz('oda_masa');
   await page.evaluate(() => { window.onayla = async () => true; }); await page.evaluate(() => toIcraatYap(6)).catch(() => {}); await bekle();
   const ic = await cagri('oda_icraat'); assert.ok(ic && ic.args.p_tur === 'fuar' && ic.args.p_tutar === 250000, 'oda_icraat çağrısı: ' + JSON.stringify(ic));
   await page.evaluate(() => ekranAc(() => sendikaEkrani(3))); await bekle(450);
-  t = await metin(); for (const b of ['Anadolu İşverenleri Sendikası', 'Başkanlık', 'Üye şirketler', 'Üretene destek']) assert.ok(t.includes(b), 'sendika: ' + b);
+  t = await tumMetin(); for (const b of ['Anadolu İşverenleri Sendikası', 'Başkanlık', 'Üye şirketler', 'Üretene destek']) assert.ok(t.includes(b), 'sendika: ' + b);
   await yaz('sendika');
 
   /* ---------------- Valilik ---------------- */
   await page.evaluate(() => { D.yigin = []; ekranAc(valilikEkrani); }); await bekle(450);
-  t = await metin(); for (const b of ['Cumhurbaşkanlığı · vali atamaları', 'Valilik kariyerim', 'Sınava gir', 'Görevdeki valiler', 'İzmir', 'Vali havuzu', 'siyasi görevde, atanamaz']) assert.ok(t.includes(b), 'valilik: ' + b);
+  assert.equal(await page.locator('.vlx-harita path').count(), 81, 'harita 81 il');
+  assert.equal(await page.locator('.vlx-harita path.dolu').count(), 1, 'valisi olan il boyalı');
+  t = await tumMetin(); for (const b of ['Cumhurbaşkanlığı · vali atamaları', 'Valilik kariyerim', 'Sınava gir', 'Görevdeki valiler', 'İzmir', 'Vali havuzu', 'siyasi görevde, atanamaz']) assert.ok(t.includes(b), 'valilik: ' + b);
   assert.equal(await page.locator('#vlAday option').count(), 2, 'siyasi engelli aday atama listesinde olmamalı');
   await yaz('valilik_cb');
+  await page.evaluate(() => vlHaritaTik({ target: document.querySelector('.vlx-harita path[data-id="34"]') })); await bekle(150);
+  assert.match(await page.evaluate(() => document.querySelector('#vlIlBilgi').innerText), /İstanbul Valiliği[\s\S]*Vali atanmadı/);
+  await page.click('#vlIlBilgi .btn.altin'); await bekle(150);
+  assert.equal(await page.inputValue('#vlIl'), '34', 'haritadan seçilen il atama formuna gelmeli'); await yaz('valilik_harita_secim');
+  await sekme('vl', 'kariyer'); await yaz('valilik_kariyer'); await sekme('vl', 'atama');
   await page.selectOption('#vlAday', 'Mert'); await page.selectOption('#vlIl', '34'); await page.evaluate(() => vlAta()); await bekle();
   assert.deepEqual((await cagri('vali_ata')).args, { p_kad: 'Mert', p_il: 34 });
   await page.evaluate(() => vlSinav()); await bekle();
-  assert.equal(await page.locator('#modal select').count(), 20); await yaz('valilik_sinav');
-  await page.evaluate(() => { document.querySelectorAll('#modal select').forEach(s => { s.value = '2'; }); document.querySelector('#vlGonder').click(); }); await bekle(450);
+  assert.equal(await page.locator('#modal fieldset.vl-soru').count(), 20); await page.click('#modal input[name="vlS1"][value="2"]');
+  assert.match(await page.evaluate(() => document.querySelector('#vlIlerleme').textContent), /^1 \/ 20/); await yaz('valilik_sinav');
+  await page.evaluate(() => { document.querySelectorAll('#modal fieldset.vl-soru').forEach(f => { f.querySelector('input[value="2"]').checked = true; }); document.querySelector('#vlGonder').click(); }); await bekle(450);
   assert.equal(Object.keys((await cagri('vali_sinav_gonder')).args.p_cevaplar).length, 20);
   t = await page.evaluate(() => document.querySelector('#modal').innerText); assert.match(t, /Sınavı geçtin[\s\S]*17 \/ 20/); await page.evaluate(() => modalKapat());
   await sahte('vali', VALI_GOREV); await page.evaluate(() => valilikEkrani()); await bekle(450);
-  t = await metin(); for (const b of ['Ankara Valiliği', 'İl emri', 'Valilikten istifa et', 'Görevdeki vali havuzdan çıkamaz']) assert.ok(t.includes(b), 'vali görev: ' + b);
+  assert.equal(await page.evaluate(() => document.querySelector('[data-kx="vl"] button[aria-selected=true]').dataset.k), 'makam');
+  assert.equal(await page.locator('.vlx-harita path.ben').count(), 1, 'valinin ili altın');
+  t = await tumMetin(); for (const b of ['Ankara Valiliği', 'İl emri', 'Valilikten istifa et', 'Görevdeki vali havuzdan çıkamaz']) assert.ok(t.includes(b), 'vali görev: ' + b);
   await yaz('valilik_gorev');
 
   /* ---------------- TV Kanalları ---------------- */
   await page.evaluate(() => { D.yigin = []; ekranAc(tvKanallariEkrani); }); await bekle(450);
-  t = await metin(); for (const b of ['Sunuculuk teklifi', 'Program davetlerin', 'Şu an yayında', 'CANLI', 'Yayını izle', 'Yayın akışı', 'TV kanalı kur', 'Kanallar', 'Biten programlar', '37 izleyici']) assert.ok(t.toLocaleUpperCase('tr-TR').includes(b.toLocaleUpperCase('tr-TR')), 'tv liste: ' + b);
+  t = await tumMetin(); for (const b of ['Sunuculuk teklifi', 'Program davetlerin', 'Şu an yayında', 'CANLI', 'Yayını izle', 'Yayın akışı', 'TV kanalı kur', 'Kanallar', 'Biten programlar', '37 izleyici']) assert.ok(t.toLocaleUpperCase('tr-TR').includes(b.toLocaleUpperCase('tr-TR')), 'tv liste: ' + b);
+  assert.ok(await page.evaluate(() => { const m = document.querySelector('.tvx-ekran.canli'); return !!m && /Ekonomi düellosu/.test(m.innerText) && /37/.test(m.innerText); }), 'yayın monitörü en çok izlenen canlı yayını göstermeli');
   await yaz('tv_liste');
+  await sekme('tv', 'akis'); assert.match(await metin(), /Cuma Akşamı Düellosu[\s\S]*Sabah Bülteni/); await yaz('tv_akis');
+  await sekme('tv', 'kanallar'); assert.equal(await page.locator('.tvx-kanal').count(), 2); await yaz('tv_kanallar');
+  await sekme('tv', 'kanalim'); await page.fill('#tvKAd', 'Ege Gece'); assert.equal(await page.evaluate(() => document.getElementById('tvKurLogo').textContent), 'EG'); await page.fill('#tvKAd', ''); await yaz('tv_kanal_kur');
+  await sekme('tv', 'yayin');
   // izleyici stüdyosu
   await page.evaluate(() => tvStudyoAc(31)); await bekle(450);
+  assert.equal(await page.locator('#tvOyK .tvx-kose .btn').count(), 2, 'düello köşeleri');
+  assert.ok(await page.evaluate(() => document.querySelector('.tv-mesaj.konuk.sag') !== null), 'ikinci konuk karşı köşede');
   t = await metin(); for (const b of ['Ekonomi düellosu', '37 kişi izliyor', 'Anadolu Kahve', 'En ikna edici kim?', 'Alkışla', 'Yuhala', 'Şu an izleyenler (37)', 'Bu programa reklam ver']) assert.ok(t.includes(b), 'stüdyo izleyici: ' + b);
   assert.equal(await page.locator('#tvYaz').count(), 0, 'izleyici yazamaz'); await yaz('tv_studyo_izleyici');
   await page.evaluate(() => tvOyla(31, 'Ayşe')); await bekle();
@@ -187,10 +216,12 @@ const STUDYO = (o) => Object.assign(P(), { simdi: S(0), rolum: 'izleyici', kanal
   assert.equal(await page.inputValue('#tvYaz'), ''); await yaz('tv_studyo_sunucu');
   // kanal yönetimi
   await page.evaluate(() => { D.yigin = []; tvKanalAc(7); }); await bekle(450);
-  t = await metin(); for (const b of ['Deniz TV', 'Program aç', 'Kanal kasası', '186.500 ₺', 'Onay bekleyen reklam talepleri', 'Anadolu Kahve', 'Sunucular', 'Sözleşmeyi bitir', 'Teklifi geri çek', 'Geçmiş programlar']) assert.ok(t.includes(b), 'kanal: ' + b);
+  assert.equal(await page.evaluate(() => document.querySelector('[data-kx="tvk7"] button[aria-selected=true]').dataset.k), 'kasa', 'bekleyen reklam varken Kasa sekmesi açık gelmeli');
+  t = await tumMetin(); for (const b of ['Deniz TV', 'Program aç', 'Kanal kasası', '186.500 ₺', 'Onay bekleyen reklam talepleri', 'Anadolu Kahve', 'Sunucular', 'Sözleşmeyi bitir', 'Teklifi geri çek', 'Geçmiş programlar']) assert.ok(t.includes(b), 'kanal: ' + b);
   await yaz('tv_kanal_ust');
-  await page.evaluate(() => document.querySelector('#tvKasaT').scrollIntoView()); await yaz('tv_kanal_yonetim');
-  await page.fill('#tvBaslik', 'Cuma 19.00 Düellosu'); await page.selectOption('#tvTur', 'duello'); await page.fill('#tvBas', '2030-01-04T19:00'); await page.selectOption('#tvSure', '30'); await page.selectOption('#tvSun', 'Selin');
+  await sekme('tvk7', 'sunucu'); await yaz('tv_kanal_sunucu');
+  await sekme('tvk7', 'program'); await page.click('input[name="tvTurSec"][value="haber"]'); assert.equal(await page.inputValue('#tvTur'), 'haber'); await page.click('input[name="tvTurSec"][value="duello"]'); await yaz('tv_kanal_program');
+  await page.fill('#tvBaslik', 'Cuma 19.00 Düellosu'); await page.fill('#tvBas', '2030-01-04T19:00'); await page.selectOption('#tvSure', '30'); await page.selectOption('#tvSun', 'Selin');
   await page.evaluate(() => tvProgramAc(7)); await bekle(450);
   const pa = (await cagri('tv_program_ac')).args;
   assert.equal(pa.p_kanal, 7); assert.equal(pa.p_tur, 'duello'); assert.equal(pa.p_dakika, 30); assert.equal(pa.p_sunucu, 'Selin'); assert.equal(new Date(pa.p_bas).getTime(), new Date('2030-01-04T19:00').getTime());
@@ -219,6 +250,8 @@ const STUDYO = (o) => Object.assign(P(), { simdi: S(0), rolum: 'izleyici', kanal
   for (const [ad, fn] of [['oda_320', 'ticaretOdasiEkrani(6)'], ['valilik_320', 'valilikEkrani()'], ['tv_liste_320', 'tvKanallariEkrani()'], ['tv_kanal_320', 'tvKanalEkrani(7)'], ['tv_studyo_320', 'tvStudyoEkrani(31)']]) {
     await page.evaluate((fn) => { D.yigin = []; ekranAc(() => eval('window.' + fn)); }, fn); await bekle(450);
     const gen = await page.evaluate(() => document.documentElement.scrollWidth);
+    const sikisik = await page.evaluate(() => [...document.querySelectorAll('.kx-sayilar b')].filter(b => b.scrollWidth > b.parentElement.clientWidth + 1).map(b => b.textContent));
+    assert.deepEqual(sikisik, [], ad + ': sayaç kutusundan taşan değer');
     assert.ok(gen <= 321, ad + ': sayfa genişliği ' + gen); await yaz(ad);
   }
   assert.deepEqual(hatalar, [], 'sayfa hataları: ' + hatalar.join(' | '));
