@@ -54,7 +54,7 @@
       .to-hub-uyari{font-size:12.5px;color:#f6dfaa;padding:10px;background:rgba(227,184,88,.10);border-radius:10px}
       #toKok .to-atla{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 0 12px}
       #toKok .to-atla button{white-space:nowrap;flex:none;border:1px solid rgba(153,189,235,.3);color:#dce8f8;background:#202b49;border-radius:999px;padding:9px 12px;font-size:12px;font-weight:750}
-      #toKok [id^="toBolum"]{scroll-margin-top:90px}
+      #toKok [id^="toBolum"]{scroll-margin-top:90px}`;
     document.head.appendChild(s);
   }
 
