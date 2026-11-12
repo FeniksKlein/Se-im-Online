@@ -290,6 +290,9 @@
     '.pa-hero .pa-halka div small{font-size:10px;opacity:.8;margin-top:2px}',
         /* hızlı işlem şeridi (Mobil Şube'deki 4'lü düğmeler) */
     '.pa-hizli{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));gap:8px;margin:0 0 16px}',
+    '.pa-hizli.pa-besli{grid-template-columns:repeat(6,minmax(0,1fr))}',
+    '.pa-hizli.pa-besli>button{grid-column:span 2}',
+    '.pa-hizli.pa-besli>button:nth-child(n+4){grid-column:span 3}',
     '.pa-hizli>button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 4px 10px;border-radius:17px;text-align:center;background:linear-gradient(170deg,#1d2650,#151c3b);box-shadow:inset 0 0 0 1px rgba(164,184,255,.09),0 8px 18px -14px rgba(0,0,0,.9);transition:transform .14s,background .14s}',
     '.pa-hizli>button:active{transform:scale(.95)}',
     '.pa-hizli>button:focus-visible{box-shadow:inset 0 0 0 2px #a895ff}',
@@ -534,7 +537,7 @@
   function hizli(k, ls) {
     ls = ls.filter(Boolean); if (!ls.length) return '';
     var b = bolum(k);
-    return '<div class="pa-hizli" data-pa-hizli="' + k + '" style="--n:' + ls.length + ';--a1:' + b.a1 + ';--a2:' + b.a2 + ';--hb:' + rgba(b.a1, .2) + ';--hc:' + karis(b.a1, '#ffffff', .45) + '">' +
+    return '<div class="pa-hizli' + (k === 'devlet' && ls.length === 5 ? ' pa-besli' : '') + '" data-pa-hizli="' + k + '" style="--n:' + ls.length + ';--a1:' + b.a1 + ';--a2:' + b.a2 + ';--hb:' + rgba(b.a1, .2) + ';--hc:' + karis(b.a1, '#ffffff', .45) + '">' +
       ls.map(function (x, i) { return '<button type="button" class="' + (i === 0 ? 'ana' : '') + '" onclick="' + x[2] + '"' + (x[4] ? ' disabled' : '') + '><span class="pa-hi">' + ikon(x[0]) + '</span><b>' + esc(x[1]) + '</b>' + (x[3] ? '<small>' + esc(x[3]) + '</small>' : '') + '</button>'; }).join('') + '</div>';
   }
   function rolYaz(p) {
@@ -634,7 +637,8 @@
         ['meclis', 'Meclis', on('sekme', 'meclis')],
         ['megafon', 'Ulusa sesleniş', on('seslenis')],
         g('krizMerkeziEkrani') ? ['kriz', 'Kriz merkezi', on('kriz')] : null,
-        ['gazete', 'Resmî Gazete', on('gazete')]
+        ['gazete', 'Resmî Gazete', on('gazete')],
+        ['bayrak', 'Valilik', on('valilik')]
       ]);
     },
     hayat: function (ic, d, p) {
