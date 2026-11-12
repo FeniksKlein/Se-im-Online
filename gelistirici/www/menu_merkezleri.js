@@ -25,7 +25,7 @@
   /* Ekonomi: tek sıra üst menü, ayrıntılar ilgili bölümün içinde. */
   var ekonomiSekmeleri = [
     ["genel", "Özet", "◈"], ["sirketlerim", "Şirketlerim", "🏢"],
-    ["sirketler", "Ticaret", "🛒"], ["bankalar", "Bankalar", "🏦"],
+    ["sirketler", "Ticaret", "🛒"], ["oda", "Ticaret Odası", "🏛️"], ["bankalar", "Bankalar", "🏦"],
     ["piyasalar", "Yatırım", "📈"], ["emlak", "Emlak", "🏠"],
     ["giris", "Diğer", "✦"]
   ];
@@ -403,6 +403,7 @@
       genel:["Ekonominin nabzı","Ekonomik göstergeler, şirket getirilerin ve önemli işlemlerin tek ekranda."],
       sirketlerim:["Şirketlerim","Kasalarını, şubelerini, projelerini ve ortaklıklarını yönet."],
       sirketler:["Ticaret merkezi","Şirket kur, iş yap, mal al-sat ve ticari işlemlerini izle."],
+      oda:["Ticaret Odaları","İl odan, Türkiye Odalar Birliği, oda seçimleri, aidatlar ve işveren sendikaları."],
       bankalar:["Bankalar","Banka sahibi yönetimi ve banka kuruluş işlemleri."],
       piyasalar:["Yatırımlar","Borsa, altın, döviz ve halka arz fırsatları."],
       emlak:["Gayrimenkul","Arsa, konut, işyeri, kira ve inşaat yatırımları."],
@@ -645,6 +646,7 @@
     else if(s==="sirketlerim")z=await sirketlerimHtml();
     else if(s==="bankalar")z=await bankalarHtml();
     else if(s==="sirketler")z=sirketlerHtml();
+    else if(s==="oda")z=typeof window.odaSekmeHtml==="function"?await window.odaSekmeHtml():bos("Ticaret Odası ekranı henüz yüklenemedi. Sayfayı yenile.");
     else if(s==="piyasalar")z=piyasalarHtml();
     else if(s==="emlak")z=emlakHtml();
     else if(s==="giris")z=girisHtml();
