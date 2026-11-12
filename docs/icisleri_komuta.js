@@ -22,6 +22,7 @@
   uiStyle();
   var h=['<div id="icKomuta"><div class="ic-kart"><h2>🛡️ İçişleri Bakanlığı · Komuta Merkezi</h2><p>81 ilde kamu güvenliği, valilik koordinasyonu, belediye denetimleri, afet müdahalesi ve oyuncuların hakları burada yönetilir.</p><p class="ic-help">Bakanlık makamı: '+(d.yetki?'Yetkilisiniz':'Vatandaş erişimi')+'. İdari inceleme mahkeme kararı olmadan para cezası veya kıdem kaybı yaratmaz.</p>'+(d.yetki?'<b>Bakanlık kasası: '+say(d.kasa_tl)+' ₺</b>':'')+'</div>'];
   if(d.yetki){
+   h.push('<div class="ic-kart" style="border:2px solid #e9b75c;background:linear-gradient(135deg,#422a25,#1c2945)"><h3>🔒 Oyuncu Tutuklama Yetkisi</h3><p>Kullanıcı adını ve zorunlu gerekçeyi yazarak oyun içi tutuklama kararı verebilirsiniz. Kararlar 24 saat sürer ve kayıt altına alınır.</p><button class="btn altin" style="width:100%;min-height:53px;font-weight:850" type="button" onclick="window.yonetimTutuklamaAc()">🔒 OYUNCU TUTUKLA / DOSYALARI GÖR</button></div>');
    h.push('<div class="ic-kart"><h3>🏛️ Valilikler, kolluk ve hizmet icraatları</h3><form data-ic="icraat"><label>Görev seç</label><select name="p_kod">'+(d.icraatlar||[]).map(function(x){return '<option value="'+temiz(x.kod)+'">'+temiz(x.ad)+' · '+say(x.maliyet)+' milyar ₺</option>';}).join('')+'</select><p class="ic-help" id="icIcraatDetay">Her icraatın harcaması, etkisi ve bekleme süresi mevcut Bakanlık Masası sistemiyle kaydedilir.</p><label>Hedef il (ülke çapındaki kararlarda kullanılmaz)</label><select name="p_il"><option value="">Tüm Türkiye</option>'+(d.iller||[]).map(function(x){return '<option value="'+Number(x.id)+'">'+temiz(x.ad)+'</option>';}).join('')+'</select><button type="submit" class="btn altin">Bakanlık kararı uygula</button></form><button class="btn ikinci" type="button" data-ic-eylem="1">🚓 Eylemler, polis müdahaleleri ve uzlaşma</button></div>');
    h.push('<div class="ic-kart"><h3>🎁 Vatandaş destek kararları</h3><p>Günlük en çok 8 onay. Yardım 3.000 ₺, eğitim desteği +1 kıdem. Her onay bakanlık kasasına gider yazılır.</p></div>');
   }
@@ -136,6 +137,63 @@
    return onceki.call(this,baslik,govde,opt);
   };
   yeni.__icKomuta=true;window.iskelet=yeni;
+ }
+
+ // Cumhurbaşkanı ve İçişleri Bakanı için ortak gerekçeli tutuklama paneli.
+ function ytEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+ window.yonetimTutuklamaAc=async function(){
+  if(typeof window.API==='undefined'||!API||typeof API.rpc!=='function'){if(window.toast)toast('Oyun bağlantısı henüz kurulmadı.',true);return;}
+  if(window.yukleniyor)yukleniyor('Tutuklama yetkisi');
+  try {
+   var kayitlar=await API.rpc('yonetim_tutuklama_liste');
+   var govde='<div id="yonetimTutuklama"><div class="kart" style="border:2px solid #e8ad51;background:linear-gradient(130deg,#3c2b2c,#172441);padding:17px"><h2 style="margin:0 0 8px">🔒 Oyuncu Tutuklama Yetkisi</h2><p>Bu oyun içi makam yetkisi yalnız Cumhurbaşkanı ve İçişleri Bakanına açıktır. Tutuklama 24 saat sürer; hedef oyuncuya gerekçe bildirilir.</p>'
+    +'<form data-yt="tutukla"><label for="ytOyuncu" style="display:block;margin-top:15px">Tutuklanacak oyuncunun kullanıcı adı</label><input id="ytOyuncu" name="kullanici" type="text" minlength="2" maxlength="60" autocomplete="off" placeholder="Kullanıcı adını aynen yazın" required style="display:block;box-sizing:border-box;width:100%;padding:13px;margin-top:6px;border-radius:10px;background:#111a34;color:white;border:1px solid #b6c0d3;font-size:16px">'
+    +'<label for="ytGerekce" style="display:block;margin-top:12px">Tutuklama gerekçesi (zorunlu)</label><textarea id="ytGerekce" name="gerekce" minlength="10" maxlength="800" required placeholder="Somut oyun içi gerekçeyi yazın (en az 10 karakter)" style="box-sizing:border-box;width:100%;min-height:105px;padding:12px;margin-top:6px;border-radius:10px;background:#111a34;color:white;border:1px solid #b6c0d3;font-size:16px"></textarea>'
+    +'<button type="submit" class="btn altin" style="width:100%;min-height:51px;font-weight:850;margin-top:12px">🔒 TUTUKLAMA KARARI VER</button></form></div>'
+    +'<div class="kart"><h3>📋 Tutuklama kayıtları</h3>';
+   if(!Array.isArray(kayitlar)||!kayitlar.length)govde+='<p>Henüz kayıt bulunmuyor.</p>';
+   (Array.isArray(kayitlar)?kayitlar:[]).forEach(function(k){
+    var aktif=k.durum==='aktif';
+    govde+='<details style="padding:11px 0;border-bottom:1px solid #47536e"><summary style="cursor:pointer;font-weight:800">'+ytEsc(k.oyuncu)+' · '+(aktif?'🔒 Tutuklu':'✅ Sona erdi')+'</summary><p><b>Gerekçe:</b> '+ytEsc(k.gerekce)+'</p><small>Başlangıç: '+(k.baslangic?new Date(k.baslangic).toLocaleString('tr-TR'):'—')+' · Bitiş: '+(k.bitis?new Date(k.bitis).toLocaleString('tr-TR'):'—')+'</small>';
+    if(aktif)govde+='<form data-yt="serbest"><input type="hidden" name="id" value="'+Number(k.id)+'"><label style="display:block;margin-top:10px">Serbest bırakma gerekçesi</label><textarea name="gerekce" minlength="10" maxlength="800" required style="box-sizing:border-box;width:100%;min-height:75px;padding:10px;margin-top:6px;border-radius:9px;background:#111a34;color:#fff;font-size:16px"></textarea><button class="btn ikinci" type="submit" style="margin-top:8px">Serbest bırak</button></form>';
+    govde+='</details>';
+   });
+   govde+='</div></div>';
+   iskelet('🔒 Tutuklama Yetkisi',govde,{geri:true});
+  }catch(e){if(window.toast)toast(e.message||String(e),true);else alert(e.message||String(e));}
+ };
+ document.addEventListener('submit',async function(ev){
+  var frm=ev.target.closest&&ev.target.closest('#yonetimTutuklama form[data-yt]');if(!frm)return;
+  ev.preventDefault();
+  var d=new FormData(frm),type=frm.getAttribute('data-yt'),name=String(d.get('kullanici')||'').trim();
+  var args=type==='tutukla'?{p_kullanici_adi:name,p_gerekce:String(d.get('gerekce')||'').trim()}:{p_id:Number(d.get('id')),p_gerekce:String(d.get('gerekce')||'').trim()};
+  if(type==='tutukla'&&!window.confirm(name+' isimli oyuncu hakkında 24 saatlik tutuklama kararı vermek istiyor musunuz?'))return;
+  var btn=frm.querySelector('button[type="submit"]');if(btn)btn.disabled=true;
+  try{
+   await API.rpc(type==='tutukla'?'yonetim_tutuklama_yap':'yonetim_tutuklama_serbest',args);
+   if(window.toast)toast(type==='tutukla'?'Tutuklama kararı kaydedildi.':'Oyuncu serbest bırakıldı.');
+   await window.yonetimTutuklamaAc();
+  }catch(e){if(window.toast)toast(e.message||String(e),true);else alert(e.message||String(e));if(btn)btn.disabled=false;}
+ },true);
+
+ // Devlet ve Cumhurbaşkanlığı yetki ekranlarında yalnız yetkili hesaba kısayol eklenir.
+ var ytOncekiIskelet=window.iskelet;
+ if(typeof ytOncekiIskelet==='function'&&!ytOncekiIskelet.__yonetimTutuklama){
+  window.iskelet=function(baslik,govde,opt){
+   var sonuc=ytOncekiIskelet.call(this,baslik,govde,opt);
+   if(typeof baslik==='string'&&/^(?:Devlet|Yönetim|Cumhurbaşkanlığı|Cumhurbaşkanı|Cumhurbaşkanlığı Yetkileri|Bakanlık Masası)/i.test(baslik)&&typeof API!=='undefined'&&API&&typeof API.rpc==='function'){
+    var alan=document.getElementById('icerik'),ilk=alan&&alan.firstElementChild;
+    Promise.resolve().then(function(){return API.rpc('yonetim_tutuklama_liste');}).then(function(){
+     if(!alan||!alan.isConnected||alan.firstElementChild!==ilk||alan.querySelector('#ytDevletKisayol'))return;
+     var kart=document.createElement('div');kart.id='ytDevletKisayol';kart.className='kart';
+     kart.style.cssText='border:2px solid #e8ad51;background:linear-gradient(110deg,#3c2929,#192744);margin:10px 0';
+     kart.innerHTML='<h3>🔒 Oyuncu Tutuklama Yetkisi</h3><p>Hedef oyuncunun adını ve gerekçesini girerek tutuklama kararı verin.</p><button type="button" class="btn altin" onclick="window.yonetimTutuklamaAc()" style="width:100%;min-height:50px;font-weight:850">🔒 OYUNCU TUTUKLA</button>';
+     alan.insertBefore(kart,alan.firstChild);
+    }).catch(function(){});
+   }
+   return sonuc;
+  };
+  window.iskelet.__yonetimTutuklama=true;
  }
  bagla();
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bagla,{once:true});
