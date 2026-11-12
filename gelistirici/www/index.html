@@ -1439,13 +1439,13 @@ async function devletEkrani(){
     `<button class="${D.devletSekme === k ? "aktif" : ""}" onclick="D.devletSekme='${k}';devletEkrani()">${a}</button>`).join("")}</div>`;
   try {
     await durumYenile();
-    if (D.devletSekme === "hukumet") { iskelet("Devlet", seg + `<div class="kart"><button class="btn ikinci" onclick="aliciBagisModal('devlet',1,'Türkiye Cumhuriyeti Hazinesi')">Devlet hazinesine bağış yap</button>${typeof krizMerkeziEkrani === "function" ? `<button class="btn ikinci" style="margin-top:8px" onclick="ekranAc(krizMerkeziEkrani)">Ülke Kriz Merkezi ve arşiv</button>` : ""}${typeof valilikEkrani === "function" ? `<button class="btn ikinci" style="margin-top:8px" onclick="ekranAc(valilikEkrani)">Valilik: sınav, vali havuzu ve atamalar</button>` : ""}</div>` + await hukumetHtml()); politikaBagla(); return; }
+    if (D.devletSekme === "hukumet") { iskelet("Devlet", seg + `<div class="kart"><button class="btn ikinci" onclick="aliciBagisModal('devlet',1,'Türkiye Cumhuriyeti Hazinesi')">Devlet hazinesine bağış yap</button>${typeof krizMerkeziEkrani === "function" ? `<button class="btn ikinci" style="margin-top:8px" onclick="ekranAc(krizMerkeziEkrani)">Ülke Kriz Merkezi ve arşiv</button>` : ""}</div>` + await hukumetHtml()); politikaBagla(); if (typeof valilikDevletKart === "function") valilikDevletKart(); return; }
     if (D.devletSekme === "meclis") return iskelet("Devlet", seg + await meclisHtml());
     if (D.devletSekme === "adliye") return iskelet("Devlet", seg + await adliyeHtml());
     if (D.devletSekme === "mevzuat") { iskelet("Devlet", seg + await mevzuatHtml()); kuralBagla(); return; }
     if (D.devletSekme === "tarih") return iskelet("Devlet", seg + await tarihHtml());
     return iskelet("Devlet", seg + await gazeteHtml());
-  } catch (err) { iskelet("Devlet", seg + `<div class="bos">${e(hataCevir(err.message))}</div>`); }
+  } catch (err) { iskelet("Devlet", seg + `<div class="bos">${e(hataCevir(err.message))}</div>`); if (D.devletSekme === "hukumet" && typeof valilikDevletKart === "function") valilikDevletKart(); }
 }
 function bakanPanelHtml(panel, vekalet){
   return `<div class="olay basvuru"><div class="baslik"><b>${e(panel.ad)}</b><span class="rozet ${vekalet ? "yesil" : "altin"}">${vekalet ? "Vekâleten" : "Bakanlığın"}</span></div>

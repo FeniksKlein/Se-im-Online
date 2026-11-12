@@ -65,16 +65,48 @@
   window.tvKanalAc = id => ekranAc(() => window.tvKanalEkrani(id));
   const yaziyor = kok => { const k = document.getElementById(kok); return !!k && Array.prototype.some.call(k.querySelectorAll("input,textarea"), x => x.type !== "checkbox" && (x.value || "").trim() !== ""); };
 
-  /* ------------------------------------------------------------------ Gündem rozeti (45 sn önbellek) */
+  /* ------------------------------------------------------------------ Gündem: öne çıkan TV kartı + canlı rozeti (45 sn önbellek) */
   let rozetOn = { t: 0, d: null };
+  const ozetSifirla = () => { rozetOn.t = 0; };
+  function gundemKartVeri(d) {
+    const o = { id: "tvGundemKart", ikon: "tv", renk: "229,72,77", acik: "#ffb1b5", etiket: "TV Kanalları", git: "Aç", onclick: "ekranAc(tvKanallariEkrani)", canli: false };
+    d = d || {};
+    if (d.ilk) {
+      o.canli = true; o.etiket = d.ilk.kanal + " · " + d.ilk.tur_ad; o.baslik = d.ilk.baslik;
+      o.alt = `${d.ilk.izleyici} kişi izliyor · sunucu ${d.ilk.sunucu || ""}${Number(d.canli) > 1 ? " · " + (d.canli - 1) + " canlı yayın daha" : ""}`;
+      o.git = "İzle"; o.onclick = "tvStudyoAc(" + Number(d.ilk.id) + ")";
+    } else if (Number(d.davet) > 0) {
+      o.baslik = d.davet + " program davetin var"; o.alt = "Bir TV programına konuk olarak çağrıldın; yanıtını bekliyorlar."; o.git = "Yanıtla";
+    } else if (Number(d.teklif) > 0) {
+      o.baslik = "Sunuculuk teklifin var"; o.alt = "Bir TV kanalı sana günlük ücretle sunuculuk teklif etti."; o.git = "Yanıtla";
+    } else if (d.siradaki) {
+      o.etiket = "TV Kanalları · yayın akışı"; o.baslik = tarihSaat(d.siradaki.bas) + " · " + d.siradaki.baslik;
+      o.alt = `${d.siradaki.kanal} · ${d.siradaki.tur_ad}${Number(d.yakinda) > 1 ? " · " + d.yakinda + " program planlandı" : ""}`; o.git = "Akış";
+    } else {
+      o.baslik = "Canlı yayınlar ve siyasi düellolar";
+      o.alt = Number(d.kanal) > 0 ? `${d.kanal} kanal var; şu an yayın yok. Yayın akışına bak ya da kendi kanalını kur.` : "Henüz kanal yok. İlk TV kanalını sen kur; program yap, reklam al.";
+    }
+    return o;
+  }
+  const gundemde = () => { try { const h = document.querySelector("header.ust h1"); return D.sekme === "gundem" && !(D.yigin || []).length && !!h && h.textContent.trim() === "Gündem"; } catch (_) { return false; } };
+  function gundemKartKoy(d) {
+    if (!window.SO_ONE_CIKAN || !gundemde()) return;
+    window.SO_ONE_CIKAN.koy(gundemKartVeri(d), ic => {
+      const hz = ic.querySelector('.pa-hizli[data-pa-hizli="gundem"]'); if (hz) return { el: hz, yer: "afterend" };
+      const ks = ic.querySelector(".so-gundem-kisa"); if (ks) return { el: ks, yer: "beforebegin" };
+      return { el: ic, yer: "afterbegin" };
+    });
+  }
   window.tvGundemRozet = async function () {
     const yaz = d => { if (!d) return; const h = Number(d.canli) > 0 || d.ilk ? '<span class="tv-canli" style="margin:0 0 0 4px">Canlı</span>' : "";
       document.querySelectorAll(".tv-gundem-rozet").forEach(el => { if (el.innerHTML !== h) el.innerHTML = h; }); };
     try {
       stil();
-      if (rozetOn.d && Date.now() - rozetOn.t < 45000) return yaz(rozetOn.d);
+      if (window.SO_ONE_CIKAN) window.SO_ONE_CIKAN.tekrarla(() => gundemKartKoy(rozetOn.d));
+      yaz(rozetOn.d);
+      if (rozetOn.d && Date.now() - rozetOn.t < 45000) return;
       rozetOn = { t: Date.now(), d: rozetOn.d };
-      const d = await rpc("tv_canli_ozet"); rozetOn = { t: Date.now(), d }; yaz(d);
+      const d = await rpc("tv_canli_ozet"); rozetOn = { t: Date.now(), d }; yaz(d); gundemKartKoy(d);
     } catch (_) {}
   };
 
@@ -111,7 +143,7 @@
     if (window.CANLI && CANLI.izle) CANLI.izle({ anahtarlar: [], tazele: taz, hizliMs: 30000, yedekMs: 30000, yayilim: 3000 });
   };
 
-  const anaCalis = async (fn, basari, sonra) => { try { const r = await fn(); if (basari) toast(typeof basari === "function" ? basari(r) : basari); if (sonra) await sonra(r); else await yenidenCiz(); return r; } catch (err) { toast(hataCevir(err.message), true); } };
+  const anaCalis = async (fn, basari, sonra) => { try { const r = await fn(); ozetSifirla(); if (basari) toast(typeof basari === "function" ? basari(r) : basari); if (sonra) await sonra(r); else await yenidenCiz(); return r; } catch (err) { toast(hataCevir(err.message), true); } };
   window.tvKanalKur = async () => {
     const ad = ($("#tvKAd").value || "").trim(), sl = ($("#tvKSlogan").value || "").trim();
     if (ad.length < 3) return toast("Kanal adı en az 3 karakter olmalı.", true);
@@ -173,7 +205,7 @@
       <section class="kart"><h2>Geçmiş programlar</h2>${gecmis.map(p => progKart(p, false)).join("") || bos("Henüz biten program yok.")}</section>
     </div>`, { geri: true });
   };
-  const kanalCalis = async (id, fn, basari) => { try { const r = await fn(); if (basari) toast(basari); await window.tvKanalEkrani(id); return r; } catch (err) { toast(hataCevir(err.message), true); } };
+  const kanalCalis = async (id, fn, basari) => { try { const r = await fn(); ozetSifirla(); if (basari) toast(basari); await window.tvKanalEkrani(id); return r; } catch (err) { toast(hataCevir(err.message), true); } };
   window.tvKasa = async (id, yon) => {
     const el = $("#tvKasaT"), t = Math.round(Number(el.value) || 0); if (t < 100) return toast("En az 100 ₺ gir.", true);
     el.value = "";
@@ -205,7 +237,7 @@
     try {
       const r = await rpc("tv_program_ac", { p_kanal: id, p_tur: $("#tvTur").value, p_baslik: baslik, p_aciklama: ($("#tvAcik").value || "").trim() || null,
         p_bas: basIso, p_dakika: sure ? Number(sure) : null, p_sunucu: sun || null });
-      $("#tvBaslik").value = ""; $("#tvAcik").value = ""; $("#tvBas").value = "";
+      $("#tvBaslik").value = ""; $("#tvAcik").value = ""; $("#tvBas").value = ""; ozetSifirla();
       toast(r.durum === "canli" ? "Yayın başladı." : "Program yayın akışına eklendi.");
       window.tvStudyoAc(r.id);
     } catch (err) { toast(hataCevir(err.message), true); }
@@ -320,7 +352,7 @@
       else D.canli = setInterval(taz, 6000);
     }
   };
-  const studyoCalis = async (id, fn, basari) => { try { const r = await fn(); if (basari) toast(basari); await window.tvStudyoEkrani(id, r && r.rolum ? r : null); return r; } catch (err) { toast(hataCevir(err.message), true); } };
+  const studyoCalis = async (id, fn, basari) => { try { const r = await fn(); ozetSifirla(); if (basari) toast(basari); await window.tvStudyoEkrani(id, r && r.rolum ? r : null); return r; } catch (err) { toast(hataCevir(err.message), true); } };
   window.tvYaz = async id => {
     const ta = $("#tvYaz"), b = $("#tvYazB"); if (!ta) return;
     const v = (ta.value || "").trim(); if (!v) return;

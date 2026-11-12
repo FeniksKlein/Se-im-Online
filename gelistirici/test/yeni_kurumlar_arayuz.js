@@ -93,7 +93,7 @@ const STUDYO = (o) => Object.assign(P(), { simdi: S(0), rolum: 'izleyici', kanal
       if (ad === 'tv_yaz') { s.studyo.mesajlar.push({ id: 99, rol: 'sunucu', metin: args.p_metin, zaman: new Date().toISOString(), kisi: { kad: 'Deniz' }, benim: true }); return { tamam: true, id: 99 }; }
       if (ad === 'tv_tepki') { s.studyo.tepkim = args.p_tur; s.studyo.alkis += 1; return JSON.parse(JSON.stringify(s.studyo)); }
       if (ad === 'tv_oyla') { s.studyo.oyum = args.p_kad; return JSON.parse(JSON.stringify(s.studyo)); }
-      const sabit = { oda_panel: s.oda, oda_icraat: s.oda, sendika_panel: s.sendika, vali_durum: s.vali, tv_liste: s.tvliste, tv_kanal_detay: s.kanal, tv_canli_ozet: { canli: 1, yakinda: 2, ilk: { id: 31, baslik: 'x', kanal: 'y' } },
+      const sabit = { oda_panel: s.oda, oda_icraat: s.oda, sendika_panel: s.sendika, vali_durum: s.vali, tv_liste: s.tvliste, tv_kanal_detay: s.kanal, tv_canli_ozet: { canli: 1, yakinda: 2, kanal: 2, ilk: { id: 31, baslik: 'Ekonomi düellosu', kanal: 'Başkent TV', tur_ad: 'Siyasi düello', sunucu: 'Selin', izleyici: 37 }, siradaki: null, davet: 0, teklif: 0 },
         tv_reklam_kaynak: { cuzdan: 840000, izleyici_ucret: 500, vergi: 10, sirketler: [{ id: 11, ad: 'Deniz Lojistik A.Ş.', kasa: 900000 }] },
         oda_oy_ver: Object.assign({}, s.oda, { oy_sayisi: 1, borclu_atlanan: 1 }), vali_ata: s.vali, vali_sinav_gonder: { puan: 17, gecti: true, toplam: 20, yanlislar: ['Soru A', 'Soru B', 'Soru C'] },
         tv_program_ac: Object.assign({}, s.studyo, { durum: 'planli', rolum: 'sunucu' }), tv_reklam_ver: s.studyo, tv_reklam_karar: s.kanal };
@@ -210,7 +210,7 @@ const STUDYO = (o) => Object.assign(P(), { simdi: S(0), rolum: 'izleyici', kanal
   /* ---------------- Gündem kısayolu ve canlı rozeti ---------------- */
   await page.evaluate(() => { D.yigin = []; D.sekme = 'gundem'; iskelet('Gündem', '<div class="kart">Akış</div>'); return tvGundemRozet(); }); await bekle(300);
   t = await metin(); assert.ok(t.includes('TV Kanalları'), 'Gündem kısayollarında TV Kanalları olmalı');
-  assert.ok(await page.evaluate(() => !!document.querySelector('.tv-gundem-rozet .tv-canli')), 'canlı yayın varken Gündem rozeti görünmeli');
+  assert.ok(await page.evaluate(() => { const k = document.getElementById('tvGundemKart'); return !!k && k.classList.contains('canli') && /İzle/.test(k.innerText); }), 'canlı yayın varken Gündem\'de öne çıkan TV kartı görünmeli');
   await yaz('gundem_kisayol');
   await page.evaluate(() => { D.sekme = 'ekonomi'; });
   /* ---------------- 320 px ---------------- */

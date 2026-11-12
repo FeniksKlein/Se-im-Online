@@ -155,7 +155,8 @@
     if (p.hedef) h += '<div class="alan"><label>' + (p.nisan ? 'Kime verilecek?' : 'Kimi kabul edeceksin?') + '</label><input id="dkAra" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Oyuncu adıyla ara"></div><div id="dkSonuc" class="dk-sonuc"></div>';
     if (p.secenekler) h += '<div class="alan"><label>' + (p.kategori === 'Diplomasi' ? 'Hangi ülke?' : 'Seçim') + '</label><select id="dkSec">' + p.secenekler.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join('') + '</select></div>';
     else h += '<div class="alan"><label>' + esc(p.metin_ipucu || 'Not') + (p.nisan ? '' : ' <span class="kucuk">(isteğe bağlı)</span>') + '</label><textarea id="dkMetin" rows="2" maxlength="1000" placeholder="' + esc(p.metin_ipucu || '') + '"></textarea></div>';
-    if (p.nisan) h += '<div id="dkBerat">' + beratOnizle(p, m, '', '') + '</div>';\n    if (p.kategori === 'Kabul' && p.hedef && !p.nisan) h += '<p class="dk-not">Bu işlem önce oyuncuya davet gönderir. Oyuncu Bildirimler bölümünden kabul etmedikçe görüşme yapılmış sayılmaz, kıdem verilmez ve protokole kaydedilmez. Davet 72 saat geçerlidir.</p>';
+    if (p.nisan) h += '<div id="dkBerat">' + beratOnizle(p, m, '', '') + '</div>';
+    if (p.kategori === 'Kabul' && p.hedef && !p.nisan) h += '<p class="dk-not">Bu işlem önce oyuncuya davet gönderir. Oyuncu Bildirimler bölümünden kabul etmedikçe görüşme yapılmış sayılmaz, kıdem verilmez ve protokole kaydedilmez. Davet 72 saat geçerlidir.</p>';
     h += '<button class="btn altin dk-onay" id="dkOnay"' + (hazir ? '' : ' disabled') + '>' + (hazir ? (p.nisan ? 'Beratı imzala ve tevcih et' : (p.kategori === 'Kabul' && p.hedef ? 'Makam daveti gönder' : 'Programı onayla')) : 'Yeniden düzenlenebilir: ' + esc(saatYaz(p.hazir))) + '</button></div>';
     var md = modal(h);
     var ara = $q('#dkAra', md), sonuc = $q('#dkSonuc', md), mt = $q('#dkMetin', md), zz = null;
@@ -190,7 +191,8 @@
       try {
         PANEL.v = await API.rpc('resmi_program_yap', arg); PANEL.t = simdiMs();
         modalKapat();
-        if (p.kategori === 'Kabul' && p.hedef && !p.nisan) tst(arg.p_hedef + ' oyuncusuna makam daveti gönderildi. Karşı tarafın onayı bekleniyor.');\n        else kutla(p.nisan ? p.nisan + ' tevcih edildi' : p.ad, p.nisan ? arg.p_hedef : (arg.p_metin || m.unvan));
+        if (p.kategori === 'Kabul' && p.hedef && !p.nisan) tst(arg.p_hedef + ' oyuncusuna makam daveti gönderildi. Karşı tarafın onayı bekleniyor.');
+        else kutla(p.nisan ? p.nisan + ' tevcih edildi' : p.ad, p.nisan ? arg.p_hedef : (arg.p_metin || m.unvan));
         yenile();
       } catch (err) { btn.disabled = false; btn.classList.remove('muhurle'); tst(hataYaz(err), true); }
     };

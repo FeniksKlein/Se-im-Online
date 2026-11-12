@@ -848,6 +848,7 @@
     var ik = { '@banka': 'banka', '@ilan': 'ilan', '@muzayede': 'cekic', '@kursu': 'kursu', '@magaza': 'magaza', '@bildirim': 'zil', '@yonetici': 'ayar', '@pano': 'pano', '@tv': 'tv', '@oda': 'sehir', '@valilik': 'bayrak' }[k] || (B[k] && B[k].ik) || k;
     return '<button type="button" class="pa-karo' + (ak ? ' aktif' : '') + (k === '@kursu' ? ' pa-karo-genis' : '') + '" style="--k1:' + a1 + ';--k2:' + a2 + '" onclick="' + eylem + '"><span class="pa-ki">' + ikon(ik) + '</span><span><b>' + esc(ad) + '</b><small>' + esc(alt) + '</small></span>' + (rz || '') + '</button>';
   }
+  function yeniRz() { try { return window.SO_ONE_CIKAN && window.SO_ONE_CIKAN.yeniMi() ? '<span class="pa-rz yesil">Yeni</span>' : ''; } catch (e) { return ''; } }
   function menuHtml() {
     var p = profil() || {}, cz = p.cuzdan || {}, ok = okunmamis(), d = Dx();
     var yon = false; try { var yv = g('yonetimVarMi'); yon = !!(yv && yv()); } catch (e) {}
@@ -859,8 +860,8 @@
       ['Siyaset', [
         g('kursuEkrani') ? karo('@kursu', 'Kürsü', 'Takip et, paylaş, gündem', on('kursu')) : '',
         g('reklamPanolariEkrani') ? karo('@pano', 'Reklam Panoları', 'Afiş tasarla, il il yayınla', on('pano')) : '',
-        g('tvKanallariEkrani') ? karo('@tv', 'TV Kanalları', 'Canlı yayın, siyasi düello', on('tv')) : '',
-        g('valilikEkrani') ? karo('@valilik', 'Valilik', 'Sınav, havuz, atama', on('valilik')) : '',
+        g('tvKanallariEkrani') ? karo('@tv', 'TV Kanalları', 'Canlı yayın, siyasi düello', on('tv'), yeniRz()) : '',
+        g('valilikEkrani') ? karo('@valilik', 'Valilik', 'Sınav, havuz, atama', on('valilik'), yeniRz()) : '',
         karo('meclis', 'Meclis', m && m.dolu != null ? m.dolu + '/' + (m.toplam || 600) + ' sandalye' : 'Kanun ve oylama', on('sekme', 'meclis')),
         karo('parti', 'Partiler', p.parti ? p.parti.kisa + ' ve ittifaklar' : 'Katıl ya da kur', on('sekme', 'parti')),
         karo('adliye', 'Adliye', 'Dava ve avukat', on('sekme', 'adliye')),
@@ -874,7 +875,7 @@
         karo('@banka', 'Mobil Şube', 'Hesap, kart, kredi', on('mobilSube')),
         karo('@ilan', 'İlan Meydanı', 'Ev, dükkân, hisse', on('ilan')),
         karo('@muzayede', 'Müzayede', 'Pey ver, koleksiyon yap', on('muzayede')),
-        g('ticaretOdasiEkrani') ? karo('@oda', 'Ticaret Odası', 'Oda seçimi, sendikalar', on('oda')) : '',
+        g('ticaretOdasiEkrani') ? karo('@oda', 'Ticaret Odası', 'Oda seçimi, sendikalar', on('oda'), yeniRz()) : '',
         karo('ekonomi', 'Ekonomi', 'Şirket ve piyasa', on('sekme', 'ekonomi')),
         karo('@magaza', 'Mağaza', 'Kart ve paketler', on('magaza'))
       ]],

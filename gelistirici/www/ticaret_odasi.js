@@ -99,6 +99,57 @@
     const ip = $("#toIpucu"); if (ip) ip.textContent = IPUCU[t] || "";
   };
 
+  /* ------------------------------------------------------------ Ekonomi: öne çıkan Ticaret Odası kartı (60 sn önbellek) */
+  let ozetOn = { t: 0, d: null };
+  function ekonomiKartVeri(d) {
+    const o = { id: "toEkonomiKart", ikon: "oda", renk: "47,158,143", acik: "#8fe6d8", etiket: "Ticaret Odası", git: "Aç", onclick: "ekranAc(function(){return ticaretOdasiEkrani()})" };
+    if (!d) { o.baslik = "Oda seçimleri ve işveren sendikaları"; o.alt = "Şirketlerin odanın üyesi: şirket başına 1 oyla başkanı seçersin, aday olabilirsin."; return o; }
+    o.etiket = d.ad; o.onclick = "ekranAc(function(){return ticaretOdasiEkrani(" + Number(d.il) + ")})";
+    const s = d.secim, benim = Number(d.sirketim) > 0;
+    if (Number(d.aidat_borc) > 0) { o.baslik = "Aidat borcun var: " + tl(d.aidat_borc); o.alt = "Borçlu şirket oy kullanamaz; şirket kasasından ödeyebilirsin."; o.git = "Öde"; }
+    else if (s && s.durum === "oy" && Number(d.oy_bekleyen) > 0) { o.baslik = `Oylama sürüyor: ${d.oy_bekleyen} oyun bekliyor`; o.alt = `${s.aday} aday · oylama ${tarihSaat(s.oy_son)} tarihinde biter.`; o.git = "Oy ver"; }
+    else if (s && s.durum === "oy") { o.baslik = "Başkanlık oylaması sürüyor"; o.alt = `${s.aday} aday · oylama ${tarihSaat(s.oy_son)} tarihinde biter.`; }
+    else if (s && s.durum === "aday") {
+      o.baslik = s.adayim ? "Başkan adayısın" : "Başkanlık seçimi: adaylık açık";
+      o.alt = `${s.aday} aday · oylama ${tarihSaat(s.oy_bas)} tarihinde başlar${!s.adayim && benim ? " · aday olabilirsin" : ""}.`;
+      o.git = !s.adayim && benim ? "Aday ol" : "Aç";
+    }
+    else if (d.baskanim) { o.baslik = "Oda başkanısın"; o.alt = "Oda kasasıyla icraat yap: destek fonu, fuar, mesleki eğitim."; o.git = "Masam"; }
+    else {
+      o.baslik = d.baskan ? "Başkan " + d.baskan : "Başkan henüz seçilmedi";
+      o.alt = (benim ? `${d.sirketim} şirketin üye · ${d.oy_hakki} oy hakkın var` : `${d.uye} üye şirket · şirket kurunca otomatik üye olursun`) + " · işveren sendikaları.";
+    }
+    return o;
+  }
+  const ekonomide = () => { try { const h = document.querySelector("header.ust h1"); return D.sekme === "ekonomi" && !(D.yigin || []).length && !!h && h.textContent.trim() === "Ekonomi"; } catch (_) { return false; } };
+  function ekonomiKartKoy(d) {
+    if (!window.SO_ONE_CIKAN || !ekonomide()) return;
+    window.SO_ONE_CIKAN.koy(ekonomiKartVeri(d), ic => {
+      const k = ic.querySelector(":scope > .so-ekonomi"); if (k) return { el: k, yer: "beforebegin" };
+      return { el: ic, yer: "afterbegin" };
+    });
+  }
+  async function ekonomiKart() {
+    try {
+      if (!window.SO_ONE_CIKAN) return;
+      window.SO_ONE_CIKAN.tekrarla(() => ekonomiKartKoy(ozetOn.d));
+      if (ozetOn.d && Date.now() - ozetOn.t < 60000) return;
+      ozetOn = { t: Date.now(), d: ozetOn.d };
+      const d = await rpc("oda_ozet"); ozetOn = { t: Date.now(), d }; ekonomiKartKoy(d);
+    } catch (_) {}
+  }
+  function ekonomiBagla() {
+    const asil = window.ekonomiSekmeEkrani;
+    if (typeof asil !== "function") return false;
+    if (asil._to) return true;
+    const yeni = async function () { const r = await asil.apply(this, arguments); ekonomiKart(); return r; };
+    Object.keys(asil).forEach(k => { yeni[k] = asil[k]; });      // diğer katmanların "bağlandım" işaretleri korunur
+    yeni._to = true;
+    window.ekonomiSekmeEkrani = yeni;
+    return true;
+  }
+  if (!ekonomiBagla()) setTimeout(ekonomiBagla, 1500);
+
   window.ticaretOdasiEkrani = async function (il) {
     stil();
     if (il === undefined && D._toIl !== undefined) il = D._toIl;
@@ -154,7 +205,7 @@
   };
 
   window.toIlDegis = v => { eylem(); return window.ticaretOdasiEkrani(Number(v)); };
-  const calis = async (fn, basari, il) => { try { const r = await fn(); if (basari) toast(typeof basari === "function" ? basari(r) : basari); await window.ticaretOdasiEkrani(il); return r; } catch (err) { toast(hataCevir(err.message), true); } };
+  const calis = async (fn, basari, il) => { try { const r = await fn(); ozetOn.t = 0; if (basari) toast(typeof basari === "function" ? basari(r) : basari); await window.ticaretOdasiEkrani(il); return r; } catch (err) { toast(hataCevir(err.message), true); } };
   window.toAdayOl = il => { const v = ($("#toVaat") || {}).value || "", s = ($("#toSen") || {}).value; return calis(() => rpc("oda_aday_ol", { p_il: il, p_vaat: v.trim(), p_sendika: s ? Number(s) : null }), "Adaylığın açıklandı.", il); };
   window.toAdayCekil = async il => { if (!await onayla("Adaylıktan çekil", "Adaylığın ve sana verilen oylar silinir.", "Çekil", true)) return; return calis(() => rpc("oda_aday_cekil", { p_il: il }), "Adaylıktan çekildin.", il); };
   window.toOyVer = (il, kad) => calis(() => rpc("oda_oy_ver", { p_il: il, p_aday: kad, p_sirket: null }), r => `${r.oy_sayisi} şirketinin oyu kullanıldı.${r.borclu_atlanan ? " " + r.borclu_atlanan + " şirket aidat borcu nedeniyle oy kullanamadı." : ""}`, il);

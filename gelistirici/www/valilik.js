@@ -90,6 +90,41 @@
         <button class="btn altin" onclick="vlAta()">Vali olarak ata</button>` : bos("Havuzda atanabilecek aday yok. Oyuncular valilik sınavını geçince burada görünür.")}</section>`;
   }
 
+  /* ------------------------------------------------------------------ Devlet › Hükümet: öne çıkan Valilik kartı (60 sn önbellek) */
+  let ozetOn = { t: 0, d: null };
+  function devletKartVeri(d) {
+    const o = { id: "vlDevletKart", ikon: "vali", renk: "76,123,217", acik: "#b5cbff", etiket: "Valilik", git: "Aç", onclick: "ekranAc(valilikEkrani)" };
+    if (!d) { o.baslik = "Sınavı geç, vali ol"; o.alt = "Valilik sınavını geçenler vali havuzuna girer; Cumhurbaşkanı havuzdan dilediğini bir ile atar."; return o; }
+    const genel = `${d.vali} / 81 ilde vali görevde · havuzda ${d.havuz} aday`;
+    if (d.durum === "vali") { o.baslik = `${d.il} Valisisin`; o.alt = "İl emri ver, makamını yönet. " + genel + "."; o.git = "Makamım"; }
+    else if (d.cb) { o.etiket = "Valilik · Cumhurbaşkanlığı"; o.baslik = Number(d.bekleyen) > 0 ? `${d.bekleyen} aday atama bekliyor` : "Vali atamaları sende"; o.alt = genel + ". Havuzdan dilediğini dilediğin ile ata."; o.git = "Ata"; }
+    else if (d.durum === "sinav") { o.baslik = "Valilik sınavın açık"; o.alt = "20 soru, en az 16 doğru. Geçersen vali havuzuna girersin."; o.git = "Sınava gir"; }
+    else if (d.durum === "egitim") { o.baslik = "Akademi eğitimin sürüyor"; o.alt = `Sınav ${tarihSaat(d.egitim_bitti)} tarihinde açılır. Ders notlarını oku.`; }
+    else if (d.durum === "bekle") { o.baslik = "Sınava yeniden girebileceksin"; o.alt = `Yeni deneme ${tarihSaat(d.yeni_sinav)} tarihinde açılır.`; }
+    else if (d.durum === "havuz") { o.baslik = "Vali havuzundasın"; o.alt = "Cumhurbaşkanı seni bir ile atayabilir. " + genel + "."; }
+    else if (d.durum === "ayrildi") { o.baslik = "Vali havuzundan çıktın"; o.alt = "Sınava yeniden girmeden havuza dönebilirsin."; o.git = "Dön"; }
+    else { o.baslik = "Sınavı geç, vali ol"; o.alt = genel + ". Cumhurbaşkanı havuzdan dilediğini bir ile atar."; o.git = "Başvur"; }
+    return o;
+  }
+  const devlette = () => { try { const h = document.querySelector("header.ust h1"); return D.sekme === "devlet" && (D.devletSekme || "hukumet") === "hukumet" && !(D.yigin || []).length && !!h && h.textContent.trim() === "Devlet"; } catch (_) { return false; } };
+  function devletKartKoy(d) {
+    if (!window.SO_ONE_CIKAN || !devlette()) return;
+    window.SO_ONE_CIKAN.koy(devletKartVeri(d), ic => {
+      const hz = ic.querySelector('.pa-hizli[data-pa-hizli="devlet"]'); if (hz) return { el: hz, yer: "afterend" };
+      const sg = ic.querySelector(".segment"); if (sg) return { el: sg, yer: "beforebegin" };
+      return { el: ic, yer: "afterbegin" };
+    });
+  }
+  window.valilikDevletKart = async function () {
+    try {
+      if (!window.SO_ONE_CIKAN) return;
+      window.SO_ONE_CIKAN.tekrarla(() => devletKartKoy(ozetOn.d));
+      if (ozetOn.d && Date.now() - ozetOn.t < 60000) return;
+      ozetOn = { t: Date.now(), d: ozetOn.d };
+      const d = await rpc("vali_ozet"); ozetOn = { t: Date.now(), d }; devletKartKoy(d);
+    } catch (_) {}
+  };
+
   window.valilikEkrani = async function () {
     stil();
     if (!document.getElementById("vlKok")) yukleniyor("Valilik");
@@ -108,7 +143,7 @@
     </div>`, { geri: D.yigin.length > 0 });
   };
 
-  const calis = async (fn, basari) => { try { const r = await fn(); if (basari) toast(basari); await window.valilikEkrani(); return r; } catch (err) { toast(hataCevir(err.message), true); } };
+  const calis = async (fn, basari) => { try { const r = await fn(); ozetOn.t = 0; if (basari) toast(basari); await window.valilikEkrani(); return r; } catch (err) { toast(hataCevir(err.message), true); } };
   window.vlBasvur = async () => { if (!await onayla("Mülki İdare Akademisi", `Kayıt harcı ${tl((window._vlDurum || {}).harc || 25000)} cüzdanından alınır. 24 saatlik eğitimden sonra valilik sınavına girebilirsin.`, "Kaydol")) return; return calis(() => rpc("vali_basvur"), "Akademiye kaydoldun."); };
   window.vlHavuzCik = async () => { if (!await onayla("Havuzdan çık", "Vali havuzundan çıkarsan Cumhurbaşkanı seni atayamaz. Sınava yeniden girmeden dilediğinde geri dönebilirsin.", "Havuzdan çık", true)) return; return calis(() => rpc("vali_havuz_cik"), "Havuzdan çıktın."); };
   window.vlHavuzGir = () => calis(() => rpc("vali_havuz_gir"), "Vali havuzuna döndün.");

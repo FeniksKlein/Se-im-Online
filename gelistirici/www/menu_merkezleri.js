@@ -474,9 +474,9 @@
     var durum=kisisel.length?eKpiBolum("Benim ekonomik durumum","Kişisel şirket performansım",kisisel):"";
     var islemler=eBolum("Hemen işlem yap","Kategoriler değil, doğrudan işlemler",[
       eTile("➕","Şirket kur","Yeni şirket kuruluşu","soMenuGit('sirketKurulumFormuAc')",true),
+      (typeof window.ticaretOdasiEkrani==="function"?eTile("🏛️","Ticaret Odası","Oda seçimi, aidat, sendikalar","soMenuGit('ticaretOdasiEkrani')"):""),
       eTile("🪧","İlan Meydanı","Satılık ev, dükkân, arsa, şirket ve hisse","soMenuGit('ilanMeydaniEkrani')"),
       eTile("🔨","Müzayede Evi","Koleksiyon eserlerine pey ver","soMenuGit('muzayedeEkrani')"),
-      (typeof window.ticaretOdasiEkrani==="function"?eTile("🏛️","Ticaret Odası","Oda seçimi, aidat, sendikalar","soMenuGit('ticaretOdasiEkrani')"):""),
       eTile("💸","Para gönder","Oyuncuya banka transferi","soMenuGit('paraGonderModal')"),
       eTile("🤝","Ortaklık işlemleri","Davetler, ortaklık, hisse devri","soMenuGit('ortaklikEkrani')"),
       eTile("📋","İhaleye katıl","Kamu ihalesine teklif ver","soMenuGit('ihaleEkrani')")
