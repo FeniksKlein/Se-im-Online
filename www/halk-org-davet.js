@@ -507,6 +507,9 @@ sokakHareketleriEkrani=async function(){
  let cbGozaltilar={cb_miyim:false,gozaltilar:[]};
  try{cbGozaltilar=await API.rpc('sokak_cb_gozaltilar');}
  catch(err){console.warn('Cumhurbaşkanlığı gözaltı listesi yüklenemedi',err);}
+ let baroGozaltilar={baro_baskani:false,gozaltilar:[]};
+ if(d.baro_baskani){try{baroGozaltilar=await API.rpc('sokak_baro_gozaltilar');}catch(err){console.warn('Baro gözaltı listesi yüklenemedi',err);}}
+ const cbMiyim=!!(cbGozaltilar&&cbGozaltilar.cb_miyim);
  document.getElementById('hhCommand')?.remove();
  const esc=x=>e(String(x??''));
  const num=x=>Number(x||0).toLocaleString('tr-TR',{maximumFractionDigits:1});
@@ -595,7 +598,8 @@ sokakHareketleriEkrani=async function(){
  '<button class="hh-action" data-hh-invite="'+Number(inv.id)+'" data-hh-choice="cekimser">◌ Çekimser kal</button></div></div>';
  if(!invitations.length)invites+='<div class="hh-empty">Liderliğini yaptığın kuruluşlara gelen açık davet yok.</div>';
  html+=pan('invite',invites);
- let law='<div class="hh-box"><h3>Gözaltı, savunma ve yargı</h3><p>Gözaltındaki oyuncu avukat isteyebilir veya baroya başvurabilir. Baro görevlendirir, avukat kabul eder, oyuncu/avukatı itiraz eder ve bağımsız hâkim gerekçeli karar verir. Gözaltı ile mahkûmiyet aynı şey değildir.</p></div>';
+ let law='<div class="hh-box"><h3>Gözaltı, savunma ve yargı</h3><p>Gözaltındaki oyuncu avukat çağırabilir ya da barodan müdafi isteyebilir; baro da talep beklemeden avukat gönderebilir. Avukat ile müvekkil <b>gizli görüşme</b> kanalından yazışır. Avukatlı dosyada itiraz süresi 48 saate çıkar, haksız gözaltı tazminatı %50 artar ve avukat Cumhurbaşkanlığına tahliye dilekçesi verebilir.</p>'+
+ '<p class="hh-muted"><b>Tahliye kuralı:</b> Hâkim ve mahkeme gözaltıyı hukuka aykırı bulabilir, tazminata hükmedebilir; ancak süresinden önce serbest bırakma yetkisi yalnız <b>Cumhurbaşkanı</b>ndadır. Süre dolunca gözaltı kendiliğinden biter.</p></div>';
  for(const item of legal){
   const g=item.info,id=Number(g.id),isLive=g.durum==='aktif'&&Date.parse(g.bitis)>now;
   if(!isLive&&!g.benim&&!g.ben_avukat&&!g.mahkeme_yetki)continue;
@@ -603,58 +607,83 @@ sokakHareketleriEkrani=async function(){
   '<h3>Dosya #'+id+' · '+esc(g.hedef)+'</h3><p class="hh-muted">Eylem #'+Number(item.event.id)+' · Bitiş '+esc(dt(g.bitis))+'</p>'+
   (g.avukat?'<p>Avukat: '+esc(g.avukat)+' · '+esc(g.avukat_durum)+'</p>':'')+
   (g.itiraz?'<div class="hh-log">Savunma / itiraz: '+esc(g.itiraz)+'</div>':'')+
-  (g.on_inceleme?'<div class="hh-log">Hâkim ön incelemesi: <b>'+esc(g.on_inceleme==='serbest'?'Derhal serbest bırakıldı':'Mevcut gözaltı süresi onaylandı')+'</b><p>'+esc(g.on_inceleme_gerekce)+'</p></div>':'')+
+  (g.on_inceleme?'<div class="hh-log">Hâkim ön incelemesi: <b>'+esc(g.on_inceleme==='devam'?'Gözaltının devamı uygun bulundu':'Gözaltı hukuka aykırı bulundu (tahliye Cumhurbaşkanında)')+'</b><p>'+esc(g.on_inceleme_gerekce)+'</p></div>':'')+
   (g.karar?'<div class="hh-log">Mahkeme: '+esc(g.karar)+' · '+esc(g.karar_gerekce)+' · Tazminat: '+tl(g.tazminat)+'</div>':'');
-  if(g.benim&&isLive){
+  const avukatVar=g.avukat&&(g.avukat_durum==='cagrildi'||g.avukat_durum==='kabul');
+  if((g.benim||g.ben_avukat)&&avukatVar){
+   law+='<details class="hh-detail" data-hh-gorusme="'+id+'"><summary>🔒 Avukat–müvekkil görüşmesi</summary>'+
+   '<p class="hh-muted">Bu yazışmayı yalnız gözaltındaki oyuncu ile avukatı görür.</p>'+
+   '<div class="hh-gorusme-akis" data-hh-gorusme-akis="'+id+'"><p class="hh-muted">Açınca yüklenir…</p></div>'+
+   '<form data-hh-gorusme-form="'+id+'"><label>Mesajın</label><textarea name="p_metin" maxlength="2000" required placeholder="'+(g.ben_avukat?'Müvekkiline yaz…':'Avukatına yaz…')+'"></textarea>'+
+   '<button class="hh-action hh-primary">Gönder</button></form></details>';
+  }
+  if(g.ben_avukat&&g.avukat_durum==='kabul'&&isLive){
+   law+='<details class="hh-detail"><summary>📜 Cumhurbaşkanlığına tahliye dilekçesi</summary><form data-hh-fn="sokak_avukat_cb_dilekce" data-hh-id="'+id+'">'+
+   '<p class="hh-muted">Dilekçe Cumhurbaşkanına bildirim olarak gider ve listesinde öne çıkar. Her dosyada bir kez verilir.</p>'+
+   '<label>Dilekçe metni</label><textarea name="p_metin" minlength="20" maxlength="2000" required placeholder="Müvekkilimin barışçıl eylem sırasında gözaltına alındığını…"></textarea>'+
+   '<button class="hh-action hh-primary">Dilekçeyi gönder</button></form></details>';
+  }
+  if(g.benim&&isLive&&g.avukat_durum!=='kabul'){
    law+='<details class="hh-detail"><summary>👩‍⚖️ Avukat çağır</summary><form data-hh-fn="sokak_avukat_cagir" data-hh-id="'+id+'">'+
    '<label>Aktif ruhsatlı avukat</label><select name="p_avukat" required>'+
    opts(d.avukatlar||[],x=>x.id,x=>x.ad)+'</select><button class="hh-action">Avukat çağır</button></form></details>'+
    '<button class="hh-action hh-primary" data-hh-baro-request="'+id+'">⚖️ Barodan müdafi iste</button>';
   }
   if(g.ben_avukat&&g.avukat_durum==='cagrildi')law+='<div class="hh-actions"><button class="hh-action hh-primary" data-hh-law="'+id+'" data-hh-law-accept="1">Avukatlığı kabul et</button><button class="hh-action" data-hh-law="'+id+'" data-hh-law-accept="0">Reddet</button></div>';
-  if(!g.itiraz&&(g.benim||(g.ben_avukat&&g.avukat_durum==='kabul'))&&Date.parse(g.baslangic)>now-86400000){
+  if(!g.itiraz&&(g.benim||(g.ben_avukat&&g.avukat_durum==='kabul'))&&Date.parse(g.baslangic)>now-(g.avukat_durum==='kabul'?172800000:86400000)){
    law+='<details class="hh-detail"><summary>📝 Gözaltına itiraz et</summary><form data-hh-fn="sokak_gozalti_itiraz" data-hh-id="'+id+'">'+
    '<label>Savunma ve itiraz gerekçesi</label><textarea name="p_metin" minlength="20" maxlength="2000" required></textarea>'+
    '<button class="hh-action hh-primary">İtiraz et, mahkemeye gönder</button></form></details>';
   }
   if(g.mahkeme_yetki&&isLive&&!g.on_inceleme&&!g.karar){
    law+='<details class="hh-detail"><summary>⚖️ Hâkim ön incelemesi – gözaltı kararı</summary><form data-hh-fn="sokak_gozalti_hakim_incele" data-hh-id="'+id+'">'+
-   '<label>Gözaltı inceleme kararı</label><select name="p_karar"><option value="serbest">Derhal serbest bırak</option><option value="devam">Kalan gözaltı süresini onayla</option></select>'+
+   '<label>Gözaltı inceleme kararı</label><select name="p_karar"><option value="aykiri">Hukuka aykırı – tahliye için Cumhurbaşkanına bildir</option><option value="devam">Kalan gözaltı süresini onayla</option></select>'+
    '<label>Gerekçeli hâkim kararı</label><textarea name="p_gerekce" minlength="25" maxlength="2000" required></textarea>'+
-   '<p class="hh-muted">Bu karar bir tutuklama hükmü değildir; mevcut bir saatlik sürenin üzerine çıkmaz. İtiraz hakkı korunur.</p>'+
+   '<p class="hh-muted">Hâkim gözaltıyı sona erdiremez; aykırılık kararı Cumhurbaşkanına iletilir. İtiraz hakkı korunur.</p>'+
    '<button class="hh-action hh-primary">Gerekçeli kararı kaydet</button></form></details>';
   }
   if(g.mahkeme_yetki&&g.itiraz&&!g.karar){
    law+='<details class="hh-detail"><summary>⚖️ Hâkim kararı ver</summary><form data-hh-fn="sokak_gozalti_mahkeme" data-hh-id="'+id+'">'+
-   '<label>Gerekçeli karar türü</label><select name="p_karar"><option value="haksiz">Haksız gözaltı / tazminat</option><option value="uygun">Gözaltı hukuka uygun</option></select>'+
+   '<label>Gerekçeli karar türü</label><select name="p_karar"><option value="haksiz">Haksız gözaltı / tazminat (tahliye Cumhurbaşkanında)</option><option value="uygun">Gözaltı hukuka uygun</option></select>'+
    '<label>Hâkim gerekçesi</label><textarea name="p_gerekce" minlength="25" maxlength="2000" required></textarea>'+
    '<button class="hh-action hh-primary">Mahkeme kararını açıkla</button></form></details>';
+  }
+  if(cbMiyim&&isLive){
+   law+='<form data-hh-fn="sokak_cb_serbest_birak" data-hh-id="'+id+'"><label>🏛️ Cumhurbaşkanlığı tahliye kararı (gerekçe isteğe bağlı)</label>'+
+   '<textarea name="p_gerekce" maxlength="500" placeholder="Örn. Toplumsal uzlaşma amacıyla serbest bırakılmasına karar verilmiştir."></textarea>'+
+   '<button class="hh-action hh-primary">Cumhurbaşkanı olarak serbest bırak</button></form>';
   }
   if(g.benim&&Number(g.tazminat)>Number(g.tazminat_odendi))law+='<button class="hh-action" data-hh-comp="'+id+'">Tazminatı tahsil et ('+tl(Number(g.tazminat)-Number(g.tazminat_odendi))+')</button>';
   law+='</div>';
  }
  if(d.baro_baskani){
-  law+='<div class="hh-box"><h3>🏛️ Baro müdafi atamaları</h3>';
-  const reqs=(d.baro_talepleri||[]).filter(x=>x.durum==='bekliyor');
-  if(!reqs.length)law+='<p>Bekleyen baro görevlendirme talebi yok.</p>';
-  for(const y of reqs)law+='<form data-hh-fn="sokak_baro_ata" data-hh-id="'+Number(y.gozalti_id)+'">'+
-   '<p><b>'+esc(y.hedef)+'</b> · Dosya #'+Number(y.gozalti_id)+' · '+esc(dt(y.basvuru))+'</p>'+
-   '<label>Görevlendirilecek baro avukatı</label><select name="p_avukat" required>'+opts(members,x=>x.id,x=>x.ad)+'</select>'+
-   '<button class="hh-action hh-primary">Baro adına müdafi görevlendir</button></form>';
+  law+='<div class="hh-box"><h3>🏛️ Baro · Gözaltındakilere müdafi gönder</h3>'+
+   '<p class="hh-muted">Talep beklemeden, gözaltındaki her oyuncuya baroya kayıtlı bir avukat gönderebilirsin. Avukat kabul edince müvekkiliyle görüşebilir.</p>';
+  const bl=(baroGozaltilar.gozaltilar||[]).filter(x=>x.avukat_durum!=='kabul');
+  if(!members.length)law+='<p>Baroda görevlendirilebilecek aktif avukat yok.</p>';
+  else if(!bl.length)law+='<p>Avukatsız gözaltı yok.</p>';
+  for(const y of bl)law+='<form data-hh-fn="sokak_baro_gonder" data-hh-id="'+Number(y.id)+'">'+
+   '<p><b>'+esc(y.hedef)+'</b> · Dosya #'+Number(y.id)+' · Bitiş '+esc(dt(y.bitis))+
+   (y.talep_var?' · <span class="hh-pill warn">MÜDAFİ İSTEDİ</span>':'')+
+   (y.avukat&&y.avukat_durum==='cagrildi'?'<br><span class="hh-muted">Yanıt bekleniyor: '+esc(y.avukat)+'</span>':'')+
+   (y.avukat_durum==='ret'?'<br><span class="hh-muted">Önceki avukat reddetti: '+esc(y.avukat)+'</span>':'')+'</p>'+
+   '<label>Gönderilecek baro avukatı</label><select name="p_avukat" required>'+opts(members,x=>x.id,x=>x.ad)+'</select>'+
+   '<button class="hh-action hh-primary">Baro adına avukat gönder</button></form>';
   law+='</div>';
+ }
+ if(cbMiyim&&(cbGozaltilar.icisleri_gozaltilar||[]).length){
+  law+='<div class="hh-box"><h3>🏛️ Cumhurbaşkanlığı · İçişleri gözaltıları</h3>'+
+   (cbGozaltilar.icisleri_gozaltilar||[]).map(k=>'<form data-hh-fn="cb_icisleri_gozalti_serbest" data-hh-id="'+Number(k.id)+'">'+
+    '<p><b>İçişleri gözaltısı #'+Number(k.id)+' · '+esc(k.hedef)+'</b><br><span class="hh-muted">Bitiş: '+esc(dt(k.bitis))+(k.avukat?' · Avukat: '+esc(k.avukat)+' ('+esc(k.avukat_durum)+')':'')+'</span></p>'+
+    '<p class="hh-muted">'+esc(k.gerekce)+'</p>'+
+    '<label>Gerekçe (isteğe bağlı)</label><textarea name="p_gerekce" maxlength="500"></textarea>'+
+    '<button class="hh-action hh-primary">Cumhurbaşkanı olarak serbest bırak</button></form>').join('')+'</div>';
  }
  html+=pan('legal',law);
  let state='<div class="hh-box"><h3>Hükümet karşı hamleleri</h3><p>Uzlaşma, kamuoyu açıklaması ve bütçeli müdahaleler kamu kaynaklarına bağlıdır. Polis müdahalesi ve hukuki kararlar ayrı kaydedilir.</p></div>';
- if(cbGozaltilar&&cbGozaltilar.cb_miyim){
-  const cbListe=cbGozaltilar.gozaltilar||[];
-  state+='<div class="hh-box"><h3>🏛️ Cumhurbaşkanlığı · Gözaltıları Serbest Bırak</h3>'+
-   '<p class="hh-muted">Eyleme katıldığı için polis tarafından gözaltına alınmış oyuncuları, süre dolmadan istediğin an serbest bırakabilirsin. Mahkeme kararları ve mevcut itirazlar silinmez; oyuncuya ve eylem taraflarına bildirim gider.</p>'+
-   (cbListe.length?cbListe.map(g=>'<div class="hh-box"><b>Gözaltı #'+Number(g.id)+' · '+esc(g.hedef)+'</b>'+
-    '<p class="hh-muted">Eylem #'+Number(g.eylem_id)+' · '+esc(g.il)+' · Bitiş: '+esc(dt(g.bitis))+'</p>'+
-    '<form data-hh-fn="sokak_cb_serbest_birak" data-hh-id="'+Number(g.id)+'">'+
-    '<label>Cumhurbaşkanlığı karar gerekçesi (isteğe bağlı)</label><textarea name="p_gerekce" maxlength="500" placeholder="Örn. Toplumsal uzlaşma amacıyla serbest bırakılmasına karar verilmiştir."></textarea>'+
-    '<button class="hh-action hh-primary">Oyuncuyu derhal serbest bırak</button></form></div>').join(''):
-    '<div class="hh-empty">Şu anda devam eden eylem gözaltısı bulunmuyor.</div>')+'</div>';
+ if(cbMiyim){
+  const n=(cbGozaltilar.gozaltilar||[]).length+(cbGozaltilar.icisleri_gozaltilar||[]).length;
+  state+='<div class="hh-box"><h3>🏛️ Cumhurbaşkanlığı · Gözaltı tahliyeleri</h3><p class="hh-muted">Süresinden önce gözaltıyı sona erdirme yetkisi yalnız sendedir. Devam eden '+n+' gözaltı dosyası <b>⚖️ Hukuk</b> sekmesinde, her dosyanın altındaki “Cumhurbaşkanı olarak serbest bırak” düğmesiyle yönetilir. Avukat dilekçesi ve hâkim aykırılık kararı olan dosyalar bildirim olarak gelir.</p></div>';
  }
  if(d.mudahale_yetki)for(const x of live)state+='<div class="hh-box"><h3>'+esc(x.il)+' · '+esc(x.parti)+'</h3><p>Hükümet uzlaşma fonu: '+tl(x.iktidar_fonu)+'</p>'+
  '<form data-hh-fn="sokak_yanit" data-hh-id="'+Number(x.id)+'"><label>Hükümetin açıklaması ve çözüm önerisi</label><textarea name="p_metin" minlength="20" maxlength="2000" required></textarea>'+
@@ -702,7 +731,7 @@ sokakHareketleriEkrani=async function(){
  }
  tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.hhTab)));
  root.querySelector('#hhOldToggle')?.addEventListener('click',()=>{root.dataset.hhLegacy=root.dataset.hhLegacy==='1'?'0':'1';show('tools');});
- show(pending.some(z=>z.info.benim)?'legal':lastCommandTab);
+ show(pending.some(z=>z.info.benim||z.info.ben_avukat)?'legal':lastCommandTab);
  async function run(btn,fn,args,success){
   if(btn)btn.disabled=true;
   try{
@@ -725,6 +754,26 @@ sokakHareketleriEkrani=async function(){
  }));
  root.querySelectorAll('[data-hh-comp]').forEach(btn=>btn.addEventListener('click',()=>{
   run(btn,'sokak_gozalti_tazminat_tahsil',{p_gozalti:Number(btn.dataset.hhComp)});
+ }));
+ async function gorusmeYukle(id){
+  const kutu=root.querySelector('[data-hh-gorusme-akis="'+id+'"]');if(!kutu)return;
+  try{
+   const r=await API.rpc('gozalti_gorusme_liste',{p_gozalti:id});
+   const L=r.mesajlar||[];
+   kutu.innerHTML=(r.cb_dilekce?'<div class="hh-log">📜 Cumhurbaşkanlığına tahliye dilekçesi verildi · '+esc(dt(r.cb_dilekce_at))+'</div>':'')+
+    (r.avukat_durum==='cagrildi'?'<p class="hh-muted">Avukat henüz görevi kabul etmedi; yine de yazışabilirsiniz.</p>':'')+
+    (L.length?L.map(m=>'<div class="hh-log"'+(m.ben?' style="border-left-color:#5fc9a8"':'')+'><b>'+esc(m.ben?'Sen':m.ad)+'</b>'+(m.avukat?' · avukat':' · müvekkil')+' · <span class="hh-muted">'+esc(dt(m.zaman))+'</span><br>'+esc(m.metin)+'</div>').join(''):'<p class="hh-muted">Henüz mesaj yok. İlk mesajı sen yaz.</p>');
+  }catch(ex){kutu.innerHTML='<p class="hh-muted">'+esc(hataCevir(ex.message||String(ex)))+'</p>';}
+ }
+ root.querySelectorAll('details[data-hh-gorusme]').forEach(det=>det.addEventListener('toggle',()=>{if(det.open)gorusmeYukle(Number(det.dataset.hhGorusme));}));
+ root.querySelectorAll('form[data-hh-gorusme-form]').forEach(form=>form.addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  const id=Number(form.dataset.hhGorusmeForm),btn=form.querySelector('button'),ta=form.querySelector('textarea');
+  const metin=(ta.value||'').trim();if(!metin)return;
+  btn.disabled=true;
+  try{await API.rpc('gozalti_gorusme_gonder',{p_gozalti:id,p_metin:metin});ta.value='';await gorusmeYukle(id);}
+  catch(ex){toast(hataCevir(ex.message||String(ex)),true);}
+  btn.disabled=false;
  }));
  root.querySelectorAll('form[data-hh-fn]').forEach(form=>form.addEventListener('submit',ev=>{
   ev.preventDefault();
@@ -749,8 +798,9 @@ sokakHareketleriEkrani=async function(){
    args.p_tutar=Number(args.p_tutar);args.p_taraf='muhalefet';args.p_eylem=id;
   }
   if(['sokak_eylem_sonlandir','sokak_basina_aciklama','sokak_yanit','sokak_butce_mudahale','sokak_polis_gonder'].includes(fn))args.p_eylem=id;
-  if(['sokak_avukat_cagir','sokak_gozalti_itiraz','sokak_gozalti_mahkeme','sokak_baro_ata','sokak_gozalti_hakim_incele','sokak_cb_serbest_birak'].includes(fn))args.p_gozalti=id;
-  if(fn==='sokak_cb_serbest_birak'&&!window.confirm('Bu oyuncuyu Cumhurbaşkanlığı kararıyla derhal serbest bırakmak istiyor musun?'))return;
+  if(['sokak_avukat_cagir','sokak_gozalti_itiraz','sokak_gozalti_mahkeme','sokak_baro_ata','sokak_baro_gonder','sokak_avukat_cb_dilekce','sokak_gozalti_hakim_incele','sokak_cb_serbest_birak'].includes(fn))args.p_gozalti=id;
+  if(fn==='cb_icisleri_gozalti_serbest')args.p_id=id;
+  if((fn==='sokak_cb_serbest_birak'||fn==='cb_icisleri_gozalti_serbest')&&!window.confirm('Bu oyuncuyu Cumhurbaşkanlığı kararıyla derhal serbest bırakmak istiyor musun?'))return;
   if(fn==='sokak_eylem_sonlandir'&&!window.confirm('Bu eylemi kesin olarak sonlandırmak istiyor musun?'))return;
   if(fn==='sokak_butce_mudahale')args.p_tutar=Number(args.p_tutar);
   run(form.querySelector('button'),fn,args);
