@@ -103,6 +103,10 @@ const DURUM = {
         const s = await page.evaluate(() => ({ serit: (document.getElementById('gzSerit') || {}).innerText || '', yb: document.getElementById('yazbar').innerText }));
         assert.ok(s.serit.includes('Gözaltındasınız'), ad + ': şerit');
         assert.ok(s.yb.includes('buraya yazamazsınız'), ad + ': sohbet çubuğu kilitli');
+        // Şerit sabit kalmalı (her karede yeniden kurulursa "Aç" dokunuşu tamamlanmaz) ve "Aç" merkezi açmalı.
+        const degisim = await page.evaluate(() => new Promise(r => { let n = 0; const o = new MutationObserver(m => m.forEach(x => { if ([...x.addedNodes].some(e => e.id === 'gzSerit')) n++; })); o.observe(document.getElementById('app'), { childList: true }); setTimeout(() => { o.disconnect(); r(n); }, 1000); }));
+        assert.ok(degisim <= 1, ad + ': şerit sürekli yeniden kuruluyor (' + degisim + '/sn)');
+        await page.click('#gzSerit button', { timeout: 5000 }); await page.waitForSelector('#gzEkran', { timeout: 5000 });
         if (shot) await page.screenshot({ path: path.join(shot, String(++no).padStart(2, '0') + '_' + ad + '_serit.png') });
       }
       if (!veri.gozalti && gen === 390) {

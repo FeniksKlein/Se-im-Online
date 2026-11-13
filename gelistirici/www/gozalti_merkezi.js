@@ -277,19 +277,22 @@
   /* ---------------- Her ekranda gözaltı şeridi ---------------- */
   function seritHtml(g) {
     var avk = g.yazabilecegi || [];
-    return '<div class="gz-serit" id="gzSerit" role="status"><span class="gz-s-ik">🔒</span><span class="gz-s-m"><b>Gözaltındasınız · <span data-gz-bitis-kisa="' + esc(g.bitis) + '">' + esc(kalan(g.bitis)) + '</span> kaldı</b>' +
+    return '<div class="gz-serit" id="gzSerit" role="status" data-gz-anahtar="' + esc(seritAnahtar(g)) + '"><span class="gz-s-ik">🔒</span><span class="gz-s-m"><b>Gözaltındasınız · <span data-gz-bitis-kisa="' + esc(g.bitis) + '">' + esc(kalan(g.bitis)) + '</span> kaldı</b>' +
       (avk.length ? 'Yalnız avukatınız ' + avk.map(esc).join(", ") + ' ile özel mesajlaşabilirsiniz.' : 'Hiçbir yere yazamazsınız. Avukat çağırın ya da barodan müdafi isteyin.') +
       '</span><button type="button" data-gz-merkez>Aç</button></div>';
   }
+  // Şeridin içeriğini belirleyen değerler: yalnız bunlar değişince şerit yeniden kurulur.
+  function seritAnahtar(g) { return String(g.id) + '|' + String(g.bitis) + '|' + (g.yazabilecegi || []).join(','); }
   // Şerit, başlığın hemen altında ve içerik alanının dışında durur: ekranlar içeriği yeniden çizse de görünür kalır.
   function seritKur() {
     var ic = document.getElementById("icerik"); if (!ic) return;
     var eski = document.getElementById("gzSerit"), g = benGozaltinda();
     if (!g || document.getElementById("gzEkran")) { if (eski) eski.remove(); return; }
-    var html = seritHtml(g);
-    if (eski && eski.nextElementSibling === ic) { if (eski.outerHTML !== html) eski.outerHTML = html; return; }
+    // 13.11.2026 düzeltmesi: eskiden outerHTML karşılaştırılıyordu; tarayıcı data-gz-merkez'i data-gz-merkez="" diye yazdığı için
+    // karşılaştırma hep "farklı" çıkıyor, şerit her karede yeniden kuruluyor ve "Aç" düğmesine dokunuş tamamlanamıyordu.
+    if (eski && eski.nextElementSibling === ic && eski.getAttribute("data-gz-anahtar") === seritAnahtar(g)) return;
     if (eski) eski.remove();
-    stil(); ic.insertAdjacentHTML("beforebegin", html);
+    stil(); ic.insertAdjacentHTML("beforebegin", seritHtml(g));
   }
 
   /* ---------------- Sohbet yazma çubuğu: gözaltındayken kapalı ---------------- */
