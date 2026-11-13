@@ -182,7 +182,7 @@ declare
     'cb_aday_belirle', 'cb_destek', 'cb_destek_secenekleri', 'cb_erken_secim_karar', 'cb_kampanya_bilgi', 'cb_kampanya_etkinlik',
     'cb_kampanya_kaydet', 'cb_seslenisler', 'cb_toren_durum', 'cb_ulusa_seslen', 'cb_yardimcilari', 'cb_yardimcisi_adaylari',
     'cb_yardimcisi_ata', 'cb_yardimcisi_bakan_denetim', 'cb_yardimcisi_gorevden_al', 'cb_yardimcisi_teklif_geri', 'cb_yardimcisi_tekliflerim', 'cb_yardimcisi_yanit',
-    'cb_yemin_et', 'cb_yrd_alan_ayarla', 'cb_yrd_dosya_ac', 'cb_yrd_dosya_karar', 'cb_yrd_dosya_yanitla', 'cb_yrd_panel',
+    'cb_yemin_et', 'cb_yrd_alan_ayarla', 'cb_yrd_dosya_ac', 'cb_yrd_dosya_hatirlat', 'cb_yrd_dosya_karar', 'cb_yrd_dosya_yanitla', 'cb_yrd_panel',
     'cb_yrd_toplanti_oyla', 'cb_yrd_vekalet_ayarla', 'cek_ek_panel', 'cek_hedef_ara', 'cek_iptal_islem', 'cek_iptal_panel',
     'cek_iskonto_islem', 'cek_islem', 'cek_panel', 'cek_tazminat_ode', 'cek_ticaret_islem', 'cek_ticaret_panel',
     'cek_toptan_islem', 'cek_toptan_panel', 'cevrimici_oyuncular', 'cihaz_kaydet', 'cihaz_sil', 'cimer',

@@ -26,7 +26,8 @@ const ctx={
  hukumetHtml:async()=>'<section id="orijinal">Mevcut oyun</section>',
  e:escape,tarihSaat:s=>s,modal:()=>({}),toast:()=>{},onayla:async()=>true,
  islem:async(fn)=>fn(),modalKapat:()=>{},devletEkrani:async()=>{},
- VERI:{iller:[]}, $:()=>null
+ VERI:{iller:[]}, $:()=>null,
+ document:{getElementById:()=>null,createElement:()=>({}),head:{appendChild:()=>{}}}
 };ctx.window=ctx;
 vm.createContext(ctx);
 vm.runInContext(js,ctx);
@@ -46,5 +47,21 @@ vm.runInContext(js,ctx);
  panel.yardimci_sira=null;panel.bakan_miyim=true;panel.kabine_miyim=true;
  const minister=await ctx.hukumetHtml();
  assert.doesNotMatch(minister,/Yeni görev, toplantı veya öneri oluştur/);
+ // 13.11.2026: tüm bakanlıklara toplu görev — gruplu görünüm, ilerleme, hatırlat, yeni bakan yanıtı
+ const toplu=['adalet','icisleri','saglik'].map((b,i)=>({id:30+i,tur:'gorev',baslik:'Toplu görev',aciklama:'Herkes rapor versin lütfen.',
+   yardimci:'Başkan',sira:1,bakanlik:b,il:null,hedef:i===2?null:'Bakan'+i,durum:i===0?'tamamlandi':'bekliyor',veri:{toplu:'30'},oylar:[]}));
+ panel.bakan_miyim=false;panel.kabine_miyim=false;panel.yardimci_sira=1;panel.dosyalar=toplu;panel.bakanligim=null;
+ const grup=await ctx.hukumetHtml();
+ assert.match(grup,/Tüm bakanlıklar · 1\/3 tamamlandı/);
+ assert.match(grup,/cby-bar/);
+ assert.match(grup,/Sağlık \(boş\)/);
+ assert.match(grup,/cbYrdHatirlat\(31\)/);
+ assert.doesNotMatch(grup,/cbYrdHatirlat\(30\)/);
+ await ctx.cbYrdHatirlat(31);
+ assert.ok(actions.some(([ad,p])=>ad==='cb_yrd_dosya_hatirlat'&&p.p_id===31));
+ panel.yardimci_sira=null;panel.bakan_miyim=true;panel.kabine_miyim=true;panel.bakanligim='saglik';panel.dosyalar=[toplu[2]];
+ const yeniBakan=await ctx.hukumetHtml();
+ assert.match(yeniBakan,/cbYrdDosyaYanit\(32\)/);
+ assert.doesNotMatch(yeniBakan,/cbYrdHatirlat/);
  console.log('cb_yrd_guclu: arayüz ve yetki görünürlüğü tamam');
 })().catch(e=>{console.error(e);process.exitCode=1;});

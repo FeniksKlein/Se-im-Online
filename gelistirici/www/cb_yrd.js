@@ -40,9 +40,9 @@
         ${btn('Vekâlet ver veya kaldır','cbYrdVekaletSec()')}`:''}
       ${yardimci&&!p.parlamenter?btn('Yeni görev, toplantı veya öneri oluştur','cbYrdDosyaAc()','altin'):''}</div>`;
     const dosyalar=p.dosyalar||[];
-    const dosyaHtml = dosyalar.map(d=>{
+    const tekDosya = d=>{
       const oylar=d.oylar||[];
-      const bana=d.hedef===kendiKad();
+      const bana=d.hedef===kendiKad()||(!!p.bakanligim&&d.bakanlik===p.bakanligim&&['gorev','proje','kriz'].includes(d.tur));
       const bakanToplanti=p.kabine_miyim && d.tur==='toplanti';
       const bakanKriz=p.kabine_miyim && d.tur==='kriz'&&!d.bakanlik;
       const benYardimci=yardimci&&d.yardimci===kendiKad();
@@ -50,6 +50,7 @@
         bana||(benYardimci&&['toplanti','kriz','yerel'].includes(d.tur))||bakanToplanti||bakanKriz);
       const vekil=p.vekalet&&p.vekalet.sira===p.yardimci_sira&&d.sira!==p.yardimci_sira;
       const onaylayabilir=d.durum==='onay_bekliyor'&&(yonetici||(vekil&&d.tur!=='kararname'));
+      const hatirlatabilir=(yonetici||benYardimci)&&['bekliyor','calisiliyor'].includes(d.durum)&&(d.bakanlik||d.tur==='yerel');
       return `<details class="vekil-bakanlik" style="margin-top:9px"><summary><b>#${Number(d.id)} · ${e(d.baslik)}</b>
          <span class="kucuk"> · ${e(DURUM[d.durum]||d.durum)}</span></summary>
          <div style="padding:10px 0"><div class="kucuk">${e(TUR[d.tur]||d.tur)} · ${e(d.yardimci||'')} · ${e(d.bakanlik||d.il||'Ülke geneli')} · Son tarih ${tarihYaz(d.son_tarih)}</div>
@@ -60,9 +61,26 @@
            ${oylar.map(o=>`<div class="kucuk">${e(o.kad)}: ${o.oy?'Kabul':'Ret'} — ${e(o.gerekce)}</div>`).join('')}
            ${['bekliyor','calisiliyor'].includes(d.durum)&&(yonetici||yardimci||p.kabine_miyim)?btn('Toplantıda oy ve görüş bildir',`cbYrdToplantiOyla(${Number(d.id)})`):''}`:''}
          ${yanitVerebilir?btn('İlerleme veya sonuç bildir',`cbYrdDosyaYanit(${Number(d.id)})`):''}
+         ${hatirlatabilir?btn('Muhataba hatırlat',`cbYrdHatirlat(${Number(d.id)})`):''}
          ${onaylayabilir?`${btn('Onayla',`cbYrdDosyaKarar(${Number(d.id)},true)`,'altin')}
            ${btn('Reddet',`cbYrdDosyaKarar(${Number(d.id)},false)`,'tehlike')}`:''}
          </div></details>`;
+    };
+    const BAK_AD=Object.fromEntries(BAKANLIKLAR);
+    const gruplar=new Map();
+    dosyalar.forEach(d=>{const k=d.veri&&d.veri.toplu?'t'+d.veri.toplu:'d'+d.id; if(!gruplar.has(k))gruplar.set(k,[]); gruplar.get(k).push(d);});
+    const dosyaHtml=[...gruplar.values()].map(g=>{
+      if(g.length<2) return tekDosya(g[0]);
+      const ilk=g[0], biten=g.filter(d=>d.durum==='tamamlandi').length, calisan=g.filter(d=>d.durum==='calisiliyor').length;
+      const yuzde=Math.round(100*biten/g.length);
+      const satirlar=g.slice().sort((a,b)=>String(BAK_AD[a.bakanlik]||a.bakanlik).localeCompare(String(BAK_AD[b.bakanlik]||b.bakanlik),'tr')).map(tekDosya).join('');
+      return `<details class="vekil-bakanlik cby-toplu" style="margin-top:9px"><summary><b>${e(ilk.baslik)}</b>
+        <span class="kucuk"> · Tüm bakanlıklar · ${biten}/${g.length} tamamlandı${calisan?` · ${calisan} çalışılıyor`:''}</span></summary>
+        <div style="padding:10px 0"><div class="kucuk">${e(TUR[ilk.tur]||ilk.tur)} · ${e(ilk.yardimci||'')} · Son tarih ${tarihYaz(ilk.son_tarih)}</div>
+        <div class="cby-bar" role="progressbar" aria-valuenow="${yuzde}" aria-valuemin="0" aria-valuemax="100"><i style="width:${yuzde}%"></i></div>
+        <p style="margin-top:8px;white-space:pre-wrap">${e(ilk.aciklama)}</p>
+        <div class="cby-cip">${g.map(d=>`<span class="${d.durum==='tamamlandi'?'ok':d.durum==='calisiliyor'?'is':''}">${e(BAK_AD[d.bakanlik]||d.bakanlik||'')}${d.hedef?'':' (boş)'}</span>`).join('')}</div>
+        ${satirlar}</div></details>`;
     }).join('');
     return baslik+`<div class="kart cb-yrd-dosyalar"><h2>Hükümet görev dosyaları (${dosyalar.length})</h2>
       <p class="alt">Bakanlar ve belediye başkanları kendilerine gönderilen işleri buradan yanıtlar. Onay bekleyen ekonomi önerilerini Cumhurbaşkanı karara bağlar.</p>
@@ -93,7 +111,7 @@
       <div class="alan"><label>İşlem</label><select id="cytur">${Object.entries(TUR).map(([k,v])=>`<option value="${k}">${e(v)}</option>`).join('')}</select></div>
       <div class="alan"><label>Başlık</label><input id="cybas" maxlength="120" placeholder="En az 5 karakter"></div>
       <div class="alan"><label>Gerekçe, çalışma veya toplantı gündemi</label><textarea id="cyac" maxlength="5000" rows="5" placeholder="En az 15 karakter"></textarea></div>
-      <div class="alan" id="cybakanalan"><label>Sorumlu bakanlık</label><select id="cybakan"><option value="">Tüm bakanlıklar / seçilmedi</option>${bakanlar.map(([k,v])=>`<option value="${k}">${e(v)}</option>`).join('')}</select></div>
+      <div class="alan" id="cybakanalan"><label>Sorumlu bakanlık</label><select id="cybakan"><option value="">Bakanlık seç</option><option value="*">Tüm bakanlıklar (${bakanlar.length} bakanlığa ayrı dosya)</option>${bakanlar.map(([k,v])=>`<option value="${k}">${e(v)}</option>`).join('')}</select></div>
       <div class="alan" id="cyilalan"><label>İl</label><select id="cyil"><option value="">Ülke geneli</option>${iller.map(i=>`<option value="${Number(i.id)}">${e(i.ad)}</option>`).join('')}</select></div>
       <div class="alan" id="cykalan"><label>Kararname türü</label><select id="cykt"><option value="serbest">Serbest karar (mali etkisi yok)</option><option value="odenek">Bakanlığa ek ödenek</option><option value="il_destek">İl kalkınma desteği</option></select></div>
       <div class="alan" id="cymalan"><label>Kararname tutarı (milyar ₺, 1-30)</label><input id="cymik" type="number" min="1" max="30" value="5"></div>
@@ -107,22 +125,30 @@
       $('#cymalan',m).style.display=tur==='kararname'&&kt!=='serbest'?'':'none';
       $('#cybilgi',m).textContent=tur==='kararname'?'Taslak Cumhurbaşkanının imzasıyla mevcut kararname motorunda yürürlüğe girer.':
         tur==='aciklama'?'Günde bir basın açıklaması Gündem ve resmî haber akışına girer.':
-        tur==='toplanti'?'Bakanlara toplantı çağrısı ve gündem bildirimi gönderilir.':'Bakan veya belediye başkanı görev dosyasına yanıt verebilir.';
+        tur==='toplanti'?'Bakanlara toplantı çağrısı ve gündem bildirimi gönderilir.':
+        $('#cybakan',m).value==='*'&&['gorev','proje'].includes(tur)?'Görev alanındaki her bakanlığa ayrı dosya açılır; her bakan kendi dosyasını yanıtlar. Günlük sınırda tek işlem sayılır.':
+        $('#cybakan',m).value==='*'&&tur==='kriz'?'Kriz masası bütün kabineye açılır; her bakan katkı verebilir.':
+        tur==='kriz'?'Bakanlık seçmezsen kriz masası bütün kabineye açılır.':'Bakan veya belediye başkanı görev dosyasına yanıt verebilir.';
     };
-    $('#cytur',m).onchange=form;$('#cykt',m).onchange=form;form();
+    $('#cytur',m).onchange=form;$('#cykt',m).onchange=form;$('#cybakan',m).onchange=form;form();
     $('#cygonder',m).onclick=async()=>{
       const tur=$('#cytur',m).value, kt=$('#cykt',m).value;
       const bakanlik=(!$('#cybakanalan',m).style.display&&$('#cybakan',m).value)||null;
       const il=(!$('#cyilalan',m).style.display&&+$('#cyil',m).value)||null;
-      if(['gorev','proje'].includes(tur)&&!bakanlik) return toast('Bakanlık seçmelisin.',true);
+      if(['gorev','proje'].includes(tur)&&!bakanlik) return toast('Bir bakanlık ya da "Tüm bakanlıklar" seçmelisin.',true);
+      if(tur==='kararname'&&bakanlik==='*') return toast('Ek ödenek tek bir bakanlığa verilir; bakanlık seçmelisin.',true);
       if(tur==='kararname'&&kt==='odenek'&&!bakanlik) return toast('Ödenek için bakanlık seçmelisin.',true);
       if((tur==='yerel'||(tur==='kararname'&&kt==='il_destek'))&&!il) return toast('İl seçmelisin.',true);
       const miktar=+$('#cymik',m).value;
       if(tur==='kararname'&&kt!=='serbest'&&(!Number.isFinite(miktar)||miktar<1||miktar>30)) return toast('Tutar 1-30 milyar ₺ olmalı.',true);
       const veri=tur==='kararname'?{tur:kt,veri:kt==='odenek'?{miktar,bakanlik}:kt==='il_destek'?{miktar,il_id:il}:{}}:{};
+      const toplu=bakanlik==='*'&&['gorev','proje'].includes(tur);
       try{await islem(()=>API.rpc('cb_yrd_dosya_ac',{p_tur:tur,p_baslik:$('#cybas',m).value,p_aciklama:$('#cyac',m).value,
-        p_bakanlik:bakanlik,p_il:il,p_gun:+$('#cygun',m).value,p_veri:veri}),'Dosya açıldı.');modalKapat();await yenile();}catch(_){}
+        p_bakanlik:bakanlik,p_il:il,p_gun:+$('#cygun',m).value,p_veri:veri}),toplu?'Dosya bütün bakanlıklara gönderildi.':'Dosya açıldı.');modalKapat();await yenile();}catch(_){}
     };
+  };
+  window.cbYrdHatirlat = async function (id) {
+    try{await islem(()=>API.rpc('cb_yrd_dosya_hatirlat',{p_id:id}),'Hatırlatma gönderildi.');}catch(_){}
   };
   window.cbYrdDosyaYanit = function (id) {
     const m=modal(`<h3>#${id} · Görev yanıtı</h3><div class="alan"><label>Durum</label><select id="cydur"><option value="calisiliyor">Çalışılıyor</option><option value="tamamlandi">Tamamlandı</option></select></div>
@@ -294,6 +320,10 @@
 .cbm-aday-p{flex:none;border-radius:50%;box-shadow:0 0 0 2px var(--pr)}.cbm-aday-p .portre,.cbm-aday-p svg.portre{width:40px!important;height:40px!important;border-radius:50%;display:block}.cbm-aday-p .cbm-bas{width:40px;height:40px;font-size:13px}
 .cbm-aday-m{flex:1;min-width:0;display:flex;flex-direction:column}.cbm-aday-m b{font-size:15px}.cbm-aday-m small{font-size:12px;color:var(--mut,#98A4C4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cbm-aday-m i{font-style:normal;color:${G2}}
 .cbm-ok{color:${G};font-size:22px}
+.cby-bar{height:8px;margin-top:10px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}.cby-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#b8913f,${G2});transition:width .4s ease}
+.cby-cip{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.cby-cip span{padding:4px 9px;border-radius:99px;font-size:12.5px;line-height:1.3;color:#a9b2cf;border:1px solid rgba(164,184,255,.16);background:rgba(255,255,255,.03)}
+.cby-cip span.is{color:#e8cf8f;border-color:rgba(217,178,91,.4)}.cby-cip span.ok{color:#7ee2a8;border-color:rgba(46,204,113,.45);background:rgba(46,204,113,.07)}
+.cby-toplu>div>details{margin-left:4px;padding-left:10px;border-left:2px solid rgba(217,178,91,.22)}
 .cb-yrd-masasi,.cb-yrd-dosyalar{border:1px solid rgba(217,178,91,.22)!important;background:linear-gradient(180deg,rgba(217,178,91,.05),transparent 40%),var(--panel,#151E3D)!important}
 .cb-yrd-masasi h2,.cb-yrd-dosyalar h2{font-family:var(--disp);color:#f3ead2;padding-bottom:8px;border-bottom:1px solid rgba(217,178,91,.2)}
 @media (max-width:340px){.cbm-plakalar{grid-template-columns:1fr}}`;
