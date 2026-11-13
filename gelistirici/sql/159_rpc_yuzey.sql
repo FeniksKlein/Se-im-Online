@@ -199,6 +199,8 @@ declare
     'sokak_eylemden_ayril', 'sokak_goreve_cik', 'sokak_gorevden_ayril', 'sokak_karsi_katil', 'sokak_taktik_yap', 'sokak_grev_cagri', 'sokak_nabiz_ver', 'sokak_yasak_koy', 'sokak_jest_yap', 'sokak_heyet_davet', 'sokak_heyet_yanit', 'sokak_heyet_rapor', 'sokak_seslenis_yap', 'sokak_seslenis_tepki', 'sokak_karsi_cagri', 'sokak_kalkan_birak', 'sokak_saha_panel',
     -- 09.11.2026 on iki yeni hükümet aracı (supabase/migrations/20261109150000_halk_hukumet_yeni_tedbirler.sql)
     'sokak_tedbir_ac', 'sokak_tedbir_hamle', 'sokak_tedbir_panel',
+    -- 13.11.2026 Halk Hareketleri 5.0 · Sokağın Faturası (supabase/migrations/20261113040000_halk_ekonomi_bedeli.sql)
+    'sokak_bedel_panel', 'sokak_bedel_ozet', 'sokak_bedel_islem',
     'sokak_sohbet_oku', 'sokak_sohbet_yaz', 'sokak_meydan_islem', 'sokak_meydan_panel', 'sokak_kriz_harita', 'sokak_denetim_oku',
     'sokak_sert_islem', 'sokak_sert_panel',
     'sokak_eylem_merkezi', 'sokak_eylem_merkezi_islem',

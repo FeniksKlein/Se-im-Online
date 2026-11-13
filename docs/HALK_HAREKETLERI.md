@@ -122,3 +122,18 @@ Eylem keyfi açılmaz. Önce çağrı, depozito ve bu ilden yeterli imza gerekir
 Eyleme kaynak aktarmak lojistiktir: ses, ulaşım, yemek, pankart. Örgütleyen parti veya dernek, ya da eylemdeki bir kişi kendi cüzdanından öder. Para geri gelmez. Güç, biriken tutarın karekökü kadar artar; düşük ivme ve yüksek yorgunluk getiriyi düşürür. Saatlik %12 tavan ve ildeki kişi tavanı durur. Hazine bedeli değişmez. 150.000 TL birikince hükümet “Eyleme büyük kaynak aktarılıyor” görür; mali kuşatma ve ihale kılıcı bu izi kullanır. Sayılar yine `sokak_denge_ayar` içindedir. Şema `20261109260000_halk_eylem_kaynak.sql`.
 
 Katılımcı, Eylem Merkezi’ndeki her aktif katılımın yanında Ayrıl düğmesini görür. Onaydan sonra yalnız kendi payı biter: açlık grevinin taktik yasağı hemen kalkar, bina ve kuşatma nöbeti, dayanışma ziyareti, tahliye sayımı, gece ışığı, sızma rolü, şafak nöbet listesi ve süren taktik düşer. Genel grev, yol kapatma ve vergi itaatsizliğinde kişi listesinden çıkılır; ödenen bedel ve hamlenin süresi durur, kesinti ise yazılan kimse kalmayınca kesilir. Eylem katılımı ve sahadaki görev zaten olan ayrılma kurallarını kullanır. Ayrılmak parayı iade etmez. Aynı yere dönmek için kısa bir bekleme vardır. Şema `20261109240000_halk_katilim_ayril.sql`.
+
+## 5.0 · Sokağın Faturası (13.11.2026)
+
+Eylemin büyüklüğü ve süresi ekonomiye zarar verir; hükümet ne kadar hızlı söndürürse zarar o kadar az olur.
+
+- **Kayıp (5 dakikada bir):** ilin ülke ekonomisindeki payı (TÜİK nüfus × kişi başı GSYH) × eylem biçiminin kayıp oranı × eylemin gücü (seviye ve gerçek katılımcı) × süre çarpanı × hükümet tepki çarpanı × önlem çarpanları; kırmızıda ×1,25. Saatlik kayıp ilin üretiminin %35'ini geçemez.
+- **Süre çarpanı:** ilk saatlerde ×0,25 → 12. saatte ×0,97 → 24. saatte ×1,21 → 48. saatte ×1,69 → 72. saatte ×2,17 → en çok ×2,4.
+- **Tepki çarpanı:** ilk somut hükümet adımı 1 saatte ×0,70, 3 saatte ×0,85, 8 saatte ×0,95; hiç adım yoksa 3. saatten sonra her saat +%2 (en çok ×1,30).
+- **Zararın gittiği yer:** kaybın %30'u Hazine'den (kalem `toplumsal_olay`); büyüme, enflasyon (lojistik ağırlıklı), memnuniyet ve 48 saati geçen kepenk/genel grevde işsizlik (günlük tavan: büyüme −1,5, enflasyon +0,6, memnuniyet −4, işsizlik +0,3); eylem ilindeki şirketlerin satışı (saatlik tahsil, şirket hareketlerinde görünür; banka/medya muaf; saatte kasanın en çok %2'si); belediye kasası; borsa risk primi (en çok %12).
+- **Artçı etki:** eylem bitince süresinin dörtte biri kadar (0,5–24 saat) azalan kayıp sürer.
+- **Eylem biçimleri:** Tencere-tava (her akşam 21.00'de +4 güç) · Meydan mitingi · Yürüyüş · Çadır kenti (zarar ve güç zamanla büyür) · Kepenk kapatma (şirket sahipleri kepenk indirir) · Traktör/TIR konvoyu (lojistik ve enflasyon) · Genel grev. Basamak basamak tırmanılır, 4 saatte bir; kepenk/konvoy için eylem 6 saatlik, genel grev için 12 saatlik olmalı; katılım şartın altına düşerse biçim mitinge döner.
+- **Hükümet araçları:** Kriz Koordinasyon Merkezi, Asgari hizmet genelgesi, Alternatif lojistik koridoru, Esnafa zarar tazmini (%60), Piyasa istikrar paketi (Varlık Fonu), Grev erteleme kararı (yalnız CB, 6356 s. Kanun m.63), Maliyet faturası (sempatiye göre −6 ya da ters teper +4).
+- **Eylemci:** biçim seçimi (düzenleyen), kepenk indir/aç (şirket sahibi), "Faturayı hükümete kes".
+- **Kapanış:** Ekonomik etki raporu + kriz karnesi (A–F; süre, ilk tepki, toplam zarar, uzlaşma bonusu).
+- **Ayarlar (Süper Yönetici, `oyun.tarife`):** `halk_bedel_aktif`, `halk_bedel_carpan`, `halk_bedel_sirket_carpan`, `halk_bedel_vergi_orani`, `halk_piyasa_destek`.

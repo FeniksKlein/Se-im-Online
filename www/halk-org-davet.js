@@ -1906,6 +1906,7 @@ function anaHTML(M){
   '<div class="'+(kirmiziKisi>=15?'tehlike':'')+'"><strong>'+kirmiziKisi+'</strong><span>Kırmızı meydanlardaki kişi (en az 15)</span></div>'+
   '<div class="'+(kriz.kirmizi_baslangic?'tehlike':'')+'"><strong>'+(kriz.kirmizi_baslangic?geri(new Date(Date.parse(kriz.kirmizi_baslangic)+72*3600e3).toISOString()):'—')+'</strong><span>'+(kriz.kirmizi_baslangic?'Erken seçime kalan':'Kriz sayacı kapalı')+'</span></div></div>'+
   (serit.length?'<div class="hh4-serit"><b>SON DAKİKA</b><span>'+serit.map(esc).join('  •  ')+'</span></div>':'')+'</div>';
+ h+='<div data-hh5-ozet></div>';
  const bek=ak.reduce((t,e)=>t+((S.parca&&S.parca.eylem[e.id]&&S.parca.eylem[e.id].bant.length)||0),0);
  if(bek||(S.parca&&S.parca.davet))h+='<div class="hh4-bas"><h3>🔔 Sana bekleyenler</h3><small>'+(bek+(S.parca&&S.parca.davet?1:0))+' iş</small></div><div class="hh4-gelen">'+
   ak.filter(e=>S.parca&&S.parca.eylem[e.id]&&S.parca.eylem[e.id].bant.length).map(e=>'<button type="button" class="hh4-is acil" data-hh4-ac="'+e.id+'"><i>⚡</i><span><b>'+esc(e.x.il)+' meydanında '+S.parca.eylem[e.id].bant.length+' yanıt bekleyen iş</b><small>Gizli teklifler, oylamalar ve çağrılar eylem ekranının en üstünde.</small></span></button>').join('')+
@@ -1946,7 +1947,7 @@ function haritaHTML(har){
 }
 
 /* ── eylem ekranı ── */
-const SEKMELER=[['akis','📡 Akış'],['sohbet','💬 Sohbet'],['hamle','✊ Hamleler'],['devlet','🏛️ Devlet'],['kurum','🎙️ Kurumlar'],['guc','📊 Güç']];
+const SEKMELER=[['akis','📡 Akış'],['sohbet','💬 Sohbet'],['hamle','✊ Hamleler'],['devlet','🏛️ Devlet'],['bedel','💸 Fatura'],['kurum','🎙️ Kurumlar'],['guc','📊 Güç']];
 function eylemHTML(E){
  const x=E.x,sa=E.sa||{},dk=sa.dokum||{},dg=E.dg||{},em=E.em||{},hz=em.hazine||{};
  const cub=(ad,v,renk,yaz)=>'<div class="hh4-cubuk">'+ad+' <b style="color:#fff">'+yaz+'</b><div><i style="width:'+Math.max(0,Math.min(100,Number(v)||0))+'%;background:'+renk+'"></i></div></div>';
@@ -1985,6 +1986,7 @@ function eylemHTML(E){
   (E.katilimci?'<p class="m">Sahadaki rolün, büyük hamleler ve katılımların. Her kartta bedel ve koşul yazar; kilitli kartlar nedenini gösterir.</p>':'<p class="m">Katılmadan da etkileyebilirsin: kamuoyu nabzı, karşı tarafta yer almak, dayanışma ve destek.</p>')+
   '<div data-hh4-yuva="em-hamle"></div><div data-hh4-yuva="saha"></div><div class="hh4-grup"><h4>🤲 Destek, davet ve duyuru</h4></div><div data-hh4-yuva="destek"></div></div>';
  h+='<div data-hh4-sekme-ic="devlet"'+(S.sekme==='devlet'?'':' hidden')+'><p class="m">Hükümetin attığı adımlar, açık önlemler ve onlara verilebilecek karşılıklar. Araçları Cumhurbaşkanı, İçişleri Bakanı ve ilin valisi kullanır; kartlarda bedel ve risk yazar.</p><div data-hh4-yuva="em-devlet"></div><div data-hh4-yuva="devlet"></div><div data-hh4-yuva="devlet-akis"></div></div>';
+ h+='<div data-hh4-sekme-ic="bedel"'+(S.sekme==='bedel'?'':' hidden')+'><div data-hh5-bedel="'+E.id+'"><div class="hh4-bos">Eylemin ekonomik faturası yükleniyor…</div></div></div>';
  h+='<div data-hh4-sekme-ic="kurum"'+(S.sekme==='kurum'?'':' hidden')+'><p class="m">Basın, jüri, boykot, meşale ve rolüne açık diğer işler.</p><div data-hh4-yuva="kurum"></div></div>';
  h+='<div data-hh4-sekme-ic="guc"'+(S.sekme==='guc'?'':' hidden')+'>'+gucHTML(E)+'</div>';
  return h;
@@ -2129,6 +2131,7 @@ function gorunumCiz(){
  kok.innerHTML=E?eylemHTML(E):anaHTML(S.model);
  yerlestir(kok);
  bagla(kok);
+ try{if(window.__hh5&&window.__hh5.ciz)window.__hh5.ciz(kok,S,E);}catch(err){console.error('Halk Hareketleri faturası',err);}
  if(E){
   akisYukle(E.id);if(E.katilimci)sohbetYukle(E.id,true);
   if(S.sekme==='sohbet'){const k=kok.querySelector('[data-hh4-mesajlar]');if(k)k.scrollTop=k.scrollHeight;}
@@ -2298,3 +2301,363 @@ if(window.__hhSar)sokakHareketleriEkrani=window.__hhSar('meydan4',sokakHareketle
  },true);
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bagla,{once:true});
 })();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HALK HAREKETLERİ 5.0 · SOKAĞIN FATURASI (13.11.2026)
+   Eylemin büyüklüğü ve süresi ekonomiye, Hazine'ye, şirketlere ve belediyeye
+   zarar verir; hükümet ne kadar hızlı söndürürse zarar o kadar az olur.
+   · Ana ekran: "Sokağın faturası" kartı (bugünkü kayıp, canlı sayaç, piyasa
+     risk primi, eylem eylem fatura, son raporlar ve kriz karneleri).
+   · Eylem ekranı: 💸 Fatura sekmesi (canlı sayaç, hesap dökümü, süre çarpanı,
+     eylem biçimi merdiveni, kepenk, etkilenen şirketler, hükümet araçları,
+     kayıtlar, karne tahmini) ve başlıkta saatlik zarar şeridi.
+   Sunucu: supabase/migrations/20261113040000_halk_ekonomi_bedeli.sql
+   RPC: sokak_bedel_panel(p_eylem), sokak_bedel_ozet(), sokak_bedel_islem(p_eylem,p_islem,p_veri)
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+if(window.__hh5)return;
+const S5={panel:{},zaman:{},ozet:null,ozetZaman:0,yukleniyor:{},onay:null,taslak:''};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=(x,d)=>Number(x||0).toLocaleString('tr-TR',{maximumFractionDigits:d==null?1:d,minimumFractionDigits:0});
+const tl=x=>Math.round(Number(x||0)).toLocaleString('tr-TR')+' ₺';
+const milyar=x=>{x=Number(x||0);const a=Math.abs(x);if(a>=1)return num(x,2)+' milyar ₺';if(a>=0.001)return num(x*1000,1)+' milyon ₺';return tl(x*1e9);};
+const tarih=x=>x?new Date(x).toLocaleString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Istanbul'}):'—';
+const hata=ex=>(typeof hataCevir==='function'?hataCevir(ex&&ex.message||String(ex)):String(ex&&ex.message||ex));
+const bildir=(m,h)=>{try{toast(m,!!h);}catch(_){}};
+const yuzde=x=>{x=Number(x||1);const p=Math.round((x-1)*100);return p===0?'±0':(p>0?'+':'−')+Math.abs(p)+'%';};
+const KANAL={ticaret:'Ticaret',turizm:'Turizm',uretim:'Üretim',lojistik:'Lojistik',hizmet:'Hizmet'};
+const MUD={kriz_masasi:'🧭',asgari_hizmet:'🚑',lojistik_koridor:'🛣️',esnaf_destek:'🤝',piyasa_istikrar:'📈',piyasa_istikrar_not:'📈',grev_erteleme:'⚖️',fatura:'🧾',fatura_kes:'📢',kepenk:'🏪',kepenk_ac:'🔓'};
+const KARNE_RENK={A:'#46d39f',B:'#9fdc6a',C:'#ffd166',D:'#ff9b45',F:'#ff5d6c'};
+
+if(!document.getElementById('hh5-stil')){
+ const st=document.createElement('style');st.id='hh5-stil';
+ st.textContent=`
+#hh4 .hh5-kart{border-radius:20px;padding:15px 14px;background:linear-gradient(160deg,#2a1a12 0%,#1a1630 55%,#111a33 100%);border:1px solid #6b4a2a;margin:12px 0}
+#hh4 .hh5-kart.sakin{background:linear-gradient(160deg,#14283a,#111a33);border-color:#2f4f6e}
+#hh4 .hh5-ust{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+#hh4 .hh5-kicker{font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:#ffcf9a;font-weight:800}
+#hh4 .hh5-dev{font-size:28px;line-height:1.1;font-weight:850;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.4px;margin:4px 0 2px;overflow-wrap:anywhere}
+#hh4 .hh5-dev small{font-size:14px;font-weight:700;color:#ffcf9a}
+#hh4 .hh5-alt{font-size:13px;color:#d9ddf0;line-height:1.45}
+#hh4 .hh5-izgara{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+@media(min-width:620px){#hh4 .hh5-izgara{grid-template-columns:repeat(4,minmax(0,1fr))}}
+#hh4 .hh5-izgara div{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:9px 10px;min-width:0}
+#hh4 .hh5-izgara strong{display:block;font-size:16px;color:#fff;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+#hh4 .hh5-izgara span{display:block;font-size:12px;color:#aeb8d8;line-height:1.3}
+#hh4 .hh5-izgara .kotu strong{color:#ff9aa6}
+#hh4 .hh5-izgara .iyi strong{color:#8fe3c3}
+#hh4 .hh5-satir{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid rgba(255,255,255,.07);width:100%;background:none;border-left:0;border-right:0;border-bottom:0;color:inherit;text-align:left;min-height:48px}
+#hh4 .hh5-satir:first-child{border-top:0}
+#hh4 .hh5-satir i{font-style:normal;font-size:22px;flex:0 0 auto}
+#hh4 .hh5-satir .ad{flex:1;min-width:0}
+#hh4 .hh5-satir .ad b{display:block;color:#fff;font-size:14.5px}
+#hh4 .hh5-satir .ad small{display:block;color:#aeb8d8;font-size:12.5px;line-height:1.35}
+#hh4 .hh5-satir .sag{text-align:right;font-variant-numeric:tabular-nums;font-weight:800;color:#ffcf9a;font-size:13.5px;white-space:nowrap}
+#hh4 .hh5-not{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;font-weight:900;font-size:17px;color:#10131f;flex:0 0 auto}
+#hh4 .hh5-baslik{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:18px 2px 8px}
+#hh4 .hh5-baslik h3{font-size:13px;letter-spacing:1.4px;text-transform:uppercase;color:#c9d3f2;margin:0}
+#hh4 .hh5-baslik small{color:#a8b4d4;font-size:12px}
+#hh4 .hh5-panel{border-radius:18px;padding:13px;background:#111a33;border:1px solid #2b3a64;margin:10px 0}
+#hh4 .hh5-panel p{margin:6px 0;color:#d6ddf3;font-size:14px;line-height:1.45}
+#hh4 .hh5-carpan{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+@media(min-width:620px){#hh4 .hh5-carpan{grid-template-columns:repeat(3,minmax(0,1fr))}}
+#hh4 .hh5-carpan div{border-radius:13px;padding:8px 9px;background:#17223f;border:1px solid #2f3d6c;min-width:0}
+#hh4 .hh5-carpan b{display:block;font-size:16px;color:#fff;font-variant-numeric:tabular-nums}
+#hh4 .hh5-carpan span{display:block;font-size:12px;color:#aeb8d8;line-height:1.3}
+#hh4 .hh5-carpan .kotu{border-color:#8a3546;background:#2a1422}
+#hh4 .hh5-carpan .iyi{border-color:#2f8a6c;background:#132b26}
+#hh4 .hh5-sure{margin-top:10px}
+#hh4 .hh5-sure .bar{position:relative;height:12px;border-radius:99px;background:linear-gradient(90deg,#2f8a6c 0%,#ffd166 40%,#ff9b45 65%,#ff5d6c 100%);opacity:.9}
+#hh4 .hh5-sure .bar i{position:absolute;top:-4px;width:4px;height:20px;border-radius:3px;background:#fff;box-shadow:0 0 0 2px #0a1024}
+#hh4 .hh5-sure .olcek{display:flex;justify-content:space-between;font-size:11px;color:#a8b4d4;margin-top:4px}
+#hh4 .hh5-grafik{display:block;width:100%;height:70px;margin-top:8px}
+#hh4 .hh5-merdiven{display:grid;gap:7px}
+#hh4 .hh5-basamak{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border-radius:15px;padding:11px;border:1px solid #33416c;background:#17213f;color:#eef2ff;min-height:56px}
+#hh4 .hh5-basamak i{font-style:normal;font-size:24px;line-height:1;flex:0 0 auto}
+#hh4 .hh5-basamak .ic{flex:1;min-width:0}
+#hh4 .hh5-basamak b{display:block;color:#fff;font-size:14.5px}
+#hh4 .hh5-basamak small{display:block;color:#b8c3e4;font-size:12.5px;line-height:1.35;margin-top:2px}
+#hh4 .hh5-basamak .etiket{display:inline-block;margin-top:5px;font-size:11.5px;font-weight:800;border-radius:99px;padding:2px 8px;background:#243158;color:#dfe5fa}
+#hh4 .hh5-basamak.secili{border-color:#ffb46a;background:linear-gradient(135deg,#3a2414,#1a2140);box-shadow:0 0 0 1px rgba(255,180,106,.3)}
+#hh4 .hh5-basamak.kilitli{opacity:.6}
+#hh4 .hh5-basamak.tirman .etiket{background:#4a1d24;color:#ffd0d6}
+#hh4 .hh5-basamak.yumusat .etiket{background:#163e33;color:#d4fbea}
+#hh4 .hh5-araclar{display:grid;gap:8px}
+@media(min-width:720px){#hh4 .hh5-araclar{grid-template-columns:1fr 1fr}}
+#hh4 .hh5-arac{border-radius:16px;padding:12px;border:1px solid #33416c;background:linear-gradient(160deg,#152a50,#111c34);min-width:0}
+#hh4 .hh5-arac.kilitli{opacity:.62;background:#141c36}
+#hh4 .hh5-arac .bas{display:flex;gap:9px;align-items:flex-start}
+#hh4 .hh5-arac .bas i{font-style:normal;font-size:24px;line-height:1}
+#hh4 .hh5-arac .bas b{display:block;color:#fff;font-size:15px}
+#hh4 .hh5-arac .bas small{display:block;color:#9fb0dc;font-size:12px}
+#hh4 .hh5-arac p{font-size:13.5px!important;margin:8px 0!important}
+#hh4 .hh5-arac .bilgi{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+#hh4 .hh5-arac .bilgi span{font-size:11.5px;font-weight:750;border-radius:99px;padding:3px 9px;background:#202c52;border:1px solid #34436f;color:#dfe5fa}
+#hh4 .hh5-arac .neden{font-size:12.5px;color:#ffcf9a;margin-top:4px}
+#hh4 .hh5-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:46px;padding:10px 14px;border-radius:12px;border:1px solid #a493ff;background:linear-gradient(135deg,#7b62ff,#5b45e0);color:#fff;font-weight:800;font-size:15px;line-height:1.25;text-align:center;white-space:normal;margin-top:8px}
+#hh4 .hh5-btn.kirmizi{background:linear-gradient(135deg,#e2475a,#b02a45);border-color:#ff8b97}
+#hh4 .hh5-btn.yesil{background:linear-gradient(135deg,#1f9a72,#167357);border-color:#55d6a8}
+#hh4 .hh5-btn.hayalet{background:transparent;border-color:#3d4b78;color:#d5ddf5}
+#hh4 .hh5-btn:disabled{opacity:.5;cursor:not-allowed}
+#hh4 .hh5-onay{margin-top:8px;border-radius:13px;padding:10px;background:#0d152c;border:1px dashed #6b5bd6}
+#hh4 .hh5-onay label{display:block;font-size:15px;color:#e8ecff;margin:2px 0 6px;line-height:1.4}
+#hh4 .hh5-onay textarea{display:block;width:100%;min-width:0;box-sizing:border-box;min-height:84px;font-size:16px;line-height:1.4;color:#f3f5ff;background:#121b38;border:1px solid #3d4b78;border-radius:12px;padding:10px;color-scheme:dark;resize:vertical}
+#hh4 .hh5-onay textarea::placeholder{color:#93a0c8}
+#hh4 .hh5-onay .ikili{display:grid;grid-template-columns:1fr;gap:0}
+#hh4 .hh5-serit{display:flex;align-items:center;gap:10px;border-radius:14px;padding:10px 12px;background:linear-gradient(135deg,#3a2414,#22183a);border:1px solid #8f5f2e;color:#ffe9d2;font-size:13.5px;line-height:1.35;width:100%;text-align:left;min-height:48px}
+#hh4 .hh5-serit i{font-style:normal;font-size:20px}
+#hh4 .hh5-serit b{color:#fff;font-variant-numeric:tabular-nums}
+#hh4 .hh5-kayit{position:relative;padding:8px 10px;border-radius:12px;background:#111a33;border:1px solid #2b3a64;margin:0 0 7px;font-size:13.5px;color:#e6eafb;line-height:1.4}
+#hh4 .hh5-kayit small{display:block;color:#a8b4d4;font-size:11.5px;margin-bottom:2px}
+#hh4 .hh5-kayit.devlet{border-left:3px solid #6ea8ff}
+#hh4 .hh5-kayit.eylem{border-left:3px solid #ff9b45}
+#hh4 .hh5-etiket{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:3px 9px;font-size:12px;font-weight:750;background:#3a2414;border:1px solid #8f5f2e;color:#ffe2bf;white-space:nowrap}
+#hh4 .hh5-nasil p{font-size:13.5px!important}
+@media(prefers-reduced-motion:reduce){#hh4 .hh5-dev{transition:none}}
+`;
+ document.head.appendChild(st);
+}
+
+/* ── veri ── */
+async function rpc(fn,args){return API.rpc(fn,args||{});}
+async function panelGetir(id,zorla){
+ id=Number(id);
+ if(!zorla&&S5.panel[id]&&Date.now()-(S5.zaman[id]||0)<20000)return S5.panel[id];
+ if(S5.yukleniyor[id])return S5.yukleniyor[id];
+ S5.yukleniyor[id]=rpc('sokak_bedel_panel',{p_eylem:id}).then(p=>{S5.panel[id]=p;S5.zaman[id]=Date.now();return p;}).catch(()=>null).finally(()=>{S5.yukleniyor[id]=null;});
+ return S5.yukleniyor[id];
+}
+async function ozetGetir(zorla){
+ if(!zorla&&S5.ozet&&Date.now()-S5.ozetZaman<30000)return S5.ozet;
+ try{S5.ozet=await rpc('sokak_bedel_ozet');S5.ozetZaman=Date.now();}catch(_){}
+ return S5.ozet;
+}
+
+/* ── canlı sayaç: sunucunun son değeri + saniyelik hız ── */
+function sayac(bazMilyar,saniyeTl,son,cls){
+ return '<span class="'+(cls||'')+'" data-hh5-sayac data-baz="'+(Number(bazMilyar||0)*1e9)+'" data-hiz="'+Number(saniyeTl||0)+'" data-son="'+esc(son||'')+'">'+tl(Number(bazMilyar||0)*1e9)+'</span>';
+}
+setInterval(()=>{
+ document.querySelectorAll('#hh4 [data-hh5-sayac]').forEach(s=>{
+  const baz=Number(s.dataset.baz||0),hiz=Number(s.dataset.hiz||0),son=Date.parse(s.dataset.son||'');
+  const gecen=son?Math.max(0,Math.min(900,(Date.now()-son)/1000)):0;
+  s.textContent=tl(baz+hiz*gecen);
+ });
+},1000);
+
+function grafik(seri){
+ const v=(seri||[]).map(x=>Number(x.gsyh||0));
+ if(v.length<2)return '';
+ const w=320,h=70,mx=Math.max(...v,1e-9);
+ const pts=v.map((y,i)=>[(i/(v.length-1))*w,h-4-(y/mx)*(h-12)]);
+ const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+ return '<svg class="hh5-grafik" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" role="img" aria-label="Saatlik üretim kaybı"><defs><linearGradient id="hh5g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ff9b45" stop-opacity=".55"/><stop offset="1" stop-color="#ff9b45" stop-opacity="0"/></linearGradient></defs>'+
+  '<path d="'+d+' L'+w+' '+h+' L0 '+h+' Z" fill="url(#hh5g)"/><path d="'+d+'" fill="none" stroke="#ffb46a" stroke-width="2.2" stroke-linejoin="round"/></svg>';
+}
+
+/* ── ana ekran kartı ── */
+function ozetHTML(O){
+ if(!O)return '';
+ const b=O.bugun||{},ak=(O.aktif||[]),rp=(O.raporlar||[]);
+ const hiz=Number(O.saatlik||0)*1e9/3600;
+ const sakin=!ak.length;
+ let h='<div class="hh5-kart'+(sakin?' sakin':'')+'"><div class="hh5-ust"><div style="min-width:0"><div class="hh5-kicker">💸 Sokağın faturası · bugün</div>'+
+  '<div class="hh5-dev">'+sayac(b.gsyh,hiz,O.simdi)+'</div>'+
+  '<div class="hh5-alt">'+(sakin?'Şu an ekonomiye zarar veren bir eylem yok.':'Eylemlerin durdurduğu üretim · şu an saatte <b>'+esc(milyar(O.saatlik))+'</b> artıyor')+'</div></div></div>'+
+  '<div class="hh5-izgara">'+
+   '<div class="kotu"><strong>'+esc(milyar(b.hazine))+'</strong><span>Hazine\'nin vergi kaybı</span></div>'+
+   '<div class="kotu"><strong>'+esc(tl(b.sirket))+'</strong><span>Şirketlerin satış kaybı</span></div>'+
+   '<div class="kotu"><strong>−'+num(b.buyume,2)+'</strong><span>Büyümeye etkisi (puan)</span></div>'+
+   '<div class="kotu"><strong>%'+num(O.piyasa_riski,1)+'</strong><span>Borsa risk primi</span></div>'+
+  '</div>';
+ if(ak.length)h+='<div style="margin-top:10px">'+ak.map(a=>'<button type="button" class="hh5-satir" data-hh4-ac="'+Number(a.eylem_id)+'"><i>'+esc(a.ikon||'📣')+'</i><span class="ad"><b>'+esc(a.il)+' · '+esc(a.bicim_ad)+(a.artci?' <span class="hh5-etiket">artçı etki</span>':'')+'</b><small>Toplam '+esc(milyar(a.toplam_gsyh))+' · süre çarpanı ×'+num(a.sure_carpani,2)+'</small></span><span class="sag">'+esc(milyar(a.saatlik_gsyh))+'/sa</span></button>').join('')+'</div>';
+ if((O.onlemler||[]).length)h+='<div class="hh5-alt" style="margin-top:8px">'+O.onlemler.map(m=>'📈 '+esc(m.unvan||'Hükümet')+' piyasa istikrar paketi yürürlükte · '+esc(tarih(m.bitis))+'\'e kadar').join('<br>')+'</div>';
+ h+='</div>';
+ if(rp.length){
+  h+='<details class="hh4-ac"><summary>📊 Ekonomik etki raporları ve kriz karneleri</summary><div class="ic">'+rp.map(r=>{const R=r.rapor||{};
+   return '<div class="hh5-satir"><span class="hh5-not" style="background:'+(KARNE_RENK[r.karne]||'#ccc')+'">'+esc(r.karne||'?')+'</span><span class="ad"><b>'+esc(r.il)+' #'+Number(r.eylem_id)+' · '+num(R.sure_saat,1)+' saat</b><small>Üretim '+esc(milyar(R.gsyh))+' · Hazine '+esc(milyar(R.hazine))+' · şirketler '+esc(tl(R.sirket))+(Number(R.tazmin)>0?' · tazmin '+esc(tl(R.tazmin)):'')+' · '+esc(tarih(r.kapandi))+'</small></span><span class="sag">'+Number(r.puan||0)+'/100</span></div>';}).join('')+
+   '<p class="m">Karne; eylemin süresine, hükümetin ilk somut adımına kadar geçen zamana, toplam zarara ve eylemin nasıl bittiğine göre verilir. Uzlaşmayla biten eylem +10 alır.</p></div></details>';
+ }
+ return h;
+}
+
+/* ── eylem ekranı: Fatura sekmesi ── */
+function carpanKutu(ad,deger,aciklama,durum){
+ return '<div class="'+(durum||'')+'"><b>'+deger+'</b><span>'+ad+(aciklama?' · '+aciklama:'')+'</span></div>';
+}
+function bedelHTML(P){
+ if(!P)return '<div class="hh4-bos">Fatura bilgisi alınamadı. Biraz sonra yeniden dene.</div>';
+ if(P.veri===false)return '<div class="hh4-bos">Bu eylem ekonomik fatura sistemi başlamadan bitti.</div>';
+ const C=P.canli||{},T=P.toplam||{},B=P.bicim||{},rol=P.rol||{},aktif=P.durum==='aktif';
+ const hiz=Number(C.saniye_tl||0);
+ let h='';
+ // canlı fatura
+ h+='<div class="hh5-kart"><div class="hh5-kicker">'+esc(B.ikon||'📣')+' '+esc(B.ad||'Eylem')+' · '+esc(P.il)+' ekonomisinin %'+num(Number(C.il_pay||0)*100,1)+'\'i</div>'+
+  '<div class="hh5-dev">'+sayac(T.gsyh,aktif?hiz:0,C.son)+'</div>'+
+  '<div class="hh5-alt">Bu eylemin durdurduğu üretim'+(aktif?' · saatte <b>'+esc(milyar(C.saatlik_gsyh))+'</b> büyüyor':'')+'</div>'+
+  '<div class="hh5-izgara">'+
+   '<div class="kotu"><strong>'+esc(milyar(T.hazine))+'</strong><span>Hazine\'nin vergi kaybı</span></div>'+
+   '<div class="kotu"><strong>'+esc(tl(T.sirket))+'</strong><span>'+Number(P.etkilenen_sirket||0)+' şirketin satış kaybı</span></div>'+
+   '<div class="kotu"><strong>'+esc(tl(T.belediye))+'</strong><span>Belediye gelir kaybı</span></div>'+
+   '<div class="'+(Number(T.tazmin)>0?'iyi':'')+'"><strong>'+esc(tl(T.tazmin))+'</strong><span>Devletin ödediği tazminat</span></div>'+
+  '</div>'+grafik(P.seri)+'</div>';
+ // rapor
+ if(P.rapor){const R=P.rapor;
+  h+='<div class="hh5-panel"><div class="hh5-satir"><span class="hh5-not" style="background:'+(KARNE_RENK[P.karne]||'#ccc')+'">'+esc(P.karne)+'</span><span class="ad"><b>Ekonomik etki raporu · kriz karnesi '+Number(P.puan||0)+'/100</b><small>'+num(R.sure_saat,1)+' saat sürdü · ilk hükümet adımı '+(R.ilk_tepki_dk==null?'hiç atılmadı':num(R.ilk_tepki_dk,0)+' dk sonra')+' · ülkenin günlük üretiminin %'+num(R.gsyh_oran,2)+'\'i · piyasaların toparlanması ~'+num(R.artci_saat,1)+' saat</small></span></div></div>';
+ }
+ // neden bu kadar
+ const sc=Number(C.sure_carpani||1),tk=Number(C.tepki_carpani||1),mg=Number(C.onlem_carpani||1);
+ h+='<div class="hh5-baslik"><h3>🧮 Fatura nasıl hesaplanıyor?</h3><small>5 dakikada bir</small></div><div class="hh5-panel"><div class="hh5-carpan">'+
+  carpanKutu('Biçim kayıp oranı','%'+num(Number(C.katsayi||0)*100,1),'ildeki üretimin')+
+  carpanKutu('Eylemin gücü',num(Number(C.yogunluk||0)*100,0)+'/100',Number(C.katilimci||0)+' gerçek katılımcı')+
+  carpanKutu('Süre çarpanı','×'+num(sc,2),num(C.saat,1)+'. saat',sc>=1.3?'kotu':sc<0.8?'iyi':'')+
+  carpanKutu('Hükümet tepkisi','×'+num(tk,2),C.ilk_tepki_dk!=null?'ilk adım '+num(C.ilk_tepki_dk,0)+' dk':'henüz adım yok',tk<1?'iyi':tk>1?'kotu':'')+
+  carpanKutu('Önlemler','×'+num(mg,2),yuzde(mg)+' zarar',mg<1?'iyi':'')+
+  carpanKutu('Kırmızı seviye',C.kirmizi?'×1,25':'×1',C.kirmizi?'panik primi':'yok',C.kirmizi?'kotu':'')+
+ '</div>';
+ const konum=Math.max(0,Math.min(100,(sc-0.25)/(2.4-0.25)*100));
+ h+='<div class="hh5-sure"><div class="bar"><i style="left:calc('+konum.toFixed(1)+'% - 2px)"></i></div><div class="olcek"><span>×0,25 ilk saatler</span><span>×1 · 12 sa</span><span>×2,4 · 3,5 gün</span></div></div>';
+ if(aktif&&C.sonraki)h+='<p><b>⏱️ '+num(C.sonraki.saat,1)+' saat içinde söndürülmezse</b> süre çarpanı ×'+num(C.sonraki.carpan,2)+'\'ye çıkar. Eylem uzadıkça zarar katlanır; erken söndürülen eylem az iz bırakır.</p>';
+ if(aktif&&C.ilk_tepki_dk==null)h+='<p style="color:#ffb3bd"><b>🔕 Hükümet henüz somut bir adım atmadı.</b> 3 saatten sonra her sessiz saat zararı %2 büyütür (en çok %30).</p>';
+ if(P.karne_tahmin&&aktif)h+='<p>Şimdi bitse hükümetin kriz karnesi: <span class="hh5-not" style="width:auto;height:auto;padding:1px 8px;font-size:14px;background:'+(KARNE_RENK[P.karne_tahmin.harf]||'#ccc')+'">'+esc(P.karne_tahmin.harf)+'</span> '+Number(P.karne_tahmin.puan||0)+'/100</p>';
+ h+='</div>';
+
+ // biçim merdiveni
+ h+='<div class="hh5-baslik"><h3>🪜 Eylem biçimi</h3><small>'+(rol.org?'Düzenleyen olarak seçebilirsin':'Düzenleyen seçer')+'</small></div><div class="hh5-merdiven">';
+ (P.bicimler||[]).forEach(c=>{
+  const kilitli=!c.secili&&!c.uygun;
+  const anahtar='bicim:'+c.kod;
+  h+='<div><button type="button" class="hh5-basamak '+(c.secili?'secili':'')+(kilitli?' kilitli':'')+' '+esc(c.yon||'')+'" '+(c.uygun?'data-hh5-onayac="'+esc(anahtar)+'"':'disabled')+'>'+
+   '<i>'+esc(c.ikon)+'</i><span class="ic"><b>'+esc(c.ad)+(c.secili?' · şu an':'')+'</b><small>'+esc(c.aciklama)+'</small>'+
+   '<span class="etiket">'+(c.secili?'Yürürlükte':c.yon==='tirman'?'Tırmandır':c.yon==='yumusat'?'Yumuşat':'Geç')+' · kayıp %'+num(Number(c.k_gsyh)*100,1)+' · en az '+Number(c.min_kisi)+' kişi'+(Number(c.bedel)>0?' · '+esc(tl(c.bedel)):'')+(Number(c.guc)>0?' · güç +'+num(c.guc,0):'')+'</span>'+
+   (c.neden&&!c.secili&&rol.org?'<small style="color:#ffcf9a">'+esc(c.neden)+'</small>':'')+'</span></button>';
+  if(S5.onay===anahtar)h+=onayHTML(anahtar,(c.yon==='tirman'?'Eylemi "'+c.ad+'" biçimine tırmandır':'Eylemi "'+c.ad+'" biçimine çek')+(Number(c.bedel)>0?' · bedel '+tl(c.bedel)+' (eylemi düzenleyen kuruluşun kasasından)':'')+'. '+(c.gercek||''),'bicim',{kod:c.kod},false);
+  h+='</div>';
+ });
+ h+='</div>';
+ if(B.karsi)h+='<p class="m" style="margin:8px 2px">🛡️ Bu biçime karşı: '+esc(B.karsi)+'</p>';
+
+ // kepenk
+ const benim=(P.benim_sirketlerim||[]).filter(s=>s.kanal);
+ if(benim.length&&aktif){
+  const kepAcik=B.kod==='kepenk'||B.kod==='genel_grev';
+  h+='<div class="hh5-baslik"><h3>🏪 Şirketlerin ve bu eylem</h3><small>'+esc(P.il)+'\'daki işletmelerin</small></div><div class="hh5-panel">'+
+   (kepAcik?'<p>Kepenk indiren her şirket meydanın gücüne katkı yapar ama o ildeki satışlarını tamamen kaybeder. İstediğin an yeniden açabilirsin.</p>':'<p>Eylem "Kepenk kapatma" ya da "Genel grev" biçimine geçerse işletmelerinle kepenk indirebilirsin.</p>')+
+   benim.map(s=>{const k='kepenk:'+s.id;
+    let x='<div class="hh5-satir"><i>'+(s.kepenk?'🔒':'🏪')+'</i><span class="ad"><b>'+esc(s.ad)+'</b><small>'+esc(KANAL[s.kanal]||s.kanal)+' · bu eylemde kayıp '+esc(tl(s.kayip))+(Number(s.tazmin)>0?' · tazmin '+esc(tl(s.tazmin)):'')+'</small></span></div>';
+    if(kepAcik)x+=(s.kepenk?'<button type="button" class="hh5-btn yesil" data-hh5-islem="kepenk_ac" data-hh5-veri="'+esc(JSON.stringify({sirket:s.id}))+'">🔓 Kepengi aç, satışa dön</button>':
+     (S5.onay===k?onayHTML(k,esc(s.ad)+' '+esc(P.il)+'\'daki işletmelerini kapatacak; eylem sürdükçe oradaki satışların durur.','kepenk',{sirket:s.id},false):'<button type="button" class="hh5-btn kirmizi" data-hh5-onayac="'+esc(k)+'">🏪 Kepenk indir</button>'));
+    return x;}).join('')+'</div>';
+ }
+
+ // etkilenen şirketler
+ if((P.sirketler||[]).length){
+  h+='<details class="hh4-ac"><summary>🏬 Etkilenen şirketler · '+Number(P.etkilenen_sirket||0)+'</summary><div class="ic">'+P.sirketler.map(s=>
+   '<div class="hh5-satir"><i>'+(s.kepenk?'🔒':'🏬')+'</i><span class="ad"><b>'+esc(s.ad)+'</b><small>'+esc(KANAL[s.kanal]||'Muaf')+(s.kepenk?' · kepenk indirdi':'')+(Number(s.tazmin)>0?' · tazmin '+esc(tl(s.tazmin)):'')+'</small></span><span class="sag">'+esc(tl(s.kayip))+'</span></div>').join('')+
+   '<p class="m">Satış kaybı saatte bir şirket kasasından düşer ve şirket hareketlerinde "Halk Hareketleri … satış kaybı" diye görünür. Bankalar ve medya şirketleri etkilenmez.</p></div></details>';
+ }
+
+ // hükümet araçları
+ const arac=(P.araclar||[]);
+ h+='<div class="hh5-baslik"><h3>🏛️ Hükümetin ekonomik önlemleri</h3><small>'+(rol.devlet?esc(rol.unvan||'Yetkilisin'):'Yetkililer kullanır')+'</small></div>';
+ h+='<p class="m" style="margin:0 2px 8px">Polis, yasak ve uzlaşma gibi araçlar 🏛️ Devlet sekmesinde. Buradakiler eylemin ekonomiye verdiği zararı sınırlar; her biri hükümetin "ilk adımı" sayılır.</p><div class="hh5-araclar">';
+ const sirali=arac.slice().sort((a,b)=>(b.uygun?1:0)-(a.uygun?1:0));
+ sirali.forEach(a=>{
+  const k='arac:'+a.kod;
+  h+='<div class="hh5-arac'+(a.uygun?'':' kilitli')+'"><div class="bas"><i>'+esc(a.ikon)+'</i><span><b>'+esc(a.ad)+'</b><small>'+esc(a.kim)+'</small></span></div>'+
+   '<p>'+esc(a.aciklama)+'</p><div class="bilgi"><span>💰 '+esc(a.bedel)+'</span><span>⏳ '+esc(a.sinir)+'</span>'+(a.kullanildi?'<span>Son: '+esc(tarih(a.kullanildi))+'</span>':'')+'</div>'+
+   (a.neden&&rol.devlet?'<div class="neden">'+esc(a.neden)+'</div>':'')+
+   (a.uygun?(S5.onay===k?onayHTML(k,esc(a.ad)+' — onaylıyor musun?',a.kod,{},a.kod==='grev_erteleme'):'<button type="button" class="hh5-btn'+(a.kod==='grev_erteleme'?' kirmizi':'')+'" data-hh5-onayac="'+esc(k)+'">'+esc(a.ikon)+' Uygula</button>'):'')+
+  '</div>';
+ });
+ h+='</div>';
+
+ // eylemci: faturayı kes
+ if(rol.org&&aktif){
+  const E2=P.eylemci||{};
+  h+='<div class="hh5-panel"><b>📢 Faturayı hükümete kes</b><p>Ekonominin kaybını kamuoyuna duyur: hükümet hiç adım atmadıysa meydana 6 saat +5, attıysa +2 güç (ivmeye göre azalabilir). 12 saatte bir.</p>'+
+   (E2.fatura_kes?(S5.onay==='fatura_kes'?onayHTML('fatura_kes','Meydanın adına faturayı açıkla.','fatura_kes',{},false):'<button type="button" class="hh5-btn" data-hh5-onayac="fatura_kes">📢 Faturayı açıkla</button>'):'<p class="m">'+esc(E2.fatura_neden||'Şu an kullanılamaz')+'</p>')+'</div>';
+ }
+
+ // kayıtlar
+ const md=(P.mudahaleler||[]);
+ if(md.length){
+  h+='<details class="hh4-ac" open><summary>📜 Ekonomik kayıtlar · '+md.length+'</summary><div class="ic">'+md.map(m=>
+   '<div class="hh5-kayit '+(m.taraf==='eylem'?'eylem':'devlet')+'"><small>'+(MUD[m.tur]||(String(m.tur).indexOf('bicim:')===0?'🪜':'•'))+' '+esc(m.unvan||'')+(m.kim?' · '+esc(m.kim):'')+' · '+esc(tarih(m.zaman))+(m.aktif&&m.bitis!==m.zaman?' · '+esc(tarih(m.bitis))+'\'e kadar':'')+'</small>'+esc(m.metin||'')+'</div>').join('')+'</div></details>';
+ }
+ h+='<details class="hh4-ac hh5-nasil"><summary>❔ Sokağın faturası nasıl işler?</summary><div class="ic">'+
+  '<p>• Kayıp = ilin ülke ekonomisindeki payı × eylem biçiminin kayıp oranı × eylemin gücü × süre çarpanı × hükümet tepki çarpanı × önlemler. Kırmızı seviyedeki eylem ×1,25.</p>'+
+  '<p>• Süre çarpanı ilk saatlerde ×0,25\'tir, 12. saatte ×1\'e, 3,5 günde ×2,4\'e çıkar. Hızlı söndürülen eylem az zarar verir.</p>'+
+  '<p>• Hükümet ilk 1 saatte somut adım atarsa zarar %30, 3 saatte atarsa %15 azalır. Hiç adım atmazsa 3. saatten sonra her saat %2 büyür.</p>'+
+  '<p>• Kaybın %30\'u Hazine\'nin vergi kaybıdır. Büyüme, enflasyon, memnuniyet ve uzun genel grev/kepenkte işsizlik etkilenir (günlük tavanlı). Eylem ilindeki şirketlerin satışları ve belediye gelirleri düşer, borsa risk primi artar.</p>'+
+  '<p>• Eylem bitince piyasalar hemen toparlanmaz: eylem süresinin dörtte biri kadar (en çok 24 saat) azalan bir artçı etki sürer.</p></div></details>';
+ return h;
+}
+function onayHTML(anahtar,metin,islem,veri,gerekceli){
+ return '<div class="hh5-onay" data-hh5-onaykutu="'+esc(anahtar)+'"><label>'+metin+'</label>'+
+  (gerekceli?'<label for="hh5Gerekce">Gerekçe (genel sağlık veya millî güvenlik; en az 20 karakter)</label><textarea id="hh5Gerekce" maxlength="400" placeholder="Örn. Hastanelerde ve enerji tesislerinde hizmetin durması genel sağlığı tehdit ediyor.">'+esc(S5.taslak)+'</textarea>':'')+
+  '<div class="ikili"><button type="button" class="hh5-btn'+(islem==='grev_erteleme'||islem==='kepenk'?' kirmizi':'')+'" data-hh5-islem="'+esc(islem)+'" data-hh5-veri="'+esc(JSON.stringify(veri||{}))+'">Onayla</button>'+
+  '<button type="button" class="hh5-btn hayalet" data-hh5-vazgec="1">Vazgeç</button></div></div>';
+}
+
+/* ── bağlama ── */
+function baglaBedel(y,id){
+ y.querySelectorAll('[data-hh5-onayac]').forEach(b=>b.addEventListener('click',()=>{S5.onay=b.dataset.hh5Onayac;S5.taslak='';cizBedel(y,id);
+  const k=y.querySelector('[data-hh5-onaykutu]');if(k&&k.scrollIntoView)k.scrollIntoView({block:'nearest',behavior:'smooth'});}));
+ y.querySelectorAll('[data-hh5-vazgec]').forEach(b=>b.addEventListener('click',()=>{S5.onay=null;cizBedel(y,id);}));
+ const ta=y.querySelector('#hh5Gerekce');if(ta)ta.addEventListener('input',()=>{S5.taslak=ta.value;});
+ y.querySelectorAll('[data-hh5-islem]').forEach(b=>b.addEventListener('click',async()=>{
+  const islem=b.dataset.hh5Islem;let veri={};try{veri=JSON.parse(b.dataset.hh5Veri||'{}');}catch(_){}
+  if(islem==='grev_erteleme'){const g=(y.querySelector('#hh5Gerekce')||{}).value||'';veri.gerekce=g.trim();if(veri.gerekce.length<20){bildir('Gerekçe en az 20 karakter olmalı',true);return;}}
+  b.disabled=true;
+  try{const p=await API.rpc('sokak_bedel_islem',{p_eylem:Number(id),p_islem:islem,p_veri:veri});
+   S5.panel[id]=p;S5.zaman[id]=Date.now();S5.onay=null;S5.taslak='';S5.ozetZaman=0;bildir('İşlem uygulandı');cizBedel(y,id);
+   setTimeout(()=>{try{if(typeof sokakHareketleriEkrani==='function'&&(!window.SO_MESGUL||!window.SO_MESGUL()))sokakHareketleriEkrani();}catch(_){}},900);
+  }catch(ex){bildir(hata(ex),true);b.disabled=false;}
+ }));
+ y.querySelectorAll('[data-hh4-ac]').forEach(b=>b.addEventListener('click',()=>{const S=window.__hh4;if(!S)return;S.gorunum='eylem';S.eylem=Number(b.dataset.hh4Ac);S.sekme='bedel';sokakHareketleriEkrani();}));
+}
+function cizBedel(y,id){
+ const P=S5.panel[id];
+ y.innerHTML=bedelHTML(P);
+ baglaBedel(y,id);
+}
+function serit(kok,E,P){
+ const u=kok.querySelector('.hh4-uyarilar');if(!u||!P||P.veri===false||kok.querySelector('[data-hh5-serit]'))return;
+ const C=P.canli||{},T=P.toplam||{};if(!(Number(T.gsyh)>0||Number(C.saatlik_gsyh)>0))return;
+ const d=document.createElement('button');d.type='button';d.className='hh5-serit';d.setAttribute('data-hh5-serit','1');
+ d.innerHTML='<i>💸</i><span><b>'+esc(milyar(C.saatlik_gsyh))+'/saat</b> üretim kaybı · toplam <b>'+sayac(T.gsyh,P.durum==='aktif'?C.saniye_tl:0,C.son)+'</b> · süre çarpanı ×'+num(C.sure_carpani,2)+'<br><span style="color:#ffcf9a">Faturayı ve ekonomik önlemleri gör ›</span></span>';
+ d.addEventListener('click',()=>{const b=kok.querySelector('.hh4-sekmeler [data-hh4-sekme="bedel"]');if(b)b.click();});
+ u.insertBefore(d,u.firstChild);
+}
+function kartEtiket(kok,O){
+ if(!O)return;
+ (O.aktif||[]).forEach(a=>{
+  const k=kok.querySelector('.hh4-mkart[data-hh4-ac="'+Number(a.eylem_id)+'"] .alt');
+  if(!k||k.querySelector('[data-hh5-etiket]'))return;
+  const s=document.createElement('span');s.className='hh5-etiket';s.setAttribute('data-hh5-etiket','1');s.textContent=(a.ikon||'💸')+' '+milyar(a.saatlik_gsyh)+'/sa';
+  k.appendChild(s);
+ });
+}
+
+window.__hh5={
+ ciz(kok,S,E){
+  if(!kok)return;
+  if(!E){
+   const y=kok.querySelector('[data-hh5-ozet]');
+   const yaz=O=>{if(!y||!y.isConnected)return;y.innerHTML=ozetHTML(O);baglaBedel(y,0);kartEtiket(kok,O);};
+   if(S5.ozet)yaz(S5.ozet);
+   ozetGetir(false).then(yaz);
+   return;
+  }
+  const id=Number(E.id);
+  const y=kok.querySelector('[data-hh5-bedel="'+id+'"]');
+  const yaz=P=>{if(!P)return;if(y&&y.isConnected&&!y.querySelector('textarea:focus')){S5.panel[id]=P;cizBedel(y,id);}serit(kok,E,P);};
+  if(S5.panel[id])yaz(S5.panel[id]);
+  panelGetir(id,S.sekme==='bedel').then(yaz);
+ },
+ _durum:S5
+};
+})();
+/* Asset refresh: 20261113-1 (Halk Hareketleri 5.0 · Sokağın Faturası) */
