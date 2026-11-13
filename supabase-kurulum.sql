@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.13-2', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.13-3', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -70697,6 +70697,8 @@ declare
     'sokak_tedbir_ac', 'sokak_tedbir_hamle', 'sokak_tedbir_panel',
     -- 13.11.2026 Halk Hareketleri 5.0 · Sokağın Faturası (supabase/migrations/20261113040000_halk_ekonomi_bedeli.sql)
     'sokak_bedel_panel', 'sokak_bedel_ozet', 'sokak_bedel_islem',
+    -- 13.11.2026 Halk Hareketleri 5.1 · Masa (supabase/migrations/20261113090000_halk_masa_cagri_onarim.sql)
+    'sokak_masa_panel',
     'sokak_sohbet_oku', 'sokak_sohbet_yaz', 'sokak_meydan_islem', 'sokak_meydan_panel', 'sokak_kriz_harita', 'sokak_denetim_oku',
     'sokak_sert_islem', 'sokak_sert_panel',
     'sokak_eylem_merkezi', 'sokak_eylem_merkezi_islem',
