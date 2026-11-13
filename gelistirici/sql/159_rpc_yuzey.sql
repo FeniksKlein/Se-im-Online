@@ -203,6 +203,8 @@ declare
     'sokak_bedel_panel', 'sokak_bedel_ozet', 'sokak_bedel_islem',
     -- 13.11.2026 Halk Hareketleri 5.1 · Masa (supabase/migrations/20261113090000_halk_masa_cagri_onarim.sql)
     'sokak_masa_panel',
+    -- 13.11.2026 Oyuncu sohbet grupları (sql/200_sohbet_gruplari.sql)
+    'sohbet_grup_kur', 'sohbet_grup_detay', 'sohbet_grup_ad', 'sohbet_grup_uye_ekle', 'sohbet_grup_uye_cikar', 'sohbet_grup_ayril', 'sohbet_grup_kapat',
     'sokak_sohbet_oku', 'sokak_sohbet_yaz', 'sokak_meydan_islem', 'sokak_meydan_panel', 'sokak_kriz_harita', 'sokak_denetim_oku',
     'sokak_sert_islem', 'sokak_sert_panel',
     'sokak_eylem_merkezi', 'sokak_eylem_merkezi_islem',

@@ -67,6 +67,13 @@ Sohbet ekranı kanalları üç grupta gösterir. Her kanalda son mesaj, okunmam�
 | Devlet | **TBMM Genel Kurulu** | Vekiller, bakanlar ve cumhurbaşkanı konuşur, herkes izler |
 | | **Bakanlar Kurulu** | Yalnızca cumhurbaşkanı ve bakanlar |
 
+**Oyuncu sohbet grupları (13.11.2026):** Kanallar sekmesinin başında **Gruplarım** bölümü vardır. Her oyuncu WhatsApp grubu gibi kendi grubunu kurar ve adını koyar (2–40 karakter, küfür denetimi).
+- Grubu yalnızca **kuran kişi** yönetir: üye ekler, üye çıkarır, adını değiştirir, grubu kapatır. Kurucu gruptan ayrılamaz; grubu kapatabilir.
+- Grubun mesajlarını **yalnızca o anki üyeler** görür ve yazar; çıkarılan ya da ayrılan üye eski mesajları da göremez. Kapatılan grup herkes için kaybolur.
+- Üyeler istedikleri zaman ayrılabilir; geri dönmek için kurucunun yeniden eklemesi gerekir. Eklenen/çıkarılan oyuncuya bildirim gider.
+- Aralarında engelleme olan oyuncular aynı gruba eklenemez; oyundan uzaklaştırılmış oyuncu eklenemez. Gözaltındaki oyuncu grup kuramaz, yönetemez, gruba yazamaz.
+- Sınırlar: bir oyuncunun en fazla 10 açık grubu, günde en fazla 5 yeni grup; bir grupta en fazla 100 üye; bir oyuncu en fazla 50 gruba üye olabilir.
+
 **Özel mesaj:** İki oyuncu arasında.
 
 **Propaganda yayınları** alıcıların bildirim kutusuna düşer:

@@ -136,6 +136,7 @@
   function sohbetAnahtari(kod) {
     var p = typeof D !== "undefined" && D && D.durum && D.durum.profil;
     if (!p || !kod) return null;
+    if (/^og:\d+$/.test(kod)) return "sohbet:" + kod;
     if (kod === "genel" || kod === "meclis" || kod === "kabine" || kod === "divan") return "sohbet:" + kod;
     if ((kod === "il" || kod === "belediye") && p.il_id != null) return "sohbet:" + kod + ":" + p.il_id;
     if ((kod === "parti" || kod === "yonetim" || kod === "grup") && p.parti && p.parti.id != null) return "sohbet:" + kod + ":" + p.parti.id;

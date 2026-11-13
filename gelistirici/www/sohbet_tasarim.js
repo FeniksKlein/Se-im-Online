@@ -111,6 +111,10 @@
     saat: sv('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
     unlem: sv('<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.1"/>', ' stroke-width="2.2"'),
     asagi: sv('<path d="M6 9.5l6 6 6-6"/>', ' stroke-width="2.4"'),
+    bilgi: sv('<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.1"/>', ' stroke-width="2.1"'),
+    arti: sv('<path d="M12 5v14M5 12h14"/>', ' stroke-width="2.3"'),
+    cikis: sv('<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 16l-4-4 4-4M6 12h10"/>'),
+    kalem: sv('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>'),
     kilit: sv('<rect x="5" y="10.5" width="14" height="10" rx="2.6"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/>'),
     goz: sv('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
     kisiler: sv('<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 14.5c3 0 6 2 6 5.5"/>'),
@@ -207,7 +211,7 @@
     return h;
   }
   function kanalIkon(kod, boy) {
-    var k = KANAL_IK[kod] || ['#8f9bbd', I.mesaj], renk = k[0], ic = k[1];
+    var k = KANAL_IK[kod] || (ogMu(kod) ? [grupRenk(kod), I.kisiler] : ['#8f9bbd', I.mesaj]), renk = k[0], ic = k[1];
     var p = profil();
     if (kod === 'parti' && p && p.parti) {
       renk = /^#[0-9a-f]{6}$/i.test(p.parti.renk || '') ? p.parti.renk : renk;
@@ -287,8 +291,8 @@
   function kanalSatir(k, buyuk) {
     if (!k) return '';
     var kilit = !!k.kilit, yeni = kilit ? 0 : n(k.okunmamis), q = ST.ara.toLocaleLowerCase('tr-TR');
-    if (q && String(k.baslik || '').toLocaleLowerCase('tr-TR').indexOf(q) < 0 && String(KANAL_ALT[k.kanal] || '').toLocaleLowerCase('tr-TR').indexOf(q) < 0) return '';
-    var alt = kilit ? esc(k.kilit) : k.son ? '<b>' + esc(k.son.kad) + ':</b> ' + esc(k.son.metin) : esc(KANAL_ALT[k.kanal] || '');
+    if (q && String(k.baslik || '').toLocaleLowerCase('tr-TR').indexOf(q) < 0 && String(kanalAlt(k)).toLocaleLowerCase('tr-TR').indexOf(q) < 0) return '';
+    var alt = kilit ? esc(k.kilit) : k.son ? '<b>' + esc(k.son.kad) + ':</b> ' + esc(k.son.metin) : esc(kanalAlt(k));
     var cip = !kilit && k.cevrimici != null ? '<span class="sh-c-cev"><span class="sh-nokta"></span>' + k.cevrimici + ' çevrimiçi</span>' : '';
     var izle = !kilit && !k.yazabilir ? '<span class="sh-c-izle">' + I.goz + 'İzleyici</span>' : '';
     return '<button type="button" class="sh-c' + (kilit ? ' kilit' : '') + (yeni ? ' yeni' : '') + '" data-sh="' + (kilit ? 'kilit' : 'kanal') + '" data-kanal="' + esc(k.kanal) + '" data-kilit="' + esc(k.kilit || '') + '">' +
@@ -311,7 +315,7 @@
         '<span class="sh-meydan-alt">' + (g.son ? '<em>' + esc(g.son.kad) + ':</em> ' + esc(g.son.metin) : 'Bütün Türkiye burada konuşuyor. İlk sözü sen al.') + '</span>' +
         '<span class="sh-meydan-alt2"><span><span class="sh-nokta"></span>' + n(g.cevrimici != null ? g.cevrimici : oz.cevrimici) + ' oyuncu çevrimiçi</span><span class="sh-meydan-git">Meydana gir' + I.ok + '</span></span></button>';
     }
-    var gruplar = KANAL_GRUP.map(function (gr) {
+    var gruplar = grupBolum(oz, q) + KANAL_GRUP.map(function (gr) {
       var ic = gr[1].map(function (kod) { return kanalSatir(bul(kod)); }).join('');
       if (q && g && gr[0] === 'Herkese açık') ic = kanalSatir(g) + ic;
       return ic ? '<div class="sh-bas"><h3>' + gr[0] + '</h3></div><div class="sh-liste">' + ic + '</div>' : '';
@@ -433,6 +437,7 @@
       case 'araOyuncu': if (typeof oyuncuAramaAc === 'function') oyuncuAramaAc(); else yeniMesaj(); break;
       case 'araSil': var i = document.getElementById('shAra'); if (i) { i.value = ''; ST.ara = ''; el.hidden = true; govdeTazele(true); i.focus(); } break;
       case 'yenile': anaEkran(); break;
+      case 'yeniGrup': hafif(); yeniGrup(); break;
     }
   });
 
@@ -820,12 +825,13 @@
   async function kanalEkrani(kanal) {
     var oz = ST.oz && (ST.oz.kanallar || []).find(function (k) { return k.kanal === kanal; });
     var cevYaz = function (k) { return k && k.cevrimici != null ? '<span class="shk-d cevrimici"><span class="sh-nokta"></span>' + k.cevrimici + ' çevrimiçi</span><span class="shk-ayr">·</span><span class="shk-unv">' + esc(KANAL_ALT[kanal] || '') + '</span>' : '<span class="shk-unv">' + esc(KANAL_ALT[kanal] || '') + '</span>'; };
-    var R = RESMI[kanal] || null;
+    var R = RESMI[kanal] || null, OG = ogMu(kanal);
+    if (OG) cevYaz = function (k) { return (k && k.cevrimici != null ? '<span class="shk-d cevrimici"><span class="sh-nokta"></span>' + n(k.cevrimici) + ' çevrimiçi</span><span class="shk-ayr">·</span>' : '') + '<span class="shk-unv">' + esc(k && k.uye_sayisi ? k.uye_sayisi + ' üye · Özel grup' : 'Özel grup · Yalnız üyeler görür') + '</span>'; };
     if (R) cevYaz = function (k) { return '<span class="shk-unv">' + esc(R.gizlilik) + '</span>' + (k && k.cevrimici != null ? '<span class="shk-ayr">·</span><span class="shk-d cevrimici"><span class="sh-nokta"></span>' + k.cevrimici + ' üye hazır</span>' : ''); };
     var akis = kabuk({ ozel: false, baslik: esc((oz && oz.baslik) || (R && R.oturum) || 'Sohbet'), av: R ? '<span class="shr-arma" style="--ar:' + R.renk + '">' + ARMA + '</span>' : kanalIkon(kanal, 40), alt: cevYaz(oz),
-      sag: '<button type="button" class="shk-b" id="shkCev" aria-label="' + (R ? 'Hazır bulunan üyeler' : 'Çevrimiçi oyuncular') + '">' + I.kisiler + '</button>' });
+      sag: '<button type="button" class="shk-b" id="shkCev" aria-label="' + (OG ? 'Grup bilgisi ve üyeler' : R ? 'Hazır bulunan üyeler' : 'Çevrimiçi oyuncular') + '">' + (OG ? I.bilgi : I.kisiler) + '</button>' });
     var S = { ozel: false, kanal: kanal, liste: [], sonId: null, ilkId: null, bitti: false, bekleyen: 0, resmi: R };
-    if (!R) temaKur(kanal, oz);
+    if (!R && !OG) temaKur(kanal, oz);
     if (R) {
       var kok = $1('.shk-kanal'); if (kok) kok.classList.add('shk-resmi', 'shr-' + kanal);
       var ust = $1('.shk-ust'); if (ust) ust.insertAdjacentHTML('afterend', '<div class="shr-serit" style="--ar:' + R.renk + '"><span>' + esc(R.kurum) + '</span><b>' + esc(R.oturum) + '</b></div>');
@@ -842,6 +848,7 @@
       var r = await API.rpc('sohbet_oku', { p_kanal: kanal, p_once: null, p_sonra: null });
       if (!$1('.shk-kanal')) return;
       $1('#sbBaslik').textContent = r.baslik || (oz && oz.baslik) || 'Sohbet';
+      if (OG) grupTemaKur(kanal, r.baslik || (oz && oz.baslik) || 'Sohbet grubu');
       S.liste = r.mesajlar || [];
       if (S.liste.length) { S.sonId = S.liste[S.liste.length - 1].id; S.ilkId = S.liste[0].id; }
       if (S.liste.length < 40) S.bitti = true;
@@ -872,8 +879,8 @@
     } catch (err) {
       akis.innerHTML = '<div class="shm-bos"><p>' + esc(hataYaz(err)) + '</p></div>'; var yb = $1('#yazbar'); if (yb) yb.remove(); return;
     }
-    var cb = $1('#shkCev'); if (cb) cb.onclick = function () { if (typeof cevrimiciListeAc === 'function') cevrimiciListeAc(); };
-    var kb = $1('#shkKim'); if (kb) kb.onclick = function () { tst(R ? R.kurum + ' · ' + R.oturum + ' — ' + (KANAL_ALT[kanal] || '') : (KANAL_ALT[kanal] || 'Sohbet kanalı')); };
+    var cb = $1('#shkCev'); if (cb) cb.onclick = function () { if (OG) { hafif(); grupBilgi(kanal); return; } if (typeof cevrimiciListeAc === 'function') cevrimiciListeAc(); };
+    var kb = $1('#shkKim'); if (kb) kb.onclick = function () { if (OG) { hafif(); grupBilgi(kanal); return; } tst(R ? R.kurum + ' · ' + R.oturum + ' — ' + (KANAL_ALT[kanal] || '') : (KANAL_ALT[kanal] || 'Sohbet kanalı')); };
     var yukluyor = false;
     akis.addEventListener('scroll', async function () {
       if (akis.scrollTop > 60 || yukluyor || S.bitti || !S.ilkId) return;
@@ -940,7 +947,7 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', izleyiciKur); else izleyiciKur();
   }
   var ozelEkrani_ = ozelEkrani, kanalEkrani_ = kanalEkrani;
-  window.sohbetTasarim = { ana: anaEkran, ozel: ozelEkrani, kanal: kanalEkrani, yeni: yeniMesaj, emojiSayisi: emojiSayisi };
+  window.sohbetTasarim = { ana: anaEkran, ozel: ozelEkrani, kanal: kanalEkrani, yeni: yeniMesaj, emojiSayisi: emojiSayisi, yeniGrup: function () { return yeniGrup(); }, grupBilgi: function (k) { return grupBilgi(k); } };
 
   /* =====================================================================
      STİL
@@ -1242,6 +1249,269 @@
   ];
   var st = document.createElement('style'); st.id = 'sohbetTasarimStil'; st.textContent = css.join('\n');
   (document.head || document.documentElement).appendChild(st);
+
+  /* =====================================================================
+     OYUNCU SOHBET GRUPLARI (13.11.2026)
+     Kanallar › "Gruplarım": oyuncunun kurduğu ya da eklendiği özel gruplar.
+     Kanal kodu 'og:<id>'; okuma/yazma/tepki/canlı sinyal mevcut kanal hattıyla.
+     Sunucu: sohbet_grup_kur / _detay / _ad / _uye_ekle / _uye_cikar / _ayril / _kapat.
+     Yetki sunucuda doğrulanır; düğmelerin görünmesi yalnız kolaylık içindir.
+     ===================================================================== */
+  var GRUP_RENK = ['#2fc7a1', '#ff8a3d', '#4f8cff', '#e65bb0', '#9b7bff', '#f2b630', '#38bfe6', '#ff6464', '#7fcf4d', '#c77dff'];
+  function ogMu(kod) { return /^og:\d+$/.test(String(kod || '')); }
+  function ogId(kod) { return ogMu(kod) ? Number(String(kod).slice(3)) : null; }
+  function grupRenk(kod) { var i = n(ogId(kod)); return GRUP_RENK[Math.abs(i * 7 + 3) % GRUP_RENK.length]; }
+  function kanalAlt(k) {
+    if (k && k.ozgrup) return (n(k.uye_sayisi) || 1) + ' üye' + (k.kurucu ? ' · Grubun kurucususun' : ' · Özel grup');
+    return (k && KANAL_ALT[k.kanal]) || '';
+  }
+  function gruplarim(oz) {
+    return ((oz && oz.kanallar) || []).filter(function (k) { return k && k.ozgrup; }).sort(function (a, b) {
+      var x = a.son ? new Date(a.son.zaman).getTime() : new Date(a.olusturma || 0).getTime();
+      var y = b.son ? new Date(b.son.zaman).getTime() : new Date(b.olusturma || 0).getTime();
+      return y - x;
+    });
+  }
+  function grupBolum(oz, q) {
+    var gs = gruplarim(oz), ic = gs.map(function (k) { return kanalSatir(k); }).join('');
+    if (q) return ic ? '<div class="sh-bas"><h3>Gruplarım</h3></div><div class="sh-liste">' + ic + '</div>' : '';
+    var bas = '<div class="sh-bas"><h3>Gruplarım</h3><button type="button" class="sh-gr-yeni" data-sh="yeniGrup">' + I.arti + 'Yeni grup</button></div>';
+    if (!gs.length) return bas + '<button type="button" class="sh-gr-bos" data-sh="yeniGrup"><span class="sh-kik" style="--k:#2fc7a1;width:50px;height:50px">' + I.kisiler + '</span>' +
+      '<span class="sh-k-orta"><b>Kendi sohbet grubunu kur</b><span>Grubuna ad koy, istediğin oyuncuları ekle. Konuşulanları yalnızca grup üyeleri görür.</span></span><span class="sh-ys-git">' + I.arti + '</span></button>';
+    return bas + '<div class="sh-liste">' + ic + '</div>';
+  }
+  function grupTemaKur(kanal, ad) {
+    var kok = $1('.shk-kanal'); if (!kok) return;
+    kok.classList.add('shk-tema', 'shk-tema-og');
+    kok.style.setProperty('--tema', grupRenk(kanal));
+    var eski = $1('.sht-serit'); if (eski) eski.remove();
+    var ustEl = $1('.shk-ust');
+    if (ustEl) ustEl.insertAdjacentHTML('afterend', '<div class="sht-serit"><b id="shGSerit">' + esc(ad) + '</b><span>Özel grup · Mesajları yalnızca üyeler görür</span></div>');
+    var ta = $1('#yaz'); if (ta) ta.placeholder = 'Gruba yaz';
+  }
+  function grupOyuncuSatir(k, alt, sag) {
+    return '<div class="sh-gr-kisi" data-kad="' + esc(k.kad) + '"><span class="sh-k-av' + ((k.aktif === 'cevrimici' || k.cevrimici === true) ? ' cev' : '') + '">' + av(k.kad, k.parti && k.parti.renk, 44) + '</span>' +
+      '<span class="sh-k-orta"><span class="sh-k-ust"><b>' + esc(k.kad) + '</b>' + nisan(k.unvan) + '</span><span class="sh-ys-alt">' + esc(alt || '') + '</span></span>' + (sag || '') + '</div>';
+  }
+  async function oyuncuAra(q) {
+    var r = await API.rpc('oyuncu_arama', { p_aranan: q, p_il: null, p_parti: null, p_limit: 12, p_offset: 0 });
+    var ben = profil();
+    return ((r && r.oyuncular) || []).filter(function (k) { return !ben || k.kad !== ben.kad; });
+  }
+  function oyuncuAlt(k) { return [k.il_ad, k.parti ? (k.parti.kisa || k.parti.ad) : 'Bağımsız', k.unvan].filter(Boolean).join(' · '); }
+
+  /* ---------- yeni grup ---------- */
+  function yeniGrup() {
+    var secili = [];   // {kad, parti, unvan}
+    var m = modal('<div class="sh-yeni sh-gy"><h3>Yeni sohbet grubu</h3>' +
+      '<label class="sh-gy-et" for="shGAd">Grup adı</label>' +
+      '<input id="shGAd" class="sh-gy-inp" type="text" maxlength="40" autocomplete="off" autocapitalize="sentences" enterkeyhint="next" placeholder="Örnek: Ege Gönüllüleri">' +
+      '<small class="sh-gy-ipucu" id="shGAdSay">0 / 40</small>' +
+      '<div class="sh-gy-et">Üyeler <small id="shGSay">Henüz kimse seçilmedi</small></div>' +
+      '<div class="sh-gy-cipler" id="shGCip"></div>' +
+      '<label class="sh-ara sh-ara-m">' + I.ara + '<input id="shGAra" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="Eklemek istediğin oyuncuyu ara"></label>' +
+      '<div class="sh-yeni-liste sh-gy-liste" id="shGListe"></div>' +
+      '<p class="sh-gy-not">' + I.kilit + '<span>Grubu yalnızca sen yönetirsin: üye ekler, çıkarır, adını değiştirirsin. Konuşulanları yalnızca grup üyeleri görür. Üyeleri sonradan da ekleyebilirsin.</span></p>' +
+      '<button type="button" class="sh-btn ana sh-gy-kur" id="shGKur">' + I.kisiler + 'Grubu kur</button></div>');
+    var ad = $1('#shGAd', m), ara = $1('#shGAra', m), liste = $1('#shGListe', m), cip = $1('#shGCip', m), no = 0, zz = 0;
+    function seciliMi(kad) { return secili.some(function (x) { return x.kad.toLocaleLowerCase('tr-TR') === String(kad).toLocaleLowerCase('tr-TR'); }); }
+    function satirlar(o, baslik) {
+      return '<div class="sh-ys-bas">' + baslik + '</div>' + o.map(function (k) {
+        var s = seciliMi(k.kad);
+        return '<button type="button" class="sh-ys sh-gy-sec' + (s ? ' on' : '') + '" data-kad="' + esc(k.kad) + '" data-renk="' + esc((k.parti && k.parti.renk) || '') + '" aria-pressed="' + s + '">' +
+          '<span class="sh-k-av' + (k.aktif === 'cevrimici' ? ' cev' : '') + '">' + av(k.kad, k.parti && k.parti.renk, 44) + '</span>' +
+          '<span class="sh-k-orta"><span class="sh-k-ust"><b>' + esc(k.kad) + '</b>' + nisan(k.unvan) + '</span><span class="sh-ys-alt">' + esc(k.alt || oyuncuAlt(k)) + '</span></span>' +
+          '<span class="sh-gy-tik">' + (s ? I.tik : '') + '</span></button>';
+      }).join('');
+    }
+    function cipCiz() {
+      cip.innerHTML = secili.map(function (x) { return '<button type="button" class="sh-gy-cip" data-kad="' + esc(x.kad) + '" aria-label="' + esc(x.kad) + ' seçimini kaldır">' + av(x.kad, x.renk, 24) + '<span>' + esc(x.kad) + '</span>' + I.kapat + '</button>'; }).join('');
+      $1('#shGSay', m).textContent = secili.length ? secili.length + ' kişi seçildi' : 'Henüz kimse seçilmedi';
+      avTazele(cip);
+    }
+    function sonKisiler() {
+      var dm = dmSirala(ST.dm || []).slice(0, 10).map(function (x) { return { kad: x.kad, parti: x.parti, unvan: x.unvan, aktif: x.aktif, alt: x.unvan || (x.parti ? x.parti.ad : 'Bağımsız') }; });
+      liste.innerHTML = dm.length ? satirlar(dm, 'Son konuştukların') : '<div class="sh-ys-bos">Gruba eklemek istediğin oyuncunun adını yukarıya yaz.</div>';
+      avTazele(liste);
+    }
+    async function bul() {
+      var q = ara.value.trim(), benim = ++no;
+      if (q.length < 2) { sonKisiler(); return; }
+      liste.innerHTML = '<div class="sh-ys-bas">Aranıyor…</div>';
+      try {
+        var o = await oyuncuAra(q);
+        if (benim !== no || !m.isConnected) return;
+        liste.innerHTML = o.length ? satirlar(o, 'Oyuncular') : '<div class="sh-ys-bos">“' + esc(q) + '” adında oyuncu bulunamadı.</div>';
+        avTazele(liste);
+      } catch (err) { if (benim === no && m.isConnected) liste.innerHTML = '<div class="sh-ys-bos">' + esc(hataYaz(err)) + '</div>'; }
+    }
+    ad.addEventListener('input', function () { $1('#shGAdSay', m).textContent = ad.value.length + ' / 40'; });
+    ad.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); ara.focus(); } });
+    ara.addEventListener('input', function () { clearTimeout(zz); zz = setTimeout(bul, 260); });
+    liste.addEventListener('click', function (ev) {
+      var b = ev.target.closest('.sh-gy-sec'); if (!b) return; hafif();
+      var kad = b.getAttribute('data-kad');
+      if (seciliMi(kad)) secili = secili.filter(function (x) { return x.kad.toLocaleLowerCase('tr-TR') !== kad.toLocaleLowerCase('tr-TR'); });
+      else {
+        if (secili.length >= 99) { tst('Bir grupta en fazla 100 üye olabilir.', true); return; }
+        secili.push({ kad: kad, renk: b.getAttribute('data-renk') || null });
+      }
+      var on = seciliMi(kad); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); $1('.sh-gy-tik', b).innerHTML = on ? I.tik : '';
+      cipCiz();
+    });
+    cip.addEventListener('click', function (ev) {
+      var b = ev.target.closest('.sh-gy-cip'); if (!b) return;
+      var kad = b.getAttribute('data-kad');
+      secili = secili.filter(function (x) { return x.kad !== kad; }); cipCiz();
+      liste.querySelectorAll('.sh-gy-sec').forEach(function (x) { if (x.getAttribute('data-kad') === kad) { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); $1('.sh-gy-tik', x).innerHTML = ''; } });
+    });
+    $1('#shGKur', m).onclick = async function () {
+      var b = this, a = ad.value.trim();
+      if (a.length < 2) { tst('Gruba en az 2 harfli bir ad ver.', true); ad.focus(); return; }
+      b.disabled = true;
+      try {
+        var r = await API.rpc('sohbet_grup_kur', { p_ad: a, p_uyeler: secili.map(function (x) { return x.kad; }) });
+        var atl = (r && r.atlanan) || [];
+        tst('“' + (r.ad || a) + '” kuruldu' + (r.eklenen ? ' · ' + r.eklenen + ' üye eklendi' : '') + (atl.length ? ' · Eklenemeyen: ' + atl.map(function (x) { return x.kad + ' (' + hataYaz({ message: x.neden }) + ')'; }).join(', ') : ''), !!atl.length);
+        modalKapat();
+        try { await veriGetir(); } catch (e) {}
+        ekranAc(function () { return sohbetEkrani(r.kanal); });
+      } catch (err) { b.disabled = false; tst(hataYaz(err), true); }
+    };
+    sonKisiler();
+    setTimeout(function () { try { ad.focus(); } catch (e) {} }, 60);
+  }
+
+  /* ---------- grup bilgisi: üyeler, ad, ekle/çıkar, ayrıl/kapat ---------- */
+  async function grupBilgi(kanal) {
+    var id = ogId(kanal); if (!id) return;
+    var m = modal('<div class="sh-yeni sh-gb"><div class="sh-gb-yuk"><span></span><span></span><span></span></div></div>');
+    var d;
+    try { d = await API.rpc('sohbet_grup_detay', { p_grup: id }); }
+    catch (err) { if (m.isConnected) $1('.sh-gb', m).innerHTML = '<p class="sh-ys-bos">' + esc(hataYaz(err)) + '</p>'; return; }
+    if (!m.isConnected) return;
+    var kur = !!d.benim_kurucu;
+    var uyeHtml = (d.uyeler || []).map(function (u) {
+      var alt = [u.kurucu ? 'Kurucu' : null, u.cevrimici ? 'Çevrimiçi' : null, u.parti ? (u.parti.kisa || u.parti.ad) : 'Bağımsız'].filter(Boolean).join(' · ');
+      var sag = u.ben ? '<span class="sh-gb-sen">Sen</span>' : (kur && !u.kurucu ? '<button type="button" class="sh-gb-cikar" data-gb="cikar" data-kad="' + esc(u.kad) + '">Çıkar</button>' : '');
+      return grupOyuncuSatir(u, alt, sag);
+    }).join('');
+    $1('.sh-gb', m).innerHTML =
+      '<div class="sh-gb-ust">' + kanalIkon(kanal, 64) + '<div><h3 id="shGbAd">' + esc(d.ad) + '</h3><small>' + n(d.uye_sayisi) + ' üye · Kurucu: ' + esc(d.kurucu || '') + '</small></div></div>' +
+      '<p class="sh-gy-not">' + I.kilit + '<span>Bu grubun mesajlarını yalnızca üyeler görür. ' + (kur ? 'Grubu sen kurdun; üye ekleyebilir, çıkarabilir ve adını değiştirebilirsin.' : 'Üye ekleme ve çıkarma yetkisi grubu kuran ' + esc(d.kurucu || '') + ' adlı oyuncudadır.') + '</span></p>' +
+      (kur ? '<div class="sh-gb-kutu"><label class="sh-gy-et" for="shGbAdInp">Grup adı</label>' +
+        '<input id="shGbAdInp" class="sh-gy-inp" type="text" maxlength="40" autocomplete="off" value="' + esc(d.ad) + '">' +
+        '<button type="button" class="sh-btn sh-gb-tam" data-gb="ad">' + I.kalem + 'Adı kaydet</button></div>' +
+        '<div class="sh-gb-kutu"><div class="sh-gy-et">Üye ekle <small>' + n(d.uye_sayisi) + ' / ' + n(d.uye_sinir || 100) + '</small></div>' +
+        '<label class="sh-ara sh-ara-m">' + I.ara + '<input id="shGbAra" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="Oyuncu adı yaz"></label>' +
+        '<div class="sh-gb-sonuc" id="shGbSonuc"></div></div>' : '') +
+      '<div class="sh-ys-bas">Üyeler (' + n(d.uye_sayisi) + ')</div><div class="sh-gb-uyeler">' + uyeHtml + '</div>' +
+      (kur ? '<button type="button" class="sh-btn sh-gb-tehlike" data-gb="kapat">' + I.engel + 'Grubu kapat</button>'
+        : '<button type="button" class="sh-btn sh-gb-tehlike" data-gb="ayril">' + I.cikis + 'Gruptan ayrıl</button>');
+    avTazele(m);
+    var uyeAd = {}; (d.uyeler || []).forEach(function (u) { uyeAd[String(u.kad).toLocaleLowerCase('tr-TR')] = 1; });
+    var araInp = $1('#shGbAra', m), sonuc = $1('#shGbSonuc', m), no = 0, zz = 0;
+    if (araInp) araInp.addEventListener('input', function () {
+      clearTimeout(zz);
+      zz = setTimeout(async function () {
+        var q = araInp.value.trim(), benim = ++no;
+        if (q.length < 2) { sonuc.innerHTML = ''; return; }
+        sonuc.innerHTML = '<div class="sh-ys-bas">Aranıyor…</div>';
+        try {
+          var o = await oyuncuAra(q);
+          if (benim !== no || !m.isConnected) return;
+          sonuc.innerHTML = o.length ? o.map(function (k) {
+            var var_ = uyeAd[String(k.kad).toLocaleLowerCase('tr-TR')];
+            return grupOyuncuSatir(k, oyuncuAlt(k), var_ ? '<span class="sh-gb-sen">Üye</span>' : '<button type="button" class="sh-gb-ekle" data-gb="ekle" data-kad="' + esc(k.kad) + '">' + I.arti + 'Ekle</button>');
+          }).join('') : '<div class="sh-ys-bos">“' + esc(q) + '” adında oyuncu bulunamadı.</div>';
+          avTazele(sonuc);
+        } catch (err) { if (benim === no) sonuc.innerHTML = '<div class="sh-ys-bos">' + esc(hataYaz(err)) + '</div>'; }
+      }, 260);
+    });
+    m.addEventListener('click', async function (ev) {
+      var b = ev.target.closest('[data-gb]');
+      if (!b) {
+        var kisi = ev.target.closest('.sh-gr-kisi');
+        if (kisi && !ev.target.closest('button') && kisi.closest('.sh-gb-uyeler')) {
+          var kk = kisi.getAttribute('data-kad'), ben = profil();
+          if (kk && (!ben || ben.kad !== kk)) { modalKapat(); ekranAc(function () { return ozelEkrani(kk); }); }
+        }
+        return;
+      }
+      var is = b.getAttribute('data-gb'), kad = b.getAttribute('data-kad');
+      try {
+        if (is === 'ad') {
+          var yeni = $1('#shGbAdInp', m).value.trim();
+          if (yeni === d.ad) { tst('Grup adı aynı.'); return; }
+          b.disabled = true;
+          var r = await API.rpc('sohbet_grup_ad', { p_grup: id, p_ad: yeni });
+          d.ad = r.ad; $1('#shGbAd', m).textContent = r.ad; b.disabled = false;
+          var sb = document.getElementById('sbBaslik'); if (sb) sb.textContent = r.ad;
+          var se = document.getElementById('shGSerit'); if (se) se.textContent = r.ad;
+          tst('Grup adı “' + r.ad + '” oldu.');
+        } else if (is === 'ekle') {
+          b.disabled = true;
+          await API.rpc('sohbet_grup_uye_ekle', { p_grup: id, p_kad: kad });
+          tst(kad + ' gruba eklendi.'); grupBilgi(kanal);
+        } else if (is === 'cikar') {
+          if (!(await onayla('Gruptan çıkar', esc(kad) + ' adlı oyuncu “' + esc(d.ad) + '” grubundan çıkarılsın mı? Çıkarılan üye grubun mesajlarını artık göremez.', 'Çıkar', true))) { grupBilgi(kanal); return; }
+          await API.rpc('sohbet_grup_uye_cikar', { p_grup: id, p_kad: kad });
+          tst(kad + ' gruptan çıkarıldı.'); grupBilgi(kanal);
+        } else if (is === 'ayril' || is === 'kapat') {
+          var kap = is === 'kapat';
+          var ok = await onayla(kap ? 'Grubu kapat' : 'Gruptan ayrıl',
+            kap ? '“' + esc(d.ad) + '” grubu bütün üyeler için kapanacak ve mesajları artık görünmeyecek. Bu işlem geri alınamaz.' : '“' + esc(d.ad) + '” grubundan ayrılırsan mesajlarını göremezsin. Yeniden katılmak için kurucunun seni eklemesi gerekir.',
+            kap ? 'Grubu kapat' : 'Ayrıl', true);
+          if (!ok) { grupBilgi(kanal); return; }
+          await API.rpc(kap ? 'sohbet_grup_kapat' : 'sohbet_grup_ayril', { p_grup: id });
+          tst(kap ? 'Grup kapatıldı.' : 'Gruptan ayrıldın.');
+          modalKapat(); canliDurdur();
+          try { await veriGetir(); } catch (e) {}
+          ST.seg = 'kanal';
+          if (typeof geriGit === 'function' && D.yigin && D.yigin.length) geriGit(); else sekmeAc('sohbet');
+        }
+      } catch (err) { b.disabled = false; tst(hataYaz(err), true); }
+    });
+  }
+
+  (function grupStil() {
+    var css = [
+      '.sh-gr-yeni{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:14px;border:1px solid rgba(47,199,161,.45);background:rgba(47,199,161,.12);color:#9ff0d8;font:inherit;font-weight:800;font-size:14.5px;cursor:pointer}',
+      '.sh-gr-yeni svg{width:17px;height:17px}.sh-gr-yeni:active{transform:scale(.96)}',
+      '.sh-gr-bos{display:flex;align-items:center;gap:12px;width:calc(100% - 32px);margin:4px 16px 2px;padding:12px;border-radius:18px;border:1.5px dashed rgba(47,199,161,.45);background:rgba(47,199,161,.06);color:inherit;font:inherit;text-align:left;cursor:pointer;box-sizing:border-box}',
+      '.sh-gr-bos .sh-k-orta{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}.sh-gr-bos b{font-size:15.5px}.sh-gr-bos .sh-k-orta>span{font-size:14px;line-height:1.4;color:var(--sh-soluk)}',
+      '.sh-gr-bos .sh-ys-git{background:rgba(47,199,161,.18);color:#9ff0d8}',
+      '.sh-gy,.sh-gb{display:flex;flex-direction:column;gap:8px}',
+      '.sh-gy-et{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:15px;font-weight:800;margin-top:6px}.sh-gy-et small{font-size:13px;font-weight:600;color:var(--sh-soluk)}',
+      '.sh-gy-inp{display:block;width:100%;min-width:0;box-sizing:border-box;height:48px;padding:0 14px;border-radius:14px;border:1px solid var(--sh-cizgi);background:rgba(255,255,255,.055);color:var(--txt);font:inherit;font-size:16px;color-scheme:dark;outline:none}',
+      '.sh-gy-inp:focus{border-color:rgba(47,199,161,.7);background:rgba(255,255,255,.08)}.sh-gy-inp::placeholder{color:var(--sh-soluk)}',
+      '.sh-gy-ipucu{align-self:flex-end;margin-top:-4px;font-size:12.5px;color:var(--sh-soluk)}',
+      '.sh-gy-cipler{display:flex;flex-wrap:wrap;gap:6px}.sh-gy-cipler:empty{display:none}',
+      '.sh-gy-cip{display:inline-flex;align-items:center;gap:6px;min-height:36px;max-width:100%;padding:3px 10px 3px 4px;border-radius:20px;border:1px solid rgba(47,199,161,.4);background:rgba(47,199,161,.12);color:inherit;font:inherit;font-size:14px;font-weight:700;cursor:pointer}',
+      '.sh-gy-cip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sh-gy-cip>svg{width:14px;height:14px;opacity:.8;flex:none}.sh-gy-cip .portre,.sh-gy-cip svg.portre,.sh-gy-cip .sh-av-bos{width:26px!important;height:26px!important;flex:none}',
+      '.sh-gy-liste{max-height:38vh}',
+      '.sh-gy-sec{min-height:56px}.sh-gy-tik{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:2px solid rgba(164,184,255,.35);color:#06261b}',
+      '.sh-gy-sec.on .sh-gy-tik{background:#2fc7a1;border-color:#2fc7a1}.sh-gy-tik svg{width:15px;height:11px}',
+      '.sh-gy-not{display:flex;gap:10px;align-items:flex-start;margin:4px 0 0;padding:11px 12px;border-radius:14px;background:rgba(255,255,255,.045);font-size:14px;line-height:1.45;color:var(--sh-soluk)}.sh-gy-not>svg{flex:none;width:18px;height:18px;margin-top:1px;color:#9ff0d8}',
+      '.sh-gy-kur,.sh-gb-tam,.sh-gb-tehlike{width:100%;min-height:50px;height:auto;white-space:normal;box-sizing:border-box;margin-top:4px}',
+      '.sh-gb-ust{display:flex;align-items:center;gap:14px;padding:2px 0 4px}.sh-gb-ust>div{min-width:0}.sh-gb-ust h3{margin:0;font-family:var(--disp);font-size:21px;font-weight:800;overflow-wrap:anywhere}.sh-gb-ust small{font-size:14px;color:var(--sh-soluk)}',
+      '.sh-gb-kutu{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px;border-radius:16px;border:1px solid var(--sh-cizgi);background:rgba(255,255,255,.03)}',
+      '.sh-gb-kutu .sh-ara-m{margin:0}.sh-gb-sonuc{max-height:30vh;overflow-y:auto}',
+      '.sh-gb-uyeler{display:flex;flex-direction:column;max-height:42vh;overflow-y:auto;margin:0 -6px}',
+      '.sh-gr-kisi{display:flex;align-items:center;gap:12px;min-height:58px;padding:7px 6px;border-radius:14px}.sh-gb-uyeler .sh-gr-kisi{cursor:pointer}.sh-gb-uyeler .sh-gr-kisi:active{background:rgba(255,255,255,.05)}',
+      '.sh-gr-kisi .sh-k-orta{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}.sh-gr-kisi .sh-k-av,.sh-gr-kisi .sh-k-av .portre,.sh-gr-kisi .sh-k-av svg.portre,.sh-gr-kisi .sh-av-bos{width:44px!important;height:44px!important;flex:none}',
+      '.sh-gb-cikar,.sh-gb-ekle{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:0 14px;border-radius:12px;font:inherit;font-size:14px;font-weight:800;cursor:pointer}',
+      '.sh-gb-cikar{border:1px solid rgba(255,100,100,.45);background:rgba(255,100,100,.1);color:#ffb3b3}',
+      '.sh-gb-ekle{border:1px solid rgba(47,199,161,.5);background:rgba(47,199,161,.14);color:#9ff0d8}.sh-gb-ekle svg{width:15px;height:15px}',
+      '.sh-gb-cikar:disabled,.sh-gb-ekle:disabled{opacity:.5}',
+      '.sh-gb-sen{flex:none;font-size:12.5px;font-weight:800;color:var(--sh-soluk);padding:4px 10px;border-radius:10px;background:rgba(255,255,255,.06)}',
+      '.sh-gb-tehlike{border-color:rgba(255,100,100,.45)!important;background:rgba(255,100,100,.1)!important;color:#ffb3b3}',
+      '.sh-gb-yuk{display:flex;justify-content:center;gap:6px;padding:40px 0}.sh-gb-yuk span{width:8px;height:8px;border-radius:50%;background:var(--sh-soluk);animation:shGbN 1s infinite alternate}.sh-gb-yuk span:nth-child(2){animation-delay:.2s}.sh-gb-yuk span:nth-child(3){animation-delay:.4s}',
+      '@keyframes shGbN{to{opacity:.25;transform:translateY(-4px)}}'
+    ];
+    var st = document.createElement('style'); st.id = 'sohbetGrupStil'; st.textContent = css.join('\n');
+    (document.head || document.documentElement).appendChild(st);
+  })();
 
   // Kanal ekranında akışa sınıf ver (avatar sütunu için)
   var eskiKabuk = kabuk;
