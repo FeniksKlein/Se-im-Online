@@ -9,6 +9,14 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 13.11.2026 — 2026.11.13-9 Avukat gözaltına alınınca müvekkilinin gözaltı dosyasındaki görevi düşer, baro yeni avukat görevlendirir (canlıya uygulandı)
+- Hata (beta sohbet grubu): Turan River gözaltındayken avukatı Celal Kara da gözaltına alındı; Celal "kabul" durumunda kaldığı için Turan "Görevdeki bir avukatınız zaten var" uyarısıyla yeni avukat çağıramadı/barodan müdafi isteyemedi, baro da gönderemedi.
+- Kural (Ercan): avukat gözaltına alınınca gözaltındaki müvekkiline karşı sorumlulukları düşsün; baro başka avukat atasın.
+- Yedek: `yedek_20261113_133258_458936`. Dosyalar: `supabase/migrations/20261113150000_gozalti_avukat_gozaltinda.sql` (canlı adı `gozalti_avukat_gozaltinda_20261113`) = `migrations/20261113_gozalti_avukat_gozaltinda.sql`.
+- `oyun.gozalti_avukat_dusur(avukat)`: üç gözaltı türünde (sokak/icisleri/yonetim) avukatın cagrildi/kabul dosyalarını `avukat=null, avukat_durum='yok'` yapar, bildirir; `oyun.gozalti_baro_avukat_sec` ile baro adına uygun baro avukatı (ruhsatlı, görev engeli yok, gözaltında değil, gözaltı kararını veren değil; aynı il + en az iş yükü öncelikli) `cagrildi` olarak görevlendirilir, baro talebi `gorevlendirildi`; uygun avukat yoksa talep `bekliyor` + baro başkanına bildirim. `oyun.gozalti_basladi_bildir` sonunda çağrılır (üç tür de buradan geçer).
+- Tetikleyici `gozalti_avukat_gozaltinda` (üç tabloda, before update of avukat/avukat_durum): gözaltındaki avukat eski/yeni hiçbir yoldan çağrılamaz, görev kabul edemez. `gozalti_avukat_ara` gözaltındaki avukatları listelemez. Gözaltındaki avukatın açıklama/DM'si zaten yazı engeli tetikleyicisiyle kapalı.
+- Doğrulama: canlıda geri alınan işlemle (A gözaltı + avukatı L kabul → L gözaltı → A'nın dosyasında yeni baro avukatı `cagrildi`, A↔L DM kapandı, L aramada yok, L'yi çağırma engellendi, A'ya bildirim). Arayüz değişmedi.
+
 ## 13.11.2026 — 2026.11.13-8 Kontrol Merkezi'ne "Kısıtlar" sekmesi + AndreySemilet engeli kaldırıldı
 - İstek (Ercan): kısıtladığı AndreySemilet'in kısıtı kaldırılsın; yönetici panelinde istediği oyuncuya kolayca kısıt ekleyip kaldırabileceği menü.
 - Canlı: AndreySemilet (AFK temizliğiyle "hesap kapalı") → `yasakli=false`, engel_bitis/neden boş, oyuncuya bildirim. (AFK temizliği tek seferlikti; cron yok, yeniden kapanmaz. 11 AFK hesabı hâlâ kapalı.)
