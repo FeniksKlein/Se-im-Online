@@ -117,7 +117,7 @@ Her yeni hükümet müdahalesi İçişleri kasasından düşer. Kasada para yoks
 
 Şema `20261109230000_halk_eylem_merkezi.sql`. Canlı fonksiyonların içine yama yok. Canlı veritabanına bu dosyayla uygulanmamıştır.
 
-Eylem keyfi açılmaz. Önce çağrı, depozito ve bu ilden yeterli imza gerekir. Sayılar `oyun.sokak_denge_ayar` satırındadır: memnuniyet eşiği 55, memnuniyetsizlik eşiği 40, olay penceresi 12 saat, hesap yaşı 7 gün, depozito 50.000 TL, imza 4 kişi ve 6 saat, il beklemesi 24 saat, organizatör beklemesi 48 saat, ülke tavanı en az 2 ve aktif oyuncu / 15, saatlik güç tavanı %12, büyük hamle için ivme 35, katılımcı 8 ve nabız 45. Çağrı düşünce depozito yanar. Mevcut açılış fonksiyonu imza eşiğinde çağrılır; gövdesine yama yok. Şema `20261109250000_halk_eylem_denge.sql`.
+Eylem keyfi açılmaz. Önce çağrı, depozito ve yeterli imza gerekir (13.11.2026'dan beri imza Türkiye genelinden, açanın imzası dahil; bkz. 5.1). Sayılar `oyun.sokak_denge_ayar` satırındadır: memnuniyet eşiği 55, memnuniyetsizlik eşiği 40, olay penceresi 12 saat, hesap yaşı 7 gün, depozito 50.000 TL, imza 4 kişi ve 6 saat, il beklemesi 24 saat, organizatör beklemesi 48 saat, ülke tavanı en az 2 ve aktif oyuncu / 15, saatlik güç tavanı %12, büyük hamle için ivme 35, katılımcı 8 ve nabız 45. Çağrı düşünce depozito yanar. Mevcut açılış fonksiyonu imza eşiğinde çağrılır; gövdesine yama yok. Şema `20261109250000_halk_eylem_denge.sql`.
 
 Eyleme kaynak aktarmak lojistiktir: ses, ulaşım, yemek, pankart. Örgütleyen parti veya dernek, ya da eylemdeki bir kişi kendi cüzdanından öder. Para geri gelmez. Güç, biriken tutarın karekökü kadar artar; düşük ivme ve yüksek yorgunluk getiriyi düşürür. Saatlik %12 tavan ve ildeki kişi tavanı durur. Hazine bedeli değişmez. 150.000 TL birikince hükümet “Eyleme büyük kaynak aktarılıyor” görür; mali kuşatma ve ihale kılıcı bu izi kullanır. Sayılar yine `sokak_denge_ayar` içindedir. Şema `20261109260000_halk_eylem_kaynak.sql`.
 
@@ -137,3 +137,10 @@ Eylemin büyüklüğü ve süresi ekonomiye zarar verir; hükümet ne kadar hız
 - **Eylemci:** biçim seçimi (düzenleyen), kepenk indir/aç (şirket sahibi), "Faturayı hükümete kes".
 - **Kapanış:** Ekonomik etki raporu + kriz karnesi (A–F; süre, ilk tepki, toplam zarar, uzlaşma bonusu).
 - **Ayarlar (Süper Yönetici, `oyun.tarife`):** `halk_bedel_aktif`, `halk_bedel_carpan`, `halk_bedel_sirket_carpan`, `halk_bedel_vergi_orani`, `halk_piyasa_destek`.
+
+## 5.1 · Masa (13.11.2026)
+- **🤝 Masa sekmesi:** hükümetin eyleme koyduğu her şey tek yerde ve eylemciye açık. Uzlaşma sözü (taviz) — teklif anında meydanda olan katılımcılar oylar; hükümet kararları — uzlaşma masasını düzenleyen kabul/ret eder, yaptırımın hedefi itiraz eder, yargı karar verir (yanıt 20–1500 karakter kamuoyu açıklamasıdır); kırmızı hat — düzenleyen gizlice kabul eder, reddeder ya da ifşa eder; halk jürisi — savunma sırasında hükümet ve düzenleyen 3'er kısa söz (180 karakter) yazar, jüri üyeleri oy verir; işgal pazarlığı — işgalciler oylar; arabulucu heyeti — davetli kabul/ret eder. Hükümet önlemlerine karşı hamleler de buradadır.
+- Yanıt bekleyen iş varsa sekmede sayı, eylem ekranının başında şerit ve ana ekrandaki meydan kartında etiket çıkar.
+- **Çağrı:** çağrıyı açanın imzası ilk imzadır; imzalar Türkiye'nin her yerinden gelir (il sakinliği şartı kalktı). Varsayılan 3 imza, 12 saat. Kimsenin olmadığı ilde de eylem açılabilir.
+- RPC `sokak_masa_panel(p_eylem)`; şema `supabase/migrations/20261113090000_halk_masa_cagri_onarim.sql`.
+

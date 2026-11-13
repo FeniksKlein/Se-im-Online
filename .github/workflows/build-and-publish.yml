@@ -27,11 +27,11 @@ jobs:
           node --check docs/halk-org-davet.js
           python3 - <<'PY'
           from pathlib import Path
-          tag=b'<script defer src="halk-org-davet.js?v=20261113-1"></script>\n'
+          tag=b'<script defer src="halk-org-davet.js?v=20261113-2"></script>\n'
           for name in ('docs/index.html','www/index.html'):
               p=Path(name)
               data=p.read_bytes()
-              if b'halk-org-davet.js?v=20261113-1' not in data:
+              if b'halk-org-davet.js?v=20261113-2' not in data:
                   data=__import__('re').sub(rb'<script defer src="halk-org-davet[.]js[?]v=[^"]*"></script>\n?', b'', data)
                   position=data.lower().rfind(b'</body>')
                   if position<0: raise SystemExit('Closing body missing: '+name)

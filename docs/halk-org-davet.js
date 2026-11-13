@@ -1188,7 +1188,7 @@ sokakHareketleriEkrani=async function(){
   if(p.yonetebilir&&e.iceri) h+=kart('İçeriden bilgi', (e.iceri||[]).map(s=>'<p><b>'+esc(s.ad)+'</b> · '+esc(s.metin)+'</p>').join('')||'<p class="hh-muted">Henüz sızıntı yok.</p>');
   if(e.katilimci) h+='<form data-meydan-form="muhbir_oy" data-id="'+id+'"><label>İfşa oyu (günde 1, en az 3 oy ve çoğunluk)</label><input name="kad" required placeholder="Şüphelinin kullanıcı adı"><button class="hh-action">Oy ver</button></form>';
   if(p.yonetebilir) h+='<form data-meydan-form="muhbir_teklif" data-id="'+id+'"><label>Muhbir teklifi</label><input name="kad" required placeholder="Katılımcının kullanıcı adı"><input name="para" type="number" min="0" max="80000" value="0" placeholder="TL"><input name="metin" maxlength="120" placeholder="Vaadedilen makam (zorunlu değil)"><button class="hh-action">Gizli teklif gönder</button></form><form data-meydan-form="muhbir_dik" data-id="'+id+'"><input name="kad" required placeholder="İktidardan, eyleme katılmış oyuncu"><button class="hh-action">İçeriden kişi olarak işaretle</button></form>';
-  if(e.kirmizi_hat&&e.kirmizi_hat.durum==='bekliyor'&&e.baslatan) h+='<div class="hh-band">Kırmızı hat: '+esc(e.kirmizi_hat.teklif)+'<br>'+esc(e.kirmizi_hat.metin)+'<div class="hh-grid"><button class="hh-action" data-meydan="kirmizi_yanit" data-id="'+id+'" data-v=\'{"yanit":"kabul"}\'>Gizlice kabul</button><button class="hh-action" data-meydan="kirmizi_yanit" data-id="'+id+'" data-v=\'{"yanit":"ret"}\'>Ret</button><button class="hh-action hh-ayril" data-meydan="kirmizi_yanit" data-id="'+id+'" data-v=\'{"yanit":"ifsa"}\'>İfşa</button></div></div>';
+  if(e.kirmizi_hat&&e.kirmizi_hat.durum==='bekliyor'&&e.baslatan) h+='<div class="hh-band">Kırmızı hat: '+esc(e.kirmizi_hat.teklif)+'<br>'+esc(e.kirmizi_hat.metin)+'<div class="hh-grid"><button class="hh-action" data-meydan-islem="kirmizi_yanit" data-id="'+id+'" data-v=\'{"yanit":"kabul"}\'>Gizlice kabul</button><button class="hh-action" data-meydan-islem="kirmizi_yanit" data-id="'+id+'" data-v=\'{"yanit":"ret"}\'>Ret</button><button class="hh-action hh-ayril" data-meydan-islem="kirmizi_yanit" data-id="'+id+'" data-v=\'{"yanit":"ifsa"}\'>İfşa</button></div></div>';
   if(p.yonetebilir) h+='<form data-meydan-form="kirmizi_hat" data-id="'+id+'"><label>Kırmızı hat</label><select name="tur"><option value="bakanlik">Bakanlık sözü</option><option value="yatirim">İle yatırım</option><option value="af">Af</option></select><textarea name="metin" required></textarea><button class="hh-action">Gizli teklif</button></form>';
   (e.basin||[]).forEach(b=>{h+='<blockquote><b>'+esc(b.ad)+'</b> · güvenilir '+b.guvenilir+' · taraflı '+b.tarafli+'<br>'+esc(b.metin)+'<div class="hh-grid"><button class="hh-action" data-meydan-islem="basin_oy" data-id="'+id+'" data-v=\'{"id":'+Number(b.id)+',"oy":"guvenilir"}\'>Güvenilir</button><button class="hh-action" data-meydan-islem="basin_oy" data-id="'+id+'" data-v=\'{"id":'+Number(b.id)+',"oy":"tarafli"}\'>Taraflı</button></div></blockquote>';});
   if(p.gazeteci) h+='<form data-meydan-form="basin_yaz" data-id="'+id+'"><textarea name="metin" required placeholder="Sahadan canlı not"></textarea><button class="hh-action">Yayınla</button></form>';
@@ -1339,7 +1339,7 @@ sokakHareketleriEkrani=async function(){
   dengeHarita[Number(r.id)]=r;
  });
  const ay=denge&&denge.ayar||{};
- let cagri='<section class="em" id="emCagri"><p class="em-kicker">Eylem çağrısı</p><p>Eylem keyfi açılmaz. İlde memnuniyet '+esc(ay.memnuniyet_esik)+' altında olmalı ya da son '+esc(ay.olay_saat)+' saatte sert önlem, skandal veya manşet olmalı. Depozito '+tl(ay.depozito)+' çağrı düşerse yanar. '+esc(ay.imza_sayisi)+' ayrı il sakini '+esc(ay.imza_saat)+' saat içinde imzalar. İlde '+esc(ay.il_bekleme_saat)+' saatte bir, organizatörde '+esc(ay.orgut_bekleme_saat)+' saatte bir yeni eylem. Ülke tavanı '+esc(ay.ulke_tavan)+'.</p>';
+ let cagri='<section class="em" id="emCagri"><p class="em-kicker">Eylem çağrısı</p><p>Eylem keyfi açılmaz. İlde memnuniyet '+esc(ay.memnuniyet_esik)+' altında olmalı ya da son '+esc(ay.olay_saat)+' saatte sert önlem, skandal veya manşet olmalı. Depozito '+tl(ay.depozito)+' çağrı düşerse yanar. Türkiye’nin her yerinden '+esc(ay.imza_sayisi)+' imza '+esc(ay.imza_saat)+' saat içinde toplanmalı; çağrıyı açanın imzası ilk imzadır. İlde '+esc(ay.il_bekleme_saat)+' saatte bir, organizatörde '+esc(ay.orgut_bekleme_saat)+' saatte bir yeni eylem. Ülke tavanı '+esc(ay.ulke_tavan)+'.</p>';
  cagri+=(denge&&denge.cagrilar||[]).map(c=>'<div class="em-kart"><b>Çağrı #'+Number(c.id)+' · '+esc(c.durum)+'</b><p>'+esc(c.gerekce)+'</p><p>İmza '+Number(c.imza||0)+' / '+Number(c.gerek||0)+'</p>'+(c.hata?'<p>'+esc(c.hata)+'</p>':'')+(c.benim&&c.durum==='hazir'?'<button type="button" class="hh-action" data-em-cagri="tamamla" data-id="'+Number(c.id)+'">Çağrıyı eyleme çevir</button>':'')+(!c.benim&&!c.imzaladim&&c.durum==='imza'?'<button type="button" class="hh-action" data-em-cagri="imza" data-id="'+Number(c.id)+'">İmza ver</button>':'')+'</div>').join('');
  cagri+='<form class="em-form" data-em-form="cagri"><label>İl numarası</label><input name="il" type="number" min="1" max="81" required><label>Talep</label><select name="talep"><option value="genel">Genel</option><option value="hizmet">Hizmet</option><option value="issizlik">İşsizlik</option><option value="vergi">Vergi</option></select><label>Kuruluş</label><select name="kaynak"><option value="parti">Parti</option><option value="dernek">Dernek</option></select><label>Kuruluş numarası</label><input name="kaynak_id" type="number" required><label>Gerekçe</label><textarea name="gerekce" minlength="20" maxlength="1500" required></textarea><button class="hh-action hh-primary" type="submit"'+(ay.depozito==null?' disabled':'')+'>Çağrıyı aç</button></form></section>';
  root.querySelector('#emCagri')?.remove();
@@ -1915,13 +1915,13 @@ function anaHTML(M){
  if(!ak.length)h+='<div class="hh4-bos">Şu anda canlı eylem yok.<br><span class="m">Aşağıdaki çağrı bölümünden yeni bir hareket başlatılabilir.</span></div>';
  else h+='<div class="hh4-meydanlar">'+ak.map(e=>mkart(e)).join('')+'</div>';
  h+='<div class="hh4-bas"><h3>✊ Yeni hareket</h3><small>Çağrı → imza → eylem</small></div>'+
-  '<details class="hh4-ac"'+(S.acik.cagri?' open':'')+' data-hh4-hatirla="cagri"><summary>📣 Eylem çağrısı aç ya da imza ver</summary><div class="ic"><div class="hh4-adim"><span class="ok">1 · Çağrı</span><span>2 · İl sakinlerinin imzası</span><span>3 · Eylem açılır</span></div><div data-hh4-yuva="cagri"></div></div></details>';
+  '<details class="hh4-ac"'+(S.acik.cagri?' open':'')+' data-hh4-hatirla="cagri"><summary>📣 Eylem çağrısı aç ya da imza ver</summary><div class="ic"><div class="hh4-adim"><span class="ok">1 · Çağrı</span><span>2 · Türkiye geneli imza</span><span>3 · Eylem açılır</span></div><div data-hh4-yuva="cagri"></div></div></details>';
  if(S.parca&&S.parca.davet)h+='<details class="hh4-ac" open id="hh4Davet"><summary>🤝 Kuruluş davetleri</summary><div class="ic" data-hh4-yuva="davet"></div></details>';
  if(S.parca&&S.parca.hukuk)h+='<details class="hh4-ac"'+(S.acik.hukuk?' open':'')+' data-hh4-hatirla="hukuk" id="hh4Hukuk"><summary>⚖️ Gözaltı, avukat ve mahkeme</summary><div class="ic" data-hh4-yuva="hukuk"></div></details>';
  h+='<details class="hh4-ac"'+(S.acik.harita?' open':'')+' data-hh4-hatirla="harita"><summary>🗺️ Türkiye kriz haritası</summary><div class="ic">'+haritaHTML(har)+'</div></details>';
  if(S.parca&&S.parca.kurumsal.length)h+='<details class="hh4-ac"'+(S.acik.kurumsal?' open':'')+' data-hh4-hatirla="kurumsal"><summary>🏛️ Meclis, kabine ve kayıtlar</summary><div class="ic" data-hh4-yuva="kurumsal"></div></details>';
  h+='<details class="hh4-ac"'+(S.acik.gecmis?' open':'')+' data-hh4-hatirla="gecmis"><summary>📜 Geçmiş eylemler ve meydanın hafızası</summary><div class="ic" data-hh4-yuva="gecmis"></div></details>';
- h+='<details class="hh4-ac"><summary>❔ Nasıl işler?</summary><div class="ic"><p>• Eylemin gücü yalnız gerçek oyunculardan gelir: katılanlar, hamleleri, tarafsızların kamuoyu nabzı, karşı taraftakiler ve sahadaki görevliler.</p><p>• Kırmızı için en az 75 güç ve en az 3 gerçek katılımcı gerekir. Üç kırmızı il, yeterli kalabalıkla 72 saat sürerse erken seçim takvimi işler.</p><p>• Eylem çağrıyla başlar: depozito yatırılır, o ilde yaşayan oyuncular imza verir, imza dolunca eylem açılır.</p><p>• İstediğin an ayrılabilirsin; eylem sohbetini yalnız o an meydanda olanlar görür.</p></div></details>';
+ h+='<details class="hh4-ac"><summary>❔ Nasıl işler?</summary><div class="ic"><p>• Eylemin gücü yalnız gerçek oyunculardan gelir: katılanlar, hamleleri, tarafsızların kamuoyu nabzı, karşı taraftakiler ve sahadaki görevliler.</p><p>• Kırmızı için en az 75 güç ve en az 3 gerçek katılımcı gerekir. Üç kırmızı il, yeterli kalabalıkla 72 saat sürerse erken seçim takvimi işler.</p><p>• Eylem çağrıyla başlar: depozito yatırılır, ilk imza açanındır; Türkiye’nin her yerinden oyuncular imza verebilir, imza dolunca eylem açılır. Kimseyi bulamadığın ilde de eylem açabilir, kendi eylemine katılabilirsin.</p><p>• İstediğin an ayrılabilirsin; eylem sohbetini yalnız o an meydanda olanlar görür.</p><p>• Hükümetin tavizleri, uzlaşma sözü, halk jürisi, kırmızı hat ve arabulucu heyeti 🤝 Masa sekmesindedir; senden yanıt bekleyen bir şey varsa sekmede sayı çıkar.</p></div></details>';
  h+='<p style="text-align:center;margin-top:18px"><button type="button" class="hh4-btn hayalet kucuk" data-hh4-klasik="1">Klasik görünümü aç</button></p>';
  return h;
 }
@@ -1947,7 +1947,7 @@ function haritaHTML(har){
 }
 
 /* ── eylem ekranı ── */
-const SEKMELER=[['akis','📡 Akış'],['sohbet','💬 Sohbet'],['hamle','✊ Hamleler'],['devlet','🏛️ Devlet'],['bedel','💸 Fatura'],['kurum','🎙️ Kurumlar'],['guc','📊 Güç']];
+const SEKMELER=[['akis','📡 Akış'],['sohbet','💬 Sohbet'],['hamle','✊ Hamleler'],['masa','🤝 Masa'],['devlet','🏛️ Devlet'],['bedel','💸 Fatura'],['kurum','🎙️ Kurumlar'],['guc','📊 Güç']];
 function eylemHTML(E){
  const x=E.x,sa=E.sa||{},dk=sa.dokum||{},dg=E.dg||{},em=E.em||{},hz=em.hazine||{};
  const cub=(ad,v,renk,yaz)=>'<div class="hh4-cubuk">'+ad+' <b style="color:#fff">'+yaz+'</b><div><i style="width:'+Math.max(0,Math.min(100,Number(v)||0))+'%;background:'+renk+'"></i></div></div>';
@@ -1986,6 +1986,7 @@ function eylemHTML(E){
   (E.katilimci?'<p class="m">Sahadaki rolün, büyük hamleler ve katılımların. Her kartta bedel ve koşul yazar; kilitli kartlar nedenini gösterir.</p>':'<p class="m">Katılmadan da etkileyebilirsin: kamuoyu nabzı, karşı tarafta yer almak, dayanışma ve destek.</p>')+
   '<div data-hh4-yuva="em-hamle"></div><div data-hh4-yuva="saha"></div><div class="hh4-grup"><h4>🤲 Destek, davet ve duyuru</h4></div><div data-hh4-yuva="destek"></div></div>';
  h+='<div data-hh4-sekme-ic="devlet"'+(S.sekme==='devlet'?'':' hidden')+'><p class="m">Hükümetin attığı adımlar, açık önlemler ve onlara verilebilecek karşılıklar. Araçları Cumhurbaşkanı, İçişleri Bakanı ve ilin valisi kullanır; kartlarda bedel ve risk yazar.</p><div data-hh4-yuva="em-devlet"></div><div data-hh4-yuva="devlet"></div><div data-hh4-yuva="devlet-akis"></div></div>';
+ h+='<div data-hh4-sekme-ic="masa"'+(S.sekme==='masa'?'':' hidden')+'><div data-hh6-masa="'+E.id+'"><div class="hh4-bos">Hükümetle masa yükleniyor…</div></div><div data-hh6-tedbir></div></div>';
  h+='<div data-hh4-sekme-ic="bedel"'+(S.sekme==='bedel'?'':' hidden')+'><div data-hh5-bedel="'+E.id+'"><div class="hh4-bos">Eylemin ekonomik faturası yükleniyor…</div></div></div>';
  h+='<div data-hh4-sekme-ic="kurum"'+(S.sekme==='kurum'?'':' hidden')+'><p class="m">Basın, jüri, boykot, meşale ve rolüne açık diğer işler.</p><div data-hh4-yuva="kurum"></div></div>';
  h+='<div data-hh4-sekme-ic="guc"'+(S.sekme==='guc'?'':' hidden')+'>'+gucHTML(E)+'</div>';
@@ -2096,7 +2097,7 @@ async function sohbetYukle(id,kaydir){
 function rozetGuncelle(){
  const id=S.eylem;if(S.gorunum!=='eylem'||!id)return;
  document.querySelectorAll('#hh4 .hh4-sekmeler button').forEach(b=>{
-  const k=b.dataset.hh4Sekme,n=k==='sohbet'?(S.sohbet[id]&&S.sohbet[id].yeni||0):k==='akis'?(S.akis[id]&&S.akis[id].yeni||0):0;
+  const k=b.dataset.hh4Sekme,n=k==='sohbet'?(S.sohbet[id]&&S.sohbet[id].yeni||0):k==='akis'?(S.akis[id]&&S.akis[id].yeni||0):k==='masa'?(window.__hh6&&window.__hh6.bekleyen?window.__hh6.bekleyen(id):0):0;
   let sup=b.querySelector('sup');if(n&&S.sekme!==k){if(!sup){sup=document.createElement('sup');b.appendChild(sup);}sup.textContent=n;}else if(sup)sup.remove();
  });
 }
@@ -2132,6 +2133,7 @@ function gorunumCiz(){
  yerlestir(kok);
  bagla(kok);
  try{if(window.__hh5&&window.__hh5.ciz)window.__hh5.ciz(kok,S,E);}catch(err){console.error('Halk Hareketleri faturası',err);}
+ try{if(window.__hh6&&window.__hh6.ciz)window.__hh6.ciz(kok,S,E);}catch(err){console.error('Halk Hareketleri masa',err);}
  if(E){
   akisYukle(E.id);if(E.katilimci)sohbetYukle(E.id,true);
   if(S.sekme==='sohbet'){const k=kok.querySelector('[data-hh4-mesajlar]');if(k)k.scrollTop=k.scrollHeight;}
@@ -2176,7 +2178,7 @@ function bagla(kok){
 function canliKur(){
  if(!(window.CANLI&&CANLI.izle))return;
  if(S.gorunum==='eylem'&&S.eylem){const id=S.eylem;
-  CANLI.izle({anahtarlar:['halk:'+id,'eylem:'+id],tazele:()=>{akisYukle(id);sohbetYukle(id);},hizliMs:20000,yedekMs:90000,yayilim:1500});}
+  CANLI.izle({anahtarlar:['halk:'+id,'eylem:'+id],tazele:()=>{akisYukle(id);sohbetYukle(id);try{if(window.__hh6&&window.__hh6.tazele)window.__hh6.tazele(id);}catch(_){}},hizliMs:20000,yedekMs:90000,yayilim:1500});}
  else if(S.model&&S.model.aktif.length)CANLI.izle({anahtarlar:S.model.aktif.map(e=>'halk:'+e.id),tazele:()=>tazele(false),hizliMs:60000,yedekMs:120000,yayilim:3000});
 }
 setInterval(()=>{document.querySelectorAll('#hh4 [data-hh4-geri]').forEach(s=>{s.textContent=kalan(s.getAttribute('data-hh4-geri'));});},1000);
@@ -2660,4 +2662,323 @@ window.__hh5={
  _durum:S5
 };
 })();
-/* Asset refresh: 20261113-1 (Halk Hareketleri 5.0 · Sokağın Faturası) */
+/* ═══════════════════════════════════════════════════════════════════════════
+   HALK HAREKETLERİ 5.1 · 🤝 MASA (13.11.2026)
+   Hükümetin eyleme koyduğu her şey tek yerde ve eylemciye açık:
+   uzlaşma sözü (taviz) oylaması, hükümet kararları ve yanıtları, kırmızı hat,
+   halk jürisi (sözler, oy, savunma), işgal pazarlığı, arabulucu heyeti ve
+   hükümet önlemlerine karşı hamleler. Yanıt bekleyen iş varsa sekmede sayı ve
+   eylem ekranının başında şerit çıkar; meydan kartlarında da etiket görünür.
+   Sunucu: supabase/migrations/20261113090000_halk_masa_cagri_onarim.sql
+   RPC: sokak_masa_panel(p_eylem) · yanıtlar mevcut RPC'lere gider
+   (sokak_soz_oyla, sokak_karar_yanit, sokak_meydan_islem, sokak_eylem_merkezi_islem,
+   sokak_heyet_yanit).
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+if(window.__hh6)return;
+const S6={panel:{},zaman:{},yuk:{},form:null,taslak:{},mesgul:false};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=(x,d)=>Number(x||0).toLocaleString('tr-TR',{maximumFractionDigits:d==null?1:d});
+const tl=x=>Math.round(Number(x||0)).toLocaleString('tr-TR')+' ₺';
+const tarih=x=>x?new Date(x).toLocaleString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Istanbul'}):'—';
+const kalan=x=>{const ms=Date.parse(x)-Date.now();if(!(ms>0))return 'süre doldu';const dk=Math.round(ms/60000);return dk<60?dk+' dk kaldı':Math.floor(dk/60)+' sa '+(dk%60)+' dk kaldı';};
+const hata=ex=>(typeof hataCevir==='function'?hataCevir(ex&&ex.message||String(ex)):String(ex&&ex.message||ex));
+const bildir=(m,h)=>{try{toast(m,!!h);}catch(_){}};
+const SOZ_DURUM={oylama:['🗳️','Katılımcı oylamasında'],reddedildi:['✋','Meydan reddetti'],takip:['⏳','Kabul edildi · söz takipte'],tutuldu:['✅','Söz tutuldu'],tutulmadi:['💔','Söz tutulmadı'],kapandi:['📁','Kapandı']};
+const KARAR_IKON={masa:'🤝',yonlendirme:'📣',uyari:'⚠️',dagitma:'🚨',yaptirim:'⛓️'};
+const KARAR_DURUM={aktif:'Yanıt bekliyor',kabul:'Kabul edildi',ret:'Reddedildi',itiraz:'İtiraz edildi · yargıda',kaldirildi:'Yargı kaldırdı',onandi:'Yargı onadı'};
+const KH_DURUM={bekliyor:'Gizli teklif · yanıt bekliyor',kabul:'Gizlice kabul edildi',ret:'Reddedildi',ifsa:'İfşa edildi'};
+const JURI_DURUM={savunma:'Savunma sırası',oy:'Jüri oyluyor',bitti:'Karar verildi'};
+
+if(!document.getElementById('hh6-stil')){
+ const st=document.createElement('style');st.id='hh6-stil';
+ st.textContent=`
+#hh4 .hh6-kart{border-radius:20px;padding:15px 14px;background:linear-gradient(160deg,#10283a 0%,#16183a 60%,#111a33 100%);border:1px solid #2f5f7e;margin:12px 0}
+#hh4 .hh6-kicker{font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:#9fd8ff;font-weight:800}
+#hh4 .hh6-bas{font-size:21px;line-height:1.2;font-weight:850;color:#fff;margin:4px 0}
+#hh4 .hh6-alt{font-size:13.5px;color:#d6ddf3;line-height:1.45;margin:4px 0}
+#hh4 .hh6-rozetler{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#hh4 .hh6-rozet{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:750;background:#1b2a50;border:1px solid #34507f;color:#dfe9ff}
+#hh4 .hh6-rozet.sicak{background:#4a1d24;border-color:#a8404f;color:#ffe0e5}
+#hh4 .hh6-rozet.iyi{background:#133b31;border-color:#2f8a6c;color:#d4fbea}
+#hh4 .hh6-baslik{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:18px 2px 8px}
+#hh4 .hh6-baslik h3{font-size:13px;letter-spacing:1.4px;text-transform:uppercase;color:#c9d3f2;margin:0}
+#hh4 .hh6-baslik small{color:#a8b4d4;font-size:12px;text-align:right}
+#hh4 .hh6-panel{border-radius:18px;padding:13px;background:#111a33;border:1px solid #2b3a64;margin:10px 0;min-width:0}
+#hh4 .hh6-panel.bekliyor{border-color:#ffb46a;box-shadow:0 0 0 1px rgba(255,180,106,.25);background:linear-gradient(160deg,#2a1d14,#111a33 70%)}
+#hh4 .hh6-panel h4{margin:0 0 4px;font-size:15.5px;color:#fff;display:flex;gap:8px;align-items:flex-start}
+#hh4 .hh6-panel h4 i{font-style:normal;font-size:20px;line-height:1}
+#hh4 .hh6-panel p{margin:6px 0;color:#d6ddf3;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+#hh4 .hh6-panel small.k{display:block;color:#a8b4d4;font-size:12px;line-height:1.35}
+#hh4 .hh6-alinti{border-left:3px solid #6ea8ff;padding:6px 10px;margin:8px 0;background:rgba(110,168,255,.07);border-radius:0 10px 10px 0;color:#e6ecff;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+#hh4 .hh6-alinti.meydan{border-left-color:#ff9b45;background:rgba(255,155,69,.08)}
+#hh4 .hh6-alinti small{display:block;color:#a8b4d4;font-size:11.5px;margin-bottom:2px}
+#hh4 .hh6-terazi{display:flex;height:12px;border-radius:99px;overflow:hidden;background:#1c2748;margin:8px 0 4px}
+#hh4 .hh6-terazi i{display:block;height:100%}
+#hh4 .hh6-terazi .e{background:#46d39f}
+#hh4 .hh6-terazi .h{background:#ff5d6c}
+#hh4 .hh6-sayim{display:flex;justify-content:space-between;font-size:12.5px;color:#c9d3f2;font-variant-numeric:tabular-nums}
+#hh4 .hh6-ilerle{position:relative;height:10px;border-radius:99px;background:#1c2748;margin:8px 0 4px;overflow:hidden}
+#hh4 .hh6-ilerle i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#6ea8ff,#46d39f);border-radius:99px}
+#hh4 .hh6-ikili{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+#hh4 .hh6-uclu{display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px}
+@media(min-width:520px){#hh4 .hh6-uclu{grid-template-columns:repeat(3,minmax(0,1fr))}}
+#hh4 .hh6-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:46px;padding:10px 12px;border-radius:12px;border:1px solid #a493ff;background:linear-gradient(135deg,#7b62ff,#5b45e0);color:#fff;font-weight:800;font-size:15px;line-height:1.25;text-align:center;white-space:normal;margin-top:0;min-width:0}
+#hh4 .hh6-btn.yesil{background:linear-gradient(135deg,#1f9a72,#167357);border-color:#55d6a8}
+#hh4 .hh6-btn.kirmizi{background:linear-gradient(135deg,#e2475a,#b02a45);border-color:#ff8b97}
+#hh4 .hh6-btn.hayalet{background:transparent;border-color:#3d4b78;color:#d5ddf5}
+#hh4 .hh6-btn:disabled{opacity:.5;cursor:not-allowed}
+#hh4 .hh6-form{margin-top:8px;border-radius:13px;padding:10px;background:#0d152c;border:1px dashed #6b5bd6}
+#hh4 .hh6-form label{display:block;font-size:14.5px;color:#e8ecff;margin:2px 0 6px;line-height:1.4}
+#hh4 .hh6-form textarea,#hh4 .hh6-form input{display:block;width:100%;min-width:0;box-sizing:border-box;font-size:16px;line-height:1.4;color:#f3f5ff;background:#121b38;border:1px solid #3d4b78;border-radius:12px;padding:10px;color-scheme:dark}
+#hh4 .hh6-form textarea{min-height:88px;resize:vertical}
+#hh4 .hh6-form textarea::placeholder,#hh4 .hh6-form input::placeholder{color:#93a0c8}
+#hh4 .hh6-form .say{font-size:12px;color:#a8b4d4;text-align:right;margin-top:3px}
+#hh4 .hh6-durum{display:inline-block;font-size:11.5px;font-weight:800;border-radius:99px;padding:2px 9px;background:#243158;color:#dfe5fa;margin-top:4px}
+#hh4 .hh6-durum.sicak{background:#5a2a14;color:#ffe2bf}
+#hh4 .hh6-durum.iyi{background:#163e33;color:#d4fbea}
+#hh4 .hh6-durum.kotu{background:#4a1d24;color:#ffd0d6}
+#hh4 .hh6-oyum{margin-top:8px;font-size:13.5px;color:#d4fbea;background:#133b31;border:1px solid #2f8a6c;border-radius:12px;padding:8px 10px}
+#hh4 .hh6-serit{display:flex;align-items:center;gap:10px;border-radius:14px;padding:10px 12px;background:linear-gradient(135deg,#123a52,#2a1d3c);border:1px solid #4f8fbf;color:#e3f3ff;font-size:13.5px;line-height:1.35;width:100%;text-align:left;min-height:48px;animation:hh6nabiz 2.4s ease-in-out infinite}
+#hh4 .hh6-serit i{font-style:normal;font-size:20px}
+#hh4 .hh6-serit b{color:#fff}
+@keyframes hh6nabiz{0%,100%{box-shadow:0 0 0 0 rgba(110,168,255,0)}50%{box-shadow:0 0 0 3px rgba(110,168,255,.28)}}
+#hh4 .hh6-etiket{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:3px 9px;font-size:12px;font-weight:750;background:#123a52;border:1px solid #4f8fbf;color:#e3f3ff;white-space:nowrap}
+#hh4 [data-hh6-tedbir] > details{margin-top:10px}
+@media(prefers-reduced-motion:reduce){#hh4 .hh6-serit{animation:none}}
+`;
+ document.head.appendChild(st);
+}
+
+/* ── veri ── */
+async function getir(id,zorla){
+ id=Number(id);
+ if(!zorla&&S6.panel[id]&&Date.now()-(S6.zaman[id]||0)<15000)return S6.panel[id];
+ if(S6.yuk[id])return S6.yuk[id];
+ S6.yuk[id]=API.rpc('sokak_masa_panel',{p_eylem:id}).then(p=>{if(p&&typeof p==='object'){S6.panel[id]=p;S6.zaman[id]=Date.now();}return S6.panel[id]||null;}).catch(()=>S6.panel[id]||null).finally(()=>{S6.yuk[id]=null;});
+ return S6.yuk[id];
+}
+
+/* ── parçalar ── */
+function terazi(evet,hayir,eAd,hAd){
+ evet=Number(evet||0);hayir=Number(hayir||0);const t=evet+hayir;
+ const pe=t?evet/t*100:50;
+ return '<div class="hh6-terazi" role="img" aria-label="'+esc(eAd)+' '+evet+', '+esc(hAd)+' '+hayir+'"><i class="e" style="width:'+(t?pe:0).toFixed(1)+'%"></i><i class="h" style="width:'+(t?100-pe:0).toFixed(1)+'%"></i></div>'+
+  '<div class="hh6-sayim"><span>✅ '+esc(eAd)+' '+evet+'</span><span>'+esc(hAd)+' '+hayir+' ❌</span></div>';
+}
+function formHTML(anahtar,etiket,ipucu,min,max,tek){
+ const v=S6.taslak[anahtar]||'';
+ return '<div class="hh6-form" data-hh6-formkutu="'+esc(anahtar)+'"><label for="hh6f">'+etiket+'</label>'+
+  (tek?'<input id="hh6f" data-hh6-metin maxlength="'+max+'" placeholder="'+esc(ipucu)+'" value="'+esc(v)+'">':'<textarea id="hh6f" data-hh6-metin maxlength="'+max+'" placeholder="'+esc(ipucu)+'">'+esc(v)+'</textarea>')+
+  '<div class="say" data-hh6-say data-min="'+min+'">'+v.length+' / '+(min?'en az '+min+' · ':'')+'en çok '+max+'</div>'+
+  '<div class="hh6-ikili"><button type="button" class="hh6-btn" data-hh6-gonder="'+esc(anahtar)+'">Gönder</button><button type="button" class="hh6-btn hayalet" data-hh6-vazgec="1">Vazgeç</button></div></div>';
+}
+
+function sozHTML(P){
+ const s=P.soz;if(!s)return '';
+ const d=SOZ_DURUM[s.durum]||['📌',s.durum];
+ const bas=Number(s.baslangic),hed=Number(s.hedef),ol=s.olcum==null?null:Number(s.olcum);
+ let ilerleme='';
+ if(ol!=null&&isFinite(bas)&&isFinite(hed)&&hed!==bas){const p=Math.max(0,Math.min(100,(ol-bas)/(hed-bas)*100));ilerleme='<div class="hh6-ilerle"><i style="width:'+p.toFixed(1)+'%"></i></div><small class="k">Başlangıç '+num(bas,2)+' → hedef '+num(hed,2)+' · şu an '+num(ol,2)+' (%'+num(p,0)+')</small>';}
+ let h='<div class="hh6-panel'+(s.oy_hakki?' bekliyor':'')+'"><h4><i>🕊️</i><span>Hükümetin tavizi · uzlaşma sözü<small class="k">'+esc(s.yapan||'Hükümet')+' · '+esc(s.talep||'')+'</small></span></h4>'+
+  '<span class="hh6-durum '+(s.durum==='oylama'?'sicak':s.durum==='tutuldu'||s.durum==='takip'?'iyi':s.durum==='tutulmadi'||s.durum==='reddedildi'?'kotu':'')+'">'+d[0]+' '+esc(d[1])+'</span>'+
+  (s.metin?'<div class="hh6-alinti"><small>Hükümetin teklifi</small>'+esc(s.metin)+'</div>':'')+
+  (s.durum==='takip'&&s.son_tarih?'<p>Hükümet sözü <b>'+esc(tarih(s.son_tarih))+'</b>\'e kadar tutmalı. Tutmazsa güvenilirliği düşer, meydanın sözü güçlenir.</p>':'')+ilerleme;
+ if(s.durum==='oylama'||Number(s.secmen)>0)h+=terazi(s.evet,s.hayir,'Kabul','Ret');
+ if(s.durum==='oylama'&&s.oy_sonu)h+='<small class="k">Oylama '+esc(kalan(s.oy_sonu))+' · '+Number(s.secmen||0)+' seçmen (teklif anında meydanda olanlar)</small>';
+ if(s.oy_hakki)h+='<p><b>Senin oyun bekleniyor.</b> Kabul çıkarsa eylem uzlaşmayla biter ve söz takibe girer; ret çıkarsa meydan sürer.</p><div class="hh6-ikili"><button type="button" class="hh6-btn yesil" data-hh6-is="soz" data-v=\'{"oy":true}\'>✅ Kabul</button><button type="button" class="hh6-btn kirmizi" data-hh6-is="soz" data-v=\'{"oy":false}\'>❌ Ret</button></div>';
+ else if(s.secmenim&&s.oyum!=null)h+='<div class="hh6-oyum">Oyun: <b>'+(s.oyum?'Kabul':'Ret')+'</b></div>';
+ else if(s.durum==='oylama'&&!s.secmenim)h+='<p class="m">Bu oylamada yalnız teklif yapıldığında meydanda olan katılımcılar oy kullanır.</p>';
+ return h+'</div>';
+}
+
+function kararHTML(P){
+ const L=P.kararlar||[];if(!L.length)return '';
+ let h='<div class="hh6-baslik"><h3>🏛️ Hükümetin kararları</h3><small>'+L.length+' karar</small></div>';
+ L.forEach(k=>{
+  const sec=k.secenekler||[];const bek=sec.length>0;
+  h+='<div class="hh6-panel'+(bek?' bekliyor':'')+'"><h4><i>'+(KARAR_IKON[k.tur]||'📌')+'</i><span>'+esc(k.ad)+'<small class="k">'+esc(k.unvan||'')+(k.yapan?' · '+esc(k.yapan):'')+' · '+esc(tarih(k.zaman))+(k.hedef?' · hedef: '+esc(k.hedef):'')+'</small></span></h4>'+
+   '<span class="hh6-durum '+(k.durum==='aktif'&&!k.suresi_doldu?'sicak':k.durum==='kabul'||k.durum==='kaldirildi'?'iyi':k.durum==='ret'||k.durum==='onandi'?'kotu':'')+'">'+esc(k.soz?'Katılımcı oylamasına gitti':k.durum==='aktif'&&k.suresi_doldu?'Yanıt süresi doldu':(KARAR_DURUM[k.durum]||k.durum))+(k.durum==='aktif'&&!k.suresi_doldu?' · '+esc(kalan(k.bitis)):'')+'</span>'+
+   (k.gerekce?'<div class="hh6-alinti"><small>Gerekçe</small>'+esc(k.gerekce)+'</div>':'')+
+   (k.cevap?'<div class="hh6-alinti meydan"><small>Meydanın yanıtı</small>'+esc(k.cevap)+'</div>':'');
+  if(bek){
+   const acik=S6.form&&S6.form.indexOf('karar:'+k.id+':')===0;
+   if(acik){const kk=S6.form.split(':')[2];const ad=(sec.find(x=>x.k===kk)||{}).ad||kk;h+=formHTML(S6.form,'<b>'+esc(ad)+'</b> · kamuoyuna açıklamanı yaz (20–1500 karakter)','Örn. Masaya oturuyoruz ama taleplerimiz yazılı güvenceye bağlanmalı.',20,1500);}
+   else h+='<div class="'+(sec.length===1?'hh6-uclu':'hh6-ikili')+'">'+sec.map(o=>'<button type="button" class="hh6-btn'+(o.k==='kabul'||o.k==='kaldirildi'?' yesil':o.k==='ret'||o.k==='itiraz'||o.k==='onandi'?' kirmizi':'')+'" data-hh6-ac="karar:'+Number(k.id)+':'+esc(o.k)+'">'+esc(o.ad)+'</button>').join('')+'</div>';
+  }
+  h+='</div>';
+ });
+ return h;
+}
+
+function kirmiziHTML(P){
+ const k=P.kirmizi;if(!k)return '';
+ let h='<div class="hh6-panel'+(k.yanit_hakki?' bekliyor':'')+'"><h4><i>☎️</i><span>Kırmızı hat · '+esc(k.teklif_ad)+'<small class="k">'+esc(tarih(k.zaman))+' · '+(k.durum==='ifsa'?'herkes görüyor':'yalnız düzenleyen görür')+'</small></span></h4>'+
+  '<span class="hh6-durum '+(k.durum==='bekliyor'?'sicak':k.durum==='ifsa'?'kotu':'')+'">'+esc(KH_DURUM[k.durum]||k.durum)+'</span>'+
+  (k.metin?'<div class="hh6-alinti"><small>Hükümetin gizli teklifi</small>'+esc(k.metin)+'</div>':'');
+ if(k.yanit_hakki)h+='<p>Gizlice kabul edersen teklif uygulanır ama meydan bunu bilmez; ifşa edersen hükümet kamuoyu önünde zor durumda kalır.</p><div class="hh6-uclu"><button type="button" class="hh6-btn yesil" data-hh6-is="kirmizi" data-v=\'{"yanit":"kabul"}\'>🤫 Gizlice kabul</button><button type="button" class="hh6-btn hayalet" data-hh6-is="kirmizi" data-v=\'{"yanit":"ret"}\'>✋ Ret</button><button type="button" class="hh6-btn kirmizi" data-hh6-is="kirmizi" data-v=\'{"yanit":"ifsa"}\'>📢 İfşa et</button></div>';
+ return h+'</div>';
+}
+
+function juriHTML(P){
+ const j=P.juri;if(!j)return '';
+ const oyBekler=P.aktif&&j.uyeyim&&j.oyum==null&&j.durum!=='bitti';
+ const savunur=j.savunma_taraf&&Number(j.kalan_soz||0)>0;
+ let h='<div class="hh6-panel'+(oyBekler||savunur?' bekliyor':'')+'"><h4><i>⚖️</i><span>Halk jürisi<small class="k">'+Number(j.uye||0)+' rastgele seçilmiş yurttaş · '+(j.durum==='bitti'?'karar verildi':esc(kalan(j.bitis)))+'</small></span></h4>'+
+  '<span class="hh6-durum '+(j.durum==='bitti'?(j.sonuc==='meydan'?'iyi':'kotu'):'sicak')+'">'+esc(JURI_DURUM[j.durum]||j.durum)+(j.sonuc?' · '+(j.sonuc==='meydan'?'Meydan haklı bulundu':j.sonuc==='hukumet'?'Hükümet haklı bulundu':esc(j.sonuc)):'')+'</span>'+
+  '<div class="hh6-ilerle"><i style="width:'+(Number(j.uye)?Number(j.oy_veren||0)/Number(j.uye)*100:0).toFixed(1)+'%"></i></div><small class="k">'+Number(j.oy_veren||0)+' / '+Number(j.uye||0)+' jüri üyesi oy verdi</small>';
+ const sz=j.sozler||[];
+ if(sz.length)h+=sz.map(s=>'<div class="hh6-alinti'+(s.taraf==='meydan'?' meydan':'')+'"><small>'+(s.taraf==='meydan'?'✊ Meydanın savunması':'🏛️ Hükümetin savunması')+' · '+esc(tarih(s.zaman))+'</small>'+esc(s.metin)+'</div>').join('');
+ else h+='<p class="m">Henüz savunma yazılmadı.</p>';
+ if(oyBekler&&j.durum==='oy')h+='<p><b>Jüri üyesisin, oyun bekleniyor.</b> Savunmaları oku ve vicdanına göre karar ver.</p><div class="hh6-ikili"><button type="button" class="hh6-btn yesil" data-hh6-is="juri_oy" data-v=\'{"oy":"meydan"}\'>✊ Meydan haklı</button><button type="button" class="hh6-btn" data-hh6-is="juri_oy" data-v=\'{"oy":"hukumet"}\'>🏛️ Hükümet haklı</button></div>';
+ else if(j.uyeyim&&j.durum==='savunma')h+='<p class="m">Jüri üyesisin. Savunmalar bitince oy sırası açılır.</p>';
+ else if(j.uyeyim&&j.oyum)h+='<div class="hh6-oyum">Oyun: <b>'+(j.oyum==='meydan'?'Meydan haklı':'Hükümet haklı')+'</b></div>';
+ if(savunur){
+  const k='juri_savun';
+  h+=S6.form===k?formHTML(k,(j.savunma_taraf==='meydan'?'✊ Meydan adına':'🏛️ Hükümet adına')+' jüriye kısa söz · '+Number(j.kalan_soz)+' hakkın kaldı','Jüriye tek cümlede neden haklı olduğunuzu söyleyin.',5,180,true):
+   '<button type="button" class="hh6-btn" style="margin-top:8px" data-hh6-ac="juri_savun">✍️ Jüriye söz yaz · '+Number(j.kalan_soz)+' hak</button>';
+ }
+ return h+'</div>';
+}
+
+function muzakereHTML(P){
+ const m=P.muzakere;if(!m)return '';
+ let h='<div class="hh6-panel'+(m.oy_hakki?' bekliyor':'')+'"><h4><i>🏢</i><span>İşgal pazarlığı<small class="k">'+(Number(m.bedel)>0?'Teklif bedeli '+esc(tl(m.bedel))+' · ':'')+(m.durum==='oy'?esc(kalan(m.bitis)):'oylama bitti')+'</small></span></h4>'+
+  '<span class="hh6-durum '+(m.durum==='oy'?'sicak':m.durum==='kabul'?'iyi':'kotu')+'">'+(m.durum==='oy'?'İşgalciler oyluyor':m.durum==='kabul'?'Kabul edildi':'Reddedildi')+'</span>'+
+  (m.metin?'<div class="hh6-alinti"><small>Hükümetin teklifi</small>'+esc(m.metin)+'</div>':'')+terazi(m.evet,m.hayir,'Evet','Hayır');
+ if(m.oy_hakki)h+='<div class="hh6-ikili"><button type="button" class="hh6-btn yesil" data-hh6-is="muzakere" data-v=\'{"oy":"evet"}\'>✅ Evet</button><button type="button" class="hh6-btn kirmizi" data-hh6-is="muzakere" data-v=\'{"oy":"hayir"}\'>❌ Hayır</button></div>';
+ else if(m.oyum)h+='<div class="hh6-oyum">Oyun: <b>'+(m.oyum==='evet'?'Evet':'Hayır')+'</b></div>';
+ return h+'</div>';
+}
+
+function heyetHTML(P){
+ const L=P.heyet||[];if(!L.length)return '';
+ const ben=L.find(x=>x.ben&&x.durum==='davet'&&P.aktif);
+ let h='<div class="hh6-panel'+(ben?' bekliyor':'')+'"><h4><i>🕊️</i><span>Arabulucu heyeti<small class="k">'+L.length+' kişi davet edildi</small></span></h4>';
+ L.forEach(x=>{h+='<p>'+(x.durum==='kabul'?'✅':x.durum==='ret'?'✋':'✉️')+' <b>'+esc(x.kim)+'</b>'+(x.ben?' (sen)':'')+' · '+(x.durum==='kabul'?'heyette':x.durum==='ret'?'reddetti':'davet bekliyor')+(x.davet_eden?' · davet: '+esc(x.davet_eden):'')+'</p>'+
+  (x.rapor?'<div class="hh6-alinti"><small>Heyet raporu · '+esc(tarih(x.rapor_zaman))+'</small>'+esc(x.rapor)+'</div>':'');});
+ if(ben)h+='<p><b>Arabulucu olarak davet edildin.</b> Kabul edersen iki tarafla konuşur ve rapor yazarsın.</p><div class="hh6-ikili"><button type="button" class="hh6-btn yesil" data-hh6-is="heyet" data-v=\'{"kabul":true}\'>Heyete katıl</button><button type="button" class="hh6-btn hayalet" data-hh6-is="heyet" data-v=\'{"kabul":false}\'>Reddet</button></div>';
+ return h+'</div>';
+}
+
+function masaHTML(P){
+ if(!P)return '<div class="hh4-bos">Masa bilgisi alınamadı. Biraz sonra yeniden dene.</div>';
+ const r=P.rol||{},bek=Number(P.bekleyen||0);
+ const rolAd=r.hukumet?'🏛️ Hükümet yetkilisi':r.organizator?'📣 Eylemi düzenleyen':r.katilimci?'✊ Katılımcı':r.yargi?'⚖️ Yargı':'👀 İzleyici';
+ const var_=!!(P.soz||(P.kararlar||[]).length||P.kirmizi||P.juri||P.muzakere||(P.heyet||[]).length||P.hukumet_yaniti);
+ let h='<div class="hh6-kart"><div class="hh6-kicker">🤝 Hükümetle masa</div>'+
+  '<div class="hh6-bas">'+(bek?'Senden '+bek+' yanıt bekleniyor':var_?'Masada '+(P.aktif?'süren':'kapanmış')+' bir pazarlık var':'Hükümet henüz masaya bir şey koymadı')+'</div>'+
+  '<div class="hh6-alt">Hükümetin tavizleri, kararları, jüri ve arabulucular burada. Yanıt hakkın olan her şeyin yanında düğme çıkar.</div>'+
+  '<div class="hh6-rozetler"><span class="hh6-rozet">'+rolAd+'</span>'+(P.talep_ad?'<span class="hh6-rozet">🎯 Talep: '+esc(P.talep_ad)+'</span>':'<span class="hh6-rozet">🎯 Talep seçilmedi</span>')+(bek?'<span class="hh6-rozet sicak">⏳ '+bek+' bekleyen</span>':'')+(!P.aktif?'<span class="hh6-rozet">Eylem bitti</span>':'')+'</div></div>';
+ if(P.hukumet_yaniti)h+='<div class="hh6-panel"><h4><i>🎙️</i><span>Hükümetin resmî yanıtı<small class="k">'+esc(tarih(P.yanit_zamani))+'</small></span></h4><div class="hh6-alinti">'+esc(P.hukumet_yaniti)+'</div></div>';
+ h+=sozHTML(P)+kirmiziHTML(P)+juriHTML(P)+muzakereHTML(P)+heyetHTML(P)+kararHTML(P);
+ if(!var_)h+='<div class="hh6-panel"><p>Hükümet bu eyleme şunlarla gelebilir:</p><p>🤝 <b>Uzlaşma masası</b> — düzenleyen kabul ya da ret eder.<br>🕊️ <b>Somut taviz (uzlaşma sözü)</b> — meydandaki katılımcılar oylar.<br>☎️ <b>Kırmızı hat</b> — düzenleyene gizli teklif; kabul, ret ya da ifşa.<br>⚖️ <b>Halk jürisi</b> — iki taraf savunma yazar, jüri karar verir.<br>⛓️ <b>Yaptırım</b> — hedef alınan itiraz eder, yargı karar verir.</p><p class="m">Bir şey geldiğinde bu sekmede sayı çıkar ve eylem ekranının başında şerit belirir.</p></div>';
+ return h;
+}
+
+/* ── işlemler ── */
+async function calistir(id,ad,v){
+ const P=S6.panel[id]||{};
+ if(ad==='soz')return API.rpc('sokak_soz_oyla',{p_eylem:id,p_oy:!!v.oy});
+ if(ad==='kirmizi')return API.rpc('sokak_meydan_islem',{p_eylem:id,p_islem:'kirmizi_yanit',p_veri:{yanit:v.yanit}});
+ if(ad==='juri_oy')return API.rpc('sokak_meydan_islem',{p_eylem:id,p_islem:'juri_oy',p_veri:{oy:v.oy}});
+ if(ad==='juri_savun')return API.rpc('sokak_meydan_islem',{p_eylem:id,p_islem:'juri_savun',p_veri:{metin:v.metin}});
+ if(ad==='muzakere')return API.rpc('sokak_eylem_merkezi_islem',{p_eylem:id,p_islem:'muzakere_oy',p_veri:{oy:v.oy}});
+ if(ad==='heyet')return API.rpc('sokak_heyet_yanit',{p_eylem:id,p_kabul:!!v.kabul});
+ if(ad==='karar')return API.rpc('sokak_karar_yanit',{p_karar:Number(v.karar),p_islem:v.islem,p_metin:v.metin});
+ throw new Error('Bilinmeyen işlem');
+}
+const MESAJ={soz:'Oyun kaydedildi',kirmizi:'Yanıtın iletildi',juri_oy:'Jüri oyun kaydedildi',juri_savun:'Sözün jüriye ulaştı',muzakere:'Oyun kaydedildi',heyet:'Yanıtın iletildi',karar:'Yanıtın kamuoyuna duyuruldu'};
+async function yap(y,id,ad,v,btn){
+ if(S6.mesgul)return;S6.mesgul=true;
+ y.querySelectorAll('button').forEach(b=>{b.disabled=true;});
+ try{
+  await calistir(id,ad,v);
+  bildir(MESAJ[ad]||'Kaydedildi');
+  if(S6.form)delete S6.taslak[S6.form];S6.form=null;
+  await getir(id,true);
+  S6.mesgul=false;
+  cizMasa(y,id);rozet(id);
+  setTimeout(()=>{try{if(typeof sokakHareketleriEkrani==='function'&&(!window.SO_MESGUL||!window.SO_MESGUL()))sokakHareketleriEkrani();}catch(_){}},900);
+ }catch(ex){S6.mesgul=false;bildir(hata(ex),true);y.querySelectorAll('button').forEach(b=>{b.disabled=false;});}
+}
+function bagla(y,id){
+ y.querySelectorAll('[data-hh6-is]').forEach(b=>b.addEventListener('click',()=>{let v={};try{v=JSON.parse(b.dataset.v||'{}');}catch(_){}yap(y,id,b.dataset.hh6Is,v,b);}));
+ y.querySelectorAll('[data-hh6-ac]').forEach(b=>b.addEventListener('click',()=>{S6.form=b.dataset.hh6Ac;cizMasa(y,id);
+  const f=y.querySelector('[data-hh6-metin]');if(f){try{f.focus({preventScroll:true});}catch(_){f.focus();}const k=y.querySelector('[data-hh6-formkutu]');if(k&&k.scrollIntoView)k.scrollIntoView({block:'nearest',behavior:'smooth'});}}));
+ y.querySelectorAll('[data-hh6-vazgec]').forEach(b=>b.addEventListener('click',()=>{S6.form=null;cizMasa(y,id);}));
+ const m=y.querySelector('[data-hh6-metin]');
+ if(m)m.addEventListener('input',()=>{S6.taslak[S6.form]=m.value;const s=y.querySelector('[data-hh6-say]');if(s){const mn=Number(s.dataset.min||0);s.textContent=m.value.length+' / '+(mn?'en az '+mn+' · ':'')+'en çok '+m.maxLength;s.style.color=mn&&m.value.trim().length<mn?'#ffcf9a':'#a8b4d4';}});
+ y.querySelectorAll('[data-hh6-gonder]').forEach(b=>b.addEventListener('click',()=>{
+  const a=b.dataset.hh6Gonder,metin=((y.querySelector('[data-hh6-metin]')||{}).value||'').trim();
+  if(a==='juri_savun'){if(metin.length<5){bildir('Söz en az 5 karakter olmalı',true);return;}yap(y,id,'juri_savun',{metin},b);return;}
+  const p=a.split(':');if(p[0]==='karar'){if(metin.length<20){bildir('Açıklama en az 20 karakter olmalı',true);return;}yap(y,id,'karar',{karar:p[1],islem:p[2],metin},b);}
+ }));
+}
+function cizMasa(y,id){
+ if(!y||!y.isConnected)return;
+ const odak=y.querySelector('[data-hh6-metin]:focus');if(odak)return;
+ y.innerHTML=masaHTML(S6.panel[id]);bagla(y,id);
+}
+
+/* ── sekme rozeti, şerit, kart etiketi ── */
+function bekleyen(id){const P=S6.panel[Number(id)];return P&&P.aktif?Number(P.bekleyen||0):0;}
+function rozet(id){
+ const b=document.querySelector('#hh4 .hh4-sekmeler [data-hh4-sekme="masa"]');if(!b)return;
+ const S=window.__hh4||{};const n=bekleyen(id);let sup=b.querySelector('sup');
+ if(n&&S.sekme!=='masa'){if(!sup){sup=document.createElement('sup');b.appendChild(sup);}sup.textContent=n;}else if(sup)sup.remove();
+ const sr=document.querySelector('#hh4 [data-hh6-serit]');
+ if(sr&&(!n||S.sekme==='masa'))sr.remove();
+}
+function serit(kok,E,P){
+ const S=window.__hh4||{};const n=P&&P.aktif?Number(P.bekleyen||0):0;
+ const u=kok.querySelector('.hh4-uyarilar');const eski=kok.querySelector('[data-hh6-serit]');
+ if(!u||!n||S.sekme==='masa'){if(eski)eski.remove();return;}
+ const parca=[];if(P.soz&&P.soz.oy_hakki)parca.push('taviz oylaması');if((P.kararlar||[]).some(k=>(k.secenekler||[]).length))parca.push('hükümet kararı');if(P.kirmizi&&P.kirmizi.yanit_hakki)parca.push('kırmızı hat');if(P.juri&&(P.juri.uyeyim&&P.juri.oyum==null||P.juri.savunma_taraf&&Number(P.juri.kalan_soz)>0))parca.push('halk jürisi');if(P.muzakere&&P.muzakere.oy_hakki)parca.push('işgal pazarlığı');if((P.heyet||[]).some(x=>x.ben&&x.durum==='davet'))parca.push('arabulucu daveti');
+ const d=eski||document.createElement('button');d.type='button';d.className='hh6-serit';d.setAttribute('data-hh6-serit','1');
+ d.innerHTML='<i>🤝</i><span><b>Masada senden '+n+' yanıt bekleniyor</b>'+(parca.length?' · '+esc(parca.join(', ')):'')+'<br><span style="color:#9fd8ff">Masaya git ve yanıtla ›</span></span>';
+ if(!eski){d.addEventListener('click',()=>{const b=kok.querySelector('.hh4-sekmeler [data-hh4-sekme="masa"]');if(b)b.click();});u.insertBefore(d,u.firstChild);}
+}
+function tedbirTasi(kok){
+ const hedef=kok.querySelector('[data-hh6-tedbir]');if(!hedef||hedef.children.length)return;
+ kok.querySelectorAll('[data-hh4-yuva="devlet"] > details.hh-detail').forEach(d=>{
+  const s=d.querySelector('summary');if(!s||!/On iki yeni hükümet aracı/.test(s.textContent||''))return;
+  if(d.querySelector('form[data-saha-form="tedbir"]'))return; // hükümet yetkilisi: Devlet sekmesinde kalsın
+  if(!d.querySelector('.hh-log'))return;
+  s.textContent='🏛️ Hükümet önlemleri ve karşı hamlelerin';d.open=true;hedef.appendChild(d);
+ });
+ if(hedef.children.length)hedef.insertAdjacentHTML('afterbegin','<div class="hh6-baslik"><h3>🛡️ Önlemlere karşı hamle</h3><small>Her önlemin altında</small></div>');
+}
+function kartEtiket(kok,M){
+ const L=(M&&M.aktif||[]).slice(0,8);
+ L.forEach(e=>{getir(e.id,false).then(P=>{
+  const n=P&&P.aktif?Number(P.bekleyen||0):0;if(!n)return;
+  const k=kok.querySelector('.hh4-mkart[data-hh4-ac="'+Number(e.id)+'"] .alt');
+  if(!k||!k.isConnected||k.querySelector('[data-hh6-etiket]'))return;
+  const s=document.createElement('span');s.className='hh6-etiket';s.setAttribute('data-hh6-etiket','1');s.textContent='🤝 '+n+' yanıt bekliyor';k.appendChild(s);
+ });});
+}
+
+window.__hh6={
+ ciz(kok,S,E){
+  if(!kok)return;
+  if(!E){kartEtiket(kok,S&&S.model);return;}
+  const id=Number(E.id);
+  if(S6.sonEylem!==id){S6.form=null;S6.sonEylem=id;}
+  tedbirTasi(kok);
+  const y=kok.querySelector('[data-hh6-masa="'+id+'"]');
+  const yaz=P=>{if(!P)return;if(S6.mesgul)return;cizMasa(y,id);serit(kok,E,P);rozet(id);};
+  if(S6.panel[id])yaz(S6.panel[id]);
+  getir(id,S.sekme==='masa').then(yaz);
+ },
+ tazele(id){
+  id=Number(id);const S=window.__hh4||{};
+  getir(id,true).then(P=>{const kok=document.getElementById('hh4');if(!kok||!P||S6.mesgul||S.eylem!==id||S.gorunum!=='eylem')return;
+   const y=kok.querySelector('[data-hh6-masa="'+id+'"]');if(y)cizMasa(y,id);serit(kok,{id},P);rozet(id);});
+ },
+ bekleyen,
+ _durum:S6,_html:masaHTML
+};
+})();
+/* Asset refresh: 20261113-2 (Halk Hareketleri 5.1 · Masa) */

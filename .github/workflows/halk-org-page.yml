@@ -27,7 +27,7 @@ jobs:
           cp docs/halk-org-davet.js www/halk-org-davet.js
           python3 - <<'PY'
           from pathlib import Path
-          tag = b'<script defer src="halk-org-davet.js?v=20261113-1"></script>\n'
+          tag = b'<script defer src="halk-org-davet.js?v=20261113-2"></script>\n'
           for filename in ('docs/index.html','www/index.html'):
               p = Path(filename)
               data = p.read_bytes()
@@ -39,7 +39,7 @@ jobs:
                   print('Connected:', filename)
               else:
                   import re
-                  newest = re.sub(rb'halk-org-davet[.]js[?]v=[0-9A-Za-z._-]+', b'halk-org-davet.js?v=20261113-1', data)
+                  newest = re.sub(rb'halk-org-davet[.]js[?]v=[0-9A-Za-z._-]+', b'halk-org-davet.js?v=20261113-2', data)
                   if newest != data:
                       p.write_bytes(newest)
                       print('Cache version updated:', filename)
