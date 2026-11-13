@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.13-9', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.13-10', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -71585,6 +71585,8 @@ declare
     'sokak_bedel_panel', 'sokak_bedel_ozet', 'sokak_bedel_islem',
     -- 13.11.2026 Halk Hareketleri 5.1 · Masa (supabase/migrations/20261113090000_halk_masa_cagri_onarim.sql)
     'sokak_masa_panel',
+    -- 13.11.2026 Halk Hareketleri 5.2 · Doruk ve bireysel yaptırımlar (supabase/migrations/20261113160000_halk_doruk_bireysel.sql)
+    'sokak_doruk_panel', 'sokak_doruk_ozet', 'sokak_doruk_karar', 'sokak_bireysel_ihtar', 'sokak_bireysel_geri',
     -- 13.11.2026 Oyuncu sohbet grupları (sql/200_sohbet_gruplari.sql)
     'sohbet_grup_kur', 'sohbet_grup_detay', 'sohbet_grup_ad', 'sohbet_grup_uye_ekle', 'sohbet_grup_uye_cikar', 'sohbet_grup_ayril', 'sohbet_grup_kapat',
     -- 13.11.2026 Sohbet gruplarına dışarıdan katılma (sql/201_sohbet_grup_katilim.sql)
