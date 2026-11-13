@@ -2134,6 +2134,7 @@ function gorunumCiz(){
  bagla(kok);
  try{if(window.__hh5&&window.__hh5.ciz)window.__hh5.ciz(kok,S,E);}catch(err){console.error('Halk Hareketleri faturası',err);}
  try{if(window.__hh6&&window.__hh6.ciz)window.__hh6.ciz(kok,S,E);}catch(err){console.error('Halk Hareketleri masa',err);}
+ try{if(window.__hh7&&window.__hh7.ciz)window.__hh7.ciz(kok,S,E);}catch(err){console.error('Halk Hareketleri doruk',err);}
  if(E){
   akisYukle(E.id);if(E.katilimci)sohbetYukle(E.id,true);
   if(S.sekme==='sohbet'){const k=kok.querySelector('[data-hh4-mesajlar]');if(k)k.scrollTop=k.scrollHeight;}
@@ -2178,7 +2179,7 @@ function bagla(kok){
 function canliKur(){
  if(!(window.CANLI&&CANLI.izle))return;
  if(S.gorunum==='eylem'&&S.eylem){const id=S.eylem;
-  CANLI.izle({anahtarlar:['halk:'+id,'eylem:'+id],tazele:()=>{akisYukle(id);sohbetYukle(id);try{if(window.__hh6&&window.__hh6.tazele)window.__hh6.tazele(id);}catch(_){}},hizliMs:20000,yedekMs:90000,yayilim:1500});}
+  CANLI.izle({anahtarlar:['halk:'+id,'eylem:'+id],tazele:()=>{akisYukle(id);sohbetYukle(id);try{if(window.__hh6&&window.__hh6.tazele)window.__hh6.tazele(id);}catch(_){}try{if(window.__hh7&&window.__hh7.tazele)window.__hh7.tazele(id);}catch(_){}},hizliMs:20000,yedekMs:90000,yayilim:1500});}
  else if(S.model&&S.model.aktif.length)CANLI.izle({anahtarlar:S.model.aktif.map(e=>'halk:'+e.id),tazele:()=>tazele(false),hizliMs:60000,yedekMs:120000,yayilim:3000});
 }
 setInterval(()=>{document.querySelectorAll('#hh4 [data-hh4-geri]').forEach(s=>{s.textContent=kalan(s.getAttribute('data-hh4-geri'));});},1000);
@@ -2982,3 +2983,269 @@ window.__hh6={
 };
 })();
 /* Asset refresh: 20261113-2 (Halk Hareketleri 5.1 · Masa) */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Halk Hareketleri 5.2 · Doruk Anı ve Bireysel Yaptırımlar (13.11.2026)
+   Sunucu: supabase/migrations/20261113160000_halk_doruk_bireysel.sql
+   RPC: sokak_doruk_panel, sokak_doruk_ozet, sokak_doruk_karar,
+        sokak_bireysel_ihtar, sokak_bireysel_geri
+   Eylem görünümü: doruk/ültimatom şeridi, polis ihtarı uyarısı, bana uygulanan
+   yaptırımlar; Devlet sekmesinde yetkiliye "Bireysel yaptırımlar" masası.
+   Ana görünüm: süren doruklar, Halkın Zaferi kartı ve Cumhurbaşkanı kararı.
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+if(window.__hh7)return;
+const S7={panel:{},zaman:{},yuk:{},ozet:null,ozetZaman:0,ozetYuk:null,form:null,mesgul:false,saat:null};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tl=x=>Math.round(Number(x||0)).toLocaleString('tr-TR')+' ₺';
+const num=(x,d)=>Number(x||0).toLocaleString('tr-TR',{maximumFractionDigits:d==null?1:d});
+const saat=x=>x?new Date(x).toLocaleString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Istanbul'}):'—';
+const kalan=x=>{const ms=Date.parse(x)-Date.now();if(!(ms>0))return 'süre doldu';const dk=Math.ceil(ms/60000);return dk<60?dk+' dk':Math.floor(dk/60)+' sa '+(dk%60)+' dk';};
+const hata=ex=>(typeof hataCevir==='function'?hataCevir(ex&&ex.message||String(ex)):String(ex&&ex.message||ex));
+const bildir=(m,h)=>{try{toast(m,!!h);}catch(_){}};
+const KARAR={istifa:'İçişleri Bakanını görevden aldı',talep:'Meydanın talebini kabul etti',diren:'Geri adım atmadı',sure_doldu:'Yanıt vermedi (direniş sayıldı)'};
+const SONUC={ultimatom:['🔥','Doruk · ültimatom sürüyor'],zafer:['🏆','Halkın Zaferi'],bastirildi:['🛡️','Hükümet ültimatomu atlattı'],uzlasma:['🤝','Uzlaşmayla sonuçlandı'],dagildi:['🌫️','Meydan dağıldı']};
+const BDURUM={ihtar:['sicak','İhtar · uygulanmayı bekliyor'],uygulandi:['kotu','Uygulandı'],geri:['iyi','Geri çekildi'],bos:['','Etkilenen olmadı']};
+
+if(!document.getElementById('hh7-stil')){
+ const st=document.createElement('style');st.id='hh7-stil';
+ st.textContent=`
+#hh4 .hh7-doruk{border-radius:18px;padding:14px;margin:4px 0;border:1px solid #ff8a4c;background:radial-gradient(120% 140% at 0% 0%,#5a1f12 0%,#2a1424 55%,#141a33 100%);color:#ffe9dc;animation:hh7ates 2.2s ease-in-out infinite}
+#hh4 .hh7-doruk.zafer{border-color:#ffd25c;background:radial-gradient(120% 140% at 0% 0%,#5a4512 0%,#2a2414 55%,#141a33 100%);color:#fff5d6;animation:none}
+#hh4 .hh7-doruk.sakin{border-color:#4f8fbf;background:linear-gradient(160deg,#10283a,#16183a);color:#e3f3ff;animation:none}
+#hh4 .hh7-doruk .k{font-size:11px;letter-spacing:1.8px;text-transform:uppercase;font-weight:850;opacity:.9}
+#hh4 .hh7-doruk h3{margin:3px 0 4px;font-size:20px;line-height:1.2;color:#fff;font-weight:850}
+#hh4 .hh7-doruk p{margin:5px 0;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+#hh4 .hh7-sayac{display:flex;align-items:baseline;gap:8px;margin:8px 0 2px;flex-wrap:wrap}
+#hh4 .hh7-sayac b{font-size:28px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums}
+#hh4 .hh7-sayac span{font-size:13px;opacity:.9}
+#hh4 .hh7-esik{position:relative;height:12px;border-radius:99px;background:#2a2340;overflow:hidden;margin:8px 0 4px}
+#hh4 .hh7-esik i{display:block;height:100%;background:linear-gradient(90deg,#ff9b45,#ff4d5e)}
+#hh4 .hh7-esik u{position:absolute;top:0;bottom:0;width:2px;background:#fff;text-decoration:none}
+#hh4 .hh7-yollar{display:grid;gap:6px;margin-top:8px}
+#hh4 .hh7-yol{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:1.4;background:rgba(0,0,0,.22);border-radius:11px;padding:8px 10px}
+#hh4 .hh7-yol i{font-style:normal;font-size:17px;line-height:1.2}
+#hh4 .hh7-ihtar{border-radius:14px;padding:11px 12px;border:1px solid #ffb46a;background:linear-gradient(135deg,#3a2210,#24162c);color:#ffe7cc;font-size:14px;line-height:1.45;margin:4px 0}
+#hh4 .hh7-ihtar b{color:#fff}
+#hh4 .hh7-katalog{display:grid;gap:8px}
+#hh4 .hh7-kalem{border-radius:14px;padding:11px;background:#0e1730;border:1px solid #2b3a64;min-width:0}
+#hh4 .hh7-kalem h5{margin:0;font-size:15px;color:#fff;display:flex;gap:7px;align-items:center}
+#hh4 .hh7-kalem p{margin:5px 0;font-size:13.5px;line-height:1.45;color:#d6ddf3;overflow-wrap:anywhere}
+#hh4 .hh7-kalem .engel{font-size:12.5px;color:#ffcf9e;margin:4px 0}
+#hh4 .hh7-kalem .bedel{font-size:12.5px;color:#a8b4d4}
+#hh4 .hh7-dugmeler{display:grid;gap:8px;margin-top:10px}
+@keyframes hh7ates{0%,100%{box-shadow:0 0 0 0 rgba(255,120,60,0)}50%{box-shadow:0 0 0 4px rgba(255,120,60,.25)}}
+@media(prefers-reduced-motion:reduce){#hh4 .hh7-doruk{animation:none}}
+`;
+ document.head.appendChild(st);
+}
+
+/* ── veri ── */
+async function getir(id,zorla){
+ id=Number(id);
+ if(!zorla&&S7.panel[id]&&Date.now()-(S7.zaman[id]||0)<15000)return S7.panel[id];
+ if(S7.yuk[id])return S7.yuk[id];
+ S7.yuk[id]=API.rpc('sokak_doruk_panel',{p_eylem:id}).then(p=>{if(p&&typeof p==='object'){S7.panel[id]=p;S7.zaman[id]=Date.now();}return S7.panel[id]||null;}).catch(()=>S7.panel[id]||null).finally(()=>{S7.yuk[id]=null;});
+ return S7.yuk[id];
+}
+async function ozetGetir(zorla){
+ if(!zorla&&S7.ozet&&Date.now()-S7.ozetZaman<20000)return S7.ozet;
+ if(S7.ozetYuk)return S7.ozetYuk;
+ S7.ozetYuk=API.rpc('sokak_doruk_ozet',{}).then(p=>{if(p&&typeof p==='object'){S7.ozet=p;S7.ozetZaman=Date.now();}return S7.ozet;}).catch(()=>S7.ozet).finally(()=>{S7.ozetYuk=null;});
+ return S7.ozetYuk;
+}
+
+/* ── parçalar ── */
+function yollarHTML(){
+ return '<div class="hh7-yollar">'+
+  '<div class="hh7-yol"><i>🏆</i><div><b>Güç 85 ve üstünde kalırsa: Halkın Zaferi.</b> Katılımcılara +3 kıdem, +10 itibar ve rozet; hükümet memnuniyeti −3; erken seçim sayacı 12 saat öne; ilde 48 saat yaptırım yasağı; Cumhurbaşkanı karar vermek zorunda.</div></div>'+
+  '<div class="hh7-yol"><i>🤝</i><div><b>Uzlaşma sözü kabul edilirse:</b> meydan masaya oturur, memnuniyet +0,5.</div></div>'+
+  '<div class="hh7-yol"><i>🛡️</i><div><b>Güç 85\'in altına indirilirse:</b> hükümet ültimatomu atlatır; sert bastırma tartışması (memnuniyet −0,5).</div></div></div>';
+}
+function dorukHTML(P){
+ const d=P&&P.doruk;const K=P&&P.kosul||{doruk:95,zafer:85};
+ if(!d){
+  if(!P||!P.aktif||!P.kirmizi)return '';
+  return '<div class="hh7-doruk sakin" data-hh7-doruk><div class="k">Doruğa giden yol</div><p>Güç <b>'+num(K.doruk,0)+'</b>\'e ulaşırsa <b>Doruk Anı</b> başlar: hükümete 6 saatlik ültimatom verilir. Şu an: <b>'+num(P.seviye,0)+'</b>.</p></div>';
+ }
+ if(d.durum==='ultimatom'){
+  const sv=Number(P.seviye||0);
+  return '<div class="hh7-doruk" data-hh7-doruk><div class="k">🔥 Doruk anı · hükümete ültimatom</div><h3>'+esc(P.il)+' meydanı tam güçte</h3>'+
+   '<div class="hh7-sayac"><b data-hh7-geri="'+esc(d.ultimatom)+'">'+kalan(d.ultimatom)+'</b><span>kaldı · ültimatom '+saat(d.ultimatom)+'</span></div>'+
+   '<div class="hh7-esik" title="Zafer eşiği '+K.zafer+'"><i style="width:'+Math.max(0,Math.min(100,sv))+'%"></i><u style="left:'+K.zafer+'%"></u></div>'+
+   '<p>Güç şu an <b>'+num(sv,0)+'</b> · zafer için ültimatom bitene kadar <b>'+K.zafer+'</b> ve üstünde kalmalı.</p>'+yollarHTML()+'</div>';
+ }
+ const s=SONUC[d.durum]||['','Sonuç'];
+ let h='<div class="hh7-doruk '+(d.durum==='zafer'?'zafer':'sakin')+'" data-hh7-doruk><div class="k">'+s[0]+' Doruk sonucu</div><h3>'+esc(s[1])+'</h3>';
+ if(d.durum==='zafer'){
+  h+='<p>Ödül alan katılımcı: <b>'+num(d.sonuc&&d.sonuc.odullu,0)+'</b>'+(d.sonuc&&Number(d.sonuc.iade)>0?' · iade edilen bloke: <b>'+tl(d.sonuc.iade)+'</b>':'')+'</p>';
+  h+=d.cb_karar?'<p>Cumhurbaşkanı: <b>'+esc(KARAR[d.cb_karar]||d.cb_karar)+'</b>'+(d.cb_gerekce?' — “'+esc(d.cb_gerekce)+'”':'')+'</p>':'<p>Cumhurbaşkanının kararı bekleniyor · <b data-hh7-geri="'+esc(d.cb_karar_son)+'">'+kalan(d.cb_karar_son)+'</b></p>';
+ }
+ return h+'</div>';
+}
+function ihtarHTML(P){
+ const i=P&&P.ihtar;if(!i)return '';
+ const kat=P.rol&&P.rol.katilimci;
+ return '<div class="hh7-ihtar" data-hh7-ihtar><b>⚠️ Polis ihtarı: '+esc(i.ad)+'</b><br>Saat <b>'+saat(i.uygulama)+'</b>\'de (<span data-hh7-geri="'+esc(i.uygulama)+'">'+kalan(i.uygulama)+'</span>) meydanda kalan herkese uygulanacak.'+
+  (kat?'<br><b>Sen meydandasın.</b> Etkilenmek istemiyorsan o saate kadar Hamleler sekmesinden eylemden ayrılabilirsin; kalırsan yaptırım sana da uygulanır.':'')+
+  '<br><small>Gerekçe: '+esc(i.gerekce)+'</small></div>';
+}
+function benimHTML(L){
+ if(!L||!L.length)return '';
+ return '<div class="hh7-ihtar" data-hh7-benim><b>⛓️ Sana uygulanan yaptırımlar</b>'+L.map(b=>{
+  let t=esc(b.ad);
+  if(b.tur==='idari_ceza')t+=' · '+tl(b.tutar)+' kesildi';
+  else if(b.tur==='teminat')t+=' · '+tl(b.tutar)+(b.iade_durum==='bekliyor'?' bloke, iade '+saat(b.iade_zaman):' iade edildi');
+  else if(b.tur==='disiplin')t+=' · −5 kıdem';
+  else if(b.bitis)t+=' · '+saat(b.bitis)+'\'e kadar';
+  return '<br>• '+t;
+ }).join('')+'</div>';
+}
+function devletHTML(P,id){
+ const Y=P.rol&&P.rol.yetkili;
+ let h='<div class="hh6-baslik"><h3>⛓️ Bireysel yaptırımlar</h3><small>Meydandaki gerçek oyunculara</small></div>';
+ if(Y){
+  if(P.mesruiyet_bitis)h+='<div class="hh7-ihtar">🏆 Meşruiyet krizi: '+saat(P.mesruiyet_bitis)+'\'e kadar bu ilde bireysel yaptırım uygulanamaz.</div>';
+  h+='<p class="m" style="font-size:13.5px;line-height:1.45">Önce polis ihtarı verilir; <b>30 dakika</b> sonra meydanda kalan herkese uygulanır. Ayrılanlar kurtulur — meydan güç kaybeder. Aynı yaptırım 12 saatte bir, bir meydanda 24 saatte en çok 3; <b>gözaltı dalgası</b> ayrıca 6 saatte bir (meydandakilerin %20\'si, en çok 6 kişi, 6 saat). Bedel İçişleri kasasından; her uygulama memnuniyeti −0,2 düşürür.</p>';
+  h+='<div class="hh7-katalog">'+(P.katalog||[]).map(k=>{
+   const acik=S7.form&&S7.form.id===id&&S7.form.tur===k.tur;
+   const engel=k.engel&&k.engel!=='yetki'?k.engel:null;
+   let x='<div class="hh7-kalem"><h5><span>'+esc(k.ikon)+'</span>'+esc(k.ad)+'</h5><p>'+esc(k.aciklama)+'</p><div class="bedel">Bedel: '+tl(k.bedel)+(Number(k.saat)>0?' · süre '+num(k.saat,0)+' saat':'')+'</div>';
+   if(engel)x+='<div class="engel">🔒 '+esc(engel)+'</div>';
+   if(acik){
+    const tas=S7.form.metin||'';
+    x+='<div class="hh6-form"><label for="hh7g">Gerekçe (kamuoyuna duyurulur, 20–500 karakter)</label><textarea id="hh7g" data-hh7-gerekce maxlength="500" placeholder="Örn. Kamu düzenini bozan ve uyarılara rağmen dağılmayan kalabalığa…">'+esc(tas)+'</textarea><div class="say" data-hh7-say>'+tas.length+'/500</div>'+
+     '<div class="hh7-dugmeler"><button type="button" class="hh6-btn kirmizi" data-hh7-gonder="'+esc(k.tur)+'">⚠️ İhtarı ver · 30 dk sonra uygulanır</button><button type="button" class="hh6-btn hayalet" data-hh7-vazgec>Vazgeç</button></div></div>';
+   }else x+='<div class="hh7-dugmeler"><button type="button" class="hh6-btn" data-hh7-ac="'+esc(k.tur)+'"'+(engel?' disabled':'')+'>İhtar ver</button></div>';
+   return x+'</div>';
+  }).join('')+'</div>';
+ }
+ const L=P.yaptirimlar||[];
+ if(L.length){
+  h+='<div class="hh6-baslik"><h3>📜 Yaptırım kaydı</h3><small>'+L.length+' kayıt</small></div>';
+  h+=L.map(b=>{const d=BDURUM[b.durum]||['',b.durum];
+   return '<div class="hh6-panel'+(b.durum==='ihtar'?' bekliyor':'')+'"><h4>'+esc(b.ad)+'</h4><small class="k">'+esc(b.yapan)+' · '+saat(b.zaman)+(b.durum==='ihtar'?' · uygulama '+saat(b.uygulama):'')+'</small>'+
+    '<p>'+esc(b.gerekce)+'</p><span class="hh6-durum '+d[0]+'">'+esc(d[1])+'</span>'+
+    (b.durum==='uygulandi'?'<small class="k" style="margin-top:4px">'+num(b.etkilenen,0)+' katılımcı etkilendi'+(Number(b.toplam)>0?' · '+tl(b.toplam):'')+'</small>':'')+
+    (b.geri_cekebilir?'<div class="hh7-dugmeler"><button type="button" class="hh6-btn hayalet" data-hh7-geri-cek="'+Number(b.id)+'">🕊️ İhtarı geri çek</button></div>':'')+'</div>';
+  }).join('');
+ }else if(!Y)return '';
+ return '<div data-hh7-devlet="'+id+'">'+h+'</div>';
+}
+function ozetHTML(O){
+ if(!O)return '';
+ const L=(O.doruklar||[]);let h='';
+ L.forEach(d=>{
+  if(d.durum==='ultimatom'){
+   h+='<div class="hh7-doruk" style="margin:10px 0"><div class="k">🔥 Doruk anı · ültimatom</div><h3>'+esc(d.il)+' meydanı tam güçte</h3><div class="hh7-sayac"><b data-hh7-geri="'+esc(d.ultimatom)+'">'+kalan(d.ultimatom)+'</b><span>kaldı · güç '+num(d.seviye,0)+' (zafer için ≥85)</span></div>'+
+    '<div class="hh7-dugmeler"><button type="button" class="hh6-btn" data-hh7-git="'+Number(d.eylem_id)+'">Meydana git</button></div></div>';
+  }else if(d.durum==='zafer'){
+   h+='<div class="hh7-doruk zafer" style="margin:10px 0"><div class="k">🏆 Halkın Zaferi</div><h3>'+esc(d.il)+' meydanı kazandı</h3>'+
+    '<p>Hükümet memnuniyeti −3, büyüme −0,3, erken seçim sayacı 12 saat öne çekildi.'+(d.mesruiyet_bitis&&Date.parse(d.mesruiyet_bitis)>Date.now()?' '+esc(d.il)+' ilinde '+saat(d.mesruiyet_bitis)+'\'e kadar bireysel yaptırım uygulanamaz.':'')+'</p>';
+   if(d.cb_karar)h+='<p>Cumhurbaşkanı: <b>'+esc(KARAR[d.cb_karar]||d.cb_karar)+'</b>'+(d.cb_gerekce?' — “'+esc(d.cb_gerekce)+'”':'')+'</p>';
+   else if(O.cb){
+    const tas=S7.form&&S7.form.karar===d.eylem_id?S7.form.metin||'':'';
+    h+='<p><b>Kararın bekleniyor</b> · <span data-hh7-geri="'+esc(d.cb_karar_son)+'">'+kalan(d.cb_karar_son)+'</span> içinde karar vermezsen “direniş” sayılır (memnuniyet −1, kriz sayacı 6 saat öne).</p>'+
+     '<div class="hh6-form"><label for="hh7k'+Number(d.eylem_id)+'">Kamuoyuna açıklaman (isteğe bağlı)</label><textarea id="hh7k'+Number(d.eylem_id)+'" data-hh7-karar-metin="'+Number(d.eylem_id)+'" maxlength="500" placeholder="Milletimize sesleniyorum…">'+esc(tas)+'</textarea>'+
+     '<div class="hh7-dugmeler">'+
+     '<button type="button" class="hh6-btn" data-hh7-karar="istifa" data-hh7-eylem="'+Number(d.eylem_id)+'"'+(O.icisleri_dolu?'':' disabled')+'>🏛️ İçişleri Bakanını görevden al (memnuniyet +2)</button>'+
+     '<button type="button" class="hh6-btn yesil" data-hh7-karar="talep" data-hh7-eylem="'+Number(d.eylem_id)+'">🕊️ Talebi kabul et (memnuniyet +1,5)</button>'+
+     '<button type="button" class="hh6-btn kirmizi" data-hh7-karar="diren" data-hh7-eylem="'+Number(d.eylem_id)+'">✊ Geri adım atma (memnuniyet −1, kriz +6 sa)</button>'+
+     '</div></div>';
+   }else h+='<p>Cumhurbaşkanının kararı bekleniyor · <b data-hh7-geri="'+esc(d.cb_karar_son)+'">'+kalan(d.cb_karar_son)+'</b></p>';
+   h+='</div>';
+  }else{
+   const s=SONUC[d.durum]||['',''];
+   h+='<div class="hh7-doruk sakin" style="margin:10px 0"><div class="k">'+s[0]+' Doruk sonucu</div><h3>'+esc(d.il)+' · '+esc(s[1])+'</h3></div>';
+  }
+ });
+ const b=benimHTML(O.benim);
+ if(!h&&!b)return '';
+ return '<div data-hh7-ana>'+h+b+'</div>';
+}
+
+/* ── işlemler ── */
+async function islem(fn,args,id,ok){
+ if(S7.mesgul)return;S7.mesgul=true;
+ try{const p=await API.rpc(fn,args);if(id&&p&&typeof p==='object'){S7.panel[id]=p;S7.zaman[id]=Date.now();}S7.form=null;bildir(ok);}
+ catch(ex){bildir(hata(ex),true);}
+ finally{S7.mesgul=false;}
+ S7.ozetZaman=0;
+ const kok=document.getElementById('hh4');const S=window.__hh4||{};
+ if(kok)window.__hh7.ciz(kok,S,S.gorunum==='eylem'&&S.eylem?{id:S.eylem}:null,true);
+}
+function bagla(kok,id){
+ kok.querySelectorAll('[data-hh7-ac]').forEach(b=>b.addEventListener('click',()=>{S7.form={id,tur:b.dataset.hh7Ac,metin:''};cizEylem(kok,id);const t=kok.querySelector('[data-hh7-gerekce]');if(t)t.focus();}));
+ kok.querySelectorAll('[data-hh7-vazgec]').forEach(b=>b.addEventListener('click',()=>{S7.form=null;cizEylem(kok,id);}));
+ kok.querySelectorAll('[data-hh7-gerekce]').forEach(t=>t.addEventListener('input',()=>{if(S7.form)S7.form.metin=t.value;const s=kok.querySelector('[data-hh7-say]');if(s)s.textContent=t.value.length+'/500';}));
+ kok.querySelectorAll('[data-hh7-gonder]').forEach(b=>b.addEventListener('click',()=>{
+  const g=(S7.form&&S7.form.metin||'').trim();
+  if(g.length<20){bildir('Gerekçe en az 20 karakter olmalı.',true);return;}
+  islem('sokak_bireysel_ihtar',{p_eylem:id,p_tur:b.dataset.hh7Gonder,p_gerekce:g},id,'İhtar verildi: 30 dakika sonra meydanda kalanlara uygulanacak.');
+ }));
+ kok.querySelectorAll('[data-hh7-geri-cek]').forEach(b=>b.addEventListener('click',()=>islem('sokak_bireysel_geri',{p_id:Number(b.dataset.hh7GeriCek)},id,'İhtar geri çekildi.')));
+}
+function anaBagla(kok){
+ kok.querySelectorAll('[data-hh7-git]').forEach(b=>b.addEventListener('click',()=>{const k=kok.querySelector('.hh4-mkart[data-hh4-ac="'+Number(b.dataset.hh7Git)+'"]');if(k)k.click();else bildir('Meydan kartı listede bulunamadı; sayfayı yenileyin.',true);}));
+ kok.querySelectorAll('[data-hh7-karar-metin]').forEach(t=>t.addEventListener('input',()=>{S7.form={karar:Number(t.dataset.hh7KararMetin),metin:t.value};}));
+ kok.querySelectorAll('[data-hh7-karar]').forEach(b=>b.addEventListener('click',()=>{
+  const e=Number(b.dataset.hh7Eylem),k=b.dataset.hh7Karar;
+  const ad={istifa:'İçişleri Bakanını görevden almak',talep:'meydanın talebini kabul etmek',diren:'geri adım atmamak'}[k];
+  if(typeof confirm==='function'&&!confirm('Kararın: '+ad+'. Bu karar geri alınamaz. Onaylıyor musun?'))return;
+  const t=kok.querySelector('[data-hh7-karar-metin="'+e+'"]');
+  islem('sokak_doruk_karar',{p_eylem:e,p_karar:k,p_gerekce:t?t.value.trim():''},null,'Kararın açıklandı.');
+ }));
+}
+
+/* ── çizim ── */
+function cizEylem(kok,id){
+ const P=S7.panel[id];if(!P||!kok.isConnected)return;
+ const u=kok.querySelector('.hh4-uyarilar');
+ if(u){
+  u.querySelectorAll('[data-hh7-doruk],[data-hh7-ihtar],[data-hh7-benim]').forEach(n=>n.remove());
+  const w=document.createElement('div');w.innerHTML=dorukHTML(P)+ihtarHTML(P)+benimHTML(P.benim);
+  Array.from(w.children).reverse().forEach(n=>u.insertBefore(n,u.firstChild));
+ }
+ const dv=kok.querySelector('[data-hh4-sekme-ic="devlet"]');
+ if(dv){
+  const eski=dv.querySelector('[data-hh7-devlet]');if(eski)eski.remove();
+  const w=document.createElement('div');w.innerHTML=devletHTML(P,id);
+  if(w.firstChild){const p=dv.querySelector('p.m');if(p&&p.nextSibling)dv.insertBefore(w.firstChild,p.nextSibling);else dv.appendChild(w.firstChild);}
+ }
+ bagla(kok,id);
+}
+function cizAna(kok){
+ const eski=kok.querySelector('[data-hh7-ana]');if(eski)eski.remove();
+ const w=document.createElement('div');w.innerHTML=ozetHTML(S7.ozet);
+ if(w.firstChild){kok.insertBefore(w.firstChild,kok.firstChild);anaBagla(kok);}
+}
+function sayacKur(){
+ if(S7.saat)return;
+ S7.saat=setInterval(()=>{const kok=document.getElementById('hh4');if(!kok){clearInterval(S7.saat);S7.saat=null;return;}
+  kok.querySelectorAll('[data-hh7-geri]').forEach(n=>{n.textContent=kalan(n.getAttribute('data-hh7-geri'));});},30000);
+}
+function formAcik(kok){const a=document.activeElement;return !!(a&&kok.contains(a)&&a.matches&&a.matches('[data-hh7-gerekce],[data-hh7-karar-metin]'));}
+
+window.__hh7={
+ ciz(kok,S,E,zorla){
+  if(!kok)return;
+  sayacKur();
+  if(!E){
+   if(S7.ozet)cizAna(kok);
+   ozetGetir(!!zorla).then(()=>{const k=document.getElementById('hh4');const s=window.__hh4||S||{};if(!k||s.gorunum==='eylem'||S7.mesgul||formAcik(k))return;cizAna(k);});
+   return;
+  }
+  const id=Number(E.id);
+  if(S7.form&&S7.form.id&&S7.form.id!==id)S7.form=null;
+  if(S7.panel[id])cizEylem(kok,id);
+  getir(id,!!zorla||(S&&S.sekme==='devlet')).then(()=>{const k=document.getElementById('hh4');const s=window.__hh4||S||{};if(!k||S7.mesgul||formAcik(k)||s.eylem!==id||s.gorunum!=='eylem')return;cizEylem(k,id);});
+ },
+ tazele(id){
+  id=Number(id);
+  getir(id,true).then(()=>{const k=document.getElementById('hh4');const s=window.__hh4||{};if(!k||S7.mesgul||formAcik(k)||s.eylem!==id||s.gorunum!=='eylem')return;cizEylem(k,id);});
+ },
+ _durum:S7,_html:{doruk:dorukHTML,devlet:devletHTML,ozet:ozetHTML,ihtar:ihtarHTML}
+};
+})();
+/* Asset refresh: 20261113-3 (Halk Hareketleri 5.2 · Doruk ve bireysel yaptırımlar) */
