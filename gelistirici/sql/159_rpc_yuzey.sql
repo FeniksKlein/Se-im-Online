@@ -205,6 +205,8 @@ declare
     'sokak_masa_panel',
     -- 13.11.2026 Oyuncu sohbet grupları (sql/200_sohbet_gruplari.sql)
     'sohbet_grup_kur', 'sohbet_grup_detay', 'sohbet_grup_ad', 'sohbet_grup_uye_ekle', 'sohbet_grup_uye_cikar', 'sohbet_grup_ayril', 'sohbet_grup_kapat',
+    -- 13.11.2026 Sohbet gruplarına dışarıdan katılma (sql/201_sohbet_grup_katilim.sql)
+    'sohbet_grup_kesfet', 'sohbet_grup_katilim_iste', 'sohbet_grup_istek_iptal', 'sohbet_grup_istek_karar', 'sohbet_grup_gorunurluk',
     'sokak_sohbet_oku', 'sokak_sohbet_yaz', 'sokak_meydan_islem', 'sokak_meydan_panel', 'sokak_kriz_harita', 'sokak_denetim_oku',
     'sokak_sert_islem', 'sokak_sert_panel',
     'sokak_eylem_merkezi', 'sokak_eylem_merkezi_islem',

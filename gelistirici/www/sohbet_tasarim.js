@@ -288,13 +288,14 @@
         '<div class="sh-bos kucuk"><p>' + (q ? '“' + esc(ST.ara) + '” ile eşleşen konuşma yok.' : 'Okunmamış mesajın yok. Hepsini okudun.') + '</p>' +
         (q ? '<button type="button" class="sh-btn" data-sh="araOyuncu">' + I.ara + 'Oyuncularda ara</button>' : '') + '</div>') + '</div>';
   }
-  function kanalSatir(k, buyuk) {
+  function kanalSatir(k, buyuk, istekSay) {
     if (!k) return '';
     var kilit = !!k.kilit, yeni = kilit ? 0 : n(k.okunmamis), q = ST.ara.toLocaleLowerCase('tr-TR');
     if (q && String(k.baslik || '').toLocaleLowerCase('tr-TR').indexOf(q) < 0 && String(kanalAlt(k)).toLocaleLowerCase('tr-TR').indexOf(q) < 0) return '';
     var alt = kilit ? esc(k.kilit) : k.son ? '<b>' + esc(k.son.kad) + ':</b> ' + esc(k.son.metin) : esc(kanalAlt(k));
     var cip = !kilit && k.cevrimici != null ? '<span class="sh-c-cev"><span class="sh-nokta"></span>' + k.cevrimici + ' çevrimiçi</span>' : '';
     var izle = !kilit && !k.yazabilir ? '<span class="sh-c-izle">' + I.goz + 'İzleyici</span>' : '';
+    if (istekSay) izle += '<span class="sh-gr-istek">' + I.kisiler + istekSay + ' katılma isteği</span>';
     return '<button type="button" class="sh-c' + (kilit ? ' kilit' : '') + (yeni ? ' yeni' : '') + '" data-sh="' + (kilit ? 'kilit' : 'kanal') + '" data-kanal="' + esc(k.kanal) + '" data-kilit="' + esc(k.kilit || '') + '">' +
       kanalIkon(k.kanal, 50) + (kilit ? '<span class="sh-c-kilit">' + I.kilit + '</span>' : '') +
       '<span class="sh-k-orta"><span class="sh-k-ust"><b>' + esc(k.baslik) + '</b><time>' + (k.son && !kilit ? esc(listeZaman(k.son.zaman)) : '') + '</time></span>' +
@@ -315,11 +316,11 @@
         '<span class="sh-meydan-alt">' + (g.son ? '<em>' + esc(g.son.kad) + ':</em> ' + esc(g.son.metin) : 'Bütün Türkiye burada konuşuyor. İlk sözü sen al.') + '</span>' +
         '<span class="sh-meydan-alt2"><span><span class="sh-nokta"></span>' + n(g.cevrimici != null ? g.cevrimici : oz.cevrimici) + ' oyuncu çevrimiçi</span><span class="sh-meydan-git">Meydana gir' + I.ok + '</span></span></button>';
     }
-    var gruplar = grupBolum(oz, q) + KANAL_GRUP.map(function (gr) {
+    var gruplar = KANAL_GRUP.map(function (gr) {
       var ic = gr[1].map(function (kod) { return kanalSatir(bul(kod)); }).join('');
       if (q && g && gr[0] === 'Herkese açık') ic = kanalSatir(g) + ic;
       return ic ? '<div class="sh-bas"><h3>' + gr[0] + '</h3></div><div class="sh-liste">' + ic + '</div>' : '';
-    }).join('');
+    }).join('') + grupBolum(oz, q);
     return meydan + (gruplar || '<div class="sh-bos kucuk"><p>Bu aramaya uyan kanal yok.</p></div>') +
       '<p class="sh-kural">' + I.bayrak + '<span>Hakaret, küfür, nefret söylemi ve spam yasaktır. Bir mesaja dokunup şikâyet edebilir, oyuncuyu engelleyebilirsin. Kilitli kanallar ilgili göreve gelince açılır.</span></p>';
   }
@@ -375,8 +376,8 @@
     }
   }
   async function veriGetir() {
-    var r = await Promise.all([API.rpc('ozel_liste'), API.rpc('sohbet_ozet')]);
-    ST.dm = Array.isArray(r[0]) ? r[0] : []; ST.oz = r[1] || { kanallar: [] };
+    var r = await Promise.all([API.rpc('ozel_liste'), API.rpc('sohbet_ozet'), API.rpc('sohbet_grup_kesfet', { p_ara: null, p_limit: 30 }).catch(function () { return null; })]);
+    ST.dm = Array.isArray(r[0]) ? r[0] : []; ST.oz = r[1] || { kanallar: [] }; ST.kesfet = r[2] || ST.kesfet || null;
     try { SON_SOHBET_OZET(ST.oz); } catch (e) {}
     // Sunucu çevrimiçi bilgisini göndermiyorsa (eski sürüm) portre kimliklerinden al
     if (ST.dm.length && ST.dm[0].aktif === undefined && typeof kimlikYukle === 'function') {
@@ -438,6 +439,9 @@
       case 'araSil': var i = document.getElementById('shAra'); if (i) { i.value = ''; ST.ara = ''; el.hidden = true; govdeTazele(true); i.focus(); } break;
       case 'yenile': anaEkran(); break;
       case 'yeniGrup': hafif(); yeniGrup(); break;
+      case 'grupKatil': hafif(); grupKatilAc(Number(el.getAttribute('data-gid')), el.getAttribute('data-ad') || ''); break;
+      case 'grupIstekIptal': hafif(); grupIstekIptal(Number(el.getAttribute('data-gid')), el.getAttribute('data-ad') || ''); break;
+      case 'grupTumu': hafif(); grupKesfetModal(); break;
     }
   });
 
@@ -1273,12 +1277,75 @@
     });
   }
   function grupBolum(oz, q) {
-    var gs = gruplarim(oz), ic = gs.map(function (k) { return kanalSatir(k); }).join('');
-    if (q) return ic ? '<div class="sh-bas"><h3>Gruplarım</h3></div><div class="sh-liste">' + ic + '</div>' : '';
-    var bas = '<div class="sh-bas"><h3>Gruplarım</h3><button type="button" class="sh-gr-yeni" data-sh="yeniGrup">' + I.arti + 'Yeni grup</button></div>';
-    if (!gs.length) return bas + '<button type="button" class="sh-gr-bos" data-sh="yeniGrup"><span class="sh-kik" style="--k:#2fc7a1;width:50px;height:50px">' + I.kisiler + '</span>' +
+    var gs = gruplarim(oz), K = ST.kesfet || null, bek = (K && K.bekleyen) || {};
+    var benim = gs.map(function (k) { return kanalSatir(k, false, n(bek[String(k.grup_id)])); }).join('');
+    var digerTum = ((K && K.gruplar) || []).filter(function (g) { return !q || String(g.ad + ' ' + g.kurucu).toLocaleLowerCase('tr-TR').indexOf(q.toLocaleLowerCase('tr-TR')) >= 0; });
+    var diger = digerTum.slice(0, q ? 20 : 5).map(kesfetSatir).join('');
+    if (q) return (benim || diger) ? '<div class="sh-bas"><h3>Özel Gruplar</h3></div><div class="sh-liste">' + benim + diger + '</div>' : '';
+    var h = '<div class="sh-bas sh-gr-bas"><h3>Özel Gruplar</h3><button type="button" class="sh-gr-yeni" data-sh="yeniGrup">' + I.arti + 'Yeni grup</button></div>';
+    h += '<p class="sh-gr-acik">Oyuncuların kurduğu sohbet grupları. Mesajları yalnızca üyeler görür; istediğin gruba katılma isteği gönderebilir, üyesi olduğun gruptan istediğin zaman çıkabilirsin.</p>';
+    if (gs.length) h += '<div class="sh-gr-alt">Üye olduğun gruplar</div><div class="sh-liste">' + benim + '</div>';
+    else h += '<button type="button" class="sh-gr-bos" data-sh="yeniGrup"><span class="sh-kik" style="--k:#2fc7a1;width:50px;height:50px">' + I.kisiler + '</span>' +
       '<span class="sh-k-orta"><b>Kendi sohbet grubunu kur</b><span>Grubuna ad koy, istediğin oyuncuları ekle. Konuşulanları yalnızca grup üyeleri görür.</span></span><span class="sh-ys-git">' + I.arti + '</span></button>';
-    return bas + '<div class="sh-liste">' + ic + '</div>';
+    if (diger) h += '<div class="sh-gr-alt">Katılabileceğin gruplar</div><div class="sh-liste">' + diger + '</div>';
+    if (K) h += '<button type="button" class="sh-btn sh-gr-tumu" data-sh="grupTumu">' + I.ara + (digerTum.length ? 'Tüm grupları gör ve ara' : 'Grup ara') + '</button>';
+    return h;
+  }
+  function kesfetSatir(g) {
+    var bekl = g.istek === 'bekliyor';
+    var dug = bekl ? '<button type="button" class="sh-gr-katil bekl" data-sh="grupIstekIptal" data-gid="' + n(g.id) + '" data-ad="' + esc(g.ad) + '">' + I.saat + 'İstek gönderildi</button>'
+      : '<button type="button" class="sh-gr-katil" data-sh="grupKatil" data-gid="' + n(g.id) + '" data-ad="' + esc(g.ad) + '">' + I.arti + 'Katıl</button>';
+    return '<div class="sh-c sh-gr-kesfet" data-gid="' + n(g.id) + '">' + kanalIkon('og:' + g.id, 50) +
+      '<span class="sh-k-orta"><span class="sh-k-ust"><b>' + esc(g.ad) + '</b></span>' +
+      '<span class="sh-k-alt"><span class="sh-k-m">' + n(g.uye_sayisi) + ' üye · Kurucu: ' + esc(g.kurucu || '') + '</span></span>' +
+      '<span class="sh-c-alt">' + (n(g.cevrimici) ? '<span class="sh-c-cev"><span class="sh-nokta"></span>' + n(g.cevrimici) + ' çevrimiçi</span>' : '') + '<span class="sh-c-izle">' + I.kilit + 'Mesajlar yalnız üyelere açık</span></span></span>' + dug + '</div>';
+  }
+  async function kesfetTazele() {
+    try { ST.kesfet = await API.rpc('sohbet_grup_kesfet', { p_ara: null, p_limit: 30 }); } catch (e) {}
+    govdeTazele(true);
+  }
+  function grupKatilAc(id, ad) {
+    if (!id) return;
+    var m = modal('<div class="sh-yeni sh-gy"><h3>Gruba katılma isteği</h3>' +
+      '<p class="sh-gy-not">' + I.kisiler + '<span><b>' + esc(ad) + '</b> grubunun kurucusuna katılma isteğin gönderilecek. Kurucu kabul edince gruba girer ve mesajları görürsün.</span></p>' +
+      '<label class="sh-gy-et" for="shGkNot">Kurucuya not <small>İsteğe bağlı</small></label>' +
+      '<textarea id="shGkNot" class="sh-gy-inp sh-gy-ta" maxlength="200" rows="3" placeholder="Örnek: Ege\'deki çalışmalara katkı vermek istiyorum."></textarea>' +
+      '<button type="button" class="sh-btn ana sh-gy-kur" id="shGkGonder">' + I.ucak + 'İsteği gönder</button>' +
+      '<button type="button" class="sh-btn sh-gb-tam" id="shGkVaz">Vazgeç</button></div>');
+    $1('#shGkVaz', m).onclick = function () { modalKapat(); };
+    $1('#shGkGonder', m).onclick = async function () {
+      var b = this; b.disabled = true;
+      try {
+        await API.rpc('sohbet_grup_katilim_iste', { p_grup: id, p_not: $1('#shGkNot', m).value.trim() || null });
+        modalKapat(); tst('Katılma isteğin “' + ad + '” kurucusuna gönderildi.');
+        await kesfetTazele();
+        if (document.getElementById('shGkListe')) grupKesfetModal();
+      } catch (err) { b.disabled = false; tst(hataYaz(err), true); }
+    };
+    setTimeout(function () { try { $1('#shGkNot', m).focus(); } catch (e) {} }, 60);
+  }
+  async function grupIstekIptal(id, ad) {
+    if (!(await onayla('İsteği geri çek', '“' + esc(ad) + '” grubuna gönderdiğin katılma isteği geri çekilsin mi?', 'Geri çek', true))) return;
+    try { await API.rpc('sohbet_grup_istek_iptal', { p_grup: id }); tst('Katılma isteğin geri çekildi.'); await kesfetTazele(); }
+    catch (err) { tst(hataYaz(err), true); }
+  }
+  function grupKesfetModal() {
+    var m = modal('<div class="sh-yeni sh-gy"><h3>Özel Gruplar</h3>' +
+      '<label class="sh-ara sh-ara-m">' + I.ara + '<input id="shGkAra" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="Grup adı ya da kurucu ara"></label>' +
+      '<div class="sh-yeni-liste sh-gk-liste" id="shGkListe"><div class="sh-ys-bas">Yükleniyor…</div></div></div>');
+    var inp = $1('#shGkAra', m), liste = $1('#shGkListe', m), no = 0, zz = 0;
+    async function yukle() {
+      var q = inp.value.trim(), benim = ++no;
+      try {
+        var r = await API.rpc('sohbet_grup_kesfet', { p_ara: q || null, p_limit: 60 });
+        if (benim !== no || !m.isConnected) return;
+        var g = (r && r.gruplar) || [];
+        liste.innerHTML = g.length ? '<div class="sh-liste">' + g.map(kesfetSatir).join('') + '</div>'
+          : '<div class="sh-ys-bos">' + (q ? '“' + esc(q) + '” ile eşleşen grup yok.' : 'Şu an katılabileceğin herkese açık bir grup yok. İlk grubu sen kur!') + '</div>';
+      } catch (err) { if (benim === no) liste.innerHTML = '<div class="sh-ys-bos">' + esc(hataYaz(err)) + '</div>'; }
+    }
+    inp.addEventListener('input', function () { clearTimeout(zz); zz = setTimeout(yukle, 280); });
+    yukle();
   }
   function grupTemaKur(kanal, ad) {
     var kok = $1('.shk-kanal'); if (!kok) return;
@@ -1399,6 +1466,17 @@
     $1('.sh-gb', m).innerHTML =
       '<div class="sh-gb-ust">' + kanalIkon(kanal, 64) + '<div><h3 id="shGbAd">' + esc(d.ad) + '</h3><small>' + n(d.uye_sayisi) + ' üye · Kurucu: ' + esc(d.kurucu || '') + '</small></div></div>' +
       '<p class="sh-gy-not">' + I.kilit + '<span>Bu grubun mesajlarını yalnızca üyeler görür. ' + (kur ? 'Grubu sen kurdun; üye ekleyebilir, çıkarabilir ve adını değiştirebilirsin.' : 'Üye ekleme ve çıkarma yetkisi grubu kuran ' + esc(d.kurucu || '') + ' adlı oyuncudadır.') + '</span></p>' +
+      (!kur ? '<button type="button" class="sh-btn sh-gb-tehlike sh-gb-cik-ust" data-gb="ayril">' + I.cikis + 'Gruptan çık</button>' : '') +
+      (kur && (d.istekler || []).length ? '<div class="sh-gb-kutu sh-gb-istekler"><div class="sh-gy-et">Katılma istekleri <small>' + d.istekler.length + ' bekliyor</small></div>' +
+        d.istekler.map(function (i) {
+          return '<div class="sh-gb-istek">' + grupOyuncuSatir(i, [i.parti ? (i.parti.kisa || i.parti.ad) : 'Bağımsız', i.unvan, listeZaman(i.zaman)].filter(Boolean).join(' · '), '') +
+            (i.not ? '<p class="sh-gb-istek-not">“' + esc(i.not) + '”</p>' : '') +
+            '<div class="sh-gb-istek-b"><button type="button" class="sh-gb-ekle" data-gb="kabul" data-iid="' + n(i.id) + '" data-kad="' + esc(i.kad) + '">' + I.tik + 'Kabul et</button>' +
+            '<button type="button" class="sh-gb-cikar" data-gb="ret" data-iid="' + n(i.id) + '" data-kad="' + esc(i.kad) + '">Reddet</button></div></div>';
+        }).join('') + '</div>' : '') +
+      (kur ? '<div class="sh-gb-kutu"><div class="sh-gy-et">Özel Gruplar listesi</div>' +
+        '<button type="button" class="sh-gb-anahtar' + (d.herkese_acik !== false ? ' on' : '') + '" data-gb="gorunur" role="switch" aria-checked="' + (d.herkese_acik !== false) + '"><span class="sh-gb-anahtar-m"><b>' + (d.herkese_acik !== false ? 'Listede görünür · Katılma isteği alır' : 'Listede gizli · İstek almaz') + '</b><small>' +
+        (d.herkese_acik !== false ? 'Herkes grubun adını ve üye sayısını görür, katılma isteği gönderebilir. Mesajlar yine yalnız üyelere açıktır.' : 'Grup listede çıkmaz; üyeleri yalnızca sen eklersin.') + '</small></span><i aria-hidden="true"></i></button></div>' : '') +
       (kur ? '<div class="sh-gb-kutu"><label class="sh-gy-et" for="shGbAdInp">Grup adı</label>' +
         '<input id="shGbAdInp" class="sh-gy-inp" type="text" maxlength="40" autocomplete="off" value="' + esc(d.ad) + '">' +
         '<button type="button" class="sh-btn sh-gb-tam" data-gb="ad">' + I.kalem + 'Adı kaydet</button></div>' +
@@ -1407,7 +1485,7 @@
         '<div class="sh-gb-sonuc" id="shGbSonuc"></div></div>' : '') +
       '<div class="sh-ys-bas">Üyeler (' + n(d.uye_sayisi) + ')</div><div class="sh-gb-uyeler">' + uyeHtml + '</div>' +
       (kur ? '<button type="button" class="sh-btn sh-gb-tehlike" data-gb="kapat">' + I.engel + 'Grubu kapat</button>'
-        : '<button type="button" class="sh-btn sh-gb-tehlike" data-gb="ayril">' + I.cikis + 'Gruptan ayrıl</button>');
+        : '<button type="button" class="sh-btn sh-gb-tehlike" data-gb="ayril">' + I.cikis + 'Gruptan çık</button>');
     avTazele(m);
     var uyeAd = {}; (d.uyeler || []).forEach(function (u) { uyeAd[String(u.kad).toLocaleLowerCase('tr-TR')] = 1; });
     var araInp = $1('#shGbAra', m), sonuc = $1('#shGbSonuc', m), no = 0, zz = 0;
@@ -1449,6 +1527,19 @@
           var sb = document.getElementById('sbBaslik'); if (sb) sb.textContent = r.ad;
           var se = document.getElementById('shGSerit'); if (se) se.textContent = r.ad;
           tst('Grup adı “' + r.ad + '” oldu.');
+        } else if (is === 'kabul' || is === 'ret') {
+          b.disabled = true;
+          await API.rpc('sohbet_grup_istek_karar', { p_istek: Number(b.getAttribute('data-iid')), p_kabul: is === 'kabul' });
+          tst(is === 'kabul' ? kad + ' gruba katıldı.' : kad + ' adlı oyuncunun isteği reddedildi.');
+          try { ST.kesfet = await API.rpc('sohbet_grup_kesfet', { p_ara: null, p_limit: 30 }); } catch (e) {}
+          grupBilgi(kanal);
+        } else if (is === 'gorunur') {
+          var acik = d.herkese_acik === false;
+          if (!acik && (d.istekler || []).length && !(await onayla('Listede gizle', 'Grup listede gizlenirse bekleyen ' + d.istekler.length + ' katılma isteği kapanır.', 'Gizle', true))) { grupBilgi(kanal); return; }
+          b.disabled = true;
+          await API.rpc('sohbet_grup_gorunurluk', { p_grup: id, p_acik: acik });
+          tst(acik ? 'Grup Özel Gruplar listesinde görünüyor.' : 'Grup listede gizlendi.');
+          grupBilgi(kanal);
         } else if (is === 'ekle') {
           b.disabled = true;
           await API.rpc('sohbet_grup_uye_ekle', { p_grup: id, p_kad: kad });
@@ -1459,12 +1550,12 @@
           tst(kad + ' gruptan çıkarıldı.'); grupBilgi(kanal);
         } else if (is === 'ayril' || is === 'kapat') {
           var kap = is === 'kapat';
-          var ok = await onayla(kap ? 'Grubu kapat' : 'Gruptan ayrıl',
-            kap ? '“' + esc(d.ad) + '” grubu bütün üyeler için kapanacak ve mesajları artık görünmeyecek. Bu işlem geri alınamaz.' : '“' + esc(d.ad) + '” grubundan ayrılırsan mesajlarını göremezsin. Yeniden katılmak için kurucunun seni eklemesi gerekir.',
-            kap ? 'Grubu kapat' : 'Ayrıl', true);
+          var ok = await onayla(kap ? 'Grubu kapat' : 'Gruptan çık',
+            kap ? '“' + esc(d.ad) + '” grubu bütün üyeler için kapanacak ve mesajları artık görünmeyecek. Bu işlem geri alınamaz.' : '“' + esc(d.ad) + '” grubundan çıkarsan mesajlarını göremezsin. Yeniden girmek için katılma isteği gönderebilir ya da kurucunun seni eklemesini isteyebilirsin.',
+            kap ? 'Grubu kapat' : 'Çık', true);
           if (!ok) { grupBilgi(kanal); return; }
           await API.rpc(kap ? 'sohbet_grup_kapat' : 'sohbet_grup_ayril', { p_grup: id });
-          tst(kap ? 'Grup kapatıldı.' : 'Gruptan ayrıldın.');
+          tst(kap ? 'Grup kapatıldı.' : 'Gruptan çıktın.');
           modalKapat(); canliDurdur();
           try { await veriGetir(); } catch (e) {}
           ST.seg = 'kanal';
@@ -1507,7 +1598,27 @@
       '.sh-gb-sen{flex:none;font-size:12.5px;font-weight:800;color:var(--sh-soluk);padding:4px 10px;border-radius:10px;background:rgba(255,255,255,.06)}',
       '.sh-gb-tehlike{border-color:rgba(255,100,100,.45)!important;background:rgba(255,100,100,.1)!important;color:#ffb3b3}',
       '.sh-gb-yuk{display:flex;justify-content:center;gap:6px;padding:40px 0}.sh-gb-yuk span{width:8px;height:8px;border-radius:50%;background:var(--sh-soluk);animation:shGbN 1s infinite alternate}.sh-gb-yuk span:nth-child(2){animation-delay:.2s}.sh-gb-yuk span:nth-child(3){animation-delay:.4s}',
-      '@keyframes shGbN{to{opacity:.25;transform:translateY(-4px)}}'
+      '@keyframes shGbN{to{opacity:.25;transform:translateY(-4px)}}',
+      '.sh-gr-bas{margin-top:10px;border-top:1px solid var(--sh-cizgi);padding-top:18px}',
+      '.sh-gr-acik{margin:0 16px 6px;font-size:14px;line-height:1.45;color:var(--sh-soluk)}',
+      '.sh-gr-alt{padding:12px 16px 4px;font-size:12px;font-weight:800;letter-spacing:.6px;color:var(--sh-soluk);text-transform:uppercase}',
+      '.sh-gr-kesfet{cursor:default;align-items:center}.sh-gr-kesfet .sh-k-orta{min-width:0;flex:1}',
+      '.sh-gr-katil{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:0 13px;border-radius:12px;border:1px solid rgba(47,199,161,.5);background:rgba(47,199,161,.14);color:#9ff0d8;font:inherit;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap}',
+      '.sh-gr-katil svg{width:15px;height:15px}.sh-gr-katil.bekl{border-color:rgba(242,182,48,.45);background:rgba(242,182,48,.1);color:#ffd88a}',
+      '@media (max-width:360px){.sh-gr-katil{padding:0 10px;font-size:13px}.sh-gr-katil.bekl{white-space:normal;max-width:96px;line-height:1.15}}',
+      '.sh-gr-tumu{display:flex;width:calc(100% - 32px);margin:8px 16px 4px;box-sizing:border-box}',
+      '.sh-gr-istek{display:inline-flex;align-items:center;gap:4px;margin-left:8px;padding:2px 8px;border-radius:9px;background:rgba(242,182,48,.15);color:#ffd88a;font-size:12px;font-weight:800}.sh-gr-istek svg{width:13px;height:13px}',
+      '.sh-gy-ta{height:auto;min-height:84px;padding:12px 14px;resize:vertical;line-height:1.4}',
+      '.sh-gk-liste{max-height:62vh}.sh-gk-liste .sh-liste{margin:0}',
+      '.sh-gb-istek{display:flex;flex-direction:column;gap:6px;padding:4px 0 10px;border-bottom:1px solid var(--sh-cizgi)}.sh-gb-istek:last-child{border-bottom:0;padding-bottom:0}',
+      '.sh-gb-istek-not{margin:0 4px;font-size:14px;line-height:1.4;color:var(--txt);overflow-wrap:anywhere}',
+      '.sh-gb-istek-b{display:flex;gap:8px;flex-wrap:wrap}.sh-gb-istek-b button{flex:1 1 120px;justify-content:center}.sh-gb-istek-b svg{width:15px;height:11px}',
+      '.sh-gb-anahtar{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:10px 12px;border-radius:14px;border:1px solid var(--sh-cizgi);background:rgba(255,255,255,.04);color:inherit;font:inherit;text-align:left;cursor:pointer;box-sizing:border-box}',
+      '.sh-gb-anahtar-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.sh-gb-anahtar-m b{font-size:15px}.sh-gb-anahtar-m small{font-size:13.5px;line-height:1.4;color:var(--sh-soluk)}',
+      '.sh-gb-anahtar i{flex:none;position:relative;width:48px;height:28px;border-radius:14px;background:rgba(255,255,255,.18);transition:background .2s}',
+      '.sh-gb-anahtar i::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s}',
+      '.sh-gb-anahtar.on i{background:#2fc7a1}.sh-gb-anahtar.on i::after{transform:translateX(20px)}',
+      '.sh-gb-cik-ust{margin-top:0}'
     ];
     var st = document.createElement('style'); st.id = 'sohbetGrupStil'; st.textContent = css.join('\n');
     (document.head || document.documentElement).appendChild(st);

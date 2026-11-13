@@ -22,6 +22,9 @@ const shot = process.argv[2];
           const S = (dk) => new Date(Date.now() + dk * 60e3).toISOString();
           const P1 = { id: 1, ad: 'Deneme Partisi', kisa: 'DP', renk: '#3f7be0' };
           window.calls = []; window.GRUPLAR = rol === 'uye' ? [{ id: 7, ad: 'Ege Gönüllüleri', kurucu: false, uye: ['Baran', 'Deniz', 'Ekin'] }] : [];
+          window.KESFET = [{ id: 21, ad: 'Ankara Ekibi', kurucu: 'Mert', uye_sayisi: 14, cevrimici: 3, istek: null }, { id: 22, ad: 'Karadeniz Masası', kurucu: 'Selin', uye_sayisi: 6, cevrimici: 0, istek: 'ret' }];
+          window.ISTEKLER = [{ id: 77, kad: 'Selin', unvan: null, parti: null, not: 'Ben de katkı vermek isterim.', zaman: S(-12), cevrimici: true }];
+          window.ACIK = true;
           window.GMESAJ = [{ id: 501, kad: 'Baran', metin: 'Gruba hoş geldiniz.', zaman: S(-4), parti: P1, unvan: null, benim: false }];
           const temel = ['genel', 'il', 'belediye', 'parti', 'yonetim', 'ittifak', 'meclis', 'grup', 'divan', 'kabine'].map(k => ({ kanal: k, baslik: k, kilit: ['yonetim', 'ittifak', 'grup', 'divan', 'kabine'].includes(k) ? 'Kilitli' : null, yazabilir: true, okunmamis: 0, son: null, cevrimici: 5 }));
           const k = v => JSON.parse(JSON.stringify(v));
@@ -29,6 +32,11 @@ const shot = process.argv[2];
             calls.push({ ad, args: a });
             if (ad === 'ozel_liste') return [{ kad: 'Selin', parti: null, unvan: null, son: 'Selam', zaman: S(-30), benden: false, okunmamis: 0, okundu: true, aktif: 'cevrimici' }];
             if (ad === 'sohbet_ozet') return { cevrimici: 9, toplam_okunmamis: 1, kanallar: k(temel.concat(GRUPLAR.map(g => ({ kanal: 'og:' + g.id, baslik: g.ad, kilit: null, yazabilir: true, okunmamis: 1, son: GMESAJ.length ? { kad: 'Baran', metin: GMESAJ[GMESAJ.length - 1].metin, zaman: S(-4) } : null, cevrimici: 2, sinyal: 'sohbet:og:' + g.id, ozgrup: true, grup_id: g.id, kurucu: g.kurucu, uye_sayisi: g.uye.length, olusturma: S(-100) })))) };
+            if (ad === 'sohbet_grup_kesfet') return { gruplar: k(KESFET.filter(g => !a.p_ara || g.ad.toLowerCase().includes(a.p_ara.toLowerCase()))), bekleyen: GRUPLAR.some(g => g.id === 9) && ISTEKLER.length ? { 9: ISTEKLER.length } : {}, istek_toplam: 0, benim_bekleyen: 0 };
+            if (ad === 'sohbet_grup_katilim_iste') { KESFET.find(g => g.id === a.p_grup).istek = 'bekliyor'; return { tamam: true }; }
+            if (ad === 'sohbet_grup_istek_iptal') { KESFET.find(g => g.id === a.p_grup).istek = 'iptal'; return { tamam: true }; }
+            if (ad === 'sohbet_grup_istek_karar') { const i = ISTEKLER.find(x => x.id === a.p_istek); ISTEKLER = ISTEKLER.filter(x => x.id !== a.p_istek); if (a.p_kabul) GRUPLAR.find(g => g.id === 9).uye.push(i.kad); return { tamam: true, kabul: a.p_kabul, kad: i.kad }; }
+            if (ad === 'sohbet_grup_gorunurluk') { ACIK = a.p_acik; return { tamam: true, herkese_acik: a.p_acik }; }
             if (ad === 'sohbet_grup_kur') { GRUPLAR.push({ id: 9, ad: a.p_ad, kurucu: true, uye: ['Deniz'].concat(a.p_uyeler) }); return { tamam: true, id: 9, kanal: 'og:9', ad: a.p_ad, eklenen: a.p_uyeler.length, atlanan: [] }; }
             if (ad === 'sohbet_oku') {
               const g = GRUPLAR.find(x => 'og:' + x.id === a.p_kanal);
@@ -38,7 +46,7 @@ const shot = process.argv[2];
             if (ad === 'sohbet_yaz') { GMESAJ.push({ id: 600 + GMESAJ.length, kad: 'Deniz', metin: a.p_metin, zaman: new Date().toISOString(), parti: P1, benim: true }); return { tamam: true }; }
             if (ad === 'sohbet_grup_detay') {
               const g = GRUPLAR.find(x => x.id === a.p_grup);
-              return { id: g.id, ad: g.ad, kurucu: g.kurucu ? 'Deniz' : 'Baran', benim_kurucu: g.kurucu, uye_sayisi: g.uye.length, uye_sinir: 100,
+              return { id: g.id, ad: g.ad, kurucu: g.kurucu ? 'Deniz' : 'Baran', benim_kurucu: g.kurucu, uye_sayisi: g.uye.length, uye_sinir: 100, herkese_acik: ACIK, istekler: g.kurucu ? k(ISTEKLER) : [],
                 uyeler: g.uye.map(u => ({ kad: u, unvan: null, parti: P1, kurucu: g.kurucu ? u === 'Deniz' : u === 'Baran', ben: u === 'Deniz', cevrimici: u !== 'Ekin' })) };
             }
             if (ad === 'sohbet_grup_ad') { const g = GRUPLAR.find(x => x.id === a.p_grup); g.ad = a.p_ad; return { tamam: true, ad: a.p_ad }; }
@@ -81,7 +89,12 @@ const shot = process.argv[2];
 
         await page.evaluate(() => sekmeAc('sohbet'));
         await page.waitForSelector('#shGovde .sh-bas h3');
-        await page.waitForFunction(() => /Gruplarım/.test(document.querySelector('#shGovde').innerText));
+        await page.waitForFunction(() => /Özel Gruplar/i.test(document.querySelector('#shGovde').innerText));
+        // Özel Gruplar listenin en altında (Devlet bölümünden sonra)
+        assert.equal(await page.evaluate(() => { const h = [...document.querySelectorAll('#shGovde .sh-bas h3')].map(x => x.textContent); return h[h.length - 1]; }), 'Özel Gruplar');
+        assert.equal(await page.locator('.sh-gr-kesfet').count(), 2);
+        assert.equal(await page.locator('.sh-gr-kesfet[data-gid="21"] [data-sh="grupKatil"]').count(), 1);
+        assert.equal(await page.locator('.sh-gr-kesfet[data-gid="22"] [data-sh="grupKatil"]').count(), 1, 'reddedilen istek yeniden denenebilir görünür');
 
         if (rol === 'kurucu') {
           // Boş durum + Yeni grup
@@ -91,7 +104,8 @@ const shot = process.argv[2];
           await page.waitForSelector('#shGAd');
           await page.fill('#shGAd', 'Ege Gönüllüleri');
           await page.fill('#shGAra', 'Ek');
-          await page.waitForSelector('.sh-gy-sec[data-kad="Ekin"]');
+          try { await page.waitForSelector('.sh-gy-sec[data-kad="Ekin"]', { timeout: 8000 }); }
+          catch (e) { console.error('HATA DURUMU', await page.evaluate(() => ({ modal: !!document.querySelector('#modal'), ara: (document.querySelector('#shGAra') || {}).value, liste: (document.querySelector('#shGListe') || {}).innerText, son: calls.slice(-6).map(c => c.ad) }))); throw e; }
           await page.click('.sh-gy-sec[data-kad="Ekin"]');
           await page.click('.sh-gy-sec[data-kad="Mert"]');
           assert.equal(await page.locator('.sh-gy-cip').count(), 2);
@@ -116,7 +130,22 @@ const shot = process.argv[2];
           await page.click('#shkCev');
           await page.waitForSelector('#shGbAdInp');
           assert.match(await mtext(), /ÜYELER \(2\)/i);
+          assert.match(await mtext(), /Katılma istekleri/);
+          assert.match(await mtext(), /Ben de katkı vermek isterim/);
           await olcu('grup bilgisi'); await tasma('grup bilgisi'); await foto('4_grup_bilgi');
+          // Katılma isteğini kabul et
+          await page.click('[data-gb="kabul"][data-iid="77"]');
+          await page.waitForFunction(() => /ÜYELER \(3\)/i.test((document.querySelector('#modal') || {}).innerText || ''));
+          assert.deepEqual((await son('sohbet_grup_istek_karar')).args, { p_istek: 77, p_kabul: true });
+          assert.equal(await page.locator('[data-gb="kabul"]').count(), 0);
+          // Listede gizle / göster
+          await page.click('[data-gb="gorunur"]');
+          await page.waitForFunction(() => /Listede gizli/.test((document.querySelector('#modal') || {}).innerText || ''));
+          assert.deepEqual((await son('sohbet_grup_gorunurluk')).args, { p_grup: 9, p_acik: false });
+          await page.click('[data-gb="gorunur"]');
+          await page.waitForFunction(() => /Listede görünür/.test((document.querySelector('#modal') || {}).innerText || ''));
+          await page.click('[data-gb="cikar"][data-kad="Selin"]'); await page.waitForSelector('#evet'); await page.click('#evet');
+          await page.waitForFunction(() => /ÜYELER \(2\)/i.test((document.querySelector('#modal') || {}).innerText || ''));
           // Ad değiştir
           await page.fill('#shGbAdInp', 'Ege Ekibi');
           await page.click('[data-gb="ad"]');
@@ -146,7 +175,27 @@ const shot = process.argv[2];
           await page.waitForSelector('.sh-c[data-kanal="og:7"]');
           assert.match(await page.locator('.sh-c[data-kanal="og:7"]').innerText(), /Ege Gönüllüleri/);
           assert.match(await page.locator('.sh-c[data-kanal="og:7"]').innerText(), /Baran:\s*Gruba hoş geldiniz/);
-          await tasma('liste uye'); await foto('1_liste');
+          await tasma('liste uye'); await olcu('liste uye'); await page.evaluate(() => document.querySelector('.sh-gr-bas').scrollIntoView()); await foto('1_liste');
+          // Dışarıdan katılma isteği
+          await page.click('.sh-gr-kesfet[data-gid="21"] [data-sh="grupKatil"]');
+          await page.waitForSelector('#shGkNot');
+          await page.fill('#shGkNot', 'Selam, katılabilir miyim?');
+          await olcu('katilim'); await tasma('katilim'); await foto('1b_katilim');
+          await page.click('#shGkGonder');
+          await page.waitForSelector('.sh-gr-kesfet[data-gid="21"] [data-sh="grupIstekIptal"]');
+          assert.deepEqual((await son('sohbet_grup_katilim_iste')).args, { p_grup: 21, p_not: 'Selam, katılabilir miyim?' });
+          await page.click('.sh-gr-kesfet[data-gid="21"] [data-sh="grupIstekIptal"]');
+          await page.waitForSelector('#evet'); await page.click('#evet');
+          await page.waitForSelector('.sh-gr-kesfet[data-gid="21"] [data-sh="grupKatil"]');
+          assert.deepEqual((await son('sohbet_grup_istek_iptal')).args, { p_grup: 21 });
+          // Tüm gruplar + arama
+          await page.click('[data-sh="grupTumu"]');
+          await page.waitForSelector('#shGkListe .sh-gr-kesfet');
+          await page.fill('#shGkAra', 'karadeniz');
+          await page.waitForFunction(() => document.querySelectorAll('#shGkListe .sh-gr-kesfet').length === 1);
+          assert.equal((await son('sohbet_grup_kesfet')).args.p_ara, 'karadeniz');
+          await tasma('kesfet modal'); await foto('1c_tum_gruplar');
+          await page.evaluate(() => modalKapat());
           await page.click('.sh-c[data-kanal="og:7"]');
           await page.waitForSelector('.shk-kanal');
           await page.waitForFunction(() => document.getElementById('sbBaslik').textContent === 'Ege Gönüllüleri');
@@ -155,8 +204,9 @@ const shot = process.argv[2];
           assert.equal(await page.locator('#shGbAdInp').count(), 0);
           assert.equal(await page.locator('[data-gb="cikar"]').count(), 0);
           assert.match(await mtext(), /yetkisi grubu kuran Baran/);
+          assert.equal(await page.locator('.sh-gb-cik-ust').count(), 1, 'Gruptan çık düğmesi en üstte');
           await olcu('grup bilgisi uye'); await tasma('grup bilgisi uye'); await foto('2_bilgi_uye');
-          await page.click('[data-gb="ayril"]');
+          await page.click('.sh-gb-cik-ust');
           await page.waitForSelector('#evet'); await page.click('#evet');
           await bekleCagri('sohbet_grup_ayril');
           assert.deepEqual((await son('sohbet_grup_ayril')).args, { p_grup: 7 });
