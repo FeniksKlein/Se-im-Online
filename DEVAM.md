@@ -9,6 +9,11 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 13.11.2026 — 2026.11.13-8 Kontrol Merkezi'ne "Kısıtlar" sekmesi + AndreySemilet engeli kaldırıldı
+- İstek (Ercan): kısıtladığı AndreySemilet'in kısıtı kaldırılsın; yönetici panelinde istediği oyuncuya kolayca kısıt ekleyip kaldırabileceği menü.
+- Canlı: AndreySemilet (AFK temizliğiyle "hesap kapalı") → `yasakli=false`, engel_bitis/neden boş, oyuncuya bildirim. (AFK temizliği tek seferlikti; cron yok, yeniden kapanmaz. 11 AFK hesabı hâlâ kapalı.)
+- Arayüz `gelistirici/www/yonetici_kontrol.js`: yeni "Kısıtlar" sekmesi (hesap_kapat/sustur/makam yetkisi olana): kullanıcı adı ara + öneri, oyuncunun Kısıtlar kartı (Hesap engeli / Sohbet susturma / Aday olma yasağı — aktifse "Kaldır", değilse süre çipleri + isteğe bağlı gerekçe), "Şu an kısıtlı oyuncular" listesi (engelli + susturulmuş, tek dokunuşla kaldır). Aynı Kısıtlar kartı Oyuncu yönetimi ekranında en üstte. Sunucu değişmedi: mevcut `yk_engel_kaldir`, `yk_engelle` (hesabı kapatmadan), `yk_sustur`, `yk_adaylik_yasagi`, `yk_oyuncular`, `yk_oyuncu`. Playwright taklit testiyle 390 px'te doğrulandı (taşma yok, RPC argümanları doğru).
+
 ## 13.11.2026 — 2026.11.13-7 CB yardımcısı "Tüm bakanlıklar" toplu görev + kalıcı kural: CB adayı MV adayı olamaz (canlıya uygulandı)
 - Hata (beta, siyasetinagasi): yardımcının yeni dosya penceresinde "Tüm bakanlıklar / seçilmedi" vardı ama görev/projede hem arayüz hem sunucu "Bakanlık seçmelisin" diyordu.
 - Yedek: `yedek_20261113_123913_866587`. Dosyalar: `supabase/migrations/20261113140000_cb_yrd_tum_bakanliklar.sql` (canlı adları `cb_yrd_tum_bakanliklar_20261113`, `cb_yrd_panel_bakanligim_20261113`) = `gelistirici/sql/203_*` = `migrations/20261113_cb_yrd_tum_bakanliklar.sql`.

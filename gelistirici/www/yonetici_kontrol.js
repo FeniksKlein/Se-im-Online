@@ -208,6 +208,7 @@
      ===================================================================== */
   function sekmeler(){
     const l = [["pano","Pano"],["oyuncular","Oyuncular"]];
+    if (yetkiVar("hesap_kapat") || yetkiVar("sustur") || yetkiVar("makam")) l.push(["kisitlar","Kısıtlar"]);
     if (yetkiVar("makam")) l.push(["gorevler","Görevler"]);
     if (sahipMi()) l.push(["ekonomi","Ekonomi"],["secimler","Seçimler"],["veri","Veri"],["gecmis","Geçmiş"],["ayarlar","Ayarlar"]);
     return l;
@@ -220,7 +221,7 @@
   window.kontrolMerkezi = function(sekme){ if (sekme) YK.sekme = sekme; ekranAc(kmCiz); };
   async function kmCiz(){
     kmIskelet(`<div class="yukleniyor">Yükleniyor…</div>`);
-    const fn = { pano: panoCiz, oyuncular: oyuncularCiz, gorevler: gorevlerCiz, ekonomi: ekonomiCiz, secimler: secimlerCiz, veri: veriCiz, gecmis: gecmisCiz, ayarlar: ayarlarCiz }[YK.sekme] || panoCiz;
+    const fn = { pano: panoCiz, oyuncular: oyuncularCiz, kisitlar: kisitlarCiz, gorevler: gorevlerCiz, ekonomi: ekonomiCiz, secimler: secimlerCiz, veri: veriCiz, gecmis: gecmisCiz, ayarlar: ayarlarCiz }[YK.sekme] || panoCiz;
     try { await fn($("#kmIc")); } catch (err) { const ic = $("#kmIc"); if (ic) ic.innerHTML = `<div class="bos">${e(hataCevir(err.message))}</div>`; }
   }
 
@@ -315,6 +316,106 @@
     ic.querySelectorAll("[data-oy]").forEach(el => el.onclick = () => kmOyuncuAc(el.dataset.oy));
   }
 
+  /* ---------- Kısıtlar (13.11.2026): tek ekrandan kısıt koy / kaldır ---------- */
+  const KISIT_SURE = {
+    engel: [[1,"1 gün"],[3,"3 gün"],[7,"7 gün"],[30,"30 gün"],[0,"Kalıcı"]],
+    sustur: [[1,"1 saat"],[6,"6 saat"],[24,"1 gün"],[72,"3 gün"],[168,"7 gün"]],
+    aday: [[7,"7 gün"],[30,"30 gün"],[90,"90 gün"]]
+  };
+  function kisitKarti(o){
+    const satir = (tur, ad, aciklama, aktif, durum, yetki) => {
+      if (!yetki) return "";
+      return `<div class="ks-satir ${aktif ? "aktif" : ""}"><div class="ks-bilgi"><b>${ad}</b><div class="kucuk">${aktif ? durum : aciklama}</div></div>
+        ${aktif ? `<button class="btn altin ks-btn" data-ks-kaldir="${tur}">Kaldır</button>`
+                : `<div class="ks-sureler">${KISIT_SURE[tur].map(([v, a]) => `<button class="ks-cip ${tur === "engel" && !v ? "kirmizi" : ""}" data-ks-ekle="${tur}" data-ks-sure="${v}">${a}</button>`).join("")}</div>`}</div>`;
+    };
+    const hic = !o.yasakli && !o.susturma_bitis && !o.adaylik_yasagi_bitis;
+    return `<div class="kart ks-kart"><h2>Kısıtlar ${hic ? `<span class="rozet yesil">kısıt yok</span>` : ""}</h2>
+      <p class="alt">Kısıtı tek dokunuşla kaldır; eklemek için süreye dokun. Oyuncuya bildirim gider, işlem Geçmiş'e yazılır.</p>
+      ${satir("engel", "Hesap engeli", "Oyuna giremez.", o.yasakli, (o.engel_bitis ? ts(o.engel_bitis) + " tarihine kadar engelli" : "Hesap kapalı (süresiz)") + (o.engel_neden ? " · " + e(o.engel_neden) : ""), yetkiVar("hesap_kapat"))}
+      ${satir("sustur", "Sohbet susturma", "Sohbete ve özel mesaja yazamaz.", !!o.susturma_bitis, "Susturuldu: " + ts(o.susturma_bitis) + "'e kadar", yetkiVar("sustur"))}
+      ${satir("aday", "Aday olma yasağı", "Hiçbir seçimde aday olamaz.", !!o.adaylik_yasagi_bitis, "Aday olamaz: " + ts(o.adaylik_yasagi_bitis) + "'e kadar", yetkiVar("makam"))}
+      </div>`;
+  }
+  function kisitBagla(kutu, o, sonra){
+    kutu.querySelectorAll("[data-ks-kaldir]").forEach(b => b.onclick = async () => {
+      const tur = b.dataset.ksKaldir; b.disabled = true;
+      try {
+        const r = tur === "engel" ? await rpc("yk_engel_kaldir", { p_kad: o.kad })
+                : tur === "sustur" ? await rpc("yk_sustur", { p_kad: o.kad, p_saat: 0, p_neden: null })
+                : await rpc("yk_adaylik_yasagi", { p_kad: o.kad, p_gun: 0, p_neden: null });
+        toast("Kısıt kaldırıldı."); sonra(r);
+      } catch (err) { b.disabled = false; hata(err); }
+    });
+    kutu.querySelectorAll("[data-ks-ekle]").forEach(b => b.onclick = async () => {
+      const tur = b.dataset.ksEkle, sure = +b.dataset.ksSure;
+      const ad = { engel: "Hesap engeli", sustur: "Sohbet susturma", aday: "Aday olma yasağı" }[tur];
+      const neden = await girdiModal(`${e(o.kad)} · ${ad} (${e(b.textContent)})`, "Gerekçe (isteğe bağlı; oyuncu görür)", "", "Kısıtı uygula", true);
+      if (neden === null) return;
+      try {
+        const r = tur === "engel" ? await rpc("yk_engelle", { p_kad: o.kad, p_gun: sure || null, p_neden: neden || null, p_hesabi_kapat: false })
+                : tur === "sustur" ? await rpc("yk_sustur", { p_kad: o.kad, p_saat: sure, p_neden: neden || null })
+                : await rpc("yk_adaylik_yasagi", { p_kad: o.kad, p_gun: sure, p_neden: neden || null });
+        toast("Kısıt uygulandı."); sonra(r);
+      } catch (err) { hata(err); }
+    });
+  }
+  async function kisitlarCiz(ic){
+    const ks = YK.kisit = YK.kisit || { kad: "" };
+    let engelli = [], susturulmus = [];
+    try { engelli = (await rpc("yk_oyuncular", { p_ara: null, p_filtre: "engelli", p_sirala: "son_gorulme", p_limit: 40, p_offset: 0 })).liste || []; } catch (_) {}
+    try { susturulmus = (await rpc("yk_oyuncular", { p_ara: null, p_filtre: "susturulmus", p_sirala: "son_gorulme", p_limit: 40, p_offset: 0 })).liste || []; } catch (_) {}
+    const liste = new Map(); engelli.concat(susturulmus).forEach(x => liste.set(x.kad, x));
+    ic.innerHTML = `<div class="kart"><h2>Oyuncu bul</h2><p class="alt">Kullanıcı adını yaz; kısıtlarını burada görür, tek dokunuşla ekler ya da kaldırırsın.</p>
+        <div class="km-satir"><input class="km-girdi" id="ksAra" placeholder="Kullanıcı adı" value="${e(ks.kad)}" autocapitalize="off" autocomplete="off" spellcheck="false"><button class="btn altin yarim km-kucukbtn" style="width:auto;margin:0" id="ksBul">Getir</button></div>
+        <div id="ksOneri"></div></div>
+      <div id="ksOyuncu"></div>
+      <div class="kart"><h2>Şu an kısıtlı oyuncular (${liste.size})</h2>
+        ${[...liste.values()].map(x => `<div class="liste-satir"><div class="orta" data-ks-ac="${e(x.kad)}" style="cursor:pointer"><b>${e(x.kad)}</b>
+            <div class="kucuk">${x.yasakli ? (x.engel_bitis ? "Engelli · " + ts(x.engel_bitis) + "'e kadar" : "Hesap kapalı") : ""}${x.yasakli && x.susturma_bitis ? " · " : ""}${x.susturma_bitis ? "Susturuldu · " + ts(x.susturma_bitis) + "'e kadar" : ""}</div></div>
+            ${x.yasakli && yetkiVar("hesap_kapat") ? `<button class="rozet altin km-kucukbtn" data-ks-hizli="engel" data-kad="${e(x.kad)}">Engeli kaldır</button>` : ""}
+            ${!x.yasakli && x.susturma_bitis && yetkiVar("sustur") ? `<button class="rozet altin km-kucukbtn" data-ks-hizli="sustur" data-kad="${e(x.kad)}">Susturmayı kaldır</button>` : ""}</div>`).join("") || `<div class="bos" style="padding:8px 0">Kısıtlı oyuncu yok.</div>`}</div>`;
+    let z = null;
+    const getir = async (kad) => {
+      clearTimeout(z);
+      kad = (kad || "").trim(); if (!kad) return toast("Kullanıcı adını yaz.", true);
+      ks.kad = kad; $("#ksAra").value = kad; $("#ksOneri").innerHTML = "";
+      const k = $("#ksOyuncu"); k.innerHTML = `<div class="yukleniyor">Yükleniyor…</div>`;
+      try {
+        const o = await rpc("yk_oyuncu", { p_kad: kad });
+        const ciz = (o) => {
+          k.innerHTML = `<div class="kart" style="margin-bottom:0"><div style="display:flex;gap:12px;align-items:center">${typeof portre === "function" ? portre(o.kad, o.parti && o.parti.renk, 44) : ""}<div style="min-width:0;flex:1"><b style="font-size:17px">${e(o.kad)}</b><div class="kucuk">${e(o.unvan || "")} · son görülme ${ts(o.son_gorulme)}</div></div><button class="btn ikinci km-kucukbtn" style="width:auto;margin:0" id="ksTam">Tüm işlemler</button></div></div>${kisitKarti(o)}`;
+          $("#ksTam").onclick = () => kmOyuncuAc(o.kad);
+          kisitBagla(k, o, (yeni) => { if (yeni && yeni.kad) ciz(yeni); else getir(o.kad); });
+        };
+        ciz(o);
+      } catch (err) { k.innerHTML = `<div class="kart"><div class="bos">${e(hataCevir(err.message))}</div></div>`; }
+    };
+    $("#ksAra").oninput = () => { clearTimeout(z); const q = $("#ksAra").value.trim(); if (q.length < 2) { $("#ksOneri").innerHTML = ""; return; }
+      z = setTimeout(async () => { try { const r = await rpc("yk_oyuncular", { p_ara: q, p_filtre: "hepsi", p_sirala: "ad", p_limit: 6, p_offset: 0 });
+        $("#ksOneri").innerHTML = (r.liste || []).map(x => `<button class="ks-cip" data-ks-sec="${e(x.kad)}" style="margin-top:8px">${e(x.kad)}${x.yasakli ? " · engelli" : x.susturma_bitis ? " · susturulmuş" : ""}</button>`).join(" ");
+        $("#ksOneri").querySelectorAll("[data-ks-sec]").forEach(b => b.onclick = () => getir(b.dataset.ksSec)); } catch (_) {} }, 250); };
+    $("#ksBul").onclick = () => getir($("#ksAra").value);
+    $("#ksAra").onkeydown = (ev) => { if (ev.key === "Enter") getir($("#ksAra").value); };
+    ic.querySelectorAll("[data-ks-ac]").forEach(x => x.onclick = () => getir(x.dataset.ksAc));
+    ic.querySelectorAll("[data-ks-hizli]").forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      try { if (b.dataset.ksHizli === "engel") await rpc("yk_engel_kaldir", { p_kad: b.dataset.kad }); else await rpc("yk_sustur", { p_kad: b.dataset.kad, p_saat: 0, p_neden: null });
+        toast("Kısıt kaldırıldı."); kmCiz(); } catch (err) { b.disabled = false; hata(err); }
+    });
+    if (ks.kad) getir(ks.kad);
+  }
+  (function ksStil(){
+    if (document.getElementById("ksStil")) return;
+    const st = document.createElement("style"); st.id = "ksStil";
+    st.textContent = `.ks-satir{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line,rgba(164,184,255,.1))}
+.ks-satir:first-of-type{border-top:0}.ks-satir.aktif .ks-bilgi b{color:#ff9a9e}.ks-bilgi b{font-size:15.5px}.ks-bilgi .kucuk{font-size:14px;line-height:1.45;margin-top:2px}
+.ks-btn{margin:0!important;min-height:44px}.ks-sureler{display:flex;flex-wrap:wrap;gap:6px}
+.ks-cip{min-height:44px;padding:0 14px;border-radius:12px;border:1px solid rgba(164,184,255,.22);background:rgba(255,255,255,.04);color:var(--txt,#e8ecf8);font:inherit;font-size:14.5px;font-weight:700;cursor:pointer}
+.ks-cip:active{transform:scale(.97)}.ks-cip.kirmizi{border-color:rgba(240,69,75,.45);color:#ff8f94}`;
+    document.head.appendChild(st);
+  })();
+
   /* ---------- Tek oyuncu yönetimi ---------- */
   window.kmOyuncuAc = function(kad){ YK.secili = kad; ekranAc(kmOyuncuEkrani); };
   async function kmOyuncuEkrani(){
@@ -338,6 +439,7 @@
         <div class="kv"><span class="k">Katılım / son görülme</span><span class="v kucuk">${ts(o.olusturma)} / ${ts(o.son_gorulme)}</span></div>
         <div class="kv"><span class="k">Hakkındaki şikâyet</span><span class="v">${fmt(o.sikayet)}</span></div>
         ${o.kayit ? `<div class="kv"><span class="k">Kayıt başvurusu</span><span class="v">${e(o.kayit)}</span></div>` : ""}</div>
+      <div id="kmKisitKutu">${kisitKarti(o)}</div>
       <div class="kart"><h2>Görevleri</h2>
         ${(o.makamlar || []).map(m => `<div class="liste-satir"><div class="orta"><b>${e(m.ad)}</b><div class="kucuk">${ts(m.bas)} · ${e(m.kaynak)}</div></div>${yetkiVar("makam") ? `<button class="rozet kirmizi km-kucukbtn" data-km-al="${m.id}">Görevden al</button>` : ""}</div>`).join("")}
         ${o.parti && o.parti.gb ? `<div class="liste-satir"><div class="orta"><b>${e(o.parti.kisa)} Genel Başkanı</b></div>${yetkiVar("makam") ? `<button class="rozet kirmizi km-kucukbtn" data-km-pg="gb">Görevden al</button>` : ""}</div>` : ""}
@@ -361,6 +463,7 @@
       <div class="kart"><h2>Son mesajları</h2>${(o.mesajlar || []).map(m => `<div class="kucuk" style="padding:4px 0;${m.gizli ? "text-decoration:line-through" : ""}">${ts(m.zaman)} · ${e(m.kanal)} · ${e(m.metin)}</div>`).join("") || `<div class="bos" style="padding:8px 0">Mesaj yok.</div>`}</div>`, { geri: true });
     const sonra = (yeni) => { if (yeni && yeni.kad) kmOyuncuCiz(yeni); else kmOyuncuEkrani(); try { durumYenile(); } catch (_) {} };
     const tikla = (id, f) => { const x = $("#" + id); if (x) x.onclick = f; };
+    if ($("#kmKisitKutu")) kisitBagla($("#kmKisitKutu"), o, sonra);
     document.querySelectorAll("[data-km-al]").forEach(x => x.onclick = async () => {
       const neden = await girdiModal("Görevden al", "Gerekçe (isteğe bağlı; oyuncuya bildirilir)", "", "Görevden al", true);
       if (neden === null) return;
