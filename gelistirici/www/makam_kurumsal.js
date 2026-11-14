@@ -116,8 +116,8 @@
       '<small>' + esc(x.unvan || '') + ' ' + '<a class="bag" href="#" onclick="oyuncuKart(\'' + esc(x.kad) + '\');return false">' + esc(x.kad) + '</a>' +
       (x.hedef ? ' → <a class="bag" href="#" onclick="oyuncuKart(\'' + esc(x.hedef) + '\');return false">' + esc(x.hedef) + '</a>' : '') + '</small>' +
       (x.metin ? '<q>' + esc(x.metin) + '</q>' : '') +
-      '<span class="dk-akis-alt">' + esc(saatYaz(x.zaman)) + (x.katilimci ? ' · ' + x.katilimci + ' katılımcı' : '') + (x.acik ? ' · <i>katılım ' + esc(kalanYaz(x.katilim_bit)) + ' daha açık</i>' : '') + '</span></div>' +
-      (acik ? (x.katildim ? '<span class="dk-katildi">Katıldın</span>' : (yerel ? '<button type="button" class="dk-katil" data-dk-katil="' + Number(x.id) + '">Katıl</button>' : '')) : '') + '</div>';
+      '<span class="dk-akis-alt">' + esc(saatYaz(x.zaman)) + (x.katilimci ? ' · ' + x.katilimci + ' katılımcı' : '') + (x.acik ? ' · <i>' + (x.makam === 'tbmm' ? 'herkese açık, dinleyici locasından izlenir; ' : 'herkese açık tören; ') + 'katılım ' + esc(kalanYaz(x.katilim_bit)) + ' daha açık</i>' : '') + '</span></div>' +
+      (acik ? (x.katildim ? '<span class="dk-katildi">' + (x.makam === 'tbmm' ? 'İzledin' : 'Katıldın') + '</span>' : (yerel ? '<button type="button" class="dk-katil" data-dk-katil="' + Number(x.id) + '">' + (x.makam === 'tbmm' ? 'İzleyici olarak katıl' : 'Davetli olarak katıl') + '</button>' : '')) : '') + '</div>';
   }
   function protokolHtml(v, sinir) {
     if (!v) return '';

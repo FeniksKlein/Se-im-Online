@@ -34,9 +34,9 @@ function adlBilgiHtml(){
   +'<p class="alt"><b>Unutmayın:</b> Fikir ayrılığı, muhalefet etmek ve kanıtlanmamış suçlamalar otomatik olarak suç değildir.</p>'
   +'<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Hangi davranışlar suç sayılır? (Aç)</summary>'
   +'<p class="alt">Aşağıdaki tanımlar yalnız oyun içindeki davranışlara uygulanır. Mesaj, işlem kaydı, belge ve savunmalar değerlendirilmelidir.</p>'+suclar+'</details>'
-  +'<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Olası cezalar ve yapay zekâ önerisi (Aç)</summary>'
+  +'<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Olası cezalar (Aç)</summary>'
   +'<p class="alt">Olası kararlar: beraat, uyarı, 1 saat / 1 gün / 1 hafta sohbetten susturma, 10.000 ya da 50.000 ₺ para cezası, 30 gün adaylık yasağı veya aktif milletvekilliğinin düşürülmesi. Bir siyasi partiye beraat, uyarı veya 25.000 ₺ hazine yardımı kesintisi verilebilir. Suçla ceza arasında otomatik ve değişmez bir eşleşme yoktur.</p>'
-  +'<p class="alt">Yüksek Yargıç, delil ve savunmalardan hareketle gerekçeli <b>AI ceza önerisi</b> isteyebilir. AI hizmeti yapılandırılmadıysa sistem açıkça kurallı ön değerlendirme gösterir. Hiçbiri kesin hüküm vermez; cezayı yalnız yargıç uygular.</p></details></details></div>';
+  +'<p class="alt">Cezayı delil ve savunmaları değerlendiren yargıçlar belirler ve uygular.</p></details></details></div>';
 }
 
 let ADL={};
@@ -308,29 +308,6 @@ function adlYorumModal(id){
  m.querySelector("#adlOnay").onclick=()=>adlIslem(()=>API.rpc("adliye_yorum_yaz",{p_dava:id,p_metin:m.querySelector("#adlYorum").value}),"Yorumunuz yayımlandı.",id);
 }
 
-async function adlAiOnerModal(id,m){
- const alan=m.querySelector("#adlAiSonuc"),buton=m.querySelector("#adlAiOner");
- if(!alan||!buton)return;
- buton.disabled=true;alan.textContent="Dosya ve savunmalar inceleniyor…";
- try{
-  if(typeof API.aiCezaOner!=="function")throw Error("Bu sürümde AI öneri bağlantısı bulunmuyor.");
-  const d=await API.aiCezaOner(id);
-  if(!d||!Object.prototype.hasOwnProperty.call(ADL_CEZALAR,d.ceza))throw Error("Geçerli ceza önerisi alınamadı.");
-  alan.innerHTML='<div class="kart" style="padding:12px"><p class="kucuk"><b>'+e(d.kaynak==="yapay_zeka"?"YAPAY ZEKÂ ÖNERİSİ":"KURALLI ÖN DEĞERLENDİRME")+'</b></p>'
-   +'<p style="margin-top:8px"><b>Önerilen: '+e(ADL_CEZALAR[d.ceza])+'</b></p>'
-   +'<p class="alt" style="white-space:pre-wrap;margin-top:8px">'+e(d.gerekce||"")+'</p>'
-   +(d.alternatif?'<p class="kucuk"><b>Alternatif değerlendirme:</b> '+e(d.alternatif)+'</p>':"")
-   +'<p class="kucuk">'+e(d.uyari||"Bu öneri bağlayıcı değildir.")+'</p>'
-   +'<button type="button" class="btn ikinci" id="adlOneriyiSec">Öneriyi forma aktar (karar verilmez)</button></div>';
-  alan.querySelector("#adlOneriyiSec").onclick=()=>{
-   m.querySelector("#adlCeza").value=d.ceza;
-   m.querySelector("#adlGerekce").value=String(d.gerekce||"").slice(0,1900);
-   toast("Öneri forma aktarıldı. Nihai kararı yalnız siz verebilirsiniz.");
-  };
- }catch(err){alan.textContent="Öneri alınamadı: "+hataCevir(err.message);}
- finally{buton.disabled=false;}
-}
-
 function adlKararModal(id){
  const dv=(ADL.davalar||[]).find(x=>x.id===id)||{};
  const musadereUygun=["yolsuzluk","rusvet","usulsuzluk","dolandiricilik"].includes(dv.tur);
@@ -344,13 +321,10 @@ function adlKararModal(id){
   +(tazminatUygun?'<div class="alan" id="adlTazminatKutu" style="display:none"><label for="adlTazminatTutar">Hükmedilecek tazminat tutarı (₺)</label><input id="adlTazminatTutar" type="number" inputmode="numeric" min="1000" max="'+ustTutar+'" step="1" placeholder="Tutarı yazın, en fazla '+tlYaz(ustTutar)+'" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px" autocomplete="off"><p class="alt">Tutarı kendiniz yazın. En az 1.000 ₺, en fazla davacının talep ettiği '+tlYaz(ustTutar)+'.</p></div>':"")
   +(paraUygun?'<div class="alan" id="adlParaKutu" style="display:none"><label for="adlParaTutar">Hükmedilecek para cezası (₺)</label><input id="adlParaTutar" type="number" inputmode="numeric" min="1000" max="1000000" step="1" placeholder="1.000 – 1.000.000 ₺" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px" autocomplete="off"><p class="alt">Para cezası Hazineye tahsil edilir. Tutarı hâkim belirler; üst sınır 1.000.000 ₺.</p></div>':"")
   +(musadereUygun?'<div id="adlMusadereKutu" style="display:none"><div class="alan"><label>Kanıtlanan yolsuzluk tutarı (₺)</label><input id="adlMusadereTutar" type="number" min="1" step="1"></div><div class="alan"><label>Sorumlu oyuncunun kullanıcı adı</label><input id="adlMusadereKad" value="'+e(dv.davali||'')+'"></div><div class="alan"><label>Paranın aktarıldığı şirket ID (varsa)</label><input id="adlMusadereSirket" type="number" min="1" step="1"></div><p class="alt">Somut delillerdeki para hareketlerini ve miktarı gerekçenizde belirtin. Karar kesinleştiğinde Hazineye tahsil edilir.</p></div>':'')
-  +'<button type="button" class="btn ikinci" id="adlAiOner">Yapay zekâdan ceza önerisi al</button>'
-  +'<div id="adlAiSonuc" role="status" class="alt" style="padding:8px 0">Bu öneri mahkeme kararı değildir.</div>'
   +adlAlan("Gerekçeli karar","adlGerekce","textarea")
   +'<p class="alt">Bu sizin oyunuzdur. Heyetin çoğunluğu aynı karara varınca karar açıklanır; oylar ve gerekçeler o zaman herkese açılır. Karar çıkana kadar oyunuzu değiştirebilirsiniz.</p>'
   +'<button class="btn altin" id="adlKarar">Oyumu ver</button>');
  adlFormBaslik(m,"Yüksek Mahkeme · Dava #"+id);
- m.querySelector("#adlAiOner").onclick=()=>adlAiOnerModal(id,m);
  m.querySelector("#adlCeza").addEventListener("change",()=>{
   const karar=m.querySelector("#adlCeza").value;
   if(musadereUygun)m.querySelector("#adlMusadereKutu").style.display=karar==="musadere"?"block":"none";
