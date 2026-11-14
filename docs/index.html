@@ -28310,7 +28310,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
   };
   var tarihKisa = function (ts) { var p = parca(ts); return p ? p.g + " " + AY[p.a - 1] : ""; };
   var kesir = function (n) { return Number(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }); };
-  var mrK = function (n) { return Number(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + " milyar ₺"; };
+  var mrK = function (n) { var v = Number(n || 0); return v !== 0 && Math.abs(v) < 1 ? (v * 1000).toLocaleString("tr-TR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " milyon ₺" : v.toLocaleString("tr-TR", { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + " milyar ₺"; };
   var beklemeYaz = function (saat) {
     var s = Number(saat) || 0; if (!s) return "beklemesiz";
     if (s < 24) return s + " saatte bir";
@@ -28984,7 +28984,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
     var m = bmModal('<h3 style="font-size:19px;font-weight:800">' + esc(t.ad) + '</h3><p class="alt" style="margin:4px 0 10px">' + esc(t.aciklama) + '</p>' +
       (t.il_gerekli ? '<div class="alan"><label>Etkinlik hangi ilde?</label>' + ilSecici("bmEtkIl", p.il_id) + '</div>' : "") +
       '<div class="alan"><label>Davet notu (isteğe bağlı, en çok 200 karakter)</label><input id="bmEtkNot" maxlength="200" placeholder="Örn. Bütün hemşehrilerimizi bekliyoruz"></div>' +
-      '<div class="bkm-ozet">Maliyet: <b>' + mr(t.maliyet, 1) + '</b> (bakanlık kasasından) · ' + Number(t.sure_saat) + ' saat sürer · katılan her oyuncu +' + sayi(t.kidem, 1) + ' kıdem kazanır' + (t.il_gerekli ? ' (başka ilden katılan yarısını)' : '') + '.<br>Kapanışta etki: ' + esc(etkiYazi(t.etki)) + ' × katılım çarpanı (0,5–2).</div>' +
+      '<div class="bkm-ozet">Maliyet: <b>' + mrK(t.maliyet) + '</b> (bakanlık kasasından) · ' + Number(t.sure_saat) + ' saat sürer · katılan her oyuncu +' + sayi(t.kidem, 1) + ' kıdem kazanır' + (t.il_gerekli ? ' (başka ilden katılan yarısını)' : '') + '.<br>Kapanışta etki: ' + esc(etkiYazi(t.etki)) + ' × katılım çarpanı (0,5–2).</div>' +
       '<button class="btn altin" id="bmEtkOk">Etkinliği başlat</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
     m.querySelector("#bmEtkOk").onclick = async function () {
       this.disabled = true;
