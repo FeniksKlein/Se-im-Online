@@ -33,7 +33,7 @@ const ALICI = 'Alici' + ek, DIGER = 'Diger' + ek;
 const a = oyuncu(ALICI), b = oyuncu(DIGER);
 psql(`insert into oyun.mesajlar(kanal, user_id, metin, zaman) values ('genel', '${a}', 'Merhaba meydan', now() - interval '1 minute')`);
 
-const FIYAT = { baslangic_paketi: '₺39,99', siyaset_karti: '₺119,99', para_cep: '₺49,99', para_kampanya: '₺99,99', para_secim: '₺199,99', para_servet: '₺499,99', reklamsiz_odul: '₺149,99', destekci_rozeti: '₺79,99' };
+const FIYAT = { baslangic_paketi: '₺39,99', siyaset_karti: '₺99,99', para_cep: '₺29,99', para_kampanya: '₺59,99', para_secim: '₺129,99', para_servet: '₺299,99', reklamsiz_odul: '₺149,99', destekci_rozeti: '₺79,99' };
 const KOPRU = `<script>
 window.API_TEST = (function(){
   const kad = new URLSearchParams(location.search).get('kad') || '';
@@ -120,7 +120,7 @@ const para = (u) => +psql(`select para from oyun.cuzdan where user_id='${u}'`);
     await p.evaluate(() => ekranAc(magazaEkrani)); await p.waitForSelector('[data-urun="para_kampanya"]'); await foto(p, '02_magaza');
     const p0 = para(a);
     await p.click('[data-urun="para_kampanya"]'); await p.waitForFunction(() => /eklendi/.test(document.querySelector('.toast')?.textContent || ''), null, { timeout: 15000 });
-    esit(para(a), p0 + 125000, '₺ paketi'); ok('₺ paketi: ödeme sonrası cüzdana 125.000 ₺ ekleniyor');
+    esit(para(a), p0 + 60000, '₺ paketi'); ok('₺ paketi: ödeme sonrası cüzdana 60.000 ₺ ekleniyor');
 
     // 3) Başlangıç Paketi → Kart aktif, paket bir daha alınamıyor, Kart ödülü
     await p.click('[data-urun="baslangic_paketi"]'); await p.waitForSelector('#mgKartAl', { timeout: 15000 }); await bekle(p, 400); await foto(p, '03_kart_aktif');

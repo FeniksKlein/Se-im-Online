@@ -26,8 +26,8 @@ ok("Vitrin: 8 ürün, eski deneme paketleri gizli")
 
 once = para(a)
 r = olay(a, "para_kampanya", islem=ek+"t1"); assert r["durum"] == "eklendi", r
-assert para(a) == once + 125000
-assert olay(a, "para_kampanya", islem=ek+"t1")["durum"] == "zaten_islendi" and para(a) == once + 125000
+assert para(a) == once + 60000
+assert olay(a, "para_kampanya", islem=ek+"t1")["durum"] == "zaten_islendi" and para(a) == once + 60000
 ok("₺ paketi bir kez işleniyor (aynı işlem ikinci kez gelirse para eklenmiyor)")
 
 once = para(a)
@@ -59,7 +59,7 @@ ok("Kalıcı hak ve rozetler (Destekçi + Kart) herkese görünüyor")
 # İade: para geri alınır (cüzdanda kalan kadar), Kart günleri düşer, kalıcı hak kapanır
 once = para(a)
 assert olay(a, "para_kampanya", tur="CANCELLATION", islem=ek+"t1", cancel_reason="CUSTOMER_SUPPORT")["durum"] == "iade"
-assert para(a) == once - 125000
+assert para(a) == once - 60000
 olay(a, "siyaset_karti", tur="CANCELLATION", islem=ek+"t3", cancel_reason="CUSTOMER_SUPPORT")
 gun2 = float(q(f"select extract(epoch from kart_bitis - (select test_simdi from oyun.ayarlar))/86400 from oyun.magaza_hesap where user_id='{a}'"))
 assert 5 < gun2 < 7, gun2

@@ -20,6 +20,9 @@
   .mg-rz svg{width:14px;height:14px}
   .mg-rz .mg-yildiz{color:#F2C94C}
   .mg-rz .mg-kart{font-size:10.5px;font-weight:800;letter-spacing:.2px;padding:1px 6px;border-radius:6px;background:var(--inkbg);color:var(--ink2);line-height:1.5}
+  .mg-rz .mg-kurucu{font-size:10.5px;font-weight:800;letter-spacing:.2px;padding:1px 6px;border-radius:6px;background:linear-gradient(160deg,#F5D06A,#E0A82E);color:#1a1530;line-height:1.5}
+  h3 .mg-rz .mg-kurucu{font-size:12px;padding:2px 8px}
+  .portre.mg-cerceve{box-shadow:0 0 0 2px #F2C94C,0 0 8px rgba(242,201,76,.55)}
   h3 .mg-rz svg{width:20px;height:20px} h3 .mg-rz .mg-kart{font-size:12px;padding:2px 8px}
   .mg-vitrin{position:relative;border-radius:18px;padding:18px 16px 16px;margin-bottom:12px;overflow:hidden;
     background:radial-gradient(120% 90% at 100% 0%,rgba(123,97,255,.35),transparent 60%),linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line2)}
@@ -73,9 +76,18 @@
   function rozetHtml(kad) {
     const r = M.rozet[kad]; if (!r) return "";
     const l = r.split(",");
-    return `<span class="mg-rz">${l.includes("destekci") ? `<span class="mg-yildiz" title="Destekçi">${SVG.yildiz}</span>` : ""}${l.includes("kart") ? `<span class="mg-kart" title="Siyaset Kartı">Kart</span>` : ""}</span>`;
+    return `<span class="mg-rz">${l.includes("destekci") ? `<span class="mg-yildiz" title="Destekçi">${SVG.yildiz}</span>` : ""}${l.includes("kurucu") ? `<span class="mg-kurucu" title="Kurucu Destekçi">Kurucu</span>` : ""}${l.includes("kart") ? `<span class="mg-kart" title="Siyaset Kartı">Kart</span>` : ""}</span>`;
   }
   M.rozetHtml = rozetHtml;
+  const cerceveli = (kad) => { const r = M.rozet[kad]; return !!r && r.split(",").includes("cerceve"); };
+  // Altın Portre Çerçevesi: portre nerede çizilirse çizilsin çevresine altın halka
+  if (typeof portre === "function") {
+    const eskiPortre = portre;
+    window.portre = portre = function (kad) {
+      const h = eskiPortre.apply(this, arguments);
+      return cerceveli(kad) ? h.replace('class="portre"', 'class="portre mg-cerceve"') : h;
+    };
+  }
   async function rozetleriYukle(zorla) {
     if (!zorla && Date.now() - M.rozetZaman < 5 * 60 * 1000) return;
     M.rozetZaman = Date.now();
@@ -83,6 +95,7 @@
   }
   // Ekranda zaten çizilmiş sohbet balonlarına rozet ekle (rozet listesi sonradan geldiyse)
   function rozetleriUygula() {
+    document.querySelectorAll(".portre[data-portre]").forEach(s => s.classList.toggle("mg-cerceve", cerceveli(s.dataset.portre)));
     document.querySelectorAll(".balon[data-kad]").forEach(b => {
       const kim = b.querySelector(".kim"); if (!kim || kim.querySelector(".mg-rz")) return;
       const rz = rozetHtml(b.dataset.kad); const ad = kim.querySelector("span");
@@ -272,7 +285,7 @@
     const paraListe = paralar.length ? `<div class="bolum-bas"><h2>Oyun parası</h2><span class="kucuk">Cüzdan: ${tl(d.para)}</span></div>
       <div class="kart">${paralar.map(p => `<div class="mg-satir"><span class="mg-ikon">${SVG.para}</span><div class="orta"><div class="mg-miktar">${tl(p.miktar)}</div><div class="kucuk">${e(p.ad)}${p.etiket ? ` · <span style="color:var(--good);font-weight:700">${e(p.etiket)}</span>` : ""}</div></div>${fiyatDugme(p)}</div>`).join("")}</div>` : "";
     const kaliciListe = kalicilar.length ? `<div class="bolum-bas"><h2>Kalıcı</h2><span class="kucuk">Bir kez al, hep senin</span></div>
-      <div class="kart">${kalicilar.map(p => `<div class="mg-satir"><span class="mg-ikon" ${p.hak === "destekci" ? 'style="color:#F2C94C;background:rgba(242,201,76,.14)"' : ""}>${p.hak === "destekci" ? SVG.yildiz : SVG.reklam}</span><div class="orta"><b>${e(p.ad)}</b><div class="kucuk">${e(p.aciklama || "")}</div></div>${fiyatDugme(p)}</div>`).join("")}</div>` : "";
+      <div class="kart">${kalicilar.map(p => `<div class="mg-satir"><span class="mg-ikon" ${p.hak !== "reklamsiz" ? 'style="color:#F2C94C;background:rgba(242,201,76,.14)"' : ""}>${p.hak === "reklamsiz" ? SVG.reklam : p.hak === "kurucu" ? SVG.hediye : SVG.yildiz}</span><div class="orta"><b>${e(p.ad)}</b>${p.etiket && p.etiket !== "Kalıcı" ? ` <span class="mg-etiket" style="font-size:11px;padding:2px 7px;background:#F2C94C;color:#1a1530">${e(p.etiket)}</span>` : ""}<div class="kucuk">${e(p.aciklama || "")}</div></div>${fiyatDugme(p)}</div>`).join("")}</div>` : "";
     const yonetici = D.durum && D.durum.profil && D.durum.profil.yonetici ? `<div class="kart" id="mgSatis"><h2>Satış özeti · son 30 gün</h2><div class="kucuk">Yükleniyor…</div></div>` : "";
     iskelet("Mağaza", `<div id="mgEkran"></div>${durumNot}${kartDurum}${vitrinBas}${vitrinKart}${paraListe}${kaliciListe}
       ${yerel() ? `<button class="btn ikinci" id="mgGeri">Satın alımları geri yükle</button>` : ""}
