@@ -22,6 +22,20 @@
   .mg-rz .mg-kart{font-size:10.5px;font-weight:800;letter-spacing:.2px;padding:1px 6px;border-radius:6px;background:var(--inkbg);color:var(--ink2);line-height:1.5}
   .mg-rz .mg-kurucu{font-size:10.5px;font-weight:800;letter-spacing:.2px;padding:1px 6px;border-radius:6px;background:linear-gradient(160deg,#F5D06A,#E0A82E);color:#1a1530;line-height:1.5}
   h3 .mg-rz .mg-kurucu{font-size:12px;padding:2px 8px}
+  .mg-rz .mg-unvan{font-size:11px;font-weight:700;font-style:italic;padding:1px 7px;border-radius:999px;border:1px solid rgba(242,201,76,.55);color:#F2C94C;line-height:1.5;white-space:nowrap}
+  h3 .mg-rz .mg-unvan{font-size:13px;padding:2px 9px}
+  .mg-rz .mg-sezon{color:#8FD3FF}
+  .mg-isim{text-shadow:0 0 8px rgba(242,201,76,.8);font-weight:800}
+  .mg-sahne{position:relative;border-radius:18px;padding:3px;margin-bottom:10px;background:linear-gradient(135deg,#F5D06A,#B8860B 45%,#F5D06A);box-shadow:0 0 18px rgba(242,201,76,.35)}
+  .mg-sahne>:not(.mg-sahne-et){border-radius:15px;overflow:hidden}
+  .mg-sahne-et{position:absolute;top:-9px;right:14px;z-index:2;font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;background:#F2C94C;color:#1a1530}
+  .kart.mg-pk{border:2px solid #E0A82E;box-shadow:0 0 16px rgba(242,201,76,.28);overflow:hidden}
+  .kart.mg-pk .amb{box-shadow:0 0 0 3px #F2C94C,0 0 14px rgba(242,201,76,.5)}
+  .mg-pk-serit{display:flex;align-items:center;justify-content:center;gap:8px;margin:-15px -15px 14px;padding:6px 10px;background:linear-gradient(160deg,#F5D06A,#E0A82E);color:#1a1530;font-size:12.5px;font-weight:800;letter-spacing:1.5px;text-transform:none}
+  .mg-pk-serit svg{width:13px;height:13px}
+  .mg-ek{width:auto !important;min-height:44px;margin:8px 0 0 !important;padding:8px 14px !important;font-size:14px;white-space:normal;text-align:left}
+  .mg-unvan-liste{display:grid;gap:8px;margin:12px 0}
+  .mg-unvan-liste button{width:100%;min-height:48px;margin:0 !important;text-align:left;font-size:16px}
   .portre.mg-cerceve{box-shadow:0 0 0 2px #F2C94C,0 0 8px rgba(242,201,76,.55)}
   h3 .mg-rz svg{width:20px;height:20px} h3 .mg-rz .mg-kart{font-size:12px;padding:2px 8px}
   .mg-vitrin{position:relative;border-radius:18px;padding:18px 16px 16px;margin-bottom:12px;overflow:hidden;
@@ -69,17 +83,53 @@
     reklam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="13" rx="3"/><path d="M10 9l5 2.5-5 2.5z"/><path d="M4 21L20 3"/></svg>',
     canta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>',
     arti: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    isilti: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>',
+    kalem: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
+    firca: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 20h10M12 16v4M7 12l3-3 3 3 2-2 2 2"/></svg>',
+    bina: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/></svg>',
     hediye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="2"/><path d="M3 13h18M12 9v12"/><path d="M12 9c-2-4-6-4-6-1.5S9 9 12 9zm0 0c2-4 6-4 6-1.5S15 9 12 9z"/></svg>'
   };
 
   /* ---------- Rozetler (sohbet, oyuncu kartı, profil) ---------- */
+  const belirtec = (kad) => { const r = kad && kad.charAt(0) !== "#" ? M.rozet[kad] : null; return r ? String(r).split(",") : []; };
+  const varMi = (kad, ne) => belirtec(kad).includes(ne);
   function rozetHtml(kad) {
-    const r = M.rozet[kad]; if (!r) return "";
-    const l = r.split(",");
-    return `<span class="mg-rz">${l.includes("destekci") ? `<span class="mg-yildiz" title="Destekçi">${SVG.yildiz}</span>` : ""}${l.includes("kurucu") ? `<span class="mg-kurucu" title="Kurucu Destekçi">Kurucu</span>` : ""}${l.includes("kart") ? `<span class="mg-kart" title="Siyaset Kartı">Kart</span>` : ""}</span>`;
+    const l = belirtec(kad); if (!l.length) return "";
+    const unv = l.find(x => x.startsWith("u:")), sezon = l.filter(x => x.startsWith("r:"));
+    const ic = `${l.includes("destekci") ? `<span class="mg-yildiz" title="Destekçi">${SVG.yildiz}</span>` : ""}${l.includes("kurucu") ? `<span class="mg-kurucu" title="Kurucu Destekçi">Kurucu</span>` : ""}${sezon.map(x => `<span class="mg-sezon" title="${e(x.slice(2))}">${SVG.isilti}</span>`).join("")}${l.includes("kart") ? `<span class="mg-kart" title="Siyaset Kartı">Kart</span>` : ""}${unv ? `<span class="mg-unvan">${e(unv.slice(2))}</span>` : ""}`;
+    return ic ? `<span class="mg-rz">${ic}</span>` : "";
   }
   M.rozetHtml = rozetHtml;
-  const cerceveli = (kad) => { const r = M.rozet[kad]; return !!r && r.split(",").includes("cerceve"); };
+  const cerceveli = (kad) => varMi(kad, "cerceve");
+  const imzali = (kad) => varMi(kad, "imza");
+  const partiKimlikli = (id) => String(M.rozet["#partiler"] || "").split(",").includes(String(id));
+  // Kampanya Tasarım Paketi: düzenleyenin mitinginde altın sahne
+  function sahneSar() {
+    if (typeof window.mtSahneHtml !== "function" || window.mtSahneHtml._mgz) return;
+    const once = window.mtSahneHtml;
+    const yeni = function (d) {
+      const h = once.apply(this, arguments);
+      return d && varMi(d.kad, "kampanya_tasarim") ? `<div class="mg-sahne"><span class="mg-sahne-et">Özel sahne</span>${h}</div>` : h;
+    };
+    yeni._mgz = true; if (once._bilet) yeni._bilet = true;
+    window.mtSahneHtml = yeni; try { mtSahneHtml = yeni; } catch (_) {}
+  }
+  sahneSar(); setTimeout(sahneSar, 3000);
+  // Parti Kimlik Paketi: parti sayfasının başlık kartı kurumsal kimlik görünümü alır
+  function partiKimlikSus(id) {
+    if (!partiKimlikli(id)) return;
+    const amb = document.querySelector(".kart .amb"), k = amb && amb.closest(".kart");
+    if (!k || k.classList.contains("mg-pk")) return;
+    k.classList.add("mg-pk"); k.insertAdjacentHTML("afterbegin", `<div class="mg-pk-serit">${SVG.yildiz}<span>Kurumsal Kimlik</span>${SVG.yildiz}</div>`);
+  }
+  if (typeof partiDetay === "function") {
+    const eskiParti = partiDetay;
+    window.partiDetay = partiDetay = async function (id) {
+      const r = await eskiParti.apply(this, arguments);
+      try { await rozetleriYukle(); partiKimlikSus(id); } catch (_) {}
+      return r;
+    };
+  }
   // Altın Portre Çerçevesi: portre nerede çizilirse çizilsin çevresine altın halka
   if (typeof portre === "function") {
     const eskiPortre = portre;
@@ -97,8 +147,10 @@
   function rozetleriUygula() {
     document.querySelectorAll(".portre[data-portre]").forEach(s => s.classList.toggle("mg-cerceve", cerceveli(s.dataset.portre)));
     document.querySelectorAll(".balon[data-kad]").forEach(b => {
-      const kim = b.querySelector(".kim"); if (!kim || kim.querySelector(".mg-rz")) return;
-      const rz = rozetHtml(b.dataset.kad); const ad = kim.querySelector("span");
+      const kim = b.querySelector(".kim"); if (!kim) return;
+      const ad = kim.querySelector("span"); if (ad) ad.classList.toggle("mg-isim", imzali(b.dataset.kad));
+      if (kim.querySelector(".mg-rz")) return;
+      const rz = rozetHtml(b.dataset.kad);
       if (rz && ad) ad.insertAdjacentHTML("afterend", rz);
     });
   }
@@ -108,6 +160,7 @@
       let h = eskiBalon(m, ozel);
       if (!M.rozetYuklendi && !M._rozetIstek) { M._rozetIstek = true; rozetleriYukle(true).finally(() => { M._rozetIstek = false; }); }
       const rz = m && m.kad ? rozetHtml(m.kad) : "";
+      if (m && m.kad && imzali(m.kad)) h = h.replace('<div class="kim"><span ', '<div class="kim"><span class="mg-isim" ');
       if (rz) { const i = h.indexOf('<div class="kim">'); if (i >= 0) { const j = h.indexOf("</span>", i); if (j > 0) h = h.slice(0, j + 7) + rz + h.slice(j + 7); } }
       return h;
     };
@@ -130,7 +183,7 @@
       if (baslik === "Profilim" && typeof govde === "string" && D.durum && D.durum.profil) {
         const p = D.durum.profil, rz = rozetHtml(p.kad);
         if (rz) govde = govde.replace(`<h3>${e(p.kad)}</h3>`, `<h3>${e(p.kad)}${rz}</h3>`);
-        govde = `<button class="giris-satir" onclick="ekranAc(magazaEkrani)" style="margin-bottom:12px"><span class="yik">${SVG.kart}</span><span class="orta"><b>Mağaza</b><span class="kucuk">Siyaset Kartı, ₺ paketleri, Destekçi Rozeti</span></span><span class="ok">›</span></button>` + govde;
+        govde = `<button class="giris-satir" onclick="ekranAc(magazaEkrani)" style="margin-bottom:12px"><span class="yik">${SVG.kart}</span><span class="orta"><b>Mağaza</b><span class="kucuk">Siyaset Kartı, ₺ paketleri, rozet ve görünüm</span></span><span class="ok">›</span></button>` + govde;
       }
       if (baslik === "Gündem" && typeof govde === "string") {
         // Haber şeridinin hemen altına (şerit yoksa en üste)
@@ -267,7 +320,20 @@
   function magazaCiz() {
     const d = M.durum, P = d.paketler || [];
     const bul = (id) => P.find(p => p.urun_id === id);
-    const bas = bul("baslangic_paketi"), kart = P.find(p => p.tur === "kart"), paralar = P.filter(p => p.tur === "para"), kalicilar = P.filter(p => p.tur === "kalici");
+    const bas = bul("baslangic_paketi"), kart = P.find(p => p.tur === "kart"), paralar = P.filter(p => p.tur === "para"), kalicilar = P.filter(p => p.tur === "kalici"), hizmetler = P.filter(p => p.tur === "jeton");
+    const adHak = Number(d.jetonlar && d.jetonlar.ad_degis) || 0;
+    const ikon = (p) => p.hak === "reklamsiz" ? SVG.reklam : p.hak === "kurucu" ? SVG.hediye : p.hak === "imza" ? SVG.kalem : p.hak === "kampanya_tasarim" ? SVG.firca : p.hak === "parti_kimlik" ? SVG.bina : String(p.hak || "").startsWith("rozet_") ? SVG.isilti : SVG.yildiz;
+    const ek = (p) => {
+      if (p.satis_bit && !p.sahip) return `<div class="kucuk" style="color:var(--gold2,#F2C94C);font-weight:700">Satış bitimine ${e(kalanGun(p.satis_bit).replace(" kaldı", ""))} kaldı</div>`;
+      if (!p.sahip) return "";
+      if (p.hak === "imza") return `<button type="button" class="btn ikinci mg-ek" id="mgUnvan">${d.unvan ? "Unvanın: " + e(d.unvan) + " · değiştir" : "Unvanını seç"}</button>`;
+      if (p.hak === "parti_kimlik") {
+        const pk = d.parti_kimlik || {};
+        if (pk.parti) return `<div class="kucuk" style="color:var(--good);font-weight:700">Uygulandı: ${e(pk.parti)}</div>`;
+        return pk.gb_parti ? `<button type="button" class="btn ikinci mg-ek" id="mgPartiKimlik">${e(pk.gb_parti)} partisine uygula</button>` : `<div class="kucuk">Uygulamak için bir partinin genel başkanı olmalısın.</div>`;
+      }
+      return "";
+    };
     const gunluk = d.kart ? d.kart.gunluk : 7500;
     const madde = (t) => `<li>${SVG.tik}<span>${t}</span></li>`;
     const durumNot = MAGAZA_HATA ? `<div class="km-uyari" style="margin-bottom:12px">${e(MAGAZA_HATA)}</div>`
@@ -285,20 +351,70 @@
     const paraListe = paralar.length ? `<div class="bolum-bas"><h2>Oyun parası</h2><span class="kucuk">Cüzdan: ${tl(d.para)}</span></div>
       <div class="kart">${paralar.map(p => `<div class="mg-satir"><span class="mg-ikon">${SVG.para}</span><div class="orta"><div class="mg-miktar">${tl(p.miktar)}</div><div class="kucuk">${e(p.ad)}${p.etiket ? ` · <span style="color:var(--good);font-weight:700">${e(p.etiket)}</span>` : ""}</div></div>${fiyatDugme(p)}</div>`).join("")}</div>` : "";
     const kaliciListe = kalicilar.length ? `<div class="bolum-bas"><h2>Kalıcı</h2><span class="kucuk">Bir kez al, hep senin</span></div>
-      <div class="kart">${kalicilar.map(p => `<div class="mg-satir"><span class="mg-ikon" ${p.hak !== "reklamsiz" ? 'style="color:#F2C94C;background:rgba(242,201,76,.14)"' : ""}>${p.hak === "reklamsiz" ? SVG.reklam : p.hak === "kurucu" ? SVG.hediye : SVG.yildiz}</span><div class="orta"><b>${e(p.ad)}</b>${p.etiket && p.etiket !== "Kalıcı" ? ` <span class="mg-etiket" style="font-size:11px;padding:2px 7px;background:#F2C94C;color:#1a1530">${e(p.etiket)}</span>` : ""}<div class="kucuk">${e(p.aciklama || "")}</div></div>${fiyatDugme(p)}</div>`).join("")}</div>` : "";
+      <div class="kart">${kalicilar.map(p => `<div class="mg-satir"><span class="mg-ikon" ${p.hak !== "reklamsiz" ? 'style="color:#F2C94C;background:rgba(242,201,76,.14)"' : ""}>${ikon(p)}</span><div class="orta"><b>${e(p.ad)}</b>${p.etiket && p.etiket !== "Kalıcı" ? ` <span class="mg-etiket" style="font-size:11px;padding:2px 7px;background:#F2C94C;color:#1a1530">${e(p.etiket)}</span>` : ""}<div class="kucuk">${e(p.aciklama || "")}</div>${ek(p)}</div>${fiyatDugme(p)}</div>`).join("")}</div>` : "";
+    const hizmetListe = hizmetler.length || adHak ? `<div class="bolum-bas"><h2>Hizmetler</h2><span class="kucuk">Kullandıkça biter</span></div>
+      <div class="kart">${hizmetler.map(p => `<div class="mg-satir"><span class="mg-ikon">${SVG.kalem}</span><div class="orta"><b>${e(p.ad)}</b><div class="kucuk">${e(p.aciklama || "")}</div></div>${fiyatDugme(p)}</div>`).join("")}
+      ${adHak ? `<div class="mg-satir"><div class="orta"><b>${adHak} ad değiştirme hakkın var</b><div class="kucuk">Şimdiki adın: ${e((D.durum && D.durum.profil && D.durum.profil.kad) || "")}</div></div><button type="button" class="btn altin mg-fiyat" id="mgAdDegis">Kullan</button></div>` : ""}</div>` : "";
     const yonetici = D.durum && D.durum.profil && D.durum.profil.yonetici ? `<div class="kart" id="mgSatis"><h2>Satış özeti · son 30 gün</h2><div class="kucuk">Yükleniyor…</div></div>` : "";
-    iskelet("Mağaza", `<div id="mgEkran"></div>${durumNot}${kartDurum}${vitrinBas}${vitrinKart}${paraListe}${kaliciListe}
+    iskelet("Mağaza", `<div id="mgEkran"></div>${durumNot}${kartDurum}${vitrinBas}${vitrinKart}${paraListe}${kaliciListe}${hizmetListe}
       ${yerel() ? `<button class="btn ikinci" id="mgGeri">Satın alımları geri yükle</button>` : ""}
       <p class="mg-not">Ödeme Apple ya da Google hesabından alınır ve mağazanın onayından sonra birkaç saniye içinde hesabına işlenir. Oyun parası gerçek paraya çevrilemez, devredilemez. Oy, makam ve seçim sonucu satılmaz; satın alınan para da oyunun günlük bağış ve yayın sınırlarına tabidir. <a href="https://feniksklein.github.io/Se-im-Online/gizlilik.html" target="_blank" rel="noopener">Gizlilik</a></p>
       ${yonetici}`, { geri: true });
     document.querySelectorAll("[data-urun]").forEach(b => b.onclick = () => satinAl(b.dataset.urun, b));
     const ka = document.querySelector("#mgKartAl"); if (ka) ka.onclick = kartOdulAl;
     const gy = document.querySelector("#mgGeri"); if (gy) gy.onclick = geriYukle;
+    const un = document.querySelector("#mgUnvan"); if (un) un.onclick = unvanModal;
+    const pkb = document.querySelector("#mgPartiKimlik"); if (pkb) pkb.onclick = partiKimlikUygula;
+    const adb = document.querySelector("#mgAdDegis"); if (adb) adb.onclick = adDegisModal;
     if (yonetici) satisOzeti();
   }
   M.magazaCiz = magazaCiz;
 
-  const iz = (d) => d ? JSON.stringify([d.para, d.kart && d.kart.bitis, d.haklar, (d.paketler || []).map(p => p.alinabilir)]) : "";
+  /* ---------- İmza Paketi: unvan seçimi ---------- */
+  function unvanModal() {
+    const d = M.durum, l = (d && d.unvanlar) || [];
+    const m = modal(`<h3>Unvanını seç</h3><p class="alt">Seçtiğin unvan sohbette, oyuncu kartında ve profilinde adının yanında görünür. Dilediğin zaman değiştirebilirsin.</p>
+      <div class="mg-unvan-liste">${l.map(u => `<button type="button" class="btn ${d.unvan === u ? "altin" : "ikinci"}" data-unvan="${e(u)}">${e(u)}</button>`).join("")}
+      <button type="button" class="btn ikinci" data-unvan="">Unvansız kullan</button></div>`);
+    m.querySelectorAll("[data-unvan]").forEach(b => b.onclick = async () => {
+      m.querySelectorAll("button").forEach(x => x.disabled = true);
+      try {
+        M.durum = await API.rpc("magaza_unvan_sec", { p_unvan: b.dataset.unvan || null });
+        await rozetleriYukle(true); modalKapat(); toast(b.dataset.unvan ? `Unvanın: ${b.dataset.unvan}` : "Unvan kaldırıldı.");
+        if (document.querySelector("#mgEkran")) magazaCiz();
+      } catch (err) { hata(err); m.querySelectorAll("button").forEach(x => x.disabled = false); }
+    });
+  }
+  /* ---------- Parti Kimlik Paketi ---------- */
+  async function partiKimlikUygula() {
+    const b = document.querySelector("#mgPartiKimlik"); if (b) b.disabled = true;
+    try {
+      if (typeof onayla === "function" && !(await onayla("Parti Kimlik Paketi", "Paket genel başkanı olduğun partiye kalıcı olarak uygulanır ve başka partiye taşınamaz. Onaylıyor musun?", "Partime uygula"))) { if (b) b.disabled = false; return; }
+      M.durum = await API.rpc("magaza_parti_kimlik_uygula"); await rozetleriYukle(true);
+      toast("Partin kurumsal kimliğine kavuştu."); if (document.querySelector("#mgEkran")) magazaCiz();
+    } catch (err) { hata(err); if (b) b.disabled = false; }
+  }
+  /* ---------- Kullanıcı adı değiştirme ---------- */
+  function adDegisModal() {
+    const m = modal(`<h3>Kullanıcı adını değiştir</h3>
+      <p class="alt">Yeni adın 3-20 karakter olmalı; yalnızca harf, rakam ve _ kullanılabilir. Değişiklik herkese duyurulur ve bir hakkını harcar. Aday olduğun bir seçim sürerken ad değiştirilemez.</p>
+      <div class="alan"><label for="mgYeniAd" style="font-size:15px">Yeni kullanıcı adı</label>
+      <input id="mgYeniAd" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Yeni adını yaz" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px"></div>
+      <button type="button" class="btn altin" id="mgAdOnay" style="min-height:48px">Adımı değiştir</button>`);
+    const b = m.querySelector("#mgAdOnay");
+    b.onclick = async () => {
+      const y = m.querySelector("#mgYeniAd").value.trim();
+      if (!/^[A-Za-z0-9_çğıöşüÇĞİÖŞÜ]{3,20}$/.test(y)) { toast("Ad 3-20 karakter olmalı; harf, rakam ve _ kullanılabilir.", true); return; }
+      b.disabled = true;
+      try {
+        const r = await API.rpc("kad_degistir", { p_yeni: y });
+        modalKapat(); toast(`Yeni adın: ${r.kad}. Oyun yenileniyor…`);
+        setTimeout(() => { try { location.reload(); } catch (_) {} }, 1200);
+      } catch (err) { hata(err); b.disabled = false; }
+    };
+  }
+
+  const iz = (d) => d ? JSON.stringify([d.para, d.kart && d.kart.bitis, d.haklar, d.jetonlar, (d.paketler || []).map(p => p.alinabilir)]) : "";
   async function satinAl(id, b) {
     const u = URUN.find(x => x.identifier === id); if (!u) return;
     const p = (M.durum.paketler || []).find(x => x.urun_id === id);

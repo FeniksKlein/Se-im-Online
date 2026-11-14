@@ -296,6 +296,8 @@
     if (c.avatar) o.kod = c.avatar;
     return o;
   }
+  // Özel şablonlar Mağaza'daki Kampanya Tasarım Paketi ile açılır
+  function ozelSablonVar() { try { return !!(window.MGZ && MGZ.durum && (MGZ.durum.haklar || []).indexOf('kampanya_tasarim') >= 0); } catch (_) { return false; } }
   var SABLON = [
     { kod: 'meydan', ad: 'Meydan', icin: ['oyuncu', 'parti'], f: function (c) {
       return { v: 1, zemin: { tip: 'gradyan', r1: c.renk, r2: koyu(c.renk, 0.6), aci: 120, desen: 'cizgi', dop: 0.07 }, ogeler: [
@@ -408,6 +410,52 @@
         { t: 'sekil', sekil: 'cizgi', x: 500, y: 162, w: 840, h: 3, renk: '#111111' },
         { t: 'metin', m: 'Her sabah, gerçeğin peşinde.', x: 500, y: 230, boy: 40, renk: '#222222', font: 'serif', kal: 400, hiza: 'middle', italik: true },
         { t: 'metin', m: 'ABONE OL · YAZARLARIMIZI OKU', x: 500, y: 330, boy: 24, renk: '#E30A17', font: 'kurul', kal: 700, hiza: 'middle', harf: 3 }
+      ], efekt: { doku: 'kagit' } };
+    } },
+    { kod: 'ozel_muhur', ad: 'Altın Mühür', ozel: true, icin: ['oyuncu', 'parti'], f: function (c) {
+      return { v: 1, zemin: { tip: 'gradyan', r1: '#0B1330', r2: '#1D2C63', aci: 135, desen: 'cizgi', dop: 0.06 }, ogeler: [
+        { t: 'sekil', sekil: 'daire', x: 200, y: 220, w: 330, h: 330, renk: '#E0A82E' },
+        { t: 'sekil', sekil: 'daire', x: 200, y: 220, w: 306, h: 306, renk: '#0B1330' },
+        portreOge(c, 200, 220, 270, 'daire', '#F5D06A'),
+        { t: 'metin', m: c.ad, x: 660, y: 135, boy: 78, sig: 600, renk: '#F5D06A', font: 'kurul', kal: 900, hiza: 'middle', buyuk: true, golge: true },
+        { t: 'sekil', sekil: 'cizgi', x: 660, y: 200, w: 420, h: 4, renk: '#E0A82E' },
+        { t: 'metin', m: 'SÖZ VERİYORUZ', x: 660, y: 255, boy: 44, sig: 600, renk: '#FFFFFF', font: 'kurul', kal: 700, hiza: 'middle', harf: 5 },
+        { t: 'sekil', sekil: 'serit', x: 660, y: 350, w: 520, h: 70, renk: '#E0A82E' },
+        { t: 'amblem', id: c.amblem, renk: '#0B1330', x: 450, y: 350, s: 48 },
+        { t: 'metin', m: c.sahip, x: 685, y: 352, boy: 28, sig: 420, renk: '#0B1330', font: 'kurul', kal: 700, hiza: 'middle' }
+      ], efekt: { parlama: true, vinyet: 0.45 } };
+    } },
+    { kod: 'ozel_zafer', ad: 'Zafer Yürüyüşü', ozel: true, icin: ['oyuncu', 'parti', 'dernek'], f: function (c) {
+      return { v: 1, zemin: { tip: 'gunes', r1: c.renk, r2: '#FFF3D0', cx: 500, cy: 500, desen: 'cizgi', dop: 0.05 }, ogeler: [
+        { t: 'sekil', sekil: 'kutu', x: 500, y: 40, w: 1000, h: 80, renk: koyu(c.renk, 0.55) },
+        { t: 'amblem', id: c.amblem, renk: '#FFFFFF', x: 70, y: 40, s: 46 },
+        { t: 'metin', m: c.sahip, x: 120, y: 42, boy: 30, sig: 820, renk: '#FFFFFF', font: 'kurul', kal: 700, hiza: 'start', harf: 2, buyuk: true },
+        { t: 'metin', m: 'ZAFER\nMİLLETİN', x: 500, y: 190, boy: 96, sig: 900, renk: '#14171F', font: 'blok', kal: 900, hiza: 'middle', kontur: '#FFF3D0', kk: 12 },
+        { t: 'sekil', sekil: 'serit', x: 500, y: 372, w: 640, h: 72, renk: koyu(c.renk, 0.55) },
+        { t: 'metin', m: c.ad, x: 500, y: 374, boy: 36, sig: 580, renk: '#FFE08A', font: 'kurul', kal: 900, hiza: 'middle', buyuk: true }
+      ], efekt: { doku: 'kagit', vinyet: 0.3 } };
+    } },
+    { kod: 'ozel_devlet', ad: 'Devlet Ciddiyeti', ozel: true, icin: ['oyuncu', 'parti', 'dernek', 'gazete'], f: function (c) {
+      return { v: 1, zemin: { tip: 'bolunmus', r1: '#111827', r2: '#F4F1E8' }, ogeler: [
+        { t: 'metin', m: c.ad, x: 60, y: 130, boy: 70, sig: 540, renk: '#FFFFFF', font: 'serif', kal: 900, hiza: 'start', golge: true },
+        { t: 'sekil', sekil: 'cizgi', x: 200, y: 195, w: 280, h: 5, renk: '#E0A82E' },
+        { t: 'metin', m: 'Tecrübe. Liyakat.\nGüven.', x: 60, y: 270, boy: 44, sig: 540, renk: '#F5D06A', font: 'serif', kal: 700, hiza: 'start', italik: true },
+        { t: 'metin', m: c.il, x: 60, y: 390, boy: 24, sig: 500, renk: '#C9CFDD', font: 'kurul', kal: 700, hiza: 'start', harf: 5, buyuk: true },
+        portreOge(c, 800, 195, 250, 'kare', '#111827'),
+        { t: 'amblem', id: c.amblem, renk: c.renk, x: 700, y: 385, s: 46 },
+        { t: 'metin', m: c.sahip, x: 950, y: 388, boy: 26, sig: 220, renk: '#111827', font: 'serif', kal: 700, hiza: 'end' }
+      ], efekt: { vinyet: 0.25 } };
+    } },
+    { kod: 'ozel_imza', ad: 'İmza', ozel: true, icin: ['oyuncu', 'parti', 'dernek', 'sirket', 'gazete'], f: function (c) {
+      return { v: 1, zemin: { tip: 'duz', r1: '#FBF7EC' }, ogeler: [
+        { t: 'sekil', sekil: 'kutu', x: 22, y: 220, w: 44, h: 440, renk: c.renk },
+        { t: 'sekil', sekil: 'kutu', x: 52, y: 220, w: 8, h: 440, renk: '#E0A82E' },
+        { t: 'metin', m: '“Sözüm senettir.”', x: 110, y: 150, boy: 74, sig: 840, renk: '#14171F', font: 'serif', kal: 900, hiza: 'start', italik: true },
+        { t: 'sekil', sekil: 'cizgi', x: 330, y: 245, w: 440, h: 3, renk: '#14171F' },
+        { t: 'metin', m: c.tur === 'sirket' || c.tur === 'gazete' ? c.sahip : c.ad, x: 110, y: 300, boy: 46, sig: 700, renk: koyu(c.renk, 0.35), font: 'serif', kal: 700, hiza: 'start', italik: true },
+        { t: 'metin', m: c.sahip, x: 110, y: 385, boy: 24, sig: 640, renk: '#555555', font: 'kurul', kal: 700, hiza: 'start', harf: 4, buyuk: true },
+        { t: 'sekil', sekil: 'daire', x: 870, y: 330, w: 150, h: 150, renk: c.renk },
+        { t: 'amblem', id: c.amblem, renk: kontrast(c.renk), x: 870, y: 330, s: 84 }
       ], efekt: { doku: 'kagit' } };
     } }
   ];
@@ -1404,7 +1452,7 @@
     if (ST.sekme === 'sablon') {
       var uygun = SABLON.filter(function (s) { return s.icin.indexOf(ST.sahip.tur) >= 0; }).concat(SABLON.filter(function (s) { return s.icin.indexOf(ST.sahip.tur) < 0; }));
       h = '<p class="rp-not" style="margin:0 0 10px">Bir şablona dokun; renkler, amblem, adın ve portren kendiliğinden yerleşir. Sonra dilediğin gibi değiştir.</p><div class="rp-izgara">' +
-        uygun.map(function (s) { return '<button type="button" class="rp-sablon" data-st="sablon" data-k="' + s.kod + '">' + afisSvg(s.f(c)) + '<b>' + esc(s.ad) + '</b></button>'; }).join('') + '</div>';
+        uygun.map(function (s) { return '<button type="button" class="rp-sablon" data-st="sablon" data-k="' + s.kod + '">' + afisSvg(s.f(c)) + '<b>' + esc(s.ad) + (s.ozel ? ' <span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;background:#F2C94C;color:#1a1530;vertical-align:1px">' + (ozelSablonVar() ? 'Özel' : 'Mağaza') + '</span>' : '') + '</b></button>'; }).join('') + '</div>';
     } else if (ST.sekme === 'yazi') {
       var metinler = ST.t.ogeler.map(function (o, i) { return [o, i]; }).filter(function (x) { return x[0].t === 'metin'; });
       h = '<button type="button" class="btn" data-st="ekle" data-k="baslik" style="margin-top:0">＋ Başlık ekle</button><button type="button" class="btn ikinci" data-st="ekle" data-k="altbaslik">＋ Alt başlık ekle</button><button type="button" class="btn ikinci" data-st="slogan">✨ Slogan Ustası</button>' +
@@ -1459,6 +1507,7 @@
     if (a === 'sekme') { ST.sekme = k; stSekmeler(); stPanel(); return; }
     if (a === 'sablon') {
       var s = SABLON.find(function (x) { return x.kod === k; }); if (!s) return;
+      if (s.ozel && !ozelSablonVar()) { toast('Bu şablon Kampanya Tasarım Paketi\'nde. Mağazadan alabilirsin.'); return; }
       kayitAl(); ST.t = s.f(ST.ctx); ST.sec = -1; stHepsi(); toast('Şablon uygulandı: ' + s.ad); return;
     }
     if (a === 'geri') { if (!ST.geri.length) return; ST.ileri.push(JSON.stringify(ST.t)); ST.t = JSON.parse(ST.geri.pop()); ST.sec = Math.min(ST.sec, ST.t.ogeler.length - 1); stHepsi(); return; }

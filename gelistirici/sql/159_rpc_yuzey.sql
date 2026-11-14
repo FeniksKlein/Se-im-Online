@@ -253,7 +253,7 @@ declare
     'kriz_merkezi', 'kursu_akis', 'kursu_alinti', 'kursu_ara', 'kursu_ben', 'kursu_bildirimler',
     'kursu_etiket', 'kursu_gonderi', 'kursu_gundem', 'kursu_profil', 'kursu_profil_guncelle', 'kursu_sabitle',
     'kursu_takip_et', 'kursu_takip_listesi', 'kursu_yp', 'kurucu_davet_ekle', 'kurucu_davet_yanit', 'kurucu_davetlerim',
-    'kurucu_katki', 'maas_durum', 'maas_oyla', 'maas_teklif_ver', 'magaza_durum', 'magaza_rozetler',
+    'kurucu_katki', 'maas_durum', 'maas_oyla', 'maas_teklif_ver', 'magaza_durum', 'magaza_rozetler', 'magaza_unvan_sec', 'magaza_parti_kimlik_uygula', 'kad_degistir',
     'mahkeme_azil_oy', 'mahkeme_azil_teklif', 'mahkeme_meclis_oy', 'matestappen_parti_kur', 'meclis', 'meclis_aday_ol',
     'meclis_baskanlik', 'meclis_ihtar', 'meclis_oturum', 'meclis_oy', 'meclis_projeksiyon', 'meclis_rehber',
     'meclis_sandalye', 'meclis_vekiller', 'meclis_yoklama', 'mentor_birak', 'mentor_durum', 'mentor_gonullu_ol',
