@@ -34,8 +34,12 @@ afk = sql("zz_20261115_mv_afk_gorev_korumasi.sql")
 budget = sql("zz_20261115_butce_teklif_cumhurbaskani.sql")
 check("gercekci_siyaset=true" in launch, "Lansman gerçekçi siyaset modu açık")
 check("OR NOT (SELECT gercekci_siyaset" in launch, "Lansman gerçekçi siyaseti doğruluyor")
-check("gercekci_siyaset boolean not null default false" in core,
-      "Mevcut beta dünyasında geriye dönük etki yok")
+check("gercekci_siyaset boolean not null default true" in core,
+      "Gerçekçi siyaset varsayılan olarak beta dahil açık")
+beta_patch = sql("zz_20261115_beta_gercekci_siyaset_kalici.sql")
+check("alter column gercekci_siyaset set default true" in beta_patch and
+      "set gercekci_siyaset=true where id=1" in beta_patch,
+      "Mevcut beta verisinde gerçekçi siyaset kalıcı etkinleştiriliyor")
 check("ceil(oyun.tbmm_tamsayi()*3/5.0)" in core, "Erken seçim 3/5 eşiği")
 check("when oyun.gercekci_siyaset() then 20" in core, "Meclis siyasi parti grubu en az 20 vekil")
 check("sokak_eylem_imza_kapisi" in core and "greatest(10" in core,
