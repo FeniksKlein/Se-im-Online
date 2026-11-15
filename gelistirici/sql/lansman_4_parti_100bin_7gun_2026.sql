@@ -104,6 +104,9 @@ BEGIN
   ON CONFLICT (parti_id,il_id) DO NOTHING;
 
   -- Test/ilk kurulumdan gelebilecek bekleyen takvimi bastan kur.
+  -- Yeni bagimsiz CB kampanyalari eski secime bagli kalmamali.
+  DELETE FROM oyun.cb_bagimsiz_destek;
+  DELETE FROM oyun.cb_bagimsiz_kampanya;
   DELETE FROM oyun.secimler;
 
   -- Ilk genel baskan: basvuru lansmanda, 3. gun sandik.
