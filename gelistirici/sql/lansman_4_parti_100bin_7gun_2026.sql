@@ -63,6 +63,12 @@ BEGIN
   -- Daha once test oynayanlara ayricalikli 1.000.000 TL verilmesin.
   EXECUTE 'DROP TRIGGER IF EXISTS test_oncelikli_baslangic ON oyun.cuzdan';
   DELETE FROM oyun_yonetim.onceki_test_oyuncu;
+  -- Ozel parti kurma ve eski kayit onayi istisnalari da yeni doneme kalmasin.
+  DELETE FROM oyun_yonetim.ozel_parti_kurma_izni;
+  DELETE FROM oyun_yonetim.kayit_basvurulari;
+  -- Oyun semasi disindaki test eylem sohbeti ve canli sinyallerini temizle.
+  DELETE FROM public.sokak_eylem_sohbet;
+  DELETE FROM public.canli_sinyal;
   -- Belediyeler ilk girenlere otomatik dagitilmasin.
   EXECUTE 'DROP TRIGGER IF EXISTS yeni_oyuncu_baskan_ata ON oyun.profiller';
 
