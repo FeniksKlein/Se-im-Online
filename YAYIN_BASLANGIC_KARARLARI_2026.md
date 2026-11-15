@@ -37,3 +37,10 @@ Bu dosya lansman kararlarını kaydeder. Mevcut test oyununu sıfırlamaz.
 14 günlük hesap şartı nedeniyle ilk yedi günde yeni kurulan oyuncu partileri genel seçime yetişemeyecek. İlk seçime ancak dört hazır parti veya bağımsız adaylar katılabilir.
 
 Değişiklikler yayın günü uygulanmak üzere **hazırlanmıştır**. SQL dosyasının GitHub'da durması kendi başına mevcut oyunu değiştirmez.
+
+## Gercekci siyaset aktivasyonu (15 Kasim 2026 ek karari)
+- Beta dunyasindaki secim/oyuncu verisini yasama reformu sirf kod eklenerek degistirmez; `oyun.ayarlar.gercekci_siyaset` lansmana kadar `false` kalir.
+- Resmi lansman dosyasi kontrollu sifirlamadan sonra `gercekci_siyaset=true` yapar ve sonucu dogrular; TBMM tam sayisi 600, erken secim 360, anayasa degisikligi 200 teklif imzasi, 360/400 kabul esikleri ve Meclis Baskanligi 400/400/301 esiklerine gecer.
+- Bagimsiz CB adayligi icin 50.000 TL teminat ve uygun aktif secmenlerin asgari 10 veya %3 imzasi uygulanir; yeterli imzaya ulasinca teminat iade edilir. Imza basvurusu kesin adaylik sayilmaz.
+- Buyuk eylemler icin asgari 10 veya aktif 7 gunluk kitlenin %1 imzasi aranir; dogrudan eylem acma yolunda sunucu kontrolu bulunur. Kucuk ve bariscil siyasi ifadeler kapatilmaz.
+- `gelistirici/build/sql_birlestir.js` icindeki `zz_20261115_...` yamalari sirayla kurulur; uygulama arayuzunun guncele alinmasi ve butun oy akislari uc-uca sinanmadan yayin acilmaz.
