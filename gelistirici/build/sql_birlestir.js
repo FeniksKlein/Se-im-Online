@@ -13,7 +13,8 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261115_anayasa_iade_400.sql',
   'zz_20261115_kanun_gercekci_rehber.sql',
   'zz_20261115_kanun_rejim_goster.sql',
-  'zz_20261115_butce_teklif_cumhurbaskani.sql'];
+  'zz_20261115_butce_teklif_cumhurbaskani.sql',
+  'zz_20261115_anayasa_iki_gorusme.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
