@@ -51,6 +51,11 @@ BEGIN
     'parti_kurucu_hesap_gun','parti_ortak_hesap_gun','parti_ortak_bekleme_gun',
     'parti_basvuru_gun','parti_katki_min','parti_fon');
 
+  -- Yeni oyuncu ilk cüzdanda TAM 100.000 TL ile baslasin.
+  -- Onceki donemin devlet/sehir hosgeldin bonuslarini tasima.
+  DELETE FROM oyun.duzenlemeler WHERE kod='yeni_hibe';
+  DELETE FROM oyun.il_duzenleme WHERE kod='hosgeldin';
+
   -- Testte baraj hesabini atlatan butun adaylar vekil olabilsin modunu kapat.
   INSERT INTO oyun.mv_secim_modu(id,her_aday_vekil,aciklama)
   VALUES(1,false,'Gercek secim: parti veya ittifak toplaminda %7 baraji')
