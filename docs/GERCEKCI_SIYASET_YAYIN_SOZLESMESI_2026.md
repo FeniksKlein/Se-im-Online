@@ -24,6 +24,13 @@ Oyun, küçük beta grubuna göre verilen keyfî çoğunluk ve imza muafiyetleri
 - İkinci görüşme başladığında ilk teklif imzaları yeniden çekilemez ve aynı imza kotası ikinci kez aranmaz.
 - Gizli oylamanın kimin ne oy verdiğini ifşa eden kayıtları kamu arayüzüne dökülmez; kendi oyu ise seçmenin ekranında gösterilir.
 
+### Siyasi partilerin Cumhurbaşkanı adayı göstermesi
+
+- Anayasa md. 101 ve 6271 sayılı Kanun md. 7: Mecliste **en az 20 milletvekiliyle siyasi parti grubu** kurmuş parti veya en son milletvekili genel seçiminde tek başına ya da birlikte **en az %5 oy** almış siyasi partiler aday gösterebilir.
+- Seçim sonucundaki gerçek parti yüzdeleri ve o seçime ait ittifak üyeliğinin anlık tarihî kaydı esas alınır. Daha sonra yapılan ittifak değişikliği eski seçimdeki oyu geriye dönük değiştirmez.
+- İlk lansman seçimi için geçmiş geçerli genel seçim olmadığından yalnızca dört hazır sistem partisine geçici aday gösterme hakkı tanınır. Sonraki seçimlerde normal anayasal koşullar aranır.
+- Seçmen imzasıyla bağımsız adaylık, bu parti adaylığı yolu dışında ayrı işler.
+
 ### Cumhurbaşkanı adaylığı — oyun nüfusuna uyarlama
 
 - Türkiye'de seçmen tarafından aday gösterme için 100.000 imza gerekir. Oyunda bağımsız aday için aktif, uygun seçmenlerin **en az %3'ü**, asgari **10 geçerli imza**, ve **50.000 TL** teminat kuralı uygulanır.
