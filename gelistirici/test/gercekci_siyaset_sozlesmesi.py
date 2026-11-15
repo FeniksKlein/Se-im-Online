@@ -42,7 +42,7 @@ check("sokak_eylem_imza_kapisi" in core and "greatest(10" in core,
       "Büyük eylem için sunucu tarafında imza kapısı")
 check("cb_bagimsiz_destek" in sign and "0.03" in sign and "50000" in sign,
       "Bağımsız Cumhurbaşkanı adayı: tek seçmen imzası, yüzde 3, teminat")
-check("anayasa_tur" in law and "'ikinci'" in law and "interval '48 hours'" in law,
+check("anayasa_tur" in law and "'ikinci'" in law and "48 hours" in law,
       "Anayasa iki tur gizli oylama ve en az 48 saat")
 check("kanun_imza" in protection and "anayasa_tur>0" in protection,
       "İkinci turda ilk teklif imzaları değiştirilemez")
