@@ -27,22 +27,26 @@
 
   function govde(v) {
     var b = v.ben || {}, sh = b.sirket || {}, st = v.statuler || [], p = v.parti || {};
-    var ilerleme = b.sonraki_esik ? Math.max(0, Math.min(100, 100 * Number(b.kidem || 0) / Number(b.sonraki_esik))) : 100;
+    var simgeler = ['○', '●', '★', '✦', '🏅', '👑'];
+    var mevcutEsik = st[Number(b.statu)] ? Number(st[Number(b.statu)].esik) : 0;
+    var ilerleme = b.sonraki_esik ? Math.max(0, Math.min(100, 100 * (Number(b.kidem || 0) - mevcutEsik) / Math.max(1, Number(b.sonraki_esik) - mevcutEsik))) : 100;
     var kunye = '<section class="dk-kunye"><div class="dk-kunye-ust"><span class="dk-muhur">' + MUHUR + '</span><div class="dk-kunye-ad"><small>Ticaret Bakanlığı · Resmî tarife</small><b>Fiyat Tarifesi</b><span>Fiyat düzeyi ×' +
       Number(v.endeks || 1).toLocaleString('tr-TR', { minimumFractionDigits: 3 }) + ' · asgari ücret ' + tl(v.asgari) + '</span></div></div>' +
-      (v.ben ? '<div class="dk-kpiler"><div class="dk-kpi"><small>Statün</small><b>' + esc(b.statu_ad) + '</b></div>' +
+      (v.ben ? '<div class="dk-kpiler"><div class="dk-kpi"><small>Statün</small><b>' + esc((simgeler[Number(b.statu)] || '○') + ' ' + b.statu_ad) + '</b></div>' +
         '<div class="dk-kpi"><small>Kıdem</small><b>' + Number(b.kidem || 0).toLocaleString('tr-TR') + (b.sonraki_esik ? ' / ' + b.sonraki_esik : '') + '</b></div>' +
         '<div class="dk-kpi"><small>Şirket hakkı</small><b class="' + (Number(sh.kullanilan) < Number(sh.hak) ? 'iyi' : 'kotu') + '">' + (sh.kullanilan || 0) + ' / ' + (sh.hak || 0) + '</b></div>' +
         '<div class="dk-kpi"><small>Günlük maaş</small><b>' + kisa(b.gunluk_net) + '</b></div></div>' +
         (b.sonraki_ad ? '<div class="ft-ilerleme"><i style="--y:' + ilerleme + '%"></i></div><p class="ft-not">"<b>' + esc(b.sonraki_ad) + '</b>" statüsüne ' + Math.max(0, Number(b.sonraki_esik) - Number(b.kidem || 0)) +
-          ' kıdem kaldı' + (sh.sonraki_hak != null ? ': şirket hakkın ' + sh.sonraki_hak + ' olur, maaşın artar.' : '.') + ' Kıdem; her gün maaşını topladıkça (+1), oy kullandıkça (+3) ve etkinliklere katıldıkça artar.</p>' :
+          ' kıdem kaldı' + (sh.sonraki_hak != null ? ': şirket hakkın ' + sh.sonraki_hak + ' olur.' : '.') + ' Kıdem; her gün maaşını topladıkça (+1), oy kullandıkça (+3) ve etkinliklere katıldıkça artar.</p>' :
           '<p class="ft-not">En yüksek statüdesin: <b>Yaşayan Efsane</b>.</p>') : '') + '</section>';
 
     var merdiven = st.map(function (s) {
       var ben = v.ben && Number(b.statu) === Number(s.basamak);
-      return '<div class="ft-basamak' + (ben ? ' ben' : '') + (v.ben && Number(b.statu) > Number(s.basamak) ? ' gecti' : '') + '"><div class="ft-b-ust"><span class="ft-b-no">' + s.basamak + '</span><b>' + esc(s.ad) + '</b><small>' + s.esik + ' kıdem</small>' + (ben ? '<em>Sen</em>' : '') + '</div>' +
+      return '<div class="ft-basamak' + (ben ? ' ben' : '') + (v.ben && Number(b.statu) > Number(s.basamak) ? ' gecti' : '') + '"><div class="ft-b-ust"><span class="ft-b-no">' + esc(simgeler[Number(s.basamak)] || '○') + '</span><b>' + esc(s.ad) + '</b><small>' + s.esik + ' kıdem</small>' + (ben ? '<em>Sen</em>' : '') + '</div>' +
         '<div class="ft-b-alt"><span>Maaş ×' + Number(s.maas_carpan).toLocaleString('tr-TR') + '</span><span>' + s.sirket_hakki + ' şirket</span>' +
-        ((s.acilan || []).length ? '<span class="ft-acilan">' + (s.acilan || []).map(esc).join(' · ') + '</span>' : '') + '</div></div>';
+        ((s.acilan || []).length ? '<span class="ft-acilan">' + (s.acilan || []).map(esc).join(' · ') + '</span>' : '') +
+        (Number(s.basamak) === 4 ? '<span class="ft-acilan">🏅 Duayen Rozeti · profilinde seçkin kıdem görünümü</span>' : '') +
+        (Number(s.basamak) === 5 ? '<span class="ft-acilan">👑 Yaşayan Efsane Nişanı · en üst prestij rütbesi</span>' : '') + '</div></div>';
     }).join('');
 
     var gruplar = {};
@@ -69,6 +73,7 @@
       ['Kıdem neyle artar?', 'Her gün maaşını toplamak +1, her oy ve halk oylaması +3, miting düzenlemek +1, mitinge katılmak +0,5, Meclis kanun oylaması +0,5 (günde en çok +1), Meclis içi seçim +1, il teşkilatı açmak +1 (günde en çok +2), parti stantı açmak +1, stantta gönüllülük +0,5, parti adına resmî açıklama +0,5, bakanlık etkinlikleri +0,5 ve Devlet Müzesi bağışları.'],
       ['Daha çok oynayan daha hızlı mı ilerler?', 'Evet. Kıdem her gün maaşını toplamakla, oylarla, mitinglerle, Meclis çalışmasıyla ve parti görevleriyle artar. Düzenli giren oyuncu statüleri birkaç kat hızlı açar; seri bonusu, görev ve reklam ödülleri de cebine girer.'],
       ['Parti kurmak neden zorlaştı?', 'Oyunda yüzlerce küçük parti yerine gerçek ekiplerin kurduğu güçlü partiler olsun diye. Kurucular kurulunu topla, fona birlikte katkı yapın; parti kasası dolu başlar ve hemen il teşkilatı açabilirsiniz.'],
+      ['Üst rütbeler seçimlerde daha fazla oy verir mi?', 'Hayır. Rütbe maaşa, şirket haklarına ve prestij rozetlerine etki eder; seçimlerde her uygun seçmenin tek oyu vardır. Yüksek rütbe milletvekilliği, bakanlık veya cumhurbaşkanlığı garantilemez.'],
       ['Eski mülkümün kirası düşecek mi?', 'Hayır. Yeni kira verimi yalnız bundan sonra alınan konut ve dükkânlara uygulanır.']
     ];
     var sssHtml = '<div class="ed-sss">' + sss.map(function (x) { return '<details><summary>' + esc(x[0]) + '</summary><p>' + x[1] + '</p></details>'; }).join('') + '</div>';
