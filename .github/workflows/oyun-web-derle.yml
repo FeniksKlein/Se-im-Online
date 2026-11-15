@@ -36,6 +36,8 @@ jobs:
       - name: JavaScript sozdizimi
         run: |
           for f in docs/*.js gelistirici/build/derle.js gelistirici/build/sql_birlestir.js; do node --check "$f"; done
+      - name: Gercekci siyaset kaynak sozlesmesi
+        run: python3 gelistirici/test/gercekci_siyaset_sozlesmesi.py
       - name: Deneme derlemesi ve SQL
         run: |
           node gelistirici/build/derle.js
