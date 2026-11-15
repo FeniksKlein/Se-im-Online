@@ -85,9 +85,12 @@
   }
 
   /* ------------------------------------------------------------------ Gündem kartı */
-  function gundemKarti(o, h) {
+  function gundemKarti(o, h, tercihler = []) {
     const bg = h ? h.gun_no : 0;
     const sat = [];
+    if (Array.isArray(tercihler) && tercihler.length) sat.push(satir("meclis",
+      "Görev tercihin bekliyor — 15 gün", "Milletvekilliği mi, belediye başkanlığı mı? Kararını ver.",
+      ac("soGorevTercihiEkrani()"), "acil"));
     if (o.resmi_gun) sat.push(satir("bayrak", `Bugün ${e(o.resmi_gun.ad)}`, `${o.resmi_gun.mesaj} lider mesajı${o.resmi_gun.yazabilirim ? " · senin mesajın bekleniyor" : ""}`, ac("smResmiEkrani()"), o.resmi_gun.yazabilirim ? "eylem-mor" : ""));
     if (o.balkon_bekleyen) sat.push(satir("balkon", "Kazandın: balkon konuşmanı yap", "Seçim gecesinin son sözü senin", ac("smSecimEkrani()"), "acil"));
     (o.canli || []).forEach(c => sat.push(satir(c.tur === "basin" ? "mikrofon" : "tv", `<span class="sm-canli">Canlı</span> ${e(c.baslik)}`, `${c.tur === "basin" ? "Basın toplantısı" : "Tartışma programı"} · ${e(c.kad)}`, `ekranAc(()=>window.smYayinEkrani(${c.id}))`)));
@@ -108,7 +111,7 @@
 
   async function gundemEkle() {
     try {
-      const [o, h] = await Promise.all([rpc("siyaset_merkezi_ozet"), rpc("siyasi_hafta").catch(() => null)]);
+      const [o, h, tercihler] = await Promise.all([rpc("siyaset_merkezi_ozet"), rpc("siyasi_hafta").catch(() => null),rpc("gorev_tercihi_bekleyen").catch(() => [])]);
       const ic = $("#icerik");
       if (!ic || D.sekme !== "gundem" || D.yigin.length || ic.querySelector(".sm-gundem")) return;
       stil();
@@ -116,7 +119,7 @@
       // bileşenlerin yeniden sıralama yapmasını beklemeden doğru yere ekle.
       const akis = ic.querySelector(".so-canli-akis") || ic.querySelector(".akis-kart");
       const hedef = akis ? (akis.closest(".so-canli-akis") || akis) : ic.querySelector(".bolum-bas");
-      const html = gundemKarti(o, h);
+      const html = gundemKarti(o, h, tercihler);
       if (akis) hedef.insertAdjacentHTML("afterend", html);
       else if (hedef) hedef.insertAdjacentHTML("beforebegin", html);
       else ic.insertAdjacentHTML("beforeend", html);
@@ -751,4 +754,43 @@
       return sonuc;
     };
   }
+}
+  // 2972 sayılı Kanun m.17 — milletvekili/belediye başkanı seçilenin 15 günlük tercih hakkı.
+  window.soGorevTercihiEkrani = async function () {
+    try {
+      const veriler = await API.rpc("gorev_tercihi_bekleyen");
+      const tercihler = Array.isArray(veriler) ? veriler : [];
+      if (!tercihler.length) {
+        modal('<h3>Görev tercihi</h3><p class="alt">Şu anda karar vermen gereken bir görev tercihi yok.</p><button class="btn ikinci" onclick="modalKapat()">Kapat</button>');
+        return;
+      }
+      const html = tercihler.map(function (g) {
+        const id = Number(g.id);
+        if (!Number.isSafeInteger(id) || id <= 0) return "";
+        const tarih = new Date(g.son_tarih).toLocaleString("tr-TR");
+        return '<div class="kart"><h3>'+e(g.il)+' Belediye Başkanlığı</h3>'
+          +'<p class="alt">15 gün içinde mevcut milletvekilliğini veya seçildiğin belediye başkanlığını tercih et. '
+          +'Süre dolarsa mevcut milletvekilliğin korunur ve yeni görevi reddetmiş sayılırsın.</p>'
+          +'<div class="kucuk">Son tarih: '+e(tarih)+'</div>'
+          +'<button class="btn altin" onclick="soGorevTercihiYap('+id+',\'belediye\')">Belediye başkanı ol — MV görevinden ayrıl</button>'
+          +'<button class="btn ikinci" onclick="soGorevTercihiYap('+id+',\'milletvekili\')">Milletvekilliğini koru</button></div>';
+      }).join("");
+      modal('<h3>15 günlük görev tercihi</h3>'+html+'<button class="btn ikinci" onclick="modalKapat()">Daha sonra karar vereceğim</button>');
+    } catch (err) {
+      if (typeof gosterHata === "function") gosterHata(err); else alert(err.message || String(err));
+    }
+  };
+  window.soGorevTercihiYap = async function (id, tercih) {
+    if (!Number.isSafeInteger(Number(id)) || !["belediye","milletvekili"].includes(tercih)) return;
+    const secim = tercih === "belediye" ? "belediye başkanlığını" : "milletvekilliğini";
+    if (!confirm(secim+" seçiyorsun. Bu tercih geri alınamaz. Onaylıyor musun?")) return;
+    try {
+      await API.rpc("gorev_tercihi_yap",{p_id:Number(id),p_tercih:tercih});
+      modalKapat();
+      if (typeof toast === "function") toast("Görev tercihin kaydedildi.");
+      if (typeof yenidenCiz === "function") yenidenCiz();
+    } catch (err) {
+      if (typeof gosterHata === "function") gosterHata(err); else alert(err.message || String(err));
+    }
+  };
 })();
