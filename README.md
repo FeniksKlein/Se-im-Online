@@ -11,6 +11,7 @@ Tek dosyalık HTML uygulaması (`www/index.html`), Capacitor ile iOS/Android'e p
 | `www/index.html` | Telefon uygulaması |
 | `push-gonder.ts`, `odeme-webhook.ts` | Supabase Edge Function'ları |
 | `gelistirici/` | Kaynak parçalar, testler, derleme komutları |
+| `docs/RUTBE_SISTEMI_YAYIN_2026.md` | Lansman rütbeleri, kazanım, maaş primi, prestij ve kalıcılık |
 
 Oyunda bot/NPC yoktur; yalnızca gerçek oyuncular vardır.
 Gizli anahtarlar (service_role, FCM hizmet hesabı, ODEME_GIZLI) bu depoya **asla** konmaz.
