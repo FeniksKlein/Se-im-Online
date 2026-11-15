@@ -49,6 +49,8 @@ check("kanun_imza" in protection and "anayasa_tur>0" in protection,
 check("oyun.gercekci_siyaset() or p.son_gorulme" in afk,
       "Oyuna 7 gün girmeyen vekilin makami düşmez")
 check("p_tur='butce'" in budget, "Bütçe kanunu yalnızca Cumhurbaşkanından gelir")
+check("cb_parti_aday_gosterebilir" in sql("zz_20261115_cb_parti_aday_yuzde5.sql") and "v_alliance>=5" in sql("zz_20261115_cb_parti_aday_yuzde5.sql"),
+      "Parti CB adaylığı: 20 MV veya son genel seçimde en az yüzde 5")
 check("cbBagimsizImzaEkrani" in source, "Bağımsız CB kampanyası oyuncu ekranında")
 check("Gizli oylama" in source and "anayasa_tur" in source,
       "Anayasa gizli oylama turu oyuncuya gösterilir")
