@@ -1004,6 +1004,7 @@ function olayKarti(s){
       ? `<div class="satir"><span class="rozet yesil" style="margin-top:12px">✓ Başvurun alındı</span></div><button class="btn altin" onclick="ekranAc(bildirimEkrani)">${IKON.megafon} Propaganda yap</button><button class="btn ikinci" onclick="vaatModal(${s.id})">Seçim bildirgeni yaz</button><button class="btn ikinci" onclick="adaylikCek(${s.id})">Başvuruyu geri çek</button>`
       : partiIci ? `<p class="alt" style="margin-top:10px">${partiIci}</p>${['mv_on','bel_on','cb_on'].includes(s.tur) ? `<button class="btn altin" onclick="bagimsizAdayOl(${s.id},'${s.tur}',${s.bagimsiz_ucret || 0})">${{mv_on:'Bağımsız milletvekili adayı ol',bel_on:'Bağımsız belediye başkanı adayı ol',cb_on:'Bağımsız Cumhurbaşkanı adayı ol'}[s.tur]}</button>` : ''}` : `<button class="btn altin" onclick="adayOl('${s.tur}')">${tur.aday}</button>`;
     }
+    if (s.tur === "cb_on") aksiyon += `<button class="btn ikinci" onclick="cbBagimsizImzaEkrani(${s.id})">Bağımsız aday imzalarını gör / İmza ver</button>`;
   } else if (s.asama === "basvuru" && s.tur === "cb") {
     return "";  // GB'nin kararı ayrı kartta
   } else if (s.asama === "oy") {
@@ -1147,10 +1148,44 @@ async function adayOl(tur){
   if (!await onayla(TUR[tur].aday, metin + ek, ucret ? `${tlYaz(ucret)} öde ve başvur` : "Başvur")) return;
   try { await islem(() => API.rpc("aday_ol", { p_tur: tur }), "Başvurun alındı. Şimdi seçim bildirgeni ve vaatlerini yaz."); yenidenCiz(); } catch (_) {}
 }
+
+async function cbBagimsizImzaEkrani(onSecimId){
+ yukleniyor("Bağımsız Cumhurbaşkanı adayları");
+ try{
+  const d=await API.rpc("cb_bagimsiz_kampanyalar",{p_on_secim:onSecimId});
+  const liste=d.liste||[];
+  let h='<div class="kart"><h2>Bağımsız Cumhurbaşkanı adaylığı — seçmen imzası</h2><p class="alt">Gerçekçi siyasette bağımsız adaylık için en az aktif seçmenlerin %3\'ü (asgari 10 imza) ve 50.000 TL iade edilebilir teminat gerekir. Aynı seçimde sadece bir adaya imza verebilirsin. İmza tamamlanmadan aday pusulaya girmez.</p></div>';
+  if(!d.gercekci) h+='<div class="kart"><p>Bu kural resmî lansmanda etkinleşecektir.</p></div>';
+  h+=liste.map(x=>'<div class="kart"><h3>'+e(x.aday)+'</h3>'
+   +'<p class="alt">Toplanan imza: <b>'+Number(x.toplanan)+' / '+Number(x.hedef)+'</b></p>'
+   +'<p class="alt">Durum: '+e(({imza:"İmza toplanıyor",onay:"Adaylık kesinleşti",sure_doldu:"İmza süresi doldu",iptal:"Adaylık iptal edildi"})[x.durum]||x.durum)+'</p>'
+   +(x.imza_verebilirim?'<button class="btn altin" onclick="cbBagimsizImzaVer('+Number(x.id)+','+Number(onSecimId)+')">Bu adayı imzamla destekle</button>':'')
+   +(x.imzaladim?'<span class="rozet yesil">Bu seçimde imzanı kullandın</span>':'')
+   +(x.benim&&x.durum==="imza"?'<button class="btn ikinci" onclick="bagimsizAdayCek('+Number(onSecimId)+')">Adaylıktan vazgeç</button>':'')
+   +'</div>').join('');
+  if(!liste.length)h+='<div class="kart"><p class="alt">Henüz bağımsız adaylık için imza kampanyası açılmadı.</p></div>';
+  iskelet("Cumhurbaşkanı adaylığı için imzalar",h,{geri:true});
+ }catch(err){
+  iskelet("Cumhurbaşkanı adaylık imzaları",'<div class="kart">'+e(hataCevir(err.message))+'</div>',{geri:true});
+ }
+}
+async function cbBagimsizImzaVer(id,onSecimId){
+ if(!await onayla("Cumhurbaşkanlığı adaylık imzası","Bu seçimde yalnız bir bağımsız Cumhurbaşkanı adayını destekleyebilirsin. İmzan kaydedildikten sonra başka adaya verilemez.","İmza ver")) return;
+ try{await islem(()=>API.rpc("cb_bagimsiz_imzala",{p_kampanya:id}),"İmzan kaydedildi.");await cbBagimsizImzaEkrani(onSecimId);}
+ catch(_){}
+}
 async function bagimsizAdayOl(sid,tur,ucret){
   const ad = {mv_on:"milletvekili",bel_on:"belediye başkanı",cb_on:"Cumhurbaşkanı"}[tur];
-  if (!await onayla("Bağımsız adaylık", `Herhangi bir partiye bağlı olmadan ${e(ad)} adayı olacaksın. Ön seçime girmezsin; doğrudan asıl seçim pusulasına eklenirsin. Başvuru harcı: <b>${tlYaz(ucret)}</b>.`, "Bağımsız aday ol")) return;
-  try { await islem(()=>API.rpc("bagimsiz_aday_ol",{p_on_secim:sid}),"Bağımsız adaylığın kaydedildi."); yenidenCiz(); } catch(_){}
+  const gercekci=tur==="cb_on"&&(await API.rpc("cb_bagimsiz_kampanyalar",{p_on_secim:sid})).gercekci;
+  const metin=gercekci
+    ? "Bağımsız Cumhurbaşkanı adaylığı için 50.000 TL teminat yatıracak, en az seçmenlerin %3'ünün imzasını (asgari 10) toplayacaksın. İmza hedefi tamamlanınca adaylığın kesinleşecek ve teminatın iade edilecek."
+    : `Herhangi bir partiye bağlı olmadan ${e(ad)} adayı olacaksın. Ön seçime girmezsin; doğrudan asıl seçim pusulasına eklenirsin. Başvuru harcı: <b>${tlYaz(ucret)}</b>.`;
+  if(!await onayla("Bağımsız adaylık",metin,gercekci?"İmza kampanyası aç":"Bağımsız aday ol"))return;
+  try{
+    await islem(()=>API.rpc("bagimsiz_aday_ol",{p_on_secim:sid}),gercekci?"İmza kampanyan açıldı.":"Bağımsız adaylığın kaydedildi.");
+    if(gercekci)await cbBagimsizImzaEkrani(sid);
+    else yenidenCiz();
+  }catch(_){}
 }
 async function bagimsizAdayCek(sid){
   if (!await onayla("Bağımsız adaylıktan çekil","Adaylığını geri çekeceksin. Başvuru harcı iade edilmez.","Geri çek",true)) return;
