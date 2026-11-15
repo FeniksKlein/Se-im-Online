@@ -54,6 +54,10 @@ Yeni özelliklerde mobil form alanlarını tek satırda yan yana sıkıştırma.
 - Yayın öncesi `node --check`, CSS/form alanı taşma kontrolü, küçük iPhone ekranı ve koyu temada kontrast kontrolü yapılmalı; mümkünse cihazda giriş yapılarak gerçek işlem akışı denenmeli.
 - Yeni halka açık JavaScript değişiminde dosya URL'sindeki sürüm numarası değiştirilerek iOS/Android önbelleği yenilenmeli.
 
+## Kalıcı rütbe reformu (15.11.2026)
+
+Rütbe eşikleri, kuruluş hakları, şirket kapasitesi, maaş primi ve prestij rozetleri için kaynak sözleşme: `docs/RUTBE_SISTEMI_YAYIN_2026.md`. Yeni rütbe değişiklikleri mevcut oyuncunun kıdemini veya mülklerini silmez; sunucu ayarları hükümetin sonraki kararını zorla geri almaz. Derlemeler `gelistirici/test/rutbe_reformu_sozlesmesi.py` ile kontrol edilir.
+
 ## Türk siyasetine uygun yayın sözleşmesi (15.11.2026)
 
 Siyasi reformlar için bağlayıcı kaynak belgesi: `docs/GERCEKCI_SIYASET_YAYIN_SOZLESMESI_2026.md`.
