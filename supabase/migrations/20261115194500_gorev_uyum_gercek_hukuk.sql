@@ -90,10 +90,6 @@ BEGIN
       IF s.tur='mv' THEN PERFORM oyun.yedek_getir(s.id,k.il_id,k.parti_id,t); END IF;
       CONTINUE;
     END IF;
-    IF s.tur='bel' AND EXISTS(SELECT 1 FROM oyun.partiler WHERE gb=k.user_id AND NOT kapali) THEN
-      PERFORM oyun.bildir(k.user_id,'Parti genel başkanlığın nedeniyle belediye başkanlığına geçiş uygun bulunmadı.',t);
-      CONTINUE;
-    END IF;
     -- 2972 m.17: MV iken belediye başkanı seçilenin 15 günlük görev tercih süresi.
     -- Bu süre içerisinde milletvekilliği düşmez, belediye görev devri bekler.
     IF s.tur='bel' AND EXISTS(SELECT 1 FROM oyun.makamlar
@@ -115,7 +111,6 @@ BEGIN
         PERFORM oyun.makam_bitir(m.id,t,'donem_bitti');
       END LOOP;
     END IF;
-    IF s.tur IN ('cb','cb2','bel') THEN DELETE FROM oyun.parti_gby WHERE user_id=k.user_id; END IF;
     -- Asla adayın tüm görevlerini indiscriminately kapatma.
     -- Yalnızca yeni görevin atanmasıyla mevzuata göre çakışanlar düşer
     -- (makam_bagdasmazlik_tg atama tetikleyicisinde).
