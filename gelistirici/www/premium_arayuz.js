@@ -762,7 +762,7 @@
         '<div><small>İL</small><b>' + esc(p.il_ad || '—') + '</b></div>' +
         '<div><small>PARTİ</small><b>' + esc(p.parti ? p.parti.kisa : 'Bağımsız') + '</b></div>' +
         '<div class="tam"><small>GÖREV</small><b>' + esc(rolYaz(p)) + '</b></div>' +
-        (st.ad ? '<div><small>STATÜ</small><b>' + esc(st.ad) + '</b></div>' : '') +
+        (st.ad ? '<div><small>STATÜ</small><b>' + esc(((st.simge || '') + ' ' + st.ad).trim()) + '</b>' + (st.onur_unvani ? '<small class="pa-onur-unvani">' + esc(st.onur_unvani) + '</small>' : '') + '</div>' : '') +
         '<div' + (st.ad ? '' : ' class="tam"') + '><small>KAYIT</small><b>' + esc(p.olusturma ? tarihKisa(p.olusturma) : '—') + '</b></div>' +
         '</div></div><div class="pa-mrz" aria-hidden="true">' + esc(mrz1) + '<br>' + esc(mrz2) + '</div></section>' +
         hizli('ben', [
