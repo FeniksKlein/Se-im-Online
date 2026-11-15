@@ -559,3 +559,47 @@ BEGIN
       'SELECT oyun.gorev_tercihi_tick()');
  END IF;
 END $cron$;
+
+-- Adaylıkta valilik, sendika, oda, baro, parti il yönetimi ve adliye görevi bırakma
+CREATE OR REPLACE FUNCTION oyun_yonetim.secim_adayligi_kamu_gorev_tg()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE v_tur text; v_durum text; t timestamptz:=oyun.simdi(); r record; n int:=0; c int;
+BEGIN
+ SELECT tur,durum INTO v_tur,v_durum FROM oyun.secimler WHERE id=NEW.secim_id;
+ IF v_durum<>'bekliyor' OR v_tur NOT IN ('mv_on','mv','bel_on','bel','cb') THEN RETURN NEW; END IF;
+ IF TG_OP='UPDATE' AND NEW.secim_id=OLD.secim_id AND NEW.user_id=OLD.user_id THEN RETURN NEW; END IF;
+ PERFORM 1 FROM oyun.profiller WHERE id=NEW.user_id FOR UPDATE;
+ -- 2839 m.18, 2972 m.36, 6271 m.11: Kamu görevlisi, il parti teşkilatı
+ -- ve meslek kuruluşu yönetim üyeliği seçim adaylığında devam edemez.
+ FOR r IN SELECT id FROM oyun.icisleri_atama
+    WHERE hedef=NEW.user_id AND tur='vali' AND durum='aktif' AND bitis IS NULL FOR UPDATE
+ LOOP
+  PERFORM oyun.vali_gorev_bitir(r.id,'istifa','Seçim adaylığı nedeniyle görevden ayrılma',NEW.user_id);
+  n:=n+1;
+ END LOOP;
+ UPDATE oyun.parti_teskilat_gorev SET aktif=false
+    WHERE user_id=NEW.user_id AND aktif=true;
+ GET DIAGNOSTICS c=ROW_COUNT; n:=n+c;
+ UPDATE oyun.oda SET baskan=NULL,baskan_bas=NULL,baskan_sendika=NULL WHERE baskan=NEW.user_id;
+ GET DIAGNOSTICS c=ROW_COUNT; n:=n+c;
+ UPDATE oyun.baro SET baskan=NULL,baskan_bas=NULL WHERE baskan=NEW.user_id;
+ GET DIAGNOSTICS c=ROW_COUNT; n:=n+c;
+ UPDATE oyun.sendika SET baskan=NULL WHERE baskan=NEW.user_id;
+ GET DIAGNOSTICS c=ROW_COUNT; n:=n+c;
+ UPDATE oyun.adliye_makam SET hakim=NULL,degistirme_at=t WHERE hakim=NEW.user_id;
+ GET DIAGNOSTICS c=ROW_COUNT; n:=n+c;
+ IF n>0 THEN
+  PERFORM oyun.bildir(NEW.user_id,
+   format('Seçim adaylığın nedeniyle %s kamu/meslek kuruluşu/parti il teşkilatı yöneticiliği görevin sonlandırıldı. Üyelik ve özel mülkiyet hakların korunuyor.',n),t);
+ END IF;
+ RETURN NEW;
+END $function$
+;
+REVOKE ALL ON FUNCTION oyun_yonetim.secim_adayligi_kamu_gorev_tg() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS secim_adayligi_kamu_gorev_tg ON oyun.adaylar;
+CREATE TRIGGER secim_adayligi_kamu_gorev_tg AFTER INSERT OR UPDATE OF secim_id,user_id ON oyun.adaylar
+FOR EACH ROW EXECUTE FUNCTION oyun_yonetim.secim_adayligi_kamu_gorev_tg();
