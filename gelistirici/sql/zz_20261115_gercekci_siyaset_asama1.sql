@@ -1,7 +1,7 @@
 
 -- Asama 1: anayasal esikler + eylem imza korumasi (2026-11-15).
--- Beta dunyasi degismez; gercekci_siyaset lansman acilisinda etkinlestirilir.
-alter table oyun.ayarlar add column if not exists gercekci_siyaset boolean not null default false;
+-- Gercekci siyaset hem beta hem resmi lansmanda etkin; varsayilan true.
+alter table oyun.ayarlar add column if not exists gercekci_siyaset boolean not null default true;
 create or replace function oyun.gercekci_siyaset() returns boolean language sql stable set search_path='' as $f$
  select coalesce((select gercekci_siyaset from oyun.ayarlar where id=1),false)
 $f$;
