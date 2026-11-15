@@ -754,7 +754,6 @@
       return sonuc;
     };
   }
-}
   // 2972 sayılı Kanun m.17 — milletvekili/belediye başkanı seçilenin 15 günlük tercih hakkı.
   window.soGorevTercihiEkrani = async function () {
     try {

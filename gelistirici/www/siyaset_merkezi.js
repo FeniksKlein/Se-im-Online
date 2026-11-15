@@ -756,7 +756,6 @@
       return sonuc;
     };
   }
-}
   // 2972 sayılı Kanun m.17: milletvekili/belediye başkanı görev tercihi.
   window.soGorevTercihiEkrani = async function () {
     try {
