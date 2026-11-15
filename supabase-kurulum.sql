@@ -72559,8 +72559,8 @@ insert into oyun.tv_hafta(hafta, zaman, ozet)
 do $s$ begin if to_regprocedure('oyun.sonlu_kisit_kur()') is not null then perform oyun.sonlu_kisit_kur(); end if; end $s$;
 
 -- Asama 1: anayasal esikler + eylem imza korumasi (2026-11-15).
--- Beta dunyasi degismez; gercekci_siyaset lansman acilisinda etkinlestirilir.
-alter table oyun.ayarlar add column if not exists gercekci_siyaset boolean not null default false;
+-- Gercekci siyaset hem beta hem resmi lansmanda etkin; varsayilan true.
+alter table oyun.ayarlar add column if not exists gercekci_siyaset boolean not null default true;
 create or replace function oyun.gercekci_siyaset() returns boolean language sql stable set search_path='' as $f$
  select coalesce((select gercekci_siyaset from oyun.ayarlar where id=1),false)
 $f$;
@@ -73566,6 +73566,17 @@ begin
   return public.hayat() || jsonb_build_object('sonuc', jsonb_build_object('maas', tutar, 'ilk', ilk, 'seri', (g ->> 'seri')::int,
     'destek', des + hem, 'statu_atladi', sonra > once));
 end $function$;
+-- 2026-11-15: gercekci siyaset hem mevcut beta hem de tum sonraki kurulumlarda acik.
+-- Oyuncular, devam eden secimler ve diger oyun kayitlari korunur.
+-- Bu dosya SQL birlestirme listesinin sonunda calismalidir.
+alter table oyun.ayarlar alter column gercekci_siyaset set default true;
+update oyun.ayarlar set gercekci_siyaset=true where id=1;
+do $beta_kontrol$
+begin
+  if not exists (select 1 from oyun.ayarlar where id=1 and gercekci_siyaset)
+  then raise exception 'Beta gercekci siyaset ayari acik olmali.';
+  end if;
+end $beta_kontrol$;
 -- =====================================================================
 --  KALICILIK (son): bütünlük kontrolü, silme koruması, sürüm bilgisi, sahibin sıfırlama/geri yükleme araçları
 -- =====================================================================
