@@ -1,6 +1,8 @@
 -- YAYIN BASLANGICI: YALNIZCA TEST SIFIRLAMASI VE supabase-kurulum.sql SONRASI!
 -- Kesin lansman tarihini belirlemeden bu dosyayi calistirma.
 -- Bugunku test oyunu etkilenmemesi icin bu dosya sadece repoya eklenmistir.
+-- Resmi lansmanda anayasal 600 sandalye, 360 erken secim, 200 anayasa imzasi,
+-- 400/301 meclis baskanligi ve bagimsiz CB %3 imza sistemi etkinlesir.
 -- Oncesinde oyun.oyunu_sifirla('OYUNU SIFIRLA') ile yedekli sifirlama yapilmali.
 -- Eski hesaplarla yeniden profil acma ve satin-alma haklarini geri yukleme test edilmeli.
 BEGIN;
@@ -36,7 +38,8 @@ BEGIN
   UPDATE oyun.ayarlar
      SET baslangic=v_lansman, baslangic_para=100000, baraj=7,
          parti_kurucu_sayi=7, parti_kurulus_gun=10, parti_kur_ucret=500000,
-         parti_kur_gun=90, test_simdi=NULL
+         parti_kur_gun=90, test_simdi=NULL,
+         gercekci_siyaset=true
    WHERE id=1;
   UPDATE oyun.tarife SET deger=CASE kod
     WHEN 'kilit_aktif' THEN 1 WHEN 'parti_kurucu_min' THEN 7
@@ -136,6 +139,7 @@ BEGIN
      OR (SELECT count(*) FROM oyun.secimler WHERE donem LIKE 'lansman-%')<>8
      OR (SELECT baslangic_para FROM oyun.ayarlar WHERE id=1)<>100000
      OR (SELECT baraj FROM oyun.ayarlar WHERE id=1)<>7
+     OR NOT (SELECT gercekci_siyaset FROM oyun.ayarlar WHERE id=1)
      OR (SELECT her_aday_vekil FROM oyun.mv_secim_modu WHERE id=1)
   THEN RAISE EXCEPTION 'Lansman dogrulamasi basarisiz; transaction geri alinir.'; END IF;
 END
