@@ -53,3 +53,8 @@ Yeni özelliklerde mobil form alanlarını tek satırda yan yana sıkıştırma.
 - Kullanıcının yetkisi istemcideki butonun görünümünden **değil**, Supabase RPC içinde sunucu tarafında doğrulanmalı.
 - Yayın öncesi `node --check`, CSS/form alanı taşma kontrolü, küçük iPhone ekranı ve koyu temada kontrast kontrolü yapılmalı; mümkünse cihazda giriş yapılarak gerçek işlem akışı denenmeli.
 - Yeni halka açık JavaScript değişiminde dosya URL'sindeki sürüm numarası değiştirilerek iOS/Android önbelleği yenilenmeli.
+
+## Türk siyasetine uygun yayın sözleşmesi (15.11.2026)
+
+Siyasi reformlar için bağlayıcı kaynak belgesi: `docs/GERCEKCI_SIYASET_YAYIN_SOZLESMESI_2026.md`.
+Her yeni siyaset SQL yaması `gelistirici/build/sql_birlestir.js` listesine eklenmeden ve `python3 gelistirici/test/gercekci_siyaset_sozlesmesi.py` başarılı olmadan tamamlandı sayılmaz. Beta dönemi veri kaybı yaşanmaz; resmî lansmanda `gercekci_siyaset=true` doğrulanır. Yayın öncesi 200+ milletvekili nisabı ve eşzamanlı kullanıcı yük testleri ayrıca doğrulanır.
