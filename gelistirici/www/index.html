@@ -2141,13 +2141,14 @@ function mvFiltre(){
   const yok = $("#mvYok"); if (yok) yok.style.display = il ? "none" : "";
 }
 async function meclisYasamaHtml(){
-  const [kl,s]=await Promise.all([API.rpc("kanunlar",{p_limit:60}),API.rpc("siyasi_sistem")]);
+  const [kl,s,pol]=await Promise.all([API.rpc("kanunlar",{p_limit:60}),API.rpc("siyasi_sistem"),API.rpc("cb_bagimsiz_kampanyalar",{p_on_secim:null})]);
   D._siyasi=s;
   const vekilim=D.durum.profil.makamlar.some(x=>x.tur==="mv");
   const aktif=kl.filter(k=>["gorusmede","oylamada","cb_onayinda","israr"].includes(k.durum)),biten=kl.filter(k=>!aktif.includes(k));
   return `${siyasiSistemHtml(s)}<div class="kart"><h2>Meclis İşlemleri</h2><div class="satir"><button class="btn yarim altin" onclick="ekranAc(maasEkrani)">Maaş oylamaları</button><button class="btn yarim ikinci" onclick="ekranAc(bakanSoruEkrani)">Bakanlara sorular</button></div>
       <button class="btn ikinci" style="margin-top:8px" onclick="ekranAc(()=>sohbetEkrani('meclis'))">TBMM Genel Kurulu</button></div>
     ${vekilim?`<button class="btn altin" style="margin:0 0 12px" onclick="ekranAc(kanunTeklifEkrani)">+ Kanun teklifi ver</button>`:""}
+    ${pol.gercekci && D.durum.profil.makamlar.some(x=>x.tur==="cb") ? `<button class="btn altin" style="margin:0 0 12px" onclick="ekranAc(()=>kanunTeklifEkrani('butce'))">+ Cumhurbaşkanlığı bütçe kanunu teklifi</button>` : ""}
     <div class="kart cizgili"><h2>Ekonomi yasası teklifleri</h2><p class="alt">Gelir vergisi, ilk konut, gayrimenkul, mevduat, piyango, tahvil, vergi affı, parti ve belediye yardımları: 10 farklı kanun teklifi. Yasalar görüşme, oylama ve Cumhurbaşkanı onayıyla yürürlüğe girer.</p><button class="btn altin" onclick="ekranAc(ekonomiYasaEkrani)">10 yasa teklifini incele / Meclise sun</button></div>
     <div class="kart"><h2>Gündemdeki teklifler</h2>${aktif.map(kanunSatir).join("")||`<div class="bos">Şu anda Meclis gündeminde teklif yok.${vekilim?"":" Kanun teklifini milletvekilleri verir."}</div>`}</div>
     ${biten.length?`<div class="kart"><h2>Sonuçlanan teklifler</h2>${biten.map(kanunSatir).join("")}</div>`:""}`;
@@ -2261,7 +2262,9 @@ async function kanunTeklifEkrani(tur0, kod0){
   try { kararlar = (await API.rpc("kararnameler", { p_limit: 50 })).filter(k => k.durum === "yururlukte"); } catch (_) {}
   try { mz = D._mevzuat = await API.rpc("mevzuat"); } catch (_) {}
   const u = D._karne || await API.rpc("ulke_karnesi");
-  const TURLER = [["serbest","Kanun (serbest metin)"],["vergi","Gelir vergisi oranı kanunu"],["borc_affi","Kredi borç affı kanunu"],["duzenleme","Kural kanunu (mevzuat)"],["butce","Bütçe kanunu"],["secim","Seçim kanunu (baraj)"],["iptal","Kararname iptali"],["anayasa","Anayasa değişikliği"]];
+  const politik = await API.rpc("cb_bagimsiz_kampanyalar",{p_on_secim:null});
+  const cbMi = D.durum.profil.makamlar.some(x=>x.tur==="cb");
+  const TURLER = [["serbest","Kanun (serbest metin)"],["vergi","Gelir vergisi oranı kanunu"],["borc_affi","Kredi borç affı kanunu"],["duzenleme","Kural kanunu (mevzuat)"],["butce","Bütçe kanunu"],["secim","Seçim kanunu (baraj)"],["iptal","Kararname iptali"],["anayasa","Anayasa değişikliği"]].filter(([k])=>!politik.gercekci || (cbMi ? k==="butce" : k!=="butce"));
   iskelet("Kanun teklifi", `<div class="kart"><button class="btn altin" onclick="ekranAc(ekonomiYasaEkrani)">Ekonomik yasa paketleri (10 teklif)</button><button class="btn ikinci" onclick="ekranAc(ozelYasaEkrani)">Asgari ücret / Dokunulmazlık yasası</button></div>
     <div class="kart"><div class="alan" style="margin-top:0"><label>Teklifin türü</label><select id="ktur">${TURLER.map(([k, a]) => `<option value="${k}" ${k === tur ? "selected" : ""}>${a}</option>`).join("")}</select></div>
       <p class="kucuk" id="tacik" style="margin-top:8px"></p>
