@@ -16,6 +16,13 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 16.11.2026 — 2026.11.16-8 Kredi dengesi, davet aktiflik ödülleri, moderatör ana görevleri, kurucu 4 parti, kayıt onayı (canlıda)
+- **Kredi:** limit en çok 30 günlük gelire (şirkette 60 gün) göre; uzun vade limiti büyütmez. Açık kredi borcu varken şirkete konan sermayenin %50'si öz kaynak olmalı (sirket_kur, sirket_sermaye_artir, sirket_kasa_yatir). Krediden 72 saat içinde büyük sermaye → MASAK `kredi_sermaye`. Tarife: kredi_gelir_ufku_gun, sirket_kredi_ufku_gun, kredi_ozkaynak_orani, kredi_masak_sermaye_esik.
+- **Davet:** `oyuncu_aktif_gun` (oturumlardan), kademeler 3/7/14/30 gün = 5/10/15/25 bin ₺; 2. kademe %20; haftalık tavan 150 bin ₺; aynı cihaz sayılmaz; aynı IP'den 3+ davet → MASAK `davet_suistimal`. İstemcide "Arkadaşını davet et, kazan" ekranı (davet_mod_merkezi.js).
+- **Moderatör:** `moderatorler.ana_gorev` (genel/finans/siyaset/hukuk/topluluk/destek), görevin yetkileri otomatik eklenir. Finans denetim masası (`finans_denetim_ozet`). Yeni mod yetkisi `kayit`.
+- **Kurucu partiler:** HP, SDP, YENİ, MTP (01_sema). Sıfırlama + kurulumda (oyuncu yokken) dört parti, 81 il teşkilatı, `kurucu_ilk_kurultay`: oy 5. gün 08-22, göreve başlama 8. gün 00:00 (ilk hafta lidersiz). Oy için en geç 4. gün sonu üyelik. Kuruluş haftasında tek üye/vekâlet ile GB olunmaz. Aday çıkmazsa `kurucu_parti_gb` adımı yeni kurultay açar. Lansman dosyası da 5. gün kuralına çekildi.
+- **Kayıt:** ad soyad zorunlu; "kayit" yetkili her moderatör tek başına onay/ret verir; ret gerekçeli; reddedilen aynı hesapla farklı ad soyadla yeniden başvurur (aynı isim engelli). Bilinen gerçek kişi adları moderatöre uyarı olarak görünür (`oyun_yonetim.yasak_isim`). Eski `kayit_basvur` ad soyadsız başvuruyu reddeder.
+
 ## 16.11.2026 — 2026.11.16-2…4 Baro müdafi güvencesi, 48 saat kabine kuralı kaldırıldı, makam güvenliği (kısmen canlıda)
 - İstek (Ercan): kapsamlı hata düzeltme ve gerçekçi siyaset güncellemesi (baro/müdafi → 48 saat kabine → erken seçim/makam güvenliği → GBY yetkileri → il başkanlığı/kongre).
 - Yedek `yedek_20261116_112414_425961`.

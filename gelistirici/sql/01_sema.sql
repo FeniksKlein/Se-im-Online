@@ -279,13 +279,13 @@ create table if not exists oyun.olaylar(
 );
 create index if not exists olaylar_zaman on oyun.olaylar(zaman desc);
 
--- Oyunla gelen 5 kurgusal parti (gerçek partilerle bağı yoktur)
+-- Oyunla gelen 4 kurucu kurgusal parti (gerçek partilerle bağı yoktur).
+-- İlk hafta lidersizdir; genel başkanı üyeler 5. gün seçer (zz_20261116_kurucu_partiler.sql).
 insert into oyun.partiler(ad, kisa, renk, amblem, sistem)
 select * from (values
-  ('Cumhuriyet Yolu Partisi', 'CYP', '#c62828', 'a_ayyildiz', true),
-  ('Anadolu Birlik Partisi',  'ABP', '#ef8f00', 'a_basak',     true),
-  ('Yeni Demokrasi Partisi',  'YDP', '#1565c0', 'a_guvercin',  true),
-  ('Millî Kalkınma Partisi',  'MKP', '#2e7d32', 'a_cinar',     true),
-  ('Emek ve Özgürlük Partisi','EÖP', '#6a1b9a', 'a_mesale',    true)
+  ('Halk Partisi',                'HP',   '#c62828', 'a_ayyildiz', true),
+  ('Sosyal Demokrasi Partisi',    'SDP',  '#1565c0', 'a_guvercin', true),
+  ('Yeni Parti',                  'YENİ', '#ef8f00', 'a_basak',    true),
+  ('Muhafazakâr Türkiye Partisi', 'MTP',  '#2e7d32', 'a_cinar',    true)
 ) v(ad,kisa,renk,amblem,sistem)
 where not exists (select 1 from oyun.partiler where sistem);

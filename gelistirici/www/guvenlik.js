@@ -6,7 +6,7 @@
 "use strict";
 const GV = { sekme: "parti", parti: null, masakDurum: "yeni", masak: null };
 const gvTL = (x) => tlYaz(Math.round(+x || 0));
-const GV_TUR = { ani_servet: "Ani servet artışı", tekrarlayan_ticaret: "Tekrarlayan karşılıklı ticaret", parti_harcama: "Büyük parti harcaması", ihale_kayirma: "Aynı partiye ihale" };
+const GV_TUR = { ani_servet: "Ani servet artışı", tekrarlayan_ticaret: "Tekrarlayan karşılıklı ticaret", parti_harcama: "Büyük parti harcaması", ihale_kayirma: "Aynı partiye ihale", kredi_sermaye: "Krediden hemen sonra şirkete sermaye", davet_suistimal: "Şüpheli davet zinciri" };
 const GV_DURUM = { yeni: "İncelenmedi", temiz: "Temiz", ihtar: "İhtar verildi", el_koyuldu: "El konuldu" };
 const GV_IKON = '<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>';
 function gvHata(baslik, err){ iskelet(baslik, `<div class="kart">${e(hataCevir(err.message))}</div>`, { geri: true }); }
