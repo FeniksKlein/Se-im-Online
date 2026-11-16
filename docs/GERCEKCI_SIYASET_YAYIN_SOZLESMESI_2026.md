@@ -1,6 +1,6 @@
 # Seçim Simülasyonu Online — Gerçekçi Türk siyaseti yayın sözleşmesi
 
-Sürüm başlangıcı: 15 Kasım 2026. Durum: SQL kuralları canlıya uygulandı; beta oyun düzeni korunuyor; resmî lansmanda `gercekci_siyaset=true` yapılacak.
+Sürüm başlangıcı: 15 Kasım 2026. Durum: Gerçekçi siyaset kuralları mevcut beta oyununda aktif (`gercekci_siyaset=true`). Lansman sıfırlaması bundan ayrı ve kontrollü işlemdir.
 
 ## Kapsam ve değişmez yayın prensibi
 
@@ -50,7 +50,7 @@ Oyun, küçük beta grubuna göre verilen keyfî çoğunluk ve imza muafiyetleri
 1. Her yeni `gelistirici/sql/zz_20261115_*.sql` dosyası `gelistirici/build/sql_birlestir.js` içindeki sıraya eklenir. Tek dosya `supabase-kurulum.sql` yeniden üretilir.
 2. `gelistirici/test/gercekci_siyaset_sozlesmesi.py` kaynak denetimi GitHub Actions'ı geçmeden yeni derleme başarılı kabul edilmez.
 3. `gelistirici/www/index.html` kaynak oyuncu ekranıdır. GitHub Actions bunu `docs/index.html` ve `www/index.html` yayın kopyalarına aktarır. iOS/Android mağaza paketleri **ayrıca yayımlanır**.
-4. Test oyunu başlatan SQL işlemi `oyun.ayarlar.gercekci_siyaset=false` kuralını korur. **Resmî lansman sıfırlaması** yalnız yedek, kalıcı satın almalar ve doğrulamalar sonrası `gelistirici/sql/lansman_4_parti_100bin_7gun_2026.sql` ile `true` yapar.
+4. Canlı beta oyununda `oyun.ayarlar.gercekci_siyaset=true` etkin, varsayılanı true'dur; resmî lansmanda da açık tutulur. **Resmî lansman sıfırlaması** yalnız yedek, kalıcı satın almalar ve doğrulamalar sonrası `gelistirici/sql/lansman_4_parti_100bin_7gun_2026.sql` ile `true` yapar.
 5. Lansman SQL'inde dört temsili parti, 100.000 TL başlangıç bakiyesi, %7 seçim barajı ve ilk genel seçimin yedinci gün yapılması kararı korunur.
 6. Mobil yayın açılmadan önce: eski oyuncu verisi ve mağaza hakları yedeklenecek, 2, 50, 200, 600 ve 10.000 eşzamanlı kullanıcı senaryolarında test koşulacak, gerçek cihaz akışları ve güvenlik/rol testi doğrulanacak.
 7. **Başlangıç riski**: 600 üzerinden 200 kişilik yasal toplantı nisabı için en az 200 görevde gerçek milletvekili gerekir. Lansmanda 200 milletvekili yoksa, Meclis faaliyetleri anayasal nedenle tıkanabilir. Bu durum sayıları birkaç kişiye göre düşürerek gizlenmez; oyuncu erişim/üyelik hedefiyle çözülür.
@@ -62,3 +62,12 @@ Oyun, küçük beta grubuna göre verilen keyfî çoğunluk ve imza muafiyetleri
 - 2911 sayılı Kanun: https://www.mevzuat.gov.tr/mevzuatmetin/1.5.2911.pdf
 
 Bu bir *yayın sözleşmesi ve uygulanan/yayın öncesi tamamlanacak koşullar* belgesidir; henüz yapılmamış yük testi veya mağaza onayı yapılmış gibi gösterilmez.
+
+## 16 Kasım 2026 — Canlı anayasal nisap uyum yaması
+
+- Canlı doğrulama: TBMM tam sayısı 600, erken seçim oyu 360, siyasi grup 20, toplantı yeter sayısı 200; olağan kanun en az 151 olumlu oy, tam üye salt çoğunluğu 301.
+- `oyun.salt_cogunluk()` fonksiyonu 9 fiilî milletvekiline göre yanlışlıkla 5 döndürüyordu; gerçekçi modda 301'e düzeltildi.
+- Erken seçim oyu bir kere kullanılır, sonradan değiştirilemez. Meclis Başkanı siyasi oylamaya katılamaz.
+- Başkanlık 4. turu en az 200 katılım olmadan kesinleşmez. Kanun oylaması ret gerekçesindeki nisap ifadesi doğru hesaplanır.
+- Bu yamalar oyuncu, oy geçmişi, para, parti veya makam verilerini silmez. Sunucu migration başarılı ve sonuçları SQL ile doğrulanmıştır. Kalıcı kaynak: `gelistirici/sql/zz_20261116_tbmm_nisap_oy_koruma.sql`.
+- Oyun uyarlamaları (süre sıkıştırması, 7 oyunculu parti kuruluşu, bağımsız CB adaylığında 100.000 gerçek seçmen yerine oran) hukukî birebir kopya olarak sunulmaz.

@@ -32,6 +32,13 @@ sign = sql("zz_20261115_cb_bagimsiz_imza.sql")
 protection = sql("zz_20261115_anayasa_imza_2tur_koruma.sql")
 afk = sql("zz_20261115_mv_afk_gorev_korumasi.sql")
 budget = sql("zz_20261115_butce_teklif_cumhurbaskani.sql")
+tbmm_fix = sql("zz_20261116_tbmm_nisap_oy_koruma.sql")
+check("floor(oyun.tbmm_tamsayi()/2.0)" in tbmm_fix, "TBMM salt cogunluk 600 icin 301")
+check("on conflict(teklif_id,vekil) do nothing" in tbmm_fix, "Erken secim oyu bir kez kullanilir")
+check("Meclis Başkanı TBMM oylamasına" in tbmm_fix, "Meclis baskani oy yasagi")
+check("s.tur_no >= 4" in tbmm_fix and "ceil(dolu/3.0)" in tbmm_fix, "Dorduncu tur 200 katilim nisabi")
+check("case when oyun.gercekci_siyaset() then ceil(dolu/3.0)" in tbmm_fix, "Kanun ret nisabi 200")
+
 check("gercekci_siyaset=true" in launch, "Lansman gerçekçi siyaset modu açık")
 check("OR NOT (SELECT gercekci_siyaset" in launch, "Lansman gerçekçi siyaseti doğruluyor")
 check("gercekci_siyaset boolean not null default true" in core,
