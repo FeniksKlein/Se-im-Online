@@ -46,7 +46,11 @@
   const sahipMi = () => !!yt().y.yonetici;
   const yetkiVar = (k) => yt().var_(k);
   const MAKAM_TUR = [["cb","Cumhurbaşkanı"],["cb_yardimcisi","Cumhurbaşkanı Yardımcısı"],["bakan","Bakan"],["tbmm","TBMM Başkanı"],["bskv","TBMM Başkanvekili"],
-    ["grup_bskv","Grup Başkanvekili"],["mv","Milletvekili"],["bel","İl Belediye Başkanı"],["gb","Parti Genel Başkanı"],["gby","Genel Başkan Yardımcısı"]];
+    ["grup_bskv","Grup Başkanvekili"],["mv","Milletvekili"],["bel","İl Belediye Başkanı"],["gb","Parti Genel Başkanı"],["gby","Genel Başkan Yardımcısı"],
+    ["ym_baskan","Yüksek Mahkeme Başkanı"],["ym_uye","Yüksek Mahkeme Üyesi"],["vali","Vali"],["baro_baskan","Türkiye Barosu Başkanı"],
+    ["oda_baskan","Ticaret ve Sanayi Odası Başkanı"],["il_baskani","Parti İl Başkanı"]];
+  // makamlar tablosunda tutulmayan kurum görevleri (yk_kurum_gorev_ver / yk_kurum_gorev_al)
+  const KURUM_TUR = ["ym_baskan","ym_uye","vali","baro_baskan","oda_baskan","il_baskani"];
   const HEDEF = [["herkes","Tüm oyuncular"],["cevrimici","Şu an çevrimiçi olanlar"],["aktif","Son 7 günde girenler"],["yeni","Son 3 günde katılanlar"],
     ["makamli","Makam sahipleri"],["il","Bir ildekiler"],["parti","Bir partinin üyeleri"],["oyuncu","Tek oyuncu"]];
   const sec = (ad, liste, secili, ek) => `<select class="km-girdi" id="${ad}" ${ek || ""}>${liste.map(([k, a]) => `<option value="${e(k)}" ${String(k) === String(secili) ? "selected" : ""}>${e(a)}</option>`).join("")}</select>`;
@@ -444,7 +448,8 @@
         ${(o.makamlar || []).map(m => `<div class="liste-satir"><div class="orta"><b>${e(m.ad)}</b><div class="kucuk">${ts(m.bas)} · ${e(m.kaynak)}</div></div>${yetkiVar("makam") ? `<button class="rozet kirmizi km-kucukbtn" data-km-al="${m.id}">Görevden al</button>` : ""}</div>`).join("")}
         ${o.parti && o.parti.gb ? `<div class="liste-satir"><div class="orta"><b>${e(o.parti.kisa)} Genel Başkanı</b></div>${yetkiVar("makam") ? `<button class="rozet kirmizi km-kucukbtn" data-km-pg="gb">Görevden al</button>` : ""}</div>` : ""}
         ${o.gby ? `<div class="liste-satir"><div class="orta"><b>${e(o.parti ? o.parti.kisa : "")} ${o.gby}. Genel Başkan Yardımcısı</b></div>${yetkiVar("makam") ? `<button class="rozet kirmizi km-kucukbtn" data-km-pg="gby">Görevden al</button>` : ""}</div>` : ""}
-        ${!(o.makamlar || []).length && !(o.parti && o.parti.gb) && !o.gby ? `<div class="bos" style="padding:8px 0">Görevi yok.</div>` : ""}
+        <div id="kmKurumGorev"></div>
+        ${!(o.makamlar || []).length && !(o.parti && o.parti.gb) && !o.gby ? `<div class="bos" id="kmGorevYok" style="padding:8px 0">Görevi yok.</div>` : ""}
         ${(o.gecmis_makam || []).length ? `<details style="margin-top:8px"><summary class="kucuk">Geçmiş görevler (${o.gecmis_makam.length})</summary>${o.gecmis_makam.map(g => `<div class="kucuk" style="padding:3px 0">${e(g.ad)} · ${ts(g.bas)} → ${ts(g.bit)}${g.neden ? " · " + e(g.neden) : ""}</div>`).join("")}</details>` : ""}</div>
       <div class="kart"><h2>İşlemler</h2><div class="km-izgara">
         ${b("kmPara", "Para ver / al", "altin", yetkiVar("para"))}
@@ -476,6 +481,16 @@
     tikla("kmPara", () => tutarModal(o, false, sonra));
     tikla("kmKidem", () => tutarModal(o, true, sonra));
     tikla("kmGorev", () => gorevModal(o.kad, sonra));
+    if (yetkiVar("makam") && $("#kmKurumGorev")) rpc("yk_kurum_gorevleri", { p_kad: o.kad }).then(lst => {
+      const kutu = $("#kmKurumGorev"); if (!kutu || !(lst || []).length) return;
+      const yok = $("#kmGorevYok"); if (yok) yok.remove();
+      kutu.innerHTML = lst.map(g => `<div class="liste-satir"><div class="orta"><b>${e(g.ad)}</b><div class="kucuk">${ts(g.bas)} · kurum görevi</div></div>${g.kaldirilabilir ? `<button class="rozet kirmizi km-kucukbtn" data-km-kurum='${e(JSON.stringify({ tur: g.tur, il_id: g.il_id }))}'>Görevden al</button>` : ""}</div>`).join("");
+      kutu.querySelectorAll("[data-km-kurum]").forEach(x => x.onclick = async () => {
+        const g = JSON.parse(x.dataset.kmKurum);
+        if (!await onayla("Görevden al", `${e(o.kad)} bu kurum görevinden alınacak ve kendisine bildirim gidecek.`, "Görevden al", true)) return;
+        try { await rpc("yk_kurum_gorev_al", { p_kad: o.kad, p_tur: g.tur, p_il: g.il_id }); toast("Görevden alındı."); sonra(await rpc("yk_oyuncu", { p_kad: o.kad })); } catch (err) { hata(err); }
+      });
+    }).catch(() => {});
     tikla("kmParti", async () => {
       const kt = await katalog().catch(hata); if (!kt) return;
       const m = modal(`<h3 style="font-size:19px;font-weight:800">Partisini değiştir</h3><p class="alt">Mevcut partisinden ayrılır (parti görevleri ve bekleyen adaylıkları düşer), seçtiğin partiye üye olur.</p>
@@ -563,7 +578,7 @@
   }
   async function gorevModal(kad, sonra, varsayilan){
     const kt = await katalog().catch(hata); if (!kt) return;
-    const m = modal(`<h3 style="font-size:19px;font-weight:800">Göreve ata</h3><p class="alt">Tek kişilik koltuktaki (CB, bakanlık, belediye, TBMM Başkanlığı, CB yardımcılığı) mevcut kişi görevden alınır.</p>
+    const m = modal(`<h3 style="font-size:19px;font-weight:800">Göreve ata</h3><p class="alt">Tek kişilik koltuktaki (CB, bakanlık, belediye, TBMM Başkanlığı, CB yardımcılığı, Yüksek Mahkeme, valilik, baro/oda başkanlığı, il başkanlığı) mevcut kişi görevden alınır.</p>
       ${kad ? "" : `<div class="alan"><label>Kullanıcı adı</label><input class="km-girdi" id="kmGKad" autocapitalize="off" autocomplete="off" spellcheck="false"></div>`}
       <div class="alan"><label>Görev</label>${sec("kmGTur", MAKAM_TUR, (varsayilan && varsayilan.tur) || "bakan")}</div>
       <div id="kmGEk"></div>
@@ -571,7 +586,11 @@
       <button class="btn altin" id="kmGK">Ata</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
     const ek = () => {
       const t = $("#kmGTur", m).value, k = $("#kmGEk", m);
-      if (t === "mv" || t === "bel") k.innerHTML = `<div class="alan"><label>İl</label>${sec("kmGIl", ilListesi(kt).map(i => [i.id, i.ad + (t === "mv" && i.mv != null ? ` (${i.mv_dolu}/${i.mv} vekil)` : "")]), varsayilan && varsayilan.il_id)}</div>`;
+      if (t === "vali" || t === "oda_baskan" || t === "il_baskani") k.innerHTML = `<div class="alan"><label>İl</label>${sec("kmGIl", ilListesi(kt).map(i => [i.id, i.ad]), varsayilan && varsayilan.il_id)}</div>` +
+        (t === "il_baskani" ? `<p class="kucuk">Oyuncunun kendi partisinde ve kayıtlı olduğu ilde uygulanır; partinin o ilde teşkilatı olmalı.</p>` : t === "vali" ? `<p class="kucuk">Valilik seçilmiş/siyasi makamla birlikte yürütülemez. Oyuncu vali havuzunda değilse yönetici kararıyla havuza alınır.</p>` : "");
+      else if (t === "ym_baskan" || t === "ym_uye") k.innerHTML = `<p class="kucuk">Hâkim parti üyesi olamaz ve başka makam alamaz (Anayasa m.68, m.140). Tek görev kuralı açıksa mevcut makamları ve parti üyeliği sona erer; kapalıysa engel varsa atama yapılmaz. Yüksek Mahkemenin 3. üyesi görevdeki Adalet Bakanıdır.</p>`;
+      else if (t === "baro_baskan") k.innerHTML = `<p class="kucuk">Ruhsatlı ve baroya aktif üye bir avukat olmalı.</p>`;
+      else if (t === "mv" || t === "bel") k.innerHTML = `<div class="alan"><label>İl</label>${sec("kmGIl", ilListesi(kt).map(i => [i.id, i.ad + (t === "mv" && i.mv != null ? ` (${i.mv_dolu}/${i.mv} vekil)` : "")]), varsayilan && varsayilan.il_id)}</div>`;
       else if (t === "bakan") k.innerHTML = `<div class="alan"><label>Bakanlık</label>${sec("kmGBak", (kt.bakanliklar || []).map(b => [b.kod, b.ad]), varsayilan && varsayilan.bakanlik)}</div>`;
       else if (t === "cb_yardimcisi") k.innerHTML = `<div class="alan"><label>Sıra</label>${sec("kmGSira", [[1, "1. Cumhurbaşkanı Yardımcısı"], [2, "2. Cumhurbaşkanı Yardımcısı"]], 1)}</div>`;
       else if (t === "gby") k.innerHTML = `<div class="alan"><label>Sıra (oyuncunun kendi partisinde)</label>${sec("kmGSira", [1, 2, 3, 4, 5, 6].map(i => [i, i + ". Genel Başkan Yardımcısı"]), 1)}</div>`;
@@ -583,7 +602,11 @@
       const k = kad || ($("#kmGKad", m) && $("#kmGKad", m).value.trim()); if (!k) return toast("Kullanıcı adını yaz.", true);
       const t = $("#kmGTur", m).value, x = (id) => { const el = $("#" + id, m); return el ? el.value : null; };
       try {
-        const r = await rpc("yk_makam_ver", { p_kad: k, p_tur: t, p_il: x("kmGIl") ? +x("kmGIl") : null, p_bakanlik: x("kmGBak"), p_sira: x("kmGSira") ? +x("kmGSira") : null, p_tek_gorev: $("#kmGTek", m).checked });
+        let r;
+        if (KURUM_TUR.includes(t)) {
+          await rpc("yk_kurum_gorev_ver", { p_kad: k, p_tur: t, p_il: x("kmGIl") ? +x("kmGIl") : null, p_tek_gorev: $("#kmGTek", m).checked });
+          r = await rpc("yk_oyuncu", { p_kad: k });
+        } else r = await rpc("yk_makam_ver", { p_kad: k, p_tur: t, p_il: x("kmGIl") ? +x("kmGIl") : null, p_bakanlik: x("kmGBak"), p_sira: x("kmGSira") ? +x("kmGSira") : null, p_tek_gorev: $("#kmGTek", m).checked });
         modalKapat(); YK.cache.katalog = null; toast("Göreve atandı."); sonra(r);
       } catch (err) { hata(err); }
     };
@@ -598,10 +621,23 @@
         <button class="rozet km-kucukbtn" data-km-degis='${e(JSON.stringify({ tur: m.tur, il_id: m.il_id, bakanlik: m.bakanlik }))}'>Değiştir</button><button class="rozet kirmizi km-kucukbtn" data-km-al="${m.id}">Al</button></div>`;
     const bosBakanlik = (kt.bakanliklar || []).filter(b => !(grup.bakan || []).some(m => m.bakanlik === b.kod));
     ic.innerHTML = `<div class="kart"><button class="btn altin" id="kmYeniGorev">+ Birini göreve ata</button></div>
-      ${MAKAM_TUR.filter(([t]) => !["gb","gby"].includes(t)).map(([t, ad]) => `<div class="kart"><h2>${e(ad)} (${(grup[t] || []).length})</h2>${(grup[t] || []).map(satir).join("") || `<div class="bos" style="padding:6px 0">Boş.</div>`}
+      ${MAKAM_TUR.filter(([t]) => !["gb","gby"].includes(t) && !KURUM_TUR.includes(t)).map(([t, ad]) => `<div class="kart"><h2>${e(ad)} (${(grup[t] || []).length})</h2>${(grup[t] || []).map(satir).join("") || `<div class="bos" style="padding:6px 0">Boş.</div>`}
         ${t === "bakan" && bosBakanlik.length ? `<div class="kucuk" style="margin-top:6px">Boş bakanlıklar: ${bosBakanlik.map(b => e(b.ad)).join(", ")}</div>` : ""}</div>`).join("")}
       <div class="kart"><h2>Parti genel başkanları ve yardımcıları</h2>${(kt.parti_gorev || []).map(g => `<div class="liste-satir"><div class="orta"><b>${e(g.parti)} · ${g.rol === "gb" ? "Genel Başkan" : g.sira + ". GBY"}</b><div class="kucuk"><a class="bag" href="#" data-km-oy="${e(g.kad)}">${e(g.kad)}</a></div></div>
-        <button class="rozet kirmizi km-kucukbtn" data-km-pg='${e(JSON.stringify({ kad: g.kad, rol: g.rol }))}'>Al</button></div>`).join("") || `<div class="bos">Yok.</div>`}</div>`;
+        <button class="rozet kirmizi km-kucukbtn" data-km-pg='${e(JSON.stringify({ kad: g.kad, rol: g.rol }))}'>Al</button></div>`).join("") || `<div class="bos">Yok.</div>`}</div>
+      <div class="kart"><h2>Kurum görevleri</h2><div id="kmKurumListe"><div class="bos">Yükleniyor…</div></div></div>`;
+    rpc("yk_kurum_gorevleri", { p_kad: null }).then(lst => {
+      const kutu = $("#kmKurumListe"); if (!kutu) return;
+      kutu.innerHTML = (lst || []).map(g => `<div class="liste-satir"><div class="orta"><b>${e(g.ad)}</b><div class="kucuk"><a class="bag" href="#" data-km-oy="${e(g.kad)}">${e(g.kad)}</a> · ${ts(g.bas)}</div></div>
+        <button class="rozet km-kucukbtn" data-km-kdegis='${e(JSON.stringify({ tur: g.tur, il_id: g.il_id }))}'>Değiştir</button>${g.kaldirilabilir ? `<button class="rozet kirmizi km-kucukbtn" data-km-kal='${e(JSON.stringify({ kad: g.kad, tur: g.tur, il_id: g.il_id }))}'>Al</button>` : ""}</div>`).join("") || `<div class="bos">Kurum görevlerinde kimse yok.</div>`;
+      kutu.querySelectorAll("[data-km-oy]").forEach(a => a.onclick = (ev) => { ev.preventDefault(); kmOyuncuAc(a.dataset.kmOy); });
+      kutu.querySelectorAll("[data-km-kdegis]").forEach(b => b.onclick = () => gorevModal(null, () => kmCiz(), JSON.parse(b.dataset.kmKdegis)));
+      kutu.querySelectorAll("[data-km-kal]").forEach(b => b.onclick = async () => {
+        const g = JSON.parse(b.dataset.kmKal);
+        if (!await onayla("Görevden al", `${e(g.kad)} bu kurum görevinden alınacak.`, "Görevden al", true)) return;
+        try { await rpc("yk_kurum_gorev_al", { p_kad: g.kad, p_tur: g.tur, p_il: g.il_id }); toast("Görevden alındı."); kmCiz(); } catch (err) { hata(err); }
+      });
+    }).catch(hata);
     $("#kmYeniGorev").onclick = () => gorevModal(null, () => kmCiz());
     ic.querySelectorAll("[data-km-oy]").forEach(a => a.onclick = (ev) => { ev.preventDefault(); kmOyuncuAc(a.dataset.kmOy); });
     ic.querySelectorAll("[data-km-degis]").forEach(b => b.onclick = () => gorevModal(null, () => kmCiz(), JSON.parse(b.dataset.kmDegis)));
