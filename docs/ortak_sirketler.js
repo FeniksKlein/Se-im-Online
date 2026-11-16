@@ -26,17 +26,17 @@ async function approve(title,body){return typeof onayla==='function'?onayla(titl
 window.ortaklikEkrani=async function(){
  yukleniyor('Şirket Ortaklık Merkezi');
  try{
-  const d=await rpc('ortak_sirket_panel');
+  const [d,kurulusKurallari]=await Promise.all([rpc('ortak_sirket_panel'),rpc('kurulus_canli_kurallar')]);
   let html='<div class="kart"><h2>🤝 Şirket Ortaklık Merkezi</h2><p class="alt">Birlikte sermaye koyarak şirket kurabilir, yeni ortak kabul edebilir, hissenin tamamını ya da bir bölümünü bedelli veya bedelsiz devredebilirsin. Hisselerin toplamı her zaman %100 kalır.</p>'+
    '<p class="alt">Kuruluş için bütün ortakların daveti kabul etmesi ve son onay anında herkesin hesabında taahhüt ettiği paranın bulunması gerekir. Davetler 72 saat geçerlidir.</p></div>';
   html+='<div class="kart"><h3>🏗️ Birlikte yeni şirket kur</h3>'+
    '<div class="alan"><label>Yeni şirketin adı</label><input id="os_ad" maxlength="50" placeholder="Örnek: Ortaklar Ticaret Ltd."></div>'+
-   '<div class="alan"><label>Sektör</label><select id="os_sektor" onchange="ortaklikSektorDegisti()">'+sectors.map(([k,v])=>'<option value="'+k+'">'+esc(v)+'</option>').join('')+'</select></div>'+
+   '<div class="alan"><label>Sektör</label><select id="os_sektor" onchange="ortaklikSektorDegisti()">'+sectors.map(([k,v])=>'<option value="'+k+'">'+esc(v)+' · asgari '+tl(kurulusKurallari.sektorler?.[k]??100000)+'</option>').join('')+'</select></div>'+
    '<div class="alan"><label>Şirket merkezi (il)</label><select id="os_il">'+cities.map((name,i)=>'<option value="'+(i+1)+'"'+(name==='Muğla'?' selected':'')+'>'+esc(name)+'</option>').join('')+'</select></div>'+
    '<div class="alan"><label>Sanayi üretim grubu / enerji santrali kaynağı</label><select id="os_urun"><option value="malzeme">Malzeme</option><option value="gida">Gıda</option><option value="teknoloji">Teknoloji</option></select></div>'+
    '<div class="alan"><label>Benim koyacağım kuruluş sermayesi (₺)</label><input id="os_kendi" type="number" inputmode="numeric" step="1" min="1" value="100000"></div>'+
    '<div class="alan"><label>Davet edilecek ortaklar (her satıra kullanıcı adı, sermaye)</label><textarea id="os_ortaklar" rows="3" placeholder="oyuncu1, 100000\noyuncu2, 50000"></textarea></div>'+
-   '<p class="alt">En fazla 7 başka oyuncu. Toplam sermaye 100.000–100.000.000 ₺. Herkesin payı koyduğu sermayeye göre belirlenir. Para, şirket kurulana kadar hesaplardan çekilmez.</p>'+
+   '<p class="alt">En fazla 7 başka oyuncu. Toplam sermaye, seçilen sektör için sunucunun belirlediği asgari tutar ile 100.000.000 ₺ arasında olmalı. Herkesin payı koyduğu sermayeye göre belirlenir. Para, şirket kurulana kadar hesaplardan çekilmez.</p>'+
    btn('Ortaklara kuruluş daveti gönder','ortakKurulusDavet()','altin')+'</div>';
   html+='<div class="kart"><h3>📨 Kuruluş davetleri</h3>';
   for(const k of (d.kuruluslar||[])){
@@ -244,7 +244,12 @@ window.ortakKurulusDavet=async function(){
   if(!ortaklar.length)throw Error('En az bir ortak davet et.');
   const params={p_ad:get('os_ad'),p_sektor:get('os_sektor'),p_il:Number(get('os_il')),
    p_urun:get('os_urun'),p_kendi:Number(get('os_kendi')),p_ortaklar:ortaklar};
-  if(!await approve('Ortak şirket kuruluşu','Davetleri göndermek ve belirtilen sermaye paylarını önermek istiyor musun?'))return;
+  const kurallar=await rpc('kurulus_canli_kurallar');
+  const asgari=Number(kurallar.sektorler?.[params.p_sektor]??100000);
+  const toplam=Number(params.p_kendi)+ortaklar.reduce((s,o)=>s+Number(o.tutar),0);
+  if(!Number.isSafeInteger(toplam)||toplam<asgari||toplam>100000000)
+    throw Error('Bu sektörün kuruluş sermayesi en az '+tl(asgari)+', en çok 100.000.000 ₺ olmalı.');
+  if(!await approve('Ortak şirket kuruluşu','Davetleri göndermek ve toplam '+tl(toplam)+' kuruluş sermayesini önermek istiyor musun?'))return;
   await rpc('ortak_sirket_kur_teklif',params);toast('Kuruluş davetleri gönderildi.');ortaklikEkrani();
  }catch(e){err(e);}
 };
