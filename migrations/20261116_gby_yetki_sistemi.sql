@@ -6,6 +6,10 @@
 --  * Üyelik biterse, yardımcılık biterse ya da parti kapanırsa yetkiler kendiliğinden pasifleşir (kayıt silinmez).
 -- Mevcut yardımcılar korunur; görev alanı ve miting yetkisi olanlara aynı yetkiler kayıt olarak aktarılır.
 
+-- Sıra kısıtı tüzük sınırıyla uyumlu (en çok 20)
+alter table oyun.parti_gby drop constraint if exists parti_gby_sira_check;
+alter table oyun.parti_gby add constraint parti_gby_sira_check check (sira between 1 and 20);
+
 create table if not exists oyun.parti_tuzuk_ayar (
   parti_id bigint primary key references oyun.partiler(id),
   gby_azami smallint not null default 6 check (gby_azami between 1 and 20),

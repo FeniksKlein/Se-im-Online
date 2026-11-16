@@ -169,7 +169,8 @@ begin
     update oyun.parti_teskilat_gorev set aktif=false where parti_id=p_parti and il_id=p_il and aktif;
   else
     insert into oyun.parti_teskilat_gorev(parti_id,il_id,user_id,atayan,atama,aktif)
-    values(p_parti,p_il,p_user,p_atayan,oyun.simdi(),true)
+    -- atayan NOT NULL: kongre sonucunda atayan yoktur; kayıt için genel başkan (yoksa seçilen kişi) yazılır
+    values(p_parti,p_il,p_user,coalesce(p_atayan,(select gb from oyun.partiler where id=p_parti),p_user),oyun.simdi(),true)
     on conflict(parti_id,il_id) do update set user_id=excluded.user_id, atayan=excluded.atayan, atama=excluded.atama, aktif=true;
     -- aynı kişi yeniden seçilirse satır değişmeyebilir: statü kaydını açıkça güncelle
     if p_statu='secilmis' then
