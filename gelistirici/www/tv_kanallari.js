@@ -554,7 +554,11 @@
   window.tvKanalKur = async () => {
     const ad = ($("#tvKAd").value || "").trim(), sl = ($("#tvKSlogan").value || "").trim();
     if (ad.length < 3) return toast("Kanal adı en az 3 karakter olmalı.", true);
-    if (!await onayla("TV kanalı kur", `"${e(ad)}" kanalı kurulacak. Yayın lisansı ${tl(250000)} cüzdanından alınır ve iade edilmez.`, "Kanalı kur")) return;
+    let lisans;
+    try{lisans=Number((await rpc("kurulus_canli_kurallar")).tv_lisans_ucret);
+      if(!Number.isFinite(lisans)||lisans<0)throw Error("Lisans tarifesi yok");
+    }catch(err){return toast("Sunucudaki TV lisans tutarı alınamadı; kuruluş yapılmadı.",true);}
+    if (!await onayla("TV kanalı kur", `"${e(ad)}" kanalı kurulacak. Yayın lisansı ${tl(lisans)} cüzdanından alınır ve iade edilmez.`, "Kanalı kur")) return;
     return anaCalis(() => rpc("tv_kanal_kur", { p_ad: ad, p_slogan: sl || null }), "Kanalın kuruldu.", r => { $("#tvKAd").value = ""; $("#tvKSlogan").value = ""; window.tvKanalAc(r.id); });
   };
   window.tvSunucuYanit = (kanal, kabul) => anaCalis(() => rpc("tv_sunucu_yanit", { p_kanal: kanal, p_kabul: kabul }), kabul ? "Sunuculuk sözleşmen başladı." : "Teklif reddedildi.");
