@@ -9,6 +9,7 @@ const KOSULLU = {
   'zz_20261116_kabine_48_saat_kaldir.sql': ['oyun.cb_kabine_sure'],
   'zz_20261116_makam_guvenligi.sql': ['oyun_yonetim.gorev_denetim', 'oyun.gorev_tercihi', 'oyun.cb_yardimcisi_teklifleri', 'oyun.mahkeme_uye'],
   'zz_20261116_gby_yetki_sistemi.sql': ['oyun.parti_gby', 'oyun.parti_teskilat_gorev', 'oyun.partiler'],
+  'zz_20261116_yk_kurum_gorevleri.sql': ['oyun.mahkeme_uye', 'oyun.icisleri_atama', 'oyun.vali_havuz', 'oyun.oda', 'oyun.baro'],
   'zz_20261116_il_kongre_sistemi.sql': ['oyun.parti_gby', 'oyun.parti_teskilat_gorev', 'oyun.parti_teskilat', 'oyun.iller'],
 };
 const okuKosullu = ad => {
@@ -37,7 +38,7 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261115_cb_parti_aday_yuzde5.sql',
   '210_rutbe_lansman_dengesi.sql', 'zz_20261116_tbmm_nisap_oy_koruma.sql', 'zz_20261116_yargi_gozalti_serbest.sql', 'zz_20261115_beta_gercekci_siyaset_kalici.sql', 'zz_20261116_aday_belirleme_dhondt.sql',
   'zz_20261116_baro_mudafi_guvence.sql', 'zz_20261116_kabine_48_saat_kaldir.sql', 'zz_20261116_makam_guvenligi.sql',
-  'zz_20261116_gby_yetki_sistemi.sql', 'zz_20261116_il_kongre_sistemi.sql'];
+  'zz_20261116_gby_yetki_sistemi.sql', 'zz_20261116_il_kongre_sistemi.sql', 'zz_20261116_yk_kurum_gorevleri.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
