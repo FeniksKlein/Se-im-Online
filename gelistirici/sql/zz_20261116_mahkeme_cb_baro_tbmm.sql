@@ -3,7 +3,6 @@
 drop trigger if exists adalet_bakani_mahkeme_esitle on oyun.makamlar;
 drop trigger if exists mahkeme_adalet_koru on oyun.mahkeme_uye;
 alter table oyun.mahkeme_uye drop constraint if exists mahkeme_uye_kaynak_check;
-alter table oyun.mahkeme_uye add constraint mahkeme_uye_kaynak_check check(kaynak in ('cb','baro','meclis'));
 create table if not exists oyun.mahkeme_aday_riza (
  aday uuid primary key references oyun.profiller(id),aktif boolean not null default true,
  zaman timestamptz not null default now()
@@ -20,6 +19,7 @@ begin
  update oyun.mahkeme_uye set kaynak='meclis',user_id=null,atayan=null,bas=null,gorev_bit=null,bos_since=oyun.simdi() where sira=3 and kaynak='adalet';
  update oyun.mahkeme_uye set kaynak='meclis' where sira=3 and kaynak<>'meclis';
 end $court$;
+alter table oyun.mahkeme_uye add constraint mahkeme_uye_kaynak_check check(kaynak in ('cb','baro','meclis'));
 create or replace function oyun.adalet_bakani_mahkeme_esitle() returns void language plpgsql set search_path to '' as $f$
 begin
  -- Otomatik yargi uyeligi sona erdi; mevcut bagimli fonksiyonlar icin bos uyumluluk islevi.
