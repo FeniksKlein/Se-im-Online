@@ -1879,6 +1879,13 @@ async function adaylikCek(sid){
   if (!await onayla("Başvuruyu geri çek", "Adaylığından çekileceksin. Başvuru süresi bitmediyse yeniden başvurabilirsin.", "Geri çek", true)) return;
   try { await islem(() => API.rpc("adaylik_geri_cek", { p_secim: sid }), "Başvurun geri çekildi."); yenidenCiz(); } catch (_) {}
 }
+async function cbAdayTeklifCevap(escDonem,parti,kabul){
+ try{
+  const res=await API.rpc('cb_aday_teklif_cevap',{p_donem:decodeURIComponent(escDonem),p_parti:parti,p_kabul:kabul});
+  toast(res.durum==='kabul'?'Cumhurbaşkanlığı adaylığın kabul edildi.':'Adaylık teklifini reddettin.');
+  await partilerEkrani();
+ }catch(err){toast(hataCevir(err.message),true);}
+}
 async function cbKararModal(){
   const pd = await API.rpc("parti_detay", { p_parti: D.durum.profil.parti.id });
   const destekSecenekleri = await API.rpc("cb_destek_secenekleri");
@@ -1888,12 +1895,12 @@ async function cbKararModal(){
     <p class="alt">Genel seçimle birlikte yapılacak cumhurbaşkanlığı seçimi için partinin adayını nasıl belirleyeceğini seç.</p>
     <button class="btn" id="k1">Kendim aday olacağım</button>
     <div class="alan"><label>veya bir üyeyi aday göster</label><select id="uye"><option value="">Üye seç…</option>${uyeler.map(u => `<option>${e(u.kad)}</option>`).join("")}</select></div>
-    <button class="btn ikinci" id="k2">Seçtiğim üyeyi aday göster</button>
+    <button class="btn ikinci" id="k2">Üyeye adaylık teklifi gönder (onay gerekir)</button>
     <button class="btn ikinci" id="k3">Üyeler ön seçimle belirlesin</button>
     ${ortaklar.length ? `<div class="alan"><label>veya başka partinin kesinleşmiş Cumhurbaşkanı adayını destekle (kendi adayını çıkarmazsın)</label><select id="ortak">${ortaklar.map(o => `<option value="${o.parti_id}">${e(o.parti)} · ${e(o.aday)}${o.ittifak_ortagi?" (ittifak ortağı)":""}</option>`).join("")}</select></div>
       <button class="btn ikinci" id="k4">Bu adayı ortak destekle</button>` : ""}
     <p class="kucuk" style="margin-top:8px">Ön seçimde 26'sında başvuru alınır, 28'inde partinin üyeleri oy verir.</p>`);
-  const gonder = async (y, kad) => { try { await islem(() => API.rpc("cb_aday_belirle", { p_yontem: y, p_kad: kad || null }), "Kararın kaydedildi."); modalKapat(); yenidenCiz(); } catch (_) {} };
+  const gonder = async (y, kad) => { try { const yanit=await API.rpc("cb_aday_belirle", { p_yontem:y, p_kad:kad||null }); modalKapat();toast(yanit&&yanit.onay_bekliyor?'Teklif gönderildi; adayın kabulü bekleniyor.':'Cumhurbaşkanı adaylığı yöntemin kaydedildi.');yenidenCiz(); } catch (err) {toast(hataCevir(err.message),true);} };
   $("#k1", m).onclick = () => gonder("kendisi");
   $("#k2", m).onclick = () => { const k = $("#uye", m).value; if (!k) return toast("Önce bir üye seç.", true); gonder("baskasi", k); };
   $("#k3", m).onclick = () => gonder("onsecim");
@@ -3061,10 +3068,12 @@ async function partilerEkrani(){
   yukleniyor("Partiler");
   let l, kim = []; try { [l, kim] = await Promise.all([API.rpc("partiler"), API.rpc("parti_kimlikleri").catch(() => [])]); PARTI_ON = l; await durumYenile(); } catch (err) { iskelet("Partiler", `<div class="bos">${e(hataCevir(err.message))}</div>`); return; }
   const benim = D.durum.profil.parti;
+  const cbTeklifleri = await API.rpc('cb_aday_tekliflerim').catch(()=>[]);
   const ittifakHaritasi = new Map();
   for (const pa of l) if (pa.ittifak && pa.ittifak.id) ittifakHaritasi.set(pa.ittifak.id, pa.ittifak);
   const aktifIttifaklar = [...ittifakHaritasi.values()];
   iskelet("Partiler", `
+    ${cbTeklifleri.length ? `<div class="kart" style="border:1px solid var(--gold2)"><h3>Cumhurbaşkanlığı adaylık tekliflerin</h3><p class="alt">Parti genel başkanının adını vermesi adaylık oluşturmaz. Kabul veya ret kararını kendin verirsin.</p>${cbTeklifleri.map(x => `<div class="liste-satir"><div class="orta"><b>${e(x.parti)}</b><div class="kucuk">Seçim dönemi: ${e(x.donem)}</div></div></div><div class="vit-dugme"><button class="btn altin" onclick="cbAdayTeklifCevap('${encodeURIComponent(x.donem).replace(/'/g,'%27')}',${x.parti_id},true)">Kabul et</button><button class="btn ikinci" onclick="cbAdayTeklifCevap('${encodeURIComponent(x.donem).replace(/'/g,'%27')}',${x.parti_id},false)">Reddet</button></div>`).join('')}</div>` : ''}
     <div class="kart"><button class="btn altin" onclick="oyuncuAramaAc()">Partiye göre oyuncu ara</button><p class="kucuk">İstediğin partiyi seçerek üyelerini ve profillerini bul.</p></div>
     ${benim ? `<div class="kart cizgili" onclick="ekranAc(()=>partiDetay(${benim.id}))" style="cursor:pointer;display:flex;gap:12px;align-items:center;--parti:${e(benim.renk)}">${amblemKutu(benim, 48)}<div style="flex:1"><div class="kucuk">Partin</div><b style="font-family:var(--disp);font-size:22px">${e(benim.ad)}</b></div><span style="font-size:22px;color:var(--mut)">›</span></div>` : ""}
     <div class="kart"><h2>İttifaklar</h2>
