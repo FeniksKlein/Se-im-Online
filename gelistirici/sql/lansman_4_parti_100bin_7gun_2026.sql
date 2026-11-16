@@ -43,7 +43,7 @@ BEGIN
    WHERE id=1;
   UPDATE oyun.tarife SET deger=CASE kod
     WHEN 'kilit_aktif' THEN 1 WHEN 'parti_kurucu_min' THEN 7
-    WHEN 'parti_kurucu_max' THEN 30 WHEN 'parti_kurucu_oran' THEN 2
+    WHEN 'parti_kurucu_max' THEN 7 WHEN 'parti_kurucu_oran' THEN 2
     WHEN 'parti_kurucu_statu' THEN 2 WHEN 'parti_ortak_statu' THEN 1
     WHEN 'parti_kurucu_hesap_gun' THEN 14 WHEN 'parti_ortak_hesap_gun' THEN 7
     WHEN 'parti_ortak_bekleme_gun' THEN 30 WHEN 'parti_basvuru_gun' THEN 10

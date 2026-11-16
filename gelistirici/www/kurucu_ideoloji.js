@@ -171,8 +171,9 @@ async function ideolojiOylamaModal(pid){
 
 /* Eski doğrudan parti kurma ekranının yerine kurucu onaylı akış. */
 function partiKurEkrani(){
-  const serbestAd=!!(D.durum&&D.durum.profil&&(D.durum.profil.kad||"").toLocaleLowerCase("tr")==="matestappen");
-  const ozelKurucu=!!(D.durum&&D.durum.profil&&["eyetkin","celal","matestappen","arventora"].includes((D.durum.profil.kad||"").toLocaleLowerCase("tr")));
+  // 16.11.2026: Tek kişilik kuruluş istisnaları kaldırıldı; herkes 7 kişilik kurucular kuruluyla kurar.
+  const serbestAd=false;
+  const ozelKurucu=false;
   let renk=RENKLER[6],amb=VERI.amblem[0].id,gerekliDavet=6;
   iskelet("Parti kur",
     '<div class="kart" id="onizleme"></div>'+
@@ -187,6 +188,9 @@ function partiKurEkrani(){
       : '<div class="alan"><label for="kurucuNick" id="kurucuNickEtiket">Kurucu adayı oyuncu adları</label>'+
         '<textarea id="kurucuNick" class="alanmetin" rows="5" placeholder="Her satıra bir kullanıcı adı yaz"></textarea></div>'+
         '<p class="alt" id="kurucuAciklama">Oyunculara kurucular kurulu daveti gönderilir. Yeterli kurucu EVET demedikçe parti kurulmaz. Onay verenler kuruluş tamamlandığında yeni partiye katılır ve kuruluş fonuna katkı yapabilir.</p>')+
+    '<div class="alan"><label for="yontemMv">Milletvekili adayları nasıl belirlensin?</label><select id="yontemMv" class="alanmetin" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px;min-height:48px"><option value="onsecim">Ön seçimle — ildeki üyeler oy verir, en çok oydan en aza sıralanır</option><option value="atama">Genel Başkan ataması — listeyi ve sırayı sen belirlersin</option></select></div>'+
+    '<div class="alan"><label for="yontemBel">Belediye başkanı adayları nasıl belirlensin?</label><select id="yontemBel" class="alanmetin" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px;min-height:48px"><option value="onsecim">Ön seçimle — en çok oyu alan aday olur</option><option value="atama">Genel Başkan ataması — adayı sen belirlersin</option></select></div>'+
+    '<p class="alt">Gerçekte partiler bu usulü tüzüklerinde belirler (Siyasi Partiler Kanunu md.37). Kurulduktan sonra Partiler › Aday belirleme ekranından, adaylık süreci başlamadan önce değiştirebilirsin.</p>'+
     '<p class="kucuk" id="kurUcret">Kuruluş sermayesi hesaplanıyor…</p>'+
     '<div class="hata-metin" id="hata"></div>'+
     '<button class="btn altin" id="kur">'+(ozelKurucu?'Partiyi hemen kur':'Kurucu davetlerini gönder')+'</button>'+
@@ -237,10 +241,13 @@ function partiKurEkrani(){
         await durumYenile();
         sekmeAc("parti");
       }else{
-        await API.rpc("parti_kur_baslat",{
+        const kurSonuc=await API.rpc("parti_kur_baslat",{
           p_ad:$("#ad").value,p_kisa:$("#kisa").value.toLocaleUpperCase("tr"),
           p_renk:renk,p_amblem:amb,p_ideolojiler:ideolojiler,p_kadlar:nickler
         });
+        try{
+          if(kurSonuc&&kurSonuc.basvuru_id)await API.rpc("parti_kur_aday_yontem",{p_basvuru:kurSonuc.basvuru_id,p_mv:($("#yontemMv")||{}).value||"onsecim",p_bel:($("#yontemBel")||{}).value||"onsecim"});
+        }catch(_){ /* yöntem sonradan Aday belirleme ekranından seçilebilir */ }
         toast("Kurucu adaylarına bildirim gönderildi. En az "+gerekliDavet+" kabul bekleniyor.");
         sekmeAc("parti");kurucuDavetModal();
       }

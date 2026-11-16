@@ -210,6 +210,8 @@ declare
     -- 13.11.2026 Oyuncu sohbet grupları (sql/200_sohbet_gruplari.sql)
     'sohbet_grup_kur', 'sohbet_grup_detay', 'sohbet_grup_ad', 'sohbet_grup_uye_ekle', 'sohbet_grup_uye_cikar', 'sohbet_grup_ayril', 'sohbet_grup_kapat',
     -- 13.11.2026 Sohbet gruplarına dışarıdan katılma (sql/201_sohbet_grup_katilim.sql)
+    -- 16.11.2026 Aday belirleme yöntemi: ön seçim / Genel Başkan ataması (sql/zz_20261116_aday_belirleme_dhondt.sql)
+    'parti_kur_aday_yontem', 'parti_aday_yontem_ayarla', 'parti_aday_panel', 'parti_aday_il', 'parti_aday_ata',
     'sohbet_grup_kesfet', 'sohbet_grup_katilim_iste', 'sohbet_grup_istek_iptal', 'sohbet_grup_istek_karar', 'sohbet_grup_gorunurluk',
     'sokak_sohbet_oku', 'sokak_sohbet_yaz', 'sokak_meydan_islem', 'sokak_meydan_panel', 'sokak_kriz_harita', 'sokak_denetim_oku',
     'sokak_sert_islem', 'sokak_sert_panel',
@@ -223,7 +225,7 @@ declare
     'eko_islem', 'eko_magaza_hazirla', 'eko_otomasyon_ayarla', 'eko_otomasyon_panel', 'eko_panel', 'eko_ticaret_islem',
     'eko_ticaret_panel', 'eko_vergi_kanun_teklif', 'eko_vergi_panel', 'ekonomi_yasa_durum', 'ekonomi_yasa_teklif', 'emlak_pazarlik_alici_yanit',
     'emlak_pazarlik_satici_yanit', 'emlak_pazarlik_teklif', 'emlak_pazarliklarim', 'engel_kaldir', 'engelle', 'engellenenler',
-    'erken_secim_oy', 'erken_secim_teklif', 'eyetkin_parti_kur', 'fiyat_tarifesi', 'gazete', 'gazete_abone_ol',
+    'erken_secim_oy', 'erken_secim_teklif', 'fiyat_tarifesi', 'gazete', 'gazete_abone_ol',
     'gazete_ayar', 'gazete_detay', 'gazete_kose_yorum_sil', 'gazete_kose_yorum_yaz', 'gazete_kose_yorumlar', 'gazete_kur',
     'dergi_raf', 'dergi_kur', 'dergi_sayi_yayinla', 'dergi_sayi_detay', 'dergi_sayi_satinal', 'dergi_kapat',
     'gazete_para_cek', 'gazete_yayinla', 'gazete_yazar_cikar', 'gazete_yazar_teklif', 'gazete_yazar_yanit', 'gby_ata',
@@ -256,7 +258,7 @@ declare
     'kursu_etiket', 'kursu_gonderi', 'kursu_gundem', 'kursu_profil', 'kursu_profil_guncelle', 'kursu_sabitle',
     'kursu_takip_et', 'kursu_takip_listesi', 'kursu_yp', 'kurucu_davet_ekle', 'kurucu_davet_yanit', 'kurucu_davetlerim',
     'kurucu_katki', 'maas_durum', 'maas_oyla', 'maas_teklif_ver', 'magaza_durum', 'magaza_rozetler', 'magaza_unvan_sec', 'magaza_parti_kimlik_uygula', 'kad_degistir',
-    'mahkeme_azil_oy', 'mahkeme_azil_teklif', 'mahkeme_meclis_oy', 'matestappen_parti_kur', 'meclis', 'meclis_aday_ol',
+    'mahkeme_azil_oy', 'mahkeme_azil_teklif', 'mahkeme_meclis_oy', 'meclis', 'meclis_aday_ol',
     'meclis_baskanlik', 'meclis_ihtar', 'meclis_oturum', 'meclis_oy', 'meclis_projeksiyon', 'meclis_rehber',
     'meclis_sandalye', 'meclis_vekiller', 'meclis_yoklama', 'mentor_birak', 'mentor_durum', 'mentor_gonullu_ol',
     'mentor_sec', 'merkez_bankasi', 'mesaj_tepki_ver', 'mesaj_tepkileri', 'meslek_dukkan_ac', 'meslek_kasa',
