@@ -29,10 +29,8 @@ BEGIN
     OR EXISTS (SELECT 1 FROM oyun.adaylar)
     OR EXISTS (SELECT 1 FROM oyun.makamlar)
   THEN RAISE EXCEPTION 'Sifirlama tamamlanmamis. Eski oyun kayitlari var.'; END IF;
-  IF (SELECT count(*) FROM oyun.partiler)<>5
-     OR (SELECT count(*) FROM oyun.partiler WHERE sistem)<>5
-     OR EXISTS (SELECT 1 FROM oyun.partiler WHERE id NOT IN (1,2,3,4,5))
-  THEN RAISE EXCEPTION 'Beklenen 5 baslangic sistem partisi kurulumda bulunamadi.'; END IF;
+  IF (SELECT count(*) FROM oyun.partiler WHERE sistem AND NOT kapali)<>4
+  THEN RAISE EXCEPTION 'Beklenen 4 kurucu sistem partisi kurulumda bulunamadi.'; END IF;
   d:=(v_lansman AT TIME ZONE 'Europe/Istanbul')::date;
 
   UPDATE oyun.ayarlar
@@ -82,25 +80,14 @@ BEGIN
       aday_ucret='{"cb_on":1,"mv_on":1,"bel_on":1,"kurultay":1}'::jsonb
   WHERE sistem;
 
-  -- Besinci kapali sistem partisi (id=2) cikar; dort hazir parti kalir.
-  DELETE FROM oyun.parti_teskilat WHERE parti_id=2;
-  DELETE FROM oyun.partiler WHERE id=2;
-  UPDATE oyun.partiler
-    SET ad=CASE id WHEN 1 THEN 'Halk Partisi'
-                   WHEN 3 THEN 'Sosyal Demokrasi Partisi'
-                   WHEN 4 THEN 'Yeni Parti'
-                   WHEN 5 THEN 'Muhafazakar Türkiye Partisi' END,
-        kisa=CASE id WHEN 1 THEN 'HP' WHEN 3 THEN 'SDP'
-                     WHEN 4 THEN 'YENİ' WHEN 5 THEN 'MTP' END,
-        kapali=false,sistem=true
-  WHERE id IN (1,3,4,5);
+  -- Dort kurucu parti (HP, SDP, YENI, MTP) kurulumda hazir gelir (01_sema.sql).
 
   -- Dort hazir parti tum illerde teskilatli; yeni parti kuranlar degil.
   INSERT INTO oyun.parti_teskilat
     (parti_id,il_id,kurulus,kuran,bedel,genel_merkez)
   SELECT pa.id,i.id,v_lansman,NULL,0,false
   FROM oyun.partiler pa CROSS JOIN oyun.iller i
-  WHERE pa.id IN (1,3,4,5)
+  WHERE pa.sistem AND NOT pa.kapali
   ON CONFLICT (parti_id,il_id) DO NOTHING;
 
   -- Test/ilk kurulumdan gelebilecek bekleyen takvimi bastan kur.
@@ -109,15 +96,8 @@ BEGIN
   DELETE FROM oyun.cb_bagimsiz_kampanya;
   DELETE FROM oyun.secimler;
 
-  -- Ilk genel baskan: basvuru lansmanda, 3. gun sandik.
-  FOR p IN SELECT id FROM oyun.partiler WHERE sistem ORDER BY id LOOP
-    INSERT INTO oyun.secimler(tur,donem,basvuru_bas,basvuru_bit,
-      oy_bas,oy_bit,sonuc_at,goreve_bas,ara,hedef_parti_id,ara_neden)
-    VALUES('kurultay','lansman-gb-'||p.id||'-'||to_char(d,'YYYYMMDD'),
-      v_lansman,oyun.tr_an(d+3,8),oyun.tr_an(d+3,8),
-      oyun.tr_an(d+3,22),oyun.tr_an(d+3,22,30),
-      oyun.tr_an(d+3,23),true,p.id,'lansman_ilk_kurultay');
-  END LOOP;
+  -- Ilk genel baskan: basvuru lansmanda, 5. gun sandik, ilk hafta lidersiz (8. gun goreve baslama).
+  PERFORM oyun.kurucu_parti_kurultay_kur(v_lansman);
 
   -- On secimler 5. gun, CB+MV genel secim 7. gun, 08:00-22:00 TSİ.
   INSERT INTO oyun.secimler(tur,donem,basvuru_bas,basvuru_bit,
@@ -138,8 +118,9 @@ BEGIN
        oyun.tr_an(d+8,0),true,'lansman');
 
   IF (SELECT count(*) FROM oyun.partiler WHERE sistem AND NOT kapali)<>4
-     OR (SELECT count(*) FROM oyun.parti_teskilat WHERE parti_id IN (1,3,4,5))<>324
-     OR (SELECT count(*) FROM oyun.secimler WHERE donem LIKE 'lansman-%')<>8
+     OR (SELECT count(*) FROM oyun.parti_teskilat t JOIN oyun.partiler pa ON pa.id=t.parti_id AND pa.sistem)<>324
+     OR (SELECT count(*) FROM oyun.secimler WHERE donem LIKE 'lansman-%')<>4
+     OR (SELECT count(*) FROM oyun.secimler WHERE ara_neden='kurucu_ilk_kurultay')<>4
      OR (SELECT baslangic_para FROM oyun.ayarlar WHERE id=1)<>100000
      OR (SELECT baraj FROM oyun.ayarlar WHERE id=1)<>7
      OR NOT (SELECT gercekci_siyaset FROM oyun.ayarlar WHERE id=1)

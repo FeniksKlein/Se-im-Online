@@ -11,6 +11,11 @@ const KOSULLU = {
   'zz_20261116_gby_yetki_sistemi.sql': ['oyun.parti_gby', 'oyun.parti_teskilat_gorev', 'oyun.partiler'],
   'zz_20261116_yk_kurum_gorevleri.sql': ['oyun.mahkeme_uye', 'oyun.icisleri_atama', 'oyun.vali_havuz', 'oyun.oda', 'oyun.baro'],
   'zz_20261116_il_kongre_sistemi.sql': ['oyun.parti_gby', 'oyun.parti_teskilat_gorev', 'oyun.parti_teskilat', 'oyun.iller'],
+  'zz_20261116_kredi_denge.sql': ['oyun.krediler', 'oyun.oyb_kredi', 'oyun.kredi_kartlari', 'oyun.masak', 'oyun.yatirim_kredisi'],
+  'zz_20261116_davet_aktiflik.sql': ['oyun.davet', 'oyun.davet_ayar', 'oyun.oturumlar', 'oyun.masak', 'oyun.zamanlayici_adim'],
+  'zz_20261116_mod_gorev_finans.sql': ['oyun.moderatorler', 'oyun.masak', 'oyun.yatirim_kredisi', 'oyun.davet_aktiflik_odul'],
+  'zz_20261116_kurucu_partiler.sql': ['oyun.secim_takvim_istisna', 'oyun.zamanlayici_adim', 'oyun.parti_teskilat'],
+  'zz_20261116_kayit_onay_ad_soyad.sql': ['oyun_yonetim.kayit_basvurulari', 'oyun.moderatorler', 'oyun.yonetici_kimlik'],
 };
 const okuKosullu = ad => {
   const govde = oku(ad), tablolar = KOSULLU[ad];
@@ -38,7 +43,8 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261115_cb_parti_aday_yuzde5.sql',
   '210_rutbe_lansman_dengesi.sql', 'zz_20261116_tbmm_nisap_oy_koruma.sql', 'zz_20261116_yargi_gozalti_serbest.sql', 'zz_20261115_beta_gercekci_siyaset_kalici.sql', 'zz_20261116_aday_belirleme_dhondt.sql', 'zz_20261116_aday_riza_sifir_oy_koruma.sql', 'zz_20261116_mahkeme_cb_baro_tbmm.sql', 'zz_20261116_belediye_ertesi_gun_ara_secim.sql', 'zz_20261116_ysk_bagimsiz_itiraz_sayim.sql', 'zz_20261116_genel_baskan_secimi_uyeler.sql', 'zz_20261116_mahkeme_bagimsiz_azil_koruma.sql', 'zz_20261116_belediye_oy_disinda_atama_yasagi.sql', 'zz_20261116_belediye_bosluk_otomatik_ara_secim.sql',
   'zz_20261116_baro_mudafi_guvence.sql', 'zz_20261116_kabine_48_saat_kaldir.sql', 'zz_20261116_makam_guvenligi.sql',
-  'zz_20261116_gby_yetki_sistemi.sql', 'zz_20261116_il_kongre_sistemi.sql', 'zz_20261116_yk_kurum_gorevleri.sql', 'zz_20261116_kurulus_canli_fiyat_sartlar.sql'];
+  'zz_20261116_gby_yetki_sistemi.sql', 'zz_20261116_il_kongre_sistemi.sql', 'zz_20261116_yk_kurum_gorevleri.sql', 'zz_20261116_kurulus_canli_fiyat_sartlar.sql',
+  'zz_20261116_kredi_denge.sql', 'zz_20261116_davet_aktiflik.sql', 'zz_20261116_mod_gorev_finans.sql', 'zz_20261116_kurucu_partiler.sql', 'zz_20261116_kayit_onay_ad_soyad.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
