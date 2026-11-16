@@ -71,6 +71,49 @@ check("cbBagimsizImzaEkrani" in source, "Bağımsız CB kampanyası oyuncu ekran
 check("Gizli oylama" in source and "anayasa_tur" in source,
       "Anayasa gizli oylama turu oyuncuya gösterilir")
 
+# 16 Kasım: oyuncu iradesi, secim sonuclari, bagimsiz YSK ve mahkeme modeli.
+yeni_yamalar = [
+    "zz_20261116_aday_riza_sifir_oy_koruma.sql",
+    "zz_20261116_mahkeme_cb_baro_tbmm.sql",
+    "zz_20261116_belediye_ertesi_gun_ara_secim.sql",
+    "zz_20261116_ysk_bagimsiz_itiraz_sayim.sql",
+    "zz_20261116_genel_baskan_secimi_uyeler.sql",
+    "zz_20261116_mahkeme_bagimsiz_azil_koruma.sql",
+]
+for file in yeni_yamalar:
+    check(f"'{file}'" in builder, f"Kasım 16 yaması kurulum listesinde: {file}")
+    check((SQLDIR / file).exists(), f"Yama dosyası mevcut: {file}")
+aday_riza = sql(yeni_yamalar[0])
+mahkeme_3 = sql(yeni_yamalar[1])
+belediye_ara = sql(yeni_yamalar[2])
+ysk = sql(yeni_yamalar[3])
+kurultay = sql(yeni_yamalar[4])
+check("cb_aday_teklif_cevap" in aday_riza and "onay_bekliyor" in aday_riza,
+      "Cumhurbaşkanı adayı için bizzat oyuncunun muvafakati gerekir")
+check("coalesce(oy,0) > 0" in aday_riza and "toplam > 0" in aday_riza,
+      "Sıfır oyla parti genel başkanı, belediye başkanı veya cumhurbaşkanı seçilemez")
+check("mahkeme_aday_riza" in mahkeme_3 and "baro_mahkeme_ata" in mahkeme_3,
+      "Baro mahkeme üyesini yalnız başvuran uygun adaylardan atar")
+check("where sira=3 and kaynak='adalet'" in mahkeme_3 and "mahkeme_toplu_tick" in mahkeme_3,
+      "Adalet Bakanının otomatik mahkeme üyeliği ve tarihsel test ataması kalkar")
+check("'bel',dm" in belediye_ara and "oyun.tr_an(ilk_gun,23)" in belediye_ara,
+      "Belediye ara seçimi yalnız ilgili ilde ertesi gün sonuçlanır")
+check("ysk_yetkili" in ysk and "yeniden_sayim" in ysk and "ysk_tekrar_secim" in ysk,
+      "Partisiz bağımsız hakem oyların yeniden sayımını ve tekrarlama seçimlerini yönetir")
+check("oyun.ara_secim_olustur('gb'" in kurultay and "update oyun.partiler set gb" not in kurultay,
+      "Başkanı olmayan parti için üyelerin oy vereceği kurultay kullanılır")
+check("oyun.gercekci_siyaset()" in sql(yeni_yamalar[5]),
+      "Mahkeme üyeleri aktif vekil sayısına göre keyfi siyasi azil ile düşürülemez")
+adliye_js = (ROOT / "www" / "adliye.js").read_text(encoding="utf-8")
+rpc_yuzey = sql("159_rpc_yuzey.sql")
+for r in ["cb_aday_tekliflerim","cb_aday_teklif_cevap","mahkeme_aday_ol",
+          "mahkeme_aday_listesi","baro_mahkeme_ata","ysk_itiraz_dosyalari",
+          "ysk_secim_itiraz_ac","ysk_secim_itiraz_karar"]:
+    check(f"'{r}'" in rpc_yuzey, f"Yeni RPC kalıcı authenticated izin listesinde: {r}")
+check("cbAdayTeklifCevap" in source, "CB adaylığı kabul/ret kullanıcı ekranında")
+check("ysk_secim_itiraz_karar" in adliye_js and "adlBaroMahkemeAta" in adliye_js,
+      "YSK ve baro mahkeme atama ekranları istemcide mevcut")
+
 errors = [name for passed, name in checks if not passed]
 for passed, name in checks:
     print(("OK  " if passed else "HATA ") + name)
