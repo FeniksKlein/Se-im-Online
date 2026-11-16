@@ -3,6 +3,13 @@
 Sahibi: Ercan (FeniksKlein / Gülveren Games). Kodlama bilmiyor; **her şeyi Türkçe, sade ve adım adım anlat.**
 Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (tek dosya HTML/JS + Capacitor, Supabase arka uç).
 
+## ⚠️ KALICI TEMEL: YAYIN ÖLÇEĞİ (16.11.2026 — Ercan'ın kararı)
+- Beta dönemi ve beta için tasarlanan şartlar/kurallar **artık esas alınmaz**. Oyun yayına çıkacak ve **binlerce oyuncu** aynı anda oynayacakmış gibi tasarlanır, düzeltilir ve test edilir.
+- Hiçbir kural "şu an az oyuncu var" diye gevşetilmez ya da sıkılaştırılmaz; eşikler (nisap, kota, süre, ücret, sınır) yayın ölçeğine göre seçilir. Gerçek Türk hukuku esas; oyun temposu için kısaltılmış süreler açıkça "oyun kuralı" olarak işaretlenir.
+- Her zamanlayıcı ve RPC binlerce satırda çalışacak gibi yazılır: dizinli sorgu, sınırlı döngü (limit), tekrar çalıştırılabilir (idempotent), atomik ve loglanabilir işlem; bir kaydın hatası bütün işi kilitlemez.
+- Otomasyon tek kişiye (başkan/yetkili) bağlı kalmaz: yetkili yoksa ya da işlem yapmazsa süreli otomatik yedek mekanizma çalışır (örnek: baro müdafi görevlendirmesi).
+- Mevcut oyuncu verisi yine silinmez/sıfırlanmaz (GUNCELLEME_KURALLARI.md); ama yeni tasarım kararları beta koşullarına göre değil yayın koşullarına göre verilir.
+
 ## ⚠️ Önce bunu oku (2026-10-09)
 - **Tek doğru kaynak `gelistirici/` klasörüdür.** `www/index.html`, `docs/index.html` ve `supabase-kurulum.sql` derleme çıktısıdır; **elle düzenleme**. 8 Ekim akşamı doğrudan derlenmiş dosyalara ve canlıya yapılan değişiklikler 9 Ekim'de kaynağa geri taşındı (`gelistirici/sql/38_canli_20261008.sql`).
 - Canlıya küçük değişiklik gerekiyorsa: kaynağa yeni bir `gelistirici/sql/NN_*.sql` modülü ekle, `build/sql_birlestir.js` listesine yaz, **aynısını** `migrations/YYYYMMDD_*.sql` olarak (begin/commit içinde) Ercan'a çalıştırt.
