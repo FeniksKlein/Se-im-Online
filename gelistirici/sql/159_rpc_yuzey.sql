@@ -139,6 +139,7 @@ $yol$;
 do $izin$
 declare
   izin text[] := array[
+    'cb_aday_tekliflerim', 'cb_aday_teklif_cevap', 'mahkeme_aday_ol', 'mahkeme_aday_listesi', 'baro_mahkeme_ata', 'ysk_itiraz_dosyalari', 'ysk_secim_itiraz_ac', 'ysk_secim_itiraz_karar',
     'bakan_fezleke_listesi', 'bakan_fezleke_karar',
     'ym_fezleke_panel', 'ym_fezleke_yaz', 'ym_fezleke_imzala', 'ym_fezleke_geri_cek', 'ym_fezleke_onerge_imzala', 'ym_fezleke_oy', 'ym_fezleke_savunma', 'borsa_etki_durum', 'ortak_cari_panel', 'ortak_cari_cek', 'ortak_cari_ode', 'sirket_fatura_kes', 'sirket_fatura_iptal', 'sirket_fatura_karar', 'sirket_kisi_ode', 'sirket_fatura_panel', 'sirket_fatura_ara', 'sirket_sube_ac_kredili', 'yatirim_kredisi_ode', 'yatirim_kredisi_panel', 'sirket_kredi_al', 'oda_panel', 'oda_ozet', 'vali_ozet', 'oda_aday_ol', 'oda_aday_cekil', 'oda_oy_ver', 'oda_aidat_ode', 'oda_erken_secim_imza', 'oda_icraat', 'sendika_panel', 'sendika_kur', 'sendika_katil', 'sendika_ayril', 'sendika_islem', 'vali_durum', 'vali_basvur', 'vali_sinav_gonder', 'vali_havuz_cik', 'vali_havuz_gir', 'vali_istifa', 'vali_ata', 'vali_gorevden_al', 'tv_liste', 'tv_canli_ozet', 'tv_kanal_detay', 'tv_kanal_kur', 'tv_kanal_ayar', 'tv_kasa', 'tv_sunucu_teklif', 'tv_sunucu_yanit', 'tv_sunucu_bitir', 'tv_program_ac', 'tv_konuk_davet', 'tv_konuk_yanit', 'tv_detay', 'tv_yaz', 'tv_tepki', 'tv_oyla', 'tv_bitir', 'tv_reklam_ver', 'tv_reklam_kaynak', 'tv_reklam_karar', 'tv_reklam_iptal',
     -- 15.11.2026 TV 2.0 canlı yayın deneyimi (sql/209_tv_canli_yayin.sql)
