@@ -95,6 +95,11 @@ begin
         'oy_bas',o.oy_bas,'goreve_bas',o.goreve_bas);
     end if;
     dm := 'ara-bel-'||p_il||'-'||to_char(t at time zone 'Europe/Istanbul','YYYYMMDDHH24MISS');
+    -- Oyun sahibinin ozel kuralı: yalniz bosalan ilde ertesi gun secim.
+    -- Genel takvim duzelticisi 'on secimden sonraki gun' diye bu ozel sandigi erteleyemez.
+    insert into oyun.secim_takvim_istisna(donem,neden,onaylayan)
+    values(dm,'Belediye baskanligi bosalinca yalniz ilgili ilde ertesi gun secim; oyunun ozel belediye ara secimi kurali','Oyun sahibi (2026-11-16 karari)')
+    on conflict(donem) do nothing;
     insert into oyun.secimler(tur,donem,basvuru_bas,basvuru_bit,oy_bas,oy_bit,sonuc_at,goreve_bas,ara,hedef_il_id,ara_neden)
     values ('bel_on',dm,t,oyun.tr_an(ilk_gun,6),
       oyun.tr_an(ilk_gun,6),oyun.tr_an(ilk_gun,7),
