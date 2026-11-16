@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.16-8', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.17-1', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -78124,6 +78124,57 @@ begin
 end $g$;
 $kosullu_govde$;
 end $kosullu_dis$;
+-- zz_20261117_ad_soyad_profil.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun_yonetim.yasak_isim') is null or to_regclass('oyun.moderatorler') is null then raise notice 'zz_20261117_ad_soyad_profil.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 17.11.2026 · Ad soyad profilde görünür
+-- Kayıtta onaylanan ad soyad oyuncunun profilinde ve oyuncu kartında görünür.
+-- Kayıt onayı sisteminden önce katılmış (ad soyadı olmayan) oyuncular bir kez kendisi ekleyebilir;
+-- gerçek siyasetçi/bilinen kişi adına benzeyen isimler otomatik reddedilir. Sonraki değişiklik yalnız
+-- "makam" ya da "kayit" yetkili moderatör/yönetici tarafından yapılır.
+
+create or replace function public.oyuncu_ad_soyad(p_kad text)
+returns text language sql stable security definer set search_path to '' as $$
+  select p.ad_soyad from oyun.profiller p where lower(p.kad)=lower(btrim(coalesce(p_kad,''))) and not coalesce(p.yasakli,false)
+$$;
+
+create or replace function public.ad_soyad_belirle(p_ad_soyad text)
+returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim(); a text; u text;
+begin
+  if p.id is null then raise exception 'Giriş yapmalısın.'; end if;
+  if p.ad_soyad is not null then raise exception 'Ad soyadın zaten kayıtlı; değiştirmek için moderatöre başvur.'; end if;
+  a := oyun_yonetim.ad_soyad_kontrol(p_ad_soyad);
+  u := oyun_yonetim.isim_uyari(a);
+  if u is not null then raise exception 'Gerçek siyasetçi ya da kamuoyunca bilinen kişi adı kullanılamaz (%).', u; end if;
+  update oyun.profiller set ad_soyad=a where id=p.id;
+  return jsonb_build_object('tamam',true,'ad_soyad',a);
+end $$;
+
+create or replace function public.yk_ad_soyad_degistir(p_kad text, p_ad_soyad text)
+returns jsonb language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $$
+declare m oyun.profiller; h oyun.profiller := oyun.profil_bul(p_kad); a text;
+begin
+  begin m := oyun.yetki_zorunlu('kayit'); exception when others then m := oyun.yetki_zorunlu('makam'); end;
+  a := case when nullif(btrim(coalesce(p_ad_soyad,'')),'') is null then null else oyun_yonetim.ad_soyad_kontrol(p_ad_soyad) end;
+  update oyun.profiller set ad_soyad=a where id=h.id;
+  perform oyun.mod_log(m,'ad_soyad',h.kad,coalesce(a,'silindi'));
+  perform oyun.bildir(h.id, case when a is null then 'Ad soyadın moderatör tarafından kaldırıldı; profilinden yeniden ekleyebilirsin.' else 'Ad soyadın moderatör tarafından güncellendi: '||a||'.' end, oyun.simdi());
+  return jsonb_build_object('tamam',true,'kad',h.kad,'ad_soyad',a);
+end $$;
+
+do $g$
+declare f text;
+begin
+  foreach f in array array['public.oyuncu_ad_soyad(text)','public.ad_soyad_belirle(text)','public.yk_ad_soyad_degistir(text,text)'] loop
+    execute format('revoke all on function %s from public, anon', f);
+    execute format('grant execute on function %s to authenticated', f);
+  end loop;
+end $g$;
+$kosullu_govde$;
+end $kosullu_dis$;
 -- =====================================================================
 --  KALICILIK (son): bütünlük kontrolü, silme koruması, sürüm bilgisi, sahibin sıfırlama/geri yükleme araçları
 -- =====================================================================
@@ -78486,7 +78537,7 @@ declare
     'dernek_uye_destek_karar', 'dernek_uye_destek_liste', 'dernek_yonetim_ata', 'dernek_ziyaret_taleplerim', 'dernek_ziyaret_tamamla', 'dernek_ziyaret_teklif',
     'dernek_ziyaret_yanit', 'dernekler', 'disiplin_baslat', 'disiplin_durum', 'disiplin_oyla', 'durum', 'istemci_hata_kaydet',
     -- 08.11.2026: Halk Hareketleri ekranlarının çağırdığı ve listede eksik kalan adlar
-    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'kayit_basvuru_gonder', 'kayit_durumum', 'admin_kayit_karar2', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
+    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'kayit_basvuru_gonder', 'kayit_durumum', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
     -- 09.11.2026 Halk Hareketleri 3.0 (supabase/migrations/20261109090000_sokak_gercek_oyuncu.sql)
     'sokak_eylemden_ayril', 'sokak_goreve_cik', 'sokak_gorevden_ayril', 'sokak_karsi_katil', 'sokak_taktik_yap', 'sokak_grev_cagri', 'sokak_nabiz_ver', 'sokak_yasak_koy', 'sokak_jest_yap', 'sokak_heyet_davet', 'sokak_heyet_yanit', 'sokak_heyet_rapor', 'sokak_seslenis_yap', 'sokak_seslenis_tepki', 'sokak_karsi_cagri', 'sokak_kalkan_birak', 'sokak_saha_panel',
     -- 09.11.2026 on iki yeni hükümet aracı (supabase/migrations/20261109150000_halk_hukumet_yeni_tedbirler.sql)
