@@ -122,13 +122,14 @@ function adlSecimItirazModal(secim){
  if(!se||!partiler.length)return toast('Partiniz adına sonuç itirazı yapma yetkiniz yok.',true);
  const m=modal('<p class="alt">Yalnız sonuç açıklanmış seçimlere, açıklamadan itibaren 48 saat içinde başvuru yapılır. Somut iddia ve delil ekleyin.</p>'
  +'<div class="alan"><label>İtiraz eden parti</label><select id="adlItParti">'+partiler.map(p=>'<option value="'+p.id+'">'+e(p.ad)+'</option>').join('')+'</select></div>'
+ +(se.tur==='bel'?'<div class="alan"><label>İtiraz edilen il</label><select id="adlItIl">'+(VERI.iller||[]).map(il=>'<option value="'+il.id+'">'+e(il.ad)+'</option>').join('')+'</select></div>':'')
  +adlAlan('İtiraz gerekçesi (30–5000 karakter)','adlItGerekce','textarea')
  +adlAlan('Deliller, olay tarihleri ve kayıtlar','adlItDelil','textarea')
  +'<button class="btn altin" id="adlItGonder">Seçim sonucuna itiraz et</button>');
  adlFormBaslik(m,'Seçim #'+se.id+' · '+se.tur+' · '+se.donem);
  m.querySelector('#adlItGonder').onclick=async()=>{
   try{
-   const v=await API.rpc('adliye_secim_itiraz_ac',{p_secim:secim,p_parti:Number(m.querySelector('#adlItParti').value),p_gerekce:m.querySelector('#adlItGerekce').value,p_deliller:m.querySelector('#adlItDelil').value});
+   const v=await API.rpc('ysk_secim_itiraz_ac',{p_secim:secim,p_parti:Number(m.querySelector('#adlItParti').value),p_il:se.tur==='bel'?Number(m.querySelector('#adlItIl').value):null,p_gerekce:m.querySelector('#adlItGerekce').value,p_deliller:m.querySelector('#adlItDelil').value});
    modalKapat();toast('Seçim itirazı #'+v.id+' kaydedildi.');await adliyeEkrani();
   }catch(err){toast(hataCevir(err.message),true);}
  };
