@@ -101,9 +101,14 @@
       h += '<div class="kart"><h3>Avukat çağır</h3><p>Aktif ruhsatlı bir avukat seçin. Avukat kabul edince savunmanızı üstlenir.</p>' +
         '<label for="gzAvAra">Avukat ara (kullanıcı adı)</label><input id="gzAvAra" type="search" autocomplete="off" placeholder="Örn. avukat adı">' +
         '<button class="btn ikinci" type="button" data-gz-avara>Avukatları listele</button><div id="gzAvListe"></div></div>';
-      h += '<div class="kart"><h3>Barodan müdafi iste</h3><p>Baro başkanı dosyanıza bir avukat görevlendirir.</p>' +
-        (g.baro_talep ? '<p><span class="gz-etiket">Baro talebiniz beklemede</span></p>' :
-          '<button class="btn altin" type="button" data-gz-baroiste="' + esc(g.kaynak) + ':' + esc(g.id) + '">⚖️ Barodan müdafi iste</button>') + '</div>';
+      h += '<div class="kart"><h3>Barodan müdafi iste</h3><p>Baro başkanı dosyanıza bir avukat görevlendirir; süresinde görevlendirmezse sistem uygun avukatı kendiliğinden görevlendirir. Müdafilik ücreti sizden alınmaz.</p>' +
+        (g.baro_talep ? '<p><span class="gz-etiket">Baro talebiniz açık</span></p>' +
+            (g.baro_not ? '<p class="kucuk">' + esc(g.baro_not) + '</p>' : '') +
+            (g.baro_otomatik_at ? '<p class="kucuk">Otomatik görevlendirme en geç: ' + esc(saat(g.baro_otomatik_at)) + '</p>' : '')
+          : (g.baro_durum === 'gorevlendirildi' && g.avukat_durum === 'cagrildi')
+            ? '<p><span class="gz-etiket">Baro müdafi görevlendirdi; avukatın yanıtı bekleniyor</span></p>' +
+              (g.baro_yanit_son ? '<p class="kucuk">Yanıt gelmezse ' + esc(saat(g.baro_yanit_son)) + ' sonrasında başka avukata geçer.</p>' : '')
+          : '<button class="btn altin" type="button" data-gz-baroiste="' + esc(g.kaynak) + ':' + esc(g.id) + '">⚖️ Barodan müdafi iste</button>') + '</div>';
     }
     if ((g.aciklamalar || []).length) {
       h += '<div class="kart"><h3>Avukatınızın adınıza yaptığı açıklamalar</h3>' + g.aciklamalar.map(function (a) {
@@ -129,6 +134,9 @@
       h += '<form data-gz-aciklama="' + anahtar + '"><label>Müvekkiliniz adına Kürsü açıklaması (' + esc(m.aciklama_sayisi || 0) + '/12)</label>' +
         '<textarea name="metin" minlength="15" maxlength="850" required placeholder="Müvekkilim adına kamuoyuna açıklama…"></textarea>' +
         '<button class="btn altin" type="submit">📢 Açıklamayı yayınla</button><small>Açıklama Kürsü\'de sizin adınızla, müvekkilinizin adı belirtilerek yayınlanır. Dosya başına 10 dakikada bir, en çok 12.</small></form>';
+      h += '<details><summary>Görevden çekil</summary><form data-gz-cekil="' + anahtar + '"><label>Çekilme gerekçesi</label>' +
+        '<textarea name="gerekce" minlength="10" maxlength="300" required placeholder="Görevden çekilme nedeniniz…"></textarea>' +
+        '<button class="btn ikinci" type="submit">Müdafilikten çekil</button><small>Çekildiğinizde baro müvekkilinize derhal yeni müdafi görevlendirir (CMK m.151).</small></form></details>';
     }
     return h + '</div>';
   }
@@ -140,7 +148,9 @@
       var h = '<div class="gz-dosya"><h4>' + esc(g.hedef_kad) + '</h4>' +
         '<span class="gz-etiket">' + esc(KAYNAK[g.kaynak] || g.kaynak) + ' #' + esc(g.id) + '</span>' +
         '<span class="gz-etiket kirmizi">' + esc(kalan(g.bitis)) + ' kaldı</span>' +
-        (g.baro_talep ? '<span class="gz-etiket" style="background:#5a4314;color:#ffe2a6">Müdafi istedi</span>' : '') +
+        (g.baro_talep ? '<span class="gz-etiket" style="background:#5a4314;color:#ffe2a6">Müdafi istedi</span>' +
+          (g.baro_otomatik_at ? '<span class="gz-etiket">Otomatik: ' + esc(saat(g.baro_otomatik_at)) + '</span>' : '') : '') +
+        (g.baro_not ? '<p class="kucuk" style="margin:6px 0 0">' + esc(g.baro_not) + '</p>' : '') +
         (g.avukat_kad ? '<span class="gz-etiket ' + (g.avukat_durum === 'kabul' ? 'yesil' : '') + '">' + esc(g.avukat_kad) + ' · ' + esc(AVDURUM[g.avukat_durum] || g.avukat_durum) + '</span>' : '');
       if (g.avukat_durum !== 'kabul') {
         h += '<form data-gz-barogonder="' + anahtar + '"><label>Görevlendirilecek avukatın kullanıcı adı</label>' +
@@ -244,7 +254,7 @@
     if (t.hasAttribute("data-gz-baroiste")) {
       ev.preventDefault();
       var p = parca(t.getAttribute("data-gz-baroiste"));
-      islem(t, async function () { await rpc("gozalti_baro_iste2", { p_kaynak: p.kaynak, p_id: p.id }); bilgi("Barodan müdafi istendi."); await ekran(); });
+      islem(t, async function () { var rr = await rpc("gozalti_baro_iste2", { p_kaynak: p.kaynak, p_id: p.id }); bilgi((rr && rr.mesaj) || "Barodan müdafi istendi."); await ekran(); });
       return;
     }
     if (t.hasAttribute("data-gz-yanit")) {
@@ -264,6 +274,10 @@
     } else if (f.hasAttribute("data-gz-barogonder")) {
       ev.preventDefault(); var b = parca(f.getAttribute("data-gz-barogonder"));
       islem(btn, async function () { await rpc("gozalti_baro_gonder2", { p_kaynak: b.kaynak, p_id: b.id, p_avukat_kad: String(d.get("avukat") || "").trim() }); bilgi("Müdafi gönderildi."); await ekran(); });
+    } else if (f.hasAttribute("data-gz-cekil")) {
+      ev.preventDefault(); var ck = parca(f.getAttribute("data-gz-cekil"));
+      if (!window.confirm("Bu müdafilikten çekilmek istiyor musunuz? Baro müvekkilinize yeni müdafi görevlendirecek.")) return;
+      islem(btn, async function () { await rpc("gozalti_avukat_cekil", { p_kaynak: ck.kaynak, p_id: ck.id, p_gerekce: String(d.get("gerekce") || "").trim() }); bilgi("Görevden çekildiniz; baro yeni müdafi görevlendiriyor."); await ekran(); });
     } else if (f.hasAttribute("data-gz-karar")) {
       ev.preventDefault(); var kad = String(d.get("kad") || "").trim();
       if (!window.confirm(kad + " hakkında gözaltı kararı vermek istiyor musunuz?")) return;

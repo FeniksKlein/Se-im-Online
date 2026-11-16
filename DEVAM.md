@@ -9,6 +9,17 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 16.11.2026 — 2026.11.16-2…4 Baro müdafi güvencesi, 48 saat kabine kuralı kaldırıldı, makam güvenliği (kısmen canlıda)
+- İstek (Ercan): kapsamlı hata düzeltme ve gerçekçi siyaset güncellemesi (baro/müdafi → 48 saat kabine → erken seçim/makam güvenliği → GBY yetkileri → il başkanlığı/kongre).
+- Yedek `yedek_20261116_112414_425961`.
+- **Canlıda:** `baro_mudafi_guvence_a/b/c/d_20261116` (kaynak `gelistirici/sql/zz_20261116_baro_mudafi_guvence.sql`), `kabine_48_saat_kaldir_20261116` (`zz_20261116_kabine_48_saat_kaldir.sql`), `goreve_baslat_sira_sutunu_acil_duzeltme_20261116`.
+- **Canlıya uygulanmayı bekliyor:** `zz_20261116_makam_guvenligi.sql` (iptal seçim kilidi, hedefli MV ara seçimi koruması, yeniden seçilen CB'nin kabinesinin korunması, `yk_gorev_kayip_raporu`). Supabase bu işlemde sahibin onayını istediği için uygulanamadı; test `gelistirici/test/makam_guvenligi_canli_test.sql`.
+- Baro: gözaltı müdafi talebi `oyun.gozalti_mudafi_tick` (zamanlayıcı `gozalti_mudafi`, 1 dk) ile değerlendirilir. Başkana 15 dk (`mudafi_baskan_sure_dk`), avukata 20 dk yanıt (`mudafi_yanit_sure_dk`), avukat başına en çok 3 açık gözaltı (`mudafi_azami_dosya`). Sıra: gönüllü → aynı il → az dosya → uzun süredir görev almamış. Engeller `oyun.mudafi_engel` (ruhsat, baro, kısıt, görev engeli, gözaltı, kararı veren, CB/İçişleri Bakanı, yük). Avukat yoksa talep açık kalır ve gerekçe yazılır. Kabulde CMK ücreti (`cmk_mudafi_ucret` 5.000 ₺) baro kasasından ödenir, gözaltındakinden alınmaz. Yeni RPC `gozalti_avukat_cekil`, `gozalti_mudafi_gecmis`; kayıt `oyun.mudafi_islem`. Ceza davasında (hakaret, iftira, rüşvet, yolsuzluk, usulsüzlük) sanığın baro talebi `cmk=true`, ücretsiz, 30 dk.
+- Kabine: `cb_kabine_tick` yalnız bilgi verir (24 saatte bir), görev düşürmez; atama engeli kaldırıldı. Eski 2.009 hata: düşürme işlemindeki `gazete_ekle('siyaset')` `gazete_tur_check`'e takılıyordu.
+- **Acil bulgu:** 15.11 `20261115194500_gorev_uyum_gercek_hukuk.sql` ile gelen `goreve_baslat` olmayan `kazananlar.sira` sütununa göre sıralıyordu; ilk göreve başlatmada (17.11 belediye ara seçimi) çökecekti. Canlıda düzeltildi.
+- `sql_birlestir.js`: canlıda Supabase migration'larıyla kurulan tablolara dayanan dosyalar `KOSULLU` listesiyle koşullu çalışır (tablo yoksa atlanır).
+- Ön yüz: `gelistirici/www/gozalti_merkezi.js` (baro talebi gerekçesi/otomatik süre, avukat için "Görevden çekil").
+
 ## 16.11.2026 — 2026.11.16-1 Aday belirleme usulü (ön seçim / GB ataması), gerçek D'Hondt + %7, 7 kurucu (canlıya uygulandı)
 - İstek (Ercan): online oyun piyasaya çıkıyor, Türk siyaseti gerçekteki gibi olsun; herkes vekil olamasın; partiler adaylarını ön seçimle ya da GB atamasıyla belirlesin (kuruluşta sorulsun, sonradan değişebilsin); vekiller il sandalye sayısına göre D'Hondt + ülke/ittifak barajıyla seçilsin; parti kurma şartı 7 oyuncu.
 - Yedek `yedek_20261116_100055_747806`. Canlı adı `aday_belirleme_dhondt_20261116`; kaynak `gelistirici/sql/zz_20261116_aday_belirleme_dhondt.sql` (= `migrations/20261116_*`, `supabase/migrations/20261116100000_*`).
