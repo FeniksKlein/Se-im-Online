@@ -77708,7 +77708,7 @@ declare
     'eko_islem', 'eko_magaza_hazirla', 'eko_otomasyon_ayarla', 'eko_otomasyon_panel', 'eko_panel', 'eko_ticaret_islem',
     'eko_ticaret_panel', 'eko_vergi_kanun_teklif', 'eko_vergi_panel', 'ekonomi_yasa_durum', 'ekonomi_yasa_teklif', 'emlak_pazarlik_alici_yanit',
     'emlak_pazarlik_satici_yanit', 'emlak_pazarlik_teklif', 'emlak_pazarliklarim', 'engel_kaldir', 'engelle', 'engellenenler',
-    'erken_secim_oy', 'erken_secim_teklif', 'fiyat_tarifesi', 'gazete', 'gazete_abone_ol',
+    'erken_secim_oy', 'erken_secim_teklif', 'fiyat_tarifesi', 'kurulus_canli_kurallar', 'gazete', 'gazete_abone_ol',
     'gazete_ayar', 'gazete_detay', 'gazete_kose_yorum_sil', 'gazete_kose_yorum_yaz', 'gazete_kose_yorumlar', 'gazete_kur',
     'dergi_raf', 'dergi_kur', 'dergi_sayi_yayinla', 'dergi_sayi_detay', 'dergi_sayi_satinal', 'dergi_kapat',
     'gazete_para_cek', 'gazete_yayinla', 'gazete_yazar_cikar', 'gazete_yazar_teklif', 'gazete_yazar_yanit', 'gby_ata',
