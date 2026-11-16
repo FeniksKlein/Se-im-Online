@@ -66,7 +66,7 @@ body+=list.map(function(d){
  }).join("");
  for(var type of ["doviz","kuyumcu"]){if(!list.some(function(d){return d.tur===type;})){
   body+=card(type==="kuyumcu"?"Kuyumcu aç":"Döviz bürosu aç",
-   '<p class="alt">Asgari sermaye 100.000 ₺ · açılış ruhsatı 5.000 ₺. Kalan sermaye dükkân kasasına geçer. Bu ilk sürümde kuyumcuda gram altın ticareti yapılır.</p>'+
+   '<p class="alt">Asgari sermaye sunucuda belirlenir · açılış ruhsatı 5.000 ₺. Kalan sermaye dükkân kasasına geçer. Bu ilk sürümde kuyumcuda gram altın ticareti yapılır.</p>'+
    btn("Yeni dükkân aç","meslekDukkanAcModal(\'"+type+"\')","altin"));
  }}
  return body;
@@ -106,12 +106,16 @@ function dialog(title,info,fields,commit){
  try{await commit(m);}finally{b.disabled=false;}};return m;
 }
 function numberField(id,label,value,step){return '<div class="alan"><label>'+h(label)+'</label><input id="'+id+'" type="number" min="0" step="'+(step||"1")+'" value="'+h(value)+'" inputmode="decimal"></div>';}
-window.meslekDukkanAcModal=function(tur){
- dialog(tur==="kuyumcu"?"Kuyumcu aç":"Döviz bürosu aç","Kuruluş bedeli sermayeden 5.000 ₺ kesilir. Asgari sermaye 100.000 ₺.",
+window.meslekDukkanAcModal=async function(tur){
+ var asgari;
+ try{asgari=Number((await API.rpc("kurulus_canli_kurallar")).meslek_min);
+   if(!Number.isFinite(asgari)||asgari<=0)throw Error("Geçersiz tutar");
+ }catch(err){return toast("Canlı dükkân kuruluş şartları alınamadı.",true);}
+ dialog(tur==="kuyumcu"?"Kuyumcu aç":"Döviz bürosu aç","Kuruluş bedeli sermayeden 5.000 ₺ kesilir. Sunucudaki asgari sermaye "+money(asgari)+".",
  '<div class="alan"><label>Dükkân adı</label><input id="mzName" type="text" maxlength="60" placeholder="Örnek: Feniks Döviz"></div>'+
- numberField("mzCapital","Kuruluş sermayesi (TL)",100000,1000),async function(el){
+ numberField("mzCapital","Kuruluş sermayesi (TL)",asgari,1000),async function(el){
  var ad=el.querySelector("#mzName").value.trim(),v=Number(el.querySelector("#mzCapital").value);
- if(ad.length<3||!Number.isSafeInteger(v)||v<100000||v>100000000)return toast("Dükkân adı veya sermayesi geçersiz.",true);
+ if(ad.length<3||!Number.isSafeInteger(v)||v<asgari||v>100000000)return toast("Dükkân adı veya sermayesi geçersiz.",true);
  if(!await onayla("Dükkânı aç",money(v)+" şahsi cüzdanından tahsil edilecek; 5.000 ₺ ruhsat gideridir.","Aç"))return;
  await run("meslek_dukkan_ac",{p_tur:tur,p_ad:ad,p_sermaye:v});
  });
