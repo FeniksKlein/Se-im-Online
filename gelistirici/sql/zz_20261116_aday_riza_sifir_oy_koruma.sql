@@ -143,7 +143,7 @@ begin
   end if;
 
   return public.durum();
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION oyun._sonuc_cok_alanli(s oyun.secimler)
@@ -171,7 +171,7 @@ begin
   return jsonb_build_object('katilim', (select count(*) from oyun.oylar where secim_id = s.id),
                             'kazananlar', liste,
                             'adaylar', coalesce((select jsonb_agg(oyun.aday_json(a.id) order by a.il_id, a.parti_id, a.oy desc) from oyun.adaylar a where a.secim_id = s.id), '[]'::jsonb));
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION oyun._sonuc_cb(s oyun.secimler)
@@ -313,7 +313,7 @@ begin
     'adaylar', adaylar_j,
     'ikinci_tur', true
   );
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION oyun._sonuc_cb2(s oyun.secimler)
@@ -335,5 +335,5 @@ begin
     perform oyun.olay('secim', format('Cumhurbaşkanı ikinci turda seçildi: %s.', (select kad from oyun.profiller where id = k.user_id)), null, k.parti_id, s.sonuc_at);
   end if;
   return jsonb_build_object('toplam', toplam, 'adaylar', adaylar_j, 'kazanan', case when k.id is null or toplam=0 or coalesce(k.oy,0)=0 then null else oyun.aday_json(k.id) end);
-end $function$
+end $function$;
 
