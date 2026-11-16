@@ -947,7 +947,7 @@ async function profilOlusturEkrani(){
     <h1 style="font-size:26px">Siyasete ilk adım</h1>
     <p class="giris">Oyundaki adını ve siyaset yapacağın ili seç. İlini sonradan değiştirebilirsin (30 günde bir, seçim dönemleri dışında).</p>
     <div class="alan"><label>Kullanıcı adı (3-20 karakter, değiştirilemez)</label><input id="kad" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-    ${D.durum && D.durum.kayit_durumu ? `<div class="alan"><label>Ad soyad (başvurunu inceleyen moderatör görür)</label><input id="adsoyad" maxlength="50" autocomplete="name" placeholder="Örn. Ayşe Demir"></div>
+    ${D.durum && D.durum.kayit_durumu ? `<div class="alan"><label>Ad soyad (profilinde görünür; başvurunu moderatör inceler)</label><input id="adsoyad" maxlength="50" autocomplete="name" placeholder="Örn. Ayşe Demir"></div>
     <div class="kart" style="border-left:3px solid var(--kirmizi,#c62828)"><b>Kayıt kuralı</b><div class="kucuk">Her başvuru moderatör onayından geçer; onaylanmadan oyuna başlanamaz. <b>Gerçek siyasetçilerin (ya da kamuoyunca bilinen gerçek kişilerin, örgüt liderlerinin) ad ve soyadını seçenlerin başvurusu reddedilir.</b> Reddedilirsen aynı e-posta ve şifreyle, farklı bir ad soyad yazarak yeniden başvurabilirsin.</div><div class="kucuk" id="kayitRed" style="margin-top:6px"></div></div>` : ""}
     <div class="alan"><label>İlin</label><select id="il"><option value="">İl seç…</option>${iller.map(i => {
       const h = hm[i.id];
@@ -2733,6 +2733,7 @@ async function benEkrani(){
   iskelet("Profilim", `
     <div class="kart"><div style="display:flex;gap:14px;align-items:center;margin-bottom:6px">${typeof portre === "function" ? portre(p.kad, p.parti && p.parti.renk, 72) : ""}<div style="min-width:0"><h3>${e(p.kad)}</h3>${kim && kim.biyografi ? `<div class="alt">${e(kim.biyografi)}</div>` : `<div class="alt">Henüz biyografin yok.</div>`}</div></div>
       <button class="btn altin" onclick="portreModal()">Portreni ve biyografini düzenle</button>
+      <div class="kv"><span class="k">Ad soyad</span><span class="v" id="profAdSoyad">…</span></div>
       <div class="kv"><span class="k">İl</span><span class="v">${e(p.il_ad)}</span></div>
       <div class="kv"><span class="k">Parti</span><span class="v">${partiRozet(p.parti)}</span></div>
       <div class="kv"><span class="k">Görev</span><span class="v">${e(p.makamlar.map(makamYaz).join(", ")) || (p.gb ? "Genel Başkan" : p.gby ? "GB Yardımcısı" : "—")}</span></div>
@@ -3018,9 +3019,16 @@ async function oyuncuKart(kad){
   const m = modal(`<div class="yukleniyor">Yükleniyor…</div>`);
   let k; try { k = await API.rpc("oyuncu_kart", { p_kad: kad }); } catch (err) { m.querySelector(".modal").innerHTML = `<div class="bos">${e(hataCevir(err.message))}</div>`; return; }
   if (typeof kimlikYukle === "function") { KIMLIK.delete(String(k.kad).toLocaleLowerCase("tr")); await kimlikYukle([k.kad]); }
+  const adSoyadP = API.rpc("oyuncu_ad_soyad", { p_kad: k.kad }).catch(() => null);
+  setTimeout(async () => { const a = await adSoyadP, el = m.querySelector("[data-adsoyad]"); if (!el) return; if (a) el.textContent = a;
+    const yt = typeof yetkim === "function" ? yetkim() : null;
+    if (yt && (yt.var_("kayit") || yt.var_("makam"))) { el.insertAdjacentHTML("beforeend", ` <button class="rozet" data-adsoyad-duzelt>Ad soyadı düzelt</button>`);
+      el.querySelector("[data-adsoyad-duzelt]").onclick = async () => { const v = prompt("Yeni ad soyad (boş bırakırsan silinir; oyuncu yeniden ekleyebilir):", a || ""); if (v === null) return;
+        try { const r = await API.rpc("yk_ad_soyad_degistir", { p_kad: k.kad, p_ad_soyad: v }); toast("Ad soyad güncellendi."); el.firstChild && (el.firstChild.textContent = r.ad_soyad || ""); } catch (err) { toast(hataCevir(err.message), true); } }; }
+  }, 0);
   const kim = typeof kimlik === "function" ? kimlik(k.kad) : null;
   m.querySelector(".modal").innerHTML = `<div class="tutamak"></div>
-    <div style="display:flex;gap:14px;align-items:center">${typeof portre === "function" ? portre(k.kad, k.parti && k.parti.renk, 72) : amblemKutu(k.parti, 56)}<div style="min-width:0"><h3 style="font-size:26px">${e(k.kad)}</h3>
+    <div style="display:flex;gap:14px;align-items:center">${typeof portre === "function" ? portre(k.kad, k.parti && k.parti.renk, 72) : amblemKutu(k.parti, 56)}<div style="min-width:0"><h3 style="font-size:26px">${e(k.kad)}</h3><div class="kucuk" data-adsoyad="${e(k.kad)}"></div>
       ${k.unvan ? `<div style="color:var(--gold2);font-weight:700;font-size:14px">${e(k.unvan)}</div>` : ""}
       <div class="alt">${e(k.il_ad)} · ${partiRozet(k.parti, true)}${k.statu ? ` · <span style="color:var(--gold2)">${e(k.statu.ad)}</span>` : ""}</div></div></div>
     ${kim && kim.biyografi ? `<p style="margin-top:10px;font-size:15px;line-height:1.45">${e(kim.biyografi)}</p>` : ""}

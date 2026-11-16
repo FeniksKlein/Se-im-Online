@@ -81,3 +81,26 @@
   window.davetEkrani = davetEkrani;
   window.finansMasasiEkrani = finansMasasiEkrani;
 })();
+
+/* 17.11.2026 · Profilim: ad soyad gösterimi ve (yoksa) bir kez ekleme */
+(function () {
+  if (typeof iskelet !== "function") return;
+  const eski = iskelet;
+  window.iskelet = iskelet = function (baslik) {
+    const r = eski.apply(this, arguments);
+    if (baslik === "Profilim") setTimeout(async () => {
+      const el = document.getElementById("profAdSoyad"), p = D.durum && D.durum.profil;
+      if (!el || !p) return;
+      let a = null; try { a = await API.rpc("oyuncu_ad_soyad", { p_kad: p.kad }); } catch (_) {}
+      if (a) { el.textContent = a; return; }
+      el.innerHTML = '<button class="rozet altin" id="adSoyadEkle">Ad soyad ekle</button>';
+      document.getElementById("adSoyadEkle").onclick = async () => {
+        const v = prompt("Ad soyadını yaz (profilinde görünür, bir kez eklenir). Gerçek siyasetçi ya da kamuoyunca bilinen kişi adı kullanılamaz.", "");
+        if (v === null) return;
+        try { const s = await API.rpc("ad_soyad_belirle", { p_ad_soyad: v }); el.textContent = s.ad_soyad; toast("Ad soyadın profiline eklendi."); }
+        catch (err) { toast(hataCevir(err.message), true); }
+      };
+    }, 0);
+    return r;
+  };
+})();
