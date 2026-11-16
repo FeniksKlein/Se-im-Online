@@ -36,10 +36,22 @@ const GROUPS=[
  ["pazar:geri_donusum","♻️ Geri dönüşüm tesisi","kur_pazar","service"]
 ];
 async function sirketTumTurKur(onayli){
-  let permits,market;
-  try{[permits,market]=await Promise.all([API.rpc("bel_ruhsat_merkezi"),API.rpc("pazar_katalog")]);}
+  let permits,market,rules;
+  try{[permits,market,rules]=await Promise.all([API.rpc("bel_ruhsat_merkezi"),API.rpc("pazar_katalog"),API.rpc("kurulus_canli_kurallar")]);}
   catch(err){toast("Şirket türleri ve ruhsatlar yüklenemedi: "+String(err.message||err),true);return;}
-  const minMap=Object.fromEntries((market.sektorler||[]).map(x=>["pazar:"+x.kod,Number(x.min_sermaye)||100000]));
+  const minMap=Object.fromEntries((market.sektorler||[]).map(x=>[x.kod,Number(x.min_sermaye)]));
+  // The server's establishment tariff is authoritative.
+  const minFor=sector=>{
+    if(sector==="banka")return Number(rules.banka_min);
+    if(sector==="ajans")return Number(rules.ajans_min);
+    const code=sector.startsWith("pazar:")?sector.slice(6):
+      ["fastfood","kahve","sigorta"].includes(sector)?"ticaret":sector;
+    const min=Number(rules.sektorler?.[code]??minMap[code]);
+    return Number.isFinite(min)&&min>0?min:100000;
+  };
+  const rankRequirement=sector=>sector==="banka"?Number(rules.banka_statu):
+    sector==="ajans"?Number(rules.ajans_statu):Number(rules.sirket_statu);
+  const rankNames=["Yeni Gelen","Vatandaş","Saygın Vatandaş","Kanaat Önderi","Duayen","Yaşayan Efsane"];
   const home=Number(market.benim_il)||1;
   const allCities=Array.isArray(permits.iller)?permits.iller:[];
   const cityList=allCities.length?allCities.map(x=>'<option value="'+Number(x.id)+'">'+safe(x.ad)+'</option>').join(""):
@@ -80,7 +92,7 @@ async function sirketTumTurKur(onayli){
   };
   function update(){
     const info=current(),sektor=info[0],category=info[3];
-    const min=sektor==="banka"?1000000:sektor==="ajans"?150000:(minMap[sektor]||100000);
+    const min=minFor(sektor);
     el("stkMoney").min=String(min);
     if(Number(el("stkMoney").value)<min)el("stkMoney").value=String(min);
     el("stkProdBox").style.display=category==="factory"?"":"none";
@@ -95,7 +107,7 @@ async function sirketTumTurKur(onayli){
       category==="agency"?"Oyunculara reklam kampanyası ve kamuoyu anketi satar; fiyat ve çalışan kapasitesini yönet.":
       sektor==="banka"?"Mevduat, kredi, faiz, banka kasası ve finans işlemleri.":
       "Sözleşmeler, ortaklıklar ve haftalık faaliyet geliri-gideri.";
-    el("stkDescription").textContent=how+" Asgari sermaye: "+cash(min)+".";
+    el("stkDescription").textContent=how+" Sunucudaki asgari sermaye: "+cash(min)+". Gerekli rütbe: "+(rankNames[rankRequirement(sektor)]||"Sunucu kontrolü")+". Şirket hakkı ve ruhsat şartları sunucuda ayrıca denetlenir.";
     el("stkPermit").textContent=info[2]==="none"?"Banka türü mevcut kuruluş ve finans kurallarına tabidir.":
       permission(info)?"✅ Onaylı belediye ruhsatı bulundu. Kuruluşta harç kesilir.":
       "✅ Şirketi kurduğunda kuruluş ruhsatı sistem tarafından anında onaylanacak. Harç kuruluşta tahsil edilir.";
@@ -106,7 +118,7 @@ async function sirketTumTurKur(onayli){
   el("stkLicense").onclick=()=>{modalKapat();ekranAc(belRuhsatMerkeziEkrani);};
   el("stkCreate").onclick=async function(){
     const info=current(),sector=info[0],category=info[3],company=name.value.trim(),capital=Number(el("stkMoney").value),
-      loc=Number(city.value),min=sector==="banka"?1000000:sector==="ajans"?150000:(minMap[sector]||100000);
+      loc=Number(city.value),min=minFor(sector);
     if(company.length<3||company.length>50){toast("Şirket adı 3–50 karakter olmalı.",true);return;}
     if(!Number.isSafeInteger(capital)||capital<min||capital>100000000){toast("Sermaye "+cash(min)+" ile 100.000.000 ₺ arasında tam sayı olmalı.",true);return;}
     if(!Number.isInteger(loc)||loc<1||loc>81){toast("Geçerli bir faaliyet ili seç.",true);return;}
@@ -167,36 +179,69 @@ async function sirketTumTurKur(onayli){
 }
 window.sirketTumTurKur=sirketTumTurKur;
 
-window.sirketSehirSubesiAc=function(id){
+window.sirketSehirSubesiAc=async function(id){
   id=Number(id);
   if(!Number.isSafeInteger(id)||id<=0)return;
   const iller=(Array.isArray(VERI?.iller)?VERI.iller:[]).slice().sort((a,b)=>a.ad.localeCompare(b.ad,"tr"));
   if(!iller.length){toast("Şehir listesi yüklenmedi. Sayfayı yenileyip tekrar dene.",true);return;}
   const popup=modal('<h3>🏢 Yeni şirket şubesi</h3>'+
-    '<p class="alt">Şirketin sektörü ve senin ikamet ilin ne olursa olsun Türkiye\'deki 81 ilden birinde şube açabilirsin. '+
-    'Şube açılış bedeli 25.000 ₺ şirket kasasından tahsil edilir. Aynı şehirde ikinci kez şube açılmaz.</p>'+
+    '<p class="alt">81 ilin herhangi birinde şube açabilirsin. Açılış yatırım bedeli sektöre, ile, stok ve personel maliyetlerine göre sunucu tarafından hesaplanır. İşletme rezervi şirket kasasında korunur; aynı ilde ikinci şube açılamaz.</p>'+
     '<div class="alan"><label>Şubenin açılacağı il</label><select id="stkBranchCity">'+
     iller.map(x=>'<option value="'+Number(x.id)+'">'+safe(x.ad)+'</option>').join("")+'</select></div>'+
-    '<button class="btn altin" id="stkBranchSubmit">Şubeyi aç</button>'+
+    '<div id="stkBranchOffer" class="kart"><p class="alt">Canlı şube maliyeti sorgulanıyor…</p></div>'+
+    '<button class="btn altin" id="stkBranchSubmit" disabled>Şube yatırımını onayla</button>'+
     '<button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
   const root=popup&&typeof popup.querySelector==="function"?popup:document;
-  const btn=root.querySelector("#stkBranchSubmit"),select=root.querySelector("#stkBranchCity");
-  if(!btn||!select){toast("Şube formu açılamadı.",true);return;}
+  const btn=root.querySelector("#stkBranchSubmit"),select=root.querySelector("#stkBranchCity"),offer=root.querySelector("#stkBranchOffer");
+  if(!btn||!select||!offer){toast("Şube formu açılamadı.",true);return;}
+  let seq=0;
+  const teklif=async()=>{
+    const request=++seq,il=Number(select.value);
+    btn.disabled=true;
+    offer.innerHTML='<p class="alt">Canlı şube maliyeti hesaplanıyor…</p>';
+    try{
+      const d=await API.rpc("sirket_sube_teklif",{p_sirket:id,p_il:il});
+      if(request!==seq)return null;
+      btn.disabled=false;
+      offer.innerHTML='<div class="kv"><span>Dekorasyon ve donanım</span><b>'+cash(d.dekorasyon_donanim)+'</b></div>'+
+        '<div class="kv"><span>Kira depozitosu</span><b>'+cash(d.depozito)+'</b></div>'+
+        '<div class="kv"><span>İlk stok</span><b>'+cash(d.ilk_stok)+'</b></div>'+
+        '<div class="kv"><span>Personel hazırlığı</span><b>'+cash(d.personel_hazirlik)+'</b></div>'+
+        '<div class="kv"><span>Ruhsat</span><b>'+cash(d.izin_ruhsat)+'</b></div>'+
+        '<div class="kv"><span>Toplam açılış gideri</span><b>'+cash(d.acilis_maliyeti)+'</b></div>'+
+        '<div class="kv"><span>Kasada kalacak işletme rezervi</span><b>'+cash(d.isletme_rezervi)+'</b></div>'+
+        '<div class="kv"><span>Toplam gerekli şirket kasası</span><b>'+cash(d.gerekli_kasa)+'</b></div>'+
+        '<div class="kv"><span>Mevcut kasa</span><b>'+cash(d.mevcut_kasa)+'</b></div>'+
+        (d.yeterli?'<p class="alt">Yatırım ve rezerv için kasa yeterli.</p>':
+          '<p class="alt">Kasada '+cash(d.eksik)+' eksik. Şirkete sermaye aktarılmalı.</p>')+
+        (d.haftalik_net==null?'':'<div class="kv"><span>Tahmini haftalık net</span><b>'+cash(d.haftalik_net)+'</b></div>');
+      return d;
+    }catch(err){
+      if(request===seq)offer.innerHTML='<p class="alt">'+safe(String(err.message||err))+'</p>';
+      return null;
+    }
+  };
+  select.onchange=()=>{teklif();};
+  await teklif();
   btn.onclick=async function(){
     const il=Number(select.value);
     if(!Number.isInteger(il)||il<1||il>81)return;
-    if(!await onayla("Şube açılışı","Seçilen ilde şube açmak için şirket kasasından 25.000 ₺ tahsil edilecek.","Aç"))return;
+    // Refresh before confirmation; a stale quote is not acceptable.
+    const d=await teklif();
+    if(!d)return;
+    if(!d.yeterli){toast("Şirket kasası şube yatırımı ve işletme rezervi için yetersiz.",true);return;}
+    if(!await onayla("Şube yatırımını onayla",safe(d.il)+" şubesi için "+cash(d.acilis_maliyeti)+
+      " şirket kasasından tahsil edilecek. "+cash(d.isletme_rezervi)+" işletme rezervi korunacak. Onaylıyor musun?","Aç"))return;
     btn.disabled=true;
     try{
       const r=await API.rpc("sirket_sube_ac_ilde",{p_sirket:id,p_il:il});
       modalKapat();
-      toast((r.il||"Seçilen il")+" şubesi açıldı.");
+      toast((r.il||"Seçilen il")+" şubesi "+cash(r.acilis_maliyeti)+" yatırım bedeliyle açıldı.");
       await window.sirketPortfoyDetay(id);
     }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message||err),true);}
     finally{btn.disabled=false;}
   };
 };
-
 
 const originalList=window.sirketYonetimEkrani;
 if(typeof originalList==="function"){
@@ -273,7 +318,7 @@ if(typeof originalDetail==="function"){
        out.innerHTML='<h3>📍 Şirket merkezi ve şubeler</h3>'+
          '<div class="kv"><span>Şirket merkezi</span><b>'+safe(head.il||"İl #"+head.il_id)+'</b></div>'+
          rows+(places.yonetici?
-         '<button class="btn altin" onclick="sirketSehirSubesiAc('+sid+')">🏢 İstediğin ilde şube aç · '+cash(places.acilis_bedeli)+'</button>':'');
+         '<button class="btn altin" onclick="sirketSehirSubesiAc('+sid+')">🏢 İstediğin ilde şube aç · canlı maliyet teklifi al</button>':'');
        panel.insertAdjacentElement("afterend",out);
      }catch(err){
        console.warn("Şirket şube bilgileri yüklenemedi:",err);
