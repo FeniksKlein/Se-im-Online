@@ -75331,6 +75331,13 @@ begin
     perform oyun.olay('meclis', format('Yüksek Mahkeme üyesi %s hakkındaki görevden alma teklifi reddedildi (%s kabul, %s gerekli).', oyun.kad(a.uye), kabul, gerek), null, null, t);
   end if;
 end $function$;
+-- Belediye baskanligi sadece sandikla kazanilir; yeni profil kaydi bos makama atama yapmaz.
+drop trigger if exists yeni_oyuncu_baskan_ata on oyun.profiller;
+create or replace function oyun.bos_belediyeye_otomatik_ata(p_oyuncu uuid)
+returns smallint language plpgsql security definer set search_path to '' as $fn$
+begin
+ return null;
+end $fn$;
 -- zz_20261116_baro_mudafi_guvence.sql (koşullu)
 do $kosullu_dis$
 begin
