@@ -71,3 +71,9 @@ Bu bir *yayın sözleşmesi ve uygulanan/yayın öncesi tamamlanacak koşullar* 
 - Başkanlık 4. turu en az 200 katılım olmadan kesinleşmez. Kanun oylaması ret gerekçesindeki nisap ifadesi doğru hesaplanır.
 - Bu yamalar oyuncu, oy geçmişi, para, parti veya makam verilerini silmez. Sunucu migration başarılı ve sonuçları SQL ile doğrulanmıştır. Kalıcı kaynak: `gelistirici/sql/zz_20261116_tbmm_nisap_oy_koruma.sql`.
 - Oyun uyarlamaları (süre sıkıştırması, 7 oyunculu parti kuruluşu, bağımsız CB adaylığında 100.000 gerçek seçmen yerine oran) hukukî birebir kopya olarak sunulmaz.
+
+## 16 Kasım — Gözaltı yargısal denetim ve derhal tahliye düzeltmesi
+
+Anayasa md.19 ile md.138 uyarınca, gerçekçi siyasette mahkeme kararı hukuka aykırı gözaltıyı derhal bitirir; Cumhurbaşkanının ayrı tahliye onayı beklenmez. İki mevcut güvenlik denetimli RPC işlevi güncellenmiştir: `public.sokak_gozalti_hakim_incele`, `public.sokak_gozalti_mahkeme`. Mahkeme kararı mesajı ve oyun durum değişikliği uyumlu hale getirildi. Canlı Supabase migration başarıyla uygulandı, işlevlerin yeni kaynakları SQL ile doğrulandı. Kalıcı kaynak: `gelistirici/sql/zz_20261116_yargi_gozalti_serbest.sql`.
+
+**İleride çözülecek ayrı hukuk farkı:** Cumhurbaşkanı/İçişleri Bakanı tarafından doğrudan gerekçeyle gözaltı başlatan yol hâlâ savcılık ve yargı güvencelerini tam simüle etmiyor; başlatma yetkisinin kolluk/savcılık ve yargısal incelemeye yeniden bağlanması ayrıca gereklidir. Bu dosya tamamlanmış bütünsel hukuk uyumu iddiası değildir.
