@@ -2414,7 +2414,7 @@ async function partilerEkrani(){
     <button class="btn ikinci" style="margin:0 0 12px" onclick="ekranAc(partiKurEkrani)">Yeni parti kur</button>`);
 }
 async function gbUslen(id){
-  try { await API.rpc("genel_baskanlik_uslen", {}); await durumYenile(); toast("Artık partinin genel başkanısın"); partiDetay(id); }
+  try { await API.rpc("genel_baskanlik_uslen", {}); await durumYenile(); toast("Genel başkanlık için üyelerin katıldığı kurultay başlatıldı. Aday olabilirsin."); partiDetay(id); }
   catch (err) { toast(hataCevir(err.message), true); }
 }
 async function partiAdModal(pid){
