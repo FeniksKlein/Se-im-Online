@@ -35,7 +35,7 @@ jobs:
           node-version: 22
       - name: JavaScript sozdizimi
         run: |
-          for f in docs/*.js gelistirici/build/derle.js gelistirici/build/sql_birlestir.js; do node --check "$f"; done
+          for f in docs/*.js gelistirici/www/sirket_tum_turler.js gelistirici/www/ortak_sirketler.js gelistirici/www/bankacilik.js gelistirici/www/meslek_dukkan.js gelistirici/www/meslek_carsi.js gelistirici/www/tv_kanallari.js gelistirici/build/derle.js gelistirici/build/sql_birlestir.js; do node --check "$f"; done
       - name: Gercekci siyaset kaynak sozlesmesi
         run: |
           python3 gelistirici/test/gercekci_siyaset_sozlesmesi.py
