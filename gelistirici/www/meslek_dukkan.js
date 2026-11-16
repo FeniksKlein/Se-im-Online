@@ -100,12 +100,16 @@ function dlg(title,html,action){
 function field(id,name,value,min,step){
  return '<div class="alan"><label>'+esc(name)+'</label><input id="'+id+'" type="number" min="'+min+'" step="'+(step||"1")+'" value="'+value+'" inputmode="decimal"></div>';
 }
-function kur(t){
- const bas=label[t],m=modal('<h3>'+esc(bas)+' aç</h3><div class="alan"><label>Dükkân adı</label><input id="meslekAd" maxlength="60" placeholder="Örn. Ege Altın ve Döviz"></div>'+field("meslekSermaye","Kuruluş sermayesi (en az 100.000 ₺)",200000,100000)+
+async function kur(t){
+ let asgari;
+ try{asgari=Number((await API.rpc("kurulus_canli_kurallar")).meslek_min);
+   if(!Number.isFinite(asgari)||asgari<=0)throw Error("Geçersiz tutar");
+ }catch(ex){toast("Sunucudaki dükkân kuruluş koşulları alınamadı. "+error(ex),true);return;}
+ const bas=label[t],m=modal('<h3>'+esc(bas)+' aç</h3><div class="alan"><label>Dükkân adı</label><input id="meslekAd" maxlength="60" placeholder="Örn. Ege Altın ve Döviz"></div>'+field("meslekSermaye","Kuruluş sermayesi (en az "+tl(asgari)+")",asgari,asgari)+
  '<p class="alt">5.000 ₺ ruhsat bedeli kuruluş sermayesinden kesilecek. Dükkân sahibi yatırdığı parayı ileride kasadan geri çekebilir.</p><button class="btn altin" id="meslekKurOnay">Dükkân aç</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
  m.querySelector("#meslekKurOnay").onclick=async function(){
   const ad=m.querySelector("#meslekAd").value.trim(),ser=Number(m.querySelector("#meslekSermaye").value);
-  if(ad.length<3||ad.length>60||!Number.isInteger(ser)||ser<100000||ser>100000000){toast("İsim veya sermaye geçersiz.",true);return;}
+  if(ad.length<3||ad.length>60||!Number.isInteger(ser)||ser<asgari||ser>100000000){toast("İsim veya sermaye geçersiz.",true);return;}
   if(typeof onayla==="function"&&!await onayla("Dükkân kuruluşu",tl(ser)+" cüzdanından çıkarılacak, 5.000 ₺ ruhsat bedeli düşecek.","Kur"))return;
   this.disabled=true;
   try{await API.rpc("meslek_dukkan_ac",{p_tur:t,p_ad:ad,p_sermaye:ser});modalKapat();toast("Dükkân açıldı.");await open(t);if(typeof durumYenile==="function")durumYenile().catch(()=>{});}
