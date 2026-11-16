@@ -839,10 +839,18 @@
     if (!await sor("Hesap aç", "Bu bankada kendi adına vadesiz hesap açılacak. Hesap açmak ücretsizdir.", "Hesap aç")) return;
     try { await calis(null, function () { return API.rpc("oyb_hesap_ac", { p_banka: id }); }, "Hesabın açıldı."); mobilSube("ozet"); } catch (_) {}
   };
-  window.msBankaKur = function () {
+  window.msBankaKur = async function () {
     if (typeof window.bankaKurEkrani === "function") return ekranAc(window.bankaKurEkrani);
     if (typeof window.sirketKurModal === "function") return window.sirketKurModal("banka");
-    bildir("Banka kurmak için Ekonomi › Şirketlerim › Şirket kur (sektör: banka, en az 1.000.000 ₺ sermaye).");
+    try {
+      var kurallar = await API.rpc("kurulus_canli_kurallar");
+      var asgari = Number(kurallar.banka_min).toLocaleString("tr-TR");
+      bildir("Banka için en az " + asgari + " ₺ sermaye ve " +
+        (Number(kurallar.banka_statu) === 3 ? "Kanaat Önderi" : "sunucunun belirlediği") +
+        " rütbesi gerekli. Ekonomi › Şirketlerim › Yeni şirket kur.");
+    } catch (error) {
+      bildir("Banka kurma şartları şu an alınamadı. Canlı kuruluş koşullarını kontrol ederek tekrar dene.");
+    }
   };
 
   /* =====================================================================
