@@ -110,6 +110,8 @@ for (const m of ['tasarim_v5_ikon.js','tasarim_v5.js'])
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','karikatur_dergisi.js'),'utf8')+'</script></body>');
 // 16.11.2026: Aday belirleme yöntemi (ön seçim / Genel Başkan ataması) — Partiler kartı ve GB ekranı.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','aday_belirleme.js'),'utf8')+'</script></body>');
+// GBY yetkileri, parti tüzüğü, il başkanlığı/il kongresi ve il yönetim kurulu (2026.11.16).
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','teskilat_kongre.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});

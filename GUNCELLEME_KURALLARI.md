@@ -61,4 +61,12 @@ Rütbe eşikleri, kuruluş hakları, şirket kapasitesi, maaş primi ve prestij 
 ## Türk siyasetine uygun yayın sözleşmesi (15.11.2026)
 
 Siyasi reformlar için bağlayıcı kaynak belgesi: `docs/GERCEKCI_SIYASET_YAYIN_SOZLESMESI_2026.md`.
-Her yeni siyaset SQL yaması `gelistirici/build/sql_birlestir.js` listesine eklenmeden ve `python3 gelistirici/test/gercekci_siyaset_sozlesmesi.py` başarılı olmadan tamamlandı sayılmaz. Beta dönemi veri kaybı yaşanmaz; resmî lansmanda `gercekci_siyaset=true` doğrulanır. Yayın öncesi 200+ milletvekili nisabı ve eşzamanlı kullanıcı yük testleri ayrıca doğrulanır.
+Her yeni siyaset SQL yaması `gelistirici/build/sql_birlestir.js` listesine eklenmeden ve `python3 gelistirici/test/gercekci_siyaset_sozlesmesi.py` başarılı olmadan tamamlandı sayılmaz. Mevcut oyuncularda veri kaybı yaşanmaz; `gercekci_siyaset=true` kalıcıdır. Yayın öncesi 200+ milletvekili nisabı ve eşzamanlı kullanıcı yük testleri ayrıca doğrulanır.
+
+## Yayın ölçeği temeli (16.11.2026)
+
+Beta dönemi ve beta için konmuş şartlar/kurallar geçersizdir. Bundan sonraki her özellik, öneri ve düzeltme oyunun yayında olduğu ve **binlerce oyuncunun** aynı anda oynadığı varsayımıyla yapılır:
+- Eşikler ve kotalar yayın ölçeğine göre seçilir; az oyunculu duruma göre geçici gevşetme yapılmaz.
+- Zamanlayıcı işleri sınırlı (limit), dizinli, tekrar çalıştırılabilir ve kayıt başına hata yalıtımlıdır.
+- Tek bir yetkilinin işlem yapmaması hiçbir oyuncunun hakkını durdurmaz; süreli otomatik yedek mekanizma bulunur.
+- Kalıcı temel ve gerekçe: `DEVAM.md` başındaki "KALICI TEMEL: YAYIN ÖLÇEĞİ" bölümü.

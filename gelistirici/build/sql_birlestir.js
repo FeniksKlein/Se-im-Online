@@ -2,6 +2,23 @@
 const fs = require('fs'), path = require('path');
 const kok = path.join(__dirname, '..');
 const oku = ad => fs.readFileSync(path.join(kok, 'sql', ad), 'utf8').replace(/\r\n/g, '\n').trimEnd();
+// Canlıda Supabase migration'larıyla kurulmuş tablolara (halk hareketleri, gözaltı, kabine süresi, görev denetimi) dayanan
+// modüller: tam kurulumda bu tablolar yoksa dosya atlanır, varsa tek parça çalışır. Böylece tam kurulum bozulmaz.
+const KOSULLU = {
+  'zz_20261116_baro_mudafi_guvence.sql': ['oyun.gozalti_baro_talep', 'oyun.sokak_baro_talep', 'oyun.yonetim_tutuklama', 'oyun.icisleri_tedbir_v2', 'oyun.baro_adli_yardim', 'oyun.zamanlayici_adim'],
+  'zz_20261116_kabine_48_saat_kaldir.sql': ['oyun.cb_kabine_sure'],
+  'zz_20261116_makam_guvenligi.sql': ['oyun_yonetim.gorev_denetim', 'oyun.gorev_tercihi', 'oyun.cb_yardimcisi_teklifleri', 'oyun.mahkeme_uye'],
+  'zz_20261116_gby_yetki_sistemi.sql': ['oyun.parti_gby', 'oyun.parti_teskilat_gorev', 'oyun.partiler'],
+  'zz_20261116_yk_kurum_gorevleri.sql': ['oyun.mahkeme_uye', 'oyun.icisleri_atama', 'oyun.vali_havuz', 'oyun.oda', 'oyun.baro'],
+  'zz_20261116_il_kongre_sistemi.sql': ['oyun.parti_gby', 'oyun.parti_teskilat_gorev', 'oyun.parti_teskilat', 'oyun.iller'],
+};
+const okuKosullu = ad => {
+  const govde = oku(ad), tablolar = KOSULLU[ad];
+  if (!tablolar) return govde;
+  if (govde.includes('$kosullu_govde$')) throw new Error(ad + ': koşullu gövde etiketi çakışıyor');
+  const kosul = tablolar.map(t => `to_regclass('${t}') is null`).join(' or ');
+  return `-- ${ad} (koşullu)\ndo $kosullu_dis$\nbegin\n  if ${kosul} then raise notice '${ad} atlandı: önkoşul tablo yok'; return; end if;\n  execute $kosullu_govde$\n${govde}\n$kosullu_govde$;\nend $kosullu_dis$;`;
+};
 const surum = fs.readFileSync(path.join(kok, 'SURUM'), 'utf8').trim();
 if (!/^\d{4}\.\d{2}\.\d{2}-\d+$/.test(surum)) throw new Error('Geçersiz sürüm');
 const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_kabine_sosyal.sql', '07_devlet.sql', '08_asama3.sql', '09_vatandas.sql', '10_ekonomi2.sql', '11_bos_makam.sql', '12_mevzuat.sql', '13_meclis.sql', '14_guvenlik.sql', '15_ekonomi3.sql', '16_moderator.sql', '17_basin_teskilat.sql', '18_ara_secim_istifa.sql', '19_siyaset_ekonomi4.sql', '20_siyasi_sistem.sql', '21_banka_transferleri.sql', '22_saatlik_vadeli.sql', '23_bagimsiz_adaylik.sql', '24_gayrimenkul.sql', '25_milli_piyango.sql', '26_ekonomi_yasalari.sql', '27_ekonomi_etkileri.sql', '28_sirket_banka_asgari.sql', '29_oyuncu_banka_liste.sql', '30_sirket_kira_satis_sermaye.sql', '31_piyasa_kazikazan.sql', '32_mulk_pazar.sql', '33_genel_baskan_vekil.sql', '34_maas_meclis.sql', '35_soru_anket.sql', '36_parti_toplanti_disiplin.sql', '37_gb_vekil_goreve_baslat.sql', '38_canli_20261008.sql', '39_oyuncu_deneyimi.sql', '40_portre_erkek_secenekleri.sql', '41_kurucu_ideoloji.sql', '42_ekonomi_vitrin_emlak.sql', '43_meclis_salt_cogunluk.sql', '44_il_emlak_stok_vergi.sql', '45_emlak_temizlik.sql', '46_miting_canli.sql', '47_test_baslangic.sql', '48_eyetkin_parti.sql', '49_celal_parti.sql', '50_parti_miting_bagimsiz.sql', '51_matestappen_parti.sql', '52_gby_gorev_miting_tepki.sql', '53_gby_gorev_yetki.sql', '54_ittifak_teklif_ortak_aday.sql', '55_dernekler.sql', '56_mv_test_ittifak_vitrin.sql', '57_dernek_sohbet.sql', '58_sivil_demokrasi_kurultay.sql', '59_roportaj_duello_cevap_hakki.sql', '60_imza_dilekce_katilim.sql', '61_katilim_son_duzeltmeler.sql', '62_halka_arz.sql', '62_hayat_gorevleri.sql', '63_gb_mv_cb_adaylik.sql', '63_halka_arz_kar_birikim.sql', '65_mv_bakan_uyum.sql', '06_yetkiler.sql', '68_bildirim_goster.sql', '69_adliye.sql', '70_parti_sozcu_bilgi.sql', '71_yargic_oner_secim_itiraz.sql', '72_parti_birlesme_ortak_mv_listesi.sql', '73_ortak_mv_pusula_ittifak_koruma.sql', '74_meclis_rehber.sql', '75_secim_gecesi.sql', '77_bos_makam_firsat.sql', '78_akis.sql', '79_basarim_rapor_gun_ozeti.sql', '80_erken_secim_takvim_koruma.sql', '81_cimer.sql', '82_akis_sosyal.sql', '83_yargi_reformu.sql', '84_ekonomi_pazar_ihale.sql', '85_ekonomi_borsa_rekabet.sql', '86_reklam_anket_ajansi.sql', '87_haftalik_kredi.sql', '88_ekonomi_guvenligi.sql', '89_belediye_sehir.sql', '91_belediye_detay.sql', '93_ekonomi_kurumlar.sql', '94_cevrimici_oyuncular.sql',
@@ -19,13 +36,15 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261115_anayasa_imza_2tur_koruma.sql',
   'zz_20261115_siyaset_oy_sayim_indeksleri.sql',
   'zz_20261115_cb_parti_aday_yuzde5.sql',
-  '210_rutbe_lansman_dengesi.sql', 'zz_20261116_tbmm_nisap_oy_koruma.sql', 'zz_20261116_yargi_gozalti_serbest.sql', 'zz_20261115_beta_gercekci_siyaset_kalici.sql', 'zz_20261116_aday_belirleme_dhondt.sql', 'zz_20261116_aday_riza_sifir_oy_koruma.sql', 'zz_20261116_mahkeme_cb_baro_tbmm.sql', 'zz_20261116_belediye_ertesi_gun_ara_secim.sql'];
+  '210_rutbe_lansman_dengesi.sql', 'zz_20261116_tbmm_nisap_oy_koruma.sql', 'zz_20261116_yargi_gozalti_serbest.sql', 'zz_20261115_beta_gercekci_siyaset_kalici.sql', 'zz_20261116_aday_belirleme_dhondt.sql', 'zz_20261116_aday_riza_sifir_oy_koruma.sql', 'zz_20261116_mahkeme_cb_baro_tbmm.sql', 'zz_20261116_belediye_ertesi_gun_ara_secim.sql',
+  'zz_20261116_baro_mudafi_guvence.sql', 'zz_20261116_kabine_48_saat_kaldir.sql', 'zz_20261116_makam_guvenligi.sql',
+  'zz_20261116_gby_yetki_sistemi.sql', 'zz_20261116_il_kongre_sistemi.sql', 'zz_20261116_yk_kurum_gorevleri.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
   'begin;', oku('kalicilik_bas.sql'),
   `select oyun.guncelleme_basla('${surum}', 'supabase-kurulum.sql');`,
-  ...dosyalar.map(oku), oku('kalicilik_son.sql'), 'select oyun.guncelleme_bitti();',
+  ...dosyalar.map(okuKosullu), oku('kalicilik_son.sql'), 'select oyun.guncelleme_bitti();',
   '-- 159: bütün fonksiyonlar yazıldıktan sonra RPC yüzeyi kapanır. Bu dosya listenin ve işlemin sonunda kalmalı.',
   oku('159_rpc_yuzey.sql'),
   'commit;', '', oku('04_zamanlayici.sql'), ''].join('\n');
