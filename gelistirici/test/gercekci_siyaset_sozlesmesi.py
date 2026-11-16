@@ -79,6 +79,8 @@ yeni_yamalar = [
     "zz_20261116_ysk_bagimsiz_itiraz_sayim.sql",
     "zz_20261116_genel_baskan_secimi_uyeler.sql",
     "zz_20261116_mahkeme_bagimsiz_azil_koruma.sql",
+    "zz_20261116_belediye_oy_disinda_atama_yasagi.sql",
+    "zz_20261116_belediye_bosluk_otomatik_ara_secim.sql",
 ]
 for file in yeni_yamalar:
     check(f"'{file}'" in builder, f"Kasım 16 yaması kurulum listesinde: {file}")
@@ -104,6 +106,12 @@ check("oyun.ara_secim_olustur('gb'" in kurultay and "update oyun.partiler set gb
       "Başkanı olmayan parti için üyelerin oy vereceği kurultay kullanılır")
 check("oyun.gercekci_siyaset()" in sql(yeni_yamalar[5]),
       "Mahkeme üyeleri aktif vekil sayısına göre keyfi siyasi azil ile düşürülemez")
+check("secim_takvim_istisna" in belediye_ara,
+      "Ertesi gün belediye ara seçimi genel takvim tarafından ertelenemez")
+check("drop trigger if exists yeni_oyuncu_baskan_ata" in sql(yeni_yamalar[6]),
+      "Yeni kayıt olan oyuncu boş belediyeye otomatik başkan atanamaz")
+check("after update of bit on oyun.makamlar" in sql(yeni_yamalar[7]),
+      "Boşalan belediye makamı ertesi gün hedef ilde otomatik ara seçim oluşturur")
 adliye_js = (ROOT / "www" / "adliye.js").read_text(encoding="utf-8")
 rpc_yuzey = sql("159_rpc_yuzey.sql")
 for r in ["cb_aday_tekliflerim","cb_aday_teklif_cevap","mahkeme_aday_ol",
