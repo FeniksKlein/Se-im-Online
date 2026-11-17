@@ -12,7 +12,7 @@ Bu daldaki SQL yamaları **canlıya uygulanmamıştır**. Test ortamı için ayr
 7. Şirket/parti/bakanlık/banka/cüzdan negatif bakiye ve havale çift-harcama koruması aday yaması hazırlanır.
 8. Oy tablosundaki `UNIQUE(secim_id,secmen)` doğrulandı; `finans_oy_suistimal_deneti.sql` riskleri kişisel veri dökmeden tarar.
 9. k6 yük testi yalnız bağımsız test ortamı ve 3.000 sentetik JWT ile çalışır; canlı projeye yük bindirme engellidir.
-10. Siyasi ekip meslek davetleri (MV danışmanı, belediye danışmanı, parti kampanya ve organizasyon) için güvenli backend eklendi. UI bağlantısı henüz gerekli.
+10. Siyasi ekip meslek davetleri (MV danışmanı, belediye danışmanı, parti kampanya ve organizasyon) için güvenli backend eklendi. Arayüz giriş kartı ve davet ekranı bu geliştirme dalına eklendi; canlı derleme ve uçtan uca test henüz gerekli.
 
 ## Yayına çıkış kapıları
 - Canlı Supabase'de **secim-motoru** cron pasif gözlendi; bakım kararı olup olmadığı açıklığa kavuşmalı.
