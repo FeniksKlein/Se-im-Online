@@ -82,6 +82,15 @@
   try{await API.rpc('istinaf_hakim_istifa');bilgi('İstinaf hâkimliğinden ayrıldın.');await window.istinafHakimlikEkrani();}
   catch(e){bilgi(hata(e),true);}
  };
+ // Canli web sitesine ayri JS olarak yuklendiginde de Adliye giris karti olustur.
+ if(typeof window.adliyeHtml==='function'){
+  var oncekiAdliyeHtml=window.adliyeHtml;
+  window.adliyeHtml=async function(){
+   var govde=await oncekiAdliyeHtml.apply(this,arguments);
+   if(typeof govde!=='string'||govde.indexOf('Hâkimlik kariyerim ve davetlerim')!==-1)return govde;
+   return '<div class="kart" id="so-istinaf-kadro-giris"><h3>⚖️ İstinaf Hâkimliği</h3><p class="alt">Hukuk Akademisinden sonra gönüllü hâkimliğe başvur, görevlendirmelerini ve bekleyen dosyalarını yönet.</p>'+tus('ekranAc(istinafHakimlikEkrani)','Hâkimlik kariyerim ve davetlerim','altin')+'</div>'+govde;
+  };
+ }
  // Sadece kayitli hâkimleri 90 sn aralikla yokla; 3.000 normal oyuncuya poll maliyeti yukleme.
  async function yokla(ilk){
   if(suruyor||document.hidden||typeof API==='undefined'||typeof API.rpc!=='function')return;
@@ -109,4 +118,6 @@
  document.addEventListener('visibilitychange',function(){if(!document.hidden)yokla(false);});
  setTimeout(function(){yokla(true);},6500);
  setInterval(function(){yokla(false);},90000);
+ // Seyrek bir kayit yoklamasi: uyelik degisikligi ve yeni giris yapan hâkimi de fark et.
+ setInterval(function(){if(!hakimMi)yokla(true);},600000);
 })();
