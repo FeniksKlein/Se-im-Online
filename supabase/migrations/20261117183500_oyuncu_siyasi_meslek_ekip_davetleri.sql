@@ -122,7 +122,17 @@ SELECT jsonb_build_object(
    WHERE d.davet_edilen=auth.uid() AND d.durum='bekliyor' AND d.bitis>oyun.simdi()),'[]'::jsonb),
  'gorevler',coalesce((SELECT jsonb_agg(jsonb_build_object('id',g.id,'tur',g.tur,'kurum',g.kurum_id,
    'atanma',g.bas) ORDER BY g.bas DESC)
-   FROM oyun.siyasi_meslek_gorev g WHERE g.calisan=auth.uid() AND g.bit IS NULL),'[]'::jsonb))
+   FROM oyun.siyasi_meslek_gorev g WHERE g.calisan=auth.uid() AND g.bit IS NULL),'[]'::jsonb),
+ 'yetkiler',coalesce((SELECT jsonb_agg(jsonb_build_object('kurum',x.kurum,'tur',x.tur,'ad',x.ad)) FROM (
+   SELECT m.id AS kurum,'mv_danismani'::text AS tur,'Milletvekili danışmanı'::text AS ad
+   FROM oyun.makamlar m WHERE m.user_id=auth.uid() AND m.tur='mv' AND m.bit IS NULL
+   UNION ALL SELECT m.id,'belediye_danismani','Belediye danışmanı'
+   FROM oyun.makamlar m WHERE m.user_id=auth.uid() AND m.tur='bel' AND m.bit IS NULL
+   UNION ALL SELECT p.id,'parti_kampanya','Parti kampanya ekibi'
+   FROM oyun.partiler p WHERE p.gb=auth.uid() AND NOT p.kapali
+   UNION ALL SELECT p.id,'parti_organizasyon','Parti organizasyon ekibi'
+   FROM oyun.partiler p WHERE p.gb=auth.uid() AND NOT p.kapali
+ ) x),'[]'::jsonb))
 $fun$;
 
 DO $grant$
