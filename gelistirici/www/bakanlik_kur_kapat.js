@@ -12,7 +12,7 @@
     });
   }
   function cumhurbaskaniMi() {
-    var p = window.D && D.durum && D.durum.profil;
+    var p = typeof D !== "undefined" && D.durum && D.durum.profil;
     return !!(p && Array.isArray(p.makamlar) && p.makamlar.some(function(m) { return m.tur === "cb"; }));
   }
   function bilgi(m, hata) {
@@ -119,7 +119,7 @@
       if (cumhurbaskaniMi() &&
           (baslik === "Yönetim" ||
            ((baslik === "Devlet" || baslik === "Devlet yönetimi") &&
-            window.D && D.devletSekme === "hukumet")) &&
+            typeof D !== "undefined" && D.devletSekme === "hukumet")) &&
           typeof govde === "string" && govde.indexOf('id="bakanlik-kur-kapat-bag"') === -1) {
         govde = cbKarti() + govde;
       }
