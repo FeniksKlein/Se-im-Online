@@ -1,0 +1,1 @@
+ALTER TABLE oyun.bakanlik_sablonlar ENABLE ROW LEVEL SECURITY; REVOKE ALL ON TABLE oyun.bakanlik_sablonlar FROM PUBLIC,anon,authenticated;
