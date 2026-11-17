@@ -158,8 +158,12 @@
   }
   function alintiHtml(q) {
     if (!q) return '';
-    return '<div class="kr-alinti" data-kr="ac" data-id="' + q.id + '"><div class="kr-al-bas">' + av(q.kad, partiRenk(q.parti), 20) +
-      '<b>' + esc(q.kad) + '</b>' + nisan(q.unvan) + '<span class="kr-sure">' + esc(ne(q.zaman)) + '</span></div>' +
+    var kurum = q.kurum && q.kurum.ad ? q.kurum : null;
+    return '<div class="kr-alinti" data-kr="ac" data-id="' + q.id + '"><div class="kr-al-bas">' +
+      (kurum ? '<span class="kr-kurum-av kr-kurum-mini">' + esc(String(kurum.ad).slice(0, 1).toLocaleUpperCase('tr-TR')) + '</span>' : av(q.kad, partiRenk(q.parti), 20)) +
+      '<b>' + esc(kurum ? kurum.ad : q.kad) + '</b>' + (kurum ? '<span class="kr-kurum-rozet">Kurumsal</span>' : nisan(q.unvan)) +
+      '<span class="kr-sure">' + esc(ne(q.zaman)) + '</span></div>' +
+      (kurum ? '<div class="kr-kurum-yetkili">' + esc(q.kad) + ' · ' + esc(kurum.rol || 'Yetkili') + '</div>' : '') +
       '<div class="kr-al-metin">' + metinHtml(q.metin) + '</div></div>';
   }
   function altSatir(g) {
@@ -752,7 +756,7 @@
     w.innerHTML = '<div class="kr-yaz" role="dialog" aria-modal="true" aria-label="' + (tur === 'yanit' ? 'Yanıt yaz' : 'Gönderi yaz') + '">' +
       '<div class="kr-yaz-ust"><button type="button" class="kr-yaz-iptal" id="krYazIptal">Vazgeç</button><span class="kr-yaz-tur">' + (tur === 'yanit' ? 'Yanıt' : tur === 'alinti' ? 'Alıntı' : 'Yeni gönderi') + '</span><button type="button" class="kr-yaz-gonder" id="krYazGonder" disabled>' + (tur === 'yanit' ? 'Yanıtla' : 'Paylaş') + '</button></div>' +
       '<div class="kr-yaz-govde">' + baglam +
-      (tur === 'yeni' ? '<div class="kr-kimlik-alan" id="krKimlikAlan" hidden><label for="krYazKimlik">Kimin adına paylaşacaksın?</label><select id="krYazKimlik"><option value="">Kişisel hesabım · ' + esc(p.kad) + '</option></select><small>Yalnızca yetkili olduğun kurumlar listelenir. Görev değişiklikleri anında geçerlidir.</small></div>' : '') +
+      '<div class="kr-kimlik-alan" id="krKimlikAlan" hidden><label for="krYazKimlik">Kimin adına paylaşacaksın?</label><select id="krYazKimlik"><option value="">Kişisel hesabım · ' + esc(p.kad) + '</option></select><small>Yalnızca yetkili olduğun kurumlar listelenir. Görev değişiklikleri anında geçerlidir.</small></div>' +
       '<div class="kr-yaz-satir"><span class="kr-av">' + av(p.kad, p.parti && p.parti.renk, 40) + '</span><textarea id="krYazMetin" maxlength="1000" rows="3" placeholder="' + yer + '"></textarea></div>' +
       (tur === 'alinti' && g ? '<div class="kr-yaz-alinti">' + alintiHtml(g) + '</div>' : '') + '</div>' +
       '<div class="kr-yaz-alt">' + (et.length ? '<div class="kr-yaz-et">' + et.map(function (x) { return '<button type="button" data-ekle="' + esc(x.ad) + '">' + esc(x.ad) + '</button>'; }).join('') + '</div>' : '<div class="kr-yaz-ipucu">#etiket ile gündeme gir, @isim ile birini an.</div>') +
@@ -795,11 +799,13 @@
       var m = t.value.trim(); if (!m) return;
       gb.disabled = true; gb.textContent = 'Gönderiliyor';
       try {
-        var r;
-        if (tur === 'yanit') r = await rpc('akis_yanit_yaz', { p_id: g.id, p_metin: m });
-        else if (tur === 'alinti') r = await rpc('kursu_alinti', { p_id: g.id, p_metin: m });
-        else {
-          var secim = kimlikSec && kimlikSec.value ? kurumSecenekleri[Number(kimlikSec.value) - 1] : null;
+        var r, secim = kimlikSec && kimlikSec.value ? kurumSecenekleri[Number(kimlikSec.value) - 1] : null;
+        if (tur === 'yanit' || tur === 'alinti') {
+          var ad = tur === 'yanit' ? 'akis_yanit_yaz' : 'kursu_alinti';
+          r = secim
+            ? await rpc('kursu_kurumsal_ilisik_yaz', { p_metin: m, p_tur: secim.tur, p_kimlik: secim.kimlik, p_islem: tur, p_id: g.id })
+            : await rpc(ad, { p_id: g.id, p_metin: m });
+        } else {
           r = secim
             ? await rpc('kursu_kurumsal_yaz', { p_metin: m, p_tur: secim.tur, p_kimlik: secim.kimlik })
             : await rpc('akis_yaz', { p_metin: m });
@@ -1194,6 +1200,7 @@
     '.kr-kurum-rozet{display:inline-flex;align-items:center;font-size:10px;font-weight:800;padding:3px 7px;border-radius:7px;background:rgba(77,149,232,.16);color:#82c4ff;letter-spacing:.02em}',
     '.kr-kurum-yetkili{font-size:12px;line-height:1.5;color:var(--txt2);margin:3px 0 5px}.kr-kurum-yetkili [data-kr]{font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px}',
     '.kr-kurum-av{display:flex;width:100%;height:100%;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(145deg,#2c5484,#1a304d);color:#fff;font-size:22px;font-weight:800}',
+    '.kr-kurum-mini{width:20px;height:20px;font-size:12px;flex-shrink:0}',
     /* yazma penceresi */
     '.kr-yaz-arka{position:fixed;inset:0;z-index:80;background:rgba(5,8,22,.6);display:flex;align-items:flex-end;justify-content:center;animation:krSol .2s ease-out}',
     '.kr-yaz{width:100%;max-width:620px;height:100%;max-height:100%;display:flex;flex-direction:column;background:var(--bg);animation:krYukari .28s cubic-bezier(.2,.9,.3,1)}',

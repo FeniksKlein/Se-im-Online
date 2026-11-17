@@ -343,7 +343,7 @@ declare
     -- 165 (06.11.2026) seçim gecesi canlı yayını
     'secim_yayini', 'secim_yayini_tekrar',
     -- Kurum adına Kürsü gönderisi (17.11.2026)
-    'kursu_kurumsal_kimlikler', 'kursu_kurumsal_yaz'
+    'kursu_kurumsal_kimlikler', 'kursu_kurumsal_yaz', 'kursu_kurumsal_ilisik_yaz'
   ];
 -- @@rpc_yuzey_izin_son@@
   anon_izin text[] := array['surum', 'uygulama_ayar'];
