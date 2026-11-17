@@ -76,7 +76,7 @@ begin
   return old;
  end if;
  return new;
-end $f$;
+end; $f$;
 drop trigger if exists mv_yargi_makam_koruma on oyun.makamlar;
 create trigger mv_yargi_makam_koruma before update of bit on oyun.makamlar
 for each row execute function oyun.mv_yargi_makam_koruma();
@@ -100,7 +100,7 @@ begin
      and f.asama='yargilanabilir' and f.dava_id is null and f.kesin_at is not null)
  then raise exception 'Bu suclama icin kesinlesmis dokunulmazlik kaldirma karari bulunmuyor.'; end if;
  return new;
-end $f$;
+end; $f$;
 drop trigger if exists mv_ceza_dava_kapi on oyun.adliye_davalar;
 create trigger mv_ceza_dava_kapi before insert on oyun.adliye_davalar
 for each row execute function oyun.mv_ceza_dava_kapi();
@@ -190,7 +190,7 @@ begin
    update oyun.mv_fezleke set asama='ret',sonuc_gerekce='Anayasa Mahkemesinde tarafsiz iki onay cikmadi; milletvekili korunur.' where id=p_id;
   end if;
  end if;
-end $f$;
+end; $f$;
 revoke all on function oyun.mvf_ilerlet(bigint) from public,anon,authenticated;
 
 create or replace function oyun.mvf_tick()
@@ -204,7 +204,7 @@ begin
   perform oyun.mvf_ilerlet(r.id); n:=n+1;
  end loop;
  return n;
-end $f$;
+end; $f$;
 revoke all on function oyun.mvf_tick() from public,anon,authenticated;
 
 create or replace function public.mv_fezleke_yaz(
@@ -236,7 +236,7 @@ begin
  insert into oyun.mv_fezleke_imza(fezleke_id,uye) values(yeni,u);
  perform oyun.bildir(v_hedef,format('Yuksek Mahkeme fezleke #%s hakkinda imza sureci basladi. Bu bir mahkumiyet veya gozaltisi degildir.',yeni),t);
  return jsonb_build_object('id',yeni,'asama','imza');
-end $f$;
+end; $f$;
 
 create or replace function public.mv_fezleke_imzala(p_id bigint)
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -250,7 +250,7 @@ begin
  insert into oyun.mv_fezleke_imza values(p_id,u,oyun.simdi());
  perform oyun.mvf_ilerlet(p_id);
  return jsonb_build_object('tamam',true);
-end $f$;
+end; $f$;
 
 create or replace function public.mv_fezleke_savun(p_id bigint,p_metin text)
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -262,7 +262,7 @@ begin
  if length(btrim(coalesce(p_metin,''))) not between 30 and 5000 then raise exception 'Savunma 30-5000 karakter olmalidir.';end if;
  update oyun.mv_fezleke set savunma=btrim(p_metin) where id=p_id;
  return jsonb_build_object('tamam',true);
-end $f$;
+end; $f$;
 
 create or replace function public.mv_fezleke_komisyon_oy(p_id bigint,p_oy text)
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -277,7 +277,7 @@ begin
  if not found then raise exception 'Bu komisyona atanmamissiniz veya oyunuzu kullandiniz.';end if;
  perform oyun.mvf_ilerlet(p_id);
  return jsonb_build_object('tamam',true);
-end $f$;
+end; $f$;
 
 create or replace function public.mv_fezleke_meclis_oy(p_id bigint,p_oy text)
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -291,7 +291,7 @@ begin
  on conflict(fezleke_id,vekil) do nothing;
  if not found then raise exception 'Bu dosyada daha once oy kullandiniz.';end if;
  return jsonb_build_object('tamam',true,'gizli_oy',true);
-end $f$;
+end; $f$;
 
 create or replace function public.mv_fezleke_itiraz(p_id bigint,p_gerekce text)
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -305,7 +305,7 @@ begin
  update oyun.mv_fezleke set asama='aym',asama_bit=oyun.simdi()+interval '15 days',
   itiraz_eden=u,itiraz_at=oyun.simdi(),itiraz_gerekce=btrim(p_gerekce) where id=p_id;
  return jsonb_build_object('tamam',true,'asama','aym');
-end $f$;
+end; $f$;
 
 create or replace function public.mv_fezleke_aym_oy(p_id bigint,p_oy text,p_gerekce text)
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -322,7 +322,7 @@ begin
  if not found then raise exception 'AYM oyunuzu zaten verdiniz.';end if;
  perform oyun.mvf_ilerlet(p_id);
  return jsonb_build_object('tamam',true);
-end $f$;
+end; $f$;
 
 create or replace function public.mv_fezleke_dava_ac(p_id bigint)
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -345,7 +345,7 @@ begin
  update oyun.mv_fezleke set asama='dava',dava_id=yeni where id=p_id;
  perform oyun.bildir(f.hedef,format('Fezleke #%s: TBMM dokunulmazligi bu dosya icin kaldirdi. Adliye #%s ceza davasi acildi; savunma ve istinaf hakkiniz vardir. Vekilliginiz devam ediyor.',p_id,yeni),t);
  return jsonb_build_object('tamam',true,'dava_id',yeni);
-end $f$;
+end; $f$;
 
 create or replace function oyun.mv_uyelik_kesin_bildir()
 returns trigger language plpgsql security definer set search_path='' as $f$
@@ -361,7 +361,7 @@ begin
   end if;
  end if;
  return new;
-end $f$;
+end; $f$;
 drop trigger if exists mv_uyelik_kesin_bildir on oyun.adliye_davalar;
 create trigger mv_uyelik_kesin_bildir after update of kesin on oyun.adliye_davalar
 for each row execute function oyun.mv_uyelik_kesin_bildir();
@@ -382,7 +382,7 @@ begin
  perform oyun.bildir(b.hedef,format('Kesin mahkeme karari #%s TBMM Genel Kuruluna bildirildi; milletvekilliginiz bu tarihte sona erdi.',b.dava_id),t);
  perform oyun.olay('adliye',format('TBMM, #%s kesin mahkeme kararinin Genel Kurula bildirilmesiyle milletvekilligi uyeliginin sona erdigini duyurdu.',b.dava_id),null,null,t);
  return jsonb_build_object('tamam',true,'uyelik_dustu',true);
-end $f$;
+end; $f$;
 
 create or replace function public.mv_fezleke_panel()
 returns jsonb language plpgsql security definer set search_path='' as $f$
@@ -423,7 +423,7 @@ begin
   'id',b.id,'dava_id',b.dava_id,'hedef',oyun.kad(b.hedef),'teblig_at',b.teblig_at
  ) order by b.id desc) from (select * from oyun.mv_uyelik_bildirim order by id desc limit 25)b),'[]'::jsonb) else '[]'::jsonb end
  );
-end $f$;
+end; $f$;
 
 do $f$
 declare p record;
@@ -437,4 +437,4 @@ begin
   execute format('revoke all on function %s from public,anon,authenticated',p.oid::regprocedure);
   execute format('grant execute on function %s to authenticated,service_role',p.oid::regprocedure);
  end loop;
-end $f$;
+end; $f$;
