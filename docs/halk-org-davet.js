@@ -3249,3 +3249,13 @@ window.__hh7={
 };
 })();
 /* Asset refresh: 20261113-3 (Halk Hareketleri 5.2 · Doruk ve bireysel yaptırımlar) */
+
+/* 17.11.2026: Cumhurbaşkanı Bakanlık Kur/Kapat modülü; canlı web sürümüne bağlanır. */
+(function(){
+  if(document.getElementById("so-bakanlik-kur-kapat-loader"))return;
+  var s=document.createElement("script");
+  s.id="so-bakanlik-kur-kapat-loader";
+  s.src="./bakanlik_kur_kapat.js?v=20261117-1";
+  s.async=false;
+  (document.body||document.head).appendChild(s);
+})();
