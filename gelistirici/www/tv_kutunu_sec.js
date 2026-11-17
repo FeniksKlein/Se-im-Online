@@ -41,6 +41,7 @@
    ".tvks-offer{font-size:clamp(28px,7vw,43px);font-weight:1000;color:#ffe9a5;text-shadow:0 0 22px #f3a54199;text-align:center;padding:4px}",
    ".tvks-winner{font-size:clamp(30px,7vw,48px);font-weight:1000;text-align:center;color:#fff0b9;text-shadow:0 0 22px #ffd466}",
    ".tvks-applicants{font-size:12px;color:#9fb4d7;overflow-wrap:anywhere}.tvks-sm{font-size:12px;color:#a6badd}.tvks-end{background:linear-gradient(135deg,#503211,#94571b 48%,#312653);text-align:center;padding:14px;border:1px solid #eabc69;border-radius:13px}",
+   ".tvks-manual{margin-top:14px;padding:12px;border:1px solid #7b97b8;border-radius:12px;background:#101d38}.tvks-manual label{display:block;color:#ffe7ac;font-weight:750;margin-bottom:8px}.tvks-manual select{display:block;width:100%;min-height:46px;margin-bottom:10px;color:#f2f6ff;background:#182d51;border:1px solid #9cb9e4;border-radius:9px;padding:8px;font-size:16px}.tvks-manual .tvks-btn{width:100%}",
    ".tvks-broadcast{width:100%;min-height:170px;padding:13px;background:radial-gradient(ellipse at 50% 20%,#365483,#0d1830 75%);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border-radius:10px}",
    ".tvks-broadcast b{color:#ffdf91;font-size:clamp(20px,5vw,30px);font-weight:1000;text-shadow:0 0 12px #edaa3999}.tvks-broadcast small{font-size:12px;color:#d5e0f6}",
    ".tvks-mini-boxes{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;width:min(100%,340px);margin:12px auto 4px}",
@@ -84,9 +85,17 @@
    if(d.durum==="basvuru"){
       panel='<h3>🎙️ Yarışmacı başvuruları</h3><p>Başvurular arasından sistem bir yarışmacı seçecek. Başvuru ücretsizdir; kutuların değerlerini kimse değiştiremez.</p>'+
       '<p><b>'+Number(d.basvuru_sayisi)+'</b> başvuru · başlangıç: '+esc(new Date(d.bas).toLocaleString("tr-TR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}))+'</p>'+
-      '<p class="tvks-applicants">'+(d.basvurular||[]).map(esc).join(" · ")+'</p><div class="tvks-controls">'+
+      '<p class="tvks-applicants">'+(d.basvurular||[]).map(esc).join(" · ")+'</p>'+
+      '<p class="tvks-sm">Uygun başvuru: <b>'+Number(d.uygun_basvuru||0)+'</b> · Başlamak için en az 2 uygun başvuru gerekir. Kanal ekibi ve ödül sınırını dolduranlar seçilemez.</p>'+
+      '<div class="tvks-controls">'+
       (!d.basvurdum&&d.uygun?'<button class="tvks-btn" onclick="SO_TV_KUTU.apply()">Başvur</button>':d.basvurdum?'<p>✓ Başvurun kayıtlı.</p>':'<p class="tvks-sm">Katılım: 7 günlük hesap, uygun ödül geçmişi ve kanal ekibinden bağımsızlık.</p>')+
-      (d.yonetici&&d.program_durum==="canli"?'<button class="tvks-btn green" onclick="SO_TV_KUTU.start()"'+(Number(d.basvuru_sayisi)<5?' disabled':'')+'>Yarışmacıyı rastgele seç</button>':"")+'</div>';
+      (d.yonetici&&d.program_durum==="canli"?'<button class="tvks-btn green" onclick="SO_TV_KUTU.start()"'+(Number(d.uygun_basvuru||0)<2?' disabled':'')+'>🎲 Yarışmacıyı rastgele seç</button>':"")+'</div>'+
+      (d.yonetici&&d.program_durum==="canli"?'<div class="tvks-manual"><label for="tvksAday">Başvuranlardan yarışmacıyı kendin seç</label>'+
+       '<select id="tvksAday" aria-label="Uygun yarışmacıyı seç">'+
+       '<option value="">Yarışmacı seç...</option>'+
+       (d.secilebilirler||[]).map(k=>'<option value="'+esc(k)+'">'+esc(k)+'</option>').join("")+'</select>'+
+       '<button class="tvks-btn" onclick="SO_TV_KUTU.pick()"'+(Number(d.uygun_basvuru||0)<2?' disabled':'')+'>Seçtiğim oyuncuyla başlat</button>'+
+       '<p class="tvks-sm">Yalnız başvuran ve ödül kurallarını karşılayan oyuncular seçilebilir; seçim kaydedilir.</p></div>':'');
    }else if(d.durum==="secim"){
      panel='<h3>🎁 Önce kendi kutunu seç</h3><p>'+esc(d.yarismaci||"Yarışmacı")+' 1 ile 16 arasında bir kutu seçiyor. Bu kutu final için kapalı kalacak.</p>'+
         (action?'<p>Altın kutulardan birine dokun.</p>':'<p>Yarışmacının kararını bekliyoruz.</p>');
@@ -150,6 +159,7 @@
   },
   apply(){return act("tv_kutu_basvur",{p_program:active});},
   start(){return act("tv_kutu_baslat",{p_program:active});},
+  pick(){const el=$("tvksAday");const kad=el&&el.value;if(!kad){if(typeof toast==="function")toast("Önce başvuran bir yarışmacı seç.",true);return;}return act("tv_kutu_yarismaci_sec",{p_program:active,p_kad:kad});},
   box(no){return act("tv_kutu_oyna",{p_program:active,p_islem:(last&&JSON.parse(last).durum==="secim")?"sec":"ac",p_kutu:Number(no)});},
   play(code){return act("tv_kutu_oyna",{p_program:active,p_islem:code,p_kutu:null});},
   refresh(){return refresh(active,true);},
