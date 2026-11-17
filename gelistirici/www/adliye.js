@@ -259,7 +259,8 @@ async function adliyeDosya(id){
   ADL=await API.rpc("adliye_durum");
   const d=ADL.davalar.find(x=>x.id===id);
   if(!d){iskelet("Adliye",'<div class="bos">Dava bulunamadı veya listede yer almıyor.</div>',{geri:true});return;}
-  const [r,ek,mah,mus]=await Promise.all([API.rpc("adliye_detay",{p_dava:id}),API.rpc("adliye_dava_ek",{p_dava:id}).catch(()=>null),API.rpc("adliye_mahkeme").catch(()=>null),API.rpc("adliye_musadere_durum",{p_dava:id}).catch(()=>null)]);
+  const [r,ek,mah,mus,kadro]=await Promise.all([API.rpc("adliye_detay",{p_dava:id}),API.rpc("adliye_dava_ek",{p_dava:id}).catch(()=>null),API.rpc("adliye_mahkeme").catch(()=>null),API.rpc("adliye_musadere_durum",{p_dava:id}).catch(()=>null),API.rpc("istinaf_hakim_dosya_durum",{p_dava:id}).catch(()=>null)]);
+  if(ek&&kadro)ek.istinaf_kadro=kadro;
   ADL.mahkeme=mah;
   const yetki=d.davalimiyim&&ADL.partiler.some(x=>x.id===ADL.parti_id&&x.sozcu);
   const partiYetkim=ADL.partiler.some(x=>(x.gb_miyim||x.sozcu_muyum)&&(x.ad===d.davaci_parti||x.ad===d.davali_parti));
@@ -454,6 +455,7 @@ function adlIstinafHtml(d,ek){
  if(ek.istinaf){
   const i=ek.istinaf;
   h+='<div class="kart"><h3>İstinaf</h3><p class="alt">'+e(i.basvuran)+' itiraz etti: '+e(i.gerekce)+'</p>'
+   +(ek.istinaf_kadro?'<p class="alt">'+(ek.istinaf_kadro.durum==='atama'?'Hâkimlerin görev davetlerini kabul etmesi bekleniyor.':'Gerekçeli karar süresi: '+adlTarih(ek.istinaf_kadro.karar_son))+' · Kabul: '+e(ek.istinaf_kadro.kabul)+'/3</p>':'')
    +'<p class="kucuk">İstinaf heyeti: '+i.juri_sayi+' kişi · '+i.onay+' onay · '+i.boz+' boz · '+(i.durum==="acik"?'son '+adlTarih(i.bit):i.durum==="bozuldu"?'karar bozuldu':'karar onaylandı')+'</p>'
    +(i.juri?i.juri.map(j=>'<div class="kucuk">• '+e(j.kad)+': '+e(j.oy==="boz"?"boz":j.oy==="onay"?"onayla":"oy vermedi")+(j.gerekce?' — '+e(j.gerekce):'')+'</div>').join(''):'')
    +(i.durum==="acik"&&i.juri_miyim&&!i.juri_oyum?'<div class="alan"><label>Gerekçeli oy (yeni heyetlerde en az 40 karakter)</label><input id="adlJuriNot" maxlength="2000"></div><div class="vit-dugme"><button class="btn altin" onclick="adlJuriOy('+d.id+',\'onay\')">Kararı onayla</button><button class="btn ikinci" onclick="adlJuriOy('+d.id+',\'boz\')">Kararı boz</button></div>':'')
