@@ -118,7 +118,7 @@ begin
       perform oyun.olay('meclis', format('%s Meclis grubu başkanvekillerini seçti.', pk), null, s.parti_id, s.oy_bit);
     end if;
   end loop;
-end $function$
+end $function$;
 
 
 CREATE OR REPLACE FUNCTION oyun.meclis_secim_json(s oyun.meclis_secim, p oyun.profiller, t timestamp with time zone)
@@ -139,7 +139,7 @@ AS $function$
     'oylarim', coalesce((select jsonb_agg(o.gorev) from oyun.meclis_oy o where o.secim_id = s.id and o.secmen = p.id
                           and o.tur_no = case when s.tur = 'baskan' then s.tur_no else 0 end), '[]'::jsonb),
     'katilabilir', oyun.aktif_vekil(p.id) and (s.tur = 'baskan' or oyun.aktif_mv_parti(p.id) = s.parti_id))
-$function$
+$function$;
 
 
 -- 2) Ucuncu YK uyesi TBMM secimi: eski Adalet Bakani tetikleyicisi kalkiyor.
@@ -154,7 +154,7 @@ BEGIN
     RAISE EXCEPTION 'Yüksek Mahkeme TBMM kontenjanındaki üye siyasi oylamayla azledilemez.';
   END IF;
   RETURN NEW;
-END $function$
+END $function$;
 
 
 -- 3) Tum mahkeme uyeleri ayni siyasi gorev ve parti uyeligi kisitina tabi.
@@ -167,7 +167,7 @@ BEGIN
   IF NEW.bit IS NULL AND EXISTS (SELECT 1 FROM oyun.mahkeme_uye WHERE sira IN (1,2,3) AND user_id=NEW.user_id)
   THEN RAISE EXCEPTION 'Yüksek Mahkemenin 1., 2. ve 3. üyeleri başka makam alamaz.'; END IF;
   RETURN NEW;
-END $function$
+END $function$;
 
 
 CREATE OR REPLACE FUNCTION oyun.tg_yargic_parti()
@@ -180,7 +180,7 @@ BEGIN
     AND EXISTS (SELECT 1 FROM oyun.mahkeme_uye WHERE sira IN (1,2,3) AND user_id=NEW.id)
   THEN RAISE EXCEPTION 'Yüksek Mahkemenin 1., 2. ve 3. üyeleri partiye üye olamaz.'; END IF;
   RETURN NEW;
-END $function$
+END $function$;
 
 
 CREATE OR REPLACE FUNCTION oyun.goreve_baslat(p_sid bigint)
@@ -300,7 +300,7 @@ BEGIN
   IF s.tur='mv' AND s.hedef_il_id IS NULL THEN PERFORM oyun.kanunlar_kaduk(t); END IF;
  END IF;
  UPDATE oyun.secimler SET durum='tamam' WHERE id=s.id;
-END $function$
+END $function$;
 
 
 -- 4) Ayni adaylik fonksiyonunu iki kez tetikleyen eski tekrar kaldiriliyor.
