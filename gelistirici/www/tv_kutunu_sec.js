@@ -41,6 +41,11 @@
    ".tvks-offer{font-size:clamp(28px,7vw,43px);font-weight:1000;color:#ffe9a5;text-shadow:0 0 22px #f3a54199;text-align:center;padding:4px}",
    ".tvks-winner{font-size:clamp(30px,7vw,48px);font-weight:1000;text-align:center;color:#fff0b9;text-shadow:0 0 22px #ffd466}",
    ".tvks-applicants{font-size:12px;color:#9fb4d7;overflow-wrap:anywhere}.tvks-sm{font-size:12px;color:#a6badd}.tvks-end{background:linear-gradient(135deg,#503211,#94571b 48%,#312653);text-align:center;padding:14px;border:1px solid #eabc69;border-radius:13px}",
+   ".tvks-broadcast{width:100%;min-height:170px;padding:13px;background:radial-gradient(ellipse at 50% 20%,#365483,#0d1830 75%);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border-radius:10px}",
+   ".tvks-broadcast b{color:#ffdf91;font-size:clamp(20px,5vw,30px);font-weight:1000;text-shadow:0 0 12px #edaa3999}.tvks-broadcast small{font-size:12px;color:#d5e0f6}",
+   ".tvks-mini-boxes{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;width:min(100%,340px);margin:12px auto 4px}",
+   ".tvks-mini-box{font-size:11px;min-width:0;border:1px solid #e2aa4e;border-radius:5px;color:#ffdfa5;background:linear-gradient(130deg,#81501f,#443015);padding:5px 0;font-weight:900}",
+   ".tvks-mini-box.out{opacity:.25;text-decoration:line-through}.tvks-mini-box.picked{background:#a92937;color:white;box-shadow:0 0 11px #fb4250}",
    "@media(max-width:570px){.tvks-layout{grid-template-columns:minmax(0,1fr);gap:8px;padding:10px}.tvks-prizes{grid-template-columns:repeat(4,minmax(0,1fr));max-height:none}.tvks-prize{font-size:10px;padding:5px 2px}.tvks-side{padding:8px}.tvks-box{min-height:59px;font-size:17px}.tvks-box.opened{font-size:11px;flex-wrap:wrap}.tvks-box.opened .tvks-boxno{font-size:9px}.tvks-card{margin:0 10px 10px;padding:12px}.tvks-controls{gap:8px}.tvks-btn{width:100%;min-width:0}.tvks-briefs{gap:15px 7px}}"
   ].join("\n");
   document.head.appendChild(style);
@@ -60,11 +65,20 @@
      (opened||revealed?'<span class="tvks-boxno">'+Number(box.no)+'</span>':'')+'<span>'+esc(val)+'</span></button>';
    }).join("");
  }
+ function scene(program) {
+  let d=null;try{const obj=last?JSON.parse(last):null;if(obj&&Number(obj.program)===Number(program.id))d=obj;}catch(_){}
+  const boxes=(d&&d.kutular||Array.from({length:16},(_,i)=>({no:i+1}))).map(b=>
+    '<span class="tvks-mini-box'+(b.acik?' out':'')+(b.benim?' picked':'')+'">'+Number(b.no)+'</span>').join("");
+  const durum=d?statusText(d):(program.durum==="planli"?"Yayın öncesi":"Kutular hazırlanıyor");
+  const m=d&&d.durum==="teklif"?' · BANKACI: '+money(d.teklif):d&&d.durum==="bitti"?' · KAZANÇ: '+money(d.odenen):"";
+  return '<div class="tvks-broadcast"><b>🧳 KUTUNU SEÇ</b><small>'+esc(durum+m)+'</small>'+
+   '<div class="tvks-mini-boxes">'+boxes+'</div><small>50.000 ₺ büyük ödül · otomatik bankacı · canlı yarışma</small></div>';
+ }
  function content(d) {
    const cur=new Set((d.kalan_oduller||[]).map(Number));
    const side=vals.slice().reverse().map(v=>'<div class="tvks-prize '+(!cur.has(v)?"lost":v===50000?"high":"")+'">'+esc(money(v))+'</div>').join("");
    const state=statusText(d); const action=d.benim_siram;
-   const header='<div class="tvks-head"><div class="tvks-brand">▣ KUTUNU SEÇ <span class="tvks-live">● CANLI TV</span></div><div class="tvks-sub">'+esc(d.kanal)+' · 16 KUTU · BÜYÜK ÖDÜL 50.000 ₺</div></div>';
+   const header='<div class="tvks-head"><div class="tvks-brand">▣ KUTUNU SEÇ <span class="tvks-live">'+(d.program_durum==="canli"?"● CANLI":d.program_durum==="planli"?"YAKINDA":"SONUÇ")+'</span></div><div class="tvks-sub">'+esc(d.kanal)+' · 16 KUTU · BÜYÜK ÖDÜL 50.000 ₺</div></div>';
    let info='<div class="tvks-round"><span class="tvks-tag">'+esc(state)+'</span><span>'+esc(d.yarismaci?"Yarışmacı: "+d.yarismaci:"Yarışmacı henüz seçilmedi")+'</span><span>🧳 Açılan: '+Number(d.acilan_sayi)+'/14</span></div>';
    let panel='';
    if(d.durum==="basvuru"){
@@ -110,7 +124,10 @@
    const d=await R("tv_kutu_durum",{p_program:Number(id)});
    if(active!==Number(id)||!$("tvKutuK")) return;
    const signature=JSON.stringify(d);
-   if(force||last!==signature){last=signature;$("tvKutuK").innerHTML=content(d);}
+   if(force||last!==signature){
+    last=signature;$("tvKutuK").innerHTML=content(d);
+    const tv=$("tvSahne");if(tv && $("tvKutuK") && active===Number(id))tv.innerHTML=scene({id:id,durum:d.program_durum});
+   }
   }catch(err){if($("tvKutuK")) $("tvKutuK").innerHTML='<div class="tvks-card">Kutunu Seç verisi alınamadı: '+esc(err&&err.message||"Sunucu hatası")+'</div>';}
   finally{polling=false;}
  }
@@ -135,7 +152,8 @@
   start(){return act("tv_kutu_baslat",{p_program:active});},
   box(no){return act("tv_kutu_oyna",{p_program:active,p_islem:(last&&JSON.parse(last).durum==="secim")?"sec":"ac",p_kutu:Number(no)});},
   play(code){return act("tv_kutu_oyna",{p_program:active,p_islem:code,p_kutu:null});},
-  refresh(){return refresh(active,true);}
+  refresh(){return refresh(active,true);},
+  scene:scene
  };
  window.SO_TV_KUTU=api;
 })();
