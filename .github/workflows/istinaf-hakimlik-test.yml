@@ -1,0 +1,45 @@
+name: Istinaf hakimlik guvenli kod testi
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261117202*.sql'
+      - 'gelistirici/www/istinaf_hakimlik.js'
+      - 'gelistirici/www/adliye.js'
+      - 'gelistirici/build/derle.js'
+      - '.github/workflows/istinaf-hakimlik-test.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  parse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: JS sozdizimi
+        run: |
+          node --check gelistirici/www/istinaf_hakimlik.js
+          node --check gelistirici/www/adliye.js
+          node --check gelistirici/build/derle.js
+      - name: SQL sentaks
+        run: |
+          python -m pip install pglast
+          python - <<'PY'
+          from pathlib import Path
+          from pglast import parse_sql
+          files = sorted(Path('supabase/migrations').glob('20261117202*.sql'))
+          assert len(files)>=2, files
+          for file in files:
+              parse_sql(file.read_text(encoding='utf-8'))
+              print('PASS',file)
+          PY
+      - name: Uyum kontrolu
+        run: |
+          grep -q 'istinaf_hakim_dosya_ac' supabase/migrations/20261117202100_istinaf_eski_dosya_uyumlulugu.sql
+          grep -q 'istinaf_hakim_davet_cevap' supabase/migrations/20261117202000_istinaf_meslek_hakimligi.sql
+          grep -q 'NOT exists(select 1 from oyun.istinaf_hakim_dosya' supabase/migrations/20261117202100_istinaf_eski_dosya_uyumlulugu.sql
