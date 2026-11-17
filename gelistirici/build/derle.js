@@ -45,6 +45,8 @@ html=html.replace('<script src="hesap_duzeltmeleri_20261025.js"></script>',()=>'
 html=html.replace('<script src="meslek_carsi.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','meslek_carsi.js'),'utf8')+'</script>');
 // Kuyumcu ve doviz ofisi: web ve mobil paket ayni ekranlari kullansin.
 html=html.replace('<script src="meslek_dukkan.js"></script>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','meslek_dukkan.js'),'utf8')+'</script>');
+// Gönüllü istinaf hâkimliği kariyer ve dosya kabul ekranı; web ve iOS/Android tek dosyalı pakete gömülür.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','istinaf_hakimlik.js'),'utf8')+'</script></body>');
 // Yeni ust sekmeli Ekonomi merkezi en son kurulur: eski uzun menunun uzerine yazilamaz.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','menu_merkezleri.js'),'utf8')+'</script></body>');
 // Premium Ekonomi: ekranlar ve Mobil Şube birlikteliği (eklentiyi en son yükle).
