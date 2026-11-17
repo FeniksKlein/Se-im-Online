@@ -292,3 +292,19 @@ GRANT EXECUTE ON FUNCTION public.istinaf_hakim_hazir(boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.istinaf_hakim_istifa() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.istinaf_hakim_davet_cevap(bigint,boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.istinaf_hakim_panel() TO authenticated;
+
+
+-- Taraflarin dosya ekraninda gorebildigi, kisisel uye verisi ifsa etmeyen heyet durumu.
+CREATE OR REPLACE FUNCTION public.istinaf_hakim_dosya_durum(p_dava bigint)
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO '' AS $f$
+SELECT CASE WHEN auth.uid() IS NULL OR NOT EXISTS(SELECT 1 FROM oyun.istinaf_hakim_dosya WHERE dava_id=p_dava)
+ THEN NULL ELSE (
+ SELECT jsonb_build_object('durum',h.durum,'kabul',
+   (SELECT count(*) FROM oyun.istinaf_hakim_davet v WHERE v.dava_id=p_dava AND v.durum='kabul'),
+   'davet',(SELECT count(*) FROM oyun.istinaf_hakim_davet v WHERE v.dava_id=p_dava AND v.durum='davet'),
+   'karar_son',h.karar_son,'ek_sure',h.ek_sure_verildi)
+ FROM oyun.istinaf_hakim_dosya h WHERE h.dava_id=p_dava
+ ) END
+$f$;
+REVOKE ALL ON FUNCTION public.istinaf_hakim_dosya_durum(bigint) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.istinaf_hakim_dosya_durum(bigint) TO authenticated;
