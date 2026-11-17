@@ -114,6 +114,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','teskilat_kongre.js'),'utf8')+'</script></body>');
 // Davet merkezi (aktiflik ödülleri) + moderatör ana görevleri ve finans denetim masası (2026.11.16).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','davet_mod_merkezi.js'),'utf8')+'</script></body>');
+// 17.11.2026: Hukuk reformu — istinaftan iade edilen dosyada beraat yok, kesin kararlar, istinaf yargılama gideri (Adliye override'larından SONRA).
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','adliye_istinaf_iade.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
