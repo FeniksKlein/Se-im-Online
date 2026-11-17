@@ -825,6 +825,7 @@
       return `<div class="tvx-rek"><span class="tvx-rek-et">REKLAM ARASI · <span data-tv-sn="${e(c.reklam_arasi.bitis)}">${kalanSn(c.reklam_arasi.bitis)} sn</span></span>
         <div class="tvx-rek-k" style="--t:${Math.max(1, r.length) * 6}s;--d:6s">${r.map((x, i) => `<div style="--i:${i}"><b>${e(x.marka)}</b><span>${e(x.metin)}</span></div>`).join("") || "<div><b>Birazdan</b><span>Yayın kaldığı yerden sürecek.</span></div>"}</div></div>`;
     }
+    if (d.tur === "kutunu_sec" && window.SO_TV_KUTU) return window.SO_TV_KUTU.scene(d);
     const a = c && c.anket;
     if (canli && a && (!a.kapandi || kalanSn(a.kapanis) > -90)) return anketHtml(d, c, a);
     if (planli) return `<div class="tvx-tur-et">${e(d.tur_ad)} · ${tarihSaat(d.bas)}</div><h2>${e(d.baslik)}</h2>${d.aciklama ? `<p>${e(d.aciklama)}</p>` : ""}
