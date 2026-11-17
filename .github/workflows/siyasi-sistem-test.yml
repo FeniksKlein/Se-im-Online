@@ -1,0 +1,59 @@
+name: Siyasi sistem ve ekonomi guvenli kod kontrolu
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261117*'
+      - 'gelistirici/operasyonlar/20261117*'
+      - 'gelistirici/test/*600*'
+      - 'gelistirici/test/k6_3000_secim_gecesi.js'
+      - 'www/siyasi_meslekler.js'
+      - 'docs/siyasi_meslekler.js'
+      - 'gelistirici/www/siyasi_meslekler.js'
+      - '.github/workflows/siyasi-sistem-test.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: JavaScript sozdizimi
+        run: |
+          node --check www/siyasi_meslekler.js
+          node --check docs/siyasi_meslekler.js
+          node --check gelistirici/www/siyasi_meslekler.js
+          node --check www/menu_merkezleri.js
+          node --check gelistirici/www/menu_merkezleri.js
+          node --check docs/menu_merkezleri.js
+          node --check gelistirici/test/k6_3000_secim_gecesi.js
+      - name: PostgreSQL sozdizimi
+        run: |
+          python -m pip install --disable-pip-version-check pglast
+          python - <<'PY'
+          from pathlib import Path
+          from pglast import parse_sql
+          files = [
+            *Path('supabase/migrations').glob('20261117*'),
+            Path('gelistirici/operasyonlar/20261117_ocak_2027_secimlerini_guvenli_geri_ac.sql'),
+            Path('gelistirici/test/600_milletvekili_81_il_kontrol.sql'),
+            Path('gelistirici/test/finans_oy_suistimal_deneti.sql')
+          ]
+          for f in files:
+            if not f.is_file():
+              raise SystemExit('Dosya bulunamadi: '+str(f))
+            parse_sql(f.read_text(encoding='utf-8'))
+            print('SQL parse PASS', f)
+          PY
+      - name: Guvenli varsayilanlari denetle
+        run: |
+          grep -q 'p_kuru boolean DEFAULT true' supabase/migrations/20261117182500_belediye_bosluk_tekrar_secim_kontrol.sql
+          grep -q 'IF NOT FOUND THEN' supabase/migrations/20261117183000_finans_atomik_bakiye_koruma.sql
+          grep -q 'ON CONFLICT' supabase/migrations/20261117183500_oyuncu_siyasi_meslek_ekip_davetleri.sql
+          grep -q "viewlouzlzxteygtnsgd.supabase.co" gelistirici/test/k6_3000_secim_gecesi.js
