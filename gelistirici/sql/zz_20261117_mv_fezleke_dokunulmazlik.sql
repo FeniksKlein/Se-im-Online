@@ -210,13 +210,13 @@ revoke all on function oyun.mvf_tick() from public,anon,authenticated;
 create or replace function public.mv_fezleke_yaz(
  p_hedef text,p_suc text,p_baslik text,p_isnat text,p_deliller text,p_hukuki text)
 returns jsonb language plpgsql security definer set search_path='' as $f$
-declare u uuid:=auth.uid(); hedef uuid; yeni bigint; t timestamptz:=oyun.simdi();
+declare u uuid:=auth.uid(); v_hedef uuid; yeni bigint; t timestamptz:=oyun.simdi();
 begin
  if u is null or not oyun.mahkeme_uyesi_mi(u) then raise exception 'Yalniz gorevdeki Yuksek Mahkeme uyesi fezleke hazirlayabilir.';end if;
- select id into hedef from oyun.profiller where lower(kad)=lower(btrim(p_hedef)) and not yasakli;
- if hedef is null or not exists(select 1 from oyun.makamlar where tur='mv' and user_id=hedef and bit is null)
+ select id into v_hedef from oyun.profiller where lower(kad)=lower(btrim(p_hedef)) and not yasakli;
+ if v_hedef is null or not exists(select 1 from oyun.makamlar where tur='mv' and user_id=v_hedef and bit is null)
  then raise exception 'Aktif milletvekili bulunamadi.';end if;
- if hedef=u then raise exception 'Kendi hakkinizda fezleke duzenleyemezsiniz.';end if;
+ if v_hedef=u then raise exception 'Kendi hakkinizda fezleke duzenleyemezsiniz.';end if;
  if p_suc not in ('hakaret','iftira','rusvet','yolsuzluk','usulsuzluk','dolandiricilik','diger')
   or length(btrim(coalesce(p_baslik,''))) not between 15 and 160
   or length(btrim(coalesce(p_isnat,''))) not between 120 and 5000
@@ -226,15 +226,15 @@ begin
  if lower(p_isnat) ~ '(mecliste kullandigi oy|meclisteki oyu|yasama konusmasi)' then
   raise exception 'Yasama sorumsuzlugu kapsamindaki Meclis oyu veya konusmasi ceza fezlekesine konu edilemez.';end if;
  perform oyun.mvf_tick();
- if exists(select 1 from oyun.mv_fezleke where hedef=hedef and asama in ('imza','hazirlik','karma','genel_kurul','itiraz','aym')) then
+ if exists(select 1 from oyun.mv_fezleke where hedef=v_hedef and asama in ('imza','hazirlik','karma','genel_kurul','itiraz','aym')) then
   raise exception 'Bu milletvekili hakkinda halen acik fezleke vardir.';end if;
- if exists(select 1 from oyun.mv_fezleke where hedef=hedef and suc=p_suc and acilis>t-interval '7 days') then
+ if exists(select 1 from oyun.mv_fezleke where hedef=v_hedef and suc=p_suc and acilis>t-interval '7 days') then
   raise exception 'Ayni hedef ve isnat turu icin 7 gun yeni fezleke acilamaz.';end if;
  insert into oyun.mv_fezleke(hedef,yazan,suc,baslik,isnat,deliller,hukuki,asama_bit)
-  values(hedef,u,p_suc,btrim(p_baslik),btrim(p_isnat),btrim(p_deliller),btrim(p_hukuki),t+interval '72 hours')
+  values(v_hedef,u,p_suc,btrim(p_baslik),btrim(p_isnat),btrim(p_deliller),btrim(p_hukuki),t+interval '72 hours')
   returning id into yeni;
  insert into oyun.mv_fezleke_imza(fezleke_id,uye) values(yeni,u);
- perform oyun.bildir(hedef,format('Yuksek Mahkeme fezleke #%s hakkinda imza sureci basladi. Bu bir mahkumiyet veya gozaltisi degildir.',yeni),t);
+ perform oyun.bildir(v_hedef,format('Yuksek Mahkeme fezleke #%s hakkinda imza sureci basladi. Bu bir mahkumiyet veya gozaltisi degildir.',yeni),t);
  return jsonb_build_object('id',yeni,'asama','imza');
 end $f$;
 
