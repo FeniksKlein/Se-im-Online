@@ -177,10 +177,16 @@
     var ust = '';
     if (opt.sabit) ust = '<div class="kr-ustnot">' + I.raptiye + '<span>Sabitlenmiş gönderi</span></div>';
     else if (opt.yp) ust = '<div class="kr-ustnot">' + I.yp + '<span><b data-kr="profil" data-kad="' + esc(opt.yp) + '">' + (opt.yp === benKad() ? 'Sen' : esc(opt.yp)) + '</b> yeniden paylaştı</span></div>';
+    var kurum = g.kurum && g.kurum.ad ? g.kurum : null;
     var adAt = 'data-kr="profil" data-kad="' + esc(g.kad) + '"';
-    var bas = '<div class="kr-bas"><b class="kr-ad" ' + adAt + '>' + esc(g.kad) + '</b>' + nisan(g.unvan) +
+    var bas = '<div class="kr-bas"><b class="kr-ad"' + (kurum ? '' : ' ' + adAt) + '>' + esc(kurum ? kurum.ad : g.kad) + '</b>' +
+      (kurum ? '<span class="kr-kurum-rozet">Kurumsal</span>' : nisan(g.unvan)) +
       (odak ? '' : '<span class="kr-sure">' + esc(ne(g.zaman)) + '</span>') +
       '<button type="button" class="kr-dm" ' + (uyum ? 'data-menu="' + g.id + '"' : 'data-kr="menu" data-id="' + g.id + '"') + ' aria-label="Seçenekler">' + I.menu + '</button></div>';
+    var kurumMeta = kurum ? '<div class="kr-kurum-yetkili"><span data-kr="profil" data-kad="' + esc(g.kad) + '">' + esc(g.kad) +
+      '</span> · ' + esc(kurum.rol || 'Yetkili') + '</div>' : altSatir(g);
+    var kurumAv = kurum ? '<span class="kr-kurum-av">' + esc(String(kurum.ad || 'K').slice(0, 1).toLocaleUpperCase('tr-TR')) + '</span>' : null;
+    var avatarAt = kurum ? '' : ' ' + adAt;
     var yanitNot = g.yanit_kad ? '<div class="kr-yanitnot"><span data-kr="profil" data-kad="' + esc(g.yanit_kad) + '">@' + esc(g.yanit_kad) + '</span> kişisine yanıt</div>' : '';
     var metin = '<div class="kr-metin metin"' + (uyum ? ' data-konu="' + g.id + '"' : '') + '>' + metinHtml(g.metin, uyum) + '</div>';
     var istat = '';
@@ -196,12 +202,12 @@
     var kokAt = (odak || uyum) ? '' : ' data-kr="ac"';
     if (odak) {
       return '<article class="' + cls + '" data-id="' + g.id + '">' + ust +
-        '<div class="kr-odak-ust"><span class="kr-av" ' + adAt + '>' + av(g.kad, partiRenk(g.parti), 48) + '</span><div class="kr-odak-kim">' + bas + altSatir(g) + '</div></div>' +
+        '<div class="kr-odak-ust"><span class="kr-av"' + avatarAt + '>' + (kurumAv || av(g.kad, partiRenk(g.parti), 48)) + '</span><div class="kr-odak-kim">' + bas + kurumMeta + '</div></div>' +
         yanitNot + metin + alintiHtml(g.alinti) + istat + eylemHtml(g, false) + '</article>';
     }
     return '<article class="' + cls + '" data-id="' + g.id + '"' + kokAt + '>' + ust +
-      '<div class="kr-g-ic"><span class="kr-av" ' + adAt + '>' + av(g.kad, partiRenk(g.parti), 44) + '</span>' +
-      '<div class="kr-g-g">' + bas + altSatir(g) + yanitNot + metin + alintiHtml(g.alinti) + eylemHtml(g, uyum) + '</div></div></article>';
+      '<div class="kr-g-ic"><span class="kr-av"' + avatarAt + '>' + (kurumAv || av(g.kad, partiRenk(g.parti), 44)) + '</span>' +
+      '<div class="kr-g-g">' + bas + kurumMeta + yanitNot + metin + alintiHtml(g.alinti) + eylemHtml(g, uyum) + '</div></div></article>';
   }
   // Ekrandaki aynı gönderinin bütün kopyalarındaki sayaçları yerinde güncelle (bağlayıcılar korunur)
   function sayacGuncelle(id, pat) {
@@ -745,13 +751,30 @@
     var w = document.createElement('div'); w.className = 'kr-yaz-arka'; w.id = 'krYaz';
     w.innerHTML = '<div class="kr-yaz" role="dialog" aria-modal="true" aria-label="' + (tur === 'yanit' ? 'Yanıt yaz' : 'Gönderi yaz') + '">' +
       '<div class="kr-yaz-ust"><button type="button" class="kr-yaz-iptal" id="krYazIptal">Vazgeç</button><span class="kr-yaz-tur">' + (tur === 'yanit' ? 'Yanıt' : tur === 'alinti' ? 'Alıntı' : 'Yeni gönderi') + '</span><button type="button" class="kr-yaz-gonder" id="krYazGonder" disabled>' + (tur === 'yanit' ? 'Yanıtla' : 'Paylaş') + '</button></div>' +
-      '<div class="kr-yaz-govde">' + baglam + '<div class="kr-yaz-satir"><span class="kr-av">' + av(p.kad, p.parti && p.parti.renk, 40) + '</span><textarea id="krYazMetin" maxlength="1000" rows="3" placeholder="' + yer + '"></textarea></div>' +
+      '<div class="kr-yaz-govde">' + baglam +
+      (tur === 'yeni' ? '<div class="kr-kimlik-alan" id="krKimlikAlan" hidden><label for="krYazKimlik">Kimin adına paylaşacaksın?</label><select id="krYazKimlik"><option value="">Kişisel hesabım · ' + esc(p.kad) + '</option></select><small>Yalnızca yetkili olduğun kurumlar listelenir. Görev değişiklikleri anında geçerlidir.</small></div>' : '') +
+      '<div class="kr-yaz-satir"><span class="kr-av">' + av(p.kad, p.parti && p.parti.renk, 40) + '</span><textarea id="krYazMetin" maxlength="1000" rows="3" placeholder="' + yer + '"></textarea></div>' +
       (tur === 'alinti' && g ? '<div class="kr-yaz-alinti">' + alintiHtml(g) + '</div>' : '') + '</div>' +
       '<div class="kr-yaz-alt">' + (et.length ? '<div class="kr-yaz-et">' + et.map(function (x) { return '<button type="button" data-ekle="' + esc(x.ad) + '">' + esc(x.ad) + '</button>'; }).join('') + '</div>' : '<div class="kr-yaz-ipucu">#etiket ile gündeme gir, @isim ile birini an.</div>') +
       '<span class="kr-halka" id="krHalka"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" class="z"/><circle cx="12" cy="12" r="9.5" class="d" id="krHalkaD"/></svg><b id="krKalan"></b></span></div></div>';
     document.body.appendChild(w);
     avTazele(w);
     var t = w.querySelector('#krYazMetin'), gb = w.querySelector('#krYazGonder');
+    var kurumSecenekleri = [], kimlikSec = w.querySelector('#krYazKimlik');
+    if (kimlikSec) {
+      rpc('kursu_kurumsal_kimlikler').then(function (liste) {
+        if (!w.isConnected) return;
+        kurumSecenekleri = Array.isArray(liste) ? liste : [];
+        if (!kurumSecenekleri.length) return;
+        var alan = w.querySelector('#krKimlikAlan');
+        if (alan) alan.hidden = false;
+        kurumSecenekleri.forEach(function (k, i) {
+          var o = document.createElement('option');
+          o.value = String(i + 1); o.textContent = k.ad + ' · ' + k.rol;
+          kimlikSec.appendChild(o);
+        });
+      }).catch(function () { /* Kurumsal yetki sorgusu başarısızsa kişisel gönderi çalışır. */ });
+    }
     if (opt.metin) t.value = opt.metin;
     var cevre = 2 * Math.PI * 9.5;
     var guncelle = function () {
@@ -775,7 +798,12 @@
         var r;
         if (tur === 'yanit') r = await rpc('akis_yanit_yaz', { p_id: g.id, p_metin: m });
         else if (tur === 'alinti') r = await rpc('kursu_alinti', { p_id: g.id, p_metin: m });
-        else r = await rpc('akis_yaz', { p_metin: m });
+        else {
+          var secim = kimlikSec && kimlikSec.value ? kurumSecenekleri[Number(kimlikSec.value) - 1] : null;
+          r = secim
+            ? await rpc('kursu_kurumsal_yaz', { p_metin: m, p_tur: secim.tur, p_kimlik: secim.kimlik })
+            : await rpc('akis_yaz', { p_metin: m });
+        }
         hafif(); yazKapat();
         toast(tur === 'yanit' ? 'Yanıtın gönderildi.' : tur === 'alinti' ? 'Alıntın yayında.' : 'Gönderin yayında.');
         if (tur === 'yanit' && g && KR.g[g.id]) { KR.g[g.id].yanit = n(KR.g[g.id].yanit) + 1; sayacGuncelle(g.id); }
@@ -1158,6 +1186,14 @@
     '.kr-bio-kap{position:relative}.kr-bio-kap textarea{width:100%;box-sizing:border-box;min-height:84px;padding:12px 12px 22px;border-radius:14px;background:var(--bg);border:1px solid var(--kr-cizgi);color:var(--txt);font:inherit;font-size:15.5px;resize:none}',
     '.kr-bio-kap span{position:absolute;right:12px;bottom:8px;font-size:12px;color:var(--kr-soluk)}.kr-bio-kap span.az{color:var(--kr-turuncu)}',
     '.kr-duz-not{font-size:12.5px;color:var(--kr-soluk);margin:6px 0 14px}.kr-duz .kr-btn{width:100%;margin-top:8px}',
+    /* kurumsal Kürsü kimliği */
+    '.kr-kimlik-alan{padding:12px;margin:0 0 12px;border:1px solid var(--kr-cizgi);border-radius:14px;background:rgba(105,122,155,.10)}',
+    '.kr-kimlik-alan[hidden]{display:none!important}.kr-kimlik-alan label{display:block;font-size:15px;font-weight:700;margin:0 0 8px;color:var(--txt)}',
+    '.kr-kimlik-alan select{display:block;width:100%;min-width:0;box-sizing:border-box;min-height:48px;font-size:16px;padding:10px 12px;color:var(--txt);background:var(--panel);border:1px solid var(--kr-cizgi);border-radius:10px;color-scheme:dark}',
+    '.kr-kimlik-alan option{background:#1b2332;color:#fff}.kr-kimlik-alan small{display:block;font-size:13px;line-height:1.45;margin-top:7px;color:var(--txt2)}',
+    '.kr-kurum-rozet{display:inline-flex;align-items:center;font-size:10px;font-weight:800;padding:3px 7px;border-radius:7px;background:rgba(77,149,232,.16);color:#82c4ff;letter-spacing:.02em}',
+    '.kr-kurum-yetkili{font-size:12px;line-height:1.5;color:var(--txt2);margin:3px 0 5px}.kr-kurum-yetkili [data-kr]{font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px}',
+    '.kr-kurum-av{display:flex;width:100%;height:100%;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(145deg,#2c5484,#1a304d);color:#fff;font-size:22px;font-weight:800}',
     /* yazma penceresi */
     '.kr-yaz-arka{position:fixed;inset:0;z-index:80;background:rgba(5,8,22,.6);display:flex;align-items:flex-end;justify-content:center;animation:krSol .2s ease-out}',
     '.kr-yaz{width:100%;max-width:620px;height:100%;max-height:100%;display:flex;flex-direction:column;background:var(--bg);animation:krYukari .28s cubic-bezier(.2,.9,.3,1)}',

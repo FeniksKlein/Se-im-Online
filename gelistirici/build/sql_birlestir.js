@@ -45,7 +45,7 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   '210_rutbe_lansman_dengesi.sql', 'zz_20261116_tbmm_nisap_oy_koruma.sql', 'zz_20261116_yargi_gozalti_serbest.sql', 'zz_20261115_beta_gercekci_siyaset_kalici.sql', 'zz_20261116_aday_belirleme_dhondt.sql', 'zz_20261116_aday_riza_sifir_oy_koruma.sql', 'zz_20261116_mahkeme_cb_baro_tbmm.sql', 'zz_20261116_belediye_ertesi_gun_ara_secim.sql', 'zz_20261116_ysk_bagimsiz_itiraz_sayim.sql', 'zz_20261116_genel_baskan_secimi_uyeler.sql', 'zz_20261116_mahkeme_bagimsiz_azil_koruma.sql', 'zz_20261116_belediye_oy_disinda_atama_yasagi.sql', 'zz_20261116_belediye_bosluk_otomatik_ara_secim.sql',
   'zz_20261116_baro_mudafi_guvence.sql', 'zz_20261116_kabine_48_saat_kaldir.sql', 'zz_20261116_makam_guvenligi.sql',
   'zz_20261116_gby_yetki_sistemi.sql', 'zz_20261116_il_kongre_sistemi.sql', 'zz_20261116_yk_kurum_gorevleri.sql', 'zz_20261116_kurulus_canli_fiyat_sartlar.sql',
-  'zz_20261116_kredi_denge.sql', 'zz_20261116_davet_aktiflik.sql', 'zz_20261116_mod_gorev_finans.sql', 'zz_20261116_kurucu_partiler.sql', 'zz_20261116_kayit_onay_ad_soyad.sql', 'zz_20261117_ad_soyad_profil.sql', 'zz_20261117_hukuk_reformu.sql'];
+  'zz_20261116_kredi_denge.sql', 'zz_20261116_davet_aktiflik.sql', 'zz_20261116_mod_gorev_finans.sql', 'zz_20261116_kurucu_partiler.sql', 'zz_20261116_kayit_onay_ad_soyad.sql', 'zz_20261117_ad_soyad_profil.sql', 'zz_20261117_hukuk_reformu.sql', 'zz_20261117_kursu_kurumsal.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
