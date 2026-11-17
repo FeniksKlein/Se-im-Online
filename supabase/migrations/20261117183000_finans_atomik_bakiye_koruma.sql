@@ -1,3 +1,12 @@
+-- Fonksiyonlarin hedeflenenden farkli surumlerle ezilmesini engelle.
+DO $sha$
+BEGIN
+ IF (SELECT md5(pg_get_functiondef(p.oid)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='para_gonder') IS DISTINCT FROM '74a48203b756aca8605b1e9097ac3397' THEN
+ RAISE EXCEPTION 'Surum catismasi: public.para_gonder'; END IF;
+ IF (SELECT md5(pg_get_functiondef(p.oid)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='sirket_parti_bagis') IS DISTINCT FROM 'ae59b90f4d22a1a1aac280076a87dd2b' THEN
+ RAISE EXCEPTION 'Surum catismasi: public.sirket_parti_bagis'; END IF;
+END $sha$;
+
 -- 17.11.2026: Finansal cift-harcama koruma, mevcut bakiye ve islem satirlarina dokunmaz.
 -- ONCE test ortaminda iki eszamanli havale ve sirket bagisi yarisi ile dogrulanmali.
 -- 1) Bakiye kontrolu ile eksiltme ayni atomik UPDATE kosulunda.
