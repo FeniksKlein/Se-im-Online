@@ -28,6 +28,7 @@
   const SURELER = [[10, "10 dakika"], [15, "15 dakika"], [20, "20 dakika"], [30, "30 dakika"], [45, "45 dakika"], [60, "1 saat"], [90, "1,5 saat"], [120, "2 saat"], [180, "3 saat"]];
   const TUR = { duello: ["Siyasi düello", "İki ya da daha çok konuk tartışır, izleyiciler en ikna ediciyi oylar."], soylesi: ["Söyleşi", "Sunucu konuklarına soru sorar; seyirci sorularını ekrana alabilir."], haber: ["Haber programı", "Sunucu gündemi aktarır, konuk çağırabilir, canlı anket açabilir."],
     yarisma: ["Bilgi yarışması", "Sunucu süreli sorular sorar; izleyiciler yarışır, hızlı ve doğru bilen puan toplar. Kanal kasasından ödül havuzu koyabilirsin."],
+     kutunu_sec: ["Kutunu Seç · Büyük Ödül", "16 altın kutu, ücretsiz başvuru, rastgele yarışmacı, otomatik bankacı ve 50.000 ₺ büyük ödül."],
     acik_oturum: ["Açık oturum · Halk soruyor", "Söz seyircide: sorular oylanır, sunucu en çok desteklenenleri ekrana alır, izleyicileri canlı bağlantıyla stüdyoya bağlar."] };
   const EMOJI = [["alkis", "👏", "Alkış"], ["kahkaha", "😂", "Kahkaha"], ["sasirma", "😮", "Şaşkınlık"], ["ofke", "😡", "Öfke"], ["kalp", "❤️", "Sevgi"], ["ates", "🔥", "Ateş"]];
   const EMO = Object.fromEntries(EMOJI.map(x => [x[0], x[1]]));
@@ -612,14 +613,14 @@
       <section class="kart"><h2>Program aç</h2>
         <p class="alt">Başlangıcı boş bırakırsan yayın hemen başlar. Tarih ve saat seçersen program yayın akışına girer ve saati gelince kendiliğinden başlar. Konukları programı açtıktan sonra çağırırsın.</p>
         <input type="hidden" id="tvTur" value="duello">
-        <div class="tvx-tur" role="radiogroup" aria-label="Program türü">${Object.keys(TUR).map(k => `<label><input type="radio" name="tvTurSec" value="${k}"${k === "duello" ? " checked" : ""} onchange="document.getElementById('tvTur').value=this.value;var o=document.getElementById('tvOdulAlan');if(o)o.hidden=this.value!=='yarisma'"><span><b>${TUR[k][0]}</b><small>${TUR[k][1]}</small></span></label>`).join("")}</div>
+        <div class="tvx-tur" role="radiogroup" aria-label="Program türü">${Object.keys(TUR).filter(k => k !== "kutunu_sec" || d.benim).map(k => `<label><input type="radio" name="tvTurSec" value="${k}"${k === "duello" ? " checked" : ""} onchange="document.getElementById('tvTur').value=this.value;var o=document.getElementById('tvOdulAlan');if(o)o.hidden=this.value!=='yarisma'"><span><b>${TUR[k][0]}</b><small>${TUR[k][1]}</small></span></label>`).join("")}</div>
         <div class="alan"><label for="tvBaslik">Başlık</label><input id="tvBaslik" maxlength="90" placeholder="Örn. Ekonomi düellosu"></div>
         <div class="alan"><label for="tvAcik">Kısa açıklama (isteğe bağlı)</label><input id="tvAcik" maxlength="300"></div>
         <div class="alan"><label for="tvBas">Başlangıç (cihazının saatine göre; boş = hemen)</label><input id="tvBas" type="datetime-local"></div>
         <div class="alan"><label for="tvSure">Süre</label><select id="tvSure">${SURELER.map(s => `<option value="${s[0]}"${s[0] === 30 ? " selected" : ""}>${s[1]}</option>`).join("")}<option value="">Sunucu bitirene kadar (en çok 3 saat)</option></select></div>
         ${d.benim && aktifSun.length ? `<div class="alan"><label for="tvSun">Sunucu</label><select id="tvSun"><option value="">Ben sunacağım</option>${aktifSun.map(s => `<option value="${e(s.kad)}">${e(s.kad)}</option>`).join("")}</select></div>` : ""}
         ${d.benim ? `<div class="alan" id="tvOdulAlan" hidden><label for="tvOdul">Yarışma ödül havuzu (₺, isteğe bağlı · yalnız bilgi yarışmasında, kanal kasasından)</label><input id="tvOdul" type="number" inputmode="numeric" min="1000" max="100000" step="1000" placeholder="Örn. 25000 · kasada ${tl(d.kasa)}"></div>` : ""}
-        <p class="kucuk">${sv ? `${e(sv.ad)}: günde en çok ${Number(sv.gunluk)} program.` : "Bir kanal günde en çok 4 program açabilir."} Yarışmada sorular yayın sırasında Reji masasından sorulur; ödülü ilk üç alır (%50 · %30 · %20).</p>
+        <p class="kucuk">${sv ? `${e(sv.ad)}: günde en çok ${Number(sv.gunluk)} program.` : "Bir kanal günde en çok 4 program açabilir."} Bilgi yarışmasında ödül ilk üçe dağıtılır. Kutunu Seç için kanalda 50.000 ₺ bulunmalı; ödül oyun başlamadan ayrılır.</p>
         <button class="btn altin" onclick="tvProgramAc(${d.id})">Programı aç</button></section>` : "";
     iskelet(d.ad, `<div id="tvKanalKok" class="tvx">
       <section class="kart" style="margin-bottom:12px"><div class="tvx-kunye">${logo(d.ad, "b")}<div style="min-width:0"><h2>${e(d.ad)}</h2>${d.slogan ? `<p>${e(d.slogan)}</p>` : ""}
@@ -682,7 +683,14 @@
     if (bas) { const t = new Date(bas); if (isNaN(t.getTime())) return toast("Başlangıç tarihi geçersiz.", true); basIso = t.toISOString(); }
     try {
       const tur = $("#tvTur").value, odul = $("#tvOdul") ? Math.round(Number($("#tvOdul").value) || 0) : 0;
-      const r = await rpc("tv_program_ac", { p_kanal: id, p_tur: tur, p_baslik: baslik, p_aciklama: ($("#tvAcik").value || "").trim() || null,
+      if (tur === "kutunu_sec") {
+         if (!await onayla("Kutunu Seç yarışması", "Kanal kasasından 50.000 ₺ yarışma teminatı ayrılacak. En az 5 uygun başvuru arasından yarışmacıyı sunucu rastgele seçecek.", "Yarışmayı oluştur")) return;
+         const k = await rpc("tv_kutu_program_ac", { p_kanal: id, p_baslik: baslik, p_bas: basIso, p_sunucu: sun || null });
+         toast("Kutunu Seç yayın akışına eklendi. 50.000 ₺ ödül teminatı ayrıldı.");
+         window.tvStudyoAc(k.id);
+         return;
+       }
+       const r = await rpc("tv_program_ac", { p_kanal: id, p_tur: tur, p_baslik: baslik, p_aciklama: ($("#tvAcik").value || "").trim() || null,
         p_bas: basIso, p_dakika: sure ? Number(sure) : null, p_sunucu: sun || null });
       $("#tvBaslik").value = ""; $("#tvAcik").value = ""; $("#tvBas").value = ""; ozetSifirla();
       if (tur === "yarisma" && odul >= 1000) {
@@ -1029,6 +1037,7 @@
         <div class="tvx-tv-alt"><p class="kucuk" id="tvSayac">${sayacHtml(d)}</p><div class="tvx-tv-bil"><span id="tvReyt">${reytingChip(d, c)}</span><span>${e(d.tur_ad)}${rolYazi ? " · " + rolYazi : ""} · ${planli ? "Başlangıç " + tarihSaat(d.bas) + (d.acik_uclu ? " · sunucu bitirene kadar" : " · bitiş " + saatYaz(d.bit)) : progZaman(d)}</span></div></div>
         ${reklamlar.length ? `<div class="tv-sponsor" style="padding:0 12px 12px;margin:0">Bu yayının reklamverenleri: ${reklamlar.map(r => e(r.marka)).join(" · ")}</div>` : ""}</section>
       <div id="tvEmojiK">${emojiHtml(d, c)}</div>
+       ${d.tur === "kutunu_sec" ? '<div id="tvKutuK" class="tvks"></div>' : ""}
       ${d.rolum === "davetli" && acik ? `<section class="tvx-gelen"><h2>Bu programa konuk olarak davetlisin.</h2><p>Katılırsan yayın sırasında söz alabilirsin; izleyiciler seni oylayabilir.</p>
         <div class="tv-iki"><button class="btn altin" onclick="tvKonukYanit(${d.id},true)">Katılıyorum</button><button class="btn ikinci" onclick="tvKonukYanit(${d.id},false)">Katılamam</button></div></section>` : ""}
       <div id="tvYarismaK">${yarismaHtml(d, c)}</div>
@@ -1060,6 +1069,7 @@
     const enter = (sec, fn) => { const ta = $(sec); if (ta) ta.onkeydown = ev => { if (ev.key === "Enter" && !ev.shiftKey && window.matchMedia && matchMedia("(pointer:fine)").matches) { ev.preventDefault(); fn(id); } }; };
     enter("#tvYaz", window.tvYaz); enter("#tvYorum", window.tvYorumYaz);
     saniyeKur(id);
+    if (d.tur === "kutunu_sec" && window.SO_TV_KUTU) window.SO_TV_KUTU.mount(id);
     if (acik || d.oy_penceresi || (c && c.yarisma && d.durum === "bitti" && !(c.yarisma.kazananlar || []).length)) {
       const eskiTaz = async () => {
         let y; try { y = hazirla(await rpc("tv_detay", { p_program: id })); } catch (_) { return; }
