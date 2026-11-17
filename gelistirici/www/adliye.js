@@ -27,7 +27,7 @@ function adlBilgiHtml(){
   +'<div class="kv"><span class="k">Dava açma</span><span class="v">Oyuncu veya yetkili parti temsilcisi iddiayı ve delilleri bildirir.</span></div>'
   +'<div class="kv"><span class="k">Savunma</span><span class="v">Davalı yanıt verebilir; parti sözcüsü yalnız yetkisi varsa temsil edebilir.</span></div>'
   +'<div class="kv"><span class="k">Yargılama</span><span class="v">3 üyeli Yüksek Mahkeme delilleri inceler; karar oy çokluğuyla (2 oy) verilir. Mahkemenin savunma süresinden sonra 72 saati vardır, yoksa dava düşer.</span></div>'
-  +'<div class="kv"><span class="k">İstinaf</span><span class="v">Kaybeden taraf 24 saat içinde bir kez itiraz eder; kurayla seçilen tarafsız 3 kişilik jüri kararı onaylar ya da bozar. Ağır cezalar karar kesinleşince uygulanır.</span></div>'
+  +'<div class="kv"><span class="k">İstinaf</span><span class="v">Kaybeden taraf 24 saat içinde bir kez itiraz eder; gönüllü meslekten 3 istinaf hâkimi görevi kabul ettikten sonra gerekçeli oylarıyla kararı onaylar ya da bozar. Daha önce açılmış davalarda mevcut jüri korunur.</span></div>'
   +'<div class="kv"><span class="k">Harç</span><span class="v">Dava açan harcı peşin öder. Kazanırsa geri alır ve harcı davalı öder; kaybederse harç hazineye kalır.</span></div>'
   +'<div class="kv"><span class="k">Bağımsızlık</span><span class="v">Yargıçlar partisizdir; görev süresince partiye giremez, aday olamaz. 1. üye CB, 2. Baro, 3. TBMM kaynaklıdır.</span></div>'
   +'<div class="kv"><span class="k">Af</span><span class="v">Cumhurbaşkanı bireysel veya genel af ilan edebilir. Gerekçeler kamuya açıktır.</span></div>'
@@ -169,7 +169,7 @@ async function adliyeHtml(){
  const yer=d.partiler.find(p=>p.id===d.parti_id);
  const acik=d.davalar.filter(x=>x.durum==="acik");
  const bitmis=d.davalar.filter(x=>x.durum!=="acik");
- return adlBilgiHtml()+(mahkeme?adlJuriHtml(mahkeme)+adlMahkemeHtml(mahkeme)+'<div class="kart"><button class="btn" onclick="adlDavaModal()">Dava aç'+(mahkeme.ayar&&mahkeme.ayar.harc?' · harç '+tlYaz(mahkeme.ayar.harc):'')+'</button></div>':'<div class="kart"><h3>Yüksek Yargı</h3>'
+ return adlBilgiHtml()+'<div class="kart"><h3>⚖️ İstinaf Hâkimliği</h3><p class="alt">Hukuk Akademisini tamamla, gönüllü hâkimliğe başvur, görev davetlerini kabul et.</p><button class="btn altin" onclick="ekranAc(istinafHakimlikEkrani)">Hâkimlik kariyerim ve davetlerim</button></div>'+(mahkeme?adlJuriHtml(mahkeme)+adlMahkemeHtml(mahkeme)+'<div class="kart"><button class="btn" onclick="adlDavaModal()">Dava aç'+(mahkeme.ayar&&mahkeme.ayar.harc?' · harç '+tlYaz(mahkeme.ayar.harc):'')+'</button></div>':'<div class="kart"><h3>Yüksek Yargı</h3>'
   +'<p class="alt">Herkese açık davalar · Tek Yüksek Yargıç · Sözlü savunma · Gerekçeli karar · Cumhurbaşkanlığı affı</p>'
   +'<div class="kv"><span class="k">Yüksek Yargıç</span><span class="v">'+e(d.hakim||"Henüz atanmadı")+'</span></div>'
   +(d.hakim_miyim?'<div class="rozet altin" style="margin-top:10px">Yüksek Yargıç yetkiniz aktif</div><button class="btn tehlike" onclick="adlYargicIstifa()">Yüksek Yargıç görevinden istifa et</button>':'')
@@ -446,7 +446,7 @@ async function adlBaroMahkemeAta(){
 function adlJuriHtml(M){
  const g=(M.juri_gorevlerim||[]).filter(j=>!j.oyum);
  if(!g.length)return '';
- return '<div class="kart" style="border:1px solid var(--ink2)"><h3>İstinaf jürisi görevin var</h3><p class="alt">Kura ile tarafsız jüri üyesi seçildin. Kararı onayla ya da boz.</p>'
+ return '<div class="kart" style="border:1px solid var(--ink2)"><h3>İstinaf jürisi görevin var</h3><p class="alt">İstinaf heyetinde görevlisin. Dosyayı inceleyip gerekçeli karar ver.</p>'
   +g.map(j=>'<button class="btn altin" onclick="ekranAc(()=>adliyeDosya('+j.dava_id+'))">Dava #'+j.dava_id+' · son '+adlTarih(j.bit)+'</button>').join('')+'</div>';
 }
 function adlIstinafHtml(d,ek){
@@ -454,9 +454,9 @@ function adlIstinafHtml(d,ek){
  if(ek.istinaf){
   const i=ek.istinaf;
   h+='<div class="kart"><h3>İstinaf</h3><p class="alt">'+e(i.basvuran)+' itiraz etti: '+e(i.gerekce)+'</p>'
-   +'<p class="kucuk">Jüri: '+i.juri_sayi+' kişi · '+i.onay+' onay · '+i.boz+' boz · '+(i.durum==="acik"?'son '+adlTarih(i.bit):i.durum==="bozuldu"?'karar bozuldu':'karar onaylandı')+'</p>'
+   +'<p class="kucuk">İstinaf heyeti: '+i.juri_sayi+' kişi · '+i.onay+' onay · '+i.boz+' boz · '+(i.durum==="acik"?'son '+adlTarih(i.bit):i.durum==="bozuldu"?'karar bozuldu':'karar onaylandı')+'</p>'
    +(i.juri?i.juri.map(j=>'<div class="kucuk">• '+e(j.kad)+': '+e(j.oy==="boz"?"boz":j.oy==="onay"?"onayla":"oy vermedi")+(j.gerekce?' — '+e(j.gerekce):'')+'</div>').join(''):'')
-   +(i.durum==="acik"&&i.juri_miyim&&!i.juri_oyum?'<div class="alan"><label>Kısa gerekçe (isteğe bağlı)</label><input id="adlJuriNot" maxlength="2000"></div><div class="vit-dugme"><button class="btn altin" onclick="adlJuriOy('+d.id+',\'onay\')">Kararı onayla</button><button class="btn ikinci" onclick="adlJuriOy('+d.id+',\'boz\')">Kararı boz</button></div>':'')
+   +(i.durum==="acik"&&i.juri_miyim&&!i.juri_oyum?'<div class="alan"><label>Gerekçeli oy (yeni heyetlerde en az 40 karakter)</label><input id="adlJuriNot" maxlength="2000"></div><div class="vit-dugme"><button class="btn altin" onclick="adlJuriOy('+d.id+',\'onay\')">Kararı onayla</button><button class="btn ikinci" onclick="adlJuriOy('+d.id+',\'boz\')">Kararı boz</button></div>':'')
    +(i.juri_oyum?'<p class="kucuk">Oyun: '+e(i.juri_oyum==="boz"?"boz":"onayla")+'</p>':'')+'</div>';
  } else if(d.durum==="karar"&&ek.kesin===false){
   h+='<div class="kart"><h3>İstinaf</h3><p class="alt">Karar henüz kesinleşmedi. Kaybeden taraf '+adlTarih(ek.istinaf_son)+' tarihine kadar bir kez itiraz edebilir; itiraz yoksa karar kesinleşir ve ağır cezalar o zaman uygulanır.</p>'
@@ -465,9 +465,9 @@ function adlIstinafHtml(d,ek){
  return h;
 }
 function adlIstinafModal(id){
- const m=modal('<p class="alt">İstinafı kurayla seçilen 3 kişilik jüri inceler; davanın taraflarının partilerinden kimse jüriye seçilmez ve öncelik son 24 saatte oyunda olanlardadır. Jüri kararı onaylar ya da bozar. 8 saat oyuna girmeyen üyenin yerine yedek geçer; 24 saatte çoğunluk yoksa 24 saat ek süre verilir, sonra verilen oylara göre karar çıkar (bozma için en az 2 oy gerekir). Her davada bir kez başvurulabilir.</p>'+adlAlan("İtiraz gerekçen (20–1500)","adlIstGerekce","textarea")+'<button class="btn altin" id="adlIstGonder">İstinafa başvur</button>');
+ const m=modal('<p class="alt">İstinaf hukuk akademisinden mezun gönüllü hâkimlere teklif edilir; yalnız dosyayı kabul edenler karar verir. Jüri kararı onaylar ya da bozar. Yeni dosyalarda görev 10 dakikada kabul edilir; heyet tamamlanınca 6 saat karar süresi ve gerekirse 4 saat ek süre vardır. Yeterli oy çıkmazsa dosya otomatik onanmaz, uygun hâkim bekler. Her davada bir kez başvurulabilir.</p>'+adlAlan("İtiraz gerekçen (20–1500)","adlIstGerekce","textarea")+'<button class="btn altin" id="adlIstGonder">İstinafa başvur</button>');
  adlFormBaslik(m,"İstinaf · Dava #"+id);
- m.querySelector("#adlIstGonder").onclick=()=>adlIslem(()=>API.rpc("adliye_istinaf",{p_dava:id,p_gerekce:m.querySelector("#adlIstGerekce").value}),"İstinaf başvurun alındı; jüri kurayla seçildi.",id);
+ m.querySelector("#adlIstGonder").onclick=()=>adlIslem(()=>API.rpc("adliye_istinaf",{p_dava:id,p_gerekce:m.querySelector("#adlIstGerekce").value}),"İstinaf başvurun alındı; gönüllü hâkimlerin dosyayı kabul etmesi bekleniyor.",id);
 }
 function adlJuriOy(id,oy){
  const n=document.getElementById("adlJuriNot");
