@@ -43,14 +43,21 @@
       var sonuc = await API.rpc("bakanlik_yonetimi");
       var liste = Array.isArray(sonuc && sonuc.bakanliklar) ? sonuc.bakanliklar : [];
       var acik = liste.filter(function(x) { return !!x.aktif; }).length;
+      var alanlar = Array.isArray(sonuc && sonuc.alanlar) ? sonuc.alanlar : [];
+      var alanIsimleri = {};
+      alanlar.forEach(function(a) { alanIsimleri[a.kod] = a.ad; });
       var h = '<div class="kart">' +
         '<h2>🏛️ Bakanlık Kur / Kapat</h2>' +
         '<p class="alt">Bakanlık açma ve kapatma yetkisi Cumhurbaşkanına aittir. Mevcut atamalar, geçmiş mali kayıtlar ve kararlar silinmez.</p>' +
         '<p><b>Açık bakanlık:</b> '+acik+' / '+Number(sonuc.sinir || 30)+'</p>' +
         '<label for="bk-yeni-ad">Yeni bakanlığın adı</label>' +
         '<input id="bk-yeni-ad" type="text" maxlength="80" placeholder="Örn. Enerji ve Tabii Kaynaklar Bakanlığı" style="display:block;width:100%;box-sizing:border-box;margin:8px 0 12px;padding:12px;border-radius:10px">' +
+        '<label for="bk-yeni-alan">Bakanlığın faaliyet alanı</label>' +
+        '<select id="bk-yeni-alan" style="display:block;width:100%;box-sizing:border-box;margin:8px 0 12px;padding:12px;border-radius:10px">' +
+        alanlar.map(function(a) { return '<option value="'+htmlKac(a.kod)+'">'+htmlKac(a.ad)+'</option>'; }).join('') +
+        '</select>' +
         '<button type="button" class="btn altin" onclick="bakanlikYonKur()">+ Yeni bakanlık kur</button>' +
-        '<p class="alt">Yeni bakanlık sıfır bütçeyle kurulur; özel görevleri ve icraatları daha sonra tanımlanabilir.</p></div>';
+        '<p class="alt">Kuruluşta Hazine kaynaklı 5 milyar ₺ kasa ödeneği, %2 merkezi bütçe payı, 4 alanına özel icraat ve 2 katılımlı etkinlik verilir. Diğer bütçe payları dengelenerek toplam %100 korunur. Bakan ataması Kabine üzerinden yapılır.</p></div>';
       h += '<div class="kart"><h2>Mevcut bakanlıklar</h2><p class="alt">Kapatılan bakanlıklar arşivlenir ve tekrar açılabilir. Görevli bakan varsa önce Kabine bölümünden görevden alınmalıdır.</p></div>';
       liste.forEach(function(b) {
         var kod = String(b.kod || "");
@@ -59,7 +66,8 @@
         h += '<div class="kart" style="margin-bottom:10px">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
           '<h3 style="margin:0">'+htmlKac(b.ad)+'</h3><b>'+durum+'</b></div>' +
-          '<p class="alt" style="margin:8px 0">Kasa: '+htmlKac(butce(b.kasa))+
+          '<p class="alt" style="margin:8px 0">Alan: '+htmlKac(alanIsimleri[b.alan] || (b.sistem ? 'Mevcut bakanlık' : 'Genel kamu hizmetleri'))+
+          ' · Kasa: '+htmlKac(butce(b.kasa))+' · Bütçe payı: %'+htmlKac(Number(b.pay || 0).toLocaleString('tr-TR',{maximumFractionDigits:4}))+
           (b.bakan ? ' · Bakan: '+htmlKac(b.bakan) : ' · Bakan atanmamış') + '</p>';
         if (b.aktif) {
           h += '<button type="button" class="btn ikinci" onclick="bakanlikYonKapatForm(\''+kod+'\')">Bakanlığı kapat</button>' +
@@ -82,10 +90,12 @@
   window.bakanlikYonKur = async function() {
     var el = document.getElementById("bk-yeni-ad");
     var ad = el && el.value && el.value.trim();
+    var secim = document.getElementById("bk-yeni-alan");
+    var alan = secim && secim.value || "genel";
     if (!ad || ad.length < 5) { bilgi("Bakanlığın adını en az 5 karakter olarak yaz.", true); return; }
     try {
-      var r = await API.rpc("bakanlik_kur", {p_ad:ad});
-      bilgi((r && r.ad || ad) + " kuruldu.");
+      var r = await API.rpc("bakanlik_kur_alan", {p_ad:ad,p_alan:alan});
+      bilgi((r && r.ad || ad) + " kuruldu. 5 milyar ₺ bütçe, 4 icraat ve 2 etkinlik hazır.");
       return window.bakanlikKurKapatEkrani();
     } catch (err) { bilgi(hata(err), true); }
   };
