@@ -49,12 +49,12 @@
       var h = '<div class="kart">' +
         '<h2>🏛️ Bakanlık Kur / Kapat</h2>' +
         '<p class="alt">Bakanlık açma ve kapatma yetkisi Cumhurbaşkanına aittir. Mevcut atamalar, geçmiş mali kayıtlar ve kararlar silinmez.</p>' +
-        '<p><b>Açık bakanlık:</b> '+acik+' / '+Number(sonuc.sinir || 30)+'</p>' +
+        '<p><b>Açık bakanlık:</b> '+acik+' · <b>Kurulmuş toplam:</b> '+liste.length+' / '+Number(sonuc.sinir || 30)+'</p>' +
         '<label for="bk-yeni-ad">Yeni bakanlığın adı</label>' +
         '<input id="bk-yeni-ad" type="text" maxlength="80" placeholder="Örn. Enerji ve Tabii Kaynaklar Bakanlığı" style="display:block;width:100%;box-sizing:border-box;margin:8px 0 12px;padding:12px;border-radius:10px">' +
         '<label for="bk-yeni-alan">Bakanlığın faaliyet alanı</label>' +
         '<select id="bk-yeni-alan" style="display:block;width:100%;box-sizing:border-box;margin:8px 0 12px;padding:12px;border-radius:10px">' +
-        alanlar.map(function(a) { return '<option value="'+htmlKac(a.kod)+'">'+htmlKac(a.ad)+'</option>'; }).join('') +
+        '<option value="genel">Otomatik: Bakanlık adına göre</option>' + alanlar.filter(function(a) { return a.kod !== 'genel'; }).map(function(a) { return '<option value="'+htmlKac(a.kod)+'">'+htmlKac(a.ad)+'</option>'; }).join('') +
         '</select>' +
         '<button type="button" class="btn altin" onclick="bakanlikYonKur()">+ Yeni bakanlık kur</button>' +
         '<p class="alt">Kuruluşta Hazine kaynaklı 5 milyar ₺ kasa ödeneği, %2 merkezi bütçe payı, 4 alanına özel icraat ve 2 katılımlı etkinlik verilir. Diğer bütçe payları dengelenerek toplam %100 korunur. Bakan ataması Kabine üzerinden yapılır.</p></div>';
