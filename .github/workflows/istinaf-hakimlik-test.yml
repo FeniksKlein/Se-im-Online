@@ -42,4 +42,4 @@ jobs:
         run: |
           grep -q 'istinaf_hakim_dosya_ac' supabase/migrations/20261117202100_istinaf_eski_dosya_uyumlulugu.sql
           grep -q 'istinaf_hakim_davet_cevap' supabase/migrations/20261117202000_istinaf_meslek_hakimligi.sql
-          grep -q 'NOT exists(select 1 from oyun.istinaf_hakim_dosya' supabase/migrations/20261117202100_istinaf_eski_dosya_uyumlulugu.sql
+          grep -qi 'not exists(select 1 from oyun.istinaf_hakim_dosya' supabase/migrations/20261117202100_istinaf_eski_dosya_uyumlulugu.sql
