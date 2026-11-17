@@ -1,3 +1,20 @@
+-- Fonksiyonlarin hedeflenenden farkli surumlerle ezilmesini engelle.
+DO $sha$
+BEGIN
+ IF (SELECT md5(pg_get_functiondef(p.oid)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='oyun' AND p.proname='meclis_tick') IS DISTINCT FROM '8f06198e6af25490c6827f7b755bcb4a' THEN
+ RAISE EXCEPTION 'Surum catismasi: oyun.meclis_tick'; END IF;
+ IF (SELECT md5(pg_get_functiondef(p.oid)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='oyun' AND p.proname='meclis_secim_json') IS DISTINCT FROM '8f4def9c334ee9ac4e5ebacf4ddb62cf' THEN
+ RAISE EXCEPTION 'Surum catismasi: oyun.meclis_secim_json'; END IF;
+ IF (SELECT md5(pg_get_functiondef(p.oid)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='oyun' AND p.proname='tg_yargic_makam') IS DISTINCT FROM '50c625bd82c2b4beeb4fe10ba3531f08' THEN
+ RAISE EXCEPTION 'Surum catismasi: oyun.tg_yargic_makam'; END IF;
+ IF (SELECT md5(pg_get_functiondef(p.oid)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='oyun' AND p.proname='tg_yargic_parti') IS DISTINCT FROM 'fd3f39ad739b28a7dc9eec8d6edbb131' THEN
+ RAISE EXCEPTION 'Surum catismasi: oyun.tg_yargic_parti'; END IF;
+ IF (SELECT md5(pg_get_functiondef(p.oid)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='oyun' AND p.proname='goreve_baslat') IS DISTINCT FROM '70d96663bf3d5602fd7e6ee215cb9d37' THEN
+ RAISE EXCEPTION 'Surum catismasi: oyun.goreve_baslat'; END IF;
+ IF (SELECT md5(pg_get_functiondef(p.oid)) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='oyun' AND p.proname='tg_mahkeme_sira3_islem_koru') IS DISTINCT FROM '3d2751da267bf4c98d037598ae830226' THEN
+ RAISE EXCEPTION 'Surum catismasi: oyun.tg_mahkeme_sira3_islem_koru'; END IF;
+END $sha$;
+
 -- 17.11.2026: 600 MV/81 il - tutarli siyasi kurumlar, sadece ileri donuk program kodu.
 -- KESINLIKLE mevcut makam, secim, oy, para, dava ve aday satirlarini guncellemez.
 -- ONCE test ortami ve kod incelemesi. Canliya otomatik uygulanmaz.
