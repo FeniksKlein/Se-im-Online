@@ -917,7 +917,8 @@
     const secAlan = i => `<label class="tvx-dogru">${yar ? `<input type="radio" name="tvADogru" value="${i}"${i === 0 ? " checked" : ""} aria-label="Doğru cevap ${String.fromCharCode(65 + i)}">` : ""}<input type="text" id="tvASec${i}" maxlength="60" placeholder="${String.fromCharCode(65 + i)} seçeneği${i > 1 ? " (isteğe bağlı)" : ""}"></label>`;
     const sureler = yar ? [[15, "15 sn"], [20, "20 sn"], [30, "30 sn"], [45, "45 sn"], [60, "60 sn"]] : [[30, "30 sn"], [60, "1 dk"], [120, "2 dk"], [300, "5 dk"]];
     const anket = canli && !(S && S.eski) ? `<h3>${yar ? "Yarışma sorusu sor" : "Canlı anket aç"}</h3>
-        <div class="tvx-hazir">${yar ? `<button type="button" class="tvx-mini on" onclick="tvSoruBankasi()">Soru bankasından getir</button>` : ""}${ANKET_HAZIR.map((x, i) => `<button type="button" class="tvx-mini" onclick="tvAnketHazir(${i})">${e(x[0])}</button>`).join("")}</div>
+        <div class="tvx-hazir">${yar ? `<button type="button" class="tvx-mini on" onclick="tvSoruBankasi()">250 soruluk havuzu aç</button>` : ""}${ANKET_HAZIR.map((x, i) => `<button type="button" class="tvx-mini" onclick="tvAnketHazir(${i})">${e(x[0])}</button>`).join("")}</div>
+         ${yar ? '<div id="tvHavuzPanel" style="display:none"></div><p class="kucuk">Ödüllü sorularda yalnız doğrulanmış soru havuzu geçerlidir. Aşağıda elle yazılan sorular eğlence amaçlıdır; para ödülüne sayılmaz.</p>' : ''}
         <div class="alan" style="margin-top:8px"><label for="tvASoru">Soru</label><input id="tvASoru" maxlength="160" placeholder="${yar ? "Örn. TBMM kaç milletvekilinden oluşur?" : "Örn. Asgari ücrete zam yapılmalı mı?"}"></div>
         <div class="tvx-r-sec">${[0, 1, 2, 3].map(secAlan).join("")}</div>
         ${yar ? '<p class="kucuk" style="margin-top:6px">Doğru cevabın yanındaki yuvarlağı işaretle; izleyiciler göremez.</p>' : ""}
@@ -1145,13 +1146,53 @@
   window.tvOdulKoy = id => { const el = $("#tvOdulEk"), t = Math.round(Number(el && el.value) || 0); if (t < 1000) return toast("En az 1.000 ₺ gir.", true); el.value = "";
     return hafif(() => rpc("tv_odul_koy", { p_program: id, p_tutar: t }), tl(t) + " ödül havuzuna eklendi."); };
   window.tvAnketHazir = i => { const x = ANKET_HAZIR[i]; if (!x) return; $("#tvASoru").value = x[0]; [0, 1, 2, 3].forEach(j => { const el = $("#tvASec" + j); if (el) el.value = x[j + 1] || ""; }); };
-  window.tvSoruBankasi = () => {
-    const kul = window._tvSoruKul || (window._tvSoruKul = []);
-    let aday = SORU_BANKASI.map((_, i) => i).filter(i => kul.indexOf(i) < 0); if (!aday.length) { kul.length = 0; aday = SORU_BANKASI.map((_, i) => i); }
-    const no = aday[Math.floor(Math.random() * aday.length)]; kul.push(no);
-    const q = SORU_BANKASI[no], sec = q.slice(1).map((x, j) => [x, j === 0]).sort(() => Math.random() - 0.5);
-    $("#tvASoru").value = q[0]; sec.forEach((x, j) => { const el = $("#tvASec" + j); if (el) el.value = x[0]; });
-    const dj = sec.findIndex(x => x[1]); const r = document.querySelector('input[name="tvADogru"][value="' + dj + '"]'); if (r) r.checked = true;
+  // Doğrulanmış sunucu soru havuzu: seçimler rejiye özgüdür, doğru cevap istemciye gönderilmez.
+  window.tvSoruBankasi = async () => {
+    const panel = $("#tvHavuzPanel");
+    if (!panel || !S || !S.id) return toast("Yarışmanın reji masasını aç.", true);
+    const oncekiKategori = ($("#tvSoruKategori") || {}).value || "";
+    const oncekiZorluk = ($("#tvSoruZorluk") || {}).value || "";
+    panel.style.display = "block";
+    panel.innerHTML = '<p class="kucuk">Soru havuzu yükleniyor…</p>';
+    try {
+      const yanit = await rpc("tv_soru_listesi", {
+        p_program: S.id,
+        p_kategori: oncekiKategori || null,
+        p_zorluk: oncekiZorluk ? Number(oncekiZorluk) : null
+      });
+      if (!S || !$("#tvHavuzPanel")) return;
+      const kategoriler = ["", "Genel Kültür", "Tarih", "Coğrafya", "Bilim", "Matematik", "Teknoloji", "Edebiyat", "Sanat", "Spor"];
+      const zorluklar = [["", "Tüm seviyeler"], ["1", "Kolay"], ["2", "Orta"], ["3", "Zor"]];
+      const secimHTML = (id, etiket, veriler, secili) => '<div class="alan" style="margin-top:8px">' +
+        '<label for="' + id + '">' + etiket + '</label><select id="' + id + '" onchange="tvSoruBankasi()" style="width:100%;min-width:0;min-height:46px;font-size:16px;color:#f4f5ff;background:#1d2850">' +
+        veriler.map(x => '<option value="' + e(x[0]) + '"' + (String(x[0]) === String(secili) ? " selected" : "") + '>' + e(x[1]) + '</option>').join("") + '</select></div>';
+      const sorular = Array.isArray(yanit.sorular) ? yanit.sorular : [];
+      panel.innerHTML = '<div style="margin-top:10px;padding:10px;border:1px solid var(--line2);border-radius:12px">' +
+        '<h3 style="margin:0 0 5px">Doğrulanmış soru havuzu · ' + n(yanit.toplam) + ' soru</h3>' +
+        '<p class="kucuk">Sunucu soruyu seçer, şıklar sunucuda karıştırılır. Doğru cevabı yalnız süre dolunca izleyiciler görür.</p>' +
+        secimHTML("tvSoruKategori", "Kategori", kategoriler.map(x => [x, x || "Tüm kategoriler"]), oncekiKategori) +
+        secimHTML("tvSoruZorluk", "Zorluk", zorluklar, oncekiZorluk) +
+        '<div style="max-height:380px;overflow-y:auto;margin-top:10px">' +
+        (sorular.length ? sorular.map(q => '<div class="tvx-soru" style="margin-bottom:8px">' +
+          '<small>' + e(q.kategori) + ' · ' + (["", "Kolay", "Orta", "Zor"][q.zorluk] || "Genel") + '</small>' +
+          '<p style="margin-top:5px;font-weight:650">' + e(q.soru) + '</p>' +
+          '<p class="kucuk" style="margin:5px 0">' + (q.secenekler || []).map(x => e(x)).join(" / ") + '</p>' +
+          '<button class="btn altin" style="width:100%;min-height:44px" onclick="tvHavuzSoruSor(' + Number(q.id) + ')">Bu soruyu canlı yayında sor</button>' +
+          '</div>').join("") : '<p class="kucuk">Bu filtrede sorulmamış soru kalmadı.</p>') +
+        '</div><button class="btn ikinci" style="width:100%;min-height:44px;margin-top:8px" onclick="tvSoruBankasi()">Başka sorular göster</button></div>';
+    } catch (err) {
+      if ($("#tvHavuzPanel")) $("#tvHavuzPanel").innerHTML = '<p class="kucuk">' + e(hataCevir(err.message)) + '</p>';
+    }
+  };
+  window.tvHavuzSoruSor = async soruId => {
+    if (!S || !S.id || !S.d || S.d.durum !== "canli") return toast("Yalnız canlı yayında soru sorabilirsin.", true);
+    try {
+      const saniye = Number(($("#tvASure") || {}).value) || 30;
+      await rpc("tv_havuz_soru_ac", { p_program: S.id, p_soru_id: Number(soruId), p_saniye: saniye });
+      toast("Doğrulanmış soru yayında. Süre başladı.");
+      eylem();
+      if (window._tvTaz) await window._tvTaz();
+    } catch (err) { toast(hataCevir(err.message), true); }
   };
   window.tvAnketAc = async id => {
     const soru = ($("#tvASoru").value || "").trim(), sec = [0, 1, 2, 3].map(j => (($("#tvASec" + j) || {}).value || "").trim());
