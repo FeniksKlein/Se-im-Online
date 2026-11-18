@@ -56,7 +56,7 @@
     destek_kapat: "destek talebini kapattı", yk_sustur: "susturdu", yk_engel_sureli: "süreli engelledi", yk_engel_kalici: "kalıcı engelledi",
     yk_engel_kaldir: "engeli kaldırdı", masak_temiz: "MASAK: temiz dedi", masak_ihtar: "MASAK: ihtar verdi", masak_el_koy: "MASAK: el koydu",
     moderator_birim: "birimini/yetkisini değiştirdi", moderator_sadelestir: "yetkilerini birimine göre sadeleştirdi", moderator_gorev: "ana görevini değiştirdi",
-    yk_bildirim: "bildirim gönderdi", sohbet_izle: "grup sohbetini açtı", admin_duyuru: "duyuru yayımladı", yk_para: "para işlemi yaptı", yk_kidem: "kıdem işlemi yaptı"
+    yk_bildirim: "bildirim gönderdi", sohbet_izle: "grup sohbetini açtı", ifsa_suphe: "moderatör olduğunu açıklamaya çalıştı (mesaj engellendi)", mod_taklit: "kendini yönetimden gösterdi (mesaj engellendi)", sozlesme_kabul: "gizlilik sözleşmesini kabul etti", admin_duyuru: "duyuru yayımladı", yk_para: "para işlemi yaptı", yk_kidem: "kıdem işlemi yaptı"
   });
   const ISARET = { baglanti: ["Bağlantı", "#4fc1d6"], telefon: ["Telefon no", "#c86cd8"], kisisel: ["E-posta", "#c86cd8"], buyuk_harf: ["Büyük harf", "#e0a43a"],
     tekrar: ["Tekrar/spam", "#e0a43a"], kufur: ["Küfür şüphesi", "#e5574f"], sert: ["Sert ifade", "#f07f3c"] };
@@ -211,6 +211,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       try { await merkezYukle(); } catch (err) { hataSayfa("Moderasyon Merkezi", err); return; }
     }
     const b = M.ben, ist = M.istatistik || {}, q = M.kuyruk || {};
+    if (!b.yonetici && !b.sozlesme_at) return sozlesmeEkrani();
     const birim = (M.birimler || []).find(x => x.kod === b.birim);
     const renk = birim ? birim.renk : "#7b61ff";
     const saat = new Date(simdiMs()).getHours();
@@ -241,6 +242,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
           ${b.yonetici ? `<span class="mm-cip" style="--c:#d9b45b"><i></i>Oyun yöneticisi</span>` : ""}
           ${b.birim_ad ? `<span class="mm-cip" style="--c:${renk}"><i></i>${esc(b.birim_ad)}</span>` : (!b.yonetici ? `<span class="mm-cip" style="--c:#98a4c4"><i></i>Birim atanmadı</span>` : "")}
           ${!b.yonetici ? `<span class="mm-cip">${esc(RUTBE[b.rutbe] || "Moderatör")}</span>` : ""}
+          ${!b.yonetici && b.kod ? `<span class="mm-cip" style="--c:#34c98a" title="Oyunculara giden bildirimlerde adın yerine bu kod görünür"><i></i>Görev kodun: ${esc(b.kod)}</span>` : ""}
         </div>
         <div class="mm-istat">
           <div><b>${sayi(ist.bugun)}</b><span>bugün işlemim</span></div>
@@ -287,6 +289,24 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       if (document.hidden || !$("#mmAra") || document.activeElement === $("#mmAra") || $("#modal")) return;
       try { const eski = JSON.stringify(M.kuyruk); await merkezYukle(); if (JSON.stringify(M.kuyruk) !== eski) modMerkezi(true); } catch (_) {}
     }, 60000);
+  }
+
+  function sozlesmeEkrani() {
+    const k = [
+      ["Kimliğini gizli tut", "Oyunda, sohbette, özel mesajda, gazetede ya da oyun dışında (sosyal medya dahil) moderatör olduğunu söyleme, ima etme. Bunu yazarsan mesajın yayınlanmaz ve yöneticiye bildirilir."],
+      ["Ekip arkadaşlarını açık etme", "Kimin moderatör olduğunu kimseye söyleme. Oyunculara giden bildirimlerde adın yerine görev kodun görünür."],
+      ["Normal oyuncu gibi oyna", "Seçime gir, parti kur, ticaret yap; ama moderatör yetkini kendi oyunun, partin ya da arkadaşların için asla kullanma."],
+      ["Çıkar çatışmasında karar verme", "Aynı partideki, aynı cihazı kullandığın ya da aranızda dava olan oyuncuya doğrudan yaptırım uygulayamazsın; sistem engeller. Yaptırım talebi aç, tarafsız başka bir moderatör karar versin."],
+      ["Gördüğünü dışarı taşıma", "Grup sohbetleri, şikâyetler, MASAK kayıtları ve oyuncu dosyaları gizlidir. Ekran görüntüsü paylaşma, kimseye anlatma."],
+      ["Her işlem kayıt altında", "Yaptığın her işlem ve açtığın her kapalı sohbet denetim günlüğüne yazılır; yönetici görür. Kurallara uymamak moderatörlükten alınma sebebidir."]
+    ];
+    sayfa("Moderasyon Merkezi", `<section class="mm-hero"><small>Göreve başlamadan önce</small><h2>Moderatör gizlilik ve tarafsızlık sözleşmesi</h2>
+      <p class="mm-alt" style="margin:0">Oyuncular kimin moderatör olduğunu bilmez; bu, ayrımcılık algısını önler ve herkese eşit davranıldığından emin olmamızı sağlar.</p></section>
+      ${k.map((x, i) => `<div class="mm-kart"><div style="display:flex;gap:10px;align-items:flex-start"><span class="mm-etiket" style="--c:#7b61ff;min-width:26px;justify-content:center">${i + 1}</span><div><b style="font-size:15.5px">${esc(x[0])}</b><div class="mm-alt" style="margin-top:3px;font-size:14px">${esc(x[1])}</div></div></div></div>`).join("")}
+      <label class="mm-anahtar" style="border:0"><div class="orta"><b>Okudum, kabul ediyorum</b><div>Kabul tarihin kayda geçer.</div></div><input type="checkbox" id="mmSozOk"></label>
+      <button class="mm-btn mor" id="mmSozKabul" disabled>Sözleşmeyi kabul et ve devam et</button>`);
+    $("#mmSozOk").onchange = (ev) => { $("#mmSozKabul").disabled = !ev.target.checked; };
+    $("#mmSozKabul").onclick = async () => { try { await API.rpc("mod_sozlesme_kabul"); toast("Sözleşme kabul edildi. İyi nöbetler!"); modMerkezi(); } catch (err) { hata(err); } };
   }
 
   function oyuncuAramaBagla(inp, kutu) {
@@ -647,7 +667,9 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     else if (DS.sekme === "bagli") govde = `<div class="mm-kart" style="padding:4px 12px">${d.bagli.map(b => `<div class="mm-satir" data-kad="${esc(b.kad)}"><div class="orta"><b>${esc(b.kad)}</b><div class="kucuk">açılış ${tsaat(b.olusturma)}</div></div>${b.yasakli ? `<span class="mm-etiket" style="--c:#e5574f">kapalı</span>` : ""}${IK.ok}</div>`).join("") || `<div class="mm-alt" style="padding:12px 0">Aynı cihazdan açılmış başka hesap yok.</div>`}</div>`;
     else if (DS.sekme === "masak") govde = `<div class="mm-kart" style="padding:4px 12px">${d.masak.map(x => `<div class="mm-satir" style="cursor:default"><div class="orta"><b style="font-weight:650">${esc(x.tur)} · ${tl(x.tutar)}</b><div class="kucuk">${once(x.zaman)} · ${esc(x.aciklama || "")}</div></div><span class="mm-etiket" style="--c:${x.durum === "yeni" ? "#e0a43a" : x.durum === "temiz" ? "#34c98a" : "#e5574f"}">${esc(x.durum)}</span></div>`).join("") || `<div class="mm-alt" style="padding:12px 0">MASAK kaydı yok.</div>`}</div>
         ${typeof masakEkrani === "function" ? `<button class="mm-btn" id="mmMasakAc">MASAK kuyruğunu aç</button>` : ""}`;
-    const aksiyon = d.korunan ? `<div class="mm-uyari sari">${IK.kilit}<div>Bu hesap oyun yönetiminden; moderatörler işlem yapamaz.</div></div>` : `
+    const aksiyon = d.korunan ? `<div class="mm-uyari sari">${IK.kilit}<div>Bu hesap oyun yönetiminden; moderatörler işlem yapamaz. Gerekirse "Yöneticiye ilet" kullan.</div></div>` : d.cikar_catismasi ? `
+      <div class="mm-uyari sari">${IK.terazi}<div><b>${esc(d.cikar_catismasi)}</b> Bu oyuncuya doğrudan yaptırım uygulayamazsın; talep aç, tarafsız başka bir moderatör karar versin.</div></div>
+      <div class="mm-kart"><div class="mm-aksiyon"><button class="k" data-a="talep">Yaptırım talebi</button><button data-a="ilet">Yöneticiye ilet</button><button data-a="not">Not ekle</button></div></div>` : `
       <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>İşlemler</h3></div>
         <div class="mm-aksiyon">
           ${y.sustur ? (d.susturma_bitis ? `<button class="y" data-a="susKaldir">Susturmayı kaldır</button>` : `<button data-a="sustur">Sustur</button>`) : ""}
@@ -783,8 +805,8 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     const kritik = mods.filter(m => (m.kritik || []).length);
     const birimsiz = mods.filter(m => !m.birim_gecerli);
     const eksik = (V.birimler || []).filter(b => mods.filter(m => m.birim === b.kod).length < b.hedef).length;
-    const uyeSatir = (m) => `<div class="mm-satir" data-m="${esc(m.kad)}"><span class="mm-nokta ${m.cevrimici ? "on" : ""}"></span><div class="orta"><b>${esc(m.kad)}${m.rutbe !== "moderator" ? ` <span class="mm-etiket" style="--c:#d9b45b">${esc(RUTBE[m.rutbe])}</span>` : ""}</b>
-      <div class="kucuk">7 gün ${m.islem_7g} işlem · ${m.cevrimici ? "çevrimiçi" : once(m.son_gorulme)}${(m.ek || []).length ? ` · +${m.ek.length} ek yetki` : ""}${(m.kritik || []).length ? ` · <span style="color:var(--al2)">kritik: ${m.kritik.join(", ")}</span>` : ""}</div></div>${IK.ok}</div>`;
+    const uyeSatir = (m) => `<div class="mm-satir" data-m="${esc(m.kad)}"><span class="mm-nokta ${m.cevrimici ? "on" : ""}"></span><div class="orta"><b>${m.kod ? `<span class="mm-etiket" style="--c:#34c98a">${esc(m.kod)}</span> ` : ""}${esc(m.kad)}${m.rutbe !== "moderator" ? ` <span class="mm-etiket" style="--c:#d9b45b">${esc(RUTBE[m.rutbe])}</span>` : ""}</b>
+      <div class="kucuk">7 gün ${m.islem_7g} işlem · ${m.cevrimici ? "çevrimiçi" : once(m.son_gorulme)}${(m.ek || []).length ? ` · +${m.ek.length} ek yetki` : ""}${(m.kritik || []).length ? ` · <span style="color:var(--al2)">kritik: ${m.kritik.join(", ")}</span>` : ""}${m.sozlesme_at ? "" : ` · <span style="color:var(--warn)">sözleşme bekliyor</span>`}</div></div>${IK.ok}</div>`;
     let govde = "";
     if (EK.sekme === "birim") {
       govde = `${kritik.length ? `<div class="mm-uyari">${IK.kilit}<div><b>${kritik.length} moderatörde kritik yetki açık</b> (para ve kıdem, görev verme, kurallar, e-posta görme). Bu yetkiler oyunun ekonomisini ve siyasetini doğrudan değiştirir.

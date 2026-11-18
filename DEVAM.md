@@ -16,6 +16,16 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 18.11.2026 — 2026.11.18-4 Moderatör gizliliği (canlıda) · Kayyum/kapatma (YAZILDI, CANLIYA UYGULANMADI)
+- İstek (Ercan): moderatörler oyuncu olarak oynasın, oyuncular kimin moderatör olduğunu bilmesin; moderatörler de söylemesin.
+- Canlı migration `mod_gizlilik_20261118` (kaynak `gelistirici/sql/zz_20261118_mod_gizlilik.sql`).
+- `moderatorler.kod_no` (G-01…, tetikleyici `mod_kod` yeni moderatöre otomatik verir), `sozlesme_at`. `oyun.mod_kod(u)`, `oyun.mod_imza` artık "Görevli G-07" / "Oyun yöneticisi" — oyunculara giden bildirim (yk_bildirim), duyuru (admin_duyuru: unvan "Oyun Yönetimi", metin sonu kod), destek yanıtında kullanıcı adı yok. (Bu, aynı günkü "bildirimde kullanıcı adı yazsın" kararının yerine geçti: kod kime ait yalnız Ekip yönetiminde görünür.)
+- Oyuncu tarafı RPC/arayüz taraması: unvan, sohbet_oku, arama moderatörlüğü göstermiyor. Moderatör hakkındaki şikâyet ve MASAK kayıtları yalnız yöneticiye (admin_sikayetler, admin_masak, mod_merkez sayıları yamalandı, işaret `mm_gizle`).
+- Çıkar çatışması `oyun.mod_cikar_catismasi(mod, hedef)`: aynı parti, aynı cihaz (bagli_hesaplar), son 30 günde ya da açık dava → `korunan_hedef` doğrudan yaptırımı reddeder; `mod_talep_ac` artık yalnız `oyun.mod_koruma` kullanır (talep serbest, karar başkasında). mod_dosya `cikar_catismasi` döndürür.
+- İfşa/taklit: `oyun.mod_ifsa_metni` + BEFORE INSERT `mod_ifsa` (mesajlar, ozel, yayinlar): birinci şahıs "moderatörüm / ben adminim / banlayabilirim…" → gizli=true, mod_kayit `ifsa_suphe` (moderatör) ya da `mod_taklit` (oyuncu), gönderene açıklama, yöneticiye 30 dk'da bir bildirim. `tg_ozel_push`, `tg_yayin_push` gizli kayıtta push göndermez (işaret `mod_ifsa_gizli`).
+- Sözleşme: `mod_sozlesme_kabul()`; Moderasyon Merkezi ilk açılışta 6 maddelik sözleşmeyi kabul ettirir (istemci kapısı); Ekip yönetiminde kod + "sözleşme bekliyor".
+- **Kayyum/kapatma** (`gelistirici/sql/zz_20261118_kayyum_kapatma.sql`, `migrations/20261118_kayyum_kapatma.sql`): yazıldı ama Supabase uygulama sırasında onay istedi, yanıtsız kaldı → CANLIDA YOK, `sql_birlestir.js` listesine EKLENMEDİ, istemci ekranı yazılmadı. Ercan onaylayınca uygulanacak (dosyadaki `drop trigger if exists` satırları `create or replace trigger` ile değiştirilirse onay sorusu çıkmayabilir).
+
 ## 18.11.2026 — 2026.11.18-3 Sohbet moderatörleri tüm grupları görür + Bakanlık adına dava (canlıda)
 - Canlı migration `sohbet_denetim_bakanlik_dava_20261118` + `bakanlik_dava_duzeltme_20261118` (kaynak `gelistirici/sql/zz_20261118_sohbet_denetim_bakanlik_dava.sql`).
 - **Sohbet:** yeni mod yetkisi `sohbet_tum` (Sohbet ve Küfür Denetimi biriminde varsayılan). `mod_sohbet_nobeti` p_kanal: boş = açık kanallar, `grup` = parti/yönetim/ittifak/kabine/belediye/özel gruplar (`og:`), `*` = hepsi, tek kanal adı. Kapalı kanal açan moderatör `sohbet_izle` olarak günlüğe yazılır (kanal başına 10 dk'da bir). Birebir DM (`oyun.ozel`) nöbette YOK; yalnız şikâyetle görünür.
