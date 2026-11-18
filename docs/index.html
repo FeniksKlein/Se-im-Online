@@ -43953,7 +43953,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     const sus = yv("sustur");
     const md = sheet(`<h3 style="font-size:18px;font-weight:800;margin:0">${esc(m.kad)} · ${esc(m.kanal_ad)}</h3><div class="mm-alt">${tsaat(m.zaman)}</div>
       <div class="mm-baloncuk" style="margin-top:10px">${esc(m.metin)}</div>
-      ${m.moderator ? `<div class="mm-uyari sari">${IK.kilit}<div>Bu mesaj oyun yönetiminden birine ait; işlem yapılamaz.</div></div>` : `
+      ${m.moderator && !(M && M.ben && M.ben.yonetici && M.ben.kad !== m.kad) ? `<div class="mm-uyari sari">${IK.kilit}<div>Bu mesaj oyun yönetiminden birine ait; işlem yapılamaz.</div></div>` : `
       <div class="mm-iki">${m.gizli ? `<button class="mm-btn yesil" data-k="yok_say">Geri aç</button>` : `<button class="mm-btn" data-k="gizle">Mesajı gizle</button>`}
         ${sus ? `<button class="mm-btn kirmizi" data-k="gizle_sustur1">Gizle + 1 gün sustur</button>` : `<button class="mm-btn kirmizi" data-talep="1">Yaptırım talebi</button>`}</div>
       ${sus ? `<div class="mm-alan">Hızlı susturma (mesaj kalır)</div><div class="mm-aksiyon">${[[1, "1 saat"], [6, "6 saat"], [24, "24 saat"], [72, "3 gün"]].map(s => `<button data-s="${s[0]}">${s[1]}</button>`).join("")}</div>` : ""}`}
@@ -44115,7 +44115,8 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     else if (DS.sekme === "bagli") govde = `<div class="mm-kart" style="padding:4px 12px">${d.bagli.map(b => `<div class="mm-satir" data-kad="${esc(b.kad)}"><div class="orta"><b>${esc(b.kad)}</b><div class="kucuk">açılış ${tsaat(b.olusturma)}</div></div>${b.yasakli ? `<span class="mm-etiket" style="--c:#e5574f">kapalı</span>` : ""}${IK.ok}</div>`).join("") || `<div class="mm-alt" style="padding:12px 0">Aynı cihazdan açılmış başka hesap yok.</div>`}</div>`;
     else if (DS.sekme === "masak") govde = `<div class="mm-kart" style="padding:4px 12px">${d.masak.map(x => `<div class="mm-satir" style="cursor:default"><div class="orta"><b style="font-weight:650">${esc(x.tur)} · ${tl(x.tutar)}</b><div class="kucuk">${once(x.zaman)} · ${esc(x.aciklama || "")}</div></div><span class="mm-etiket" style="--c:${x.durum === "yeni" ? "#e0a43a" : x.durum === "temiz" ? "#34c98a" : "#e5574f"}">${esc(x.durum)}</span></div>`).join("") || `<div class="mm-alt" style="padding:12px 0">MASAK kaydı yok.</div>`}</div>
         ${typeof masakEkrani === "function" ? `<button class="mm-btn" id="mmMasakAc">MASAK kuyruğunu aç</button>` : ""}`;
-    const aksiyon = d.korunan ? `<div class="mm-uyari sari">${IK.kilit}<div>Bu hesap oyun yönetiminden; moderatörler işlem yapamaz. Gerekirse "Yöneticiye ilet" kullan.</div></div>` : d.cikar_catismasi ? `
+    const benY = !!((d.yetkim && d.yetkim.yonetici) || (M && M.ben && M.ben.yonetici)), kendim = !!(M && M.ben && M.ben.kad === d.kad);
+    const aksiyon = (d.korunan && (!benY || kendim)) ? `<div class="mm-uyari sari">${IK.kilit}<div>Bu hesap oyun yönetiminden; moderatörler işlem yapamaz. Gerekirse "Yöneticiye ilet" kullan.</div></div>` : d.cikar_catismasi ? `
       <div class="mm-uyari sari">${IK.terazi}<div><b>${esc(d.cikar_catismasi)}</b> Bu oyuncuya doğrudan yaptırım uygulayamazsın; talep aç, tarafsız başka bir moderatör karar versin.</div></div>
       <div class="mm-kart"><div class="mm-aksiyon"><button class="k" data-a="talep">Yaptırım talebi</button><button data-a="ilet">Yöneticiye ilet</button><button data-a="not">Not ekle</button></div></div>` : `
       <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>İşlemler</h3></div>
