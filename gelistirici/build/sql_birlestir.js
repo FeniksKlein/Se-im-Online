@@ -20,6 +20,7 @@ const KOSULLU = {
   'zz_20261118_bildirim_imza.sql': ['oyun.moderatorler', 'oyun.destek_talep', 'oyun.yayinlar'],
   'zz_20261118_ifade_cagri.sql': ['oyun.yonetim_tutuklama', 'oyun.tarife', 'oyun.zamanlayici_adim', 'oyun.sokak_gozalti', 'oyun.icisleri_tedbir_v2'],
   'zz_20261118_sohbet_denetim_bakanlik_dava.sql': ['oyun.moderatorler', 'oyun.adliye_davalar', 'oyun.bakanlik_kasa', 'oyun.sokak_eylem', 'oyun.sohbet_grup', 'oyun.ittifaklar', 'oyun.mahkeme_ayar'],
+  'zz_20261118_mod_yayin_gizli.sql': ['oyun.moderatorler', 'oyun.yayinlar'],
   'zz_20261118_mod_gizlilik.sql': ['oyun.moderatorler', 'oyun.mesajlar', 'oyun.ozel', 'oyun.yayinlar', 'oyun.adliye_davalar', 'oyun.masak'],
   'zz_20261116_kayit_onay_ad_soyad.sql': ['oyun_yonetim.kayit_basvurulari', 'oyun.moderatorler', 'oyun.yonetici_kimlik'],
 };
