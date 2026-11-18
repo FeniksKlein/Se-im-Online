@@ -16,6 +16,11 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 18.11.2026 — 2026.11.18-3 Sohbet moderatörleri tüm grupları görür + Bakanlık adına dava (canlıda)
+- Canlı migration `sohbet_denetim_bakanlik_dava_20261118` + `bakanlik_dava_duzeltme_20261118` (kaynak `gelistirici/sql/zz_20261118_sohbet_denetim_bakanlik_dava.sql`).
+- **Sohbet:** yeni mod yetkisi `sohbet_tum` (Sohbet ve Küfür Denetimi biriminde varsayılan). `mod_sohbet_nobeti` p_kanal: boş = açık kanallar, `grup` = parti/yönetim/ittifak/kabine/belediye/özel gruplar (`og:`), `*` = hepsi, tek kanal adı. Kapalı kanal açan moderatör `sohbet_izle` olarak günlüğe yazılır (kanal başına 10 dk'da bir). Birebir DM (`oyun.ozel`) nöbette YOK; yalnız şikâyetle görünür.
+- **Bakanlık davası:** `adliye_davalar.davaci_bakanlik`; `bakanlik_dava_ac(bakanlik, kad, tur, iddia, delil)` yalnız bakan/vekil (`oyun.bm_yetki`); harç bakanlık kasasından (`kasa -= harc / pazar_tl_milyar()`); iddia başına "X Bakanlığı adına açılmıştır (Bakan: kad)". Sınırlar tarife: bakanlik_dava_gunluk 5, bakanlik_dava_kisi_haftalik 2, bakanlik_dava_acik 15. Dokunulmazlık `dokunulmazlik_engel`. `bakanlik_dava_bilgi` (İçişleri için son 7 günün eylemleri). Arayüz `www/bakanlik_dava.js` (Adliye/Bakanlık masası/Devlet kısayolu; eylem düzenleyenine tek dokunuşla dava taslağı, bakanlığa göre hazır iddialar).
+
 ## 18.11.2026 — 2026.11.18-2 İfadeye çağırma ve zorla getirme (canlıda)
 - İstek (Ercan): gözaltı modülüne ifadeye çağırma; süre verilsin, süresinde gelmeyen ya da reddeden gözaltına alınabilsin.
 - Canlı migration `ifade_cagri_20261118` (kaynak `gelistirici/sql/zz_20261118_ifade_cagri.sql`). Tablo `oyun.ifade_cagri`; `yonetim_tutuklama.ifade_cagri_id`.

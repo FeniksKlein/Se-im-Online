@@ -56,7 +56,7 @@
     destek_kapat: "destek talebini kapattı", yk_sustur: "susturdu", yk_engel_sureli: "süreli engelledi", yk_engel_kalici: "kalıcı engelledi",
     yk_engel_kaldir: "engeli kaldırdı", masak_temiz: "MASAK: temiz dedi", masak_ihtar: "MASAK: ihtar verdi", masak_el_koy: "MASAK: el koydu",
     moderator_birim: "birimini/yetkisini değiştirdi", moderator_sadelestir: "yetkilerini birimine göre sadeleştirdi", moderator_gorev: "ana görevini değiştirdi",
-    yk_bildirim: "bildirim gönderdi", admin_duyuru: "duyuru yayımladı", yk_para: "para işlemi yaptı", yk_kidem: "kıdem işlemi yaptı"
+    yk_bildirim: "bildirim gönderdi", sohbet_izle: "grup sohbetini açtı", admin_duyuru: "duyuru yayımladı", yk_para: "para işlemi yaptı", yk_kidem: "kıdem işlemi yaptı"
   });
   const ISARET = { baglanti: ["Bağlantı", "#4fc1d6"], telefon: ["Telefon no", "#c86cd8"], kisisel: ["E-posta", "#c86cd8"], buyuk_harf: ["Büyük harf", "#e0a43a"],
     tekrar: ["Tekrar/spam", "#e0a43a"], kufur: ["Küfür şüphesi", "#e5574f"], sert: ["Sert ifade", "#f07f3c"] };
@@ -455,12 +455,12 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     try { r = await API.rpc("mod_sohbet_nobeti", { p_kanal: NB.kanal || null, p_isaretli: NB.isaretli, p_once: null, p_limit: 80 }); }
     catch (err) { hataSayfa("Sohbet nöbeti", err); return; }
     if (!M) try { await merkezYukle(); } catch (_) {}
-    const kanallar = [["", "Tümü"], ["genel", "Genel"], ["meclis", "Meclis"], ["il", "Tüm iller"]]
-      .concat((r.kanallar || []).filter(k => k.kanal.startsWith("il:")).slice(0, 8).map(k => [k.kanal, k.ad.replace(" sohbeti", "")]));
+    const kanallar = [["", "Açık kanallar"]].concat(r.tum_yetki ? [["*", "Her şey"], ["grup", "Tüm gruplar"]] : [], [["genel", "Genel"], ["meclis", "Meclis"], ["il", "Tüm iller"]])
+      .concat((r.kanallar || []).filter(k => k.kanal.startsWith("il:") || k.grup).slice(0, 14).map(k => [k.kanal, k.ad.replace(" sohbeti", "")]));
     sayfa("Sohbet nöbeti", `
       <div class="mm-filtre" id="mmNbK">${kanallar.map(k => `<button data-v="${esc(k[0])}" class="${NB.kanal === k[0] ? "on" : ""}">${esc(k[1])}</button>`).join("")}</div>
       <div class="mm-filtre"><button id="mmNbI" class="${NB.isaretli ? "on" : ""}">Yalnız işaretliler</button><button id="mmNbY">Yenile</button></div>
-      <p class="mm-alt" style="margin:-2px 2px 8px">Yalnız herkese açık kanallar. Parti, ittifak, kabine, özel gruplar ve özel mesajlar burada görünmez. Mesaja dokun: gizle, sustur, dosya.</p>
+      <p class="mm-alt" style="margin:-2px 2px 8px">${r.tum_yetki ? "Parti, parti yönetimi, ittifak, kabine, belediye ve oyuncuların özel grupları dahil bütün sohbetleri görebilirsin. Açtığın her kapalı kanal denetim günlüğüne yazılır. Birebir özel mesajlar yalnız şikâyet edilirse görünür." : "Herkese açık kanallar. Grup sohbetlerini görme yetkisi Sohbet ve Küfür Denetimi birimindedir."} Mesaja dokun: gizle, sustur, dosya.</p>
       <div id="mmNbL"></div>`);
     nobetListe(r.mesajlar || []);
     $("#mmNbK").querySelectorAll("[data-v]").forEach(b => b.onclick = () => { NB.kanal = b.dataset.v; mmNobet(); });
@@ -475,7 +475,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
   function nobetListe(L) {
     const kutu = $("#mmNbL"); if (!kutu) return;
     kutu.innerHTML = L.length ? `<div class="mm-kart" style="padding:4px 12px">${L.map((m, i) => `<div class="mm-mesaj ${m.gizli ? "gizli" : ""} ${(m.isaret || []).length && !m.gizli ? "isaretli" : ""}" data-i="${i}">
-        <div class="mm-u"><b>${esc(m.kad)}</b>${m.moderator ? `<span class="mm-etiket" style="--c:#d9b45b">yönetim</span>` : ""}${m.susturulmus ? `<span class="mm-etiket" style="--c:#e0a43a">susturulmuş</span>` : ""}<span>· ${esc(m.kanal_ad)} · ${once(m.zaman)}</span>${m.sikayet ? `<span class="mm-etiket" style="--c:#e5574f">${m.sikayet} şikâyet</span>` : ""}${m.gizli ? `<span class="mm-etiket" style="--c:#98a4c4">gizli</span>` : ""}</div>
+        <div class="mm-u"><b>${esc(m.kad)}</b>${m.moderator ? `<span class="mm-etiket" style="--c:#d9b45b">yönetim</span>` : ""}${m.susturulmus ? `<span class="mm-etiket" style="--c:#e0a43a">susturulmuş</span>` : ""}<span>· ${esc(m.kanal_ad)} · ${once(m.zaman)}</span>${m.sikayet ? `<span class="mm-etiket" style="--c:#e5574f">${m.sikayet} şikâyet</span>` : ""}${m.grup ? `<span class="mm-etiket" style="--c:#4fc1d6">grup</span>` : ""}${m.gizli ? `<span class="mm-etiket" style="--c:#98a4c4">gizli</span>` : ""}</div>
         <div class="mm-baloncuk">${esc(m.metin)}</div>
         ${(m.isaret || []).length ? `<div class="mm-cipler">${m.isaret.map(k => `<span class="mm-etiket" style="--c:${(ISARET[k] || ["", "#e0a43a"])[1]}">${(ISARET[k] || [k])[0]}</span>`).join("")}</div>` : ""}
       </div>`).join("")}</div>` : bos(NB.isaretli ? "İşaretli mesaj yok" : "Mesaj yok", NB.isaretli ? "Bağlantı, telefon, küfür şüphesi, sert ifade, büyük harf ya da spam içeren mesajlar burada toplanır." : "");
@@ -640,7 +640,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       </div>
       ${(d.talepler || []).length ? `<div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>Yaptırım talepleri</h3></div>${d.talepler.map(t => `<div class="mm-satir" style="cursor:default"><div class="orta"><b style="font-weight:650">${TT[t.tur][0]}${sureYaz(t) ? " · " + sureYaz(t) : ""}</b><div class="kucuk">${esc(t.talep_eden)} · ${once(t.zaman)} · ${esc(t.gerekce)}</div></div><span class="mm-etiket" style="--c:${DURUM[t.durum][1]}">${DURUM[t.durum][0]}</span></div>`).join("")}</div>` : ""}`;
     else if (DS.sekme === "gecmis") govde = `<div class="mm-kart" style="padding:4px 12px">${(d.gecmis || []).map(k => `<div class="mm-satir" style="cursor:default"><div class="orta"><b style="font-weight:650">${esc(k.kad)} ${esc(ISLEM[k.islem] || k.islem)}</b><div class="kucuk">${once(k.zaman)}${k.ayrinti ? " · " + esc(k.ayrinti) : ""}</div></div></div>`).join("") || `<div class="mm-alt" style="padding:12px 0">Bu oyuncu hakkında moderasyon kaydı yok.</div>`}</div>`;
-    else if (DS.sekme === "mesaj") govde = `<div class="mm-kart" style="padding:4px 12px">${(d.mesajlar || []).map(m => `<div class="mm-mesaj ${m.gizli ? "gizli" : ""}" style="cursor:default"><div class="mm-u"><span>${esc(m.kanal)} · ${once(m.zaman)}</span>${m.gizli ? `<span class="mm-etiket" style="--c:#98a4c4">gizli</span>` : ""}</div><div class="mm-baloncuk">${esc(m.metin)}</div></div>`).join("") || `<div class="mm-alt" style="padding:12px 0">Son mesajı yok.</div>`}</div>`;
+    else if (DS.sekme === "mesaj") govde = `<div class="mm-kart" style="padding:4px 12px">${(d.mesajlar || []).map(m => `<div class="mm-mesaj ${m.gizli ? "gizli" : ""}" style="cursor:default"><div class="mm-u"><span>${esc(m.kanal)} · ${once(m.zaman)}</span>${m.grup ? `<span class="mm-etiket" style="--c:#4fc1d6">grup</span>` : ""}${m.gizli ? `<span class="mm-etiket" style="--c:#98a4c4">gizli</span>` : ""}</div><div class="mm-baloncuk">${esc(m.metin)}</div></div>`).join("") || `<div class="mm-alt" style="padding:12px 0">Son mesajı yok.</div>`}</div>`;
     else if (DS.sekme === "not") govde = `<div class="mm-kart"><p class="mm-alt" style="margin-top:0">Notları yalnız oyun yönetimi görür. Uyarıları, şüpheleri ve verilen sözleri buraya yaz; bir sonraki moderatör bağlamı bilsin.</p>
         <textarea class="mm-girdi" id="mmNot" maxlength="500" placeholder="Örn. Genel sohbette hakaret nedeniyle sözlü uyarıldı."></textarea><button class="mm-btn mor" style="margin-top:8px" id="mmNotK">Not ekle</button></div>
         <div class="mm-kart" style="padding:4px 12px" id="mmNotL">${notListe(d.notlar)}</div>`;

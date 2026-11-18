@@ -118,6 +118,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','mod_merkezi.js'),'utf8')+'</script></body>');
 // 18.11.2026: İfadeye çağırma ve zorla getirme (Gözaltı ve Avukat ekranına eklenir).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','ifade_cagri.js'),'utf8')+'</script></body>');
+// 18.11.2026: Bakanlık adına dava (Adliye / Bakanlık masası kısayolu).
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','bakanlik_dava.js'),'utf8')+'</script></body>');
 // 17.11.2026: Hukuk reformu — istinaftan iade edilen dosyada beraat yok, kesin kararlar, istinaf yargılama gideri (Adliye override'larından SONRA).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','adliye_istinaf_iade.js'),'utf8')+'</script></body>');
 // Cumhurbaşkanı Bakanlık Kur/Kapat: yeni ekran mobil/tek dosyalık uygulamada da yer alır.
