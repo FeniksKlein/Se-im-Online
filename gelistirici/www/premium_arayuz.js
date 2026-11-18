@@ -769,7 +769,7 @@
           ['kalem', 'Portre ve biyografi', on('portre')],
           ['kimlik', 'Seçmen kartım', on('secmen')],
           ['magaza', 'Mağaza', on('magaza')],
-          p.yonetici ? ['ayar', 'Yönetici paneli', on('yonetici')] : ['zil', 'Bildirimler', on('bildirim')]
+          (p.yonetici || (p.yetkiler && p.yetkiler.moderator)) ? ['ayar', p.yonetici ? 'Yönetici paneli' : 'Moderasyon', on('yonetici')] : ['zil', 'Bildirimler', on('bildirim')]
         ]);
     }
   };
@@ -888,7 +888,7 @@
       ['Hesabım', [
         karo('ben', 'Profilim', 'Kimlik ve ayarlar', on('sekme', 'ben')),
         karo('@bildirim', 'Bildirimler', 'Son gelişmeler', on('bildirim'), rozet(sayi(ok.bildirim))),
-        p.yonetici ? karo('@yonetici', 'Yönetici', 'Oyun paneli', on('yonetici')) : (yon ? karo('devlet', 'Makamım', 'Yönetim', on('sekme', 'devlet')) : '')
+        (p.yonetici || (p.yetkiler && p.yetkiler.moderator)) ? karo('@yonetici', p.yonetici ? 'Yönetici' : 'Moderasyon', 'Moderasyon Merkezi', on('yonetici')) : (yon ? karo('devlet', 'Makamım', 'Yönetim', on('sekme', 'devlet')) : '')
       ]]
     ];
     return '<div class="pa-perde" onclick="soPaMenuKapat()"></div><div class="pa-cekmece" role="dialog" aria-modal="true" aria-label="Tüm bölümler"><div class="pa-tutamac"></div>' +
@@ -968,7 +968,7 @@
     e('kimlik', B.ben.a1, 'Seçmen kartım', 'Oy, adaylık ve parti kurma şartları', ['secmen'], 'seçmen kartı şart aday', 'Profil');
     e('zil', '#e0565b', 'Bildirimler', 'Son gelişmeler', ['bildirim'], 'bildirim haber uyarı', 'Profil');
     if (p.il_id) e('konum', B.harita.a1, (p.il_ad || 'İlim') + ' il sayfası', 'İlinin belediyesi, vekilleri ve oyuncuları', ['ilim', p.il_id], 'il şehrim belediye', 'Türkiye');
-    if (p.yonetici) e('ayar', '#7b8bb8', 'Yönetici paneli', 'Oyun yönetimi', ['yonetici'], 'yönetici admin panel', 'Profil');
+    if (p.yonetici || (p.yetkiler && p.yetkiler.moderator)) e('ayar', '#7b8bb8', 'Moderasyon Merkezi', 'Oyun yönetimi', ['yonetici'], 'yönetici admin panel moderatör moderasyon kayıt şikâyet', 'Profil');
     var ind = window.SO_MENU_ARAMA_INDEKSI || {};
     [['ekonomi', 'Ekonomi'], ['adliye', 'Adliye']].forEach(function (gr) {
       (ind[gr[0]] || []).forEach(function (x) {
