@@ -16,6 +16,13 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 18.11.2026 — 2026.11.18-2 İfadeye çağırma ve zorla getirme (canlıda)
+- İstek (Ercan): gözaltı modülüne ifadeye çağırma; süre verilsin, süresinde gelmeyen ya da reddeden gözaltına alınabilsin.
+- Canlı migration `ifade_cagri_20261118` (kaynak `gelistirici/sql/zz_20261118_ifade_cagri.sql`). Tablo `oyun.ifade_cagri`; `yonetim_tutuklama.ifade_cagri_id`.
+- Usul (CMK m.145-146): CB ya da İçişleri Bakanı `ifade_cagir(kad, konu, sure_saat)` (6-72 sa, varsayılan 24). Hedef `ifade_ver` / `ifade_reddet`. Süre dolunca `oyun.ifade_tick` (zamanlayıcı `ifade_cagri`, 2 dk) → "gelmedi" + iki tarafa bildirim. Gelmedi/reddetti sonrası 72 saat içinde herhangi bir CB/İçişleri `ifade_zorla_getir` → `yonetim_tutuklama` gözaltısı (6 sa; avukat/baro/iletişim kısıtı/tahliye aynen). Geç ifade zorla getirmeyi düşürür; gözaltındayken de ifade verilebilir. `ifade_iptal`, `ifade_cagrilari`.
+- Sınırlar (tarife, portaldan değişir): ifade_cagri_gunluk 10/yetkili, ifade_kisi_haftalik 2, ifade_zorla_pencere 72, ifade_zorla_saat 6, ifade_zorla_ulke_gunluk 10. Zorla getirme sebepsiz gözaltı kotasını HARCAMAZ (`yonetim_gozalti_kota_bilgi` ve `yonetim_tutuklama_yap` ülke sayımı `ifade_cagri_id is null`), ama kişi başı haftalık gözaltı sınırı ve 48 sa ara (`gozalti_hedef_engel`) geçerli. CB ve dokunulmazlığı süren MV çağrılamaz (`dokunulmazlik_engel(...,'ceza')`).
+- Arayüz `gelistirici/www/ifade_cagri.js`: Gözaltı ve Avukat ekranına çağrı kartı (geri sayım, ifade ver, reddet) ve yetkili paneli (çağır, dosyalar, ifadeyi oku, zorla getir, iptal); açık çağrıda her ekranda sarı şerit.
+
 ## 18.11.2026 — 2026.11.18-1 Moderasyon Merkezi: 7 uzmanlık birimi, iş kuyrukları, dört göz yaptırım, oyuncu dosyası (canlıda)
 - İstek (Ercan): 7 moderatör var, 7 daha gelecek (14). Herkeste kesin yetki: kayıt başvurusu kabul/ret. Diğer yetkiler uzmanlığa göre (ör. 2 MASAK, 2 sohbet/küfür, 2 şikâyet). Güçlü yönetim/denetim ve şık ekranlar.
 - Yedek: `yedek_20261118_101632_747813`. Canlı migration: `moderasyon_merkezi_20261118`, `moderasyon_merkezi_duzeltme_20261118` (kaynak `gelistirici/sql/zz_20261118_moderasyon_merkezi.sql`, kopya `migrations/20261118_moderasyon_merkezi.sql`).
