@@ -56,7 +56,7 @@
     destek_kapat: "destek talebini kapattı", yk_sustur: "susturdu", yk_engel_sureli: "süreli engelledi", yk_engel_kalici: "kalıcı engelledi",
     yk_engel_kaldir: "engeli kaldırdı", masak_temiz: "MASAK: temiz dedi", masak_ihtar: "MASAK: ihtar verdi", masak_el_koy: "MASAK: el koydu",
     moderator_birim: "birimini/yetkisini değiştirdi", moderator_sadelestir: "yetkilerini birimine göre sadeleştirdi", moderator_gorev: "ana görevini değiştirdi",
-    yk_bildirim: "bildirim gönderdi", sohbet_izle: "grup sohbetini açtı", ifsa_suphe: "moderatör olduğunu açıklamaya çalıştı (mesaj engellendi)", mod_taklit: "kendini yönetimden gösterdi (mesaj engellendi)", sozlesme_kabul: "gizlilik sözleşmesini kabul etti", admin_duyuru: "duyuru yayımladı", yk_para: "para işlemi yaptı", yk_kidem: "kıdem işlemi yaptı"
+    yk_bildirim: "bildirim gönderdi", sohbet_izle: "grup sohbetini açtı", ifsa_suphe: "moderatör olduğunu açıklamaya çalıştı (mesaj engellendi)", mod_taklit: "kendini yönetimden gösterdi (mesaj engellendi)", sozlesme_kabul: "gizlilik sözleşmesini kabul etti", devir: "kararı tarafsız moderatöre devretti", admin_duyuru: "duyuru yayımladı", yk_para: "para işlemi yaptı", yk_kidem: "kıdem işlemi yaptı"
   });
   const ISARET = { baglanti: ["Bağlantı", "#4fc1d6"], telefon: ["Telefon no", "#c86cd8"], kisisel: ["E-posta", "#c86cd8"], buyuk_harf: ["Büyük harf", "#e0a43a"],
     tekrar: ["Tekrar/spam", "#e0a43a"], kufur: ["Küfür şüphesi", "#e5574f"], sert: ["Sert ifade", "#f07f3c"] };
@@ -296,7 +296,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       ["Kimliğini gizli tut", "Oyunda, sohbette, özel mesajda, gazetede ya da oyun dışında (sosyal medya dahil) moderatör olduğunu söyleme, ima etme. Bunu yazarsan mesajın yayınlanmaz ve yöneticiye bildirilir."],
       ["Ekip arkadaşlarını açık etme", "Kimin moderatör olduğunu kimseye söyleme. Oyunculara giden bildirimlerde adın yerine görev kodun görünür."],
       ["Normal oyuncu gibi oyna", "Seçime gir, parti kur, ticaret yap; ama moderatör yetkini kendi oyunun, partin ya da arkadaşların için asla kullanma."],
-      ["Çıkar çatışmasında karar verme", "Aynı partideki, aynı cihazı kullandığın ya da aranızda dava olan oyuncuya doğrudan yaptırım uygulayamazsın; sistem engeller. Yaptırım talebi aç, tarafsız başka bir moderatör karar versin."],
+      ["Kendi partiline kıyak yok", "Kendi partinden bir oyuncunun içeriğini gizleyebilir, kanıtla susturabilirsin; ama onun lehine karar veremezsin (sorun yok, temiz, talebi reddetme, susturmayı kaldırma). Böyle bir dosya kendiliğinden tarafsız bir moderatöre devredilir; talep açman gerekmez. Aynı cihazı kullandığın ya da aranızda dava olan oyuncuya hiçbir işlem yapamazsın."],
       ["Gördüğünü dışarı taşıma", "Grup sohbetleri, şikâyetler, MASAK kayıtları ve oyuncu dosyaları gizlidir. Ekran görüntüsü paylaşma, kimseye anlatma."],
       ["Her işlem kayıt altında", "Yaptığın her işlem ve açtığın her kapalı sohbet denetim günlüğüne yazılır; yönetici görür. Kurallara uymamak moderatörlükten alınma sebebidir."]
     ];
@@ -438,12 +438,13 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       const inc = u[anah(x)], baskasi = inc && !inc.ben;
       const gec = dkGecti(x.ilk) > 240;
       return `<div class="mm-kart ${gec ? "vurgu" : ""}" style="--c:#e5574f" data-i="${i}">
-        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:16px">${esc(x.hedef)}</b><span class="mm-etiket" style="--c:#e5574f">${x.sayi} şikâyet</span></div>
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:16px">${esc(x.hedef)}</b><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${x.devir ? `<span class="mm-etiket" style="--c:#7b61ff">tarafsız karar bekliyor</span>` : ""}<span class="mm-etiket" style="--c:#e5574f">${x.sayi} şikâyet</span></span></div>
         <div class="mm-alt" style="margin-top:2px">${TUR[x.tur] || x.tur} · ${(x.nedenler || []).map(n => NEDEN[n] || n).join(", ")} · ${once(x.ilk)} · toplam ${x.hedef_sikayet_toplam}${x.gizli ? " · gizlendi" : ""}</div>
         ${baskasi ? `<div class="mm-kilit" style="margin-top:6px">${IK.kilit}${esc(inc.kad)} inceliyor</div>` : ""}
         ${x.icerik ? `<div class="mm-baloncuk">${esc(x.icerik)}</div>` : ""}
+        ${x.kilit ? `<div class="mm-kilit" style="margin-top:6px;display:flex;align-items:flex-start;gap:6px;font-size:14px;line-height:1.4">${IK.terazi}Aynı partidesiniz: ceza verebilirsin; "sorun yok" kararı tarafsız moderatörde.</div>` : ""}
         <div class="mm-aksiyon">
-          <button class="y" data-k="yok_say">Sorun yok</button><button data-k="gizle">Gizle</button>
+          ${x.kilit ? (x.devir ? "" : `<button class="y" data-k="yok_say">Tarafsız moderatöre devret</button>`) : `<button class="y" data-k="yok_say">Sorun yok</button>`}<button data-k="gizle">Gizle</button>
           ${yv("sustur") ? `<button data-k="gizle_sustur1">Gizle + 1 gün</button><button data-k="gizle_sustur7">Gizle + 7 gün</button>` : ""}
           ${yv("hesap_kapat") ? `<button class="k" data-k="kapat">Hesabı kapat</button>` : `<button class="k" data-talep="1">Yaptırım talebi</button>`}
           <button data-dosya="1">Dosya</button>
@@ -457,7 +458,9 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       k.querySelectorAll("[data-k]").forEach(b => b.onclick = async (ev) => {
         ev.stopPropagation();
         if (b.dataset.k === "kapat" && !await onayla("Hesabı kapat", `${esc(x.hedef)} adlı oyuncunun hesabı kapatılacak; görevleri düşer, mesajları gizlenir.`, "Kapat", true)) return;
-        try { await API.rpc("admin_sikayet_karar", { p_tur: x.tur, p_kayit: x.kayit_id || null, p_hedef_kad: x.hedef, p_islem: b.dataset.k }); toast("Karar uygulandı."); mmSikayet(); }
+        try { const r = await API.rpc("admin_sikayet_karar", { p_tur: x.tur, p_kayit: x.kayit_id || null, p_hedef_kad: x.hedef, p_islem: b.dataset.k });
+          const dv = b.dataset.k === "yok_say" && Array.isArray(r) && r.some(z => anah(z) === anah(x) && z.devir);
+          toast(dv ? "Çıkar çatışması: karar tarafsız moderatöre devredildi." : "Karar uygulandı."); mmSikayet(); }
         catch (err) { hata(err); }
       });
       const t = k.querySelector("[data-talep]"); if (t) t.onclick = (ev) => { ev.stopPropagation(); talepAc(x.hedef, { kanit: x.icerik }); };
@@ -575,7 +578,8 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
         <span class="mm-etiket" style="--c:${TT[x.tur][1]}">${TT[x.tur][0]}${sureYaz(x) ? " · " + sureYaz(x) : ""}</span></div>
       <div class="mm-alt">#${x.id} · ${esc(x.talep_eden)} açtı · ${once(x.zaman)}${hd.sikayet ? ` · ${hd.sikayet} şikâyet` : ""}${hd.onceki_yaptirim ? ` · önceki yaptırım ${hd.onceki_yaptirim}` : ""}${hd.yasakli ? " · şu an engelli" : ""}</div>
       <div class="mm-baloncuk"><b>Gerekçe:</b> ${esc(x.gerekce)}${x.kanit ? `\n\n<b>Kanıt:</b> ${esc(x.kanit)}` : ""}</div>
-      ${mod === "karar" ? `<div class="mm-iki"><button class="mm-btn cizgi" data-red="1">Reddet</button><button class="mm-btn ${x.tur === "eskalasyon" ? "mor" : "kirmizi"}" data-onay="1">${x.tur === "eskalasyon" ? "İncelendi" : "Onayla ve uygula"}</button></div>`
+      ${x.devir ? `<div class="mm-kilit" style="margin-top:6px;display:flex;align-items:flex-start;gap:6px;font-size:14px;line-height:1.4">${IK.terazi}Ret kararı tarafsız moderatör bekliyor.</div>` : mod === "karar" && x.kilit ? `<div class="mm-kilit" style="margin-top:6px;display:flex;align-items:flex-start;gap:6px;font-size:14px;line-height:1.4">${IK.terazi}Aynı partidesiniz: onaylayabilirsin; ret kararı tarafsız moderatörde.</div>` : ""}
+      ${mod === "karar" ? `<div class="mm-iki"><button class="mm-btn cizgi" data-red="1">${x.kilit ? "Reddi devret" : "Reddet"}</button><button class="mm-btn ${x.tur === "eskalasyon" ? "mor" : "kirmizi"}" data-onay="1">${x.tur === "eskalasyon" ? "İncelendi" : "Onayla ve uygula"}</button></div>`
         : `<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:6px"><span class="mm-etiket" style="--c:${DURUM[x.durum][1]}">${DURUM[x.durum][0]}</span>${x.karar_veren ? `<span class="mm-alt">${esc(x.karar_veren)}${x.karar_not ? " · " + esc(x.karar_not) : ""}</span>` : ""}${mod === "benim" && x.durum === "acik" ? `<button class="mm-btn cizgi" style="width:auto;min-height:38px" data-geri="1">Geri çek</button>` : ""}</div>`}
       <div class="mm-aksiyon"><button data-dosya="${esc(x.hedef)}">Dosyayı aç</button></div></div>`;
   }
@@ -594,7 +598,9 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       if (on) on.onclick = async () => { if (!await onayla("Talebi onayla", "Yaptırım hemen uygulanır ve oyuncuya bildirilir.", "Onayla", true)) return;
         try { await API.rpc("mod_talep_karar", { p_id: id, p_onay: true, p_not: null }); toast("Onaylandı ve uygulandı."); mmTalepler(); } catch (err) { hata(err); } };
       if (red) red.onclick = async () => { const n = prompt("Reddetme gerekçesi (talebi açan görür):", ""); if (n === null) return;
-        try { await API.rpc("mod_talep_karar", { p_id: id, p_onay: false, p_not: n }); toast("Talep reddedildi."); mmTalepler(); } catch (err) { hata(err); } };
+        try { const s = await API.rpc("mod_talep_karar", { p_id: id, p_onay: false, p_not: n });
+          const dv = !!(s && Array.isArray(s.karar) && s.karar.some(z => z.id === id && z.devir));
+          toast(dv ? "Çıkar çatışması: ret kararı tarafsız moderatöre devredildi." : "Talep reddedildi."); mmTalepler(); } catch (err) { hata(err); } };
       if (geri) geri.onclick = async () => { try { await API.rpc("mod_talep_geri_cek", { p_id: id }); toast("Talep geri çekildi."); mmTalepler(); } catch (err) { hata(err); } };
     });
   }
@@ -668,13 +674,15 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     else if (DS.sekme === "masak") govde = `<div class="mm-kart" style="padding:4px 12px">${d.masak.map(x => `<div class="mm-satir" style="cursor:default"><div class="orta"><b style="font-weight:650">${esc(x.tur)} · ${tl(x.tutar)}</b><div class="kucuk">${once(x.zaman)} · ${esc(x.aciklama || "")}</div></div><span class="mm-etiket" style="--c:${x.durum === "yeni" ? "#e0a43a" : x.durum === "temiz" ? "#34c98a" : "#e5574f"}">${esc(x.durum)}</span></div>`).join("") || `<div class="mm-alt" style="padding:12px 0">MASAK kaydı yok.</div>`}</div>
         ${typeof masakEkrani === "function" ? `<button class="mm-btn" id="mmMasakAc">MASAK kuyruğunu aç</button>` : ""}`;
     const benY = !!((d.yetkim && d.yetkim.yonetici) || (M && M.ben && M.ben.yonetici)), kendim = !!(M && M.ben && M.ben.kad === d.kad);
+    const leheKilit = !benY && !!d.lehe_kilit;
     const aksiyon = (d.korunan && (!benY || kendim)) ? `<div class="mm-uyari sari">${IK.kilit}<div>Bu hesap oyun yönetiminden; moderatörler işlem yapamaz. Gerekirse "Yöneticiye ilet" kullan.</div></div>` : d.cikar_catismasi ? `
       <div class="mm-uyari sari">${IK.terazi}<div><b>${esc(d.cikar_catismasi)}</b> Bu oyuncuya doğrudan yaptırım uygulayamazsın; talep aç, tarafsız başka bir moderatör karar versin.</div></div>
       <div class="mm-kart"><div class="mm-aksiyon"><button class="k" data-a="talep">Yaptırım talebi</button><button data-a="ilet">Yöneticiye ilet</button><button data-a="not">Not ekle</button></div></div>` : `
+      ${leheKilit ? `<div class="mm-uyari sari">${IK.terazi}<div><b>${esc(d.lehe_kilit)}</b> Ceza yönünde işlem yapabilirsin (susturma, yaptırım talebi). Bu oyuncu lehine karar (susturmayı ya da engeli kaldırma) tarafsız moderatörde; gerekirse "Yöneticiye ilet" kullan.</div></div>` : ""}
       <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>İşlemler</h3></div>
         <div class="mm-aksiyon">
-          ${y.sustur ? (d.susturma_bitis ? `<button class="y" data-a="susKaldir">Susturmayı kaldır</button>` : `<button data-a="sustur">Sustur</button>`) : ""}
-          ${y.hesap_kapat ? (d.yasakli ? `<button class="y" data-a="engelKaldir">Engeli kaldır</button>` : `<button class="k" data-a="engel">Engelle</button>`) : ""}
+          ${y.sustur ? (d.susturma_bitis ? (leheKilit ? "" : `<button class="y" data-a="susKaldir">Susturmayı kaldır</button>`) : `<button data-a="sustur">Sustur</button>`) : ""}
+          ${y.hesap_kapat ? (d.yasakli ? (leheKilit ? "" : `<button class="y" data-a="engelKaldir">Engeli kaldır</button>`) : `<button class="k" data-a="engel">Engelle</button>`) : ""}
           ${!y.hesap_kapat || !y.sustur ? `<button class="k" data-a="talep">Yaptırım talebi</button>` : ""}
           <button data-a="ilet">Yöneticiye ilet</button>
           <button data-a="not">Not ekle</button>
@@ -820,6 +828,23 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
             <div class="uyeler">${u.map(uyeSatir).join("") || `<div class="mm-alt" style="padding:6px 0 10px">Boş birim.</div>`}</div>
             <button class="ekle" data-ekle="${b.kod}">+ ${esc(b.ad.split(" ")[0])} birimine moderatör ekle</button></div>`;
         }).join("")}`;
+    } else if (EK.sekme === "taraf") {
+      const T = EK.taraf || { moderatorler: [], son: [], devirler: [] };
+      const KAY = { sikayet: "Şikâyet", akis: "Kürsü şikâyeti", masak: "MASAK kaydı", talep: "Yaptırım talebi" };
+      const oran = (o, n) => n ? `%${o}` : "–";
+      const liste = (T.moderatorler || []).filter(m => m.ceza_ayni + m.lehe_ayni + m.devir + m.ceza_diger + m.lehe_diger > 0);
+      govde = `<div class="mm-uyari yesil">${IK.terazi}<div><b>Kural:</b> Moderatör kendi partilisine ceza verebilir; lehine karar veremez, o dosya kendiliğinden tarafsız moderatöre devredilir. Tarafsız moderatör yoksa ya da 2 saat bakılmazsa sana bildirim gelir.
+          <div class="mm-alt" style="margin-top:4px">Oranlar ${tsaat(T.baslangic)} tarihinden beri sayılır. "Ceza oranı": o gruptaki kararların yüzde kaçı ceza. İki grup arasında büyük fark varsa moderatör işaretlenir.</div></div></div>
+        <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>Tarafsız karar bekleyenler (${(T.devirler || []).length})</h3></div>
+          ${(T.devirler || []).map(d => `<div class="mm-satir" ${d.hedef ? `data-dosya="${esc(d.hedef)}"` : `style="cursor:default"`}><div class="orta"><b>${esc(d.hedef || "Parti kaydı")}</b><div class="kucuk">${KAY[d.kaynak] || esc(d.kaynak)} · ${esc(d.devreden)} devretti · ${once(d.zaman)}</div></div>${d.yoneticide ? `<span class="mm-etiket" style="--c:#e5574f">karar sende</span>` : `<span class="mm-etiket" style="--c:#7b61ff">moderatörde</span>`}</div>`).join("") || `<div class="mm-alt" style="padding:4px 0 8px">Bekleyen devir yok.</div>`}</div>
+        <div class="mm-kart" style="overflow-x:auto"><div class="mm-baslik" style="margin-top:0"><h3>Ceza oranı: kendi partisi / diğerleri</h3></div>
+          ${liste.length ? `<table class="mm-tablo"><thead><tr><th>Moderatör</th><th class="s">Kendi partisi</th><th class="s">Diğerleri</th><th class="s">Devir</th></tr></thead><tbody>
+          ${liste.map(m => `<tr data-m="${esc(m.kad)}" style="cursor:pointer"><td>${esc(m.kad)}<div class="mm-alt">${esc(m.parti || "partisiz")}${m.isaret ? ` · <span style="color:var(--al2);font-weight:700">${m.isaret === "yumusak" ? "kendi partisine yumuşak" : "kendi partisine sert"}</span>` : ""}</div></td>
+            <td class="s">${oran(m.oran_ayni, m.ceza_ayni + m.lehe_ayni + m.devir)}<div class="mm-alt">${m.ceza_ayni}/${m.ceza_ayni + m.lehe_ayni + m.devir}</div></td>
+            <td class="s">${oran(m.oran_diger, m.ceza_diger + m.lehe_diger)}<div class="mm-alt">${m.ceza_diger}/${m.ceza_diger + m.lehe_diger}</div></td><td class="s">${m.devir}</td></tr>`).join("")}
+          </tbody></table>` : `<div class="mm-alt" style="padding:4px 0 8px">Henüz sayılacak karar yok.</div>`}</div>
+        <div class="mm-kart" style="padding:4px 12px"><div class="mm-baslik"><h3>Aynı partiliye yapılan son işlemler</h3></div>
+          ${(T.son || []).map(k => `<div class="mm-satir" ${k.hedef ? `data-dosya="${esc(k.hedef)}"` : `style="cursor:default"`}><div class="orta"><b style="font-weight:650">${esc(k.kad)} ${esc(ISLEM[k.islem] || k.islem)}</b><div class="kucuk">${esc(k.hedef || "")} · ${once(k.zaman)}${k.ayrinti ? " · " + esc(k.ayrinti) : ""}</div></div><span class="mm-etiket" style="--c:${k.yon === "ceza" ? "#e5574f" : k.yon === "devir" ? "#7b61ff" : "#98a4c4"}">${k.yon === "ceza" ? "ceza" : k.yon === "devir" ? "devir" : k.yon === "lehe" ? "lehe" : "diğer"}</span></div>`).join("") || `<div class="mm-alt" style="padding:12px 0">Henüz aynı partiliye yapılmış işlem yok.</div>`}</div>`;
     } else {
       const sirali = mods.slice().sort((a, b) => b.islem_7g - a.islem_7g);
       govde = `<div class="mm-kart" style="overflow-x:auto"><table class="mm-tablo"><thead><tr><th>Moderatör</th><th class="s">Bugün</th><th class="s">7 gün</th><th class="s">30 gün</th><th class="s">Kayıt</th></tr></thead><tbody>
@@ -830,10 +855,13 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       <section class="mm-hero"><small>Oyun yönetimi</small><h2>${mods.length} / ${hedefToplam} moderatör</h2>
         <div class="mm-istat"><div><b>${cev}</b><span>çevrimiçi</span></div><div><b>${sayi(hafta)}</b><span>7 günde işlem</span></div><div><b class="${eksik ? "" : ""}">${eksik}</b><span>eksik birim</span></div></div></section>
       <button class="mm-btn mor" id="mmYeni" style="margin-bottom:12px">+ Yeni moderatör ekle</button>
-      <div class="mm-sekme"><button class="${EK.sekme === "birim" ? "on" : ""}" data-s="birim">Birimler</button><button class="${EK.sekme === "perf" ? "on" : ""}" data-s="perf">Performans</button><button data-s="gunluk">Denetim günlüğü</button></div>
+      <div class="mm-sekme"><button class="${EK.sekme === "birim" ? "on" : ""}" data-s="birim">Birimler</button><button class="${EK.sekme === "perf" ? "on" : ""}" data-s="perf">Performans</button><button class="${EK.sekme === "taraf" ? "on" : ""}" data-s="taraf">Tarafsızlık</button><button data-s="gunluk">Denetim günlüğü</button></div>
       ${govde}`);
-    document.querySelectorAll(".mm-sekme [data-s]").forEach(b => b.onclick = () => { if (b.dataset.s === "gunluk") return ekranAc(mmGunluk); EK.sekme = b.dataset.s; ekipCiz(); });
+    document.querySelectorAll(".mm-sekme [data-s]").forEach(b => b.onclick = async () => { if (b.dataset.s === "gunluk") return ekranAc(mmGunluk);
+      if (b.dataset.s === "taraf") { try { EK.taraf = await API.rpc("admin_mod_tarafsizlik", { p_gun: 30 }); } catch (err) { hata(err); return; } }
+      EK.sekme = b.dataset.s; ekipCiz(); });
     document.querySelectorAll("[data-m]").forEach(x => x.onclick = () => modDuzenle(mods.find(m => m.kad === x.dataset.m)));
+    document.querySelectorAll("[data-dosya]").forEach(x => x.onclick = () => mmDosyaAc(x.dataset.dosya));
     document.querySelectorAll("[data-ekle]").forEach(x => x.onclick = () => modDuzenle(null, x.dataset.ekle));
     $("#mmYeni").onclick = () => modDuzenle(null, null);
     const sd = $("#mmSade"); if (sd) sd.onclick = async () => {

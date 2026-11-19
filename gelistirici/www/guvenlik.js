@@ -79,7 +79,7 @@ function masakKarar(id, karar){
   $("#gvOnay", md).onclick = () => { const n = $("#gvNot", md).value.trim(); if (n.length < 10) { toast("Gerekçe en az 10 karakter olmalı.", true); return; } modalKapat(); masakGonder(id, karar, karar === "el_koy" ? Math.round(+$("#gvTutar", md).value || 0) : null, n); };
 }
 async function masakGonder(id, karar, tutar, not){
-  try { await API.rpc("admin_masak_karar", { p_id: id, p_karar: karar, p_tutar: tutar, p_not: not }); toast("Karar kaydedildi."); masakEkrani(); }
+  try { const r = await API.rpc("admin_masak_karar", { p_id: id, p_karar: karar, p_tutar: tutar, p_not: not }); toast(r && r.cift_onay ? r.cift_onay : "Karar kaydedildi."); masakEkrani(); }
   catch (err) { toast(hataCevir(err.message), true); }
 }
 
