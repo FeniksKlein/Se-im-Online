@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.20-1', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.20-2', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -81639,6 +81639,558 @@ begin
     perform cron.schedule('mod-devir', '7-59/10 * * * *', 'select oyun.mod_devir_tick()');
   end if;
 end $c$;
+$kosullu_govde$;
+end $kosullu_dis$;
+-- zz_20261120_duyuru_sinir_imza.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun.moderatorler') is null or to_regclass('oyun.yayinlar') is null or to_regclass('oyun.mod_kisit') is null or to_regclass('oyun.yonetim_tutuklama') is null then raise notice 'zz_20261120_duyuru_sinir_imza.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 20.11.2026 · DUYURU KARAKTER SINIRI + YÖNETİM İMZASI (Ercan'ın kararı, moderatör ekibinin isteği)
+-- 1) Herkese açık duyuru: moderatörün hazırladığı karşılama metni sığmıyor, üstüne
+--    'new row for relation "yayinlar" violates check constraint "yayinlar_metin_check"' hatası veriyordu.
+--    Sebep: admin_duyuru metni 2000 karaktere kadar kabul edip sonuna imza ekliyor, tablo sınırı da 2000 olduğu için
+--    sınıra yakın her metin tabloya yazılırken reddediliyordu.
+--    Yeni kural: duyuru metni 5000 karakter; tablo sınırı 6000 (imza payı). Diğer yayın türlerinin kendi sınırları değişmez.
+-- 2) İmza: "Görevli G-06" yerine "Oyun Yöneticisi G-06"; kurucu "Oyun Kurucusu".
+--    Bildirim öneki "Oyun yönetimi (Görevli G-06): …" yerine kısa hâli "Oyun Yöneticisi G-06: …".
+-- 3) Yönetim adına yazılan duyuru ve Yardım Masası yanıtı, yazan yönetici oyunda gözaltında olsa da engellenmez.
+-- Oyuncu verisi değişmez. Tekrar çalıştırmak güvenlidir.
+
+alter table oyun.yayinlar drop constraint if exists yayinlar_metin_check;
+alter table oyun.yayinlar add constraint yayinlar_metin_check check (length(metin) >= 1 and length(metin) <= 6000);
+
+create or replace function oyun.mod_imza(p oyun.profiller)
+ returns text
+ language sql
+ stable
+ set search_path to ''
+as $function$
+  select case when p.yonetici then 'Oyun Kurucusu'
+              when exists (select 1 from oyun.moderatorler m where m.user_id = p.id) then 'Oyun Yöneticisi ' || oyun.mod_kod(p.id)
+              else 'Oyun Yönetimi' end
+$function$;
+
+create or replace function public.admin_duyuru(p_metin text)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'oyun', 'public', 'pg_temp'
+as $function$
+declare p oyun.profiller := oyun.yetki_zorunlu('duyuru'); t timestamptz := oyun.simdi(); m text;
+begin
+  m := oyun.metin_temizle(p_metin, 5000);
+  perform oyun.mod_log(p, 'duyuru', null, m);
+  insert into oyun.yayinlar(tur, gonderen, metin, zaman, unvan)
+  values ('sistem', p.id, m || E'\n\n— ' || oyun.mod_imza(p), t, 'Oyun Yönetimi');
+  return jsonb_build_object('tamam', true, 'kitle', (select count(*) from oyun.profiller where not yasakli));
+end $function$;
+
+create or replace function public.yk_bildirim(p_hedef text, p_deger text, p_metin text)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'oyun', 'public', 'pg_temp'
+as $function$
+declare p oyun.profiller := oyun.yetki_zorunlu('duyuru'); t timestamptz := oyun.simdi(); u uuid; kisi int := 0; m text := oyun.yk_metin(p_metin, 500);
+begin
+  if m is null then raise exception 'Bildirim metni boş olamaz.'; end if;
+  for u in select * from oyun.yk_hedefler(p_hedef, p_deger) loop
+    perform oyun.bildir(u, format('%s: %s', oyun.mod_imza(p), m), t); kisi := kisi + 1;
+  end loop;
+  perform oyun.mod_log(p, 'yk_bildirim', oyun.yk_hedef_ad(p_hedef, p_deger), m);
+  return jsonb_build_object('kisi', kisi);
+end $function$;
+
+-- Yönetim adına yazılanlar oyun içi konuşma değildir: oyunda gözaltında olan yöneticinin resmî duyurusu ve
+-- Yardım Masası'ndaki yönetim yanıtı gözaltı yazı engeline takılmaz (kendi adına yazdıkları yine engellenir).
+do $yama$
+declare s text;
+begin
+  s := pg_get_functiondef('oyun.gozalti_yazi_engel_trg()'::regprocedure);
+  if position('yonetim_adina' in s) = 0 then
+    s := replace(s, 'if coalesce(j->>''rol'','''') in (''sistem'',''reklam'',''bilgi'') then return new; end if;',
+      'if coalesce(j->>''rol'','''') in (''sistem'',''reklam'',''bilgi'') then return new; end if;' || E'\n' ||
+      '  /* yonetim_adina */ if (tg_table_name = ''yayinlar'' and coalesce(j->>''tur'','''') = ''sistem'') or (tg_table_name = ''mesajlar'' and coalesce(j->>''gorevli'','''') = ''true'') then return new; end if;');
+    execute s;
+  end if;
+end $yama$;
+$kosullu_govde$;
+end $kosullu_dis$;
+-- zz_20261120_istinaf_dairesi.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun.moderatorler') is null or to_regclass('oyun.adliye_istinaf') is null or to_regclass('oyun.adliye_juri') is null or to_regclass('oyun.juri_ihmal') is null or to_regclass('oyun.mod_kisit') is null or to_regclass('oyun.mod_kayit') is null then raise notice 'zz_20261120_istinaf_dairesi.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 20.11.2026 · İSTİNAF DAİRESİ (Ercan'ın kararı, moderatör ekibinin isteği)
+-- Eski düzen: istinafı kurayla seçilen 3 oyuncudan oluşan "jüri" inceliyor, üyelerin adı karardan sonra dosyada görünüyordu.
+-- Yeni düzen (gerçekte de istinafı bölge adliye mahkemesinin 3 hâkimli dairesi inceler):
+--   1) Heyet 3 üyelidir ve tamamı oyun yöneticilerinden (moderatörler) seçilir. Gizlilik sözleşmesini kabul etmiş,
+--      son 7 günde oyunda görülmüş, dosyayla çıkar çatışması olmayan yöneticiler arasından; önce son 24 saatte
+--      oyunda olanlar ve üzerinde en az açık dosya bulunanlar.
+--   2) Tarafsızlık: davanın tarafı / vekili / ilk derece üyesi olan, taraf partilerden birine üye olan, taraflarla
+--      aynı cihazı kullanan, aralarında dava ya da şirket ortaklığı bulunan yönetici seçilmez (oyun.mod_cikar_catismasi).
+--   3) Tek kişiye bağlı kalmaz: yeterli yönetici yoksa kurucu, o da yoksa SON ÇARE olarak eski vatandaş kurası devreye girer
+--      (kurucuya bildirim gider). Görevini yapmayan üyenin yerine yenisi atanır; ihmal yönetim kaydına işlenir.
+--   4) Gizlilik (oyun kuralı): üyelerin adı hiçbir oyuncuya gösterilmez; dosyada "Üye 1 / Üye 2 / Üye 3" yazar.
+--      Yalnız kurucu gerçek adları görür. Bozma haberi artık üyenin Kürsü hesabından değil, olay akışından duyurulur.
+--      Yönetici üyeye istinaf oyu için kıdem verilmez (yalnız yöneticilerin kazanabildiği bir ödül olmasın).
+--   5) İstinaf yargılama gideri aynen sürer: reddedilen başvuruda 50.000 ₺ (tazminatta %10, en çok 150.000 ₺).
+-- Oyuncu verisi değişmez. Tekrar çalıştırmak güvenlidir.
+
+-- ---------- Uygunluk: oyun yöneticisi (moderatör / kurucu) ----------
+create or replace function oyun.istinaf_uye_uygun(d oyun.adliye_davalar, u uuid, t timestamp with time zone)
+ returns boolean
+ language sql
+ stable
+ set search_path to ''
+as $function$
+  select oyun.adliye_juri_uygun(d, u)
+    and exists (select 1 from oyun.profiller p where p.id = u and not coalesce(p.yasakli, false)
+                 and (p.parti_id is null or not (p.parti_id = any(oyun.dava_taraf_partileri(d)))))
+    and (d.davaci is null or oyun.mod_cikar_catismasi(u, d.davaci) is null)
+    and (d.davali is null or oyun.mod_cikar_catismasi(u, d.davali) is null)
+    and not exists (select 1 from oyun.adliye_ek_taraf et where et.dava_id = d.id and oyun.mod_cikar_catismasi(u, et.user_id) is not null)
+    and not exists (select 1 from oyun.juri_ihmal i where i.user_id = u and i.zaman > t - interval '48 hours')
+$function$;
+
+-- ---------- Son çare: vatandaş kurası (20.11.2026 öncesinin juri_cek'i; yöneticiler ve verilen kişiler hariç) ----------
+create or replace function oyun.juri_cek_vatandas(d oyun.adliye_davalar, t timestamp with time zone, p_n integer, p_haric uuid[])
+ returns uuid[]
+ language sql
+ set search_path to ''
+as $function$
+  with havuz as (
+    select pr.id, pr.parti_id,
+      case when pr.son_gorulme > t - interval '24 hours' then 0 when pr.son_gorulme > t - interval '72 hours' then 1
+           when pr.son_gorulme > t - interval '7 days' then 2 else 3 end kat, random() rnd
+    from oyun.profiller pr
+    where pr.son_gorulme > t - interval '30 days'
+      and not coalesce(pr.yonetici, false)
+      and not (pr.id = any(coalesce(p_haric, '{}'::uuid[])))
+      and not exists(select 1 from oyun.moderatorler mo where mo.user_id = pr.id)
+      and not exists(select 1 from oyun.adliye_juri j where j.dava_id = d.id and j.user_id = pr.id)
+      and not exists(select 1 from oyun.adliye_juri_yedek y where y.dava_id = d.id and y.user_id = pr.id)
+      and (select count(*) from oyun.adliye_juri j join oyun.adliye_istinaf s on s.dava_id = j.dava_id
+            where j.user_id = pr.id and s.durum = 'acik' and j.oy is null) < 2
+      and not exists(select 1 from oyun.adliye_davalar h where h.acilis > t - interval '30 days' and h.id <> d.id
+            and ((h.davaci = pr.id and (h.davali = d.davaci or h.davali = d.davali))
+              or (h.davali = pr.id and (h.davaci = d.davaci or h.davaci = d.davali))))
+      and oyun.juri_aday_uygun(d, pr.id, t)
+  ), sirali as (
+    select h.id, h.kat, h.rnd,
+      (row_number() over (partition by coalesce(h.parti_id::text, h.id::text) order by h.kat, h.rnd) > 1
+       or (h.parti_id is not null and exists(select 1 from oyun.adliye_juri j2 join oyun.profiller p2 on p2.id = j2.user_id
+             where j2.dava_id = d.id and p2.parti_id = h.parti_id)))::int tekrar
+    from havuz h
+  )
+  select coalesce(array_agg(q.id order by q.o1, q.tekrar, q.kat, q.rnd), '{}'::uuid[]) from (
+    select id, tekrar, kat, rnd, (kat > 1)::int o1 from sirali order by (kat > 1)::int, tekrar, kat, rnd limit greatest(p_n, 0)) q
+$function$;
+
+-- ---------- Heyet çekimi: yöneticiler → kurucu → (son çare) vatandaş kurası ----------
+create or replace function oyun.juri_cek(d oyun.adliye_davalar, t timestamp with time zone, p_n integer)
+ returns uuid[]
+ language plpgsql
+ set search_path to ''
+as $function$
+declare secilen uuid[]; ek uuid[]; eksik int;
+begin
+  select coalesce(array_agg(q.id order by q.kat, q.yuk, q.rnd), '{}'::uuid[]) into secilen
+  from (
+    select h.id, h.kat, h.yuk, h.rnd from (
+      select m.user_id id,
+             case when pr.son_gorulme > t - interval '24 hours' then 0 when pr.son_gorulme > t - interval '72 hours' then 1 else 2 end kat,
+             (select count(*) from oyun.adliye_juri j join oyun.adliye_istinaf s on s.dava_id = j.dava_id
+               where j.user_id = m.user_id and s.durum = 'acik' and j.oy is null) yuk,
+             random() rnd
+      from oyun.moderatorler m join oyun.profiller pr on pr.id = m.user_id
+      where m.sozlesme_at is not null
+        and pr.son_gorulme > t - interval '7 days'
+        and not exists (select 1 from oyun.adliye_juri j where j.dava_id = d.id and j.user_id = m.user_id)
+        and oyun.istinaf_uye_uygun(d, m.user_id, t)
+    ) h
+    where h.yuk < 6
+    order by h.kat, h.yuk, h.rnd limit greatest(p_n, 0)
+  ) q;
+  eksik := p_n - cardinality(secilen);
+  if eksik > 0 then
+    select coalesce(array_agg(q.id), '{}'::uuid[]) into ek from (
+      select pr.id from oyun.profiller pr
+      where pr.yonetici and not coalesce(pr.yasakli, false)
+        and not (pr.id = any(secilen))
+        and not exists (select 1 from oyun.adliye_juri j where j.dava_id = d.id and j.user_id = pr.id)
+        and oyun.istinaf_uye_uygun(d, pr.id, t)
+      order by pr.son_gorulme desc nulls last limit eksik) q;
+    secilen := secilen || ek;
+    eksik := p_n - cardinality(secilen);
+  end if;
+  if eksik > 0 then
+    ek := oyun.juri_cek_vatandas(d, t, eksik, secilen);
+    if cardinality(ek) > 0 then
+      secilen := secilen || ek;
+      perform oyun.mod_kurucu_bildir(format('İstinaf Dairesi: Adliye #%s için yeterli sayıda tarafsız oyun yöneticisi bulunamadı; %s üyelik vatandaş kurasıyla tamamlandı.', d.id, cardinality(ek)), t);
+    end if;
+  end if;
+  return secilen;
+end $function$;
+
+-- ---------- Görev ihmali: yönetim kaydına işlenir ----------
+create or replace function oyun.istinaf_ihmal_kaydet(u uuid, p_dava bigint, t timestamp with time zone, p_neden text)
+ returns void
+ language plpgsql
+ set search_path to ''
+as $function$
+begin
+  if u is null then return; end if;
+  if exists (select 1 from oyun.moderatorler where user_id = u) then
+    insert into oyun.mod_kayit(zaman, user_id, kad, islem, hedef, ayrinti)
+    values (t, u, oyun.kad(u), 'istinaf_ihmal', 'Adliye #' || p_dava, left(coalesce(p_neden, 'oy kullanmadı'), 300));
+  end if;
+end $function$;
+
+-- ---------- Heyetin kurulması: 3 üye, yedek listesi yok (yerine geçecek üye o anda çekilir) ----------
+create or replace function oyun.adliye_juri_kur(p_dava bigint, t timestamp with time zone)
+ returns integer
+ language plpgsql
+ set search_path to ''
+as $function$
+declare d oyun.adliye_davalar; secilen uuid[]; u uuid; asil int := 0; taraf text;
+begin
+  select * into d from oyun.adliye_davalar where id = p_dava;
+  if d.id is null then return 0; end if;
+  secilen := oyun.juri_cek(d, t, 3);
+  taraf := oyun.dava_taraf_metni(d);
+  foreach u in array secilen loop
+    insert into oyun.adliye_juri(dava_id, user_id, atama) values (d.id, u, t) on conflict do nothing;
+    asil := asil + 1;
+    perform oyun.bildir(u, format('⚖️ İSTİNAF GÖREVİ: Adliye #%s dosyasında İstinaf Dairesi üyesi olarak görevlendirildin (%s). 24 saat içinde Adliye › Dosya #%s ekranından kararı onayla ya da boz. Üyeliğin gizlidir: adın hiçbir oyuncuya gösterilmez; sen de bu görevi kimseyle paylaşma. 8 saat oyuna girmezsen ya da 12 saat içinde oy vermezsen görev başka üyeye geçer.', d.id, taraf, d.id), t);
+  end loop;
+  return asil;
+end $function$;
+
+-- ---------- Üye değişimi ----------
+create or replace function oyun.juri_degistir(p_dava bigint, p_eski uuid, t timestamp with time zone, p_neden text)
+ returns uuid
+ language plpgsql
+ set search_path to ''
+as $function$
+declare d oyun.adliye_davalar; i oyun.adliye_istinaf; yeni uuid; kalan int; v_yon boolean;
+begin
+  if not exists(select 1 from oyun.adliye_juri where dava_id = p_dava and user_id = p_eski and oy is null) then return null; end if;
+  select * into d from oyun.adliye_davalar where id = p_dava;
+  select * into i from oyun.adliye_istinaf where dava_id = p_dava;
+  -- 20.11.2026 öncesinde kurulmuş heyetlerin yedek listesi (yeni heyetlerde yedek tutulmaz)
+  select yy.user_id into yeni from oyun.adliye_juri_yedek yy join oyun.profiller pr on pr.id = yy.user_id
+   where yy.dava_id = p_dava and not yy.kullanildi and oyun.juri_aday_uygun(d, yy.user_id, t)
+     and not exists(select 1 from oyun.adliye_juri j where j.dava_id = p_dava and j.user_id = yy.user_id)
+   order by (pr.son_gorulme > t - interval '24 hours') desc, yy.sira limit 1;
+  if yeni is not null then
+    update oyun.adliye_juri_yedek set kullanildi = true where dava_id = p_dava and user_id = yeni;
+  else
+    yeni := (oyun.juri_cek(d, t, 1))[1];
+  end if;
+  if yeni is null then return null; end if;
+  v_yon := coalesce((select yonetici from oyun.profiller where id = p_eski), false)
+           or exists (select 1 from oyun.moderatorler where user_id = p_eski);
+  insert into oyun.juri_ihmal(user_id, dava_id, zaman) values (p_eski, p_dava, t) on conflict do nothing;
+  perform oyun.istinaf_ihmal_kaydet(p_eski, p_dava, t, p_neden);
+  perform oyun.bildir(p_eski, case when v_yon
+      then format('Adliye #%s İstinaf Dairesinde %s; görev başka üyeye geçti. 48 saat boyunca yeni istinaf dosyası verilmeyecek; durum yönetim kaydına işlendi.', p_dava, p_neden)
+      else format('Adliye #%s İstinaf Dairesinde %s; yerine başka üye geçti. 14 gün boyunca yeniden görevlendirilmeyeceksin.', p_dava, p_neden) end, t);
+  update oyun.adliye_juri set user_id = yeni, atama = t, gerekce = null where dava_id = p_dava and user_id = p_eski and oy is null;
+  kalan := greatest(1, ceil(extract(epoch from (coalesce(i.bit, t + interval '24 hours') - t)) / 3600))::int;
+  perform oyun.bildir(yeni, format('⚖️ İSTİNAF GÖREVİ: Adliye #%s dosyasında İstinaf Dairesi üyesi olarak görevlendirildin (%s). Oylamanın bitmesine yaklaşık %s saat var; birkaç saat içinde Adliye › Dosya #%s ekranından kararı onayla ya da boz. Üyeliğin gizlidir; bu görevi kimseyle paylaşma.', p_dava, oyun.dava_taraf_metni(d), kalan, p_dava), t);
+  return yeni;
+end $function$;
+
+-- ---------- Oy: yönetici üyeye kıdem yok, oy yönetim kaydına işlenir ----------
+create or replace function public.adliye_juri_oy(p_dava bigint, p_oy text, p_gerekce text)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to ''
+as $function$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); i oyun.adliye_istinaf; ek numeric := 0; v_yon boolean;
+begin
+  if p_oy not in ('onay', 'boz') then raise exception 'Onayla ya da boz.'; end if;
+  select * into i from oyun.adliye_istinaf where dava_id = p_dava;
+  if i.dava_id is null or i.durum <> 'acik' or t >= i.bit then raise exception 'Bu istinaf oylaması açık değil.'; end if;
+  update oyun.adliye_juri set oy = p_oy, gerekce = nullif(left(trim(coalesce(p_gerekce, '')), 800), ''), zaman = t
+   where dava_id = p_dava and user_id = p.id and oy is null;
+  if not found then raise exception 'Bu dosyanın İstinaf Dairesinde değilsin ya da oyunu zaten verdin.'; end if;
+  v_yon := coalesce(p.yonetici, false) or exists (select 1 from oyun.moderatorler where user_id = p.id);
+  if v_yon then
+    insert into oyun.mod_kayit(zaman, user_id, kad, islem, hedef, ayrinti)
+    values (t, p.id, p.kad, 'istinaf_oy', 'Adliye #' || p_dava, case p_oy when 'boz' then 'bozma oyu' else 'onama oyu' end);
+  else
+    ek := oyun.kidem_ekle(p.id, 'juri_oy');
+  end if;
+  perform oyun.adliye_istinaf_sonuc(p_dava, t);
+  return jsonb_build_object('tamam', true, 'kidem', ek);
+end $function$;
+
+-- ---------- Yerinde yamalar: uzun işlevlerde yalnız ilgili ifadeler değişir ----------
+do $yama$
+declare s text;
+begin
+  -- Karar: bozma haberi üyenin Kürsü hesabından paylaşılmaz; metinlerde "jüri" yerine "İstinaf Dairesi"
+  s := pg_get_functiondef('oyun.adliye_istinaf_sonuc(bigint, timestamp with time zone)'::regprocedure);
+  s := replace(s, '(select user_id from oyun.adliye_juri where dava_id = p_dava and oy = ''boz'' order by zaman limit 1)', 'null::uuid');
+  if position('istinaf_ihmal_kaydet' in s) = 0 then
+    s := replace(s, 'insert into oyun.juri_ihmal(user_id, dava_id, zaman) values (r.user_id, p_dava, t) on conflict do nothing;',
+                    'insert into oyun.juri_ihmal(user_id, dava_id, zaman) values (r.user_id, p_dava, t) on conflict do nothing; perform oyun.istinaf_ihmal_kaydet(r.user_id, p_dava, t, ''ek süre dahil oy kullanmadı'');');
+  end if;
+  s := replace(s, ' 14 gün boyunca jüriye seçilmeyeceksin.', ' Görev ihmali kayda geçti.');
+  s := replace(s, 'istinaf jürisinde', 'İstinaf Dairesinde');
+  s := replace(s, 'İstinaf jürisi', 'İstinaf Dairesi');
+  s := replace(s, 'istinaf jürisi', 'İstinaf Dairesi');
+  execute s;
+
+  -- Bozma sonrası iade gerekçeleri
+  s := pg_get_functiondef('oyun.adliye_iade_sonuc(bigint, timestamp with time zone)'::regprocedure);
+  s := replace(s, 'İstinaf jürisi', 'İstinaf Dairesi');
+  execute s;
+
+  -- Başvuru: hata ve olay metni
+  s := pg_get_functiondef('public.adliye_istinaf(bigint, text)'::regprocedure);
+  s := replace(s, 'Şu anda tarafsız jüri oluşturulamadı; daha sonra tekrar dene.', 'Şu anda tarafsız İstinaf Dairesi oluşturulamadı; daha sonra tekrar dene.');
+  s := replace(s, 'Adliye #%s kararı istinafa taşındı; %s asıl ve %s yedek jüri üyesi kurayla belirlendi.', 'Adliye #%s kararı istinafa taşındı; dosya %s üyeli İstinaf Dairesine verildi.');
+  execute s;
+
+  -- Dosya: üyelerin adı gizli ("Üye 1…"); yalnız kurucu adları görür
+  s := pg_get_functiondef('public.adliye_dava_ek(bigint)'::regprocedure);
+  s := replace(s,
+    '(select jsonb_agg(jsonb_build_object(''kad'', oyun.kad(j.user_id), ''oy'', j.oy, ''gerekce'', j.gerekce)) from oyun.adliye_juri j where j.dava_id = d.id) end,',
+    '(select jsonb_agg(jsonb_build_object(''kad'', case when coalesce(p.yonetici, false) then ''Üye '' || q.sn || '' · '' || oyun.kad(q.user_id) else ''Üye '' || q.sn end, ''oy'', q.oy, ''gerekce'', q.gerekce) order by q.sn) from (select j.user_id, j.oy, j.gerekce, row_number() over (order by md5(j.dava_id::text || j.user_id::text)) sn from oyun.adliye_juri j where j.dava_id = d.id) q) end, ''heyet_gizli'', true,');
+  execute s;
+
+  -- Bekleyen işler kartı
+  s := pg_get_functiondef('public.bekleyen_islerim()'::regprocedure);
+  s := replace(s, '⚖️ Jüri görevi: Adliye #%s istinafı', '⚖️ İstinaf Dairesi görevi: Adliye #%s');
+  execute s;
+end $yama$;
+
+revoke all on function oyun.istinaf_uye_uygun(oyun.adliye_davalar, uuid, timestamp with time zone) from public, anon, authenticated;
+revoke all on function oyun.juri_cek_vatandas(oyun.adliye_davalar, timestamp with time zone, integer, uuid[]) from public, anon, authenticated;
+revoke all on function oyun.istinaf_ihmal_kaydet(uuid, bigint, timestamp with time zone, text) from public, anon, authenticated;
+$kosullu_govde$;
+end $kosullu_dis$;
+-- zz_20261120_yardim_masasi.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun.moderatorler') is null or to_regclass('oyun.mesajlar') is null or to_regclass('oyun.kanal_okuma') is null or to_regclass('oyun.destek_mesaj') is null or to_regclass('oyun.mod_kisit') is null or to_regclass('oyun.sohbet_grup') is null then raise notice 'zz_20261120_yardim_masasi.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 20.11.2026 · YARDIM MASASI (Ercan'ın kararı, moderatör ekibinin isteği)
+-- İstek: oyuna yeni girenler bazı şeyleri bulamayacak; yönetimle hem talep (ticket) gibi hem de sohbet odası gibi
+--        yazışabilsinler, yöneticinin adı görünmesin.
+--   1) Sohbet › "Yardım Masası" kanalı (kod: yardim): herkes okur ve soru yazar; deneyimli oyuncular da yanıtlayabilir.
+--   2) Oyun yöneticileri (gizlilik sözleşmesini kabul etmiş moderatörler ve kurucu) public.yardim_yanitla ile
+--      YÖNETİM ADINA yazar: mesajda kullanıcı adı, parti ve unvan yerine "Oyun Yöneticisi G-06 · Oyun Yönetimi" görünür.
+--      Aynı yönetici isterse sıradan oyuncu gibi de (sohbet_yaz) yazabilir. Kimin hangi yanıtı yazdığı yalnız
+--      yönetim kaydında (mod_kayit: yardim_yanit) durur.
+--   3) Gizlilik: yönetim yanıtında gerçek ad hiçbir oyuncu yüzeyinde dönmez (sohbet_oku, liste özeti, sohbet nöbeti,
+--      oyuncu dosyası). Yönetim yanıtı şikâyetle gizlenemez; engelleme listesi bu yanıtları saklamaz.
+--   4) Eski mağaza sürümleri etkilenmez: kanal, sohbet_ozet içinde ayrı "yardim" anahtarıyla döner (kanallar listesine
+--      ve toplam okunmamış sayısına girmez).
+--   5) Yönetime Yaz'a "Soru / Yardım" konusu eklendi (Oyuncu Masası'na düşer).
+-- Oyuncu verisi değişmez. Tekrar çalıştırmak güvenlidir.
+
+alter table oyun.mesajlar add column if not exists gorevli boolean not null default false;
+
+-- ---------- Kim yönetim adına yanıtlayabilir ----------
+create or replace function oyun.yardim_gorevli_mi(p oyun.profiller)
+ returns boolean
+ language sql
+ stable
+ set search_path to ''
+as $function$
+  select p.id is not null and not coalesce(p.yasakli, false)
+     and (coalesce(p.yonetici, false)
+          or exists (select 1 from oyun.moderatorler m where m.user_id = p.id and m.sozlesme_at is not null))
+$function$;
+
+-- ---------- Liste özeti (sohbet_ozet içinde ayrı anahtar) ----------
+create or replace function oyun.yardim_ozet(p oyun.profiller, t timestamp with time zone)
+ returns jsonb
+ language plpgsql
+ stable
+ set search_path to ''
+as $function$
+declare imlec bigint; okunmamis int; son jsonb; gorevli boolean := oyun.yardim_gorevli_mi(p); bekleyen int;
+begin
+  select son_id into imlec from oyun.kanal_okuma where user_id = p.id and kanal = 'yardim';
+  select count(*) into okunmamis from (
+    select 1 from oyun.mesajlar m where m.kanal = 'yardim' and m.id > coalesce(imlec, 0) and m.user_id <> p.id and not m.gizli
+       and m.zaman <= t and m.zaman > t - interval '3 days' and (m.gorevli or not oyun.engelli(p.id, m.user_id)) limit 100) x;
+  select jsonb_build_object('kad', case when m.gorevli then oyun.mod_imza(pr) else coalesce(pr.kad, '(silinmiş)') end,
+                            'metin', m.metin, 'zaman', m.zaman, 'gorevli', m.gorevli) into son
+    from oyun.mesajlar m left join oyun.profiller pr on pr.id = m.user_id
+   where m.kanal = 'yardim' and not m.gizli and m.zaman <= t and (m.gorevli or not oyun.engelli(p.id, m.user_id))
+   order by m.id desc limit 1;
+  if gorevli then
+    -- son yönetim yanıtından sonra yazılmış oyuncu mesajları (yanıt bekleyen sorular)
+    select count(*) into bekleyen from (
+      select 1 from oyun.mesajlar m where m.kanal = 'yardim' and not m.gizli and not m.gorevli and m.zaman <= t and m.zaman > t - interval '24 hours'
+         and m.id > coalesce((select max(g.id) from oyun.mesajlar g where g.kanal = 'yardim' and g.gorevli and not g.gizli), 0) limit 100) z;
+  end if;
+  return jsonb_build_object('kanal', 'yardim', 'baslik', 'Yardım Masası', 'kilit', null, 'yazabilir', true,
+    'okunmamis', okunmamis, 'son', son, 'sinyal', 'sohbet:yardim', 'gorevli', gorevli, 'bekleyen', bekleyen);
+end $function$;
+
+-- ---------- Okuma: yönetim yanıtında kimlik yerine görev unvanı ----------
+create or replace function public.sohbet_oku(p_kanal text, p_once bigint default null::bigint, p_sonra bigint default null::bigint)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'oyun', 'public', 'pg_temp'
+as $function$
+declare p oyun.profiller := oyun.profilim(); k text; liste jsonb; son bigint;
+begin
+  k := oyun.kanal_coz(p, p_kanal);
+  if k is null then raise exception '%', oyun.kanal_hata(p_kanal); end if;
+  select coalesce(jsonb_agg(jsonb_build_object('id', x.id,
+            'kad', case when x.gorevli then oyun.mod_imza(pr) else coalesce(pr.kad, '(silinmiş)') end,
+            'metin', x.metin, 'zaman', x.zaman,
+            'parti', case when x.gorevli then null else oyun.parti_json(pr.parti_id) end,
+            'unvan', case when x.gorevli then 'Oyun Yönetimi' else oyun.unvan(x.user_id) end,
+            'benim', x.user_id = p.id, 'gorevli', x.gorevli) order by x.id), '[]'::jsonb)
+    into liste
+  from (
+    select * from oyun.mesajlar m
+    where m.kanal = k and not m.gizli and m.zaman <= oyun.simdi() and (m.gorevli or not oyun.engelli(p.id, m.user_id))
+      and (p_sonra is null or m.id > p_sonra) and (p_once is null or m.id < p_once)
+    order by case when p_sonra is null then -m.id else m.id end
+    limit case when p_sonra is null then 40 else 100 end
+  ) x left join oyun.profiller pr on pr.id = x.user_id;
+  if p_once is null then
+    select max(id) into son from oyun.mesajlar where kanal = k and not gizli and zaman <= oyun.simdi();
+    if son is not null then
+      insert into oyun.kanal_okuma(user_id, kanal, son_id) values (p.id, k, son)
+      on conflict (user_id, kanal) do update set son_id = greatest(oyun.kanal_okuma.son_id, excluded.son_id);
+    end if;
+  end if;
+  return jsonb_build_object('kanal', p_kanal, 'mesajlar', liste, 'yazabilir', oyun.kanal_yazabilir(p, p_kanal),
+    'baslik', oyun.kanal_baslik(p, p_kanal), 'sinyal', 'sohbet:' || k,
+    'gorevli_yazabilir', k = 'yardim' and oyun.yardim_gorevli_mi(p));
+end $function$;
+
+-- ---------- Yönetim adına yanıt ----------
+create or replace function public.yardim_yanitla(p_metin text)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'oyun', 'public', 'pg_temp'
+as $function$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); m text;
+begin
+  if not oyun.yardim_gorevli_mi(p) then
+    raise exception 'Yardım Masası''nda oyun yönetimi adına yalnız oyun yöneticileri yanıt verebilir.';
+  end if;
+  perform oyun.yazabilir_mi(p, t);
+  m := oyun.metin_temizle(p_metin, 1500);
+  insert into oyun.mesajlar(kanal, user_id, metin, zaman, gorevli) values ('yardim', p.id, m, t, true);
+  update oyun.profiller set son_mesaj = t where id = p.id;
+  perform oyun.mod_log(p, 'yardim_yanit', null, m);
+  return jsonb_build_object('tamam', true);
+end $function$;
+
+-- ---------- Yönetime Yaz: "Soru / Yardım" konusu ----------
+create or replace function oyun.destek_konu_tanim()
+ returns table(kod text, ad text, aciklama text, masa text, kategori text, sira integer)
+ language sql
+ immutable
+ set search_path to ''
+as $function$
+  values
+  ('soru',    'Soru / Yardım',          'Bulamadığın bir ekran, anlamadığın bir kural ya da nasıl yapılacağını bilmediğin bir işlem.', 'oyuncu', 'diger', 0),
+  ('sikayet', 'Oyuncu şikâyeti',        'Küfür, hakaret, taciz, bölücü ya da uygunsuz içerik; bir oyuncunun davranışı.', 'icerik', 'oyuncu', 1),
+  ('hile',    'Para ve hile ihbarı',    'Banka, şirket, borsa, kredi ya da havale ile haksız kazanç; çoklu hesapla para aktarma.', 'finans', 'oyuncu', 2),
+  ('sahte',   'Sahte / çoklu hesap',    'Aynı kişinin birden çok hesabı, seçimde hile şüphesi, uygunsuz kullanıcı adı.', 'oyuncu', 'oyuncu', 3),
+  ('itiraz',  'Yaptırıma itiraz',       'Susturma, kısıt, içerik kaldırma ya da başka bir yönetim kararına itiraz.', 'oyuncu', 'hesap', 4),
+  ('hesap',   'Hesap sorunu',           'Giriş, kayıt, kullanıcı adı, satın alma ve hesapla ilgili sorunlar.', 'oyuncu', 'hesap', 5),
+  ('hata',    'Oyunda hata',            'Çalışmayan ekran, yanlış hesaplama, takılan işlem.', 'oyuncu', 'hata', 6),
+  ('oneri',   'Öneri',                  'Oyuna eklenmesini ya da değişmesini istediğin şey.', 'kurucu', 'oneri', 7),
+  ('diger',   'Diğer',                  'Yukarıdakilere uymayan her şey.', 'oyuncu', 'diger', 8)
+$function$;
+
+-- ---------- Yerinde yamalar ----------
+do $yama$
+declare s text;
+begin
+  -- Kanal çözümü, başlığı ve moderasyon görünürlüğü
+  s := pg_get_functiondef('oyun.kanal_coz(oyun.profiller, text)'::regprocedure);
+  if position('''yardim''' in s) = 0 then
+    s := replace(s, 'when ''genel'' then ''genel''', 'when ''genel'' then ''genel'' when ''yardim'' then ''yardim''');
+    execute s;
+  end if;
+  s := pg_get_functiondef('oyun.kanal_baslik(oyun.profiller, text)'::regprocedure);
+  if position('''yardim''' in s) = 0 then
+    s := replace(s, 'when ''genel'' then ''Türkiye Meydanı''', 'when ''genel'' then ''Türkiye Meydanı'' when ''yardim'' then ''Yardım Masası''');
+    execute s;
+  end if;
+  s := pg_get_functiondef('oyun.mod_kanal_acik(text)'::regprocedure);
+  if position('''yardim''' in s) = 0 then
+    s := replace(s, 'k = ''genel'' or', 'k = ''genel'' or k = ''yardim'' or');
+    execute s;
+  end if;
+  s := pg_get_functiondef('oyun.mod_kanal_ad(text)'::regprocedure);
+  if position('''yardim''' in s) = 0 then
+    s := replace(s, 'when ''genel'' then ''Genel''', 'when ''genel'' then ''Genel'' when ''yardim'' then ''Yardım Masası''');
+    execute s;
+  end if;
+
+  -- Liste özeti: Yardım Masası ayrı anahtarda (eski sürümlerin kanal listesine ve okunmamış toplamına girmez)
+  s := pg_get_functiondef('public.sohbet_ozet()'::regprocedure);
+  if position('yardim_ozet' in s) = 0 then
+    s := replace(s, 'return jsonb_build_object(''kanallar'', liste,', 'return jsonb_build_object(''yardim'', oyun.yardim_ozet(p, t), ''kanallar'', liste,');
+    execute s;
+  end if;
+
+  -- Yönetim yanıtı "moderatör olduğunu söyleme" süzgecine takılmaz (zaten görev unvanıyla yayımlanır)
+  s := pg_get_functiondef('oyun.tg_mod_ifsa()'::regprocedure);
+  if position('j->>''gorevli''' in s) = 0 then
+    s := replace(s, 'if coalesce(j->>''tur'', '''') = ''sistem'' then return new; end if;',
+                    'if coalesce(j->>''tur'', '''') = ''sistem'' then return new; end if;' || E'\n' ||
+                    '  if coalesce(j->>''gorevli'', '''') = ''true'' then return new; end if;');
+    execute s;
+  end if;
+
+  -- Yönetim yanıtı şikâyetle gizlenemez
+  s := pg_get_functiondef('public.sikayet_et(text, bigint, text, text)'::regprocedure);
+  if position('and gorevli) then raise' in s) = 0 then
+    s := replace(s, 'if p_tur = ''mesaj'' then select user_id into hedef from oyun.mesajlar where id = p_id;',
+                    'if p_tur = ''mesaj'' and exists (select 1 from oyun.mesajlar where id = p_id and gorevli) then raise exception ''Oyun yönetiminin yanıtları şikâyet edilemez. İtirazın varsa Ben › Yönetime Yaz ekranından yazabilirsin.''; end if;' || E'\n' ||
+                    '  if p_tur = ''mesaj'' then select user_id into hedef from oyun.mesajlar where id = p_id;');
+    execute s;
+  end if;
+
+  -- Sohbet nöbeti: yönetim yanıtı görev unvanıyla görünür
+  s := pg_get_functiondef('public.mod_sohbet_nobeti(text, boolean, bigint, integer)'::regprocedure);
+  if position('x.gorevli' in s) = 0 then
+    s := replace(s, '''kad'', pr.kad,', '''kad'', case when x.gorevli then oyun.mod_imza(pr) else pr.kad end, ''gorevli'', x.gorevli,');
+    execute s;
+  end if;
+
+  -- Oyuncu dosyası: yönetim adına yazılan yanıtlar kişinin mesaj listesinde yalnız kurucuya görünür
+  s := pg_get_functiondef('public.yk_oyuncu(text)'::regprocedure);
+  if position('not gorevli or' in s) = 0 then
+    s := replace(s, 'from (select * from oyun.mesajlar where user_id = h.id order by id desc limit 10) m)',
+                    'from (select * from oyun.mesajlar where user_id = h.id and (not gorevli or coalesce((select yy.yonetici from oyun.profiller yy where yy.id = auth.uid()), false)) order by id desc limit 10) m)');
+    execute s;
+  end if;
+  s := pg_get_functiondef('public.admin_oyuncu(text)'::regprocedure);
+  if position('not gorevli or' in s) = 0 then
+    s := replace(s, 'from (select * from oyun.mesajlar where user_id = h.id order by id desc limit 15) m)',
+                    'from (select * from oyun.mesajlar where user_id = h.id and (not gorevli or coalesce((select yy.yonetici from oyun.profiller yy where yy.id = auth.uid()), false)) order by id desc limit 15) m)');
+    execute s;
+  end if;
+end $yama$;
+
+revoke all on function oyun.yardim_gorevli_mi(oyun.profiller) from public, anon, authenticated;
+revoke all on function oyun.yardim_ozet(oyun.profiller, timestamp with time zone) from public, anon, authenticated;
+revoke all on function public.yardim_yanitla(text) from public, anon;
+grant execute on function public.yardim_yanitla(text) to authenticated, service_role;
 $kosullu_govde$;
 end $kosullu_dis$;
 -- =====================================================================
