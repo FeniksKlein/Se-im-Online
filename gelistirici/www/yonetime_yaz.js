@@ -1,5 +1,6 @@
 /* 20.11.2026 · Yönetime Yaz — oyuncunun olayı kendi cümleleriyle yazdığı talep (ticket) ekranı.
-   Talep konusuna göre ilgili masaya düşer; görevli görev koduyla yanıtlar; oyuncu karşılık yazabilir. */
+   Talep konusuna göre ilgili masaya düşer; oyun yöneticisi görev koduyla yanıtlar; oyuncu karşılık yazabilir.
+   Herkese açık kısa sorular için Sohbet › Yardım Masası (sohbet_tasarim.js) kısayolu vardır. */
 (function () {
   const esc = (x) => (typeof e === "function" ? e(String(x == null ? "" : x)) : String(x == null ? "" : x).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])));
   const hc = (m) => (typeof hataCevir === "function" ? hataCevir(m) : m);
@@ -54,7 +55,8 @@
     let konu = on && on.konu ? on.konu : null;
     iskelet("Yönetime yaz", `
       <div class="kart"><h2>Yeni talep</h2>
-        <p class="kucuk">Şikâyetini, ihbarını, itirazını ya da sorununu kendi cümlelerinle yaz. Talebin ilgili görevliye ulaşır; yanıt gelince bildirim alırsın. Yazdıkların gizlidir.</p>
+        <p class="kucuk">Sorunu, şikâyetini, ihbarını ya da itirazını kendi cümlelerinle yaz. Talebin ilgili oyun yöneticisine ulaşır; yanıt gelince bildirim alırsın. Yazdıkların gizlidir.</p>
+        ${typeof window.yardimMasasiAc === "function" ? `<button type="button" class="btn ikinci" id="yyYardim" style="margin-top:4px">Kısa bir sorun mu var? Yardım Masası'nda herkese açık sor</button>` : ""}
         <div class="yy-alan">Konu</div>
         <div id="yyKonular">${konular.map(k => `<button type="button" class="yy-konu ${k.kod === konu ? "on" : ""}" data-k="${esc(k.kod)}"><b>${esc(k.ad)}</b><small>${esc(k.aciklama)}</small></button>`).join("")}</div>
         <label class="yy-alan" for="yyHedef">İlgili oyuncu (varsa)</label>
@@ -69,6 +71,7 @@
       ${(v.talepler || []).map(talepKart).join("") || `<div class="bos">Henüz talebin yok.</div>`}`, { geri: true });
     const ic = document.getElementById("icerik") || document;
     ic.querySelectorAll("#yyKonular [data-k]").forEach(b => b.onclick = () => { konu = b.dataset.k; ic.querySelectorAll("#yyKonular [data-k]").forEach(x => x.classList.toggle("on", x === b)); });
+    const ym = ic.querySelector("#yyYardim"); if (ym) ym.onclick = () => window.yardimMasasiAc();
     const g = ic.querySelector("#yyGonder");
     if (g) g.onclick = async () => {
       if (!konu) { toast("Önce bir konu seç.", true); return; }

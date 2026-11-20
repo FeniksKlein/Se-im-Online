@@ -935,15 +935,15 @@ Amaç oyuncunun her gün belli saatte oyunda olması ve başkalarının ona ihti
 - Dengeleme: bütün yeni kıdem kaynakları günlük tavanlı (`oyun.kidem_kaynak`), para ödülü yalnız parti kasasına gider; bireysel para enjeksiyonu yok.
 
 ## 23. Yargı düzeni: kimse "atandığımı bilmiyordum" demesin, hiçbir dava asılı kalmasın (2026-10-31, modül 155)
-- Taraf partilerden jüri ya da yargıç olmaz. Kura aktif oyunculardan başlar, yük dağıtılır (en çok 2 açık görev).
-- Görev Gündem'in en üstünde kırmızı kartla ve Bekleyen işlerde görünür; oy veren +1 kıdem kazanır.
-- Süreler kesin: 8 saat ortada yoksa yedek, 24 saatte çoğunluk yoksa değişim + 24 saat, 48. saatte verilen oylarla karar (bozma için en az 2 oy). Görevi ihmal eden 14 gün jüriye çağrılmaz; Yüksek Mahkeme'de ihmal atayan makama bildirilir.
+- Taraf partilerden istinaf üyesi ya da yargıç olmaz. **20.11.2026'dan itibaren istinafı 3 üyeli İstinaf Dairesi inceler; üyeler oyun yöneticilerinden seçilir ve kimlikleri gizlidir (bkz. §31).** Vatandaş kurası yalnız son çaredir.
+- Görev Gündem'in en üstünde kırmızı kartla ve Bekleyen işlerde görünür. Oyun yöneticisi üyeye istinaf oyu için kıdem verilmez (son çare kurasıyla gelen vatandaş üye +1 kıdem kazanır).
+- Süreler kesin: 8 saat ortada yoksa yedek, 24 saatte çoğunluk yoksa değişim + 24 saat, 48. saatte verilen oylarla karar (bozma için en az 2 oy). Görevi ihmal eden yöneticiye 48 saat yeni dosya verilmez ve ihmal yönetim kaydına işlenir (vatandaş üye 14 gün çağrılmaz); Yüksek Mahkeme'de ihmal atayan makama bildirilir.
 
 ### Süre sonu kararları: üyeler oy vermese de her dosya kapanır (2026-11-03, modül 163)
 | Yargı yeri | Süre | Süre dolunca |
 |---|---|---|
 | **İlk derece (Yüksek Mahkeme heyeti)** | Savunma 24 saat, karar savunmadan sonra **48 saat** (önceden 72) | Heyetin tamamı oy verip çoğunluk oluşmadıysa son oydan **2 saat** sonra beklemeden karar. Oy vermeyen varsa bir kez 24 saat ek süre ve hatırlatma; sonra verilen oylarla **CMK m.229/3** (en ağır oy, çoğunluk oluşana kadar ona en yakın oya eklenir; oy vermeyen sanık lehine sayılır). Hiç oy yoksa dava düşer, harç iade. |
-| **İstinaf jürisi** | 24 saat | Çoğunluk yoksa oy vermeyenler değişir, 24 saat ek süre (başvurudan en çok 48 saat); sonra verilen oylarla karar, bozma için en az 2 oy ve bozma çoğunluğu. |
+| **İstinaf Dairesi** | 24 saat | Çoğunluk yoksa oy vermeyenler değişir, 24 saat ek süre (başvurudan en çok 48 saat); sonra verilen oylarla karar, bozma için en az 2 oy ve bozma çoğunluğu. |
 | **Anayasa Mahkemesi (kanun başvurusu)** | 6 saat görüş + 48 saat | Oy vermeyen varsa bir kez 24 saat ek süre ve hatırlatma; sonra iptal için üye tamsayısının salt çoğunluğu gerekir, sağlanamazsa başvuru **reddedilir** (kanun yürürlükte). Son 12 saatte oy vermeyen üyeye hatırlatma. |
 | **Parti kapatma davası** | 48 saat | Verilen oylarla karar (kapatma 2/3, yardımdan yoksunluk salt çoğunluk, aksi ret). |
 | **Seçim itirazı** | 72 saat | Reddedilmiş sayılır. |
@@ -1020,3 +1020,28 @@ Sorun: Hazine eski bir birim hatasından 168 bin milyar ₺'ye şişmişti (gün
 - **Kanal seviyesi** (bitmiş programların toplam izlenmesi): Yerel 0+ → günde 4 program · Bölgesel 100+ → 5 · Ulusal 500+ → 6 · Ana akım 2.000+ → 8.
 - **Reyting:** zirve izleyici programa yazılır. Reyting = anlık izleyici / son 7 günde aktif oyuncu; pay = anlık izleyici / şu an çevrimiçi (son 5 dk). Taban 30 saniyede bir hesaplanır. Haftalık tablo: en çok izlenen programlar, kanallar, sunucular, düello ve yarışma şampiyonları. Her pazartesi geçen hafta (Pzt–Paz) resmîleşir, haber olur, birinci kanalın sahibine bildirim gider.
 - **Ölçek:** stüdyo `tv_canli` ile yalnız yeni mesaj/yorumu çeker; izleyici kaydı en çok 12 sn'de bir yazılır. 300'den kalabalık yayında tazeleme 4 → 7 sn'ye çıkar. Yorum ve emoji canlı sinyal üretmez (binlerce telefonu birden uyandırmaz); stüdyo mesajı, anket, bağlantı ve reklam arası üretir.
+
+## 31. Oyun yönetimi yüzeyleri: imza, duyuru, İstinaf Dairesi, Yardım Masası (2026-11-20)
+Kaynak: `gelistirici/sql/zz_20261120_duyuru_sinir_imza.sql`, `zz_20261120_istinaf_dairesi.sql`, `zz_20261120_yardim_masasi.sql`.
+
+**İmza.** Oyunculara giden her yönetim yazısında kullanıcı adı yerine görev unvanı görünür: moderatör **"Oyun Yöneticisi G-06"**, kurucu **"Oyun Kurucusu"** (`oyun.mod_imza`). Bildirim biçimi `Oyun Yöneticisi G-06: metin`. Kodun kime ait olduğunu yalnız kurucu görür.
+
+**Herkese açık duyuru.** En fazla **5000 karakter** (tablo sınırı 6000, imza payı). Bildirimler ekranında 700 karakterden uzun duyuru kısaltılır, "Devamını oku" ile açılır. Kişiye/kitleye bildirim 500 karakterdir.
+
+**Yönetim adına yazı oyun içi konuşma değildir.** Yönetici oyunda gözaltında olsa da resmî duyuru ve Yardım Masası'ndaki yönetim yanıtı engellenmez; kendi adına yazdıkları engellenir.
+
+**İstinaf Dairesi** (gerçekte de istinafı bölge adliye mahkemesinin 3 hâkimli dairesi inceler).
+- 3 üye; tamamı oyun yöneticilerinden: gizlilik sözleşmesini kabul etmiş, son 7 günde oyunda görülmüş, üzerinde 6'dan az açık dosya olanlar; önce son 24 saatte oyunda olanlar, sonra en az yükü olanlar.
+- Tarafsızlık: davanın tarafı, vekili, ilk derece üyesi, Cumhurbaşkanı ya da Yüksek Mahkeme üyesi olan; taraf partilerden birine üye olan; taraflarla aynı cihazı kullanan, aralarında dava ya da şirket ortaklığı bulunan yönetici seçilmez.
+- Tek kişiye bağlı kalmaz: yeterli yönetici yoksa kurucu, o da yoksa **son çare** olarak vatandaş kurası (kurucuya bildirim gider). Yedek liste tutulmaz; görevini yapmayan üyenin yerine o anda yenisi çekilir.
+- **Gizlilik (oyun kuralı):** üyelerin adı hiçbir oyuncuya gösterilmez; dosyada "Üye 1 / Üye 2 / Üye 3", oyları ve gerekçeleriyle görünür. Gerçek adları yalnız kurucu görür. Bozma haberi üyenin Kürsü hesabından değil olay akışından duyurulur.
+- Süreler ve karar kuralı §23'teki gibidir (24 saat + 24 saat ek süre; bozma için en az 2 oy ve bozma çoğunluğu).
+- **İstinaf yargılama gideri:** başvuru reddedilirse (karar onanırsa) **50.000 ₺** kararı kaybeden tarafa yüklenir; tazminat davasında tutarın %10'u, en az 50.000 ₺, en çok 150.000 ₺. Karar bozulursa gider yoktur.
+
+**Yardım Masası** (Sohbet › Kanallar › Yardım; ayrıca Ben › Yardım Masası ve Menü araması).
+- Herkes okur ve soru yazar; deneyimli oyuncular da yanıtlayabilir. Kanal okunmamış sayısı genel sohbet rozetine eklenmez.
+- Oyun yöneticileri "Yönetim adına yanıtla" anahtarı açıkken yazarsa mesaj **"Oyun Yöneticisi G-06 · Oyun Yönetimi"** olarak, yeşil kalkanla görünür; kullanıcı adı, parti ve unvan hiçbir oyuncu yüzeyinde dönmez. Anahtarı kapatan yönetici sıradan oyuncu gibi yazar.
+- Yönetim yanıtı şikâyet edilemez (itiraz Yönetime Yaz'dan yapılır), engelleme listesi bu yanıtları gizlemez; kimin yazdığı yalnız yönetim kaydında durur.
+- Yönetime Yaz'a **"Soru / Yardım"** konusu eklendi (Oyuncu Masası'na düşer): herkese açık yazmak istemeyen oyuncu için.
+- Eski mağaza sürümleri kanalı göstermez ama etkilenmez (kanal `sohbet_ozet` içinde ayrı `yardim` anahtarıyla döner).
+

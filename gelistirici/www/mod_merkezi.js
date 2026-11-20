@@ -58,7 +58,8 @@
     destek_kapat: "destek talebini kapattı", yk_sustur: "susturdu", yk_engel_sureli: "süreli engelledi", yk_engel_kalici: "kalıcı engelledi",
     yk_engel_kaldir: "engeli kaldırdı", masak_temiz: "MASAK: temiz dedi", masak_ihtar: "MASAK: ihtar verdi", masak_el_koy: "MASAK: el koydu",
     moderator_birim: "birimini/yetkisini değiştirdi", moderator_sadelestir: "yetkilerini birimine göre sadeleştirdi", moderator_gorev: "ana görevini değiştirdi",
-    yk_bildirim: "bildirim gönderdi", sohbet_izle: "grup sohbetini açtı", ifsa_suphe: "moderatör olduğunu açıklamaya çalıştı (mesaj engellendi)", mod_taklit: "kendini yönetimden gösterdi (mesaj engellendi)", sozlesme_kabul: "gizlilik sözleşmesini kabul etti", devir: "kararı tarafsız moderatöre devretti", admin_duyuru: "duyuru yayımladı", yk_para: "para işlemi yaptı", yk_kidem: "kıdem işlemi yaptı"
+    yk_bildirim: "bildirim gönderdi", sohbet_izle: "grup sohbetini açtı", ifsa_suphe: "moderatör olduğunu açıklamaya çalıştı (mesaj engellendi)", mod_taklit: "kendini yönetimden gösterdi (mesaj engellendi)", sozlesme_kabul: "gizlilik sözleşmesini kabul etti", devir: "kararı tarafsız moderatöre devretti", admin_duyuru: "duyuru yayımladı", yk_para: "para işlemi yaptı", yk_kidem: "kıdem işlemi yaptı",
+    duyuru: "duyuru yayımladı", yardim_yanit: "Yardım Masası'nda yönetim adına yanıt verdi", istinaf_oy: "istinaf dosyasında oy kullandı", istinaf_ihmal: "istinaf görevini yapmadı (üye değiştirildi)"
   });
   const ISARET = { baglanti: ["Bağlantı", "#4fc1d6"], telefon: ["Telefon no", "#c86cd8"], kisisel: ["E-posta", "#c86cd8"], buyuk_harf: ["Büyük harf", "#e0a43a"],
     tekrar: ["Tekrar/spam", "#e0a43a"], kufur: ["Küfür şüphesi", "#e5574f"], sert: ["Sert ifade", "#f07f3c"] };
@@ -104,8 +105,8 @@
 .mm-karo.acil::after{content:"";position:absolute;top:12px;right:12px;width:9px;height:9px;border-radius:50%;background:var(--al);box-shadow:0 0 0 0 var(--al);animation:mmNabiz 1.6s infinite}
 .mm-karo.sifir b{color:var(--faint)}
 @keyframes mmNabiz{0%{box-shadow:0 0 0 0 rgba(240,69,75,.6)}70%{box-shadow:0 0 0 10px rgba(240,69,75,0)}100%{box-shadow:0 0 0 0 rgba(240,69,75,0)}}
-.mm-arac{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-.mm-arac button{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:76px;padding:10px 4px;border-radius:16px;border:1px solid var(--line2);background:var(--panel);color:var(--txt2);font:inherit;font-size:12.5px;font-weight:650;line-height:1.15;cursor:pointer}
+.mm-arac{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.mm-arac button{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:76px;min-width:0;overflow-wrap:anywhere;padding:10px 4px;border-radius:16px;border:1px solid var(--line2);background:var(--panel);color:var(--txt2);font:inherit;font-size:12.5px;font-weight:650;line-height:1.15;cursor:pointer}
 .mm-arac button .ik{color:var(--ink2)}
 .mm-ara{display:flex;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line2);border-radius:14px;padding:4px 6px 4px 12px}
 .mm-ara input{flex:1;min-width:0;background:transparent;border:0;color:var(--txt);font-size:16px;padding:10px 0;outline:none}
@@ -233,6 +234,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       ["ara", "Oyuncu dosyası", "ara"], yv("duyuru") ? ["megafon", "Duyuru", "duyuru"] : null,
       ["gunluk", b.yonetici ? "Denetim günlüğü" : "İşlemlerim", "gunluk"], ["terazi", "Taleplerim", "taleplerim"],
       yv("sikayet") ? ["sikayet", "Kürsü şikâyetleri", "kursu"] : null, ["kilit", "Kısıtlar ve yetkilerim", "kisit"], ["destek", "Talep kutusu", "kutu"],
+      typeof window.yardimMasasiAc === "function" ? ["sohbet", "Yardım Masası", "yardim"] : null,
       b.yonetici ? ["ekip", "Ekip yönetimi", "ekip"] : ["ekip", "Ekip", "ekipgor"],
       yv("ekonomi") && typeof finansMasasiEkrani === "function" ? ["masak", "Finans masası", "finans"] : null,
       (b.yonetici || yv("para") || yv("makam")) && typeof kontrolMerkezi === "function" ? ["ayar", "Kontrol Merkezi", "km"] : null,
@@ -243,10 +245,10 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
         <small>${selam}</small>
         <h2>${esc(b.kad)}</h2>
         <div class="mm-cipler">
-          ${b.yonetici ? `<span class="mm-cip" style="--c:#d9b45b"><i></i>Oyun yöneticisi</span>` : ""}
+          ${b.yonetici ? `<span class="mm-cip" style="--c:#d9b45b"><i></i>Oyun kurucusu</span>` : ""}
           ${b.birim_ad ? `<span class="mm-cip" style="--c:${renk}"><i></i>${esc(b.birim_ad)}</span>` : (!b.yonetici ? `<span class="mm-cip" style="--c:#98a4c4"><i></i>Birim atanmadı</span>` : "")}
           ${!b.yonetici ? `<span class="mm-cip">${esc(RUTBE[b.rutbe] || "Moderatör")}</span>` : ""}
-          ${!b.yonetici && b.kod ? `<span class="mm-cip" style="--c:#34c98a" title="Oyunculara giden bildirimlerde adın yerine bu kod görünür"><i></i>Görev kodun: ${esc(b.kod)}</span>` : ""}
+          ${!b.yonetici && b.kod ? `<span class="mm-cip" style="--c:#34c98a" title="Oyunculara giden bildirim, duyuru ve yanıtlarda adın yerine bu unvan görünür"><i></i>Unvanın: Oyun Yöneticisi ${esc(b.kod)}</span>` : ""}
         </div>
         <div class="mm-istat">
           <div><b>${sayi(ist.bugun)}</b><span>bugün işlemim</span></div>
@@ -283,6 +285,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       if (a === "kursu") return ekranAc(mmKursu);
       if (a === "kisit") return ekranAc(mmKisitlar);
       if (a === "kutu") return ekranAc(mmKutu);
+      if (a === "yardim") return window.yardimMasasiAc();
       if (a === "ekip") return ekranAc(mmEkip);
       if (a === "ekipgor") return ekranAc(mmEkipGor);
       if (a === "finans") return ekranAc(finansMasasiEkrani);
@@ -301,7 +304,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
   function sozlesmeEkrani() {
     const k = [
       ["Kimliğini gizli tut", "Oyunda, sohbette, özel mesajda, gazetede ya da oyun dışında (sosyal medya dahil) moderatör olduğunu söyleme, ima etme. Bunu yazarsan mesajın yayınlanmaz ve yöneticiye bildirilir."],
-      ["Ekip arkadaşlarını açık etme", "Kimin moderatör olduğunu kimseye söyleme. Oyunculara giden bildirimlerde adın yerine görev kodun görünür."],
+      ["Ekip arkadaşlarını açık etme", "Kimin moderatör olduğunu kimseye söyleme. Oyunculara giden bildirim, duyuru, talep yanıtı ve Yardım Masası yanıtlarında adın yerine görev unvanın (“Oyun Yöneticisi” ve kodun) görünür; İstinaf Dairesi üyeliğin de gizlidir."],
       ["Normal oyuncu gibi oyna", "Seçime gir, parti kur, ticaret yap; ama moderatör yetkini kendi oyunun, partin ya da arkadaşların için asla kullanma."],
       ["Kendi partiline kıyak yok", "Kendi partinden bir oyuncunun içeriğini gizleyebilir, kanıtla susturabilirsin; ama onun lehine karar veremezsin (sorun yok, temiz, talebi reddetme, susturmayı kaldırma). Böyle bir dosya kendiliğinden tarafsız bir moderatöre devredilir; talep açman gerekmez. Aynı cihazı kullandığın ya da aranızda dava olan oyuncuya hiçbir işlem yapamazsın."],
       ["Gördüğünü dışarı taşıma", "Grup sohbetleri, şikâyetler, MASAK kayıtları ve oyuncu dosyaları gizlidir. Ekran görüntüsü paylaşma, kimseye anlatma."],
@@ -487,7 +490,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     try { r = await API.rpc("mod_sohbet_nobeti", { p_kanal: NB.kanal || null, p_isaretli: NB.isaretli, p_once: null, p_limit: 80 }); }
     catch (err) { hataSayfa("Sohbet nöbeti", err); return; }
     if (!M) try { await merkezYukle(); } catch (_) {}
-    const kanallar = [["", "Açık kanallar"]].concat(r.tum_yetki ? [["*", "Her şey"], ["grup", "Tüm gruplar"]] : [], [["genel", "Genel"], ["meclis", "Meclis"], ["il", "Tüm iller"]])
+    const kanallar = [["", "Açık kanallar"]].concat(r.tum_yetki ? [["*", "Her şey"], ["grup", "Tüm gruplar"]] : [], [["genel", "Genel"], ["yardim", "Yardım Masası"], ["meclis", "Meclis"], ["il", "Tüm iller"]])
       .concat((r.kanallar || []).filter(k => k.kanal.startsWith("il:") || k.grup).slice(0, 14).map(k => [k.kanal, k.ad.replace(" sohbeti", "")]));
     sayfa("Sohbet nöbeti", `
       <div class="mm-filtre" id="mmNbK">${kanallar.map(k => `<button data-v="${esc(k[0])}" class="${NB.kanal === k[0] ? "on" : ""}">${esc(k[1])}</button>`).join("")}</div>
@@ -507,7 +510,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
   function nobetListe(L) {
     const kutu = $("#mmNbL"); if (!kutu) return;
     kutu.innerHTML = L.length ? `<div class="mm-kart" style="padding:4px 12px">${L.map((m, i) => `<div class="mm-mesaj ${m.gizli ? "gizli" : ""} ${(m.isaret || []).length && !m.gizli ? "isaretli" : ""}" data-i="${i}">
-        <div class="mm-u"><b>${esc(m.kad)}</b>${m.moderator ? `<span class="mm-etiket" style="--c:#d9b45b">yönetim</span>` : ""}${m.susturulmus ? `<span class="mm-etiket" style="--c:#e0a43a">susturulmuş</span>` : ""}<span>· ${esc(m.kanal_ad)} · ${once(m.zaman)}</span>${m.sikayet ? `<span class="mm-etiket" style="--c:#e5574f">${m.sikayet} şikâyet</span>` : ""}${m.grup ? `<span class="mm-etiket" style="--c:#4fc1d6">grup</span>` : ""}${m.gizli ? `<span class="mm-etiket" style="--c:#98a4c4">gizli</span>` : ""}</div>
+        <div class="mm-u"><b>${esc(m.kad)}</b>${m.gorevli ? `<span class="mm-etiket" style="--c:#34c98a">yönetim adına yanıt</span>` : m.moderator ? `<span class="mm-etiket" style="--c:#d9b45b">yönetim</span>` : ""}${m.susturulmus ? `<span class="mm-etiket" style="--c:#e0a43a">susturulmuş</span>` : ""}<span>· ${esc(m.kanal_ad)} · ${once(m.zaman)}</span>${m.sikayet ? `<span class="mm-etiket" style="--c:#e5574f">${m.sikayet} şikâyet</span>` : ""}${m.grup ? `<span class="mm-etiket" style="--c:#4fc1d6">grup</span>` : ""}${m.gizli ? `<span class="mm-etiket" style="--c:#98a4c4">gizli</span>` : ""}</div>
         <div class="mm-baloncuk">${esc(m.metin)}</div>
         ${(m.isaret || []).length ? `<div class="mm-cipler">${m.isaret.map(k => `<span class="mm-etiket" style="--c:${(ISARET[k] || ["", "#e0a43a"])[1]}">${(ISARET[k] || [k])[0]}</span>`).join("")}</div>` : ""}
       </div>`).join("")}</div>` : bos(NB.isaretli ? "İşaretli mesaj yok" : "Mesaj yok", NB.isaretli ? "Bağlantı, telefon, küfür şüphesi, sert ifade, büyük harf ya da spam içeren mesajlar burada toplanır." : "");
@@ -517,13 +520,13 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     const sus = yv("sustur");
     const md = sheet(`<h3 style="font-size:18px;font-weight:800;margin:0">${esc(m.kad)} · ${esc(m.kanal_ad)}</h3><div class="mm-alt">${tsaat(m.zaman)}</div>
       <div class="mm-baloncuk" style="margin-top:10px">${esc(m.metin)}</div>
-      ${m.moderator && !(M && M.ben && M.ben.yonetici && M.ben.kad !== m.kad) ? `<div class="mm-uyari sari">${IK.kilit}<div>Bu mesaj oyun yönetiminden birine ait; işlem yapılamaz.</div></div>` : `
+      ${m.gorevli ? `<div class="mm-uyari yesil">${IK.kalkan}<div>Yardım Masası'nda oyun yönetimi adına yazılmış yanıt. Yazanın adı gösterilmez; yanlış ya da uygunsuzsa yöneticiye ilet.</div></div>` : m.moderator && !(M && M.ben && M.ben.yonetici && M.ben.kad !== m.kad) ? `<div class="mm-uyari sari">${IK.kilit}<div>Bu mesaj oyun yönetiminden birine ait; işlem yapılamaz.</div></div>` : `
       <div class="mm-iki">${m.gizli ? `<button class="mm-btn yesil" data-k="yok_say">Geri aç</button>` : `<button class="mm-btn" data-k="gizle">Mesajı gizle</button>`}
         ${sus ? `<button class="mm-btn kirmizi" data-k="gizle_sustur1">Gizle + 1 gün sustur</button>` : `<button class="mm-btn kirmizi" data-talep="1">Yaptırım talebi</button>`}</div>
       ${sus ? `<div class="mm-alan">Hızlı susturma (mesaj kalır)</div><div class="mm-aksiyon">${[[1, "1 saat"], [6, "6 saat"], [24, "24 saat"], [72, "3 gün"]].map(s => `<button data-s="${s[0]}">${s[1]}</button>`).join("")}</div>` : ""}`}
-      <div class="mm-iki"><button class="mm-btn cizgi" data-dosya="1">${IK.ara}Oyuncu dosyası</button><button class="mm-btn cizgi" id="mmKap">Kapat</button></div>`);
+      <div class="mm-iki">${m.gorevli ? "" : `<button class="mm-btn cizgi" data-dosya="1">${IK.ara}Oyuncu dosyası</button>`}<button class="mm-btn cizgi" id="mmKap">Kapat</button></div>`);
     $("#mmKap", md).onclick = modalKapat;
-    $("[data-dosya]", md).onclick = () => { modalKapat(); mmDosyaAc(m.kad); };
+    const dsy = $("[data-dosya]", md); if (dsy) dsy.onclick = () => { modalKapat(); mmDosyaAc(m.kad); };
     md.querySelectorAll("[data-k]").forEach(b => b.onclick = async () => {
       try { await API.rpc("admin_sikayet_karar", { p_tur: "mesaj", p_kayit: m.id, p_hedef_kad: m.kad, p_islem: b.dataset.k }); modalKapat(); toast(b.dataset.k === "yok_say" ? "Mesaj yeniden görünür." : "Mesaj gizlendi."); mmNobetYenile(); }
       catch (err) { hata(err); }
@@ -655,7 +658,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       d.yasakli ? [`Engelli${d.engel_bitis ? " · " + tsaat(d.engel_bitis) + "'e kadar" : " · kalıcı"}`, "#e5574f"] : null,
       d.susturma_bitis ? [`Susturulmuş · ${tsaat(d.susturma_bitis)}'e kadar`, "#e0a43a"] : null,
       d.adaylik_yasagi_bitis ? [`Aday olamaz · ${tsaat(d.adaylik_yasagi_bitis)}`, "#c86cd8"] : null,
-      d.korunan ? [d.yonetici ? "Oyun yöneticisi" : "Moderatör" + (d.birim ? " · " + d.birim : ""), "#d9b45b"] : null,
+      d.korunan ? [d.yonetici ? "Oyun kurucusu" : "Moderatör" + (d.birim ? " · " + d.birim : ""), "#d9b45b"] : null,
       d.onayli ? ["Gerçek kişi onaylı", "#34c98a"] : null
     ].filter(Boolean);
     const sekmeler = [["ozet", "Özet"], ["gecmis", `Geçmiş (${(d.gecmis || []).length})`], ["mesaj", "Mesajlar"], ["not", `Notlar (${(d.notlar || []).length})`]]
@@ -771,12 +774,15 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     sayfa("Duyuru", `<div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>Bildirim gönder</h3></div>
         <div class="mm-filtre" id="mmDH">${HED.map(h => `<button data-v="${h[0]}" class="${h[0] === hedef ? "on" : ""}">${h[1]}</button>`).join("")}</div>
         <div id="mmDKad" style="display:none"><label class="mm-alan" for="mmDK">Kullanıcı adı</label><input class="mm-girdi" id="mmDK" autocapitalize="off"></div>
-        <label class="mm-alan" for="mmDM">Metin</label><textarea class="mm-girdi" id="mmDM" maxlength="500" placeholder="Başına otomatik “Oyun yönetimi:” eklenir."></textarea>
+        <label class="mm-alan" for="mmDM">Metin</label><textarea class="mm-girdi" id="mmDM" maxlength="500" placeholder="Başına görev unvanın eklenir (ör. “Oyun Yöneticisi G-06: …”)."></textarea>
         <button class="mm-btn mor" style="margin-top:10px" id="mmDG">Bildirimi gönder</button></div>
-      <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>Herkese açık duyuru</h3></div><p class="mm-alt" style="margin-top:0">Gündemde resmî duyuru olarak yayımlanır.</p>
-        <textarea class="mm-girdi" id="mmDY" maxlength="2000" placeholder="Örn. Bu gece 03:00-03:30 arası bakım yapılacak."></textarea>
+      <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>Herkese açık duyuru</h3></div><p class="mm-alt" style="margin-top:0">Bildirimler ekranında resmî duyuru olarak yayımlanır; sonuna görev unvanın eklenir. En fazla 5000 karakter.</p>
+        <textarea class="mm-girdi" id="mmDY" maxlength="5000" style="min-height:180px" placeholder="Örn. Bu gece 03:00-03:30 arası bakım yapılacak."></textarea>
+        <div class="mm-alt" id="mmDYS" style="text-align:right;margin-top:4px" aria-live="polite">0 / 5000</div>
         <button class="mm-btn" style="margin-top:10px" id="mmDYG">Duyuruyu yayımla</button></div>`);
     cipSec($("#mmDH"), v => { hedef = v; $("#mmDKad").style.display = v === "oyuncu" ? "" : "none"; });
+    const dySay = () => { const n = $("#mmDY").value.length, el = $("#mmDYS"); if (el) { el.textContent = `${n} / 5000`; el.style.color = n > 4800 ? "#e0a43a" : ""; } };
+    $("#mmDY").addEventListener("input", dySay);
     $("#mmDG").onclick = async () => {
       const m = $("#mmDM").value.trim(); if (!m) { toast("Metin yaz.", true); return; }
       if (hedef === "herkes" && !await onayla("Herkese bildirim", "Bildirim oyundaki tüm oyunculara gidecek.", "Gönder")) return;
@@ -785,7 +791,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     $("#mmDYG").onclick = async () => {
       const m = $("#mmDY").value.trim(); if (!m) { toast("Metin yaz.", true); return; }
       if (!await onayla("Duyuruyu yayımla", "Duyuru tüm oyunculara gider ve geri alınamaz.", "Yayımla")) return;
-      try { const r = await API.rpc("admin_duyuru", { p_metin: m }); toast(`Duyuru ${r.kitle || ""} oyuncuya gönderildi.`); $("#mmDY").value = ""; } catch (err) { hata(err); }
+      try { const r = await API.rpc("admin_duyuru", { p_metin: m }); toast(`Duyuru ${r.kitle || ""} oyuncuya gönderildi.`); $("#mmDY").value = ""; dySay(); } catch (err) { hata(err); }
     };
   }
   const GN = { kad: "", liste: [] };

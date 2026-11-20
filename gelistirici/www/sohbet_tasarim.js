@@ -137,12 +137,14 @@
     meclis: ['#2f8cff', sv('<path d="M3 21h18M5 21V11M19 21V11M9.5 21V11M14.5 21V11M2 11l10-7 10 7z"/>')],
     grup: ['#5e5ce6', sv('<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 14.5c3 0 6 2 6 5.5"/>')],
     divan: ['#ffcf3a', sv('<path d="M4 20h16M6 20v-8h12v8M9 12V8h6v4M12 8V4"/>')],
-    kabine: ['#4cc3ff', sv('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>')]
+    kabine: ['#4cc3ff', sv('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>')],
+    yardim: ['#34c98a', sv('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.3a2.6 2.6 0 1 1 3.8 2.3c-.8.5-1.3 1-1.3 2"/><path d="M12 16.9v.1"/>')]
   };
   var KANAL_ALT = { genel: 'Tüm oyuncular', il: 'Senin ilindeki oyuncular', belediye: 'Herkes izler; belediye başkanı ve ilin vekilleri konuşur',
     parti: 'Yalnızca parti üyeleri görür', yonetim: 'Genel başkan ve yardımcıları', ittifak: 'İttifak partilerinin üyeleri',
     meclis: 'Açık oturum · Kürsü milletvekilleri, bakanlar ve Cumhurbaşkanına açık', kabine: 'Kapalı oturum · Cumhurbaşkanı ve bakanlar',
-    grup: 'Grup toplantısı · Partinin milletvekilleri ve genel başkanı', divan: 'Kapalı oturum · TBMM Başkanı, başkanvekilleri ve grup başkanvekilleri' };
+    grup: 'Grup toplantısı · Partinin milletvekilleri ve genel başkanı', divan: 'Kapalı oturum · TBMM Başkanı, başkanvekilleri ve grup başkanvekilleri',
+    yardim: 'Soru sor · oyun yönetimi ve deneyimli oyuncular yanıtlar' };
   var KANAL_GRUP = [['Herkese açık', ['il', 'belediye']], ['Siyasi örgüt', ['parti', 'yonetim', 'ittifak']], ['Devlet', ['meclis', 'grup', 'divan', 'kabine']]];
   /* Devlet kanalları: sohbet değil, resmî oturum. Tutanak düzeni, hitap kalıpları, oturum şeridi. */
   var RESMI = {
@@ -173,7 +175,8 @@
     belediye: { renk: '#26c281', ust: 'Belediye Meclisi', alt: 'Şehrin gündemi burada konuşulur', yer: 'Meclise söz al' },
     parti: { renk: '#8b6cff', ust: 'Parti Salonu', alt: 'Yalnızca partililer içeride', yer: 'Arkadaşlarına yaz' },
     yonetim: { renk: '#ff9f0a', ust: 'Genel Merkez', alt: 'Yönetim kurulu · kapalı toplantı', yer: 'Yönetime yaz' },
-    ittifak: { renk: '#c26bf5', ust: 'İttifak Masası', alt: 'Ortak partilerin buluşma noktası', yer: 'Ortaklara yaz' }
+    ittifak: { renk: '#c26bf5', ust: 'İttifak Masası', alt: 'Ortak partilerin buluşma noktası', yer: 'Ortaklara yaz' },
+    yardim: { renk: '#34c98a', ust: 'Danışma', alt: 'Sorular ve yanıtlar herkese açık', yer: 'Sorunu yaz' }
   };
   function temaKur(kanal, oz) {
     var T = TEMA[kanal]; if (!T) return;
@@ -288,7 +291,7 @@
         '<div class="sh-bos kucuk"><p>' + (q ? '“' + esc(ST.ara) + '” ile eşleşen konuşma yok.' : 'Okunmamış mesajın yok. Hepsini okudun.') + '</p>' +
         (q ? '<button type="button" class="sh-btn" data-sh="araOyuncu">' + I.ara + 'Oyuncularda ara</button>' : '') + '</div>') + '</div>';
   }
-  function kanalSatir(k, buyuk, istekSay) {
+  function kanalSatir(k, buyuk, istekSay, ekCip) {
     if (!k) return '';
     var kilit = !!k.kilit, yeni = kilit ? 0 : n(k.okunmamis), q = ST.ara.toLocaleLowerCase('tr-TR');
     if (q && String(k.baslik || '').toLocaleLowerCase('tr-TR').indexOf(q) < 0 && String(kanalAlt(k)).toLocaleLowerCase('tr-TR').indexOf(q) < 0) return '';
@@ -296,6 +299,7 @@
     var cip = !kilit && k.cevrimici != null ? '<span class="sh-c-cev"><span class="sh-nokta"></span>' + k.cevrimici + ' çevrimiçi</span>' : '';
     var izle = !kilit && !k.yazabilir ? '<span class="sh-c-izle">' + I.goz + 'İzleyici</span>' : '';
     if (istekSay) izle += '<span class="sh-gr-istek">' + I.kisiler + istekSay + ' katılma isteği</span>';
+    if (ekCip) izle += ekCip;
     return '<button type="button" class="sh-c' + (kilit ? ' kilit' : '') + (yeni ? ' yeni' : '') + '" data-sh="' + (kilit ? 'kilit' : 'kanal') + '" data-kanal="' + esc(k.kanal) + '" data-kilit="' + esc(k.kilit || '') + '">' +
       kanalIkon(k.kanal, 50) + (kilit ? '<span class="sh-c-kilit">' + I.kilit + '</span>' : '') +
       '<span class="sh-k-orta"><span class="sh-k-ust"><b>' + esc(k.baslik) + '</b><time>' + (k.son && !kilit ? esc(listeZaman(k.son.zaman)) : '') + '</time></span>' +
@@ -316,7 +320,12 @@
         '<span class="sh-meydan-alt">' + (g.son ? '<em>' + esc(g.son.kad) + ':</em> ' + esc(g.son.metin) : 'Bütün Türkiye burada konuşuyor. İlk sözü sen al.') + '</span>' +
         '<span class="sh-meydan-alt2"><span><span class="sh-nokta"></span>' + n(g.cevrimici != null ? g.cevrimici : oz.cevrimici) + ' oyuncu çevrimiçi</span><span class="sh-meydan-git">Meydana gir' + I.ok + '</span></span></button>';
     }
-    var gruplar = KANAL_GRUP.map(function (gr) {
+    var yr = oz.yardim, yardim = '';
+    if (yr) {
+      var ys = kanalSatir(yr, false, 0, yr.gorevli && n(yr.bekleyen) ? '<span class="sh-gr-istek">' + I.mesaj + n(yr.bekleyen) + ' yanıt bekleyen mesaj</span>' : '');
+      if (ys) yardim = '<div class="sh-bas"><h3>Yardım</h3></div><div class="sh-liste">' + ys + '</div>';
+    }
+    var gruplar = yardim + KANAL_GRUP.map(function (gr) {
       var ic = gr[1].map(function (kod) { return kanalSatir(bul(kod)); }).join('');
       if (q && g && gr[0] === 'Herkese açık') ic = kanalSatir(g) + ic;
       return ic ? '<div class="sh-bas"><h3>' + gr[0] + '</h3></div><div class="sh-liste">' + ic + '</div>' : '';
@@ -542,7 +551,7 @@
         sonGun = gun; onceki = null;
       }
       var kim = m.benim ? '__ben' : String(m.kad || S.kad || '');
-      var ayni = function (a, b) { return a && b && (a.benim ? '__ben' : String(a.kad || S.kad || '')) === (b.benim ? '__ben' : String(b.kad || S.kad || '')) && Math.abs(new Date(b.zaman) - new Date(a.zaman)) < 5 * 60e3 && gunAnahtar(a.zaman) === gunAnahtar(b.zaman); };
+      var ayni = function (a, b) { return a && b && !!a.gorevli === !!b.gorevli && (a.benim ? '__ben' : String(a.kad || S.kad || '')) === (b.benim ? '__ben' : String(b.kad || S.kad || '')) && Math.abs(new Date(b.zaman) - new Date(a.zaman)) < 5 * 60e3 && gunAnahtar(a.zaman) === gunAnahtar(b.zaman); };
       var ilk = !ayni(onceki, m), son = !ayni(m, sonraki);
       h += balon(m, S, ilk, son);
       onceki = m;
@@ -558,8 +567,20 @@
     if (S.okunduSon != null && n(m.id) <= n(S.okunduSon)) return '<span class="shm-tik on" aria-label="Okundu">' + I.ciftTik + '</span>';
     return '<span class="shm-tik" aria-label="Gönderildi">' + I.tik + '</span>';
   }
+  /* Yardım Masası: oyun yönetimi adına yazılan yanıt. Kimlik yok; görev unvanı ve kalkan görünür. */
+  var KALKAN = sv('<path d="M12 3l8 3.5v5.2c0 4.6-3.3 7.9-8 9.3-4.7-1.4-8-4.7-8-9.3V6.5z"/><path d="M8.8 12.2l2.2 2.2 4.2-4.4"/>');
+  function yonetimBalon(m, S, ilk, son) {
+    var cls = 'shm shy' + (m.benim ? ' benim' : '') + (ilk ? ' ilk' : '') + (son ? ' son' : '') + (m._bekle ? ' bekle' : '') + (m._hata ? ' hata' : '');
+    var h = '<div class="' + cls + '" data-id="' + esc(m.id) + '" data-kad="" data-yonetim="1">';
+    if (!m.benim) h += '<span class="shm-av">' + (son ? '<span class="shy-av">' + KALKAN + '</span>' : '') + '</span>';
+    h += '<div class="shm-b">';
+    if (ilk) h += '<div class="shm-kim shy-kim">' + KALKAN + '<b>' + esc(m.kad || 'Oyun Yönetimi') + '</b><small>' + (m.benim ? 'Yönetim adına yazdın' : 'Oyun Yönetimi · resmî yanıt') + '</small></div>';
+    h += '<span class="shm-tx">' + metinHtml(m.metin) + '</span><span class="shm-ne"><time>' + esc(saat(m.zaman)) + '</time>' + tikHtml(m, S) + '</span></div></div>';
+    return h;
+  }
   function balon(m, S, ilk, son) {
     if (S.resmi) return resmiKayit(m, S, ilk, son);
+    if (m.gorevli) return yonetimBalon(m, S, ilk, son);
     var em = emojiSayisi(m.metin), renk = (m.parti && m.parti.renk) || '#9aa6cc';
     var kanalBaskasi = !S.ozel && !m.benim;
     var cls = 'shm' + (m.benim ? ' benim' : '') + (ilk ? ' ilk' : '') + (son ? ' son' : '') + (em ? ' emoji e' + Math.min(em, 4) : '') + (m._bekle ? ' bekle' : '') + (m._hata ? ' hata' : '');
@@ -655,14 +676,16 @@
     var m = S.liste.find(function (x) { return String(x.id) === String(id); }); if (!m) return;
     if (m._hata) { tekrarGonder(S, m); return; }
     if (m._bekle) return;
-    var benim = !!m.benim, ozel = S.ozel;
+    var benim = !!m.benim, ozel = S.ozel, yon = !!m.gorevli;
+    if (yon) kad = m.kad || 'Oyun Yönetimi';
     var sat = function (k, ik, ad, cls) { return '<button type="button" class="sh-es' + (cls ? ' ' + cls : '') + '" data-es="' + k + '">' + ik + '<span>' + ad + '</span></button>'; };
     var md = modal('<div class="sh-sayfa"><div class="sh-sayfa-onizle"><div class="shm-mini' + (benim ? ' benim' : '') + '">' + esc(String(m.metin).slice(0, 220)) + (String(m.metin).length > 220 ? '…' : '') + '</div><small>' + (benim ? 'Sen' : esc(kad)) + ' · ' + esc(gunBaslik(m.zaman)) + ' ' + esc(saat(m.zaman)) + '</small></div>' +
       (m.id && n(m.id) > 0 ? '<div class="sh-tp-sec" role="group" aria-label="Tepki ver">' + tpListe(S).map(function (em) { var bn = S.tepki && S.tepki[id] && S.tepki[id].ben === em; return '<button type="button" class="' + (bn ? 'ben' : '') + '" data-es="tp" data-em="' + esc(em) + '">' + esc(em) + '</button>'; }).join('') + '</div>' : '') +
       '<div class="sh-es-grup">' + sat('kopya', I.kopya, 'Metni kopyala') +
-      (!benim && !ozel ? sat('dm', I.mesaj, kad + ' kişisine özel mesaj') + sat('kart', I.kart, 'Oyuncu kartı') : '') +
-      (!benim && ozel ? sat('kart', I.kart, 'Oyuncu kartı') : '') + '</div>' +
-      (!benim ? '<div class="sh-es-grup">' + sat('sikayet', I.bayrak, 'Mesajı şikâyet et', 'kirmizi') + '</div>' : '') +
+      (!benim && !ozel && !yon ? sat('dm', I.mesaj, kad + ' kişisine özel mesaj') + sat('kart', I.kart, 'Oyuncu kartı') : '') +
+      (!benim && ozel ? sat('kart', I.kart, 'Oyuncu kartı') : '') +
+      (yon && !benim && typeof window.yonetimeYazEkrani === 'function' ? sat('yy', I.mesaj, 'Yönetime özel yaz') : '') + '</div>' +
+      (!benim && !yon ? '<div class="sh-es-grup">' + sat('sikayet', I.bayrak, 'Mesajı şikâyet et', 'kirmizi') + '</div>' : '') +
       '<button type="button" class="sh-es-vaz" data-es="vaz">Vazgeç</button></div>');
     md.addEventListener('click', function (ev) {
       var b = ev.target.closest('[data-es]'); if (!b) return;
@@ -673,6 +696,7 @@
         modalKapat();
         try { navigator.clipboard.writeText(m.metin).then(function () { tst('Mesaj kopyalandı.'); }, function () { tst('Kopyalanamadı.', true); }); } catch (e) { tst('Kopyalanamadı.', true); }
       }
+      if (k === 'yy') { modalKapat(); ekranAc(function () { return window.yonetimeYazEkrani({ konu: 'soru' }); }); }
       if (k === 'dm') { modalKapat(); ekranAc(function () { return ozelEkrani(kad); }); }
       if (k === 'kart') { modalKapat(); oyuncuKart(kad); }
       if (k === 'sikayet') { sikayetModal(ozel ? 'ozel' : 'mesaj', +id, kad, el); }
@@ -828,6 +852,8 @@
      ===================================================================== */
   async function kanalEkrani(kanal) {
     var oz = ST.oz && (ST.oz.kanallar || []).find(function (k) { return k.kanal === kanal; });
+    var YRD = kanal === 'yardim';
+    if (YRD) { yardimCss(); if (!oz) oz = (ST.oz && ST.oz.yardim) || { kanal: 'yardim', baslik: 'Yardım Masası' }; }
     var cevYaz = function (k) { return k && k.cevrimici != null ? '<span class="shk-d cevrimici"><span class="sh-nokta"></span>' + k.cevrimici + ' çevrimiçi</span><span class="shk-ayr">·</span><span class="shk-unv">' + esc(KANAL_ALT[kanal] || '') + '</span>' : '<span class="shk-unv">' + esc(KANAL_ALT[kanal] || '') + '</span>'; };
     var R = RESMI[kanal] || null, OG = ogMu(kanal);
     if (OG) cevYaz = function (k) { return (k && k.cevrimici != null ? '<span class="shk-d cevrimici"><span class="sh-nokta"></span>' + n(k.cevrimici) + ' çevrimiçi</span><span class="shk-ayr">·</span>' : '') + '<span class="shk-unv">' + esc(k && k.uye_sayisi ? k.uye_sayisi + ' üye · Özel grup' : 'Özel grup · Yalnız üyeler görür') + '</span>'; };
@@ -841,7 +867,11 @@
       var ust = $1('.shk-ust'); if (ust) ust.insertAdjacentHTML('afterend', '<div class="shr-serit" style="--ar:' + R.renk + '"><span>' + esc(R.kurum) + '</span><b>' + esc(R.oturum) + '</b></div>');
       var ta0 = $1('#yaz'); if (ta0) { ta0.placeholder = R.yer; ta0.maxLength = 1500; }
     }
-    S.yaz = function (metin) { return API.rpc('sohbet_yaz', { p_kanal: kanal, p_metin: metin }); };
+    S.yaz = function (metin) {
+      var cb0 = YRD ? $1('#shyResmi') : null;
+      if (cb0 && cb0.checked) return API.rpc('yardim_yanitla', { p_metin: metin });
+      return API.rpc('sohbet_yaz', { p_kanal: kanal, p_metin: metin });
+    };
     S.yeniGetir = async function () {
       var r = await API.rpc('sohbet_oku', { p_kanal: kanal, p_once: null, p_sonra: S.sonId });
       if (!$1('.shk-kanal')) return r;
@@ -857,8 +887,9 @@
       if (S.liste.length) { S.sonId = S.liste[S.liste.length - 1].id; S.ilkId = S.liste[0].id; }
       if (S.liste.length < 40) S.bitti = true;
       S.bosHtml = R ? '<div class="shm-bos shr-bos" style="--ar:' + R.renk + '"><span class="shr-arma buyuk">' + ARMA + '</span><small>' + esc(R.kurum) + '</small><b>' + esc(r.baslik || R.oturum) + '</b><p>' + esc(R.bos) + '</p></div>'
-        : '<div class="shm-bos">' + kanalIkon(kanal, 76) + '<b>' + esc(r.baslik || '') + '</b><p>' + (r.yazabilir ? 'Henüz kimse yazmadı. İlk sözü sen al!' : 'Henüz kimse söz almadı. Burada konuşulanları izleyebilirsin.') + '</p></div>';
+        : '<div class="shm-bos">' + kanalIkon(kanal, 76) + '<b>' + esc(r.baslik || '') + '</b><p>' + (YRD ? 'Henüz soru yok. Bulamadığın ekranı, anlamadığın kuralı ya da takıldığın işlemi yaz; oyun yönetimi ve deneyimli oyuncular yanıtlar.' : r.yazabilir ? 'Henüz kimse yazmadı. İlk sözü sen al!' : 'Henüz kimse söz almadı. Burada konuşulanları izleyebilirsin.') + '</p></div>';
       akisCiz(akis, S, 'ilk');
+      if (YRD) yardimKur(r);
       if (R && r.yazabilir) {
         var yb0 = $1('#yazbar');
         if (yb0) {
@@ -903,6 +934,56 @@
     asagiKur(akis, S); yazmaKur(S, akis);
     canliKur([r.sinyal || (window.CANLI && CANLI.sohbetAnahtari && CANLI.sohbetAnahtari(kanal))].filter(Boolean), function () { return S.yeniGetir().catch(function () {}); }, 5500);
   }
+
+  /* =====================================================================
+     YARDIM MASASI (20.11.2026): herkes sorar; oyun yöneticileri isterse yönetim adına, adı görünmeden yanıtlar
+     ===================================================================== */
+  function yardimKur(r) {
+    var ta = $1('#yaz'); if (ta) ta.maxLength = 1500;
+    var serit = $1('.sht-serit');
+    if (serit && !$1('.shy-bilgi')) {
+      serit.insertAdjacentHTML('afterend', '<div class="shy-bilgi"><span>' + KALKAN + 'Yeşil kalkanlı yanıtlar oyun yönetimine aittir. Şikâyet, itiraz ya da özel bir konun mu var?</span>' +
+        (typeof window.yonetimeYazEkrani === 'function' ? '<button type="button" id="shyYY">Yönetime yaz</button>' : '') + '</div>');
+      var yb = $1('#shyYY'); if (yb) yb.onclick = function () { hafif(); ekranAc(function () { return window.yonetimeYazEkrani({ konu: 'soru' }); }); };
+    }
+    var bar = $1('#yazbar');
+    if (r && r.gorevli_yazabilir && bar && !$1('#shyResmi')) {
+      var acik = true; try { acik = sessionStorage.getItem('shyResmi') !== '0'; } catch (e) {}
+      bar.insertAdjacentHTML('beforebegin', '<label class="shy-resmi" for="shyResmi"><input type="checkbox" id="shyResmi"' + (acik ? ' checked' : '') + '><span class="shy-anahtar" aria-hidden="true"></span>' +
+        '<span class="shy-yazi"><b id="shyResmiB"></b><small id="shyResmiS"></small></span></label>');
+      var cb = $1('#shyResmi');
+      var yaz = function () {
+        var b = $1('#shyResmiB'), s2 = $1('#shyResmiS');
+        if (b) b.textContent = cb.checked ? 'Yönetim adına yanıtlıyorsun' : 'Kendi adınla yazıyorsun';
+        if (s2) s2.textContent = cb.checked ? 'Adın, partin ve unvanın görünmez; mesajın görev kodunla yayımlanır.' : 'Mesajın sıradan oyuncu mesajı olarak, kullanıcı adınla görünür.';
+        if (ta) ta.placeholder = cb.checked ? 'Yönetim adına yanıt yaz' : 'Sorunu yaz';
+      };
+      cb.addEventListener('change', function () { try { sessionStorage.setItem('shyResmi', cb.checked ? '1' : '0'); } catch (e) {} hafif(); yaz(); });
+      yaz();
+    }
+  }
+  function yardimCss() {
+    if (document.getElementById('shyCss')) return;
+    var st = document.createElement('style'); st.id = 'shyCss';
+    st.textContent = '.shy-bilgi{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:9px 14px;font-size:14px;line-height:1.4;color:#cfe9dc;background:rgba(52,201,138,.1);border-bottom:1px solid rgba(52,201,138,.22)}' +
+      '.shy-bilgi span{flex:1 1 220px;min-width:0}.shy-bilgi svg{width:16px;height:16px;vertical-align:-3px;margin-right:6px;color:#34c98a}' +
+      '.shy-bilgi button{flex:none;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid rgba(52,201,138,.55);background:transparent;color:#7ff0bd;font-size:14px;font-weight:700;cursor:pointer}' +
+      '.shm.shy .shm-b{background:rgba(52,201,138,.13);border:1px solid rgba(52,201,138,.42);color:#eafff5}' +
+      '.shm.shy.benim .shm-b{background:rgba(52,201,138,.2)}' +
+      '.shy-kim{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;margin-bottom:3px}.shy-kim svg{width:15px;height:15px;color:#34c98a;flex:none}' +
+      '.shy-kim b{color:#7ff0bd;font-size:14px}.shy-kim small{flex-basis:100%;font-size:13px;opacity:.8}' +
+      '.shy-av{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:rgba(52,201,138,.18);color:#34c98a;border:1px solid rgba(52,201,138,.45)}.shy-av svg{width:18px;height:18px}' +
+      '.shy-resmi{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 14px;border-top:1px solid rgba(255,255,255,.08);background:rgba(52,201,138,.07);cursor:pointer;box-sizing:border-box;width:100%}' +
+      '.shy-resmi input{position:absolute;opacity:0;width:1px;height:1px}' +
+      '.shy-anahtar{flex:none;position:relative;width:46px;height:28px;border-radius:999px;background:rgba(255,255,255,.18);transition:background .18s}' +
+      '.shy-anahtar::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .18s}' +
+      '.shy-resmi input:checked+.shy-anahtar{background:#34c98a}.shy-resmi input:checked+.shy-anahtar::after{transform:translateX(18px)}' +
+      '.shy-resmi input:focus-visible+.shy-anahtar{outline:2px solid #7ff0bd;outline-offset:2px}' +
+      '.shy-yazi{flex:1;min-width:0}.shy-yazi b{display:block;font-size:15px}.shy-yazi small{display:block;font-size:14px;line-height:1.35;opacity:.8}' +
+      '@media (prefers-reduced-motion:reduce){.shy-anahtar,.shy-anahtar::after{transition:none}}';
+    document.head.appendChild(st);
+  }
+  window.yardimMasasiAc = function () { try { modalKapat(); } catch (e) {} ekranAc(function () { return kanalEkrani('yardim'); }); };
 
   /* =====================================================================
      ÜST ÇUBUKTA MESAJ KISAYOLU (her ana ekranda, zilin yanında)

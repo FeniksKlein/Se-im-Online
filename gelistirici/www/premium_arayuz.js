@@ -967,6 +967,8 @@
     e('kalem', B.ben.a1, 'Portre ve biyografi', 'Profil resmini ve yazını düzenle', ['portre'], 'portre avatar resim biyografi', 'Profil');
     e('kimlik', B.ben.a1, 'Seçmen kartım', 'Oy, adaylık ve parti kurma şartları', ['secmen'], 'seçmen kartı şart aday', 'Profil');
     e('zil', '#e0565b', 'Bildirimler', 'Son gelişmeler', ['bildirim'], 'bildirim haber uyarı', 'Profil');
+    if (g('yardimMasasiAc')) e('yeniMesaj', '#34c98a', 'Yardım Masası', 'Bulamadığını sor; oyun yönetimi yanıtlasın', ['kod', 'yardimMasasiAc()'], 'yardım soru destek nasıl nerede bulamıyorum yönetim moderatör rehber', 'Profil');
+    if (g('yonetimeYazEkrani')) e('kalem', '#9a7bff', 'Yönetime yaz', 'Soru, şikâyet, itiraz, hata ve öneri', ['kod', 'ekranAc(yonetimeYazEkrani)'], 'yönetime yaz şikâyet itiraz ihbar hata öneri destek talep ticket', 'Profil');
     if (p.il_id) e('konum', B.harita.a1, (p.il_ad || 'İlim') + ' il sayfası', 'İlinin belediyesi, vekilleri ve oyuncuları', ['ilim', p.il_id], 'il şehrim belediye', 'Türkiye');
     if (p.yonetici || (p.yetkiler && p.yetkiler.moderator)) e('ayar', '#7b8bb8', 'Moderasyon Merkezi', 'Oyun yönetimi', ['yonetici'], 'yönetici admin panel moderatör moderasyon kayıt şikâyet', 'Profil');
     var ind = window.SO_MENU_ARAMA_INDEKSI || {};

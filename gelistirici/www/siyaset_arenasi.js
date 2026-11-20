@@ -215,7 +215,7 @@
       if (yargi) {
         // Yargı görevi Gündem'in en üstünde ayrı ve kırmızı kart: "atandığımı bilmiyordum" olmasın
         var y = document.createElement('div');
-        y.innerHTML = '<button type="button" class="kart sa-gk sa-yargi" onclick="saYargiGit()"><span class="sa-is-g"><small>' + (yargi.tur === 'juri' ? 'Jüri görevin var' : 'Yüksek Mahkeme görevin var') + '</small><b>' + esc(yargi.baslik.replace('⚖️ ', '')) + '</b><small>' +
+        y.innerHTML = '<button type="button" class="kart sa-gk sa-yargi" onclick="saYargiGit()"><span class="sa-is-g"><small>' + (yargi.tur === 'juri' ? 'İstinaf Dairesi görevin var' : 'Yüksek Mahkeme görevin var') + '</small><b>' + esc(yargi.baslik.replace('⚖️ ', '')) + '</b><small>' +
           esc(yargi.alt || '') + (yargi.bit ? ' · ' + kalan(yargi.bit) + ' kaldı' : '') + '</small></span><em>Oy ver ›</em></button>';
         A.yargi = yargi;
         ic.insertBefore(y.firstChild, ic.firstChild);

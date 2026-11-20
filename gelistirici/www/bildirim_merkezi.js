@@ -207,6 +207,8 @@
 .bm-av > *{width:100%!important;height:100%!important;max-width:none!important;border-radius:50%}
 .bm-r-kim{margin-top:1px;font-size:12.5px;font-weight:650;color:var(--ink2);overflow-wrap:anywhere}
 .bm-r-yayin .bm-r-metin{margin-top:8px;padding:9px 12px;border-radius:4px 14px 14px 14px;background:rgba(255,255,255,.045);color:var(--txt);white-space:pre-wrap}
+.bm-r-yayin .bm-r-metin.bm-uzun:not(.acik){max-height:13.5em;overflow:hidden;-webkit-mask-image:linear-gradient(#000 68%,transparent);mask-image:linear-gradient(#000 68%,transparent)}
+.bm-devam{display:block;margin-top:4px;min-height:44px;padding:0 6px;background:none;border:0;color:#b9a8ff;font-size:15px;font-weight:700;cursor:pointer}
 .bm-daha{display:block;width:100%;margin-top:12px;min-height:44px;border-radius:14px;border:1px dashed var(--line2);background:transparent;color:var(--ink2);font-size:13.5px;font-weight:750}
 .bm-bos{text-align:center;padding:34px 16px 30px;color:var(--mut);font-size:13.5px;line-height:1.45}
 .bm-bos-ik{width:56px;height:56px;margin:0 auto 12px;border-radius:18px;display:grid;place-items:center;background:var(--inkbg);color:var(--ink2)}
@@ -388,12 +390,18 @@
     let av = "";
     try { if (typeof portre === "function") av = portre(x.kad, renk, 38); } catch (_) { av = ""; }
     if (!av) av = kac(String(x.kad || "?").trim().charAt(0).toLocaleUpperCase("tr-TR"));
+    const uzun = String(x.metin == null ? "" : x.metin).length > 700;
     n.removeAttribute("style");
     n.classList.add("bm-r-yayin");
     n.innerHTML = `<span class="bm-av" style="--pr:${renk}">${av}</span><div class="bm-r-govde">
       <div class="bm-r-ust"><b class="bm-r-bas">${kac(x.kad)}</b><time>${kac(saatSade(x.zaman))}</time></div>
       <div class="bm-r-kim">${kac([unvan, tur].filter(Boolean).join(" · "))}</div>
-      <div class="bm-r-metin">${kac(x.metin)}</div></div>`;
+      <div class="bm-r-metin${uzun ? " bm-uzun" : ""}">${kac(x.metin)}</div>${uzun ? `<button type="button" class="bm-devam" aria-expanded="false">Devamını oku</button>` : ""}</div>`;
+    if (uzun) {
+      // 20.11.2026: uzun resmî duyurular (5000 karaktere kadar) listede kısaltılır, dokununca açılır.
+      const b = n.querySelector(".bm-devam"), mt = n.querySelector(".bm-r-metin");
+      if (b && mt) b.onclick = (ev) => { ev.stopPropagation(); const ac = mt.classList.toggle("acik"); b.textContent = ac ? "Kısalt" : "Devamını oku"; b.setAttribute("aria-expanded", ac ? "true" : "false"); };
+    }
   }
 
   function sesCubugu(ic) {
