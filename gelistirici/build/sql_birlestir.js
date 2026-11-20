@@ -27,6 +27,7 @@ const KOSULLU = {
   // 20.11: masa yetkileri / Yönetime Yaz canlı migration'larının (oyun.mod_kisit, oyun.destek_mesaj) üstüne kurulur; kaynakları depoda olmadığı için onlar yoksa atlanır.
   'zz_20261120_duyuru_sinir_imza.sql': ['oyun.moderatorler', 'oyun.yayinlar', 'oyun.mod_kisit', 'oyun.yonetim_tutuklama'],
   'zz_20261120_istinaf_dairesi.sql': ['oyun.moderatorler', 'oyun.adliye_istinaf', 'oyun.adliye_juri', 'oyun.juri_ihmal', 'oyun.mod_kisit', 'oyun.mod_kayit'],
+  'zz_20261120_istinaf_kura.sql': ['oyun.moderatorler', 'oyun.adliye_istinaf', 'oyun.adliye_juri', 'oyun.juri_ihmal', 'oyun.mod_kisit', 'oyun.mod_kayit'],
   'zz_20261120_yardim_masasi.sql': ['oyun.moderatorler', 'oyun.mesajlar', 'oyun.kanal_okuma', 'oyun.destek_mesaj', 'oyun.mod_kisit', 'oyun.sohbet_grup'],
 };
 const okuKosullu = ad => {
@@ -58,7 +59,7 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261116_gby_yetki_sistemi.sql', 'zz_20261116_il_kongre_sistemi.sql', 'zz_20261116_yk_kurum_gorevleri.sql', 'zz_20261116_kurulus_canli_fiyat_sartlar.sql',
   'zz_20261116_kredi_denge.sql', 'zz_20261116_davet_aktiflik.sql', 'zz_20261116_mod_gorev_finans.sql', 'zz_20261116_kurucu_partiler.sql', 'zz_20261116_kayit_onay_ad_soyad.sql', 'zz_20261117_ad_soyad_profil.sql', 'zz_20261117_hukuk_reformu.sql', 'zz_20261117_kursu_kurumsal.sql', 'zz_20261117_kursu_kurumsal_yanit.sql', 'zz_20261118_moderasyon_merkezi.sql', 'zz_20261118_bildirim_imza.sql', 'zz_20261118_ifade_cagri.sql', 'zz_20261118_sohbet_denetim_bakanlik_dava.sql', 'zz_20261118_mod_gizlilik.sql', 'zz_20261119_mod_cikar_yon.sql',
   // 20.11.2026: duyuru sınırı + yönetici imzası, İstinaf Dairesi, Yardım Masası (20.11 sabahki canlı migration'lara dayanır; onlar yoksa atlanır)
-  'zz_20261120_duyuru_sinir_imza.sql', 'zz_20261120_istinaf_dairesi.sql', 'zz_20261120_yardim_masasi.sql'];
+  'zz_20261120_duyuru_sinir_imza.sql', 'zz_20261120_istinaf_dairesi.sql', 'zz_20261120_istinaf_kura.sql', 'zz_20261120_yardim_masasi.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',

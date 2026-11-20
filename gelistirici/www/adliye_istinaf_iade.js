@@ -87,8 +87,8 @@
  // 4) İstinaf başvuru penceresi: güncel kurallar
  window.adlIstinafModal=function(id){
   const d=dava(id);
-  const m=modal('<p class="alt">İstinafı 3 üyeli İstinaf Dairesi inceler. Üyelerin kimliği gizlidir; dosyada yalnız “Üye 1, Üye 2, Üye 3” olarak görünürler. Davanın taraflarıyla, taraf partilerle ya da taraflarla davası, ortaklığı bulunan kimse heyette yer almaz. '
-   +'Üye 8 saat oyuna girmezse ya da 12 saat içinde oy vermezse yerine yenisi atanır. 3 üyeden 2’si aynı yönde oy verince karar çıkar.</p>'
+  const m=modal('<p class="alt">İstinafı 3 üyeli İstinaf Dairesi inceler. Üyeler her dosya için kurayla belirlenir; kimlikleri gizlidir, dosyada yalnız “Üye 1, Üye 2, Üye 3” olarak görünürler. Davanın taraflarıyla, taraf partilerle ya da taraflarla davası, ortaklığı bulunan kimse heyette yer almaz. '
+   +'Üye 8 saat oyuna girmezse ya da 12 saat içinde oy vermezse yerine kurayla yenisi gelir. 3 üyeden 2’si aynı yönde oy verince karar çıkar.</p>'
    +'<div class="kart" style="border-left:4px solid var(--kirmizi,#c0392b);margin:8px 0"><b>İstinaf yargılama gideri: '+esc(tl(gider(d)))+'</b>'
    +'<p class="alt" style="margin-top:6px">Başvurun reddedilirse (karar onanırsa) bu tutar kararı kaybeden tarafa yüklenir (CMK m.325, HMK m.326). Karar bozulursa gider ödenmez.'
    +(d&&d.karar==='beraat'?' Beraat bozulursa dosya, yaptırım ya da tutar belirlenmek üzere Yüksek Mahkemeye döner; o karar kesindir.':'')+'</p></div>'

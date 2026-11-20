@@ -935,9 +935,9 @@ Amaç oyuncunun her gün belli saatte oyunda olması ve başkalarının ona ihti
 - Dengeleme: bütün yeni kıdem kaynakları günlük tavanlı (`oyun.kidem_kaynak`), para ödülü yalnız parti kasasına gider; bireysel para enjeksiyonu yok.
 
 ## 23. Yargı düzeni: kimse "atandığımı bilmiyordum" demesin, hiçbir dava asılı kalmasın (2026-10-31, modül 155)
-- Taraf partilerden istinaf üyesi ya da yargıç olmaz. **20.11.2026'dan itibaren istinafı 3 üyeli İstinaf Dairesi inceler; üyeler oyun yöneticilerinden seçilir ve kimlikleri gizlidir (bkz. §31).** Vatandaş kurası yalnız son çaredir.
-- Görev Gündem'in en üstünde kırmızı kartla ve Bekleyen işlerde görünür. Oyun yöneticisi üyeye istinaf oyu için kıdem verilmez (son çare kurasıyla gelen vatandaş üye +1 kıdem kazanır).
-- Süreler kesin: 8 saat ortada yoksa yedek, 24 saatte çoğunluk yoksa değişim + 24 saat, 48. saatte verilen oylarla karar (bozma için en az 2 oy). Görevi ihmal eden yöneticiye 48 saat yeni dosya verilmez ve ihmal yönetim kaydına işlenir (vatandaş üye 14 gün çağrılmaz); Yüksek Mahkeme'de ihmal atayan makama bildirilir.
+- Taraf partilerden istinaf üyesi ya da yargıç olmaz. **20.11.2026'dan itibaren istinafı 3 üyeli İstinaf Dairesi inceler; üyeler yalnız moderatör ekibinden, her dosyada kurayla seçilir ve kimlikleri gizlidir (bkz. §31).** Kurucu ve vatandaş kurası devreye girmez.
+- Görev Gündem'in en üstünde kırmızı kartla ve Bekleyen işlerde görünür. İstinaf oyu için kıdem verilmez (üyeler moderatördür).
+- Süreler kesin: 8 saat ortada yoksa yedek, 24 saatte çoğunluk yoksa değişim + 24 saat, 48. saatte verilen oylarla karar (bozma için en az 2 oy). Görevi ihmal eden üyeye 48 saat yeni dosya verilmez ve ihmal yönetim kaydına işlenir; Yüksek Mahkeme'de ihmal atayan makama bildirilir.
 
 ### Süre sonu kararları: üyeler oy vermese de her dosya kapanır (2026-11-03, modül 163)
 | Yargı yeri | Süre | Süre dolunca |
@@ -1031,9 +1031,9 @@ Kaynak: `gelistirici/sql/zz_20261120_duyuru_sinir_imza.sql`, `zz_20261120_istina
 **Yönetim adına yazı oyun içi konuşma değildir.** Yönetici oyunda gözaltında olsa da resmî duyuru ve Yardım Masası'ndaki yönetim yanıtı engellenmez; kendi adına yazdıkları engellenir.
 
 **İstinaf Dairesi** (gerçekte de istinafı bölge adliye mahkemesinin 3 hâkimli dairesi inceler).
-- 3 üye; tamamı oyun yöneticilerinden: gizlilik sözleşmesini kabul etmiş, son 7 günde oyunda görülmüş, üzerinde 6'dan az açık dosya olanlar; önce son 24 saatte oyunda olanlar, sonra en az yükü olanlar.
+- 3 üye; **yalnız moderatör ekibinden ve her dosyada kurayla** (tamamen rastgele; "önce aktif olan / yükü az olan" sıralaması yoktur). Kuraya girme şartı: tarafsızlık, gizlilik sözleşmesini kabul etmiş olmak, son 72 saatte oyunda görülmek, üzerinde 6'dan az açık istinaf dosyası bulunmak, son 48 saatte istinaf görevini ihmal etmemiş olmak.
 - Tarafsızlık: davanın tarafı, vekili, ilk derece üyesi, Cumhurbaşkanı ya da Yüksek Mahkeme üyesi olan; taraf partilerden birine üye olan; taraflarla aynı cihazı kullanan, aralarında dava ya da şirket ortaklığı bulunan yönetici seçilmez.
-- Tek kişiye bağlı kalmaz: yeterli yönetici yoksa kurucu, o da yoksa **son çare** olarak vatandaş kurası (kurucuya bildirim gider). Yedek liste tutulmaz; görevini yapmayan üyenin yerine o anda yenisi çekilir.
+- Böyle 3 kişi çıkmazsa eksik koltuk yine moderatör ekibinden, yalnız tarafsızlık aranarak kurayla tamamlanır. **Kurucu ve vatandaş kurası devreye girmez; tarafsızlık hiçbir aşamada gevşemez.** Tarafsız moderatör 2 ise daire 2 üyeyle kurulur (bozma için ikisinin de bozma oyu gerekir, kurucuya bildirim gider); 2'den azsa daire kurulmaz, başvuran "daha sonra dene" uyarısı alır. Yedek liste tutulmaz; görevini yapmayan üyenin yerine aynı kurayla yenisi çekilir.
 - **Gizlilik (oyun kuralı):** üyelerin adı hiçbir oyuncuya gösterilmez; dosyada "Üye 1 / Üye 2 / Üye 3", oyları ve gerekçeleriyle görünür. Gerçek adları yalnız kurucu görür. Bozma haberi üyenin Kürsü hesabından değil olay akışından duyurulur.
 - Süreler ve karar kuralı §23'teki gibidir (24 saat + 24 saat ek süre; bozma için en az 2 oy ve bozma çoğunluğu).
 - **İstinaf yargılama gideri:** başvuru reddedilirse (karar onanırsa) **50.000 ₺** kararı kaybeden tarafa yüklenir; tazminat davasında tutarın %10'u, en az 50.000 ₺, en çok 150.000 ₺. Karar bozulursa gider yoktur.

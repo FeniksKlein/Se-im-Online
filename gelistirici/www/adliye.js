@@ -465,7 +465,7 @@ function adlIstinafHtml(d,ek){
  return h;
 }
 function adlIstinafModal(id){
- const m=modal('<p class="alt">İstinafı 3 üyeli İstinaf Dairesi inceler. Üyelerin kimliği gizlidir; davanın taraflarıyla ve taraf partilerle bağı olan kimse heyette yer almaz. Daire kararı onaylar ya da bozar. Görevini yapmayan üyenin yerine yenisi atanır; 24 saatte çoğunluk yoksa 24 saat ek süre verilir, sonra verilen oylara göre karar çıkar (bozma için en az 2 oy gerekir). Her davada bir kez başvurulabilir.</p>'+adlAlan("İtiraz gerekçen (20–1500)","adlIstGerekce","textarea")+'<button class="btn altin" id="adlIstGonder">İstinafa başvur</button>');
+ const m=modal('<p class="alt">İstinafı 3 üyeli İstinaf Dairesi inceler. Üyeler her dosya için kurayla belirlenir ve kimlikleri gizlidir; davanın taraflarıyla ve taraf partilerle bağı olan kimse heyette yer almaz. Daire kararı onaylar ya da bozar. Görevini yapmayan üyenin yerine kurayla yenisi gelir; 24 saatte çoğunluk yoksa 24 saat ek süre verilir, sonra verilen oylara göre karar çıkar (bozma için en az 2 oy gerekir). Her davada bir kez başvurulabilir.</p>'+adlAlan("İtiraz gerekçen (20–1500)","adlIstGerekce","textarea")+'<button class="btn altin" id="adlIstGonder">İstinafa başvur</button>');
  adlFormBaslik(m,"İstinaf · Dava #"+id);
  m.querySelector("#adlIstGonder").onclick=()=>adlIslem(()=>API.rpc("adliye_istinaf",{p_dava:id,p_gerekce:m.querySelector("#adlIstGerekce").value}),"İstinaf başvurun alındı; dosya İstinaf Dairesine verildi.",id);
 }
