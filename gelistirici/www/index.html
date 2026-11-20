@@ -2746,6 +2746,7 @@ async function benEkrani(){
     <div class="kart"><button class="btn ikinci" onclick="gecmisSecimlerModal()">🗳️ Geçmiş seçimler <span aria-hidden="true">›</span></button></div>
     <div class="kart"><h2>Bilgi</h2>
       <div class="liste-satir" onclick="vatandaslikModal()" style="cursor:pointer"><div class="orta"><b>Seçmen kartım</b><div class="kucuk">Oy, adaylık ve parti kurma şartları</div></div><span>›</span></div>
+      <div class="liste-satir" onclick="typeof yonetimeYazEkrani==='function'&&ekranAc(yonetimeYazEkrani)" style="cursor:pointer"><div class="orta"><b>Yönetime yaz</b><div class="kucuk">Şikâyet, ihbar, itiraz, hata ve öneri; taleplerin ve yanıtlar</div></div><span>›</span></div>
       <div class="liste-satir" onclick="typeof davetEkrani==='function'&&ekranAc(davetEkrani)" style="cursor:pointer"><div class="orta"><b>Arkadaşını davet et, kazan</b><div class="kucuk">Davet kodun, davet ettiklerinin aktifliği ve ödüllerin</div></div><span>›</span></div>
       <div class="liste-satir" onclick="metinGoster('kurallar')" style="cursor:pointer"><div class="orta"><b>Oyun kuralları ve takvim</b></div><span>›</span></div>
       <div class="liste-satir" onclick="metinGoster('gizlilik')" style="cursor:pointer"><div class="orta"><b>Gizlilik ve KVKK</b></div><span>›</span></div>
@@ -2996,6 +2997,7 @@ const NEDENLER = [["hakaret","Hakaret / küfür"],["nefret","Nefret söylemi / a
 function sikayetModal(tur, id, kad, el){
   const m = modal(`<h3 style="font-size:19px;font-weight:800">Şikâyet et</h3><p class="alt">${tur === "oyuncu" ? `${e(kad)} adlı oyuncuyu` : "Bu içeriği"} neden şikâyet ediyorsun?</p>
     ${NEDENLER.map(([k, a]) => `<button class="btn ikinci" data-n="${k}">${a}</button>`).join("")}
+    ${typeof yonetimeYazAc === "function" ? `<button class="btn ikinci" onclick="yonetimeYazAc(${kad ? `'${String(kad).replace(/[^\wçğıöşüÇĞİÖŞÜ.-]/g, "")}'` : "''"})">Olayı kendi cümlelerimle anlatacağım</button>` : ""}
     <p class="kucuk" style="margin-top:10px">Şikâyetler incelenir. ${tur === "ozel" ? "Şikâyet ettiğin özel mesaj hemen gizlenir." : "3 kişinin şikâyet ettiği içerik otomatik gizlenir."}</p>`);
   m.querySelectorAll("[data-n]").forEach(b => b.onclick = async () => {
     try {

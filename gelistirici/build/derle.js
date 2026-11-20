@@ -114,6 +114,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','teskilat_kongre.js'),'utf8')+'</script></body>');
 // Davet merkezi (aktiflik ödülleri) + moderatör ana görevleri ve finans denetim masası (2026.11.16).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','davet_mod_merkezi.js'),'utf8')+'</script></body>');
+// 20.11.2026: Yönetime Yaz — oyuncu talep (ticket) ekranı.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','yonetime_yaz.js'),'utf8')+'</script></body>');
 // 18.11.2026: Moderasyon Merkezi — uzmanlık birimleri, iş kuyrukları, dört göz yaptırım, oyuncu dosyası (eski panelin yerine giriş).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','mod_merkezi.js'),'utf8')+'</script></body>');
 // 18.11.2026: İfadeye çağırma ve zorla getirme (Gözaltı ve Avukat ekranına eklenir).

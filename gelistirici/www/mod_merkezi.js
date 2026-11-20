@@ -51,6 +51,8 @@
 
   const RUTBE = { moderator: "Moderatör", kidemli: "Kıdemli moderatör", sorumlu: "Birim sorumlusu" };
   const ISLEM = Object.assign({}, typeof MOD_ISLEM === "object" ? MOD_ISLEM : {}, {
+    kisit_mali: "para çıkışını dondurdu", kisit_secim: "seçim kısıtı koydu", kisit_uzat: "kısıtı uzattı (ikinci imza)", kisit_kaldir: "kısıtı kaldırdı",
+    toplu_gizle: "son içeriklerini topluca gizledi", destek_devir: "talebi başka masaya devretti", masa_yetkileri: "masa yaptırım yetkilerini yürürlüğe koydu",
     kayit_onay: "başvuruyu kabul etti", kayit_ret: "başvuruyu reddetti", talep_ac: "yaptırım talebi açtı", talep_onay: "talebi onayladı",
     talep_ret: "talebi reddetti", talep_geri: "talebini geri çekti", not_ekle: "dosyaya not ekledi", destek_yanit: "destek talebini yanıtladı",
     destek_kapat: "destek talebini kapattı", yk_sustur: "susturdu", yk_engel_sureli: "süreli engelledi", yk_engel_kalici: "kalıcı engelledi",
@@ -68,9 +70,10 @@
     sohbet:  { ad: "Sohbet nöbeti", alt: "Son 1 saat", ik: "sohbet", renk: "#e0a43a", sla: 0,            ac: () => ekranAc(mmNobet) },
     destek:  { ad: "Destek talepleri", alt: "Yanıt bekleyen", ik: "destek", renk: "#9a7bff", sla: 720,   ac: () => ekranAc(mmDestek) },
     masak:   { ad: "MASAK", alt: "İncelenmemiş işlem", ik: "masak", renk: "#3fb67a", sla: 1440,          ac: () => typeof masakEkrani === "function" ? ekranAc(masakEkrani) : toast("MASAK ekranı bu sürümde yok.", true) },
-    coklu:   { ad: "Çoklu hesap", alt: "Onaysız ortak cihaz", ik: "sandik", renk: "#4fc1d6", sla: 0,     ac: () => ekranAc(mmCoklu) }
+    coklu:   { ad: "Çoklu hesap", alt: "Onaysız ortak cihaz", ik: "sandik", renk: "#4fc1d6", sla: 0,     ac: () => ekranAc(mmCoklu) },
+    kutu:    { ad: "Talep kutusu", alt: "Yönetime Yaz", ik: "destek", renk: "#9a7bff", sla: 240,         ac: () => ekranAc(mmKutu) }
   };
-  const SIRA = ["talep", "kayit", "sikayet", "destek", "masak", "coklu"];
+  const SIRA = ["talep", "kayit", "sikayet", "kutu", "destek", "masak", "coklu"];
 
   /* ---------- Görünüm (tek seferlik CSS) ---------- */
   function css() {
@@ -229,6 +232,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     const araclar = [
       ["ara", "Oyuncu dosyası", "ara"], yv("duyuru") ? ["megafon", "Duyuru", "duyuru"] : null,
       ["gunluk", b.yonetici ? "Denetim günlüğü" : "İşlemlerim", "gunluk"], ["terazi", "Taleplerim", "taleplerim"],
+      yv("sikayet") ? ["sikayet", "Kürsü şikâyetleri", "kursu"] : null, ["kilit", "Kısıtlar ve yetkilerim", "kisit"], ["destek", "Talep kutusu", "kutu"],
       b.yonetici ? ["ekip", "Ekip yönetimi", "ekip"] : ["ekip", "Ekip", "ekipgor"],
       yv("ekonomi") && typeof finansMasasiEkrani === "function" ? ["masak", "Finans masası", "finans"] : null,
       (b.yonetici || yv("para") || yv("makam")) && typeof kontrolMerkezi === "function" ? ["ayar", "Kontrol Merkezi", "km"] : null,
@@ -276,6 +280,9 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       if (a === "duyuru") return ekranAc(mmDuyuru);
       if (a === "gunluk") return ekranAc(mmGunluk);
       if (a === "taleplerim") return ekranAc(mmTalepler);
+      if (a === "kursu") return ekranAc(mmKursu);
+      if (a === "kisit") return ekranAc(mmKisitlar);
+      if (a === "kutu") return ekranAc(mmKutu);
       if (a === "ekip") return ekranAc(mmEkip);
       if (a === "ekipgor") return ekranAc(mmEkipGor);
       if (a === "finans") return ekranAc(finansMasasiEkrani);
@@ -446,7 +453,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
         <div class="mm-aksiyon">
           ${x.kilit ? (x.devir ? "" : `<button class="y" data-k="yok_say">Tarafsız moderatöre devret</button>`) : `<button class="y" data-k="yok_say">Sorun yok</button>`}<button data-k="gizle">Gizle</button>
           ${yv("sustur") ? `<button data-k="gizle_sustur1">Gizle + 1 gün</button><button data-k="gizle_sustur7">Gizle + 7 gün</button>` : ""}
-          ${yv("hesap_kapat") ? `<button class="k" data-k="kapat">Hesabı kapat</button>` : `<button class="k" data-talep="1">Yaptırım talebi</button>`}
+          ${yv("hesap_kapat") ? `<button class="k" data-k="kapat">${M.ben.yonetici ? "Hesabı kapat" : "İncelemeye al + kalıcı engel talebi"}</button>` : `<button class="k" data-talep="1">Yaptırım talebi</button>`}
           <button data-dosya="1">Dosya</button>
         </div></div>`;
     }).join("");
@@ -457,7 +464,9 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       k.addEventListener("click", () => API.rpc("mod_ustlen", { p_tur: "sikayet", p_anahtar: anah(x) }).catch(() => {}), { once: true });
       k.querySelectorAll("[data-k]").forEach(b => b.onclick = async (ev) => {
         ev.stopPropagation();
-        if (b.dataset.k === "kapat" && !await onayla("Hesabı kapat", `${esc(x.hedef)} adlı oyuncunun hesabı kapatılacak; görevleri düşer, mesajları gizlenir.`, "Kapat", true)) return;
+        if (b.dataset.k === "kapat" && !await (M.ben.yonetici
+              ? onayla("Hesabı kapat", `${esc(x.hedef)} adlı oyuncunun hesabı kapatılacak; görevleri düşer, mesajları gizlenir.`, "Kapat", true)
+              : onayla("İncelemeye al", `İçerik gizlenir, ${esc(x.hedef)} 24 saat oyuna giremez ve kalıcı engel talebin ikinci bir görevlinin onayına gider.`, "Uygula", true))) return;
         try { const r = await API.rpc("admin_sikayet_karar", { p_tur: x.tur, p_kayit: x.kayit_id || null, p_hedef_kad: x.hedef, p_islem: b.dataset.k });
           const dv = b.dataset.k === "yok_say" && Array.isArray(r) && r.some(z => anah(z) === anah(x) && z.devir);
           toast(dv ? "Çıkar çatışması: karar tarafsız moderatöre devredildi." : "Karar uygulandı."); mmSikayet(); }
@@ -683,11 +692,17 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
         <div class="mm-aksiyon">
           ${y.sustur ? (d.susturma_bitis ? (leheKilit ? "" : `<button class="y" data-a="susKaldir">Susturmayı kaldır</button>`) : `<button data-a="sustur">Sustur</button>`) : ""}
           ${y.hesap_kapat ? (d.yasakli ? (leheKilit ? "" : `<button class="y" data-a="engelKaldir">Engeli kaldır</button>`) : `<button class="k" data-a="engel">Engelle</button>`) : ""}
-          ${!y.hesap_kapat || !y.sustur ? `<button class="k" data-a="talep">Yaptırım talebi</button>` : ""}
+          <button class="k" data-a="talep">Yaptırım talebi</button>
+          ${y.mali_dondur || y.yonetici ? `<button class="k" data-a="mali">Para çıkışını dondur</button>` : ""}
+          ${y.secim_kisit || y.yonetici ? `<button class="k" data-a="secim">Seçim kısıtı</button>` : ""}
+          ${yv("sikayet") ? `<button data-a="toplu">Son içeriklerini gizle</button>` : ""}
           <button data-a="ilet">Yöneticiye ilet</button>
           <button data-a="not">Not ekle</button>
           ${y.yonetici && typeof kmOyuncuAc === "function" ? `<button data-a="km">Kontrol Merkezi'nde aç</button>` : ""}
         </div></div>`;
+    const kisitKart = (d.kisitlar || []).length ? `<div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>Yürürlükteki yaptırımlar</h3></div>${d.kisitlar.map(k => kisitSatir(k, y.yonetici)).join("")}</div>` : "";
+    const sn = d.sinirlar || {};
+    const sinirNot = !y.yonetici && (sn.engel || {}).var ? `<p class="mm-alt" style="margin:6px 2px 0">Tek imza: engel ${esc(sn.engel.tek)}${(sn.sustur || {}).var ? ", susturma " + esc(sn.sustur.tek) : ""}${(sn.mali || {}).var ? ", dondurma " + esc(sn.mali.tek) : ""}${(sn.secim || {}).var ? ", seçim kısıtı " + esc(sn.secim.tek) : ""}. Daha uzunu ve kalıcı engel ikinci imzayla.${d.ust_makam ? " <b>Üst makam:</b> engel her zaman iki imza ister." : ""}${d.sandik_acik ? " <b>Sandık açık:</b> engel iki imza ister." : ""}</p>` : "";
     sayfa("Oyuncu dosyası", `
       <section class="mm-hero" style="--mm-r:${d.parti ? esc(d.parti.renk) : "#7b61ff"}">
         <div class="mm-dosya-ust"><div class="portre-kutu">${typeof portre === "function" ? portre(d.kad, d.parti && d.parti.renk) : ""}</div>
@@ -696,7 +711,8 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
         ${durum.length ? `<div class="mm-cipler" style="margin-top:10px">${durum.map(c => `<span class="mm-etiket" style="--c:${c[1]}">${esc(c[0])}</span>`).join("")}</div>` : ""}
         <div class="mm-istat"><div><b>${so.toplam || 0}</b><span>şikâyet</span></div><div><b>${(d.gecmis || []).length}</b><span>moderasyon kaydı</span></div><div><b>${(d.notlar || []).length}</b><span>not</span></div></div>
       </section>
-      ${aksiyon}
+      ${aksiyon}${sinirNot}
+      ${kisitKart}
       <div class="mm-sekme">${sekmeler.map(s => `<button class="${DS.sekme === s[0] ? "on" : ""}" data-s="${s[0]}">${s[1]}</button>`).join("")}</div>
       ${govde}`);
     document.querySelectorAll(".mm-sekme [data-s]").forEach(b => b.onclick = () => { DS.sekme = b.dataset.s; mmDosya(); });
@@ -706,11 +722,14 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       try { const l = await API.rpc("mod_not_ekle", { p_kad: d.kad, p_metin: $("#mmNot").value }); $("#mmNot").value = ""; $("#mmNotL").innerHTML = notListe(l); d.notlar = l; toast("Not eklendi."); } catch (err) { hata(err); }
     };
     document.querySelectorAll("[data-a]").forEach(b => b.onclick = () => dosyaIslem(b.dataset.a, d));
+    kisitBagla(() => mmDosya());
   }
   const notListe = (l) => (l || []).map(n => `<div class="mm-satir" style="cursor:default"><div class="orta"><div style="font-size:15px;line-height:1.45;white-space:pre-wrap">${esc(n.metin)}</div><div class="kucuk">${esc(n.yazan)} · ${once(n.zaman)}</div></div></div>`).join("") || `<div class="mm-alt" style="padding:12px 0">Henüz not yok.</div>`;
   function dosyaIslem(a, d) {
     if (a === "talep") return talepAc(d.kad, { tur: "sustur" });
     if (a === "ilet") return talepAc(d.kad, { tur: "eskalasyon" });
+    if (a === "mali" || a === "secim") return kisitUygula(d.kad, a, (d.sinirlar || {})[a], !!(d.yetkim || {}).yonetici, () => mmDosya());
+    if (a === "toplu") return topluGizle(d.kad, () => mmDosya());
     if (a === "km") return kmOyuncuAc(d.kad);
     if (a === "not") { DS.sekme = "not"; mmDosya(); return; }
     if (a === "susKaldir") return (async () => { try { await API.rpc("yk_sustur", { p_kad: d.kad, p_saat: 0, p_neden: null }); toast("Susturma kaldırıldı."); mmDosya(); } catch (err) { hata(err); } })();
@@ -928,10 +947,158 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     }, 280); };
   }
 
+
+  /* =====================================================================
+     10) TALEP KUTUSU (Yönetime Yaz) · KÜRSÜ ŞİKÂYETLERİ · KISITLAR VE YETKİLER  (20.11.2026)
+     ===================================================================== */
+  const KT = { tum: false };
+  const KDURUM = { yeni: ["yanıt bekliyor", "#e0a43a"], yanitlandi: ["yanıtlandı", "#34c98a"], kapali: ["kapalı", "#98a4c4"] };
+  async function mmKutu() {
+    yukleniyor("Talep kutusu");
+    let r; try { r = await API.rpc("mod_kutu", { p_durum: KT.tum ? "tum" : "acik" }); } catch (err) { hataSayfa("Talep kutusu", err); return; }
+    const l = r.talepler || [];
+    sayfa("Talep kutusu", `<div class="mm-uyari yesil">${IK.destek}<div>Oyuncuların <b>Yönetime Yaz</b> ile gönderdiği talepler konusuna göre masana düşer. Yanıtın oyuncuya görev kodunla gider; adın görünmez.</div></div>
+      <div class="mm-filtre"><button class="${KT.tum ? "" : "on"}" data-t="0">Yanıt bekleyen</button><button class="${KT.tum ? "on" : ""}" data-t="1">Son 30 gün</button></div>
+      ${l.map((d, i) => `<div class="mm-kart ${d.durum === "yeni" && dkGecti(d.son_hareket) > 240 ? "vurgu" : ""}" data-i="${i}" style="--c:#9a7bff">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap"><b style="font-size:16px">#${d.id} · ${esc(d.kad)}</b><span class="mm-etiket" style="--c:${(KDURUM[d.durum] || KDURUM.yeni)[1]}">${(KDURUM[d.durum] || KDURUM.yeni)[0]}</span></div>
+        <div class="mm-alt">${esc(d.konu_ad)} · ${esc(d.masa_ad)} · ${once(d.zaman)}${d.hedef ? ` · hakkında: <b>${esc(d.hedef)}</b>` : ""}${d.onceki ? ` · daha önce ${d.onceki} talep` : ""}${d.hedef_sikayet ? ` · bu oyuncu hakkında ${d.hedef_sikayet} talep daha` : ""}${d.platform ? " · " + esc(d.platform) : ""}</div>
+        ${(d.mesajlar || []).map(m => `<div class="mm-baloncuk" style="${m.gorevli ? "border-left:3px solid #34c98a" : ""}"><b>${m.gorevli ? esc(m.yazan) : esc(d.kad)}</b> · ${once(m.zaman)}\n${esc(m.metin)}</div>`).join("")}
+        ${d.durum !== "kapali" ? `<textarea class="mm-girdi" maxlength="1000" placeholder="Yanıtın (oyuncuya bildirim olarak gider)"></textarea>
+          <div class="mm-iki"><button class="mm-btn mor" data-y="0">Yanıtla</button><button class="mm-btn" data-y="1">Yanıtla ve kapat</button></div>` : ""}
+        <div class="mm-aksiyon">${d.hedef ? `<button data-dosya="${esc(d.hedef)}">Şikâyet edilenin dosyası</button>` : ""}<button data-dosya="${esc(d.kad)}">Yazanın dosyası</button>${d.durum !== "kapali" ? `<button data-devret="1">Başka masaya devret</button>` : ""}</div>
+      </div>`).join("") || bos(KT.tum ? "Son 30 günde talep yok" : "Yanıt bekleyen talep yok", "Oyuncular Ben › Yönetime yaz ekranından yazdığında burada görünür.")}`);
+    document.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { KT.tum = b.dataset.t === "1"; mmKutu(); });
+    document.querySelectorAll(".mm-kart[data-i]").forEach(k => {
+      const d = l[+k.dataset.i], ta = k.querySelector("textarea");
+      k.querySelectorAll("[data-dosya]").forEach(b => b.onclick = () => mmDosyaAc(b.dataset.dosya));
+      k.querySelectorAll("[data-y]").forEach(b => b.onclick = async () => {
+        const kapat = b.dataset.y === "1", m = ta.value.trim();
+        if (!m && !kapat) { toast("Yanıt yaz.", true); return; }
+        try { await API.rpc("mod_kutu_yanitla", { p_id: d.id, p_metin: m || null, p_kapat: kapat }); toast(kapat ? "Yanıtlandı ve kapatıldı." : "Yanıt gönderildi."); mmKutu(); }
+        catch (err) { hata(err); }
+      });
+      const dv = k.querySelector("[data-devret]");
+      if (dv) dv.onclick = () => {
+        const secenek = (r.masalar || []).filter(x => x.kod !== d.masa).concat(d.masa !== "kurucu" ? [{ kod: "kurucu", ad: "Kurucu (oyun yönetimi)" }] : []);
+        const md = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">Talebi devret · #${d.id}</h3><p class="mm-alt" style="margin:4px 0 8px">Konu başka bir masanın alanındaysa oraya gönder.</p>
+          ${secenek.map(x => `<button class="mm-btn" style="margin-top:8px" data-m="${esc(x.kod)}">${esc(x.ad)}</button>`).join("")}
+          <button class="mm-btn cizgi" style="margin-top:8px" id="mmKVaz">Vazgeç</button>`);
+        $("#mmKVaz", md).onclick = modalKapat;
+        md.querySelectorAll("[data-m]").forEach(x => x.onclick = async () => {
+          try { await API.rpc("mod_kutu_devret", { p_id: d.id, p_masa: x.dataset.m, p_not: null }); modalKapat(); toast("Talep devredildi."); mmKutu(); } catch (err) { hata(err); }
+        });
+      };
+    });
+  }
+
+  async function mmKursu() {
+    yukleniyor("Kürsü şikâyetleri");
+    let l; try { l = await API.rpc("admin_akis_sikayetleri"); } catch (err) { hataSayfa("Kürsü şikâyetleri", err); return; }
+    const sus = yv("sustur");
+    sayfa("Kürsü şikâyetleri", `<div class="mm-uyari sari">${IK.sikayet}<div>Oyuncuların şikâyet ettiği Kürsü paylaşımları. Bölücü, hakaret ve spam içeriği gizle; gerekiyorsa sustur ya da oyuncu dosyasından engelle.</div></div>
+      ${(l || []).map((x, i) => `<div class="mm-kart" style="--c:#e5574f" data-i="${i}">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:16px">${esc(x.kad)}</b><span class="mm-etiket" style="--c:#e5574f">${x.sayi} şikâyet</span></div>
+        <div class="mm-alt">${(x.nedenler || []).map(n => NEDEN[n] || n).join(", ")} · ${once(x.ilk)}${x.gizli ? " · gizlendi" : ""}${x.devir ? " · tarafsız karar bekliyor" : ""}</div>
+        <div class="mm-baloncuk">${esc(x.metin)}</div>
+        <div class="mm-aksiyon">${x.kilit ? (x.devir ? "" : `<button class="y" data-k="yok_say">Tarafsız moderatöre devret</button>`) : `<button class="y" data-k="yok_say">Sorun yok</button>`}<button data-k="gizle">Gizle</button>
+          ${sus ? `<button data-k="gizle_sustur1">Gizle + 1 gün sustur</button>` : ""}<button data-dosya="${esc(x.kad)}">Dosya</button></div></div>`).join("") || bos("Açık Kürsü şikâyeti yok", "Oyuncular bir paylaşımı şikâyet ettiğinde burada görünür.")}`);
+    document.querySelectorAll(".mm-kart[data-i]").forEach(k => {
+      const x = l[+k.dataset.i];
+      k.querySelectorAll("[data-dosya]").forEach(b => b.onclick = () => mmDosyaAc(b.dataset.dosya));
+      k.querySelectorAll("[data-k]").forEach(b => b.onclick = async () => {
+        try { await API.rpc("admin_akis_karar", { p_id: x.id, p_islem: b.dataset.k }); toast("Karar uygulandı."); mmKursu(); } catch (err) { hata(err); }
+      });
+    });
+  }
+
+  const KISIT_RENK = { sustur: "#e0a43a", engel: "#e5574f", mali: "#3fb67a", secim: "#5b8def" };
+  function kisitSatir(k, yon) {
+    const elle = k.kod === "mali" || k.kod === "secim";
+    const uzat = elle && (yon || (!k.benim && !k.kurucu));
+    const kaldir = elle && (yon || (!k.kurucu && k.kaynak !== "masak"));
+    return `<div class="mm-satir" style="cursor:default;align-items:flex-start"><div class="orta">
+        <b style="font-weight:650"><span class="mm-etiket" style="--c:${KISIT_RENK[k.kod] || "#98a4c4"}">${esc(k.ad)}</span> ${esc(k.hedef || "")}</b>
+        <div class="kucuk">${k.bitis ? tsaat(k.bitis) + "'e kadar" : "süresiz"} · ${esc(k.veren || "sistem")}${k.onaylayan ? " + " + esc(k.onaylayan) + " (iki imza)" : " (tek imza)"}${k.kurucu ? " · kurucu" : ""}${k.kaynak === "masak" ? " · MASAK el koyma önerisi" : ""}</div>
+        ${k.gerekce ? `<div class="kucuk" style="white-space:pre-wrap">${esc(k.gerekce)}</div>` : ""}
+        ${uzat || kaldir ? `<div class="mm-aksiyon" style="margin-top:6px">${uzat ? `<button data-kuzat="${k.id}" data-kod="${esc(k.kod)}">Uzat (ikinci imza)</button>` : ""}${kaldir ? `<button class="y" data-kkaldir="${k.id}">Kaldır</button>` : ""}</div>` : ""}
+      </div></div>`;
+  }
+  function kisitBagla(yenile) {
+    document.querySelectorAll("[data-kuzat]").forEach(b => b.onclick = () => {
+      const SEC = b.dataset.kod === "mali" ? [[72, "3 gün"], [168, "7 gün"], [336, "14 gün"], [696, "29 gün"]] : [[168, "7 gün"], [336, "14 gün"], [696, "29 gün"]];
+      let v = SEC[1][0];
+      const md = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">Kısıtı uzat</h3><p class="mm-alt" style="margin:4px 0 8px">İkinci imza: süre şu andan itibaren sayılır; başlangıçtan itibaren toplam 30 günü geçemez.</p>
+        <div class="mm-filtre" id="mmKU">${SEC.map(s => `<button data-v="${s[0]}" class="${s[0] === v ? "on" : ""}">${s[1]}</button>`).join("")}</div>
+        <label class="mm-alan" for="mmKUN">Not (isteğe bağlı)</label><textarea class="mm-girdi" id="mmKUN" maxlength="300"></textarea>
+        <button class="mm-btn kirmizi" style="margin-top:10px" id="mmKUOk">Uzat</button><button class="mm-btn cizgi" style="margin-top:8px" id="mmKUVaz">Vazgeç</button>`);
+      cipSec($("#mmKU", md), x => v = +x);
+      $("#mmKUVaz", md).onclick = modalKapat;
+      $("#mmKUOk", md).onclick = async () => {
+        try { await API.rpc("mod_kisit_uzat", { p_id: +b.dataset.kuzat, p_saat: v, p_not: $("#mmKUN", md).value || null }); modalKapat(); toast("Kısıt uzatıldı."); yenile(); } catch (err) { hata(err); }
+      };
+    });
+    document.querySelectorAll("[data-kkaldir]").forEach(b => b.onclick = () => {
+      const n = prompt("Kaldırma gerekçesi (kayda geçer):", ""); if (n === null) return;
+      (async () => { try { await API.rpc("mod_kisit_kaldir", { p_id: +b.dataset.kkaldir, p_not: n }); toast("Kısıt kaldırıldı."); yenile(); } catch (err) { hata(err); } })();
+    });
+  }
+  function kisitUygula(kad, kod, sinir, yon, sonra) {
+    const mali = kod === "mali";
+    const tek = yon ? 87600 : ((sinir || {}).tek_saat || 0);
+    const SEC = (mali ? [[24, "24 saat"], [48, "2 gün"], [72, "3 gün"], [168, "7 gün"], [720, "30 gün"]] : [[24, "24 saat"], [72, "3 gün"], [168, "7 gün"], [720, "30 gün"]]).filter(s => s[0] <= tek);
+    if (!SEC.length) { toast("Bu yaptırım senin masanın yetkisinde değil.", true); return; }
+    let v = SEC[SEC.length - 1][0];
+    const md = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">${mali ? "Para çıkışını dondur" : "Seçim kısıtı"} · ${esc(kad)}</h3>
+      <p class="mm-alt" style="margin:4px 0 8px">${mali ? "Oyuncu cüzdanından, banka hesaplarından ve yönettiği işletme kasalarından para çıkışı yapamaz. Gelen para ve otomatik tahsilatlar sürer; oyunun geri kalanını oynar." : "Oyuncu oy kullanamaz ve aday olamaz; oyunun geri kalanını oynar. Sahte ve çoklu hesap şüphesinde kullan."}</p>
+      <div class="mm-filtre" id="mmKS">${SEC.map(s => `<button data-v="${s[0]}" class="${s[0] === v ? "on" : ""}">${s[1]}</button>`).join("")}</div>
+      ${yon ? "" : `<p class="mm-alt" style="margin:6px 0 0">Tek imza sınırın ${esc((sinir || {}).tek || "")}. Daha uzunu için başka bir görevli "Uzat" ile ikinci imzayı atar (toplam ${esc((sinir || {}).cift || "30 gün")}).</p>`}
+      <label class="mm-alan" for="mmKG">Gerekçe (oyuncu görür)</label><textarea class="mm-girdi" id="mmKG" maxlength="500" placeholder="${mali ? "Örn. Banka üzerinden şüpheli para döngüsü inceleniyor." : "Örn. Aynı kişiye ait birden çok hesapla oy kullanma şüphesi."}"></textarea>
+      <label class="mm-alan" for="mmKK">Kanıt${mali ? " (isteğe bağlı)" : ""}</label><textarea class="mm-girdi" id="mmKK" maxlength="600" placeholder="Hangi hesaplar, hangi işlem, hangi işaret?"></textarea>
+      <button class="mm-btn kirmizi" style="margin-top:10px" id="mmKOk">Uygula</button><button class="mm-btn cizgi" style="margin-top:8px" id="mmKVz">Vazgeç</button>`);
+    cipSec($("#mmKS", md), x => v = +x);
+    $("#mmKVz", md).onclick = modalKapat;
+    $("#mmKOk", md).onclick = async () => {
+      const g = $("#mmKG", md).value.trim();
+      if (g.length < 10) { toast("Gerekçe en az 10 karakter olmalı.", true); return; }
+      try { await API.rpc("mod_kisit_uygula", { p_kad: kad, p_kod: kod, p_saat: v, p_gerekce: g, p_kanit: $("#mmKK", md).value.trim() || null }); modalKapat(); toast(mali ? "Para çıkışı donduruldu." : "Seçim kısıtı uygulandı."); sonra && sonra(); }
+      catch (err) { hata(err); }
+    };
+  }
+  function topluGizle(kad, sonra) {
+    let v = 24;
+    const md = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">Son içeriklerini gizle · ${esc(kad)}</h3>
+      <p class="mm-alt" style="margin:4px 0 8px">Oyuncunun seçtiğin süre içindeki bütün sohbet mesajları, Kürsü paylaşımları ve yayınları tek işlemle gizlenir. Spam ve toplu saldırı için.</p>
+      <div class="mm-filtre" id="mmTGS">${[[1, "Son 1 saat"], [6, "6 saat"], [24, "24 saat"], [72, "3 gün"]].map(s => `<button data-v="${s[0]}" class="${s[0] === v ? "on" : ""}">${s[1]}</button>`).join("")}</div>
+      <label class="mm-alan" for="mmTGG">Gerekçe (oyuncu görür)</label><textarea class="mm-girdi" id="mmTGG" maxlength="300" placeholder="Örn. Tekrarlanan spam paylaşımlar."></textarea>
+      <button class="mm-btn kirmizi" style="margin-top:10px" id="mmTGOk">Gizle</button><button class="mm-btn cizgi" style="margin-top:8px" id="mmTGVz">Vazgeç</button>`);
+    cipSec($("#mmTGS", md), x => v = +x);
+    $("#mmTGVz", md).onclick = modalKapat;
+    $("#mmTGOk", md).onclick = async () => {
+      const g = $("#mmTGG", md).value.trim();
+      if (g.length < 10) { toast("Gerekçe en az 10 karakter olmalı.", true); return; }
+      try { const r = await API.rpc("mod_icerik_toplu_gizle", { p_kad: kad, p_saat: v, p_gerekce: g }); modalKapat(); toast(`${r.mesaj} mesaj, ${r.kursu} Kürsü paylaşımı, ${r.yayin} yayın gizlendi.`); sonra && sonra(); }
+      catch (err) { hata(err); }
+    };
+  }
+  async function mmKisitlar() {
+    yukleniyor("Kısıtlar ve yetkilerim");
+    let k, y; try { [k, y] = await Promise.all([API.rpc("mod_kisitlar", { p_kad: null }), API.rpc("mod_yetki_tablosu")]); } catch (err) { hataSayfa("Kısıtlar ve yetkilerim", err); return; }
+    const ben = y.ben || {}, elle = (k.aktif || []).filter(x => x.kod === "mali" || x.kod === "secim"), diger = (k.aktif || []).filter(x => x.kod !== "mali" && x.kod !== "secim");
+    sayfa("Kısıtlar ve yetkilerim", `
+      <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>Masaların yaptırım yetkisi</h3></div>
+        ${(y.birimler || []).map(b => `<div style="margin:8px 0 12px"><b style="color:${esc(b.renk)}">${esc(b.ad)}${b.kod === ben.birim ? " · senin masan" : ""}</b>
+          ${(b.yaptirimlar || []).map(z => `<div class="mm-kv"><span>${esc(z.ad)}</span><span>tek imza ${esc(z.tek)} · iki imza ${esc(z.cift)}</span></div>`).join("")}</div>`).join("")}
+        <div class="mm-alt">${(y.kurallar || []).map(x => "• " + esc(x)).join("<br>")}</div></div>
+      <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>Yürürlükteki dondurma ve seçim kısıtları (${elle.length})</h3></div>
+        ${elle.map(x => kisitSatir(x, !!ben.yonetici)).join("") || `<div class="mm-alt">Yürürlükte kısıt yok. Yenisini oyuncu dosyasından uygularsın.</div>`}</div>
+      ${diger.length ? `<details class="mm-kart"><summary style="font-weight:800;cursor:pointer">Yürürlükteki susturma ve engeller (${diger.length})</summary>${diger.map(x => kisitSatir(x, !!ben.yonetici)).join("")}</details>` : ""}`);
+    kisitBagla(() => mmKisitlar());
+  }
+
   /* ---------- Giriş noktası: eski panelin yerine Moderasyon Merkezi ---------- */
   if (typeof yoneticiEkrani === "function" && !window.yoneticiEkraniKlasik) {
     window.yoneticiEkraniKlasik = yoneticiEkrani;
     window.yoneticiEkrani = yoneticiEkrani = modMerkezi;
   }
-  Object.assign(window, { modMerkezi, mmDosyaAc, mmKayit, mmSikayet, mmNobet, mmDestek, mmTalepler, mmEkip, mmGunluk, mmDuyuru, mmCoklu, mmTalepAc: talepAc });
+  Object.assign(window, { modMerkezi, mmDosyaAc, mmKayit, mmSikayet, mmNobet, mmDestek, mmTalepler, mmEkip, mmGunluk, mmDuyuru, mmCoklu, mmTalepAc: talepAc, mmKutu, mmKursu, mmKisitlar });
 })();
