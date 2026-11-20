@@ -455,6 +455,7 @@ function adlIstinafHtml(d,ek){
   const i=ek.istinaf;
   h+='<div class="kart"><h3>İstinaf</h3><p class="alt">'+e(i.basvuran)+' itiraz etti: '+e(i.gerekce)+'</p>'
    +'<p class="kucuk">İstinaf Dairesi: '+i.juri_sayi+' üye'+(i.heyet_gizli?' (kimlikleri gizli)':'')+' · '+i.onay+' onay · '+i.boz+' boz · '+(i.durum==="acik"?'son '+adlTarih(i.bit):i.durum==="bozuldu"?'karar bozuldu':'karar onaylandı')+'</p>'
+   +(Number(i.teminat)>0?'<p class="kucuk">İstinaf teminatı: '+e(typeof tlYaz==="function"?tlYaz(i.teminat):Number(i.teminat).toLocaleString("tr-TR")+" ₺")+' · '+e(i.teminat_durum==="iade"?"iade edildi":i.teminat_durum==="gider"?"yargılama gideri olarak kaldı":"yatırıldı, karar bekleniyor")+'</p>':'')
    +(i.juri?i.juri.map(j=>'<div class="kucuk">• '+e(j.kad)+': '+e(j.oy==="boz"?"boz":j.oy==="onay"?"onayla":"oy vermedi")+(j.gerekce?' — '+e(j.gerekce):'')+'</div>').join(''):'')
    +(i.durum==="acik"&&i.juri_miyim&&!i.juri_oyum?'<div class="alan"><label>Kısa gerekçe (isteğe bağlı)</label><input id="adlJuriNot" maxlength="2000"></div><div class="vit-dugme"><button class="btn altin" onclick="adlJuriOy('+d.id+',\'onay\')">Kararı onayla</button><button class="btn ikinci" onclick="adlJuriOy('+d.id+',\'boz\')">Kararı boz</button></div>':'')
    +(i.juri_oyum?'<p class="kucuk">Oyun: '+e(i.juri_oyum==="boz"?"boz":"onayla")+'</p>':'')+'</div>';

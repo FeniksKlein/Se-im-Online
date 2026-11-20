@@ -1036,7 +1036,10 @@ Kaynak: `gelistirici/sql/zz_20261120_duyuru_sinir_imza.sql`, `zz_20261120_istina
 - Böyle 3 kişi çıkmazsa eksik koltuk yine moderatör ekibinden, yalnız tarafsızlık aranarak kurayla tamamlanır. **Kurucu ve vatandaş kurası devreye girmez; tarafsızlık hiçbir aşamada gevşemez.** Tarafsız moderatör 2 ise daire 2 üyeyle kurulur (bozma için ikisinin de bozma oyu gerekir, kurucuya bildirim gider); 2'den azsa daire kurulmaz, başvuran "daha sonra dene" uyarısı alır. Yedek liste tutulmaz; görevini yapmayan üyenin yerine aynı kurayla yenisi çekilir.
 - **Gizlilik (oyun kuralı):** üyelerin adı hiçbir oyuncuya gösterilmez; dosyada "Üye 1 / Üye 2 / Üye 3", oyları ve gerekçeleriyle görünür. Gerçek adları yalnız kurucu görür. Bozma haberi üyenin Kürsü hesabından değil olay akışından duyurulur.
 - Süreler ve karar kuralı §23'teki gibidir (24 saat + 24 saat ek süre; bozma için en az 2 oy ve bozma çoğunluğu).
-- **İstinaf yargılama gideri:** başvuru reddedilirse (karar onanırsa) **50.000 ₺** kararı kaybeden tarafa yüklenir; tazminat davasında tutarın %10'u, en az 50.000 ₺, en çok 150.000 ₺. Karar bozulursa gider yoktur.
+- **İstinaf teminatı (peşin):** tutar **50.000 ₺**; tazminat davasında tutarın %10'u, en az 50.000 ₺, en çok 150.000 ₺. Başvuru anında kararı kaybeden taraftan alınır; yeterli para yoksa başvuru yapılamaz. Kişi → cüzdan (bankadaki para sayılmaz), parti → parti kasası, bakanlık adına açılmış dava → bakanlık kasası, kurum davalı → başvuran kurum yetkilisinin cüzdanı.
+  - **İade:** Daire kararı bozarsa; ayrıca Daire çoğunlukla karar veremezse (hiç oy yok, tek oy, eşitlik: karar kural gereği onanır ama oyuncu üyeler oy vermedi diye para kaybetmez).
+  - **Gider:** Daire başvuruyu çoğunlukla (en az 2 onama oyu) reddederse teminat yargılama gideri olarak kalır (CMK m.325, HMK m.326).
+  - Daire kurulamazsa başvuru yapılmamış sayılır, teminat alınmaz. İade "iade" türüyle yazılır (MASAK ani servet sayımına ve gelir haczine girmez).
 
 **Yardım Masası** (Sohbet › Kanallar › Yardım; ayrıca Ben › Yardım Masası ve Menü araması).
 - Herkes okur ve soru yazar; deneyimli oyuncular da yanıtlayabilir. Kanal okunmamış sayısı genel sohbet rozetine eklenmez.

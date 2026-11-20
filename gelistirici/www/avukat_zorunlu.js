@@ -293,7 +293,7 @@ adliyeDosya=async function(id){
  }catch(err){console.warn('İsteğe bağlı avukat gösterimi:',err.message);}
 };
 window.avukatIstinafModal=id=>{
- const m=modal('<p class="alt">Müvekkilin adına istinaf başvurusu yaparsın. Dosyayı 3 üyeli İstinaf Dairesi inceler, kararı onaylar ya da bozar; üyelerin kimliği gizlidir. Her davada bir kez başvurulur.</p><div class="alan"><label>İstinaf gerekçesi (20–1500)</label><textarea id="aiGerekce" rows="5" maxlength="4000" '+TA+'></textarea></div><button class="btn altin" id="aiGonder">İstinafa başvur</button>');
+ const m=modal('<p class="alt">Müvekkilin adına istinaf başvurusu yaparsın. Dosyayı 3 üyeli İstinaf Dairesi inceler, kararı onaylar ya da bozar; üyelerin kimliği gizlidir. Her davada bir kez başvurulur. Başvuruda istinaf teminatı (en az 50.000 ₺) müvekkilin cüzdanından peşin alınır; karar bozulursa iade edilir, başvuru reddedilirse yargılama gideri olarak kalır.</p><div class="alan"><label>İstinaf gerekçesi (20–1500)</label><textarea id="aiGerekce" rows="5" maxlength="4000" '+TA+'></textarea></div><button class="btn altin" id="aiGonder">İstinafa başvur</button>');
  adlFormBaslik(m,'Dava #'+id+' · vekil istinafı');
  m.querySelector('#aiGonder').onclick=async()=>{try{const r=await RPC('avukat_istinaf',{p_dava:id,p_gerekce:m.querySelector('#aiGerekce').value});modalKapat();toast('İstinaf başvurusu alındı; dosya '+(r.juri||3)+' üyeli İstinaf Dairesine verildi.');await adliyeDosya(id);}catch(err){error(err);}};
 };

@@ -32,9 +32,10 @@ const html = html0.replace(/<script src="https:[^"]+"><\/script>/g, '').replace(
 
 (async () => {
   // Derlemede yeni metinler ve girişler
-  for (const isaret of ['window.yardimMasasiAc', "API.rpc('yardim_yanitla'", '3 üyeli İstinaf Dairesi', 'İstinaf Dairesi görevin var', "yardimMasasiAc==='function'&&yardimMasasiAc()", 'maxlength="5000"'])
+  for (const isaret of ['window.yardimMasasiAc', "API.rpc('yardim_yanitla'", '3 üyeli İstinaf Dairesi', 'İstinaf Dairesi görevin var', "yardimMasasiAc==='function'&&yardimMasasiAc()", 'maxlength="5000"', 'İstinaf teminatı: ', 'her dosya için kurayla'])
     if (!html0.includes(isaret)) throw new Error('Derlemede yok: ' + isaret);
   if (/kurayla seçilen[^<]{0,40}jüri/.test(html0)) throw new Error('Eski jüri metni derlemede duruyor');
+  if (/istinaf yargılama gideri yüklenir/.test(html0)) throw new Error('Eski "gider sonradan yüklenir" metni derlemede duruyor');
   const b = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
   for (const w of [390, 320]) {
     const p = await b.newPage({ viewport: { width: w, height: 844 }, deviceScaleFactor: 2 });
@@ -113,6 +114,22 @@ const html = html0.replace(/<script src="https:[^"]+"><\/script>/g, '').replace(
     if (!n2.acik || n2.yuk < n2.tam - 2 || n2.dugme !== 'Kısalt') throw new Error('uzun duyuru açılması: ' + JSON.stringify(n2));
     const n3 = await p.evaluate(() => document.getElementById('icerik').textContent);
     if (!/Oyun Yöneticisi G-06/.test(n3) || !/İSTİNAF GÖREVİ|İstinaf görevi|İstinaf Görevi/.test(n3)) throw new Error('bildirim metinleri');
+
+    // 5) Adliye: dosyada İstinaf Dairesi kartı (gizli üyeler, teminat durumu) ve başvuru penceresi (peşin teminat)
+    await p.evaluate((zaman) => {
+      const d = { id: 12, durum: 'karar', karar: 'sustur_1g', tur: 'hakaret' };
+      const ek = { kesin: false, istinaf: { basvuran: 'yeniOyuncu', gerekce: 'Delil yok; karar ölçüsüz.', bas: zaman, bit: zaman, durum: 'onaylandi', onay: 2, boz: 1, juri_sayi: 3, heyet_gizli: true, teminat: 50000, teminat_durum: 'gider',
+        juri: [{ kad: 'Üye 1', oy: 'onay', gerekce: 'Deliller yeterli.' }, { kad: 'Üye 2', oy: 'boz', gerekce: null }, { kad: 'Üye 3', oy: 'onay', gerekce: null }], juri_miyim: false, juri_oyum: null } };
+      iskelet('Dosya #12', adlIstinafHtml(d, ek), { geri: true });
+    }, simdi);
+    const a1 = await p.evaluate(() => document.getElementById('icerik').textContent);
+    if (!/İstinaf Dairesi: 3 üye \(kimlikleri gizli\)/.test(a1) || !/İstinaf teminatı: .*50[.]000.* · yargılama gideri olarak kaldı/.test(a1) || !/Üye 1: onayla — Deliller yeterli/.test(a1)) throw new Error('istinaf kartı: ' + a1);
+    await cek('9_istinaf_kart');
+    await p.evaluate(() => adlIstinafModal(12)); await p.waitForTimeout(400);
+    const a2 = await p.evaluate(() => (document.querySelector('#modal') || {}).textContent || '');
+    if (!/İstinaf teminatı: .*50[.]000.*\(peşin\)/.test(a2) || !/her dosya için kurayla/.test(a2) || !/yeterli para yoksa başvuru yapılamaz/.test(a2)) throw new Error('istinaf penceresi: ' + a2.slice(0, 400));
+    await cek('10_istinaf_pencere');
+    await p.evaluate(() => modalKapat());
     if (hatalar.length) throw new Error('Sayfa hataları: ' + JSON.stringify(hatalar));
     await p.close();
   }

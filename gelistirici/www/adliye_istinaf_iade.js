@@ -77,8 +77,8 @@
    }
    let h=eskiIst.apply(this,arguments);
    if(d&&d.durum==='karar'&&ek&&ek.kesin===false&&!ek.istinaf&&h){
-    h=h.replace(/<\/div>\s*$/,'<p class="kucuk" style="margin-top:6px">Başvuru reddedilirse (karar onanırsa) kararı kaybeden tarafa '
-     +esc(tl(gider(d)))+' istinaf yargılama gideri yüklenir. Karar bozulursa gider yoktur.</p></div>');
+    h=h.replace(/<\/div>\s*$/,'<p class="kucuk" style="margin-top:6px">İstinafa başvururken kararı kaybeden taraftan '
+     +esc(tl(gider(d)))+' teminat peşin alınır. Daire kararı bozarsa ya da çoğunlukla karar veremezse iade edilir; başvuruyu reddederse yargılama gideri olarak kalır.</p></div>');
    }
    return h;
   };
@@ -89,14 +89,14 @@
   const d=dava(id);
   const m=modal('<p class="alt">İstinafı 3 üyeli İstinaf Dairesi inceler. Üyeler her dosya için kurayla belirlenir; kimlikleri gizlidir, dosyada yalnız “Üye 1, Üye 2, Üye 3” olarak görünürler. Davanın taraflarıyla, taraf partilerle ya da taraflarla davası, ortaklığı bulunan kimse heyette yer almaz. '
    +'Üye 8 saat oyuna girmezse ya da 12 saat içinde oy vermezse yerine kurayla yenisi gelir. 3 üyeden 2’si aynı yönde oy verince karar çıkar.</p>'
-   +'<div class="kart" style="border-left:4px solid var(--kirmizi,#c0392b);margin:8px 0"><b>İstinaf yargılama gideri: '+esc(tl(gider(d)))+'</b>'
-   +'<p class="alt" style="margin-top:6px">Başvurun reddedilirse (karar onanırsa) bu tutar kararı kaybeden tarafa yüklenir (CMK m.325, HMK m.326). Karar bozulursa gider ödenmez.'
+   +'<div class="kart" style="border-left:4px solid var(--kirmizi,#c0392b);margin:8px 0"><b>İstinaf teminatı: '+esc(tl(gider(d)))+' (peşin)</b>'
+   +'<p class="alt" style="margin-top:6px">Bu tutar başvururken cüzdandan (parti davasında parti kasasından) alınır; yeterli para yoksa başvuru yapılamaz. İstinaf Dairesi kararı bozarsa ya da çoğunlukla karar veremezse teminat iade edilir; başvuruyu reddederse yargılama gideri olarak kalır (CMK m.325, HMK m.326).'
    +(d&&d.karar==='beraat'?' Beraat bozulursa dosya, yaptırım ya da tutar belirlenmek üzere Yüksek Mahkemeye döner; o karar kesindir.':'')+'</p></div>'
    +adlAlan('İtiraz gerekçen (20–4000)','adlIstGerekce','textarea')
    +'<button class="btn altin" id="adlIstGonder">İstinafa başvur</button>');
   adlFormBaslik(m,'İstinaf · Dava #'+id);
   m.querySelector('#adlIstGonder').onclick=async()=>{
-   if(typeof onayla==='function'&&!await onayla('İstinafa başvur','Reddedilirse '+tl(gider(d))+' yargılama gideri ödenir.','Başvur',true))return;
+   if(typeof onayla==='function'&&!await onayla('İstinafa başvur','Şimdi '+tl(gider(d))+' teminat alınır. Karar bozulursa iade edilir; başvuru reddedilirse geri verilmez.','Başvur',true))return;
    adlIslem(()=>API.rpc('adliye_istinaf',{p_dava:id,p_gerekce:m.querySelector('#adlIstGerekce').value}),'İstinaf başvurun alındı; dosya İstinaf Dairesine verildi.',id);
   };
  };
