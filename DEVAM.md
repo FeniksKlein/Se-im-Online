@@ -16,6 +16,13 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 21.11.2026 — 2026.11.21-2 Sohbet bölümünde "Mod" sekmesi (canlıda)
+- İstek (Ercan, bir moderatörün önerisi; "Ekle"): oyun açılınca tüm sohbetleri kolay denetlemek için Sohbet bölümünde mod sekmesi. Özellik zaten vardı (Moderasyon Merkezi › Sohbet nöbeti, `mod_sohbet_nobeti`); yalnız kısayol eklendi, yeni görme yetkisi verilmedi.
+- Sunucu: `public.mod_sohbet_sekme()` → `{nobet, tum}` (`oyun.yetkili(uid,'sikayet')` / `'sohbet_tum'`); yetkisizde hata vermez. Kaynak `zz_20261121_mod_sohbet_sekme.sql`, `159_rpc_yuzey.sql` dizisinde.
+- İstemci: `sohbet_tasarim.js` → `ST.modSekme`, `modSekmeYokla()` (yalnız `sohbet_ozet.yardim.gorevli` true ise ve oturumda bir kez sorar; sıradan oyuncu hiç çağırmaz), `segHtml()` üçüncü düğme `data-sh="modNobet"` (`.sh-seg.uc`), tıklayınca `ekranAc(mmNobet)`. Nöbet yetkisi olmayan moderatörde (Oyuncu/Finans masası) sekme görünmez.
+- Gizlilik notu: sekme yalnız moderatörün kendi ekranında; ekran görüntüsü paylaşılırsa moderatörlüğü belli eder (Moderasyon Merkezi için de geçerli).
+- Arayüz testi: `gelistirici/test/mod_sohbet_sekme_arayuz.js`.
+
 ## 21.11.2026 — 2026.11.21-1 Takılan teklifler · Meclis üye tamsayısı · Cumhurbaşkanına vekâlet · dönem sınırı · Nöbetçi hâkimlik (canlıda)
 - **Çıkış noktası (Ercan, moderatör bildirimi):** Cumhurbaşkanı istifa etmeden 10 sn önce kendine bakanlık teklifi göndermiş; istifada teklif iptal edilmediği için kimseye görünmeyen, yanıtlanamayan ama adayı kilitleyen kayıt kalmış, yeni Cumhurbaşkanı o oyuncuya teklif gönderememiş. Ardından "böyle başka bug var mı, gerçekte olup oyunda olmayan ne var" → bulguların "hepsini yap"; sonra "gözaltındakini nöbetçi hâkimliğe sevk edelim" → "sen yap".
 - **Kaynak:** `gelistirici/sql/zz_20261121_*.sql` (kopya `migrations/20261121_*.sql`), `sql_birlestir.js` listesinin sonunda; `00_yama` koşulsuz, diğerleri KOŞULLU. Canlı migration adları dosya başlarında. Yama yardımcısı **`oyun._yama(işlev, desen, yeni, işaret[, düz])`**: `pg_get_functiondef` üstünde tek ifade değiştirir; işaret varsa ya da ifade bulunmazsa uyarıyla atlar (tam kurulumu durdurmaz). Yeni yamalarda bunu kullan.

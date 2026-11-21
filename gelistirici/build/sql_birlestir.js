@@ -38,6 +38,7 @@ const KOSULLU = {
   'zz_20261121_meclis_tamsayi.sql': ['oyun.kazananlar', 'oyun.bakan_teklifleri', 'oyun.zamanlayici_adim'],
   'zz_20261121_cb_vekalet.sql': ['oyun.cb_yardimcisi_teklifleri', 'oyun_yonetim.gorev_denetim', 'oyun.bakan_teklifleri', 'oyun.zamanlayici_adim'],
   'zz_20261121_cb_donem_siniri.sql': ['oyun.cb_bagimsiz_kampanya', 'oyun.bakan_teklifleri', 'oyun.zamanlayici_adim'],
+  'zz_20261121_mod_sohbet_sekme.sql': ['oyun.moderatorler', 'oyun.mod_kisit'],
   'zz_20261121_nobetci_hakimlik.sql': ['oyun.yonetim_tutuklama', 'oyun.tarife', 'oyun.zamanlayici_adim', 'oyun.mahkeme_uye', 'oyun.adliye_davalar', 'oyun.mahkeme_ayar'],
 };
 const okuKosullu = ad => {
@@ -73,7 +74,7 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   // 20.11.2026: sohbete yönetim adına yazma (Yardım Masası'ndan SONRA gelmeli: sohbet_oku ve mod_sohbet_nobeti yamaları onun çıktısına uygulanır)
   'zz_20261120_yonetim_sohbet.sql',
   // 21.11.2026: takılan teklifler, Meclis tamsayısı, vekâlet, dönem sınırı, nöbetçi hâkimlik (sıra önemli: teklif_bakim önce)
-  'zz_20261121_00_yama.sql', 'zz_20261121_teklif_bakim.sql', 'zz_20261121_meclis_tamsayi.sql', 'zz_20261121_cb_vekalet.sql', 'zz_20261121_cb_donem_siniri.sql', 'zz_20261121_nobetci_hakimlik.sql'];
+  'zz_20261121_00_yama.sql', 'zz_20261121_teklif_bakim.sql', 'zz_20261121_meclis_tamsayi.sql', 'zz_20261121_cb_vekalet.sql', 'zz_20261121_cb_donem_siniri.sql', 'zz_20261121_nobetci_hakimlik.sql', 'zz_20261121_mod_sohbet_sekme.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',

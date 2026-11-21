@@ -16,7 +16,7 @@
   if (window.SOHBET_TASARIM_V1) return;
   window.SOHBET_TASARIM_V1 = true;
 
-  var ST = { seg: 'ozel', dm: null, oz: null, ara: '', yalnizYeni: false, sonCiz: '' };
+  var ST = { seg: 'ozel', dm: null, oz: null, ara: '', yalnizYeni: false, sonCiz: '', modSekme: null };
   window.SOHBET_DURUM = ST;
 
   /* ---------- küçük yardımcılar ---------- */
@@ -338,9 +338,20 @@
   function govdeHtml() { return ST.seg === 'kanal' ? kanalGovde() : (ST.dm ? ozelGovde() : '<div class="sh-hikaye">' + '<span class="sh-hayal-h"></span>'.repeat(5) + '</div>' + iskeletSatir(6)); }
   function segHtml() {
     var a = dmOkunmamis(ST.dm), b = kanalOkunmamis(ST.oz);
-    return '<div class="sh-seg" role="tablist" style="--i:' + (ST.seg === 'kanal' ? 1 : 0) + '"><span class="sh-seg-kay" aria-hidden="true"></span>' +
+    var mod = ST.modSekme === true && typeof mmNobet === 'function';
+    return '<div class="sh-seg' + (mod ? ' uc' : '') + '" role="tablist" style="--i:' + (ST.seg === 'kanal' ? 1 : 0) + '"><span class="sh-seg-kay" aria-hidden="true"></span>' +
       '<button type="button" role="tab" aria-selected="' + (ST.seg === 'ozel') + '" class="' + (ST.seg === 'ozel' ? 'on' : '') + '" data-sh="seg" data-v="ozel">' + I.ucak + 'Özel' + rozet(a) + '</button>' +
-      '<button type="button" role="tab" aria-selected="' + (ST.seg === 'kanal') + '" class="' + (ST.seg === 'kanal' ? 'on' : '') + '" data-sh="seg" data-v="kanal">' + I.kisiler + 'Kanallar' + rozet(b) + '</button></div>';
+      '<button type="button" role="tab" aria-selected="' + (ST.seg === 'kanal') + '" class="' + (ST.seg === 'kanal' ? 'on' : '') + '" data-sh="seg" data-v="kanal">' + I.kisiler + 'Kanallar' + rozet(b) + '</button>' +
+      (mod ? '<button type="button" role="tab" aria-selected="false" class="sh-seg-mod" data-sh="modNobet" aria-label="Moderatör: tüm sohbetler">' + KALKAN + 'Mod</button>' : '') + '</div>';
+  }
+  /* Mod sekmesi: yalnız yönetim görevlisi görünen hesapta (yardim.gorevli) bir kez sorulur; yanıt oturum boyunca saklanır. */
+  function modSekmeYokla() {
+    if (ST.modSekme !== null || !(ST.oz && ST.oz.yardim && ST.oz.yardim.gorevli)) return;
+    ST.modSekme = false;
+    API.rpc('mod_sohbet_sekme', {}).then(function (r) {
+      ST.modSekme = !!(r && r.nobet);
+      var s = document.getElementById('shSeg'); if (ST.modSekme && s) { yardimCss(); s.innerHTML = segHtml(); }
+    }).catch(function () { ST.modSekme = null; });
   }
   function baslikHtml() {
     return '<span class="sh-baslik"><span class="sh-logo" aria-hidden="true">' + I.ucak + '</span><span>Mesajlar</span></span>';
@@ -388,6 +399,7 @@
   async function veriGetir() {
     var r = await Promise.all([API.rpc('ozel_liste'), API.rpc('sohbet_ozet'), API.rpc('sohbet_grup_kesfet', { p_ara: null, p_limit: 30 }).catch(function () { return null; })]);
     ST.dm = Array.isArray(r[0]) ? r[0] : []; ST.oz = r[1] || { kanallar: [] }; ST.kesfet = r[2] || ST.kesfet || null;
+    modSekmeYokla();
     try { SON_SOHBET_OZET(ST.oz); } catch (e) {}
     // Sunucu çevrimiçi bilgisini göndermiyorsa (eski sürüm) portre kimliklerinden al
     if (ST.dm.length && ST.dm[0].aktif === undefined && typeof kimlikYukle === 'function') {
@@ -442,6 +454,7 @@
       case 'kanal': hafif(); var kn = el.getAttribute('data-kanal'); ekranAc(function () { return sohbetEkrani(kn); }); break;
       case 'kilit': tst(el.getAttribute('data-kilit') || 'Bu kanal şimdilik kilitli.'); break;
       case 'seg': if (ST.seg !== el.getAttribute('data-v')) { hafif(); ST.seg = el.getAttribute('data-v'); try { sessionStorage.setItem('shSeg', ST.seg); } catch (e) {} govdeTazele(true); var ic = document.getElementById('icerik'); if (ic) ic.scrollTop = 0; } break;
+      case 'modNobet': hafif(); if (typeof mmNobet === 'function') ekranAc(mmNobet); break;
       case 'suz': ST.yalnizYeni = el.getAttribute('data-v') === '1'; govdeTazele(true); break;
       case 'yeni': hafif(); yeniMesaj(); break;
       case 'cevrimici': hafif(); if (typeof cevrimiciListeAc === 'function') cevrimiciListeAc(); else if (typeof oyuncuAramaAc === 'function') oyuncuAramaAc(); break;
@@ -1103,6 +1116,7 @@
     '.sh-seg-kay{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:12px;background:linear-gradient(135deg,rgba(139,108,255,.95),rgba(255,79,139,.88));box-shadow:0 8px 22px -10px rgba(255,79,139,.8);transform:translateX(calc(var(--i) * 100%));transition:transform .32s cubic-bezier(.3,1.3,.5,1)}',
     '.sh-seg button{position:relative;z-index:1;height:38px;border:0;background:none;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:7px;font-weight:700!important;font-size:14.5px!important;color:var(--sh-soluk)!important;transition:color .2s}',
     '.sh-seg button.on{color:#fff!important}.sh-seg button svg{width:17px;height:17px}',
+    '.sh-seg.uc{grid-template-columns:1fr 1fr 1fr}.sh-seg.uc .sh-seg-kay{width:calc((100% - 8px) / 3)}.sh-seg.uc button{gap:5px;font-size:13.5px!important;min-width:0}.sh-seg .sh-seg-mod{color:#8ff0c4!important}',
     '.sh-say{font-style:normal;min-width:19px;height:19px;padding:0 6px;border-radius:10px;background:var(--sh-pembe);color:#fff;font:800 11px/19px system-ui;text-align:center}',
     '.sh-seg button.on .sh-say{background:#fff;color:#c43c7a}',
     /* hikâye şeridi */
