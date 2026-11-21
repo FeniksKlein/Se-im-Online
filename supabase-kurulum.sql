@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.20-5', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.21-1', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -82669,6 +82669,901 @@ revoke all on function public.mod_sohbet_yaz(text, text) from public, anon;
 grant execute on function public.mod_sohbet_yaz(text, text) to authenticated, service_role;
 $kosullu_govde$;
 end $kosullu_dis$;
+-- 21.11.2026 · Yama yardımcısı (koşulsuz; 21.11 dosyalarından ÖNCE gelmeli)
+-- Yama yardımcısı: pg_get_functiondef çıktısında tek ifadeyi değiştirir. İşaret zaten varsa ya da aranan ifade
+-- bulunmazsa sessizce (uyarıyla) atlar; tam kurulumu durdurmaz.
+create or replace function oyun._yama(p_fn text, p_desen text, p_yeni text, p_isaret text, p_duz boolean default false)
+returns boolean language plpgsql set search_path to '' as $yama$
+declare d text; y text; r regprocedure := to_regprocedure(p_fn);
+begin
+  if r is null then raise warning 'yama atlandı (işlev yok): %', p_fn; return false; end if;
+  d := pg_get_functiondef(r);
+  if position(p_isaret in d) > 0 then return false; end if;
+  y := case when p_duz then replace(d, p_desen, p_yeni) else regexp_replace(d, p_desen, p_yeni, 'i') end;
+  if y = d then raise warning 'yama atlandı (ifade bulunamadı): % [%]', p_fn, p_isaret; return false; end if;
+  execute y;
+  return true;
+end $yama$;
+revoke all on function oyun._yama(text,text,text,text,boolean) from public;
+-- zz_20261121_teklif_bakim.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun.bakan_teklifleri') is null or to_regclass('oyun.tcmb_teklifleri') is null or to_regclass('oyun.hukumetler') is null or to_regclass('oyun.oyb_kredi_teklifi') is null or to_regclass('oyun.kamu_kurum_atama') is null or to_regclass('oyun.icisleri_anlasma_v2') is null or to_regclass('oyun.borsa_emir') is null or to_regclass('oyun.zamanlayici_adim') is null then raise notice 'zz_20261121_teklif_bakim.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 21.11.2026 · Takılan / geçersiz kalan bekleyen kayıtlar (canlı migration'lar:
+--   bakan_teklif_zombi_teklif_kalici_duzeltme, takilan_kayitlar_kalici_bakim)
+-- Olay: Cumhurbaşkanı istifa etmeden önce kendine bakanlık teklifi gönderdi; istifada teklif iptal edilmediği için
+-- kimseye görünmeyen, yanıtlanamayan ama adayı kilitleyen kayıt kaldı. Aynı kalıp ("işareti koy, sonra hata fırlat"
+-- → işaret geri alınır; süresiz bekleyen teklif) başka yerlerde de vardı.
+
+-- (Yama yardımcısı oyun._yama: zz_20261121_00_yama.sql)
+
+-- 1) Geçersiz bekleyen bakanlık tekliflerini iptal eden tek merkez
+create or replace function oyun.bakan_teklif_temizle()
+returns integer language plpgsql security definer set search_path to '' as $fn$
+declare
+  t timestamptz := oyun.simdi();
+  y uuid := oyun.yurutme_user();
+  r record;
+  n integer := 0;
+begin
+  for r in
+    update oyun.bakan_teklifleri bt
+       set durum = 'iptal', yanit_at = t
+     where bt.durum = 'bekliyor'
+       and (bt.teklif_eden is distinct from y or bt.aday = bt.teklif_eden)
+    returning bt.id, bt.aday, bt.teklif_eden, bt.bakanlik
+  loop
+    n := n + 1;
+    if r.aday <> r.teklif_eden then
+      perform oyun.bildir(r.aday,
+        format('Hükümet değiştiği için sana yapılan %s teklifi geçersiz oldu.',
+               (select b.ad from oyun.bakanliklar b where b.kod = r.bakanlik)), t);
+    end if;
+  end loop;
+  return n;
+end $fn$;
+revoke all on function oyun.bakan_teklif_temizle() from public;
+grant execute on function oyun.bakan_teklif_temizle() to service_role;
+
+-- 2) Yürütme değişince otomatik temizlik (bakanlık + Merkez Bankası başkanlığı teklifleri)
+create or replace function oyun.bakan_teklif_yurutme_degisti_tg()
+returns trigger language plpgsql security definer set search_path to '' as $fn$
+declare t timestamptz;
+begin
+  if tg_table_name = 'makamlar' and tg_op = 'UPDATE' then
+    t := coalesce(new.bit, oyun.simdi());
+    -- Yeniden seçilip kesintisiz devam eden Cumhurbaşkanının teklifleri geçerli kalır
+    if new.bitis_neden = 'donem_bitti' and exists (
+         select 1 from oyun.kazananlar k join oyun.secimler s on s.id = k.secim_id
+          where s.tur in ('cb','cb2') and s.durum = 'sonuclandi' and k.user_id = new.user_id
+            and s.goreve_bas is not null and s.goreve_bas <= t) then
+      return null;
+    end if;
+  end if;
+  begin
+    perform oyun.bakan_teklif_temizle();
+    update oyun.tcmb_teklifleri set durum = 'gecersiz'
+     where durum = 'bekliyor' and teklif_eden is distinct from oyun.yurutme_user();
+  exception when others then
+    -- Temizlik hatası hiçbir zaman görev değişimini (seçim, istifa, atama) engellemesin
+    raise warning 'teklif temizliği hata: %', sqlerrm;
+  end;
+  return null;
+end $fn$;
+revoke all on function oyun.bakan_teklif_yurutme_degisti_tg() from public;
+grant execute on function oyun.bakan_teklif_yurutme_degisti_tg() to service_role;
+
+drop trigger if exists bakan_teklif_cb_bitti on oyun.makamlar;
+create trigger bakan_teklif_cb_bitti after update of "bit" on oyun.makamlar for each row
+  when (old.tur = 'cb' and old."bit" is null and new."bit" is not null)
+  execute function oyun.bakan_teklif_yurutme_degisti_tg();
+drop trigger if exists bakan_teklif_cb_basladi on oyun.makamlar;
+create trigger bakan_teklif_cb_basladi after insert on oyun.makamlar for each row
+  when (new.tur = 'cb' and new."bit" is null)
+  execute function oyun.bakan_teklif_yurutme_degisti_tg();
+drop trigger if exists bakan_teklif_hukumet_degisti on oyun.hukumetler;
+create trigger bakan_teklif_hukumet_degisti after insert or update or delete on oyun.hukumetler for each statement
+  execute function oyun.bakan_teklif_yurutme_degisti_tg();
+drop trigger if exists bakan_teklif_sistem_degisti on oyun.anayasa;
+create trigger bakan_teklif_sistem_degisti after update on oyun.anayasa for each row
+  when (new.kod = 'hukumet_sistemi' and old.deger is distinct from new.deger)
+  execute function oyun.bakan_teklif_yurutme_degisti_tg();
+
+-- 3) Tablo düzeyinde koruma: kendine teklif asla oluşamaz
+create or replace function oyun.bakan_teklif_tek_kisi()
+returns trigger language plpgsql set search_path to '' as $fn$
+BEGIN
+ IF NEW.durum='bekliyor' THEN
+   IF NEW.aday = NEW.teklif_eden THEN
+     RAISE EXCEPTION 'Kendine bakanlık teklif edemezsin.';
+   END IF;
+   IF EXISTS(SELECT 1 FROM oyun.makamlar m WHERE m.tur='bakan' AND m.bit IS NULL AND m.user_id=NEW.aday) THEN
+     RAISE EXCEPTION 'Bu oyuncu zaten bakan. Aynı oyuncuya ikinci bakanlık teklif edilemez.';
+   END IF;
+   IF EXISTS(SELECT 1 FROM oyun.bakan_teklifleri b
+      WHERE b.aday=NEW.aday AND b.durum='bekliyor' AND b.id IS DISTINCT FROM NEW.id AND b.bakanlik IS DISTINCT FROM NEW.bakanlik) THEN
+     RAISE EXCEPTION 'Bu oyuncunun cevap bekleyen başka bir bakanlık teklifi var.';
+   END IF;
+ END IF;
+ RETURN NEW;
+END $fn$;
+
+-- 4) Teklif gönderme: kendine teklif yasak + göndermeden önce geçersizleri temizle
+create or replace function public.bakan_ata(p_bakanlik text, p_kad text)
+returns jsonb language plpgsql security definer set search_path to '' as $fn$
+declare
+ p oyun.profiller := oyun.profilim();
+ h oyun.profiller;
+ b oyun.bakanliklar;
+ t timestamptz := oyun.simdi();
+ teklif_id bigint;
+begin
+ perform oyun.cb_zorunlu(p);
+ select * into b from oyun.bakanliklar where kod=p_bakanlik;
+ if b.kod is null then raise exception 'Bakanlık bulunamadı.'; end if;
+ h := oyun.profil_bul(p_kad);
+ if h.id = p.id then
+   raise exception '% aynı anda bakan olamaz; kendine bakanlık teklif edemezsin.', oyun.yurutme_unvan();
+ end if;
+ if h.yasakli then raise exception 'Yasaklı hesaba teklif gönderilemez.'; end if;
+ if exists(select 1 from oyun.makamlar where tur='bakan' and bakanlik=b.kod and bit is null and user_id=h.id)
+ then raise exception 'Oyuncu zaten bu bakanlıkta görev yapıyor.'; end if;
+ -- Eski hükümetten kalan geçersiz teklifler yeni teklifi kilitlemesin
+ perform oyun.bakan_teklif_temizle();
+ insert into oyun.bakan_teklifleri(bakanlik,teklif_eden,aday,durum,zaman)
+ values(b.kod,p.id,h.id,'bekliyor',t)
+ on conflict (bakanlik,aday) where durum='bekliyor'
+ do update set teklif_eden=excluded.teklif_eden, zaman=excluded.zaman
+ returning id into teklif_id;
+ perform oyun.bildir(h.id,format('%s %s, sana %s görevi teklif etti. Bildirimler bölümünden kabul edebilir veya reddedebilirsin. Mevcut görevlerin korunacak.',oyun.yurutme_unvan(),p.kad,b.ad),t);
+ return jsonb_build_object('durum','bekliyor','teklif_id',teklif_id,'bakanlik',b.ad,'aday',h.kad);
+end $fn$;
+
+-- 5) Aday listesi: yalnız görevdeki yürütmenin teklifleri "bekleyen teklif" sayılır; kendisi seçilemez
+create or replace function public.bakan_adaylari(p_ara text default ''::text)
+returns jsonb language plpgsql security definer set search_path to '' as $fn$
+declare p oyun.profiller := oyun.profilim(); a text := lower(btrim(coalesce(p_ara,'')));
+begin
+ perform oyun.cb_zorunlu(p);
+ return coalesce((
+ select jsonb_agg(x order by (x->>'kidem')::numeric desc) from (
+   select jsonb_build_object(
+     'kad',pr.kad,'il',(select ad from oyun.iller where id=pr.il_id),
+     'parti',oyun.parti_json(pr.parti_id),
+     'kidem',oyun.kidem_puani(pr.id),
+     'statu',oyun.statu_ad(oyun.statu_basamak(oyun.kidem_puani(pr.id))),
+     'gorev',null,
+     'bakanlik',(select b.ad from oyun.makamlar m join oyun.bakanliklar b on b.kod=m.bakanlik
+       where m.user_id=pr.id and m.tur='bakan' and m.bit is null limit 1),
+     'uygun',
+     pr.id <> p.id
+     AND NOT EXISTS(SELECT 1 FROM oyun.makamlar m WHERE m.user_id=pr.id AND m.tur='bakan' AND m.bit IS NULL)
+     AND NOT EXISTS(SELECT 1 FROM oyun.bakan_teklifleri bt WHERE bt.aday=pr.id AND bt.durum='bekliyor' AND bt.teklif_eden=p.id),
+     'engel',CASE
+       WHEN pr.id = p.id
+         THEN 'Kendine bakanlık teklif edemezsin'
+       WHEN EXISTS(SELECT 1 FROM oyun.makamlar m WHERE m.user_id=pr.id AND m.tur='bakan' AND m.bit IS NULL)
+         THEN 'Zaten bir bakanlıkta görev yapıyor'
+       WHEN EXISTS(SELECT 1 FROM oyun.bakan_teklifleri bt WHERE bt.aday=pr.id AND bt.durum='bekliyor' AND bt.teklif_eden=p.id)
+         THEN 'Cevap bekleyen başka bakanlık teklifi var'
+       ELSE NULL END
+   ) x
+   from oyun.profiller pr
+   where not pr.yasakli
+     and (a='' or lower(pr.kad) like a||'%' or lower(pr.kad) like '%'||a||'%')
+   order by (lower(pr.kad) like a||'%') desc,pr.son_gorulme desc nulls last
+   limit 25
+ ) q),'[]'::jsonb);
+end $fn$;
+
+select oyun.bakan_teklif_temizle();
+alter table oyun.bakan_teklifleri drop constraint if exists bakan_teklifleri_kendine_teklif_yok;
+alter table oyun.bakan_teklifleri add constraint bakan_teklifleri_kendine_teklif_yok
+  check (durum <> 'bekliyor' or aday <> teklif_eden);
+
+-- 6) "İşareti koy, sonra hata fırlat" yamaları
+-- Borsa: payı yetmeyen satış emri gerçekten iptal edilsin
+select oyun._yama('public.borsa_al(bigint,numeric)',
+  $re$update\s+oyun\.borsa_emir\s+set\s+durum\s*=\s*'iptal'\s+where\s+id\s*=\s*e\.id;\s*raise\s+exception\s+'Satıcının payı artık yetmiyor; emir iptal edildi\.';$re$,
+  $new$update oyun.borsa_emir set durum = 'iptal' where id = e.id;
+    perform oyun.bildir(e.satici, format('Borsa: %s şirketindeki %%%s paylık satış emrin, elindeki pay yetmediği için iptal edildi.', s.ad, e.kalan), t);
+    perform oyun.bildir(p.id, format('Borsa: %s için seçtiğin satış emri geçersizdi (satıcının payı yetmiyor). Emir tahtadan kaldırıldı; alım yapılmadı, paran çekilmedi.', s.ad), t);
+    return public.borsa_sirket(s.id);$new$,
+  'Emir tahtadan kaldırıldı');
+-- Merkez Bankası başkanlığı teklifi: geçersiz işareti kalıcı olsun
+select oyun._yama('public.tcmb_teklif_yanit(bigint,boolean)',
+  $re$update\s+oyun\.tcmb_teklifleri\s+set\s+durum\s*=\s*'gecersiz'\s+where\s+id\s*=\s*k\.id;\s*raise\s+exception\s+'Teklifi yapan kişi artık yürütmenin başında değil; teklif geçersiz\.';$re$,
+  $new$update oyun.tcmb_teklifleri set durum='gecersiz' where id=k.id;
+    perform oyun.bildir(p.id, 'Merkez Bankası Başkanlığı teklifi geçersiz: teklifi yapan kişi artık yürütmenin başında değil.', t);
+    return public.merkez_bankasi();$new$,
+  'Başkanlığı teklifi geçersiz: teklifi yapan');
+-- İçişleri kamu anlaşması: süresi geçmiş teklif/kabul artık oyuncuyu kilitlemesin
+select oyun._yama('public.icisleri_anlasma_teklif(uuid,text,bigint,text,text)',
+  $re$WHERE\s+oyuncu\s*=\s*p_oyuncu\s+AND\s+durum\s+IN\s*\(\s*'teklif'\s*,\s*'kabul'\s*,\s*'tamamlandi'\s*\)$re$,
+  $new$WHERE oyuncu=p_oyuncu AND ((durum='teklif' AND olusturma>=t-interval '48 hours') OR (durum='kabul' AND cevap_at>=t-interval '72 hours') OR durum='tamamlandi')$new$,
+  'cevap_at>=t-interval');
+
+-- 7) Ortak bakım adımı: geçersiz / süresi dolmuş bekleyen kayıtları kapatır (10 dakikada bir)
+create or replace function oyun.teklif_bakim()
+returns integer language plpgsql security definer set search_path to '' as $fn$
+declare
+  t timestamptz := oyun.simdi();
+  r record;
+  c integer;
+  n integer := 0;
+begin
+  -- Bakanlık teklifleri: geçersiz kalanlar + 72 saat yanıtsız kalanlar
+  begin
+    n := n + oyun.bakan_teklif_temizle();
+    for r in
+      update oyun.bakan_teklifleri bt set durum = 'iptal', yanit_at = t
+       where bt.durum = 'bekliyor' and bt.zaman < t - interval '72 hours'
+      returning bt.aday, bt.teklif_eden, bt.bakanlik
+    loop
+      n := n + 1;
+      perform oyun.bildir(r.aday, format('%s teklifi 72 saat içinde yanıtlanmadığı için düştü.',
+        (select b.ad from oyun.bakanliklar b where b.kod = r.bakanlik)), t);
+      perform oyun.bildir(r.teklif_eden, format('%s, %s teklifini 72 saat içinde yanıtlamadı; teklif düştü. Dilersen yeniden teklif gönderebilirsin.',
+        oyun.kad(r.aday), (select b.ad from oyun.bakanliklar b where b.kod = r.bakanlik)), t);
+    end loop;
+  exception when others then
+    perform oyun.tick_hata_yaz('teklif_bakim: bakan', sqlerrm, null);
+  end;
+
+  -- Merkez Bankası başkanlığı: eski yürütmenin teklifleri
+  begin
+    for r in
+      update oyun.tcmb_teklifleri k set durum = 'gecersiz'
+       where k.durum = 'bekliyor' and k.teklif_eden is distinct from oyun.yurutme_user()
+      returning k.aday
+    loop
+      n := n + 1;
+      perform oyun.bildir(r.aday, 'Merkez Bankası Başkanlığı teklifi geçersiz oldu: teklifi yapan kişi artık yürütmenin başında değil.', t);
+    end loop;
+  exception when others then
+    perform oyun.tick_hata_yaz('teklif_bakim: tcmb', sqlerrm, null);
+  end;
+
+  -- Oyuncu bankası kredi teklifleri: süresi dolanlar
+  begin
+    update oyun.oyb_kredi_teklifi set durum = 'suresi' where durum = 'teklif' and son <= t;
+    get diagnostics c = row_count; n := n + c;
+  exception when others then
+    perform oyun.tick_hata_yaz('teklif_bakim: oyb_kredi', sqlerrm, null);
+  end;
+
+  -- Kamu kurumu atama teklifleri: 24 saatte yanıtlanmayanlar
+  begin
+    update oyun.kamu_kurum_atama set durum = 'suresi_doldu', yanit_at = t
+     where durum = 'teklif' and teklif_at < t - interval '24 hours';
+    get diagnostics c = row_count; n := n + c;
+  exception when others then
+    perform oyun.tick_hata_yaz('teklif_bakim: kamu_kurum', sqlerrm, null);
+  end;
+
+  -- İçişleri kamu hizmeti anlaşmaları: 48 saatte yanıtlanmayan teklif, 72 saatte raporlanmayan kabul
+  begin
+    for r in
+      update oyun.icisleri_anlasma_v2 a set durum = 'suresi_doldu', karar_at = t
+       where (a.durum = 'teklif' and a.olusturma < t - interval '48 hours')
+          or (a.durum = 'kabul' and a.cevap_at < t - interval '72 hours')
+      returning a.id, a.bakan, a.oyuncu
+    loop
+      n := n + 1;
+      perform oyun.bildir(r.oyuncu, format('Kamu hizmeti anlaşması #%s süresi içinde tamamlanmadığı için düştü.', r.id), t);
+      perform oyun.bildir(r.bakan, format('Kamu hizmeti anlaşması #%s süresi içinde yanıtlanmadığı ya da raporlanmadığı için düştü.', r.id), t);
+    end loop;
+  exception when others then
+    perform oyun.tick_hata_yaz('teklif_bakim: icisleri_anlasma', sqlerrm, null);
+  end;
+
+  -- Hükümet kurma daveti (parlamenter sistem): 48 saatte yanıtlanmayan davet başarısız sayılır
+  begin
+    for r in
+      update oyun.hukumetler h set durum = 'basarisiz', bit = t,
+             bitis_neden = 'Davetler 48 saat içinde yanıtlanmadı'
+       where h.durum = 'davet' and h.teklif_at < t - interval '48 hours'
+      returning h.id, h.kuran_parti
+    loop
+      n := n + 1;
+      perform oyun.olay('hukumet', 'Hükümet kurma girişimi düştü: davet edilen partiler 48 saat içinde yanıt vermedi. Yeni görüşmeler başlayabilir.', null, r.kuran_parti, t);
+    end loop;
+  exception when others then
+    perform oyun.tick_hata_yaz('teklif_bakim: hukumet_davet', sqlerrm, null);
+  end;
+
+  -- Borsa: satıcısının elindeki paydan büyük kalan açık satış emirleri
+  begin
+    for r in
+      update oyun.borsa_emir e set durum = 'iptal'
+       where e.durum = 'acik'
+         and e.kalan > coalesce((select o.pay from oyun.sirket_ortaklari o
+                                  where o.sirket_id = e.sirket_id and o.user_id = e.satici), 0)
+      returning e.satici, e.sirket_id, e.kalan
+    loop
+      n := n + 1;
+      perform oyun.bildir(r.satici, format('Borsa: %s şirketindeki %%%s paylık satış emrin, elindeki pay yetmediği için iptal edildi.',
+        (select s.ad from oyun.sirketler s where s.id = r.sirket_id), r.kalan), t);
+    end loop;
+  exception when others then
+    perform oyun.tick_hata_yaz('teklif_bakim: borsa', sqlerrm, null);
+  end;
+
+  return n;
+end $fn$;
+revoke all on function oyun.teklif_bakim() from public;
+grant execute on function oyun.teklif_bakim() to service_role;
+
+insert into oyun.zamanlayici_adim(adim, komut, periyot_dk, ofset_dk, sira, aktif)
+values ('teklif_bakim', 'select oyun.teklif_bakim()', 10, 6, 12, true)
+on conflict (adim) do update set komut = excluded.komut, periyot_dk = excluded.periyot_dk,
+  ofset_dk = excluded.ofset_dk, sira = excluded.sira, aktif = true;
+$kosullu_govde$;
+end $kosullu_dis$;
+-- zz_20261121_meclis_tamsayi.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun.kazananlar') is null or to_regclass('oyun.bakan_teklifleri') is null or to_regclass('oyun.zamanlayici_adim') is null then raise notice 'zz_20261121_meclis_tamsayi.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 21.11.2026 · TBMM üye tamsayısı = o yasama dönemi için seçilen vekil sayısı (canlı migration: meclis_uye_tamsayisi_secilen_vekile_gore)
+-- Gerçekte 600 sandalyenin tamamı dolu olduğu için eşikler 600 üzerinden hesaplanır. Oyunda sandalyeleri yalnız gerçek
+-- oyuncular doldurur; sabit 600, 200'den az vekilli Meclis'te kanun, bütçe, veto ve erken seçim kararını imkânsız kılıyordu.
+-- Oranlar (1/3 toplantı, 1/4+1 kabul, salt çoğunluk, 3/5, 2/3, 20/600 grup) aynen korunur; 600 vekil seçilirse sonuç yine 600'dür.
+-- ⚠️ Ercan'ın kararı bekleniyor (DEVAM.md 21.11): 16.11 "yayın ölçeği" temeli sabit 600'ü bilinçli seçmişti.
+-- Geri almak için bu dosyayı sql_birlestir.js listesinden çıkarıp canlıda üç işlevi kaynak tanımına döndürmek yeterlidir.
+select oyun._yama('oyun.tbmm_tamsayi()',
+  $re$coalesce\(\s*\(\s*select\s+round\(deger\)::int\s+from\s+oyun\.anayasa\s+where\s+kod\s*=\s*'milletvekili_sayisi'\s*\)\s*,\s*600\s*\)$re$,
+  $new$least(
+      coalesce((select round(deger)::int from oyun.anayasa where kod='milletvekili_sayisi'),600),
+      greatest(
+        coalesce((select count(*)::int from oyun.kazananlar k where k.secim_id = (
+            select s.id from oyun.secimler s
+             where s.tur='mv' and s.hedef_il_id is null and s.durum='tamam'
+               and s.goreve_bas is not null and s.goreve_bas <= oyun.simdi()
+               and coalesce(s.sonuc->>'iptal','')=''
+             order by s.goreve_bas desc limit 1)),0),
+        oyun.dolu_sandalye()))$new$,
+  'from oyun.kazananlar k where k.secim_id');
+-- Meclis grubu eşiği: 600 üyede 20; daha küçük Meclis'te aynı oran (en az 2)
+select oyun._yama('oyun.grup_esigi(integer)',
+  $re$when\s+oyun\.gercekci_siyaset\(\)\s+then\s+20\s+else$re$,
+  $new$when oyun.gercekci_siyaset() then greatest(2,ceil(oyun.tbmm_tamsayi()*20/600.0))::int else$new$,
+  'ceil(oyun.tbmm_tamsayi()*20/600.0)');
+-- Erken seçim: Meclis yokken sıfır oyla karar çıkmasın
+select oyun._yama('oyun.erken_secim_gerekli_oy()',
+  $re$then\s+ceil\(oyun\.tbmm_tamsayi\(\)\*3/5\.0\)::int\s+else$re$,
+  $new$then greatest(1,ceil(oyun.tbmm_tamsayi()*3/5.0)::int) else$new$,
+  'greatest(1,ceil(oyun.tbmm_tamsayi()*3/5.0)');
+-- Bildirim metnindeki sabit "400" gerçek eşiği göstersin
+select oyun._yama('public.kanun_cb_karar(bigint,text,text)',
+  $re$üçte iki \(400\) kabul oyu gerekir\.'\s*,\s*k\.baslik\s*\)$re$,
+  $new$üçte iki (%s) kabul oyu gerekir.',k.baslik,ceil(oyun.tbmm_tamsayi()*2/3.0)::int)$new$,
+  'üçte iki (%s) kabul oyu');
+$kosullu_govde$;
+end $kosullu_dis$;
+-- zz_20261121_cb_vekalet.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun.cb_yardimcisi_teklifleri') is null or to_regclass('oyun_yonetim.gorev_denetim') is null or to_regclass('oyun.bakan_teklifleri') is null or to_regclass('oyun.zamanlayici_adim') is null then raise notice 'zz_20261121_cb_vekalet.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 21.11.2026 · Cumhurbaşkanına vekâlet (canlı migration: cumhurbaskanina_vekalet_anayasa_106)
+-- Anayasa m.106: Cumhurbaşkanlığı makamı boşalırsa yenisi göreve başlayana kadar Cumhurbaşkanı yardımcısı vekâlet eder
+-- ve Cumhurbaşkanına ait yetkileri kullanır. Oyunda sıra: 1. yardımcı → 2. yardımcı → TBMM Başkanı.
+-- Eskiden istifada yardımcılar da düşüyor, yürütme boş kalıyordu.
+-- Vekil, makamlar tablosunda tur='cb', kaynak='vekalet' satırıyla tutulur: bütün Cumhurbaşkanı yetki denetimleri
+-- (116 işlev) kendiliğinden çalışır. Korunacak işaretler: kaynak='vekalet', 'vekalet_bitti', cb_vekil_adayi.
+alter table oyun.makamlar drop constraint if exists makamlar_kaynak_check;
+alter table oyun.makamlar add constraint makamlar_kaynak_check
+  check (kaynak = any (array['secim'::text,'yedek'::text,'atama'::text,'vekalet'::text]));
+
+create or replace function oyun.cb_vekil_adayi()
+returns uuid language sql stable set search_path to '' as $fn$
+  select x.user_id from (
+    select m.user_id,
+           case when m.tur = 'cb_yardimcisi' then m.bakanlik::int else 9 end as oncelik
+      from oyun.makamlar m join oyun.profiller p on p.id = m.user_id
+     where m.bit is null and m.tur in ('cb_yardimcisi','tbmm')
+       and not coalesce(p.yasakli, false)
+  ) x order by x.oncelik limit 1
+$fn$;
+
+-- Tutarlılık denetimi: işlem sonunda (commit anında) çalışır
+create or replace function oyun.cb_vekalet_denetle()
+returns void language plpgsql security definer set search_path to '' as $fn$
+declare
+  t timestamptz := oyun.simdi();
+  v record;
+  aday uuid;
+  mevcut uuid;
+  unvan text;
+begin
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('cb_vekalet'));
+
+  -- 1) Parlamenter sistemde ya da seçilmiş/atanmış bir Cumhurbaşkanı varken vekâlet olmaz
+  if oyun.hukumet_sistemi() <> 0
+     or exists (select 1 from oyun.makamlar where tur = 'cb' and bit is null and kaynak is distinct from 'vekalet') then
+    for v in select id, user_id from oyun.makamlar where tur = 'cb' and bit is null and kaynak = 'vekalet' loop
+      perform oyun.makam_bitir(v.id, t, 'vekalet_bitti');
+      perform oyun.bildir(v.user_id, 'Cumhurbaşkanı göreve başladığı için Cumhurbaşkanlığına vekâlet görevin sona erdi.', t);
+    end loop;
+    return;
+  end if;
+
+  -- 2) Makam boş: vekil, vekâlete esas görevini sürdürdükçe değişmez
+  for v in select m.id, m.user_id from oyun.makamlar m
+            where m.tur = 'cb' and m.bit is null and m.kaynak = 'vekalet' order by m.bas, m.id loop
+    if mevcut is null and exists (
+         select 1 from oyun.makamlar q join oyun.profiller p on p.id = q.user_id
+          where q.user_id = v.user_id and q.bit is null and q.tur in ('cb_yardimcisi','tbmm')
+            and not coalesce(p.yasakli, false)) then
+      mevcut := v.user_id;
+    else
+      perform oyun.makam_bitir(v.id, t, 'vekalet_bitti');
+      perform oyun.bildir(v.user_id, 'Vekâlete esas görevin sona erdiği için Cumhurbaşkanlığına vekâletin de sona erdi.', t);
+    end if;
+  end loop;
+  if mevcut is not null then return; end if;
+
+  -- 3) Vekil yok: sıradaki göreve gelir
+  aday := oyun.cb_vekil_adayi();
+  if aday is null then return; end if;
+  select case when m.tur = 'tbmm' then 'TBMM Başkanı' else m.bakanlik || '. Cumhurbaşkanı Yardımcısı' end
+    into unvan
+    from oyun.makamlar m
+   where m.user_id = aday and m.bit is null and m.tur in ('cb_yardimcisi','tbmm')
+   order by case when m.tur = 'cb_yardimcisi' then 0 else 1 end limit 1;
+
+  insert into oyun.makamlar(tur, user_id, il_id, parti_id, bakanlik, kaynak, bas)
+  values ('cb', aday, null, (select parti_id from oyun.profiller where id = aday), null, 'vekalet', t);
+
+  perform oyun.bildir(aday, 'Cumhurbaşkanlığı makamı boşaldı. Anayasa m.106 gereği yeni Cumhurbaşkanı göreve başlayana kadar Cumhurbaşkanına vekâlet ediyor ve Cumhurbaşkanına ait yetkileri kullanıyorsun.', t);
+  perform oyun.olay('makam', format('Cumhurbaşkanlığı makamı boş. %s %s, yeni Cumhurbaşkanı göreve başlayana kadar Cumhurbaşkanına vekâlet ediyor (Anayasa m.106).', unvan, oyun.kad(aday)), null, null, t);
+end $fn$;
+revoke all on function oyun.cb_vekalet_denetle() from public;
+grant execute on function oyun.cb_vekalet_denetle() to service_role;
+
+create or replace function oyun.cb_vekalet_denetle_tg()
+returns trigger language plpgsql security definer set search_path to '' as $fn$
+begin
+  begin
+    perform oyun.cb_vekalet_denetle();
+  exception when others then
+    -- Vekâlet denetimindeki bir hata hiçbir görev değişimini (istifa, seçim, atama) engellemesin
+    begin
+      perform oyun.tick_hata_yaz('cb_vekalet_denetle', sqlerrm, null);
+    exception when others then null;
+    end;
+  end;
+  return null;
+end $fn$;
+revoke all on function oyun.cb_vekalet_denetle_tg() from public;
+grant execute on function oyun.cb_vekalet_denetle_tg() to service_role;
+
+drop trigger if exists cb_vekalet_denetle_bit on oyun.makamlar;
+create constraint trigger cb_vekalet_denetle_bit
+  after update of "bit" on oyun.makamlar
+  deferrable initially deferred
+  for each row
+  when (old.tur in ('cb','cb_yardimcisi','tbmm') and old."bit" is null and new."bit" is not null)
+  execute function oyun.cb_vekalet_denetle_tg();
+drop trigger if exists cb_vekalet_denetle_ins on oyun.makamlar;
+create constraint trigger cb_vekalet_denetle_ins
+  after insert on oyun.makamlar
+  deferrable initially deferred
+  for each row
+  when (new.tur in ('cb','cb_yardimcisi','tbmm') and new."bit" is null)
+  execute function oyun.cb_vekalet_denetle_tg();
+
+-- Makam boşalınca yardımcılar görevde kalır; yalnız yeni Cumhurbaşkanı göreve başladığında (donem_bitti) düşerler
+select oyun._yama('oyun.cb_yardimcisi_cb_degisti_tg()',
+  $re$(for\s+m\s+in\s+select\s+id\s+from\s+oyun\.makamlar\s+where\s+tur\s*=\s*'cb_yardimcisi'\s+and\s+bit\s+is\s+null\s+loop\s+perform\s+oyun\.makam_bitir\(m\.id,\s*t,\s*'kabine_yenilendi'\);\s*end\s+loop;)$re$,
+  $new$if oyun.hukumet_sistemi() <> 0 or new.bitis_neden = 'donem_bitti' then
+    \1
+  end if;$new$,
+  'or new.bitis_neden = ''donem_bitti'' then');
+-- Vekâlet eden kişinin esas görevi bağdaşmazlıktan düşmesin
+select oyun._yama('oyun_yonetim.makam_bagdasmazlik_tg()',
+  $re$ELSIF\s+NEW\.tur\s*=\s*'cb'\s+THEN$re$,
+  $new$ELSIF NEW.tur='cb' AND NEW.kaynak IS DISTINCT FROM 'vekalet' THEN$new$,
+  'NEW.kaynak IS DISTINCT FROM ''vekalet''');
+-- Vekâlet tek başına bırakılamaz; istifa metinleri seçim durumuna göre doğru olsun
+select oyun._yama('public.istifa(text)',
+  $re$(raise\s+exception\s+'Cumhurbaşkanı değilsin\.';\s*end\s+if;)$re$,
+  $new$\1
+
+    if m.kaynak = 'vekalet' then
+      raise exception 'Vekâlet görevi tek başına bırakılamaz. Vekâlet, esas görevin (Cumhurbaşkanı Yardımcılığı ya da TBMM Başkanlığı) sona erdiğinde biter; o görevden istifa edebilirsin.';
+    end if;$new$,
+  'Vekâlet görevi tek başına bırakılamaz');
+select oyun._yama('public.istifa(text)',
+  $old$'%s Cumhurbaşkanlığı görevinden istifa etti. Olağanüstü seçim takvimi oluşturuldu.'$old$,
+  $new$case when coalesce((sec->>'ara')::boolean, true)
+          then '%s Cumhurbaşkanlığı görevinden istifa etti. Olağanüstü seçim takvimi oluşturuldu.'
+          else '%s Cumhurbaşkanlığı görevinden istifa etti. Olağan seçim yakın olduğu için ayrı seçim yapılmayacak; yeni Cumhurbaşkanı olağan seçimde belirlenecek.' end$new$,
+  'yeni Cumhurbaşkanı olağan seçimde belirlenecek', true);
+select oyun._yama('public.istifa(text)',
+  $old$'Cumhurbaşkanı istifa etti. Olağanüstü seçim için aday belirleme süreci başladı.'$old$,
+  $new$case when coalesce((sec->>'ara')::boolean, true)
+        then 'Cumhurbaşkanı istifa etti. Olağanüstü seçim için aday belirleme süreci başladı.'
+        else 'Cumhurbaşkanı istifa etti. Olağan seçim yakın olduğu için ayrı seçim yapılmayacak; makama vekâlet ediliyor.' end$new$,
+  'makama vekâlet ediliyor', true);
+-- m.106 ölçeği: olağan seçime görev süresinin beşte biri ya da daha az kalmışsa (gerçekte "bir yıl veya daha az")
+-- ve vekâlet edecek biri varsa ayrı seçim yapılmaz
+select oyun._yama('oyun.ara_secim_olustur(text,bigint,smallint,timestamptz)',
+  $re$(tur\s+in\s+\('cb',\s*'cb2'\)\s+and\s+not\s+ara\s+and\s+durum\s*<>\s*'tamam'\s+and\s+goreve_bas\s*>\s*t\s+order\s+by\s+goreve_bas\s+limit\s+1;\s*)if\s+o\.id\s+is\s+not\s+null\s+and\s+o\.goreve_bas\s*<=\s*asil_bas\s+then$re$,
+  $new$\1if o.id is not null and (
+         o.goreve_bas <= asil_bas
+         or (oyun.cb_vekil_adayi() is not null
+             and o.goreve_bas <= t + make_interval(hours => ceil(720 * coalesce((select deger from oyun.anayasa where kod = 'cb_gorev_suresi'), 1) * 0.2)::int))
+       ) then$new$,
+  'oyun.cb_vekil_adayi() is not null');
+-- Kabine ekranı verisine "vekil" bilgisi (eski uygulama sürümleri bu alanı yok sayar)
+select oyun._yama('public.kabine()',
+  $re$('cb'\s*,\s*\(\s*SELECT\s+jsonb_build_object\(\s*'kad'\s*,\s*oyun\.kad\(m\.user_id\)\s*,\s*'parti'\s*,\s*oyun\.parti_json\(m\.parti_id\)\s*,\s*'bas'\s*,\s*m\.bas)\)$re$,
+  $new$\1,'vekil',m.kaynak='vekalet')$new$,
+  '''vekil'',m.kaynak=''vekalet''');
+$kosullu_govde$;
+end $kosullu_dis$;
+-- zz_20261121_cb_donem_siniri.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun.cb_bagimsiz_kampanya') is null or to_regclass('oyun.bakan_teklifleri') is null or to_regclass('oyun.zamanlayici_adim') is null then raise notice 'zz_20261121_cb_donem_siniri.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 21.11.2026 · Cumhurbaşkanı dönem sınırı ve seçmen imzası yolu (canlı migration'lar:
+--   cb_donem_siniri_ve_aday_gosterme_sarti, cb_aday_gosterme_mukerrer_kural_kaldir)
+-- Anayasa m.101: bir kimse en fazla iki defa Cumhurbaşkanı seçilebilir.
+-- Anayasa m.116: ikinci döneminde seçimleri TBMM yenilerse Cumhurbaşkanı bir kez daha aday olabilir.
+-- Aday gösterme şartı (grup / %5) zz_20261115_cb_parti_aday_yuzde5.sql'dedir; burada yalnız imza yolu ona bağlanır:
+-- aday gösterme hakkı olmayan partinin üyesi de seçmen imzasıyla aday olabilir.
+create or replace function oyun.cb_donem_siniri()
+returns integer language sql stable set search_path to '' as $fn$
+  select coalesce((select round(deger)::int from oyun.anayasa where kod = 'cb_donem_siniri'), 2)
+$fn$;
+-- Yalnız seçimle gelinen dönemler sayılır (atama ve vekâlet sayılmaz)
+create or replace function oyun.cb_secilme_sayisi(u uuid)
+returns integer language sql stable set search_path to '' as $fn$
+  select count(distinct m.secim_id)::int from oyun.makamlar m
+   where m.user_id = u and m.tur = 'cb' and m.secim_id is not null
+$fn$;
+create or replace function oyun.cb_donem_engeli(u uuid, p_secim bigint)
+returns text language plpgsql stable set search_path to '' as $fn$
+declare s oyun.secimler; n int; lim int;
+begin
+  select * into s from oyun.secimler where id = p_secim;
+  if s.id is null or s.tur not in ('cb_on','cb') then return null; end if;
+  lim := oyun.cb_donem_siniri();
+  n := oyun.cb_secilme_sayisi(u);
+  if n < lim then return null; end if;
+  -- m.116: erken seçim dönem adı 'erken-genel-<teklif no>-…' ise kararı TBMM vermiştir (Cumhurbaşkanı kararında no eksidir)
+  if n = lim and s.donem ~ '^erken-genel-[0-9]+-'
+     and exists (select 1 from oyun.makamlar m
+                  where m.user_id = u and m.tur = 'cb' and m.bit is null and m.secim_id is not null) then
+    return null;
+  end if;
+  return format('Anayasa m.101: Bir kimse en fazla %s defa Cumhurbaşkanı seçilebilir. %s kez seçildiğin için yeniden aday olamazsın.', lim, n);
+end $fn$;
+create or replace function oyun.cb_donem_siniri_tg()
+returns trigger language plpgsql set search_path to '' as $fn$
+declare s oyun.secimler; e text;
+begin
+  if tg_op = 'UPDATE' and new.secim_id = old.secim_id and new.user_id = old.user_id then return new; end if;
+  select * into s from oyun.secimler where id = new.secim_id;
+  if s.id is null or s.tur not in ('cb_on','cb') then return new; end if;
+  -- Ön seçimde denetlenmiş aday asıl seçime taşınırken yeniden denetlenmez (seçim motoru kilitlenmesin)
+  if s.tur = 'cb' and exists (
+       select 1 from oyun.adaylar a join oyun.secimler o on o.id = a.secim_id
+        where a.user_id = new.user_id and o.donem = s.donem and o.tur = 'cb_on') then
+    return new;
+  end if;
+  e := oyun.cb_donem_engeli(new.user_id, new.secim_id);
+  if e is not null then raise exception '%', e; end if;
+  return new;
+end $fn$;
+revoke all on function oyun.cb_donem_siniri() from public;
+revoke all on function oyun.cb_secilme_sayisi(uuid) from public;
+revoke all on function oyun.cb_donem_engeli(uuid,bigint) from public;
+revoke all on function oyun.cb_donem_siniri_tg() from public;
+grant execute on function oyun.cb_donem_siniri() to service_role;
+grant execute on function oyun.cb_secilme_sayisi(uuid) to service_role;
+grant execute on function oyun.cb_donem_engeli(uuid,bigint) to service_role;
+grant execute on function oyun.cb_donem_siniri_tg() to service_role;
+drop trigger if exists cb_donem_siniri_tg on oyun.adaylar;
+create trigger cb_donem_siniri_tg before insert or update of secim_id, user_id on oyun.adaylar
+  for each row execute function oyun.cb_donem_siniri_tg();
+
+select oyun._yama('public.bagimsiz_aday_ol(bigint)',
+  $re$if\s+p\.parti_id\s+is\s+not\s+null\s+then\s+raise\s+exception\s+'Bağımsız aday olmak için herhangi bir partiye üye olmamalısın\.';\s*end\s+if;$re$,
+  $new$if p.parti_id is not null
+     and not (o.tur = 'cb_on' and oyun.gercekci_siyaset() and not oyun.cb_parti_aday_gosterebilir(p.parti_id, o.donem)) then
+    if o.tur = 'cb_on' and oyun.gercekci_siyaset() then
+      raise exception 'Partinin Cumhurbaşkanı adayı gösterme hakkı var; adaylık parti üzerinden belirlenir. Seçmen imzasıyla adaylık, partisiz oyunculara ve aday gösterme hakkı olmayan partilerin üyelerine açıktır.';
+    end if;
+    raise exception 'Bağımsız aday olmak için herhangi bir partiye üye olmamalısın.';
+  end if;$new$,
+  'aday gösterme hakkı olmayan partilerin üyelerine');
+select oyun._yama('public.bagimsiz_aday_ol(bigint)',
+  $re$(if\s+o\.tur\s*=\s*'cb_on'\s+and\s+oyun\.gercekci_siyaset\(\)\s+then\s+perform\s+1\s+from\s+oyun\.ayarlar\s+where\s+id\s*=\s*1\s+for\s+update;)$re$,
+  $new$\1
+   if oyun.cb_donem_engeli(p.id, h.id) is not null then
+     raise exception '%', oyun.cb_donem_engeli(p.id, h.id);
+   end if;$new$,
+  'oyun.cb_donem_engeli(p.id, h.id)');
+$kosullu_govde$;
+end $kosullu_dis$;
+-- zz_20261121_nobetci_hakimlik.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun.yonetim_tutuklama') is null or to_regclass('oyun.tarife') is null or to_regclass('oyun.zamanlayici_adim') is null or to_regclass('oyun.mahkeme_uye') is null or to_regclass('oyun.adliye_davalar') is null or to_regclass('oyun.mahkeme_ayar') is null then raise notice 'zz_20261121_nobetci_hakimlik.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 21.11.2026 · Nöbetçi hâkimlik (canlı migration: nobetci_hakimlik_sevk_sistemi)
+-- CMK m.91, 100, 109 ölçeği: gözaltına alan makam (Cumhurbaşkanı / İçişleri Bakanı) gözaltı süresi içinde şüpheliyi
+-- suçlama ve delille nöbetçi hâkimliğe sevk eder. Hâkim sorgu sonunda üç karardan birini verir:
+--   serbest bırakma · adli kontrol (tutuksuz yargılama) · tutuklama (tutuklu yargılama).
+-- Ceza ya da beraat nöbetçi hâkimden değil, sevk üzerine açılan davada mahkemeden çıkar.
+-- Oyun kuralı (süreler tarife tablosunda): sorgu 3 saat, tutukluluk 6 saat, nöbetçi önceliği 60 dakika.
+-- Yalnız yonetim_tutuklama (CB/İçişleri gözaltı kararı) sevk edilir; eylem ve mahkeme onaylı İçişleri gözaltıları zaten hâkim denetimindedir.
+insert into oyun.tarife(kod, deger, birim, kategori, ad, aciklama, sira) values
+ ('nobetci_sorgu_saat', 3, 'saat', 'kural', 'Nöbetçi hâkimlik sorgu süresi', 'Sevkten sonra nöbetçi hâkimin karar vermesi için tanınan süre (saat). Karar çıkmazsa şüpheli kendiliğinden serbest kalır.', 905),
+ ('nobetci_tutukluluk_saat', 6, 'saat', 'kural', 'Tutukluluk süresi', 'Nöbetçi hâkim tutuklama kararı verirse gözaltının karardan sonra süreceği süre (saat).', 906),
+ ('nobetci_oncelik_dk', 60, 'dakika', 'kural', 'Nöbetçi hâkim önceliği', 'Sevkten sonra dosyaya yalnız o günün nöbetçi hâkiminin bakabildiği süre (dakika); sonra diğer mahkeme üyeleri de karar verebilir.', 907)
+on conflict (kod) do nothing;
+
+create table if not exists oyun.nobetci_sevk (
+  id bigint generated always as identity primary key,
+  kaynak text not null check (kaynak = 'yonetim'),
+  dosya_id bigint not null,
+  hedef uuid not null references oyun.profiller(id),
+  sevk_eden uuid not null references oyun.profiller(id),
+  makam text not null,
+  suc_tur text not null check (suc_tur in ('hakaret','iftira','rusvet','yolsuzluk','usulsuzluk','dolandiricilik','diger')),
+  iddia text not null check (char_length(iddia) between 20 and 3000),
+  delil text not null default '' check (char_length(delil) <= 3000),
+  zaman timestamptz not null,
+  son timestamptz not null,
+  nobetci uuid references oyun.profiller(id),
+  savunma text check (savunma is null or char_length(savunma) between 20 and 3000),
+  savunma_yazan uuid references oyun.profiller(id),
+  savunma_at timestamptz,
+  durum text not null default 'bekliyor' check (durum in ('bekliyor','serbest','adli_kontrol','tutuklama','sure_doldu','dustu')),
+  hakim uuid references oyun.profiller(id),
+  gerekce text,
+  karar_at timestamptz,
+  tutukluluk_bitis timestamptz,
+  dava_id bigint references oyun.adliye_davalar(id),
+  unique (kaynak, dosya_id),
+  check (hedef <> sevk_eden)
+);
+create index if not exists nobetci_sevk_bekleyen on oyun.nobetci_sevk(son) where durum = 'bekliyor';
+create index if not exists nobetci_sevk_hedef on oyun.nobetci_sevk(hedef, zaman desc);
+alter table oyun.nobetci_sevk enable row level security;
+revoke all on oyun.nobetci_sevk from anon, authenticated;
+
+-- O günün nöbetçi hâkimi: görevdeki Yüksek Mahkeme üyeleri arasında günlük dönüşüm
+create or replace function oyun.nobetci_hakim(p_haric uuid[] default '{}')
+returns uuid language sql stable set search_path to '' as $fn$
+  with u as (
+    select m.user_id, row_number() over (order by m.sira) - 1 as rn, count(*) over () as n
+      from oyun.mahkeme_uye m join oyun.profiller p on p.id = m.user_id
+     where m.user_id is not null and not coalesce(p.yasakli, false)
+       and not (m.user_id = any (coalesce(p_haric, '{}')))
+  )
+  select user_id from u
+   where rn = ((oyun.simdi() at time zone 'Europe/Istanbul')::date - date '2026-01-01') % n
+$fn$;
+
+-- 1) Sevk
+create or replace function public.nobetci_sevk_et(p_kaynak text, p_id bigint, p_tur text, p_iddia text, p_delil text default '')
+returns jsonb language plpgsql security definer set search_path to '' as $fn$
+declare
+  u uuid := auth.uid(); m text; t timestamptz := oyun.simdi();
+  y oyun.yonetim_tutuklama; h uuid; e text; v_son timestamptz; yeni bigint; mad text;
+begin
+  if u is null then raise exception 'Giriş yapmalısınız'; end if;
+  m := oyun.ifade_makam(u);
+  if m is null then raise exception 'Nöbetçi hâkimliğe sevk yetkisi yalnız Cumhurbaşkanı ve İçişleri Bakanındadır.'; end if;
+  if p_kaynak is distinct from 'yonetim' then raise exception 'Bu gözaltı türü zaten hâkim denetimindedir; sevk yalnız Cumhurbaşkanlığı / İçişleri gözaltı kararlarında yapılır.'; end if;
+  if p_tur is null or p_tur not in ('hakaret','iftira','rusvet','yolsuzluk','usulsuzluk','dolandiricilik','diger') then raise exception 'Suçlama türü geçersiz.'; end if;
+  if char_length(btrim(coalesce(p_iddia,''))) not between 20 and 3000 then raise exception 'Suçlama açıklaması 20–3000 karakter olmalı.'; end if;
+  if char_length(coalesce(p_delil,'')) > 3000 then raise exception 'Delil açıklaması 3000 karakteri aşamaz.'; end if;
+  select * into y from oyun.yonetim_tutuklama where id = p_id for update;
+  if y.id is null or y.durum <> 'aktif' or y.bitis <= t then raise exception 'Sevk edilebilecek devam eden gözaltı bulunamadı.'; end if;
+  if y.hedef = u then raise exception 'Kendi dosyanızı sevk edemezsiniz.'; end if;
+  if exists (select 1 from oyun.nobetci_sevk s where s.kaynak = 'yonetim' and s.dosya_id = y.id) then
+    raise exception 'Bu gözaltı dosyası zaten nöbetçi hâkimliğe sevk edildi.';
+  end if;
+  e := oyun.dokunulmazlik_engel(y.hedef, 'ceza');
+  if e is not null then raise exception '%', e; end if;
+  h := oyun.nobetci_hakim(array[y.hedef, u] || case when y.avukat is not null then array[y.avukat] else '{}'::uuid[] end);
+  if h is null then raise exception 'Görevde bu dosyaya bakabilecek nöbetçi hâkim yok (Yüksek Mahkeme üyeleri atanmamış ya da dosyayla ilgili). Sevk yapılamaz; şüpheli gözaltı süresi dolunca serbest kalır.'; end if;
+  v_son := greatest(y.bitis, t + make_interval(secs => oyun.gozalti_ayar('nobetci_sorgu_saat', 3) * 3600));
+  update oyun.yonetim_tutuklama set bitis = v_son where id = y.id;
+  insert into oyun.nobetci_sevk(kaynak, dosya_id, hedef, sevk_eden, makam, suc_tur, iddia, delil, zaman, son, nobetci)
+  values ('yonetim', y.id, y.hedef, u, m, p_tur, btrim(p_iddia), coalesce(p_delil,''), t, v_son, h)
+  returning id into yeni;
+  mad := case m when 'cumhurbaskani' then 'Cumhurbaşkanlığı' else 'İçişleri Bakanlığı' end;
+  perform oyun.bildir(y.hedef, format('%s sizi nöbetçi hâkimliğe sevk etti (sevk #%s). Hâkim en geç %s tarihine kadar serbest bırakma, adli kontrol ya da tutuklama kararı verecek. Savunmanızı siz ya da avukatınız yazabilir: Gözaltı ve Avukat ekranı.', mad, yeni, to_char(v_son at time zone 'Europe/Istanbul','DD.MM HH24:MI')), t);
+  if y.avukat is not null and y.avukat_durum in ('cagrildi','kabul') then
+    perform oyun.bildir(y.avukat, format('Müvekkiliniz %s nöbetçi hâkimliğe sevk edildi (sevk #%s). Savunmayı onun adına yazabilirsiniz; son: %s.', oyun.kad(y.hedef), yeni, to_char(v_son at time zone 'Europe/Istanbul','DD.MM HH24:MI')), t);
+  end if;
+  perform oyun.bildir(h, format('Nöbetçi hâkimlik: %s hakkında sevk #%s size geldi. Karar süresi %s tarihinde doluyor; karar verilmezse şüpheli serbest kalır.', oyun.kad(y.hedef), yeni, to_char(v_son at time zone 'Europe/Istanbul','DD.MM HH24:MI')), t);
+  return jsonb_build_object('tamam', true, 'id', yeni, 'son', v_son, 'nobetci', oyun.kad(h));
+end $fn$;
+
+-- 2) Savunma (şüpheli ya da avukatı)
+create or replace function public.nobetci_savunma(p_sevk bigint, p_metin text)
+returns jsonb language plpgsql security definer set search_path to '' as $fn$
+declare u uuid := auth.uid(); t timestamptz := oyun.simdi(); s oyun.nobetci_sevk; y oyun.yonetim_tutuklama;
+begin
+  if u is null then raise exception 'Giriş yapmalısınız'; end if;
+  if char_length(btrim(coalesce(p_metin,''))) not between 20 and 3000 then raise exception 'Savunma 20–3000 karakter olmalı.'; end if;
+  select * into s from oyun.nobetci_sevk where id = p_sevk for update;
+  if s.id is null or s.durum <> 'bekliyor' or s.son <= t then raise exception 'Savunma verilebilecek açık sevk dosyası yok.'; end if;
+  select * into y from oyun.yonetim_tutuklama where id = s.dosya_id;
+  if u <> s.hedef and not (y.avukat = u and y.avukat_durum = 'kabul') then
+    raise exception 'Savunmayı yalnız şüpheli ya da görevi kabul etmiş avukatı yazabilir.';
+  end if;
+  update oyun.nobetci_sevk set savunma = btrim(p_metin), savunma_yazan = u, savunma_at = t where id = s.id;
+  if s.nobetci is not null then
+    perform oyun.bildir(s.nobetci, format('Nöbetçi hâkimlik: sevk #%s dosyasına savunma sunuldu.', s.id), t);
+  end if;
+  return jsonb_build_object('tamam', true);
+end $fn$;
+
+-- 3) Karar
+create or replace function public.nobetci_karar(p_sevk bigint, p_karar text, p_gerekce text)
+returns jsonb language plpgsql security definer set search_path to '' as $fn$
+declare
+  u uuid := auth.uid(); t timestamptz := oyun.simdi();
+  s oyun.nobetci_sevk; y oyun.yonetim_tutuklama; g text := btrim(coalesce(p_gerekce,''));
+  v_dava bigint; v_tut timestamptz; sure int; mad text;
+begin
+  if u is null or not exists (select 1 from oyun.mahkeme_uye where user_id = u) then
+    raise exception 'Bu kararı yalnız görevdeki Yüksek Mahkeme üyeleri (nöbetçi hâkim) verebilir.';
+  end if;
+  if p_karar is null or p_karar not in ('serbest','adli_kontrol','tutuklama') then
+    raise exception 'Karar serbest bırakma, adli kontrol ya da tutuklama olmalı. Ceza ve beraat, sevk üzerine açılan davada mahkemece verilir.';
+  end if;
+  if char_length(g) not between 25 and 2000 then raise exception 'Gerekçe 25–2000 karakter olmalı.'; end if;
+  select * into s from oyun.nobetci_sevk where id = p_sevk for update;
+  if s.id is null or s.durum <> 'bekliyor' then raise exception 'Karar bekleyen böyle bir sevk dosyası yok.'; end if;
+  select * into y from oyun.yonetim_tutuklama where id = s.dosya_id for update;
+  if u = s.hedef or u = s.sevk_eden or u is not distinct from y.avukat then
+    raise exception 'Çıkar çatışması: bu dosyaya bakamazsınız.';
+  end if;
+  if u is distinct from s.nobetci
+     and t < s.zaman + make_interval(mins => oyun.gozalti_ayar('nobetci_oncelik_dk', 60)::int)
+     and exists (select 1 from oyun.mahkeme_uye where user_id = s.nobetci) then
+    raise exception 'Dosya önce nöbetçi hâkim %''de. Diğer üyeler % tarihinden sonra karar verebilir.',
+      oyun.kad(s.nobetci), to_char((s.zaman + make_interval(mins => oyun.gozalti_ayar('nobetci_oncelik_dk', 60)::int)) at time zone 'Europe/Istanbul','DD.MM HH24:MI');
+  end if;
+  if s.son <= t or y.id is null or y.durum <> 'aktif' or y.bitis <= t then
+    update oyun.nobetci_sevk set durum = case when s.son <= t then 'sure_doldu' else 'dustu' end, karar_at = t where id = s.id;
+    return jsonb_build_object('tamam', false, 'mesaj', 'Sorgu süresi doldu ya da şüpheli serbest bırakıldı; dosya kapandı.');
+  end if;
+  mad := case s.makam when 'cumhurbaskani' then 'Cumhurbaşkanlığı' else 'İçişleri Bakanlığı' end;
+
+  if p_karar = 'tutuklama' then
+    v_tut := t + make_interval(secs => greatest(1, least(24, oyun.gozalti_ayar('nobetci_tutukluluk_saat', 6))) * 3600);
+    update oyun.yonetim_tutuklama set bitis = v_tut where id = y.id;
+  else
+    update oyun.yonetim_tutuklama set durum = 'serbest', bitis = t, serbest_birakan = u,
+           serbest_gerekce = left('Nöbetçi hâkim kararı: ' || g, 800), serbest_zaman = t where id = y.id;
+  end if;
+
+  if p_karar in ('adli_kontrol','tutuklama') then
+    sure := coalesce((select avukat_savunma_saat from oyun.ayarlar where id = 1), 24);
+    insert into oyun.adliye_davalar(davaci, davali, tur, iddia, delil, acilis, savunma_son, karar_son, harc, kesin)
+    values (s.sevk_eden, s.hedef, s.suc_tur,
+            format('%s sevki üzerine açılmıştır (nöbetçi hâkimlik sevk #%s, %s kararı). ', mad, s.id,
+                   case p_karar when 'tutuklama' then 'tutuklama' else 'adli kontrol' end) || s.iddia,
+            s.delil, t, t + make_interval(hours => sure),
+            t + make_interval(hours => sure) + make_interval(hours => (select ma.karar_saat from oyun.mahkeme_ayar ma)),
+            0, false)
+    returning id into v_dava;
+    perform oyun.bildir(mu.user_id, 'Yüksek Mahkeme: #' || v_dava || ' numaralı dava dosyası nöbetçi hâkimlik sevkiyle açıldı.', t)
+      from oyun.mahkeme_uye mu where mu.user_id is not null and mu.user_id <> u;
+  end if;
+
+  update oyun.nobetci_sevk set durum = p_karar, hakim = u, gerekce = g, karar_at = t,
+         tutukluluk_bitis = v_tut, dava_id = v_dava where id = s.id;
+
+  perform oyun.bildir(s.hedef, case p_karar
+    when 'serbest' then format('Nöbetçi hâkim sizi serbest bıraktı (sevk #%s). Gerekçe: %s', s.id, left(g, 300))
+    when 'adli_kontrol' then format('Nöbetçi hâkim adli kontrol kararı verdi: serbestsiniz, tutuksuz yargılanacaksınız (dava #%s). %s saat içinde savunma yazabilir ya da avukat tutabilirsiniz. Gerekçe: %s', v_dava, sure, left(g, 300))
+    else format('Nöbetçi hâkim tutuklanmanıza karar verdi: tutukluluğunuz %s tarihine kadar sürecek, yargılama dava #%s dosyasında yapılacak. Cumhurbaşkanı ya da İçişleri Bakanı sizi daha önce tahliye edebilir. Gerekçe: %s', to_char(v_tut at time zone 'Europe/Istanbul','DD.MM HH24:MI'), v_dava, left(g, 300)) end, t);
+  perform oyun.bildir(s.sevk_eden, format('Nöbetçi hâkimlik sevk #%s (%s): %s.%s', s.id, oyun.kad(s.hedef),
+    case p_karar when 'serbest' then 'şüpheli serbest bırakıldı' when 'adli_kontrol' then 'adli kontrol, tutuksuz yargılama' else 'tutuklama' end,
+    coalesce(' Dava #' || v_dava || ' açıldı.', '')), t);
+  if y.avukat is not null and y.avukat_durum in ('cagrildi','kabul') then
+    perform oyun.bildir(y.avukat, format('Müvekkiliniz %s hakkında nöbetçi hâkim kararı (sevk #%s): %s.%s', oyun.kad(s.hedef), s.id,
+      case p_karar when 'serbest' then 'serbest bırakma' when 'adli_kontrol' then 'adli kontrol' else 'tutuklama' end,
+      coalesce(' Dava #' || v_dava || '.', '')), t);
+  end if;
+  return jsonb_build_object('tamam', true, 'karar', p_karar, 'dava_id', v_dava, 'tutukluluk_bitis', v_tut);
+end $fn$;
+
+-- 4) Süre denetimi (5 dakikada bir; sınırlı, kilitli kayıt atlanır)
+create or replace function oyun.nobetci_tick()
+returns integer language plpgsql security definer set search_path to '' as $fn$
+declare t timestamptz := oyun.simdi(); r record; n integer := 0; aktif boolean;
+begin
+  for r in select s.* from oyun.nobetci_sevk s where s.durum = 'bekliyor' order by s.son limit 200 for update skip locked loop
+    select (y.durum = 'aktif' and y.bitis > t) into aktif from oyun.yonetim_tutuklama y where y.id = r.dosya_id;
+    if r.son <= t then
+      update oyun.nobetci_sevk set durum = 'sure_doldu', karar_at = t where id = r.id;
+      perform oyun.bildir(r.hedef, format('Nöbetçi hâkim süresi içinde karar vermedi (sevk #%s). Gözaltınız sona erdi, serbestsiniz.', r.id), t);
+      perform oyun.bildir(r.sevk_eden, format('Nöbetçi hâkimlik sevk #%s: süresinde karar çıkmadı, %s serbest kaldı.', r.id, oyun.kad(r.hedef)), t);
+      n := n + 1;
+    elsif not coalesce(aktif, false) then
+      update oyun.nobetci_sevk set durum = 'dustu', karar_at = t where id = r.id;
+      n := n + 1;
+    end if;
+  end loop;
+  return n;
+end $fn$;
+
+-- 5) Ekran verisi
+create or replace function public.nobetci_panel()
+returns jsonb language plpgsql stable security definer set search_path to '' as $fn$
+declare u uuid := auth.uid(); t timestamptz := oyun.simdi(); hakim_mi boolean; yetkili boolean;
+begin
+  if u is null then raise exception 'Giriş yapmalısınız'; end if;
+  hakim_mi := exists (select 1 from oyun.mahkeme_uye where user_id = u);
+  yetkili := oyun.ifade_makam(u) is not null;
+  return jsonb_build_object(
+    'simdi', t,
+    'hakim_mi', hakim_mi,
+    'sevk_yetkisi', yetkili,
+    'nobetci_hakim', oyun.kad(oyun.nobetci_hakim()),
+    'suc_turleri', jsonb_build_array('hakaret','iftira','rusvet','yolsuzluk','usulsuzluk','dolandiricilik','diger'),
+    'kararlar', jsonb_build_array('serbest','adli_kontrol','tutuklama'),
+    'sureler', jsonb_build_object('sorgu_saat', oyun.gozalti_ayar('nobetci_sorgu_saat',3), 'tutukluluk_saat', oyun.gozalti_ayar('nobetci_tutukluluk_saat',6), 'oncelik_dk', oyun.gozalti_ayar('nobetci_oncelik_dk',60)),
+    'dosyam', (select jsonb_build_object('id', s.id, 'durum', s.durum, 'suc_tur', s.suc_tur, 'iddia', s.iddia, 'delil', s.delil,
+                 'sevk_eden', oyun.kad(s.sevk_eden), 'makam', s.makam, 'zaman', s.zaman, 'son', s.son, 'nobetci', oyun.kad(s.nobetci),
+                 'savunma', s.savunma, 'savunma_at', s.savunma_at, 'hakim', oyun.kad(s.hakim), 'gerekce', s.gerekce, 'karar_at', s.karar_at,
+                 'tutukluluk_bitis', s.tutukluluk_bitis, 'dava_id', s.dava_id)
+                from oyun.nobetci_sevk s where s.hedef = u order by s.zaman desc limit 1),
+    'muvekkil_dosyalari', coalesce((select jsonb_agg(jsonb_build_object('id', s.id, 'hedef', oyun.kad(s.hedef), 'suc_tur', s.suc_tur, 'iddia', s.iddia, 'delil', s.delil,
+                 'son', s.son, 'savunma', s.savunma) order by s.son)
+                from oyun.nobetci_sevk s join oyun.yonetim_tutuklama y on y.id = s.dosya_id
+               where s.durum = 'bekliyor' and s.son > t and y.avukat = u and y.avukat_durum = 'kabul'), '[]'::jsonb),
+    'hakim_dosyalari', case when hakim_mi then coalesce((select jsonb_agg(jsonb_build_object('id', s.id, 'hedef', oyun.kad(s.hedef),
+                 'sevk_eden', oyun.kad(s.sevk_eden), 'makam', s.makam, 'suc_tur', s.suc_tur, 'iddia', s.iddia, 'delil', s.delil,
+                 'gozalti_gerekce', y.gerekce, 'zaman', s.zaman, 'son', s.son, 'nobetci', oyun.kad(s.nobetci), 'nobetci_benim', s.nobetci = u,
+                 'savunma', s.savunma, 'savunma_yazan', oyun.kad(s.savunma_yazan),
+                 'bakabilir', not (u = s.hedef or u = s.sevk_eden or u is not distinct from y.avukat)) order by s.son)
+                from oyun.nobetci_sevk s join oyun.yonetim_tutuklama y on y.id = s.dosya_id
+               where s.durum = 'bekliyor' and s.son > t), '[]'::jsonb) else '[]'::jsonb end,
+    'sevk_edilebilir', case when yetkili then coalesce((select jsonb_agg(jsonb_build_object('kaynak', 'yonetim', 'id', y.id, 'hedef', oyun.kad(y.hedef),
+                 'gerekce', y.gerekce, 'bitis', y.bitis,
+                 'sevk', (select jsonb_build_object('id', s.id, 'durum', s.durum, 'son', s.son) from oyun.nobetci_sevk s where s.kaynak = 'yonetim' and s.dosya_id = y.id)) order by y.bitis)
+                from oyun.yonetim_tutuklama y where y.durum = 'aktif' and y.bitis > t and y.hedef <> u), '[]'::jsonb) else '[]'::jsonb end,
+    'son_kararlar', coalesce((select jsonb_agg(x.j order by x.karar_at desc) from (
+                select s.karar_at, jsonb_build_object('id', s.id, 'hedef', oyun.kad(s.hedef), 'makam', s.makam, 'suc_tur', s.suc_tur,
+                       'durum', s.durum, 'gerekce', s.gerekce, 'karar_at', s.karar_at, 'dava_id', s.dava_id) j
+                  from oyun.nobetci_sevk s where s.durum <> 'bekliyor' order by s.karar_at desc limit 20) x), '[]'::jsonb)
+  );
+end $fn$;
+
+revoke all on function oyun.nobetci_hakim(uuid[]) from public;
+revoke all on function oyun.nobetci_tick() from public;
+grant execute on function oyun.nobetci_hakim(uuid[]) to service_role;
+grant execute on function oyun.nobetci_tick() to service_role;
+revoke all on function public.nobetci_sevk_et(text,bigint,text,text,text) from public, anon;
+revoke all on function public.nobetci_savunma(bigint,text) from public, anon;
+revoke all on function public.nobetci_karar(bigint,text,text) from public, anon;
+revoke all on function public.nobetci_panel() from public, anon;
+grant execute on function public.nobetci_sevk_et(text,bigint,text,text,text) to authenticated, service_role;
+grant execute on function public.nobetci_savunma(bigint,text) to authenticated, service_role;
+grant execute on function public.nobetci_karar(bigint,text,text) to authenticated, service_role;
+grant execute on function public.nobetci_panel() to authenticated, service_role;
+
+insert into oyun.zamanlayici_adim(adim, komut, periyot_dk, ofset_dk, sira, aktif)
+values ('nobetci_hakimlik', 'select oyun.nobetci_tick()', 5, 3, 42, true)
+on conflict (adim) do update set komut = excluded.komut, periyot_dk = excluded.periyot_dk, ofset_dk = excluded.ofset_dk, sira = excluded.sira, aktif = true;
+$kosullu_govde$;
+end $kosullu_dis$;
 -- =====================================================================
 --  KALICILIK (son): bütünlük kontrolü, silme koruması, sürüm bilgisi, sahibin sıfırlama/geri yükleme araçları
 -- =====================================================================
@@ -83031,7 +83926,7 @@ declare
     'dernek_uye_destek_karar', 'dernek_uye_destek_liste', 'dernek_yonetim_ata', 'dernek_ziyaret_taleplerim', 'dernek_ziyaret_tamamla', 'dernek_ziyaret_teklif',
     'dernek_ziyaret_yanit', 'dernekler', 'disiplin_baslat', 'disiplin_durum', 'disiplin_oyla', 'durum', 'istemci_hata_kaydet',
     -- 08.11.2026: Halk Hareketleri ekranlarının çağırdığı ve listede eksik kalan adlar
-    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'mod_merkez', 'mod_ustlen', 'mod_ustlenmeler', 'mod_sohbet_nobeti', 'mod_dosya', 'mod_not_ekle', 'mod_talep_ac', 'mod_talepler', 'mod_talep_karar', 'mod_talep_geri_cek', 'mod_destek', 'mod_destek_yanitla', 'mod_gunluk', 'admin_mod_ekip', 'admin_mod_kaydet', 'admin_mod_sadelestir', 'ifade_cagir', 'ifade_ver', 'ifade_reddet', 'ifade_zorla_getir', 'ifade_iptal', 'ifade_cagrilari', 'bakanlik_dava_bilgi', 'bakanlik_dava_ac', 'mod_sozlesme_kabul', 'admin_mod_tarafsizlik', 'mod_inceleme_karar', 'mod_kisitlar', 'mod_kisit_uygula', 'mod_kisit_uzat', 'mod_kisit_kaldir', 'mod_icerik_toplu_gizle', 'mod_yetki_tablosu', 'kisitlarim', 'yonetime_yaz_bilgi', 'yonetime_yaz', 'yonetime_yaz_yanit', 'yonetime_yaz_okundu', 'mod_kutu', 'mod_kutu_yanitla', 'mod_kutu_devret', 'yardim_yanitla', 'mod_sohbet_yaz', 'admin_akis_sikayetleri', 'admin_akis_karar', 'destek_gonder', 'kayit_basvuru_gonder', 'kayit_durumum', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
+    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'mod_merkez', 'mod_ustlen', 'mod_ustlenmeler', 'mod_sohbet_nobeti', 'mod_dosya', 'mod_not_ekle', 'mod_talep_ac', 'mod_talepler', 'mod_talep_karar', 'mod_talep_geri_cek', 'mod_destek', 'mod_destek_yanitla', 'mod_gunluk', 'admin_mod_ekip', 'admin_mod_kaydet', 'admin_mod_sadelestir', 'ifade_cagir', 'ifade_ver', 'ifade_reddet', 'ifade_zorla_getir', 'ifade_iptal', 'ifade_cagrilari', 'bakanlik_dava_bilgi', 'bakanlik_dava_ac', 'mod_sozlesme_kabul', 'admin_mod_tarafsizlik', 'mod_inceleme_karar', 'mod_kisitlar', 'mod_kisit_uygula', 'mod_kisit_uzat', 'mod_kisit_kaldir', 'mod_icerik_toplu_gizle', 'mod_yetki_tablosu', 'kisitlarim', 'yonetime_yaz_bilgi', 'yonetime_yaz', 'yonetime_yaz_yanit', 'yonetime_yaz_okundu', 'mod_kutu', 'mod_kutu_yanitla', 'mod_kutu_devret', 'yardim_yanitla', 'mod_sohbet_yaz', 'admin_akis_sikayetleri', 'admin_akis_karar', 'destek_gonder', 'kayit_basvuru_gonder', 'kayit_durumum', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'nobetci_sevk_et', 'nobetci_savunma', 'nobetci_karar', 'nobetci_panel', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
     -- 09.11.2026 Halk Hareketleri 3.0 (supabase/migrations/20261109090000_sokak_gercek_oyuncu.sql)
     'sokak_eylemden_ayril', 'sokak_goreve_cik', 'sokak_gorevden_ayril', 'sokak_karsi_katil', 'sokak_taktik_yap', 'sokak_grev_cagri', 'sokak_nabiz_ver', 'sokak_yasak_koy', 'sokak_jest_yap', 'sokak_heyet_davet', 'sokak_heyet_yanit', 'sokak_heyet_rapor', 'sokak_seslenis_yap', 'sokak_seslenis_tepki', 'sokak_karsi_cagri', 'sokak_kalkan_birak', 'sokak_saha_panel',
     -- 09.11.2026 on iki yeni hükümet aracı (supabase/migrations/20261109150000_halk_hukumet_yeni_tedbirler.sql)
