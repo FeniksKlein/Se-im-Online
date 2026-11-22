@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.21-2', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.22-1', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -83557,6 +83557,189 @@ revoke all on function public.mod_sohbet_sekme() from public, anon;
 grant execute on function public.mod_sohbet_sekme() to authenticated, service_role;
 $kosullu_govde$;
 end $kosullu_dis$;
+-- 22.11.2026 · Kısa süreli sohbet susturma (15 dk · 30 dk · 1 saat · 3 saat)
+-- İstek (Ercan): sohbette ırkçı/hakaret içerikli yazılara karşı moderatörler kısa, caydırıcı susturma verebilsin.
+-- Sunucu zaten saat cinsinden kesirli süreyi kabul ediyordu (yk_sustur p_saat numeric; 0.25 = 15 dk).
+-- Bu modül yalnız gösterimi düzeltir: 1 saatten kısa süreler "0.3 saat" değil "15 dk" yazılır
+-- (bildirim, kısıt kaydı, masa sınırı mesajları ve moderasyon günlüğü).
+create or replace function oyun.mod_sure_yaz(s numeric)
+returns text language sql immutable set search_path to '' as $f$
+  select case when s is null then 'süresiz'
+              when s < 1 then round(s * 60)::int::text || ' dk'
+              when s < 48 then (case when s = trunc(s) then trunc(s)::text else round(s, 1)::text end) || ' saat'
+              else (case when s / 24 = trunc(s / 24) then trunc(s / 24)::text else round(s / 24, 1)::text end) || ' gün' end
+$f$;
+
+-- Moderasyon günlüğünde "0.25 saat" yerine "15 dk"
+select oyun._yama('public.yk_sustur(text,numeric,text)',
+                  $d$case when bitis is not null then p_saat || ' saat' end$d$,
+                  $d$case when bitis is not null then /* kisa_sure */ oyun.mod_sure_yaz(p_saat) end$d$,
+                  '/* kisa_sure */', true);
+-- zz_20261122_kucuk_cezalar.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun.moderatorler') is null or to_regclass('oyun.mod_kisit') is null or to_regclass('oyun.hazine_kalem') is null then raise notice 'zz_20261122_kucuk_cezalar.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 22.11.2026 · Caydırıcı küçük cezalar, kademeli susturma, saatlik uzaklaştırma
+-- İstek (Ercan): sohbette ırkçı vb. yazılara karşı moderatörlerin elinde kalıcı banın yanında
+-- küçük ve kademeli cezalar olsun; tekrar edenin cezası kendiliğinden ağırlaşsın.
+--   1) Resmî uyarı (ihtar): kısıt yok, kayda geçer. 24 saatte 3. uyarı → kendiliğinden 1 saat susturma.
+--   2) Para cezası: 1.000 / 2.500 / 5.000 / 10.000 ₺ (tek imza üst sınırı 10.000 ₺, kurucu sınırsız).
+--      Para Hazine'ye gelir yazılır. Cüzdanda yetmezse cüzdandaki kadarı alınır (cüzdan eksiye düşmez).
+--      Aynı oyuncuya 1 saat içinde ikinci para cezası kesilemez.
+--   3) Kademeli susturma: son 30 günde susturulmuş oyuncunun yeni susturması en az
+--      2. → 1 saat · 3. → 6 saat · 4. → 24 saat · 5. → 3 gün · 6.+ → 7 gün (moderatörün seçtiği daha uzunsa o).
+--      Moderatörün kaldırdığı susturma ("Susturma kaldırıldı.") sayılmaz. Kurucuya uygulanmaz (kurucu seçtiği süreyi verir).
+--   4) Uzaklaştırma: 1 günden kısa hesap engeli (1/3/6/12 saat) bildirimde "uzaklaştırma" olarak yazılır.
+-- Yetki: uyarı ve para cezası mevcut 'sustur' yetkisine bağlıdır (İçerik ve Oyuncu masaları). Çıkar çatışması
+-- ve korunan hesap kuralları (korunan_hedef_ceza) aynen geçerlidir. Yetki her zaman sunucuda denetlenir.
+
+create table if not exists oyun.mod_ceza (
+  id bigserial primary key,
+  hedef uuid not null references oyun.profiller(id) on delete cascade,
+  tur text not null check (tur in ('uyari', 'para')),
+  tutar numeric not null default 0,
+  tahsil numeric not null default 0,
+  gerekce text not null,
+  kanit text,
+  veren uuid,
+  zaman timestamptz not null default now()
+);
+create index if not exists mod_ceza_hedef_zaman on oyun.mod_ceza (hedef, zaman desc);
+alter table oyun.mod_ceza enable row level security;
+revoke all on table oyun.mod_ceza from anon, authenticated;
+
+-- Kademeli susturma alt sınırı (saat). n = son 30 günde sayılan önceki susturma sayısı.
+create or replace function oyun.sustur_kademe(h uuid, t timestamptz)
+returns table(onceki int, alt_saat numeric) language sql stable set search_path to '' as $f$
+  with n as (
+    select count(*)::int c from oyun.mod_kisit k
+     where k.hedef = h and k.kod = 'sustur' and k.baslangic > t - interval '30 days'
+       and coalesce(k.kalkis_not, '') <> 'Susturma kaldırıldı.')
+  select n.c, case when n.c <= 0 then 0 when n.c = 1 then 1 when n.c = 2 then 6 when n.c = 3 then 24 when n.c = 4 then 72 else 168 end::numeric
+    from n
+$f$;
+revoke all on function oyun.sustur_kademe(uuid, timestamptz) from public, anon, authenticated;
+
+-- yk_sustur: moderatörün süresi kademe alt sınırının altındaysa yükselt, gerekçeye not düş
+select oyun._yama('public.yk_sustur(text,numeric,text)',
+  $d$if p_saat > 87600 then raise exception 'Süre çok uzun.'; end if;$d$,
+  $d$if p_saat > 87600 then raise exception 'Süre çok uzun.'; end if;
+    /* kademe_sustur */ if not yon then
+      declare kd record;
+      begin
+        select * into kd from oyun.sustur_kademe(h.id, t);
+        kd.alt_saat := least(kd.alt_saat, coalesce((select ms.tek from oyun.mod_sinir(p.id, 'sustur') ms), kd.alt_saat));
+        if kd.alt_saat > p_saat then
+          p_saat := kd.alt_saat;
+          neden := left(concat_ws(' ', neden, format('(Tekrar eden ihlal: son 30 günde %s. susturma, süre kademeli olarak %s oldu.)', kd.onceki + 1, oyun.mod_sure_yaz(p_saat))), 300);
+        end if;
+      end;
+    end if;$d$,
+  '/* kademe_sustur */', true);
+
+-- yk_engelle: 1 günden kısa tek imzalı engel "uzaklaştırma" diye bildirilir
+select oyun._yama('public.yk_engelle(text,numeric,text,boolean)',
+  $d$engel_neden = case when v_inceleme then left('Yönetim incelemesi: ' || neden, 200) else neden end$d$,
+  $d$engel_neden = case when v_inceleme and v_gun < 1 then /* uzaklastirma */ left('Uzaklaştırma: ' || neden, 200) when v_inceleme then left('Yönetim incelemesi: ' || neden, 200) else neden end$d$,
+  '/* uzaklastirma */', true);
+select oyun._yama('public.yk_engelle(text,numeric,text,boolean)',
+  $d$  if v_inceleme then
+    perform oyun.bildir(h.id, format('Hesabın şu sebeple yönetim incelemesine alındı$d$,
+  $d$  if v_inceleme and v_gun < 1 then /* uzaklastirma_bildir */
+    perform oyun.bildir(h.id, format('Oyundan %s uzaklaştırıldın. Sebep: %s Uzaklaştırma %s tarihinde biter; tekrarında süre uzar. İtiraz için: %s',
+                                     oyun.mod_sure_yaz(v_gun * 24), neden, to_char(bitis at time zone 'Europe/Istanbul', 'DD.MM.YYYY HH24:MI'), oyun.iletisim()), t);
+  elsif v_inceleme then
+    perform oyun.bildir(h.id, format('Hesabın şu sebeple yönetim incelemesine alındı$d$,
+  '/* uzaklastirma_bildir */', true);
+
+-- Ortak denetim: yetki, hedef, gerekçe
+create or replace function oyun.mod_kucuk_ceza_hazirla(p_kad text, p_gerekce text, out p oyun.profiller, out h oyun.profiller, out g text)
+language plpgsql set search_path to 'oyun', 'public', 'pg_temp' as $f$
+begin
+  p := oyun.yetki_zorunlu('sustur');
+  h := oyun.profil_bul(p_kad);
+  if h.id is null then raise exception 'Oyuncu bulunamadı.'; end if;
+  if h.id = p.id then raise exception 'Kendine işlem yapamazsın.'; end if;
+  if h.yonetici then raise exception 'Yönetici hesabına uygulanamaz.'; end if;
+  perform oyun.korunan_hedef_ceza(p, h.id);
+  g := btrim(coalesce(p_gerekce, ''));
+  if char_length(g) < 5 or char_length(g) > 300 then raise exception 'Gerekçe 5-300 karakter olmalı (oyuncu görür).'; end if;
+end $f$;
+revoke all on function oyun.mod_kucuk_ceza_hazirla(text, text) from public, anon, authenticated;
+
+-- 1) Resmî uyarı
+create or replace function public.mod_uyari(p_kad text, p_gerekce text, p_kanit text default null)
+returns jsonb language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $f$
+declare z record; t timestamptz := oyun.simdi(); n int; oto boolean := false;
+begin
+  select * into z from oyun.mod_kucuk_ceza_hazirla(p_kad, p_gerekce);
+  insert into oyun.mod_ceza(hedef, tur, gerekce, kanit, veren, zaman)
+  values ((z.h).id, 'uyari', z.g, nullif(left(btrim(coalesce(p_kanit, '')), 600), ''), (z.p).id, t);
+  select count(*) into n from oyun.mod_ceza where hedef = (z.h).id and tur = 'uyari' and zaman > t - interval '24 hours';
+  perform oyun.bildir((z.h).id, format('Oyun yönetiminden resmî uyarı (%s/3): %s Kurallara uymaya devam etmezsen sohbet susturma, para cezası ve uzaklaştırma uygulanır.', least(n, 3), z.g), t);
+  perform oyun.mod_log(z.p, 'mod_uyari', (z.h).kad, format('%s. uyarı (24 saat) · %s', n, left(z.g, 200)));
+  -- 24 saatte 3. uyarı: kendiliğinden susturma (kademe kuralı da işler)
+  if n >= 3 and not coalesce((select susturma_bitis > t from oyun.profiller where id = (z.h).id), false) then
+    perform public.yk_sustur((z.h).kad, 1, 'Son 24 saatte 3 resmî uyarı.');
+    oto := true;
+  end if;
+  return public.yk_oyuncu((z.h).kad) || jsonb_build_object('uyari_sayisi', n, 'oto_susturma', oto);
+end $f$;
+revoke all on function public.mod_uyari(text, text, text) from public, anon;
+grant execute on function public.mod_uyari(text, text, text) to authenticated, service_role;
+
+-- 2) Para cezası
+create or replace function public.mod_para_cezasi(p_kad text, p_tutar numeric, p_gerekce text, p_kanit text default null)
+returns jsonb language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $f$
+declare z record; t timestamptz := oyun.simdi(); v_tutar numeric := round(coalesce(p_tutar, 0)); v_var numeric; v_al numeric;
+begin
+  select * into z from oyun.mod_kucuk_ceza_hazirla(p_kad, p_gerekce);
+  if v_tutar <= 0 then raise exception 'Ceza tutarı seç.'; end if;
+  if not coalesce((z.p).yonetici, false) then
+    if v_tutar > 10000 then raise exception 'Tek başına en çok 10.000 ₺ para cezası kesebilirsin. Daha ağırı için yaptırım talebi aç ya da kurucuya ilet.'; end if;
+    if exists (select 1 from oyun.mod_ceza where hedef = (z.h).id and tur = 'para' and zaman > t - interval '1 hour') then
+      raise exception '% adlı oyuncuya son 1 saat içinde zaten para cezası kesildi. Tekrar ediyorsa susturma ya da uzaklaştırma uygula.', (z.h).kad;
+    end if;
+  elsif v_tutar > 100000000 then raise exception 'Tutar çok yüksek.';
+  end if;
+  perform oyun.cuzdanim((z.h).id);
+  select para into v_var from oyun.cuzdan where user_id = (z.h).id for update;
+  v_al := least(v_tutar, greatest(coalesce(v_var, 0), 0));
+  if v_al > 0 then
+    perform oyun.para_islem((z.h).id, -v_al, 'ceza', 'Oyun yönetimi para cezası: ' || left(z.g, 150), t);
+    perform oyun.hazine_kaydet('ceza', round(v_al / greatest(oyun.pazar_tl_milyar(), 1), 6), 'Oyun yönetimi para cezası');
+  end if;
+  insert into oyun.mod_ceza(hedef, tur, tutar, tahsil, gerekce, kanit, veren, zaman)
+  values ((z.h).id, 'para', v_tutar, v_al, z.g, nullif(left(btrim(coalesce(p_kanit, '')), 600), ''), (z.p).id, t);
+  perform oyun.bildir((z.h).id, format('Oyun yönetimi sana %s para cezası kesti%s. Sebep: %s Tekrarında susturma ve uzaklaştırma uygulanır. İtiraz için: %s',
+                                       oyun.tl(v_tutar), case when v_al < v_tutar then format(' (cüzdanındaki %s tahsil edildi)', oyun.tl(v_al)) else '' end,
+                                       z.g, oyun.iletisim()), t);
+  perform oyun.mod_log(z.p, 'mod_para_cezasi', (z.h).kad, format('%s ceza · %s tahsil · %s', oyun.tl(v_tutar), oyun.tl(v_al), left(z.g, 200)));
+  return public.yk_oyuncu((z.h).kad) || jsonb_build_object('ceza', v_tutar, 'tahsil', v_al);
+end $f$;
+revoke all on function public.mod_para_cezasi(text, numeric, text, text) from public, anon;
+grant execute on function public.mod_para_cezasi(text, numeric, text, text) to authenticated, service_role;
+
+-- 3) Oyuncunun son 30 gündeki küçük cezaları (moderatör dosyası için)
+create or replace function public.mod_kucuk_cezalar(p_kad text)
+returns jsonb language plpgsql stable security definer set search_path to 'oyun', 'public', 'pg_temp' as $f$
+declare p oyun.profiller := oyun.yetki_zorunlu('oyuncu_ara'); h oyun.profiller := oyun.profil_bul(p_kad); t timestamptz := oyun.simdi(); kd record;
+begin
+  if h.id is null then raise exception 'Oyuncu bulunamadı.'; end if;
+  select * into kd from oyun.sustur_kademe(h.id, t);
+  return jsonb_build_object(
+    'uyari_24s', (select count(*) from oyun.mod_ceza where hedef = h.id and tur = 'uyari' and zaman > t - interval '24 hours'),
+    'uyari_30g', (select count(*) from oyun.mod_ceza where hedef = h.id and tur = 'uyari' and zaman > t - interval '30 days'),
+    'para_30g', (select coalesce(sum(tutar), 0) from oyun.mod_ceza where hedef = h.id and tur = 'para' and zaman > t - interval '30 days'),
+    'sustur_30g', kd.onceki, 'sonraki_sustur_alt_saat', kd.alt_saat,
+    'son', coalesce((select jsonb_agg(jsonb_build_object('tur', c.tur, 'tutar', c.tutar, 'tahsil', c.tahsil, 'gerekce', c.gerekce, 'zaman', c.zaman) order by c.zaman desc)
+                       from (select * from oyun.mod_ceza where hedef = h.id order by zaman desc limit 10) c), '[]'::jsonb));
+end $f$;
+revoke all on function public.mod_kucuk_cezalar(text) from public, anon;
+grant execute on function public.mod_kucuk_cezalar(text) to authenticated, service_role;
+$kosullu_govde$;
+end $kosullu_dis$;
 -- =====================================================================
 --  KALICILIK (son): bütünlük kontrolü, silme koruması, sürüm bilgisi, sahibin sıfırlama/geri yükleme araçları
 -- =====================================================================
@@ -83919,7 +84102,7 @@ declare
     'dernek_uye_destek_karar', 'dernek_uye_destek_liste', 'dernek_yonetim_ata', 'dernek_ziyaret_taleplerim', 'dernek_ziyaret_tamamla', 'dernek_ziyaret_teklif',
     'dernek_ziyaret_yanit', 'dernekler', 'disiplin_baslat', 'disiplin_durum', 'disiplin_oyla', 'durum', 'istemci_hata_kaydet',
     -- 08.11.2026: Halk Hareketleri ekranlarının çağırdığı ve listede eksik kalan adlar
-    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'mod_merkez', 'mod_ustlen', 'mod_ustlenmeler', 'mod_sohbet_nobeti', 'mod_sohbet_sekme', 'mod_dosya', 'mod_not_ekle', 'mod_talep_ac', 'mod_talepler', 'mod_talep_karar', 'mod_talep_geri_cek', 'mod_destek', 'mod_destek_yanitla', 'mod_gunluk', 'admin_mod_ekip', 'admin_mod_kaydet', 'admin_mod_sadelestir', 'ifade_cagir', 'ifade_ver', 'ifade_reddet', 'ifade_zorla_getir', 'ifade_iptal', 'ifade_cagrilari', 'bakanlik_dava_bilgi', 'bakanlik_dava_ac', 'mod_sozlesme_kabul', 'admin_mod_tarafsizlik', 'mod_inceleme_karar', 'mod_kisitlar', 'mod_kisit_uygula', 'mod_kisit_uzat', 'mod_kisit_kaldir', 'mod_icerik_toplu_gizle', 'mod_yetki_tablosu', 'kisitlarim', 'yonetime_yaz_bilgi', 'yonetime_yaz', 'yonetime_yaz_yanit', 'yonetime_yaz_okundu', 'mod_kutu', 'mod_kutu_yanitla', 'mod_kutu_devret', 'yardim_yanitla', 'mod_sohbet_yaz', 'admin_akis_sikayetleri', 'admin_akis_karar', 'destek_gonder', 'kayit_basvuru_gonder', 'kayit_durumum', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'nobetci_sevk_et', 'nobetci_savunma', 'nobetci_karar', 'nobetci_panel', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
+    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'mod_merkez', 'mod_ustlen', 'mod_ustlenmeler', 'mod_sohbet_nobeti', 'mod_sohbet_sekme', 'mod_uyari', 'mod_para_cezasi', 'mod_kucuk_cezalar', 'mod_dosya', 'mod_not_ekle', 'mod_talep_ac', 'mod_talepler', 'mod_talep_karar', 'mod_talep_geri_cek', 'mod_destek', 'mod_destek_yanitla', 'mod_gunluk', 'admin_mod_ekip', 'admin_mod_kaydet', 'admin_mod_sadelestir', 'ifade_cagir', 'ifade_ver', 'ifade_reddet', 'ifade_zorla_getir', 'ifade_iptal', 'ifade_cagrilari', 'bakanlik_dava_bilgi', 'bakanlik_dava_ac', 'mod_sozlesme_kabul', 'admin_mod_tarafsizlik', 'mod_inceleme_karar', 'mod_kisitlar', 'mod_kisit_uygula', 'mod_kisit_uzat', 'mod_kisit_kaldir', 'mod_icerik_toplu_gizle', 'mod_yetki_tablosu', 'kisitlarim', 'yonetime_yaz_bilgi', 'yonetime_yaz', 'yonetime_yaz_yanit', 'yonetime_yaz_okundu', 'mod_kutu', 'mod_kutu_yanitla', 'mod_kutu_devret', 'yardim_yanitla', 'mod_sohbet_yaz', 'admin_akis_sikayetleri', 'admin_akis_karar', 'destek_gonder', 'kayit_basvuru_gonder', 'kayit_durumum', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'nobetci_sevk_et', 'nobetci_savunma', 'nobetci_karar', 'nobetci_panel', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
     -- 09.11.2026 Halk Hareketleri 3.0 (supabase/migrations/20261109090000_sokak_gercek_oyuncu.sql)
     'sokak_eylemden_ayril', 'sokak_goreve_cik', 'sokak_gorevden_ayril', 'sokak_karsi_katil', 'sokak_taktik_yap', 'sokak_grev_cagri', 'sokak_nabiz_ver', 'sokak_yasak_koy', 'sokak_jest_yap', 'sokak_heyet_davet', 'sokak_heyet_yanit', 'sokak_heyet_rapor', 'sokak_seslenis_yap', 'sokak_seslenis_tepki', 'sokak_karsi_cagri', 'sokak_kalkan_birak', 'sokak_saha_panel',
     -- 09.11.2026 on iki yeni hükümet aracı (supabase/migrations/20261109150000_halk_hukumet_yeni_tedbirler.sql)
