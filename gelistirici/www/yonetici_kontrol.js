@@ -322,8 +322,8 @@
 
   /* ---------- Kısıtlar (13.11.2026): tek ekrandan kısıt koy / kaldır ---------- */
   const KISIT_SURE = {
-    engel: [[1,"1 gün"],[3,"3 gün"],[7,"7 gün"],[30,"30 gün"],[0,"Kalıcı"]],
-    sustur: [[1,"1 saat"],[6,"6 saat"],[24,"1 gün"],[72,"3 gün"],[168,"7 gün"]],
+    engel: [[1/24,"1 saat"],[3/24,"3 saat"],[6/24,"6 saat"],[0.5,"12 saat"],[1,"1 gün"],[3,"3 gün"],[7,"7 gün"],[30,"30 gün"],[0,"Kalıcı"]],
+    sustur: [[0.25,"15 dk"],[0.5,"30 dk"],[1,"1 saat"],[3,"3 saat"],[24,"1 gün"],[72,"3 gün"],[168,"7 gün"]],
     aday: [[7,"7 gün"],[30,"30 gün"],[90,"90 gün"]]
   };
   function kisitKarti(o){
@@ -517,7 +517,7 @@
     tikla("kmSustur", async () => {
       if (o.susturma_bitis) { try { sonra(await rpc("yk_sustur", { p_kad: o.kad, p_saat: 0, p_neden: null })); toast("Susturma kaldırıldı."); } catch (err) { hata(err); } return; }
       const m = modal(`<h3 style="font-size:19px;font-weight:800">Sohbette sustur</h3><p class="alt">Süre boyunca sohbete ve özel mesaja yazamaz; oyunun geri kalanını oynar.</p>
-        <div class="alan">${sec("kmSSure", [[1,"1 saat"],[6,"6 saat"],[24,"1 gün"],[72,"3 gün"],[168,"7 gün"],[720,"30 gün"]], 24)}</div>
+        <div class="alan">${sec("kmSSure", [[0.25,"15 dk"],[0.5,"30 dk"],[1,"1 saat"],[3,"3 saat"],[6,"6 saat"],[24,"1 gün"],[72,"3 gün"],[168,"7 gün"],[720,"30 gün"]], 1)}</div>
         <div class="alan"><label>Gerekçe (oyuncuya bildirilir)</label><input class="km-girdi" id="kmSNeden" maxlength="200"></div>
         <button class="btn tehlike" id="kmSK">Sustur</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
       $("#kmSK", m).onclick = async () => { try { const r = await rpc("yk_sustur", { p_kad: o.kad, p_saat: +$("#kmSSure", m).value, p_neden: $("#kmSNeden", m).value.trim() || null }); modalKapat(); toast("Susturuldu."); sonra(r); } catch (err) { hata(err); } };

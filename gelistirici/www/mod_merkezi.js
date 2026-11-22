@@ -55,7 +55,7 @@
     toplu_gizle: "son içeriklerini topluca gizledi", destek_devir: "talebi başka masaya devretti", masa_yetkileri: "masa yaptırım yetkilerini yürürlüğe koydu",
     kayit_onay: "başvuruyu kabul etti", kayit_ret: "başvuruyu reddetti", talep_ac: "yaptırım talebi açtı", talep_onay: "talebi onayladı",
     talep_ret: "talebi reddetti", talep_geri: "talebini geri çekti", not_ekle: "dosyaya not ekledi", destek_yanit: "destek talebini yanıtladı",
-    destek_kapat: "destek talebini kapattı", yk_sustur: "susturdu", yk_engel_sureli: "süreli engelledi", yk_engel_kalici: "kalıcı engelledi",
+    destek_kapat: "destek talebini kapattı", yk_sustur: "susturdu", mod_uyari: "resmî uyarı verdi", mod_para_cezasi: "para cezası kesti", yk_engel_sureli: "süreli engelledi / uzaklaştırdı", yk_engel_kalici: "kalıcı engelledi",
     yk_engel_kaldir: "engeli kaldırdı", masak_temiz: "MASAK: temiz dedi", masak_ihtar: "MASAK: ihtar verdi", masak_el_koy: "MASAK: el koydu",
     moderator_birim: "birimini/yetkisini değiştirdi", moderator_sadelestir: "yetkilerini birimine göre sadeleştirdi", moderator_gorev: "ana görevini değiştirdi",
     yk_bildirim: "bildirim gönderdi", sohbet_izle: "grup sohbetini açtı", ifsa_suphe: "moderatör olduğunu açıklamaya çalıştı (mesaj engellendi)", mod_taklit: "kendini yönetimden gösterdi (mesaj engellendi)", sozlesme_kabul: "gizlilik sözleşmesini kabul etti", devir: "kararı tarafsız moderatöre devretti", admin_duyuru: "duyuru yayımladı", yk_para: "para işlemi yaptı", yk_kidem: "kıdem işlemi yaptı",
@@ -531,7 +531,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       ${m.gorevli ? `<div class="mm-uyari yesil">${IK.kalkan}<div>Oyun yönetimi adına yazılmış mesaj. Yazanın adı gösterilmez; yanlış ya da uygunsuzsa yöneticiye ilet.</div></div>` : m.moderator && !(M && M.ben && M.ben.yonetici && M.ben.kad !== m.kad) ? `<div class="mm-uyari sari">${IK.kilit}<div>Bu mesaj oyun yönetiminden birine ait; işlem yapılamaz.</div></div>` : `
       <div class="mm-iki">${m.gizli ? `<button class="mm-btn yesil" data-k="yok_say">Geri aç</button>` : `<button class="mm-btn" data-k="gizle">Mesajı gizle</button>`}
         ${sus ? `<button class="mm-btn kirmizi" data-k="gizle_sustur1">Gizle + 1 gün sustur</button>` : `<button class="mm-btn kirmizi" data-talep="1">Yaptırım talebi</button>`}</div>
-      ${sus ? `<div class="mm-alan">Hızlı susturma (mesaj kalır)</div><div class="mm-aksiyon">${[[1, "1 saat"], [6, "6 saat"], [24, "24 saat"], [72, "3 gün"]].map(s => `<button data-s="${s[0]}">${s[1]}</button>`).join("")}</div>` : ""}`}
+      ${sus ? `<button class="mm-btn" style="margin-top:8px" data-uyar="1">Resmî uyarı ver (24 saatte 3. uyarıda otomatik susturma)</button><div class="mm-alan">Hızlı susturma (mesaj kalır · tekrar edende süre kendiliğinden artar)</div><div class="mm-aksiyon">${[[0.25, "15 dk"], [0.5, "30 dk"], [1, "1 saat"], [3, "3 saat"], [24, "24 saat"], [72, "3 gün"]].map(s => `<button data-s="${s[0]}">${s[1]}</button>`).join("")}</div>` : ""}`}
       ${NB.resmi && (!m.grup || NB.tum) ? `<button class="mm-btn yesil" style="margin-top:8px" id="mmMsgR">${IK.kalkan}Bu kanala yönetim adına yaz</button>` : ""}
       <div class="mm-iki">${m.gorevli ? "" : `<button class="mm-btn cizgi" data-dosya="1">${IK.ara}Oyuncu dosyası</button>`}<button class="mm-btn cizgi" id="mmKap">Kapat</button></div>`);
     $("#mmKap", md).onclick = modalKapat;
@@ -542,9 +542,10 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       catch (err) { hata(err); }
     });
     md.querySelectorAll("[data-s]").forEach(b => b.onclick = async () => {
-      try { await API.rpc("yk_sustur", { p_kad: m.kad, p_saat: +b.dataset.s, p_neden: "Sohbet kurallarına aykırı mesaj: " + String(m.metin).slice(0, 120) }); modalKapat(); toast(`${m.kad} ${b.textContent} susturuldu.`); mmNobetYenile(); }
+      try { const r = await API.rpc("yk_sustur", { p_kad: m.kad, p_saat: +b.dataset.s, p_neden: "Sohbet kurallarına aykırı mesaj: " + String(m.metin).slice(0, 120) }); modalKapat(); toast(`${m.kad} ${r && r.susturma_bitis ? tsaat(r.susturma_bitis) + " tarihine kadar" : b.textContent} susturuldu.`); mmNobetYenile(); }
       catch (err) { hata(err); }
     });
+    const uy = $("[data-uyar]", md); if (uy) uy.onclick = () => { modalKapat(); kucukCezaAc("uyari", m.kad, `${m.kanal_ad} · ${tsaat(m.zaman)}: ${m.metin}`, () => mmNobetYenile()); };
     const t = $("[data-talep]", md); if (t) t.onclick = () => { modalKapat(); talepAc(m.kad, { kanit: `${m.kanal_ad} · ${tsaat(m.zaman)}: ${m.metin}`, tur: "sustur" }); };
   }
   /* 20.11.2026 · Sohbete yönetim adına yaz: mesaj kanalda "Oyun Yöneticisi G-03" imzasıyla görünür, moderatörün adı görünmez.
@@ -741,8 +742,9 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       ${leheKilit ? `<div class="mm-uyari sari">${IK.terazi}<div><b>${esc(d.lehe_kilit)}</b> Ceza yönünde işlem yapabilirsin (susturma, yaptırım talebi). Bu oyuncu lehine karar (susturmayı ya da engeli kaldırma) tarafsız moderatörde; gerekirse "Yöneticiye ilet" kullan.</div></div>` : ""}
       <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>İşlemler</h3></div>
         <div class="mm-aksiyon">
+          ${y.sustur ? `<button data-a="uyari">Resmî uyarı</button><button data-a="para">Para cezası</button>` : ""}
           ${y.sustur ? (d.susturma_bitis ? (leheKilit ? "" : `<button class="y" data-a="susKaldir">Susturmayı kaldır</button>`) : `<button data-a="sustur">Sustur</button>`) : ""}
-          ${y.hesap_kapat ? (d.yasakli ? (leheKilit ? "" : `<button class="y" data-a="engelKaldir">Engeli kaldır</button>`) : `<button class="k" data-a="engel">Engelle</button>`) : ""}
+          ${y.hesap_kapat ? (d.yasakli ? (leheKilit ? "" : `<button class="y" data-a="engelKaldir">Engeli kaldır</button>`) : `<button class="k" data-a="engel">Uzaklaştır / Engelle</button>`) : ""}
           <button class="k" data-a="talep">Yaptırım talebi</button>
           ${y.mali_dondur || y.yonetici ? `<button class="k" data-a="mali">Para çıkışını dondur</button>` : ""}
           ${y.secim_kisit || y.yonetici ? `<button class="k" data-a="secim">Seçim kısıtı</button>` : ""}
@@ -776,6 +778,37 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     kisitBagla(() => mmDosya());
   }
   const notListe = (l) => (l || []).map(n => `<div class="mm-satir" style="cursor:default"><div class="orta"><div style="font-size:15px;line-height:1.45;white-space:pre-wrap">${esc(n.metin)}</div><div class="kucuk">${esc(n.yazan)} · ${once(n.zaman)}</div></div></div>`).join("") || `<div class="mm-alt" style="padding:12px 0">Henüz not yok.</div>`;
+  const sureMetni = (s) => (!s ? "—" : s < 1 ? Math.round(s * 60) + " dk" : s < 48 ? (+s.toFixed(1)) + " saat" : (+(s / 24).toFixed(1)) + " gün");
+  /* 22.11.2026 · Küçük cezalar: resmî uyarı ve para cezası (sunucu: mod_uyari, mod_para_cezasi; yetki 'sustur') */
+  function kucukCezaAc(tur, kad, kanit, sonra) {
+    const para = tur === "para", yon = !!(M && M.ben && M.ben.yonetici);
+    const TUT = [[1000, "1.000 ₺"], [2500, "2.500 ₺"], [5000, "5.000 ₺"], [10000, "10.000 ₺"]].concat(yon ? [[50000, "50.000 ₺"], [250000, "250.000 ₺"]] : []);
+    const HAZIR = ["Irkçı / ayrımcı ifade", "Hakaret veya küfür", "Bölücü içerik", "Sohbeti doldurma (flood/spam)", "Kışkırtıcı / nefret söylemi"];
+    let tutar = 2500;
+    const md = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">${para ? "Para cezası" : "Resmî uyarı"} · ${esc(kad)}</h3>
+      <p class="mm-alt" style="margin:4px 0 8px">${para ? "Ceza oyuncunun cüzdanından alınır ve Hazine'ye gelir yazılır; cüzdanda yetmezse cüzdandaki kadarı alınır. Aynı oyuncuya 1 saatte bir kesilebilir." + (yon ? "" : " Tek başına en çok 10.000 ₺.") : "Oyuncuya kayıtlı resmî uyarı gider; kısıt uygulanmaz. 24 saat içinde 3. uyarıda oyuncu kendiliğinden susturulur."}</p>
+      <div class="mm-alt" id="mmKCOz" style="margin:0 0 8px"></div>
+      ${para ? `<div class="mm-filtre" id="mmKCT">${TUT.map(s => `<button data-v="${s[0]}" class="${s[0] === tutar ? "on" : ""}">${s[1]}</button>`).join("")}</div>` : ""}
+      <div class="mm-alan">Hazır gerekçe</div><div class="mm-filtre" id="mmKCH">${HAZIR.map((h, i) => `<button data-v="${i}">${esc(h)}</button>`).join("")}</div>
+      <label class="mm-alan" for="mmKCG">Gerekçe (oyuncu görür)</label><textarea class="mm-girdi" id="mmKCG" maxlength="300" placeholder="Örn. Genel sohbette ırkçı ifade."></textarea>
+      <button class="mm-btn kirmizi" style="margin-top:10px" id="mmKCOk">${para ? "Cezayı kes" : "Uyarıyı gönder"}</button><button class="mm-btn cizgi" style="margin-top:8px" id="mmKCVaz">Vazgeç</button>`);
+    if (para) cipSec($("#mmKCT", md), x => tutar = +x);
+    cipSec($("#mmKCH", md), x => { $("#mmKCG", md).value = HAZIR[+x] + "."; });
+    API.rpc("mod_kucuk_cezalar", { p_kad: kad }).then(k => { const e = $("#mmKCOz", md); if (e && k) e.textContent = `Son 24 saatte ${k.uyari_24s} uyarı · son 30 günde ${k.uyari_30g} uyarı, ${k.sustur_30g} susturma, ${tl(k.para_30g)} para cezası.`; }).catch(() => {});
+    $("#mmKCVaz", md).onclick = modalKapat;
+    $("#mmKCOk", md).onclick = async () => {
+      const g = $("#mmKCG", md).value.trim();
+      if (g.length < 5) { toast("Kısa bir gerekçe yaz ya da hazır gerekçe seç.", true); return; }
+      try {
+        const r = para ? await API.rpc("mod_para_cezasi", { p_kad: kad, p_tutar: tutar, p_gerekce: g, p_kanit: kanit })
+                       : await API.rpc("mod_uyari", { p_kad: kad, p_gerekce: g, p_kanit: kanit });
+        modalKapat();
+        toast(para ? `${kad}: ${tl(r.ceza)} ceza kesildi (${tl(r.tahsil)} tahsil edildi).`
+                   : r.oto_susturma ? `${kad}: 3. uyarı, oyuncu otomatik susturuldu.` : `${kad}: ${r.uyari_sayisi}. uyarı gönderildi (24 saat).`);
+        sonra && sonra();
+      } catch (err) { hata(err); }
+    };
+  }
   function dosyaIslem(a, d) {
     if (a === "talep") return talepAc(d.kad, { tur: "sustur" });
     if (a === "ilet") return talepAc(d.kad, { tur: "eskalasyon" });
@@ -783,25 +816,31 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     if (a === "toplu") return topluGizle(d.kad, () => mmDosya());
     if (a === "km") return kmOyuncuAc(d.kad);
     if (a === "not") { DS.sekme = "not"; mmDosya(); return; }
+    if (a === "uyari" || a === "para") return kucukCezaAc(a, d.kad, null, () => mmDosya());
     if (a === "susKaldir") return (async () => { try { await API.rpc("yk_sustur", { p_kad: d.kad, p_saat: 0, p_neden: null }); toast("Susturma kaldırıldı."); mmDosya(); } catch (err) { hata(err); } })();
     if (a === "engelKaldir") return (async () => { if (!await onayla("Engeli kaldır", `${esc(d.kad)} yeniden oyuna girebilecek.`, "Kaldır")) return; try { await API.rpc("yk_engel_kaldir", { p_kad: d.kad }); toast("Engel kaldırıldı."); mmDosya(); } catch (err) { hata(err); } })();
     const sus = a === "sustur";
-    const SEC = sus ? [[1, "1 saat"], [6, "6 saat"], [24, "24 saat"], [72, "3 gün"], [168, "7 gün"]] : [[1, "1 gün"], [3, "3 gün"], [7, "7 gün"], [30, "30 gün"], [0, "Kalıcı"]];
-    let v = sus ? 24 : 3;
-    const md = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">${sus ? "Sohbette sustur" : "Hesabı engelle"} · ${esc(d.kad)}</h3>
-      <p class="mm-alt" style="margin:4px 0 8px">${sus ? "Oyuncu süre boyunca hiçbir sohbete yazamaz; oyunun geri kalanını oynar." : "Oyuncu süre boyunca oyuna giremez. Görevleri ve verileri korunur."}</p>
+    const SEC = sus ? [[0.25, "15 dk"], [0.5, "30 dk"], [1, "1 saat"], [3, "3 saat"], [6, "6 saat"], [24, "24 saat"], [72, "3 gün"], [168, "7 gün"]] : [[1 / 24, "1 saat"], [3 / 24, "3 saat"], [6 / 24, "6 saat"], [0.5, "12 saat"], [1, "1 gün"], [3, "3 gün"], [7, "7 gün"], [30, "30 gün"], [0, "Kalıcı"]];
+    let v = sus ? 1 : 3 / 24;
+    const md = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">${sus ? "Sohbette sustur" : "Uzaklaştır / engelle"} · ${esc(d.kad)}</h3>
+      <p class="mm-alt" style="margin:4px 0 8px">${sus ? "Oyuncu süre boyunca hiçbir sohbete yazamaz; oyunun geri kalanını oynar. Son 30 günde tekrar eden oyuncuda süre kendiliğinden artar (2. kez en az 1 saat, 3. kez 6 saat, 4. kez 1 gün, 5. kez 3 gün, sonrası 7 gün)." : "Oyuncu süre boyunca oyuna giremez; görevleri ve verileri korunur. 1 günden kısa süre oyuncuya \"uzaklaştırma\" olarak bildirilir. Tek başına en çok 24 saat; daha uzunu ve kalıcı engel ikinci imzayla."}</p>
+      ${sus ? `<div class="mm-alt" id="mmSKad" style="margin:0 0 8px"></div>` : ""}
       <div class="mm-filtre" id="mmSS">${SEC.map(s => `<button data-v="${s[0]}" class="${s[0] === v ? "on" : ""}">${s[1]}</button>`).join("")}</div>
       <label class="mm-alan" for="mmSG">Gerekçe (oyuncu görür)</label><textarea class="mm-girdi" id="mmSG" maxlength="200" placeholder="Örn. Genel sohbette tekrarlanan hakaret."></textarea>
-      <button class="mm-btn kirmizi" style="margin-top:10px" id="mmSOk">${sus ? "Sustur" : "Engelle"}</button><button class="mm-btn cizgi" style="margin-top:8px" id="mmSVaz">Vazgeç</button>`);
+      <button class="mm-btn kirmizi" style="margin-top:10px" id="mmSOk">${sus ? "Sustur" : "Uygula"}</button><button class="mm-btn cizgi" style="margin-top:8px" id="mmSVaz">Vazgeç</button>`);
     cipSec($("#mmSS", md), x => v = +x);
+    if (sus) API.rpc("mod_kucuk_cezalar", { p_kad: d.kad }).then(k => { const e = $("#mmSKad", md); if (e && k) e.textContent = k.sustur_30g ? `Son 30 günde ${k.sustur_30g} kez susturuldu; yeni susturma en az ${sureMetni(k.sonraki_sustur_alt_saat)} olur.` : "Son 30 günde susturulmamış."; }).catch(() => {});
     $("#mmSVaz", md).onclick = modalKapat;
     $("#mmSOk", md).onclick = async () => {
       const g = $("#mmSG", md).value.trim();
       if (!sus && g.length < 5) { toast("Engel için kısa bir gerekçe yaz.", true); return; }
       try {
-        if (sus) await API.rpc("yk_sustur", { p_kad: d.kad, p_saat: v, p_neden: g || null });
-        else await API.rpc("yk_engelle", { p_kad: d.kad, p_gun: v || null, p_neden: g, p_hesabi_kapat: false });
-        modalKapat(); toast(sus ? "Oyuncu susturuldu." : "Oyuncu engellendi."); mmDosya();
+        const r = sus ? await API.rpc("yk_sustur", { p_kad: d.kad, p_saat: v, p_neden: g || null })
+                      : await API.rpc("yk_engelle", { p_kad: d.kad, p_gun: v || null, p_neden: g, p_hesabi_kapat: false });
+        modalKapat();
+        toast(sus ? (r && r.susturma_bitis ? `Oyuncu ${tsaat(r.susturma_bitis)} tarihine kadar susturuldu.` : "Oyuncu susturuldu.")
+                  : (r && r.ikinci_imza ? "Bu süre ikinci imza istiyor; yaptırım talebi açıldı." : v && v < 1 ? "Oyuncu uzaklaştırıldı." : "Oyuncu engellendi."));
+        mmDosya();
       } catch (err) { hata(err); }
     };
   }
