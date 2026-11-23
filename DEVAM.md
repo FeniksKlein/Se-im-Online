@@ -16,6 +16,11 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 24.11.2026 02:24 — Mağaza paketi 1.0.8 (10): Play "zorunlu donanım özelliği" düzeltmesi
+- Play, 9 numaralı pakette incelemeyi durdurdu: `android:screenOrientation="portrait"` → `android.hardware.screen.portrait` zorunlu sayılıyor (tablet/Chromebook/PC/XR dışlanıyor). `mobil/hazirla.mjs` artık `<uses-feature android:name="android.hardware.screen.portrait" android:required="false"/>` ekliyor; uygulama yine dikey.
+- Play aynı sürüm kodunu tekrar kabul etmediği için `magaza.json` 1.0.8 / 10. Derleme kaynak 8f911ba; Android + iOS 1.0.8 (10), oyun 2026.11.24-3. AAB aynı yükleme anahtarıyla imzalandı (SHA-256 BF:5C…6A:5C), Ercan'a `SecimOnline-1.0.8-kod10.aab` + iOS projesi teslim edildi. 9 numaralı paket Play taslağından silinecek.
+- Yayın planı: Play'de yönetilen yayınlama açık, App Store'da "manuel yayınla"; ikisi onaylanınca Ercan aynı anda yayına alacak.
+
 ## 24.11.2026 01:56 — Mağaza paketi 1.0.8 (9) derlendi (mağazalara henüz YÜKLENMEDİ)
 - `mobil/magaza.json` 1.0.8 / 9; `magaza.yml` başarılı (Android + iOS simülatör denetimi), `magaza-ciktilari` dalı kaynak fe1bab1.
 - Paketlerin içi doğrulandı: oyun sürümü 2026.11.24-3, Android ve iOS 1.0.8 (9), kimlik `com.feniksklein.secimonline`. AAB imzasız.
