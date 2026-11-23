@@ -3248,7 +3248,7 @@ const METIN = {
     <h4>Hangi verileri işliyoruz?</h4>
     <p>E-posta adresin ve şifren (şifre geri döndürülemez biçimde saklanır), seçtiğin kullanıcı adı, ilin, parti üyeliğin, adaylıkların, oyunda kullandığın oyların kaydı, oyun içi işlemlerin zamanları, sohbet mesajların, özel mesajların, propaganda yayınların, engellediğin oyuncular, şikâyetlerin, bildirim tercihlerin ve telefon bildirimleri için telefonunun bildirim anahtarı (push token).</p>
     <h4>Cihaz ve bağlantı bilgisi (çoklu hesap önlemi)</h4>
-    <p>Seçimlerin adil olması için bir kişinin birden çok hesapla oy kullanmasını önleriz. Bunun için uygulamanın cihazında ürettiği kimlik, cihazın teknik özelliklerinden çıkarılan bir iz ve bağlantı (IP) adresin, geri döndürülemez biçimde özetlenerek (tuzlanmış SHA-256) saklanır; ham hâlleri saklanmaz ve hiçbir oyuncuya gösterilmez. Aynı cihazda açılmış hesaplar yönetici incelemesine düşebilir. Bu kayıtlar hesabını sildiğinde ya da 180 gün kullanılmadığında silinir. Hukuki sebep: KVKK m.5/2-f (meşru menfaat: oyunun güvenliği ve hile önleme).</p>
+    <p>Seçimlerin adil olması için bir kişinin birden çok hesapla oy kullanmasını önleriz. Bunun için uygulamanın cihazında ürettiği kimlik, cihazın teknik özelliklerinden çıkarılan bir iz ve bağlantı (IP) adresin, geri döndürülemez biçimde özetlenerek (tuzlanmış SHA-256) saklanır; ham hâlleri saklanmaz ve hiçbir oyuncuya gösterilmez. Aynı cihazda açılmış hesaplar yönetici incelemesine düşebilir. Bu kayıtlar hesabını sildiğinde ya da 180 gün kullanılmadığında silinir. Kural ihlali nedeniyle kalıcı olarak kapatılan bir hesabın kullandığı cihazların kimlik özeti, yeniden kayıt yasağını (Kullanıcı Sözleşmesi m.9.1) uygulayabilmek için yasak sürdükçe ayrıca saklanır; o cihazdan yeni hesap açılamaz ve oyuna girilemez. Hukuki sebep: KVKK m.5/2-f (meşru menfaat: oyunun güvenliği ve hile önleme).</p>
     <h4>Telefon bildirimleri</h4>
     <p>Bildirimler Google Firebase Cloud Messaging hizmeti aracılığıyla telefonuna iletilir. Bildirim türlerini Ben → Bildirimler bölümünden açıp kapatabilirsin. Çıkış yaptığında veya hesabını sildiğinde telefonunun bildirim anahtarı silinir.</p>
     <h4>Reklamlar ve satın almalar</h4>
@@ -4530,7 +4530,9 @@ async function basla(){
   if (!o) return karsilama();
   await oturumKaydet();
   try { await durumYenile(); } catch (err) {
-    $("#app").innerHTML = `<div class="karsila"><h1>Bağlantı sorunu</h1><p class="giris">${e(hataCevir(err.message))}</p><button class="btn" onclick="basla()">Tekrar dene</button><button class="btn ikinci" onclick="cikisYap()">Çıkış</button></div>`;
+    // 23.11.2026: hesap engeli ve cihaz yasağı bağlantı hatası değildir; başlık buna göre yazılır.
+    const hm = hataCevir(err.message), kapali = /kural ihlali|engellendi|yönetim incelemesinde|erişimi[^.]*kapatıl/i.test(hm);
+    $("#app").innerHTML = `<div class="karsila"><h1>${kapali ? "Erişim kapalı" : "Bağlantı sorunu"}</h1><p class="giris">${e(hm)}</p><button class="btn" onclick="basla()">Tekrar dene</button><button class="btn ikinci" onclick="cikisYap()">Çıkış</button></div>`;
     return;
   }
   if (!D.durum.profil) {

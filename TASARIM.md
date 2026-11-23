@@ -421,6 +421,14 @@ Faizler enflasyona bağlıdır. **Politika faizi (yıllık) = enflasyon + 5 puan
   - Aynı cihazdan aynı sandıkta tek oy kullanılır; bu, onaylı hesaplar ve halk oylaması için de geçerlidir.
   - Tek kullanımlık e-posta servisleri reddedilir.
 - **Zayıf sinyaller.** Cihaz izi aynı model telefonlarda çakışabilir. IP de aile, okul ya da mobil operatörde paylaşılır. Bu ikisi engel sebebi değildir; yalnızca yönetici panelinde küme olarak gösterilir. eRepublik de aynı IP'yi tek başına çoklu hesap delili saymaz.
+- **Cihaz yasağı (23.11.2026).** Engellenen oyuncu yeni adla geri dönemesin diye:
+  - Cihaz kimliği kayıt başvurusu yapılmadan önce de kaydedilir (onay bekleyen hesap dahil).
+  - Bir hesap **kalıcı** engellenince kullandığı telefon ve tarayıcılar kendiliğinden yasaklı cihaz listesine girer. Hesabını kendi silen oyuncunun cihazı yasaklanmaz.
+  - Yasaklı cihazdan yeni hesap başvurusu yapılamaz, bekleyen başvuru onaylanamaz ve oyuna girilemez. Kurucu ile "ayrı kişi" olduğu Çoklu hesap ekranından onaylanan hesaplar muaftır.
+  - Hesabın engeli kaldırılır ya da süreliye çevrilirse cihaz yasağı da kalkar. Yanlışlıkla yasaklanan cihazı kurucu ve Oyuncu Masası gerekçe yazarak kaldırır (Moderasyon Merkezi › Yasaklı cihazlar).
+  - Süreli uzaklaştırma sürerken aynı cihazdan yeni hesap başvurusu yapılamaz. Cihaz başına 2 hesap sınırı başvuru anında uygulanır.
+  - Telefon değiştiren ya da uygulamayı silip kurana karşı: başvuru engelli bir hesapla **aynı bağlantı + aynı cihaz izinden** geliyorsa Kayıt masasında "mükerrer hesap uyarısı" çıkar; moderatör uyarıyı görmeden onaylayamaz. Yalnız aynı bağlantı zayıf işarettir, bilgi olarak gösterilir.
+  - Cihaz izi ve IP tek başına hiçbir zaman engel sebebi olmaz. Yasak listesinde yalnız cihaz kimliğinin özeti durur; oyun sıfırlansa da silinmez.
 - **Seçmen kartı.** Oy, adaylık, kurucu üyelik ve bakanlık için şartlar:
   - hesap yaşı;
   - doğrulanmış e-posta;

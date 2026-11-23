@@ -59,7 +59,8 @@
     yk_engel_kaldir: "engeli kaldırdı", masak_temiz: "MASAK: temiz dedi", masak_ihtar: "MASAK: ihtar verdi", masak_el_koy: "MASAK: el koydu",
     moderator_birim: "birimini/yetkisini değiştirdi", moderator_sadelestir: "yetkilerini birimine göre sadeleştirdi", moderator_gorev: "ana görevini değiştirdi",
     yk_bildirim: "bildirim gönderdi", sohbet_izle: "grup sohbetini açtı", ifsa_suphe: "moderatör olduğunu açıklamaya çalıştı (mesaj engellendi)", mod_taklit: "kendini yönetimden gösterdi (mesaj engellendi)", sozlesme_kabul: "gizlilik sözleşmesini kabul etti", devir: "kararı tarafsız moderatöre devretti", admin_duyuru: "duyuru yayımladı", yk_para: "para işlemi yaptı", yk_kidem: "kıdem işlemi yaptı",
-    duyuru: "duyuru yayımladı", sohbet_resmi: "sohbete yönetim adına yazdı", yardim_yanit: "Yardım Masası'nda yönetim adına yanıt verdi", istinaf_oy: "istinaf dosyasında oy kullandı", istinaf_ihmal: "istinaf görevini yapmadı (üye değiştirildi)"
+    duyuru: "duyuru yayımladı", sohbet_resmi: "sohbete yönetim adına yazdı", yardim_yanit: "Yardım Masası'nda yönetim adına yanıt verdi", istinaf_oy: "istinaf dosyasında oy kullandı", istinaf_ihmal: "istinaf görevini yapmadı (üye değiştirildi)",
+    cihaz_yasak_kaldir: "cihaz yasağını kaldırdı", cihaz_yasak_ac: "cihazı yeniden yasakladı"
   });
   const ISARET = { baglanti: ["Bağlantı", "#4fc1d6"], telefon: ["Telefon no", "#c86cd8"], kisisel: ["E-posta", "#c86cd8"], buyuk_harf: ["Büyük harf", "#e0a43a"],
     tekrar: ["Tekrar/spam", "#e0a43a"], kufur: ["Küfür şüphesi", "#e5574f"], sert: ["Sert ifade", "#f07f3c"] };
@@ -191,6 +192,10 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
 .mm-bos .ik{width:52px;height:52px;margin:0 auto;border-radius:16px;display:grid;place-items:center;background:rgba(52,201,138,.14);color:#5fe0aa}
 .mm-kilit{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;color:var(--warn)}
 .mm-alt{font-size:13px;color:var(--mut);line-height:1.4}
+.mm-cy{padding:12px 2px;border-bottom:1px solid var(--line)}.mm-cy:last-child{border-bottom:0}
+.mm-cy .cyb{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px}
+.mm-cy .cyb b{font-size:16px;min-width:0;overflow-wrap:anywhere}
+.mm-cy a{color:var(--ink2);font-weight:700;cursor:pointer;text-decoration:none}
 `;
     document.head.appendChild(s);
   }
@@ -236,7 +241,8 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     const araclar = [
       ["ara", "Oyuncu dosyası", "ara"], yv("duyuru") ? ["megafon", "Duyuru", "duyuru"] : null,
       ["gunluk", b.yonetici ? "Denetim günlüğü" : "İşlemlerim", "gunluk"], ["terazi", "Taleplerim", "taleplerim"],
-      yv("sikayet") ? ["sikayet", "Kürsü şikâyetleri", "kursu"] : null, ["kilit", "Kısıtlar ve yetkilerim", "kisit"], ["destek", "Talep kutusu", "kutu"],
+      yv("sikayet") ? ["sikayet", "Kürsü şikâyetleri", "kursu"] : null, ["kilit", "Kısıtlar ve yetkilerim", "kisit"],
+      yv("hesap_kapat") ? ["kalkan", "Yasaklı cihazlar", "cihaz"] : null, ["destek", "Talep kutusu", "kutu"],
       typeof window.yardimMasasiAc === "function" ? ["sohbet", "Yardım Masası", "yardim"] : null,
       b.yonetici ? ["ekip", "Ekip yönetimi", "ekip"] : ["ekip", "Ekip", "ekipgor"],
       yv("ekonomi") && typeof finansMasasiEkrani === "function" ? ["masak", "Finans masası", "finans"] : null,
@@ -287,6 +293,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       if (a === "taleplerim") return ekranAc(mmTalepler);
       if (a === "kursu") return ekranAc(mmKursu);
       if (a === "kisit") return ekranAc(mmKisitlar);
+      if (a === "cihaz") return ekranAc(mmCihaz);
       if (a === "kutu") return ekranAc(mmKutu);
       if (a === "yardim") return window.yardimMasasiAc();
       if (a === "ekip") return ekranAc(mmEkip);
@@ -348,8 +355,13 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     ["Kamuoyunca bilinen gerçek bir kişinin adı kullanılamaz.", "Bilinen kişi"],
     ["Ad soyad gerçekçi değil; gerçek bir ad ve soyad yaz.", "Gerçekçi değil"],
     ["Kullanıcı adı uygunsuz ya da yanıltıcı.", "Uygunsuz kullanıcı adı"],
-    ["Ad soyad ya da kullanıcı adı hakaret/argo içeriyor.", "Hakaret/argo"]
+    ["Ad soyad ya da kullanıcı adı hakaret/argo içeriyor.", "Hakaret/argo"],
+    ["Mükerrer hesap: engellenen ya da hâlen hesabı olan bir oyuncu yeni hesapla başvuramaz.", "Mükerrer hesap"]
   ];
+  // 23.11.2026 · Cihaz yasağı: başvurunun cihaz/bağlantı uyarıları (sunucu: admin_kayit_basvurulari → cihaz_uyari)
+  const cihazSatir = (x) => ((x && x.cihaz_uyari && x.cihaz_uyari.satirlar) || []);
+  const cihazGuclu = (x) => !!(x && x.cihaz_uyari && x.cihaz_uyari.guclu);
+  const cihazKutu = (sr) => `<div class="mm-uyari ${sr.seviye === "guclu" ? "" : "sari"}">${IK.kalkan}<div>${sr.seviye === "guclu" ? "<b>Mükerrer hesap uyarısı.</b> " : ""}${esc(sr.metin)}</div></div>`;
   const KM = { liste: [], i: 0, karar: 0, gorunum: "kart" };
   async function mmKayit() {
     yukleniyor("Kayıt masası");
@@ -393,7 +405,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
           <div class="mm-kv"><span>Hesap açılışı</span><span>${tsaat(x.olusturma)}</span></div>
           ${x.red_sayisi ? `<div class="mm-kv"><span>Ret sayısı</span><span>${x.red_sayisi}</span></div>` : ""}
         </div>
-        ${uyari}${onceki}
+        ${uyari}${cihazSatir(x).map(cihazKutu).join("")}${onceki}
         <div class="mm-kontrol">
           <div>${IK.tik}Ad soyad gerçek bir siyasetçiye ya da bilinen kişiye ait değil</div>
           <div>${IK.tik}Ad ve soyad gerçekçi, hakaret ya da şaka içermiyor</div>
@@ -404,20 +416,32 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       <button class="mm-btn cizgi" style="margin-top:8px" id="mmAtla">Şimdilik atla</button>
       ${digerInc ? `<p class="mm-alt" style="margin-top:8px">${digerInc} başvuruya başka bir moderatör bakıyor; onlar sana gösterilmez.</p>` : ""}`);
     gorunumBagla();
-    const karar = async (onay, neden) => {
+    const karar = async (onay, neden, goruldu) => {
       document.querySelectorAll(".mm-btn").forEach(b => b.disabled = true);
       try {
-        await API.rpc("admin_kayit_karar2", { p_user: x.user_id, p_onay: onay, p_neden: neden || null });
+        if (goruldu) await API.rpc("mod_kayit_karar", { p_user: x.user_id, p_onay: onay, p_neden: neden || null, p_uyari_goruldu: true });
+        else await API.rpc("admin_kayit_karar2", { p_user: x.user_id, p_onay: onay, p_neden: neden || null });
         toast(onay ? `${x.kad} oyuna kabul edildi.` : `${x.kad} reddedildi.`);
         KM.karar++; L.splice(KM.i, 1); kayitCiz();
       } catch (err) { hata(err); document.querySelectorAll(".mm-btn").forEach(b => b.disabled = false); }
     };
-    $("#mmKabul").onclick = () => karar(true);
+    $("#mmKabul").onclick = () => {
+      if (!cihazGuclu(x)) return karar(true);
+      const m = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">Mükerrer hesap uyarısı</h3>
+        <p class="mm-alt" style="margin:4px 0 8px">Bu başvuru engellenmiş bir hesapla bağlantılı görünüyor. Büyük olasılıkla aynı kişi yeni bir adla başvuruyor.</p>
+        ${cihazSatir(x).filter(sr => sr.seviye === "guclu").map(cihazKutu).join("")}
+        <button class="mm-btn kirmizi" style="margin-top:10px" id="mmCuRed">${IK.carpi}Reddet (önerilen)</button>
+        <button class="mm-btn cizgi" style="margin-top:8px" id="mmCuOnay">Uyarıyı gördüm, yine de kabul et</button>
+        <button class="mm-btn cizgi" style="margin-top:8px" id="mmCuVaz">Vazgeç</button>`);
+      $("#mmCuVaz", m).onclick = modalKapat;
+      $("#mmCuRed", m).onclick = () => { modalKapat(); karar(false, RET[5][0]); };
+      $("#mmCuOnay", m).onclick = () => { modalKapat(); karar(true, null, true); };
+    };
     $("#mmAtla").onclick = () => { API.rpc("mod_ustlen", { p_tur: "kayit", p_anahtar: x.user_id, p_birak: true }).catch(() => {}); KM.i++; if (KM.i >= L.length) KM.i = 0; kayitCiz(); };
     $("#mmRed").onclick = () => {
       const m = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">Reddetme gerekçesi</h3><p class="mm-alt" style="margin:4px 0 8px">Oyuncu gerekçeyi görür ve farklı ad soyadla yeniden başvurabilir.</p>
         <div class="mm-secim" id="mmRetSec">${RET.map((r, i) => `<button data-v="${i}" style="--c:#e5574f"><i></i>${r[1]}</button>`).join("")}</div>
-        <label class="mm-alan" for="mmRetMetin">Gerekçe</label><textarea class="mm-girdi" id="mmRetMetin" maxlength="300">${esc(x.uyari ? RET[0][0] : "")}</textarea>
+        <label class="mm-alan" for="mmRetMetin">Gerekçe</label><textarea class="mm-girdi" id="mmRetMetin" maxlength="300">${esc(x.uyari ? RET[0][0] : cihazGuclu(x) ? RET[5][0] : "")}</textarea>
         <button class="mm-btn kirmizi" style="margin-top:10px" id="mmRetOk">Reddet</button><button class="mm-btn cizgi" style="margin-top:8px" id="mmRetVaz">Vazgeç</button>`);
       cipSec($("#mmRetSec", m), v => { $("#mmRetMetin", m).value = RET[+v][0]; });
       $("#mmRetVaz", m).onclick = modalKapat;
@@ -429,7 +453,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     const L = KM.liste, G = (KM.tum || []).filter(x => x.durum !== "beklemede").slice(0, 40);
     sayfa("Kayıt masası", `<div class="mm-filtre"><button data-g="kart">Tek tek</button><button class="on" data-g="liste">Liste ve geçmiş</button></div>
       <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>Bekleyen (${L.length})</h3></div>
-        ${L.map(x => `<div class="mm-satir" style="cursor:default"><div class="orta"><b>${esc(x.ad_soyad || "—")} <span class="kucuk">@${esc(x.kad)}</span></b><div class="kucuk">${esc(x.il || "")} · ${once(x.basvuru_at)}${KM.ust[x.user_id] && !KM.ust[x.user_id].ben ? ` · <span class="mm-kilit">${IK.kilit}${esc(KM.ust[x.user_id].kad)} inceliyor</span>` : ""}</div></div>${x.uyari ? `<span class="mm-etiket" style="--c:#e5574f">uyarı</span>` : ""}</div>`).join("") || `<div class="mm-alt">Bekleyen başvuru yok.</div>`}</div>
+        ${L.map(x => `<div class="mm-satir" style="cursor:default"><div class="orta"><b>${esc(x.ad_soyad || "—")} <span class="kucuk">@${esc(x.kad)}</span></b><div class="kucuk">${esc(x.il || "")} · ${once(x.basvuru_at)}${KM.ust[x.user_id] && !KM.ust[x.user_id].ben ? ` · <span class="mm-kilit">${IK.kilit}${esc(KM.ust[x.user_id].kad)} inceliyor</span>` : ""}</div></div>${x.uyari ? `<span class="mm-etiket" style="--c:#e5574f">uyarı</span>` : ""}${cihazGuclu(x) ? `<span class="mm-etiket" style="--c:#e5574f">mükerrer?</span>` : cihazSatir(x).some(sr => sr.seviye === "zayif") ? `<span class="mm-etiket" style="--c:#e0a43a">cihaz</span>` : ""}</div>`).join("") || `<div class="mm-alt">Bekleyen başvuru yok.</div>`}</div>
       <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>Son kararlar</h3></div>
         ${G.map(x => `<div class="mm-satir" style="cursor:default"><div class="orta"><b>${esc(x.ad_soyad || "—")} <span class="kucuk">@${esc(x.kad)}</span></b><div class="kucuk">${esc(x.karar_veren || "")} · ${once(x.karar_at)}${x.ret_neden ? " · " + esc(x.ret_neden) : ""}</div></div><span class="mm-etiket" style="--c:${x.durum === "onaylandi" ? "#34c98a" : "#e5574f"}">${x.durum === "onaylandi" ? "kabul" : "ret"}</span></div>`).join("") || `<div class="mm-alt">Henüz karar yok.</div>`}</div>`);
     gorunumBagla();
@@ -851,9 +875,65 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
   function mmCoklu() {
     sayfa("Çoklu hesap", `<div class="mm-uyari sari">${IK.sandik}<div>Aynı cihazdan açılan hesaplar güçlü, aynı bağlantı adresi (IP) zayıf işarettir; aile, okul ve mobil operatör aynı IP'yi paylaşabilir. Gerçek kişi olduğuna kanaat getirdiğin hesabı onayla; sahte hesap için yaptırım talebi aç ya da engelle.</div></div>
       <div class="mm-ara">${IK.ara}<input id="mmCAra" placeholder="Hesap adıyla dosya aç" autocapitalize="off"></div><div class="mm-oneri" id="mmCOn"></div>
+      ${yv("hesap_kapat") ? `<button class="mm-btn cizgi" style="margin-top:10px" id="mmCyGit">${IK.kalkan}Yasaklı cihazlar</button>` : ""}
       <div id="ysuphe" style="margin-top:10px"><div class="mm-alt">Yükleniyor…</div></div>`);
+    if ($("#mmCyGit")) $("#mmCyGit").onclick = () => ekranAc(mmCihaz);
     oyuncuAramaBagla($("#mmCAra"), $("#mmCOn"));
     if (typeof yoneticiSupheCiz === "function") yoneticiSupheCiz();
+  }
+  /* =====================================================================
+     YASAKLI CİHAZLAR (23.11.2026) — kalıcı engellenen hesapların telefon/tarayıcıları
+     Sunucu: mod_cihaz_yasaklari, mod_cihaz_yasak_ayarla (zz_20261123_cihaz_yasak.sql)
+     ===================================================================== */
+  const CY = { veri: null };
+  async function mmCihaz() {
+    yukleniyor("Yasaklı cihazlar");
+    try { CY.veri = await API.rpc("mod_cihaz_yasaklari"); } catch (err) { hataSayfa("Yasaklı cihazlar", err); return; }
+    cihazCiz();
+  }
+  function cihazCiz() {
+    const v = CY.veri || {}, A = v.aktif || [], K = v.kaldirilan || [], DN = v.denemeler || [];
+    const hesap = (h) => `<a data-dosya="${esc(h.kad)}">${esc(h.kad)}</a> <span class="mm-alt">(${h.yasakli ? "engelli" : h.muaf ? "muaf" : "bu cihazdan giremez"})</span>`;
+    sayfa("Yasaklı cihazlar", `
+      <div class="mm-uyari sari">${IK.kalkan}<div>Bir hesap <b>kalıcı</b> engellenince kullandığı telefon ve tarayıcılar kendiliğinden bu listeye girer. Listedeki cihazdan yeni hesap açılamaz, başvuru yapılamaz ve oyuna girilemez. Hesabın engeli kaldırılırsa cihaz yasağı da kalkar.</div></div>
+      <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>Yasaklı cihazlar (${A.length})</h3><button class="link" id="mmCyYen">Yenile</button></div>
+        ${A.map(y => `<div class="mm-cy">
+          <div class="cyb"><b>${esc(y.kaynak || "—")}</b><span class="mm-etiket" style="--c:#e5574f">yasaklı</span></div>
+          <div class="mm-alt">${esc(y.neden || "Gerekçe yazılmamış")} · ${tsaat(y.zaman)}${y.ekleyen ? " · " + esc(y.ekleyen) : ""}</div>
+          ${(y.hesaplar || []).length ? `<div style="margin-top:8px;font-size:14.5px;line-height:1.5"><span class="mm-alt">Bu cihazda görülen hesaplar</span><br>${y.hesaplar.map(hesap).join(", ")}</div>` : ""}
+          <div style="margin-top:6px;font-size:14.5px"><span class="mm-alt">Engellenen deneme</span><br>${y.deneme && +y.deneme.hesap ? `${sayi(y.deneme.hesap)} ayrı hesap · ${sayi(y.deneme.toplam)} kez · son ${once(y.deneme.son)}` : "henüz yok"}</div>
+          ${v.kaldirabilir ? `<button class="mm-btn cizgi" style="margin-top:10px" data-cyk="${y.id}">Cihaz yasağını kaldır</button>` : ""}
+        </div>`).join("") || `<div class="mm-alt">Yasaklı cihaz yok.</div>`}</div>
+      <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>Engellenen denemeler</h3></div>
+        ${DN.map(d => `<div class="mm-satir" style="cursor:default"><div class="orta"><b>${esc(d.kad || "Yeni hesap (başvurusu yok)")}</b><div class="kucuk">${esc(d.kaynak || "—")} hesabının cihazından · ${sayi(d.sayi)} kez · son ${once(d.son)}</div></div><span class="mm-etiket" style="--c:#e0a43a">${d.hesap_var ? "hesabı var" : d.kad ? "başvuru" : "yeni"}</span></div>`).join("") || `<div class="mm-alt">Yasaklı cihazdan giriş ya da başvuru denemesi yok.</div>`}</div>
+      ${K.length ? `<details class="mm-kart"><summary style="font-weight:800;cursor:pointer">Kaldırılan yasaklar (${K.length})</summary>
+        ${K.map(y => `<div class="mm-cy"><div class="cyb"><b>${esc(y.kaynak || "—")}</b><span class="mm-etiket" style="--c:#98a4c4">kaldırıldı</span></div>
+          <div class="mm-alt">${esc(y.kaldirma_not || "")} · ${esc(y.kaldiran || "sistem")} · ${tsaat(y.kaldirma_zaman)}</div>
+          ${v.kaldirabilir ? `<button class="mm-btn cizgi" style="margin-top:10px" data-cya="${y.id}">Yeniden yasakla</button>` : ""}</div>`).join("")}</details>` : ""}
+      ${v.kaldirabilir ? "" : `<p class="mm-alt" style="text-align:center;margin:6px 0 14px">Cihaz yasağını kurucu ve Oyuncu Masası kaldırabilir.</p>`}`);
+    const ic = $("#icerik");
+    $("#mmCyYen").onclick = mmCihaz;
+    ic.querySelectorAll("[data-dosya]").forEach(el => el.onclick = () => mmDosyaAc(el.dataset.dosya));
+    ic.querySelectorAll("[data-cyk]").forEach(el => el.onclick = () => cihazKarar(+el.dataset.cyk, false));
+    ic.querySelectorAll("[data-cya]").forEach(el => el.onclick = () => cihazKarar(+el.dataset.cya, true));
+  }
+  function cihazKarar(id, ac) {
+    const m = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">${ac ? "Cihazı yeniden yasakla" : "Cihaz yasağını kaldır"}</h3>
+      <p class="mm-alt" style="margin:4px 0 8px">${ac ? "Bu cihazdan yeniden başvuru yapılamaz ve oyuna girilemez." : "Bu cihazdan yeniden hesap açılabilir ve oyuna girilebilir. Yalnız yanlışlıkla yasaklandığından eminsen kaldır."} İşlem kayda geçer ve kurucuya bildirilir.</p>
+      <label class="mm-alan" for="mmCyNot">Gerekçe (en az 10 karakter)</label>
+      <textarea class="mm-girdi" id="mmCyNot" maxlength="300"></textarea>
+      <button class="mm-btn ${ac ? "kirmizi" : "mor"}" style="margin-top:10px" id="mmCyOk">${ac ? "Yeniden yasakla" : "Yasağı kaldır"}</button>
+      <button class="mm-btn cizgi" style="margin-top:8px" id="mmCyVaz">Vazgeç</button>`);
+    $("#mmCyVaz", m).onclick = modalKapat;
+    $("#mmCyOk", m).onclick = async () => {
+      const n = $("#mmCyNot", m).value.trim();
+      if (n.length < 10) { toast("En az 10 karakterlik gerekçe yaz.", true); return; }
+      $("#mmCyOk", m).disabled = true;
+      try {
+        CY.veri = await API.rpc("mod_cihaz_yasak_ayarla", { p_id: id, p_aktif: ac, p_not: n });
+        modalKapat(); toast(ac ? "Cihaz yeniden yasaklandı." : "Cihaz yasağı kaldırıldı."); cihazCiz();
+      } catch (err) { hata(err); const b = $("#mmCyOk", m); if (b) b.disabled = false; }
+    };
   }
   function mmDuyuru() {
     const HED = [["cevrimici", "Çevrimiçi olanlar"], ["aktif", "Son 7 gün aktif"], ["yeni", "Yeni oyuncular (3 gün)"], ["herkes", "Herkes"], ["oyuncu", "Tek oyuncu"]];
@@ -1193,5 +1273,5 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     window.yoneticiEkraniKlasik = yoneticiEkrani;
     window.yoneticiEkrani = yoneticiEkrani = modMerkezi;
   }
-  Object.assign(window, { modMerkezi, mmDosyaAc, mmKayit, mmSikayet, mmNobet, mmDestek, mmTalepler, mmEkip, mmGunluk, mmDuyuru, mmCoklu, mmTalepAc: talepAc, mmKutu, mmKursu, mmKisitlar });
+  Object.assign(window, { modMerkezi, mmDosyaAc, mmKayit, mmSikayet, mmNobet, mmDestek, mmTalepler, mmEkip, mmGunluk, mmDuyuru, mmCoklu, mmTalepAc: talepAc, mmKutu, mmKursu, mmKisitlar, mmCihaz });
 })();
