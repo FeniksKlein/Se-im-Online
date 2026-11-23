@@ -478,6 +478,7 @@
     portre: function () { var f = g('portreModal'); f ? f() : hata(); },
     secmen: function () { var f = g('vatandaslikModal'); f ? f() : hata(); },
     gorev: function () { var f = g('gorevEkrani'); f ? ac(f) : hata(); },
+    ekis: function () { var f = g('ekIslerEkrani'); f ? ac(function () { return f(); }) : hata(); },
     tikla: function (id) { var el = document.getElementById(id); if (el && !el.disabled) el.click(); else if (el) { var t = g('toast'); if (t) t('Şu an kullanılamıyor.'); } },
     kaydir: function (sec) { var el = document.querySelector(sec); if (el) el.scrollIntoView({ behavior: azHareket() ? 'auto' : 'smooth', block: 'start' }); },
     topla: function () { toplaEylem(); },
@@ -570,6 +571,8 @@
     var toplanabilir = bir >= 1 || !!cz.gunun_ilki || (h && h.bugun_toplandi === false);
     return { bir: bir, kap: kap, saat: saat, dolu: dolu, toplanabilir: toplanabilir, oran: kap ? Math.min(1, saat / kap) : (dolu ? 1 : null) };
   }
+  /* 24.11.2026: Ek İşler şeridi (ek_isler.js çizer; modül yoksa boş döner, ana ekran bozulmaz). */
+  function ekIsSerit() { var f = g('ekIsSeridi'); if (!f) return ''; try { return f() || ''; } catch (e) { return ''; } }
   function kumbaraSerit(p) {
     var k = kumbaraBilgi(p);
     var alt = k.dolu ? 'Kumbara doldu, birikme durdu. Hemen topla!' : (k.kap ? tr(k.saat, 1) + ' / ' + k.kap + ' saat doldu' : 'Maaşın saat saat birikiyor');
@@ -619,7 +622,7 @@
         ust: tarih, baslik: selam() + ', ' + p.kad, alt: rolYaz(p) + ' · ' + parti,
         cip: cipler([siradakiSecim(d)]),
         veri: veri([['Cüzdan', kisaTl(cz.para), cz.para, 'kisa'], ['Okunmamış', tr(sayi(ok.sohbet) + sayi(ok.ozel)), sayi(ok.sohbet) + sayi(ok.ozel)]])
-      }) + kumbaraSerit(p) + hizli('gundem', [
+      }) + kumbaraSerit(p) + ekIsSerit() + hizli('gundem', [
         ['hayat', 'Hayat', on('sekme', 'hayat')],
         g('kursuEkrani') ? ['kursu', 'Kürsü', on('kursu')] : ['meclis', 'Meclis', on('sekme', 'meclis')],
         ['banka', 'Mobil Şube', on('mobilSube')],
@@ -653,7 +656,7 @@
         sag: kb.kapasite ? halka(saat / kap, tr(saat, 1), '/ ' + kap + ' saat') : '',
         cip: cipler([st.ad ? cip(st.ad) : '', kb.seri ? cip(kb.seri + ' günlük seri') : '']),
         veri: veri([['Saatlik net', kb.saatlik ? tl(kb.saatlik.net) : null], ['Günlük net', kb.gunluk_net ? tl(kb.gunluk_net) : null]])
-      }) + hizli('hayat', [
+      }) + ekIsSerit() + hizli('hayat', [
         ['gorev', 'Görevler', on('gorev')],
         rk ? ['oynat', 'Reklam izle', on('tikla', 'hReklam'), (rkAlt || '').trim()] : null,
         ['banka', 'Mobil Şube', on('mobilSube')],
@@ -943,6 +946,7 @@
     if (g('muzayedeEkrani')) e('cekic', '#c99a3a', 'Müzayede Evi', 'Koleksiyon eserlerine pey ver, sergile, sat', ['muzayede'], 'müzayede açık artırma pey koleksiyon eser tablo sikke pul antika saat mücevher halı otomobil sergi müze', 'Para');
     e('magaza', '#7a5af0', 'Mağaza', 'Siyaset Kartı ve ₺ paketleri', ['magaza'], 'mağaza satın al paket siyaset kartı rozet', 'Para');
     e('gorev', '#8a68f2', 'Görevler', 'Günlük, haftalık ve kalıcı görevler', ['gorev'], 'görev ödül', 'Hayat');
+    if (g('ekIslerEkrani')) e('canta', '#1f9e86', 'Ek İşler', 'Günde 5 iş: çalış, süre dolunca ücretini al', ['ekis'], 'ek iş meslek çalış para kazan garson kurye taksi yazılım günlük hak', 'Hayat');
     e('kanun', B.meclis.a1, 'Kanun teklifi ver', 'Meclis\'e yeni kanun teklifi sun', ['kanun'], 'kanun teklif yasa önerge', 'Meclis');
     e('sandik', B.meclis.a1, 'Yasama ve oylamalar', 'Oylamadaki kanunlar', ['meclisSekme', 'yasama'], 'oylama oy ver yasama kanun', 'Meclis');
     e('kisiler', B.meclis.a1, 'İl il milletvekilleri', 'Vekil listesi', ['meclisSekme', 'vekiller'], 'vekil milletvekili liste', 'Meclis');

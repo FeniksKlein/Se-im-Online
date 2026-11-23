@@ -23,7 +23,13 @@ assert(sql.includes("3 then"),'Günlük iş limiti uygulanmıyor');
 assert(sql.includes('enable row level security'),'RLS yok');
 assert(sql.includes('to authenticated'),'RPC izinleri eksik');
 assert(menu.includes('ekranAc(ekIslerEkrani)'),'Ekonomi menüsünde ek iş yok');
-assert(doc.includes('src="ek_isler.js?v='),'Yayındaki sayfa ek iş dosyasını yüklemiyor');
+// 24.11.2026: yayındaki sayfa tek dosyadır; ek işler modülü içine gömülü olmalı (eski "src=ek_isler.js?v=" denetimi geçersizdi).
+assert(doc.includes('window.ekIslerEkrani=ekIslerEkrani'),'Yayındaki sayfada ek iş modülü yok');
+// 24.11.2026: Ek İşler 2.0 — günlük hak artık ayardan okunur (başlangıç 5); ayrıntılı testler ek_isler_v2.py ve ek_isler_v2_arayuz.js
+const v2=fs.readFileSync(path.join(root,'sql','zz_20261124_ek_isler_v2.sql'),'utf8');
+assert(v2.includes('oyun.ek_is_gunluk_limit()')&&v2.includes('if yap >= lim then'),'Günlük hak ayardan okunmuyor');
+assert(v2.includes("update oyun.ek_is_ayar set gunluk_limit = 5"),'Günlük hak başlangıcı 5 değil');
+assert(v2.includes('for update')&&v2.includes("and odendi_at is null"),'Ek İşler 2.0 kilit/tekrar ödeme koruması yok');
 
 let calls=[],lastHtml='';
 const window={};
@@ -41,13 +47,14 @@ vm.runInNewContext(ui,ctx,{filename:'ek_isler.js'});
  assert.equal(typeof window.ekIslerEkrani,'function');
  await window.ekIslerEkrani();
  assert(lastHtml.includes('Paket Kuryeliği'));
- assert(lastHtml.includes('İşe başla'));
+ assert(lastHtml.includes('>Başla<'));
+ assert(lastHtml.includes('Günlük Ek İş Hakkı')&&lastHtml.includes('2/3'));
  await window.ekIsBaslat('kurye');
  assert(calls.some(x=>x.name==='ek_is_baslat'&&x.params.p_tur==='kurye'));
  panel.aktif={id:3,ad:'Paket Kuryeliği',simge:'🚲',bitis:'2026-10-19T11:59:00Z',ucret:700};
  await window.ekIslerEkrani();
  assert(lastHtml.includes('Ücretimi al'));
- assert(lastHtml.includes('Devam eden işin var'));
+ assert(lastHtml.includes('İş bitti'));
  await window.ekIsUcretAl(3);
  assert(calls.some(x=>x.name==='ek_is_ucret_al'&&x.params.p_id===3));
  console.log('Ek işler ve yeni sektör arayüz testleri başarılı.');

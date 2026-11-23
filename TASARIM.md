@@ -1057,3 +1057,8 @@ Kaynak: `gelistirici/sql/zz_20261120_duyuru_sinir_imza.sql`, `zz_20261120_istina
 - Yönetime Yaz'a **"Soru / Yardım"** konusu eklendi (Oyuncu Masası'na düşer): herkese açık yazmak istemeyen oyuncu için.
 - Eski mağaza sürümleri kanalı göstermez ama etkilenmez (kanal `sohbet_ozet` içinde ayrı `yardim` anahtarıyla döner).
 
+## Ek İşler (24.11.2026)
+- Her oyuncu günde en çok **5** ek iş başlatabilir (yönetici panelinden değişir). Haklar Türkiye saatiyle 00.00'da yenilenir; hak iş başlarken düşer.
+- Aynı anda tek iş yapılır; başlanan iş iptal edilmez. Ücret iş başlarken sabitlenir, süre dolunca cüzdana ve işlem geçmişine bir kez yatar.
+- Başlangıç meslekleri ve ücretleri: Garsonluk 750 · Market Çalışanı 850 · Tarım İşçiliği 950 · Paket Kuryeliği 1.000 · Özel Güvenlik 1.100 · Organizasyon Görevlisi 1.200 · Taksi Şoförlüğü 1.250 · Aşçılık 1.300 · İnşaat İşçiliği 1.400 · Gazetecilik 1.400 · Fotoğrafçılık 1.500 · Sosyal Medya Yöneticiliği 1.500 · Tesisatçılık 1.650 · Grafik Tasarım 1.650 · Oto Tamirciliği 1.750 · Özel Ders Öğretmenliği 1.750 · Elektrikçilik 1.800 · Bilgisayar Teknik Servisi 1.900 · Muhasebe Destek İşleri 2.000 · Yazılım Geliştirme 2.500 ₺ (+ eski "Ev ve Cihaz Tamiri" 950–1.450 ₺). Süreler ücretle orantılıdır (55 dk – 3 saat).
+- Meslek ekleme, kapatma, silme/arşivleme, ücret, süre, kıdem şartı ve günlük hak: Kontrol Merkezi › Ek işler (yalnız oyunun sahibi).

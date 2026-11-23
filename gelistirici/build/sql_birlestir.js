@@ -48,6 +48,8 @@ const KOSULLU = {
   // 23.11: yönetimden oyuncuya özel mesaj / yazılı uyarı; Yönetime Yaz tabloları (20.11 canlı migration) yoksa atlanır.
   'zz_20261123_mod_oyuncuya_yaz.sql': ['oyun.destek_talep', 'oyun.destek_mesaj', 'oyun.moderatorler', 'oyun.mod_kayit'],
   'zz_20261123_cihaz_yasak.sql': ['oyun_yonetim.kayit_basvurulari', 'oyun.oturumlar', 'oyun.hesap_onay', 'oyun.moderatorler', 'oyun.mod_kayit', 'oyun.yonetici_kimlik'],
+  // 24.11: alıntılı yanıt; sohbet_oku'nun Yardım Masası / yönetim adına yazma (20.11 canlı migration'ları) üstündeki hâlini yazar, onlar yoksa atlanır.
+  'zz_20261124_mesaj_alinti.sql': ['oyun.moderatorler', 'oyun.mesajlar', 'oyun.ozel', 'oyun.mod_kisit', 'oyun.destek_mesaj', 'oyun.sohbet_grup', 'oyun.kanal_okuma'],
 };
 const okuKosullu = ad => {
   const govde = oku(ad), tablolar = KOSULLU[ad];
@@ -101,7 +103,11 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   // 23.11.2026: ortak şirket kuruluşunda "record a is not assigned yet" (canlıda düzeltilmişti; depo eşitlemesi)
   'zz_20261123_ortak_sirket_takma_ad.sql',
   // 24.11.2026: Genel Kurul'da söz hakkı (Meclis Başkanı verir) ve söz türüne göre karakter sınırı
-  'zz_20261124_meclis_soz.sql'];
+  'zz_20261124_meclis_soz.sql',
+  // 24.11.2026: sohbette alıntılı yanıt (canlıda mesaj_alinti_20261124; kaynağı depoya alındı). sohbet_oku'yu yeniden yazdığı için sohbet yamalarından SONRA gelir.
+  'zz_20261124_mesaj_alinti.sql',
+  // 24.11.2026: Ek İşler 2.0 — günlük 5 hak, 20 meslek, yönetilebilir katalog (109'daki ek iş işlevlerinin yerine geçer)
+  'zz_20261124_ek_isler_v2.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',

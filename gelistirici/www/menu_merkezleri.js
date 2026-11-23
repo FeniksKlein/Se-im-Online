@@ -620,7 +620,7 @@
     return eBolum("İşletme hizmetleri","Gündelik işlemler",[
       eTile("🛡️","Sigorta","Poliçe ve hasar işlemleri","soMenuGit('msSigortaAc')",true),
       eTile("🏛️","Ruhsatlar","İşyeri ve inşaat ruhsatları","soMenuGit('msRuhsatMerkeziAc')"),
-      eTile("💼","Ek işler","Kurye, taksi, özel ders ve işler","soMenuGit('ekIslerEkrani')"),
+      eTile("💼","Ek İşler","Günde 5 iş · çalış, ücretini al","soMenuGit('ekIslerEkrani')"),
       eTile("📢","Ajanslar","Reklam ve kamuoyu araştırması","soMenuGit('ajansMerkezEkrani')")
     ])
     +'<details class="so-econ-more"><summary>Daha fazla faaliyet ve hizmet</summary>'

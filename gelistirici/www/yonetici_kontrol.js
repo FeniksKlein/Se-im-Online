@@ -214,7 +214,7 @@
     const l = [["pano","Pano"],["oyuncular","Oyuncular"]];
     if (yetkiVar("hesap_kapat") || yetkiVar("sustur") || yetkiVar("makam")) l.push(["kisitlar","Kısıtlar"]);
     if (yetkiVar("makam")) l.push(["gorevler","Görevler"]);
-    if (sahipMi()) l.push(["ekonomi","Ekonomi"],["secimler","Seçimler"],["veri","Veri"],["gecmis","Geçmiş"],["ayarlar","Ayarlar"]);
+    if (sahipMi()) l.push(["ekonomi","Ekonomi"],["ekis","Ek işler"],["secimler","Seçimler"],["veri","Veri"],["gecmis","Geçmiş"],["ayarlar","Ayarlar"]);
     return l;
   }
   function kmIskelet(govde){
@@ -225,7 +225,7 @@
   window.kontrolMerkezi = function(sekme){ if (sekme) YK.sekme = sekme; ekranAc(kmCiz); };
   async function kmCiz(){
     kmIskelet(`<div class="yukleniyor">Yükleniyor…</div>`);
-    const fn = { pano: panoCiz, oyuncular: oyuncularCiz, kisitlar: kisitlarCiz, gorevler: gorevlerCiz, ekonomi: ekonomiCiz, secimler: secimlerCiz, veri: veriCiz, gecmis: gecmisCiz, ayarlar: ayarlarCiz }[YK.sekme] || panoCiz;
+    const fn = { pano: panoCiz, oyuncular: oyuncularCiz, kisitlar: kisitlarCiz, gorevler: gorevlerCiz, ekonomi: ekonomiCiz, ekis: ekisCiz, secimler: secimlerCiz, veri: veriCiz, gecmis: gecmisCiz, ayarlar: ayarlarCiz }[YK.sekme] || panoCiz;
     try { await fn($("#kmIc")); } catch (err) { const ic = $("#kmIc"); if (ic) ic.innerHTML = `<div class="bos">${e(hataCevir(err.message))}</div>`; }
   }
 
@@ -691,6 +691,74 @@
     };
     $("#kmUlkeK").onclick = () => kaydet("ulke", "oyun.ulke", ul);
     $("#kmAyarK").onclick = () => kaydet("ayar", "oyun.ayarlar", ay);
+  }
+
+  /* ---------- Ek işler (24.11.2026; sunucu: sql/zz_20261124_ek_isler_v2.sql) ----------
+     Günlük hak, meslek ekleme, ücret/süre düzenleme, pasifleştirme, silme. Hepsi yalnız oyunun sahibine açık ve
+     Geçmiş sekmesine yazılır. Değişiklik yeni başlatılan işlerde geçerlidir; süren işin ücreti başlarken sabitlenmiştir. */
+  async function ekisCiz(ic){
+    const d = await rpc("yk_ek_is_liste");
+    const acik = (d.isler || []).filter(x => !x.silindi), arsiv = (d.isler || []).filter(x => x.silindi);
+    const ucret = (x) => Number(x.asgari_ucret) === Number(x.azami_ucret) ? tl(x.asgari_ucret) : tl(x.asgari_ucret) + " – " + tl(x.azami_ucret);
+    const enCok = acik.filter(x => x.aktif).reduce((m, x) => Math.max(m, Number(x.azami_ucret) || 0), 0);
+    const satir = (x) => `<div class="km-veri-kart" data-ekis="${e(x.kod)}">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b style="font-size:15px">${e(x.simge)} ${e(x.ad)}</b><span class="rozet ${x.silindi ? "" : x.aktif ? "yesil" : "kirmizi"}">${x.silindi ? "Arşivde" : x.aktif ? "Açık" : "Kapalı"}</span></div>
+        <div class="kv"><span class="k">Ücret · süre</span><span class="v">${ucret(x)} · ${fmt(x.sure_dakika)} dk</span></div>
+        <div class="kv"><span class="k">Tür${Number(x.min_kidem) > 0 ? " · şart" : ""}</span><span class="v">${e(x.kategori_ad)}${Number(x.min_kidem) > 0 ? " · " + fmt(x.min_kidem) + " kıdem" : ""}</span></div>
+        <div class="kv"><span class="k">Son 7 gün</span><span class="v">${fmt(x.adet_7g)} iş · ${tl(x.odenen_7g)}</span></div></div>`;
+    ic.innerHTML = `<div class="kart"><h2>Günlük ek iş hakkı</h2>
+        <p class="alt">Her oyuncunun bir günde başlatabileceği iş sayısı. Haklar Türkiye saatiyle 00.00'da yenilenir. Değişiklik hemen geçerli olur.</p>
+        <div class="alan"><label for="kmEkLimit">Günlük hak (1–24)</label><input class="km-girdi" id="kmEkLimit" type="number" inputmode="numeric" min="1" max="24" value="${e(d.gunluk_limit)}"></div>
+        <button class="btn ikinci" id="kmEkLimitK">Günlük hakkı kaydet</button>
+        <div class="kv" style="margin-top:10px"><span class="k">Bugün başlatılan iş</span><span class="v">${fmt((d.bugun || {}).baslatilan)} (${fmt((d.bugun || {}).oyuncu)} oyuncu)</span></div>
+        <div class="kv"><span class="k">Bugün ödenen</span><span class="v">${tl((d.bugun || {}).odenen)}</span></div>
+        <div class="kv"><span class="k">Bir oyuncunun günlük en yüksek kazancı</span><span class="v">${tl(enCok * Number(d.gunluk_limit))}</span></div></div>
+      <div class="kart"><h2>Meslekler</h2><p class="alt">Düzenlemek için mesleğe dokun. ${fmt(acik.filter(x => x.aktif).length)} açık, ${fmt(acik.filter(x => !x.aktif).length)} kapalı meslek var.</p>
+        <button class="btn altin" id="kmEkYeni">＋ Yeni meslek ekle</button>
+        ${acik.map(satir).join("") || `<div class="bos">Meslek yok.</div>`}</div>
+      ${arsiv.length ? `<div class="kart"><h2>Arşiv</h2><p class="alt">Ödeme geçmişi olduğu için kalıcı silinmeyen meslekler. Oyunculara görünmez; dokunup geri açabilirsin.</p>${arsiv.map(satir).join("")}</div>` : ""}`;
+    $("#kmEkLimitK").onclick = async () => {
+      const v = Number($("#kmEkLimit").value);
+      if (!Number.isInteger(v) || v < 1 || v > 24) return toast("Günlük hak 1 ile 24 arasında tam sayı olmalı.", true);
+      try { await rpc("yk_ek_is_ayar", { p_gunluk_limit: v }); toast("Günlük ek iş hakkı: " + v); kmCiz(); } catch (err) { hata(err); }
+    };
+    $("#kmEkYeni").onclick = () => ekisModal(null, d.kategoriler || []);
+    document.querySelectorAll("[data-ekis]").forEach(k => k.onclick = () => ekisModal((d.isler || []).find(x => x.kod === k.dataset.ekis), d.kategoriler || []));
+  }
+  function ekisModal(is, kategoriler){
+    const yeni = !is, x = is || { ad: "", simge: "💼", aciklama: "", sure_dakika: 60, asgari_ucret: 1000, azami_ucret: 1000, kategori: "hizmet", min_kidem: 0, sira: "", aktif: true };
+    const alan = (id, etiket, deger, ek) => `<div class="alan"><label for="${id}">${etiket}</label><input class="km-girdi" id="${id}" value="${e(deger == null ? "" : deger)}" ${ek || ""}></div>`;
+    const m = modal(`<h3 style="font-size:19px;font-weight:800">${yeni ? "Yeni meslek" : e(x.simge) + " " + e(x.ad)}</h3>
+      <p class="alt">${yeni ? "Kaydedince oyuncuların Ek İşler listesinde görünür." : "Değişiklik bundan sonra başlatılan işlerde geçerlidir."}</p>
+      ${alan("kmEkAd", "Meslek adı", x.ad, 'maxlength="40"')}
+      ${alan("kmEkSimge", "Simge (tek emoji)", x.simge, 'maxlength="8"')}
+      <div class="alan"><label for="kmEkAcik">Açıklama</label><textarea class="km-girdi" id="kmEkAcik" maxlength="160" style="font-family:inherit;font-size:16px;min-height:72px">${e(x.aciklama)}</textarea></div>
+      ${alan("kmEkSure", "Çalışma süresi (dakika, 15–480)", x.sure_dakika, 'type="number" inputmode="numeric" min="15" max="480"')}
+      ${alan("kmEkAsgari", "Ücret – en düşük (₺)", x.asgari_ucret, 'type="number" inputmode="numeric" min="1"')}
+      ${alan("kmEkAzami", "Ücret – en yüksek (₺; sabit ücret için aynısını yaz)", x.azami_ucret, 'type="number" inputmode="numeric" min="1"')}
+      <div class="alan"><label for="kmEkKat">Meslek türü</label>${sec("kmEkKat", kategoriler.map(k => [k.kod, k.ad]), x.kategori)}</div>
+      ${alan("kmEkKidem", "Kıdem şartı (şart yoksa 0)", x.min_kidem, 'type="number" inputmode="decimal" min="0"')}
+      ${alan("kmEkSira", "Listedeki sırası" + (yeni ? " (boş bırakırsan sona eklenir)" : ""), x.sira, 'type="number" inputmode="numeric" min="0"')}
+      <div class="alan"><label for="kmEkAktif">Durum</label>${sec("kmEkAktif", [["true", "Açık (oyuncular başlatabilir)"], ["false", "Kapalı (listede görünmez)"]], String(!!x.aktif))}</div>
+      <button class="btn altin" id="kmEkK">${yeni ? "Mesleği ekle" : x.silindi ? "Arşivden çıkar ve kaydet" : "Kaydet"}</button>
+      ${yeni || x.silindi ? "" : `<button class="btn tehlike" id="kmEkSil">${x.gecmis_var ? "Arşive al" : "Sil"}</button>`}
+      <button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`);
+    $("#kmEkK", m).onclick = async () => {
+      const g = (id) => $("#" + id, m).value.trim();
+      const v = { ad: g("kmEkAd"), simge: g("kmEkSimge"), aciklama: g("kmEkAcik"), sure_dakika: g("kmEkSure"), asgari_ucret: g("kmEkAsgari"), azami_ucret: g("kmEkAzami") || g("kmEkAsgari"),
+        kategori: g("kmEkKat"), min_kidem: g("kmEkKidem") || "0", aktif: g("kmEkAktif") === "true" };
+      if (g("kmEkSira")) v.sira = g("kmEkSira");
+      if (!yeni && x.silindi) v.silindi = false;
+      try { const r = await rpc("yk_ek_is_kaydet", { p_kod: yeni ? null : x.kod, p_veri: v }); modalKapat(); toast((r.is && r.is.ad ? r.is.ad + ": " : "") + (yeni ? "meslek eklendi." : "kaydedildi.")); kmCiz(); } catch (err) { hata(err); }
+    };
+    const sil = $("#kmEkSil", m);
+    if (sil) sil.onclick = async () => {
+      const tamam = await onayla(x.gecmis_var ? "Arşive alınsın mı?" : "Meslek silinsin mi?",
+        x.gecmis_var ? `${e(x.ad)} oyuncuların listesinden kalkar. Ödeme geçmişi ve süren işler korunur; istersen arşivden geri açarsın.` : `${e(x.ad)} kalıcı olarak silinir. Bu mesleği hiç kimse yapmadığı için kaybolacak bir kayıt yok.`,
+        x.gecmis_var ? "Arşive al" : "Sil", true);
+      if (!tamam) return;
+      try { const r = await rpc("yk_ek_is_sil", { p_kod: x.kod }); toast(r.kalici ? "Meslek silindi." : "Meslek arşive alındı."); kmCiz(); } catch (err) { hata(err); }
+    };
   }
 
   /* ---------- Seçimler ---------- */

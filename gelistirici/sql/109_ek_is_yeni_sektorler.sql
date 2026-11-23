@@ -57,10 +57,8 @@ insert into oyun.ek_is_katalog(kod,ad,simge,aciklama,sure_dakika,asgari_ucret,az
  ('tasarim','Serbest Tasarım','🎨','Bir işletme için afiş ve tasarım işi tamamla.',120,1250,1850,4),
  ('tamirat','Ev ve Cihaz Tamiri','🛠️','Küçük bakım ve onarım işini bitir.',90,950,1450,5),
  ('fotograf','Etkinlik Fotoğrafçılığı','📷','Bir etkinliğin çekimini tamamla ve ücret kazan.',60,650,1050,6)
-on conflict (kod) do update set ad=excluded.ad, simge=excluded.simge,
- aciklama=excluded.aciklama, sure_dakika=excluded.sure_dakika,
- asgari_ucret=excluded.asgari_ucret, azami_ucret=excluded.azami_ucret,
- sira=excluded.sira;
+-- 24.11.2026: var olan iş ezilmez (ücret ve süreler artık yönetici panelinden değişir; bkz. zz_20261124_ek_isler_v2.sql).
+on conflict (kod) do nothing;
 
 create table if not exists oyun.ek_is_kayit(
  id bigint generated always as identity primary key,
