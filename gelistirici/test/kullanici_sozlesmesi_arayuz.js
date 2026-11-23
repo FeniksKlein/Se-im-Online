@@ -92,9 +92,9 @@ let hataVar = false; const dogrula = (k, m) => { if (!k) { hataVar = true; conso
     dogrula(await p.evaluate(() => !!document.querySelector('#kad') && !document.querySelector('#sozKutu')), 'kabul eden hesaba sözleşme yeniden sorulmaz');
     // Ben › Kullanıcı Sözleşmesi penceresi
     await p.evaluate(() => metinGoster('sozlesme')); await p.waitForTimeout(200);
-    dogrula(await p.evaluate(() => /Madde 18/.test(document.querySelector('.modal').textContent)), 'Kullanıcı Sözleşmesi penceresi açılır');
+    dogrula(await p.evaluate(() => { const t = document.querySelector('.modal').textContent; return /Madde 18/.test(t) && /Ercan Öztürk/.test(t); }), 'Kullanıcı Sözleşmesi penceresi açılır, geliştirici adı yazılı');
     await p.evaluate(() => { modalKapat(); metinGoster('gizlilik'); }); await p.waitForTimeout(200);
-    dogrula(await p.evaluate(() => { const t = document.querySelector('.modal').textContent; return /Veri sorumlusu: FeniksKlein\./.test(t) && /görüntülenebilir/.test(t) && /Frankfurt/.test(t); }), 'Gizlilik metni güncel (veri sorumlusu, denetim, sunucu yeri)');
+    dogrula(await p.evaluate(() => { const t = document.querySelector('.modal').textContent; return /Veri sorumlusu: Ercan Öztürk \(FeniksKlein\)\./.test(t) && /görüntülenebilir/.test(t) && /Frankfurt/.test(t); }), 'Gizlilik metni güncel (veri sorumlusu, denetim, sunucu yeri)');
     await p.close();
   }
   await b.close();

@@ -27,7 +27,7 @@
 <p>Oyunda yazdığınız her şeyden ve hesabınızla yapılan her işlemden siz sorumlusunuz. Oyundaki sohbetler, gruplar ve özel mesajlar gizli değildir; Yönetim tarafından denetlenebilir (Madde 8). Kurallara aykırılık, hesabınızın uyarı yapılmadan kalıcı olarak kapatılmasına yol açabilir (Madde 9).</p>
 
 <h4>Madde 1 — Taraflar ve Konu</h4>
-<p>1.1. Bu Kullanıcı Sözleşmesi ("Sözleşme"), FeniksKlein adıyla faaliyet gösteren geliştirici ("Geliştirici") ile Oyuna kayıt olan gerçek kişi ("Oyuncu") arasında kurulur.</p>
+<p>1.1. Bu Kullanıcı Sözleşmesi ("Sözleşme"), FeniksKlein adıyla faaliyet gösteren Ercan Öztürk ("Geliştirici") ile Oyuna kayıt olan gerçek kişi ("Oyuncu") arasında kurulur.</p>
 <p>1.2. Geliştiricinin iletişim bilgileri: E-posta ${ep} · Oyun içi: "Yönetime Yaz" ekranı.</p>
 <p>1.3. Sözleşmenin konusu; Oyunun kullanım şartları, tarafların hak ve yükümlülükleri ve kurallara aykırılığın sonuçlarıdır.</p>
 <p>1.4. Oyun içinde ilan edilen kurallar, duyurular ve Yönetim talimatları bu Sözleşmenin ayrılmaz parçasıdır. Çelişki hâlinde bu Sözleşme uygulanır. Gizlilik ve KVKK Aydınlatma Metni bilgilendirme amaçlıdır; ayrıca onay gerektirmez.</p>
