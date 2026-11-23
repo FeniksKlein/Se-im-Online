@@ -345,7 +345,9 @@ declare
     -- Kurum adına Kürsü gönderisi (17.11.2026)
     'kursu_kurumsal_kimlikler', 'kursu_kurumsal_yaz', 'kursu_kurumsal_ilisik_yaz',
     -- 23.11.2026 Cihaz yasağı (sql/zz_20261123_cihaz_yasak.sql): görerek kayıt kararı, yasaklı cihazlar ekranı
-    'mod_kayit_karar', 'mod_cihaz_yasaklari', 'mod_cihaz_yasak_ayarla'
+    'mod_kayit_karar', 'mod_cihaz_yasaklari', 'mod_cihaz_yasak_ayarla',
+    -- 23.11.2026 Oyuncuya özel mesaj / yazılı uyarı (sql/zz_20261123_mod_oyuncuya_yaz.sql)
+    'mod_oyuncuya_yaz'
   ];
 -- @@rpc_yuzey_izin_son@@
   anon_izin text[] := array['surum', 'uygulama_ayar'];

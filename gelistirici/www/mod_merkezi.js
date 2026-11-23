@@ -60,7 +60,8 @@
     moderator_birim: "birimini/yetkisini değiştirdi", moderator_sadelestir: "yetkilerini birimine göre sadeleştirdi", moderator_gorev: "ana görevini değiştirdi",
     yk_bildirim: "bildirim gönderdi", sohbet_izle: "grup sohbetini açtı", ifsa_suphe: "moderatör olduğunu açıklamaya çalıştı (mesaj engellendi)", mod_taklit: "kendini yönetimden gösterdi (mesaj engellendi)", sozlesme_kabul: "gizlilik sözleşmesini kabul etti", devir: "kararı tarafsız moderatöre devretti", admin_duyuru: "duyuru yayımladı", yk_para: "para işlemi yaptı", yk_kidem: "kıdem işlemi yaptı",
     duyuru: "duyuru yayımladı", sohbet_resmi: "sohbete yönetim adına yazdı", yardim_yanit: "Yardım Masası'nda yönetim adına yanıt verdi", istinaf_oy: "istinaf dosyasında oy kullandı", istinaf_ihmal: "istinaf görevini yapmadı (üye değiştirildi)",
-    cihaz_yasak_kaldir: "cihaz yasağını kaldırdı", cihaz_yasak_ac: "cihazı yeniden yasakladı"
+    cihaz_yasak_kaldir: "cihaz yasağını kaldırdı", cihaz_yasak_ac: "cihazı yeniden yasakladı",
+    mod_mesaj: "oyuncuya özel mesaj yazdı", mod_yazili_uyari: "oyuncuya yazılı uyarı gönderdi"
   });
   const ISARET = { baglanti: ["Bağlantı", "#4fc1d6"], telefon: ["Telefon no", "#c86cd8"], kisisel: ["E-posta", "#c86cd8"], buyuk_harf: ["Büyük harf", "#e0a43a"],
     tekrar: ["Tekrar/spam", "#e0a43a"], kufur: ["Küfür şüphesi", "#e5574f"], sert: ["Sert ifade", "#f07f3c"] };
@@ -557,8 +558,10 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
         ${sus ? `<button class="mm-btn kirmizi" data-k="gizle_sustur1">Gizle + 1 gün sustur</button>` : `<button class="mm-btn kirmizi" data-talep="1">Yaptırım talebi</button>`}</div>
       ${sus ? `<button class="mm-btn" style="margin-top:8px" data-uyar="1">Resmî uyarı ver (24 saatte 3. uyarıda otomatik susturma)</button><div class="mm-alan">Hızlı susturma (mesaj kalır · tekrar edende süre kendiliğinden artar)</div><div class="mm-aksiyon">${[[0.25, "15 dk"], [0.5, "30 dk"], [1, "1 saat"], [3, "3 saat"], [24, "24 saat"], [72, "3 gün"]].map(s => `<button data-s="${s[0]}">${s[1]}</button>`).join("")}</div>` : ""}`}
       ${NB.resmi && (!m.grup || NB.tum) ? `<button class="mm-btn yesil" style="margin-top:8px" id="mmMsgR">${IK.kalkan}Bu kanala yönetim adına yaz</button>` : ""}
+      ${m.gorevli || m.moderator ? "" : `<button class="mm-btn" style="margin-top:8px" id="mmMsgY">${IK.sohbet}Oyuncuya özel mesaj yaz / uyar</button>`}
       <div class="mm-iki">${m.gorevli ? "" : `<button class="mm-btn cizgi" data-dosya="1">${IK.ara}Oyuncu dosyası</button>`}<button class="mm-btn cizgi" id="mmKap">Kapat</button></div>`);
     $("#mmKap", md).onclick = modalKapat;
+    const my = $("#mmMsgY", md); if (my) my.onclick = () => { modalKapat(); oyuncuyaYazAc(m.kad, true); };
     const mr = $("#mmMsgR", md); if (mr) mr.onclick = () => { modalKapat(); resmiYazAc(m.kanal, m.kanal_ad); };
     const dsy = $("[data-dosya]", md); if (dsy) dsy.onclick = () => { modalKapat(); mmDosyaAc(m.kad); };
     md.querySelectorAll("[data-k]").forEach(b => b.onclick = async () => {
@@ -766,6 +769,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       ${leheKilit ? `<div class="mm-uyari sari">${IK.terazi}<div><b>${esc(d.lehe_kilit)}</b> Ceza yönünde işlem yapabilirsin (susturma, yaptırım talebi). Bu oyuncu lehine karar (susturmayı ya da engeli kaldırma) tarafsız moderatörde; gerekirse "Yöneticiye ilet" kullan.</div></div>` : ""}
       <div class="mm-kart"><div class="mm-baslik" style="margin-top:0"><h3>İşlemler</h3></div>
         <div class="mm-aksiyon">
+          <button data-a="yaz">Mesaj yaz / uyar</button>
           ${y.sustur ? `<button data-a="uyari">Resmî uyarı</button><button data-a="para">Para cezası</button>` : ""}
           ${y.sustur ? (d.susturma_bitis ? (leheKilit ? "" : `<button class="y" data-a="susKaldir">Susturmayı kaldır</button>`) : `<button data-a="sustur">Sustur</button>`) : ""}
           ${y.hesap_kapat ? (d.yasakli ? (leheKilit ? "" : `<button class="y" data-a="engelKaldir">Engeli kaldır</button>`) : `<button class="k" data-a="engel">Uzaklaştır / Engelle</button>`) : ""}
@@ -833,6 +837,39 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       } catch (err) { hata(err); }
     };
   }
+  /* 23.11.2026 · Oyuncuya özel mesaj / yazılı uyarı (sunucu: mod_oyuncuya_yaz). Yazışma oyuncunun Yönetime Yaz ekranına
+     düşer, oyuncu karşılık yazabilir; karşılık Talep kutusu'na gelir. Yazanın adı görünmez, görev kodu görünür. */
+  function oyuncuyaYazAc(kad, uyariOn, sonra) {
+    let uyari = !!uyariOn;
+    const HAZIR = ["Lütfen sohbette üslubuna dikkat et; hakaret ve küfür yasaktır. Tekrarında yaptırım uygulanır.",
+      "Paylaşımın oyun kurallarına aykırı bulundu. Lütfen kuralları gözden geçir; tekrarında yaptırım uygulanır.",
+      "Hesabınla ilgili bir konuda bilgine ihtiyacımız var. Uygun olduğunda bu mesaja karşılık yazar mısın?"];
+    const md = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">Oyuncuya yaz · ${esc(kad)}</h3>
+      <p class="mm-alt" style="margin:4px 0 8px">Mesaj oyuncuya bildirim olarak gider ve <b>Ben › Yönetime Yaz</b> ekranında görünür; oyuncu karşılık yazabilir, karşılığı Talep kutusu'na düşer. Adın görünmez, görev kodun görünür.</p>
+      <div class="mm-alan">Tür</div>
+      <div class="mm-filtre" id="mmOYT"><button data-v="0" class="${uyari ? "" : "on"}">Mesaj</button><button data-v="1" class="${uyari ? "on" : ""}">Yazılı uyarı</button></div>
+      <div class="mm-alt" id="mmOYA" style="margin:6px 0 0"></div>
+      <div class="mm-alan">Hazır metin</div>
+      <div class="mm-filtre" id="mmOYH"><button data-v="0">Üslup</button><button data-v="1">Kural ihlali</button><button data-v="2">Bilgi isteği</button></div>
+      <label class="mm-alan" for="mmOYM">Mesajın (10-1000 karakter)</label>
+      <textarea class="mm-girdi" id="mmOYM" maxlength="1000" placeholder="Oyuncuya yazacağın mesaj"></textarea>
+      <button class="mm-btn mor" style="margin-top:10px" id="mmOYOk">Gönder</button>
+      <button class="mm-btn cizgi" style="margin-top:8px" id="mmOYVaz">Vazgeç</button>`);
+    const acikla = () => { $("#mmOYA", md).textContent = uyari ? "Yazılı uyarı yaptırım değildir; kısıt uygulamaz ama oyuncunun dosyasına işlenir. Susturmaya götüren uyarı için Resmî uyarı kullanılır." : "Bilgi vermek ya da soru sormak için."; $("#mmOYOk", md).textContent = uyari ? "Uyarıyı gönder" : "Mesajı gönder"; };
+    acikla();
+    cipSec($("#mmOYT", md), v => { uyari = v === "1"; acikla(); });
+    cipSec($("#mmOYH", md), v => { $("#mmOYM", md).value = HAZIR[+v]; if (+v < 2 && !uyari) { uyari = true; $("#mmOYT", md).querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === "1")); acikla(); } });
+    $("#mmOYVaz", md).onclick = modalKapat;
+    $("#mmOYOk", md).onclick = async () => {
+      const m = $("#mmOYM", md).value.trim();
+      if (m.length < 10) { toast("Mesaj en az 10 karakter olmalı.", true); return; }
+      $("#mmOYOk", md).disabled = true;
+      try {
+        const r = await API.rpc("mod_oyuncuya_yaz", { p_kad: kad, p_metin: m, p_uyari: uyari });
+        modalKapat(); toast(`${kad}: ${uyari ? "yazılı uyarı" : "mesaj"} gönderildi (#${r.id}).`); sonra && sonra();
+      } catch (err) { hata(err); const b = $("#mmOYOk", md); if (b) b.disabled = false; }
+    };
+  }
   function dosyaIslem(a, d) {
     if (a === "talep") return talepAc(d.kad, { tur: "sustur" });
     if (a === "ilet") return talepAc(d.kad, { tur: "eskalasyon" });
@@ -840,6 +877,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     if (a === "toplu") return topluGizle(d.kad, () => mmDosya());
     if (a === "km") return kmOyuncuAc(d.kad);
     if (a === "not") { DS.sekme = "not"; mmDosya(); return; }
+    if (a === "yaz") return oyuncuyaYazAc(d.kad, null, () => mmDosya());
     if (a === "uyari" || a === "para") return kucukCezaAc(a, d.kad, null, () => mmDosya());
     if (a === "susKaldir") return (async () => { try { await API.rpc("yk_sustur", { p_kad: d.kad, p_saat: 0, p_neden: null }); toast("Susturma kaldırıldı."); mmDosya(); } catch (err) { hata(err); } })();
     if (a === "engelKaldir") return (async () => { if (!await onayla("Engeli kaldır", `${esc(d.kad)} yeniden oyuna girebilecek.`, "Kaldır")) return; try { await API.rpc("yk_engel_kaldir", { p_kad: d.kad }); toast("Engel kaldırıldı."); mmDosya(); } catch (err) { hata(err); } })();
@@ -1273,5 +1311,5 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     window.yoneticiEkraniKlasik = yoneticiEkrani;
     window.yoneticiEkrani = yoneticiEkrani = modMerkezi;
   }
-  Object.assign(window, { modMerkezi, mmDosyaAc, mmKayit, mmSikayet, mmNobet, mmDestek, mmTalepler, mmEkip, mmGunluk, mmDuyuru, mmCoklu, mmTalepAc: talepAc, mmKutu, mmKursu, mmKisitlar, mmCihaz });
+  Object.assign(window, { modMerkezi, mmDosyaAc, mmKayit, mmSikayet, mmNobet, mmDestek, mmTalepler, mmEkip, mmGunluk, mmDuyuru, mmCoklu, mmTalepAc: talepAc, mmKutu, mmKursu, mmKisitlar, mmCihaz, mmOyuncuyaYaz: oyuncuyaYazAc });
 })();

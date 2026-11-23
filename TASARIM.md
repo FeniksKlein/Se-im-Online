@@ -429,6 +429,7 @@ Faizler enflasyona bağlıdır. **Politika faizi (yıllık) = enflasyon + 5 puan
   - Süreli uzaklaştırma sürerken aynı cihazdan yeni hesap başvurusu yapılamaz. Cihaz başına 2 hesap sınırı başvuru anında uygulanır.
   - Telefon değiştiren ya da uygulamayı silip kurana karşı: başvuru engelli bir hesapla **aynı bağlantı + aynı cihaz izinden** geliyorsa Kayıt masasında "mükerrer hesap uyarısı" çıkar; moderatör uyarıyı görmeden onaylayamaz. Yalnız aynı bağlantı zayıf işarettir, bilgi olarak gösterilir.
   - Cihaz izi ve IP tek başına hiçbir zaman engel sebebi olmaz. Yasak listesinde yalnız cihaz kimliğinin özeti durur; oyun sıfırlansa da silinmez.
+- **Yönetimden oyuncuya özel mesaj (23.11.2026).** Her oyun yöneticisi bir oyuncuya özel mesaj ya da yazılı uyarı gönderebilir. Mesaj oyuncunun Ben › Yönetime Yaz ekranına düşer, oyuncu karşılık yazabilir; yazanın adı görünmez, görev kodu görünür. Yazılı uyarı yaptırım değildir; susturmaya götüren Resmî uyarı ayrıdır (24 saatte 3. uyarıda otomatik susturma).
 - **Seçmen kartı.** Oy, adaylık, kurucu üyelik ve bakanlık için şartlar:
   - hesap yaşı;
   - doğrulanmış e-posta;
