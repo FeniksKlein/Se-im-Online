@@ -16,6 +16,11 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 24.11.2026 01:56 — Mağaza paketi 1.0.8 (9) derlendi (mağazalara henüz YÜKLENMEDİ)
+- `mobil/magaza.json` 1.0.8 / 9; `magaza.yml` başarılı (Android + iOS simülatör denetimi), `magaza-ciktilari` dalı kaynak fe1bab1.
+- Paketlerin içi doğrulandı: oyun sürümü 2026.11.24-3, Android ve iOS 1.0.8 (9), kimlik `com.feniksklein.secimonline`. AAB imzasız.
+- Ercan'a sohbetten teslim edildi: `SecimOnline-1.0.8-imzasiz.aab`, `SecimOnline-1.0.8-iOS-proje.zip`. Bekleyen: AAB'nin yükleme anahtarıyla imzalanması (Ercan anahtar yedeğini sohbete ekleyecek) → Play Console › Üretim; iOS için MacinCloud'da Archive → App Store Connect'te 1.0.8 sürümü → incelemeye gönder.
+
 ## 24.11.2026 01:38 — Ek İşler sunucusu canlıda; Kürsü 5 dakika sınırı kapatıldı
 - İstek (Ercan): "Ek İşler veritabanı güncellemesini uygula" · "Kürsü 5 dakika kısıtını kaldır".
 - `ek_isler_v2_20261124` canlıya uygulandı: günlük hak 5, 21 açık meslek (20 yeni tablo + Ev ve Cihaz Tamiri), yönetim sekmesi çalışır. 11 işlev md5 ile kaynakla aynı. Uygulama anında süren 160 iş vardı; onlara dokunulmadı (ücretleri başlarken sabitlenmişti).
