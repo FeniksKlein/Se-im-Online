@@ -98,6 +98,8 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   // 23.11.2026: medya ve yayın denetimi (gazete/dergi/kitap/dernek/parti/TV yorumu/pano + kurum yayın durdurma)
   'zz_20261123_medya_denetimi.sql',
   'zz_20261123_mod_kurum_kapat.sql',
+  // 23.11.2026: ortak şirket kuruluşunda "record a is not assigned yet" (canlıda düzeltilmişti; depo eşitlemesi)
+  'zz_20261123_ortak_sirket_takma_ad.sql',
   // 24.11.2026: Genel Kurul'da söz hakkı (Meclis Başkanı verir) ve söz türüne göre karakter sınırı
   'zz_20261124_meclis_soz.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
