@@ -201,4 +201,28 @@ yol = db("""
 assert yol.startswith("search_path="), yol
 db("drop function public._rpc_yuzey_deneme()")
 ok("Eksik search_path kalmadı; yeni fonksiyon anon/authenticated'a açılmıyor")
+# Canlıdaki hata: postgres, supabase_admin adına ALTER DEFAULT PRIVILEGES yapamaz.
+sql_metin = open(SQL, encoding="utf-8").read()
+assert "when insufficient_privilege" in sql_metin
+assert "supabase_admin varsayılan ayrıcalığı atlandı" in sql_metin
+db("""
+do $$ begin
+  if not exists (select 1 from pg_roles where rolname = 'supabase_admin') then create role supabase_admin nologin; end if;
+  if not exists (select 1 from pg_roles where rolname = 'rpc_editor') then create role rpc_editor nologin; end if;
+end $$;
+grant rpc_editor to postgres;
+set role rpc_editor;
+do $koruma$
+begin
+  begin
+    alter default privileges for role supabase_admin revoke execute on functions from PUBLIC, anon, authenticated;
+    raise exception 'yetki hatası bekleniyordu';
+  exception
+    when insufficient_privilege then
+      raise notice 'supabase_admin varsayılan ayrıcalığı atlandı (yetki yok): %', sqlerrm;
+  end;
+end
+$koruma$;
+""")
+ok("supabase_admin varsayılan ayrıcalığı yetki yoksa işlemi durdurmaz")
 print("\nTÜM RPC YÜZEY KONTROLLERİ GEÇTİ")
