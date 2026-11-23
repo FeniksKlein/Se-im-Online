@@ -50,6 +50,8 @@ const KOSULLU = {
   'zz_20261123_cihaz_yasak.sql': ['oyun_yonetim.kayit_basvurulari', 'oyun.oturumlar', 'oyun.hesap_onay', 'oyun.moderatorler', 'oyun.mod_kayit', 'oyun.yonetici_kimlik'],
   // 24.11: alıntılı yanıt; sohbet_oku'nun Yardım Masası / yönetim adına yazma (20.11 canlı migration'ları) üstündeki hâlini yazar, onlar yoksa atlanır.
   'zz_20261124_mesaj_alinti.sql': ['oyun.moderatorler', 'oyun.mesajlar', 'oyun.ozel', 'oyun.mod_kisit', 'oyun.destek_mesaj', 'oyun.sohbet_grup', 'oyun.kanal_okuma'],
+  // 24.11: Kürsü denetimi + paylaşım aralığı + herkese açık Talep kutusu; Kürsü şikâyet ve Yönetime Yaz tabloları (canlı migration'lar) yoksa atlanır.
+  'zz_20261124_kursu_denetim_talep.sql': ['oyun.akis', 'oyun.akis_sikayet', 'oyun.moderatorler', 'oyun.destek_talep', 'oyun.destek_mesaj', 'oyun.mod_kayit', 'oyun.mod_kisit'],
 };
 const okuKosullu = ad => {
   const govde = oku(ad), tablolar = KOSULLU[ad];
@@ -107,7 +109,9 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   // 24.11.2026: sohbette alıntılı yanıt (canlıda mesaj_alinti_20261124; kaynağı depoya alındı). sohbet_oku'yu yeniden yazdığı için sohbet yamalarından SONRA gelir.
   'zz_20261124_mesaj_alinti.sql',
   // 24.11.2026: Ek İşler 2.0 — günlük 5 hak, 20 meslek, yönetilebilir katalog (109'daki ek iş işlevlerinin yerine geçer)
-  'zz_20261124_ek_isler_v2.sql'];
+  'zz_20261124_ek_isler_v2.sql',
+  // 24.11.2026: Kürsü şikâyet ekranı izni, yönetimin doğrudan kaldırması, 5 dakikada bir paylaşım, Talep kutusu bütün yöneticilere (_yama kullanır)
+  'zz_20261124_kursu_denetim_talep.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',

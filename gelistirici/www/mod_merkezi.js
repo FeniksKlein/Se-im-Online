@@ -1209,14 +1209,26 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
   async function mmKursu() {
     yukleniyor("Kürsü şikâyetleri");
     let l; try { l = await API.rpc("admin_akis_sikayetleri"); } catch (err) { hataSayfa("Kürsü şikâyetleri", err); return; }
+    let kl = []; try { kl = (await API.rpc("mod_kursu_kaldirilanlar")) || []; } catch (_) { /* eski sunucu: liste gösterilmez */ }
     const sus = yv("sustur");
-    sayfa("Kürsü şikâyetleri", `<div class="mm-uyari sari">${IK.sikayet}<div>Oyuncuların şikâyet ettiği Kürsü paylaşımları. Bölücü, hakaret ve spam içeriği gizle; gerekiyorsa sustur ya da oyuncu dosyasından engelle.</div></div>
+    sayfa("Kürsü şikâyetleri", `<div class="mm-uyari sari">${IK.sikayet}<div>Oyuncuların şikâyet ettiği Kürsü paylaşımları. Bölücü, hakaret ve spam içeriği gizle; gerekiyorsa sustur ya da oyuncu dosyasından engelle. Şikâyet edilmemiş bir paylaşımı kaldırmak için Kürsü'de paylaşımın ⋯ menüsünden “Paylaşımı kaldır”ı seç.</div></div>
       ${(l || []).map((x, i) => `<div class="mm-kart" style="--c:#e5574f" data-i="${i}">
         <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:16px">${esc(x.kad)}</b><span class="mm-etiket" style="--c:#e5574f">${x.sayi} şikâyet</span></div>
         <div class="mm-alt">${(x.nedenler || []).map(n => NEDEN[n] || n).join(", ")} · ${once(x.ilk)}${x.gizli ? " · gizlendi" : ""}${x.devir ? " · tarafsız karar bekliyor" : ""}</div>
         <div class="mm-baloncuk">${esc(x.metin)}</div>
         <div class="mm-aksiyon">${x.kilit ? (x.devir ? "" : `<button class="y" data-k="yok_say">Tarafsız moderatöre devret</button>`) : `<button class="y" data-k="yok_say">Sorun yok</button>`}<button data-k="gizle">Gizle</button>
-          ${sus ? `<button data-k="gizle_sustur1">Gizle + 1 gün sustur</button>` : ""}<button data-dosya="${esc(x.kad)}">Dosya</button></div></div>`).join("") || bos("Açık Kürsü şikâyeti yok", "Oyuncular bir paylaşımı şikâyet ettiğinde burada görünür.")}`);
+          ${sus ? `<button data-k="gizle_sustur1">Gizle + 1 gün sustur</button>` : ""}<button data-dosya="${esc(x.kad)}">Dosya</button></div></div>`).join("") || bos("Açık Kürsü şikâyeti yok", "Oyuncular bir paylaşımı şikâyet ettiğinde burada görünür.")}
+      ${kl.length ? `<div class="mm-baslik" style="margin-top:18px"><h3>Kaldırılan paylaşımlar</h3><span class="kucuk">son 14 gün · ${kl.length}</span></div>` + kl.map((x, i) => `<div class="mm-kart" style="--c:#6b7385" data-kl="${i}">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:16px">${esc(x.kad)}</b><span class="mm-etiket" style="--c:#6b7385">Kaldırıldı</span></div>
+        <div class="mm-alt">${once(x.zaman)}${x.sikayet ? " · " + x.sikayet + " şikâyet" : ""}</div>
+        <div class="mm-baloncuk">${esc(x.metin)}</div>
+        <div class="mm-aksiyon"><button class="y" data-geri="${x.id}">Geri yükle</button><button data-dosya="${esc(x.kad)}">Dosya</button></div></div>`).join("") : ""}`);
+    document.querySelectorAll(".mm-kart[data-kl]").forEach(k => {
+      k.querySelectorAll("[data-dosya]").forEach(b => b.onclick = () => mmDosyaAc(b.dataset.dosya));
+      k.querySelectorAll("[data-geri]").forEach(b => b.onclick = async () => {
+        try { await API.rpc("admin_akis_karar", { p_id: Number(b.dataset.geri), p_islem: "yok_say" }); toast("Paylaşım geri yüklendi."); mmKursu(); } catch (err) { hata(err); }
+      });
+    });
     document.querySelectorAll(".mm-kart[data-i]").forEach(k => {
       const x = l[+k.dataset.i];
       k.querySelectorAll("[data-dosya]").forEach(b => b.onclick = () => mmDosyaAc(b.dataset.dosya));

@@ -881,14 +881,46 @@
       return;
     }
     var takipte = !!g.takip_ediyorum;
+    var modMu = false; try { modMu = typeof yetkim === 'function' && !!yetkim().var_('sikayet'); } catch (e) {}
     var m2 = sayfa('<button type="button" class="kr-sf" data-sf="takip">' + I.kisiArti + '<span>' + (takipte ? esc(g.kad) + ' takibini bırak' : esc(g.kad) + ' takip et') + '</span></button>' +
       '<button type="button" class="kr-sf" data-sf="profil">' + I.kisi + '<span>Profili gör</span></button>' +
       '<button type="button" class="kr-sf tehlike" data-sf="sikayet">' + I.kalkan + '<span>Şikâyet et veya engelle</span></button>' +
+      (modMu ? '<button type="button" class="kr-sf tehlike" data-sf="modkaldir">' + I.sil + '<span>Paylaşımı kaldır<small>Oyun yönetimi olarak · sahibine gerekçe bildirilir</small></span></button>' : '') +
       '<button type="button" class="kr-sf iptal" data-sf="iptal">Vazgeç</button>');
+    var mk = m2.querySelector('[data-sf="modkaldir"]'); if (mk) mk.onclick = function () { modalKapat(); modKaldirAc(g); };
     m2.querySelector('[data-sf="takip"]').onclick = function () { modalKapat(); takip(g.kad, !takipte); };
     m2.querySelector('[data-sf="profil"]').onclick = function () { modalKapat(); ekranAc(function () { return window.kursuProfilEkrani(g.kad); }); };
     m2.querySelector('[data-sf="sikayet"]').onclick = function () { modalKapat(); try { akisMenu({ id: g.id, kad: g.kad, benim: false }, yenile); } catch (e) {} };
     m2.querySelector('[data-sf="iptal"]').onclick = modalKapat;
+  }
+  /* 24.11.2026 · Oyun yönetimi (kurucu, İçerik ve Oyuncu masaları) herhangi bir paylaşımı şikâyet beklemeden kaldırır.
+     Yetki, çıkar çatışması ve kayıt sunucuda: mod_kursu_kaldir (sql/zz_20261124_kursu_denetim_talep.sql). */
+  function modKaldirAc(g) {
+    var HAZIR = ['Hakaret ya da küfür', 'Bölücü ya da ayrımcı içerik', 'Spam ya da reklam', 'Taciz ya da tehdit', 'Yanıltıcı içerik'];
+    var m = sayfa('<div style="padding:4px 2px 2px"><b style="display:block;font-size:17px">Paylaşımı kaldır</b>' +
+      '<p style="margin:6px 0 10px;font-size:14px;line-height:1.4;opacity:.8;overflow-wrap:anywhere">' + esc(g.kad) + ': ' + esc(String(g.metin || '').slice(0, 160)) + (String(g.metin || '').length > 160 ? '…' : '') + '</p>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">' + HAZIR.map(function (h) { return '<button type="button" data-mk-hazir="' + esc(h) + '" style="min-height:40px;padding:0 12px;border-radius:20px;font-size:13.5px;font-weight:700;background:rgba(164,184,255,.12);color:inherit">' + esc(h) + '</button>'; }).join('') + '</div>' +
+      '<label for="krMkGer" style="display:block;font-size:14px;font-weight:700;margin-bottom:5px">Gerekçe (paylaşımın sahibi görür)</label>' +
+      '<textarea id="krMkGer" maxlength="300" rows="3" placeholder="Örnek: Hakaret içerdiği için kaldırıldı." style="display:block;width:100%;box-sizing:border-box;min-width:0;font:inherit;font-size:16px;line-height:1.4;padding:11px 12px;border-radius:12px;border:1px solid rgba(164,184,255,.28);background:rgba(8,12,30,.6);color:inherit;color-scheme:dark;resize:vertical"></textarea></div>' +
+      '<button type="button" class="kr-sf tehlike" data-sf="kaldir">' + I.sil + '<span>Kaldır<small>Paylaşım herkesten gizlenir; Moderasyon Merkezi\'nden geri yüklenebilir</small></span></button>' +
+      '<button type="button" class="kr-sf iptal" data-sf="iptal">Vazgeç</button>');
+    var ta = m.querySelector('#krMkGer');
+    m.querySelectorAll('[data-mk-hazir]').forEach(function (b) { b.onclick = function () { ta.value = b.getAttribute('data-mk-hazir') + ' içerdiği için kaldırıldı.'; try { ta.focus(); } catch (e) {} }; });
+    m.querySelector('[data-sf="iptal"]').onclick = modalKapat;
+    var kb = m.querySelector('[data-sf="kaldir"]');
+    kb.onclick = async function () {
+      var ger = ta.value.trim();
+      if (ger.length < 5) { toast('Gerekçe yaz (en az 5 karakter).', true); return; }
+      kb.disabled = true;
+      try {
+        await rpc('mod_kursu_kaldir', { p_id: g.id, p_gerekce: ger });
+        modalKapat(); toast('Paylaşım kaldırıldı.');
+        document.querySelectorAll('.kr-g[data-id="' + g.id + '"]').forEach(function (x) { x.remove(); });
+        delete KR.g[g.id];
+        Object.keys(KR.akis).forEach(function (s) { KR.akis[s].liste = KR.akis[s].liste.filter(function (x) { return x.g.id !== g.id; }); });
+        if (aktif('gonderi')) geriGit();
+      } catch (err) { kb.disabled = false; hata(err); }
+    };
   }
   async function takip(kad, ac, btn) {
     var dugmeler = document.querySelectorAll('.kr-takip[data-kad="' + (window.CSS && CSS.escape ? CSS.escape(kad) : kad) + '"]');

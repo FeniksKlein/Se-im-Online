@@ -155,7 +155,7 @@ declare
     'admin_oyuncu', 'admin_ozet', 'admin_sikayet_karar', 'admin_sikayetler', 'admin_supheler', 'admin_transferler_sayfa',
     'ajans_anket_cevap', 'ajans_anket_yayimla', 'ajans_ayarla', 'ajans_gundem', 'ajans_haberler', 'ajans_kur',
     'ajans_kur_ilde', 'ajans_liste', 'ajans_puanla', 'ajans_siparis', 'ajans_yonetim', 'akis_begen',
-    'akis_gundem', 'akis_konu', 'akis_liste', 'akis_sikayet_et', 'akis_sil', 'akis_tepki',
+    'admin_akis_karar', 'admin_akis_sikayetleri', 'akis_gundem', 'akis_konu', 'akis_liste', 'akis_sikayet_et', 'akis_sil', 'akis_tepki',
     'akis_yanit_yaz', 'akis_yaz', 'aktarim_hakki', 'anket_durum', 'anket_oyla', 'arsa_teklif',
     'avukat_akademiye_katil', 'avukat_buro_ac', 'avukat_buro_davet', 'avukat_buro_davet_cevap', 'avukat_buro_davetler', 'avukat_dava_durum',
     'avukat_durum', 'avukat_iller', 'avukat_istinaf', 'avukat_karsi_teklif', 'avukat_kontenjan_ayarla', 'avukat_pazarlik_karar',
@@ -352,7 +352,7 @@ declare
     -- 23.11.2026 TV yayını kesme / kanal kapatma (sql/zz_20261123_mod_tv_kapat.sql)
     'mod_tv_liste', 'mod_tv_yayin_kes', 'mod_tv_kanal_kapat', 'mod_tv_kanal_ac',
     -- 23.11.2026 Medya ve yayın denetimi + kurum denetimi çekirdeği (sql/zz_20261123_medya_denetimi.sql)
-    'mod_medya_akis', 'mod_medya_kaldir', 'mod_medya_geri_yukle', 'mod_icerik_kaldir', 'mod_icerik_geri_yukle',
+    'mod_medya_akis', 'mod_medya_kaldir', 'mod_medya_geri_yukle', 'mod_icerik_kaldir', 'mod_icerik_geri_yukle', 'mod_kursu_kaldir', 'mod_kursu_kaldirilanlar',
     'mod_kurum_ara', 'mod_kurum_dosya', 'mod_kurum_durdur', 'mod_kurum_durdurma_kaldir', 'mod_kurum_durdurma_karar',
     'mod_kurum_durdurmalar', 'mod_kurum_ad_duzelt',
     -- 23.11.2026 Gazete/dergi kapatma (sql/zz_20261123_mod_kurum_kapat.sql)
