@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.24-1', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.24-3', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -37917,10 +37917,8 @@ insert into oyun.ek_is_katalog(kod,ad,simge,aciklama,sure_dakika,asgari_ucret,az
  ('tasarim','Serbest Tasarım','🎨','Bir işletme için afiş ve tasarım işi tamamla.',120,1250,1850,4),
  ('tamirat','Ev ve Cihaz Tamiri','🛠️','Küçük bakım ve onarım işini bitir.',90,950,1450,5),
  ('fotograf','Etkinlik Fotoğrafçılığı','📷','Bir etkinliğin çekimini tamamla ve ücret kazan.',60,650,1050,6)
-on conflict (kod) do update set ad=excluded.ad, simge=excluded.simge,
- aciklama=excluded.aciklama, sure_dakika=excluded.sure_dakika,
- asgari_ucret=excluded.asgari_ucret, azami_ucret=excluded.azami_ucret,
- sira=excluded.sira;
+-- 24.11.2026: var olan iş ezilmez (ücret ve süreler artık yönetici panelinden değişir; bkz. zz_20261124_ek_isler_v2.sql).
+on conflict (kod) do nothing;
 
 create table if not exists oyun.ek_is_kayit(
  id bigint generated always as identity primary key,
@@ -85443,6 +85441,601 @@ end $f$;
 
 revoke all on function public.meclis_soz_durum(), public.meclis_soz_iste(text), public.meclis_soz_vazgec(), public.meclis_soz_karar(bigint, boolean, text) from public, anon;
 grant execute on function public.meclis_soz_durum(), public.meclis_soz_iste(text), public.meclis_soz_vazgec(), public.meclis_soz_karar(bigint, boolean, text) to authenticated;
+-- zz_20261124_mesaj_alinti.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun.moderatorler') is null or to_regclass('oyun.mesajlar') is null or to_regclass('oyun.ozel') is null or to_regclass('oyun.mod_kisit') is null or to_regclass('oyun.destek_mesaj') is null or to_regclass('oyun.sohbet_grup') is null or to_regclass('oyun.kanal_okuma') is null then raise notice 'zz_20261124_mesaj_alinti.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 24.11.2026 · SOHBETTE ALINTILI YANIT (sürüm 2026.11.24-2)
+-- Canlıya 24.11.2026 00:06'da "mesaj_alinti_20261124" adıyla uygulanmıştı; kaynağı depoya alınmamıştı.
+-- Bu dosya canlıdaki migration'ın aynısıdır (işlev gövdeleri canlıyla md5 eşleşir); tekrar çalıştırmak güvenlidir.
+--   • oyun.mesajlar.yanit_id / oyun.ozel.yanit_id: yanıtlanan mesajın numarası (eski mesajlar boş kalır, geçmiş silinmez).
+--   • sohbet_yanitla / ozel_yanitla: alıntı yalnız AYNI kanaldaki / aynı iki kişi arasındaki, kaldırılmamış mesaja yapılabilir;
+--     yazma yetkisi, susturma, Genel Kurul söz hakkı vb. bütün denetimler sohbet_yaz / ozel_yaz içinde aynen çalışır.
+--   • sohbet_oku / ozel_oku her mesajda `yanit` {id, kad, metin(160)} döner. Kaldırılmış mesaj: "Bu mesaj kaldırıldı.";
+--     okuyanın engellediği oyuncunun mesajı: "Engellediğin bir oyuncunun mesajı."; özel mesaj alıntısı yalnız o konuşmanın
+--     iki tarafına çözülür (başka sohbet üzerinden görülemez).
+-- Ekran: gelistirici/www/sohbet_tasarim.js ("ALINTILI YANIT").
+
+alter table oyun.mesajlar add column if not exists yanit_id bigint;
+alter table oyun.ozel add column if not exists yanit_id bigint;
+
+create or replace function oyun.mesaj_alinti(p oyun.profiller, p_yanit bigint) returns jsonb
+language plpgsql stable set search_path to '' as $f$
+declare y oyun.mesajlar; pr oyun.profiller;
+begin
+  if p_yanit is null then return null; end if;
+  select * into y from oyun.mesajlar where id = p_yanit;
+  if y.id is null then return null; end if;
+  if y.gizli then return jsonb_build_object('id', y.id, 'kad', '', 'metin', 'Bu mesaj kaldırıldı.'); end if;
+  select * into pr from oyun.profiller where id = y.user_id;
+  if y.gorevli then return jsonb_build_object('id', y.id, 'kad', oyun.mod_imza(pr), 'metin', left(y.metin, 160)); end if;
+  if oyun.engelli(p.id, y.user_id) then return jsonb_build_object('id', y.id, 'kad', '', 'metin', 'Engellediğin bir oyuncunun mesajı.'); end if;
+  return jsonb_build_object('id', y.id, 'kad', case when y.user_id = p.id then 'Sen' else coalesce(pr.kad, '(silinmiş)') end, 'metin', left(y.metin, 160));
+end $f$;
+
+create or replace function oyun.ozel_alinti(p oyun.profiller, p_yanit bigint) returns jsonb
+language plpgsql stable set search_path to '' as $f$
+declare y oyun.ozel;
+begin
+  if p_yanit is null then return null; end if;
+  select * into y from oyun.ozel where id = p_yanit and p.id in (gonderen, alici);
+  if y.id is null then return null; end if;
+  if y.gizli then return jsonb_build_object('id', y.id, 'kad', '', 'metin', 'Bu mesaj kaldırıldı.'); end if;
+  return jsonb_build_object('id', y.id, 'kad', case when y.gonderen = p.id then 'Sen' else oyun.kad(y.gonderen) end, 'metin', left(y.metin, 160));
+end $f$;
+revoke all on function oyun.mesaj_alinti(oyun.profiller, bigint), oyun.ozel_alinti(oyun.profiller, bigint) from public, anon, authenticated;
+
+create or replace function public.sohbet_yanitla(p_kanal text, p_metin text, p_yanit bigint) returns jsonb
+language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $f$
+declare p oyun.profiller := oyun.profilim(); k text; r jsonb; yeni bigint;
+begin
+  k := oyun.kanal_coz(p, p_kanal);
+  if k is null then raise exception '%', oyun.kanal_hata(p_kanal); end if;
+  if p_yanit is not null and not exists (select 1 from oyun.mesajlar y where y.id = p_yanit and y.kanal = k and not y.gizli) then
+    raise exception 'Alıntılamak istediğin mesaj bu sohbette bulunamadı (kaldırılmış olabilir).';
+  end if;
+  r := public.sohbet_yaz(p_kanal, p_metin);
+  if p_yanit is not null then
+    yeni := currval(pg_get_serial_sequence('oyun.mesajlar', 'id'));
+    update oyun.mesajlar set yanit_id = p_yanit where id = yeni and user_id = p.id and kanal = k;
+  end if;
+  return r;
+end $f$;
+
+create or replace function public.ozel_yanitla(p_kad text, p_metin text, p_yanit bigint) returns jsonb
+language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $f$
+declare p oyun.profiller := oyun.profilim(); h oyun.profiller; r jsonb; yeni bigint;
+begin
+  h := oyun.profil_bul(p_kad);
+  if p_yanit is not null and not exists (select 1 from oyun.ozel y where y.id = p_yanit and not y.gizli
+       and ((y.gonderen = p.id and y.alici = h.id) or (y.gonderen = h.id and y.alici = p.id))) then
+    raise exception 'Alıntılamak istediğin mesaj bu konuşmada bulunamadı.';
+  end if;
+  r := public.ozel_yaz(p_kad, p_metin);
+  if p_yanit is not null then
+    yeni := currval(pg_get_serial_sequence('oyun.ozel', 'id'));
+    update oyun.ozel set yanit_id = p_yanit where id = yeni and gonderen = p.id;
+  end if;
+  return r;
+end $f$;
+
+create or replace function public.sohbet_oku(p_kanal text, p_once bigint default null, p_sonra bigint default null) returns jsonb
+language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $f$
+declare p oyun.profiller := oyun.profilim(); k text; liste jsonb; son bigint;
+begin
+  k := oyun.kanal_coz(p, p_kanal);
+  if k is null then raise exception '%', oyun.kanal_hata(p_kanal); end if;
+  select coalesce(jsonb_agg(jsonb_build_object('id', x.id,
+            'kad', case when x.gorevli then oyun.mod_imza(pr) else coalesce(pr.kad, '(silinmiş)') end,
+            'metin', x.metin, 'zaman', x.zaman,
+            'parti', case when x.gorevli then null else oyun.parti_json(pr.parti_id) end,
+            'unvan', case when x.gorevli then 'Oyun Yönetimi' else oyun.unvan(x.user_id) end,
+            'benim', x.user_id = p.id, 'gorevli', x.gorevli,
+            'yanit', case when x.yanit_id is not null then oyun.mesaj_alinti(p, x.yanit_id) end) order by x.id), '[]'::jsonb)
+    into liste
+  from (
+    select * from oyun.mesajlar m
+    where m.kanal = k and not m.gizli and m.zaman <= oyun.simdi() and (m.gorevli or not oyun.engelli(p.id, m.user_id))
+      and (p_sonra is null or m.id > p_sonra) and (p_once is null or m.id < p_once)
+    order by case when p_sonra is null then -m.id else m.id end
+    limit case when p_sonra is null then 40 else 100 end
+  ) x left join oyun.profiller pr on pr.id = x.user_id;
+  if p_once is null then
+    select max(id) into son from oyun.mesajlar where kanal = k and not gizli and zaman <= oyun.simdi();
+    if son is not null then
+      insert into oyun.kanal_okuma(user_id, kanal, son_id) values (p.id, k, son)
+      on conflict (user_id, kanal) do update set son_id = greatest(oyun.kanal_okuma.son_id, excluded.son_id);
+    end if;
+  end if;
+  return jsonb_build_object('kanal', p_kanal, 'mesajlar', liste, 'yazabilir', oyun.kanal_yazabilir(p, p_kanal),
+    'baslik', oyun.kanal_baslik(p, p_kanal), 'sinyal', 'sohbet:' || k,
+    'gorevli_yazabilir', k = 'yardim' and oyun.yardim_gorevli_mi(p), 'resmi_yazabilir', oyun.sohbet_resmi_yazabilir(p, k), 'kanal_kod', k);
+end $f$;
+
+create or replace function public.ozel_oku(p_kad text, p_sonra bigint default null) returns jsonb
+language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $f$
+declare p oyun.profiller := oyun.profilim(); h oyun.profiller; liste jsonb;
+begin
+  h := oyun.profil_bul(p_kad);
+  select coalesce(jsonb_agg(jsonb_build_object('id', x.id, 'metin', x.metin, 'zaman', x.zaman, 'benim', x.gonderen = p.id,
+           'yanit', case when x.yanit_id is not null then oyun.ozel_alinti(p, x.yanit_id) end) order by x.id), '[]'::jsonb) into liste
+  from (select * from oyun.ozel o
+        where ((o.gonderen = p.id and o.alici = h.id) or (o.gonderen = h.id and o.alici = p.id)) and not o.gizli
+          and (p_sonra is null or o.id > p_sonra)
+        order by o.id desc limit 60) x;
+  update oyun.ozel set okundu = true where alici = p.id and gonderen = h.id and not okundu;
+  return jsonb_build_object('kad', h.kad, 'parti', oyun.parti_json(h.parti_id), 'unvan', oyun.unvan(h.id), 'mesajlar', liste,
+                            'engelledim', oyun.engelli(p.id, h.id),
+                            'aktif', oyun.aktif_yazi(h.son_gorulme),
+                            'okundu_son', (select max(o.id) from oyun.ozel o where o.gonderen = p.id and o.alici = h.id and o.okundu));
+end $f$;
+
+revoke all on function public.sohbet_yanitla(text, text, bigint), public.ozel_yanitla(text, text, bigint) from public, anon;
+grant execute on function public.sohbet_yanitla(text, text, bigint), public.ozel_yanitla(text, text, bigint) to authenticated;
+$kosullu_govde$;
+end $kosullu_dis$;
+-- 24.11.2026 · EK İŞLER 2.0 (sürüm 2026.11.24-2)
+-- İstek (Ercan): günlük ek iş hakkı 5 olsun; 20 meslek gelsin; ücret, süre ve meslekler yönetici panelinden
+-- değişsin; ek işler ana ekrandan kolay bulunsun; kazanç gerçek cüzdana ve işlem geçmişine tek sefer işlensin.
+--
+-- Kurallar (sunucuda zorlanır; arayüz yalnız gösterir):
+--   • Günlük hak oyun.ek_is_ayar.gunluk_limit (başlangıç 5). Hak, iş BAŞLATILINCA düşer; gün Türkiye saatiyle
+--     00.00'da döner (ek_is_kayit.gun = işin başladığı Türkiye günü).
+--   • Aynı anda tek iş (ek_is_tek_aktif benzersiz dizini) ve her işlemde oyuncu satırı kilidi (for update):
+--     sayfayı yenilemek, aynı anda çok istek göndermek ya da iki cihaz kullanmak sınırı aşamaz.
+--   • Ücret iş başlarken sabitlenir, süre dolmadan ödenmez, bir iş bir kez ödenir (odendi_at + satır kilidi).
+--     Ödeme oyun.para_islem ile cüzdana ve hesap hareketlerine ('ek_is') yazılır.
+--   • Süresi dolmuş ama ücreti alınmamış iş varken yeni iş başlatılırsa önce o işin ücreti aynı işlemde ödenir.
+--   • İşi yarıda bırakma/iptal yoktur (önceki kural aynen).
+--   • Katalog yalnız oyunun sahibi tarafından değişir (yk_ek_is_*); her değişiklik oyun.yk_degisiklik'e yazılır.
+--     Geçmişi olan meslek silinmez, arşive alınır (ödeme geçmişi ve süren işler bozulmaz).
+-- Tekrar çalıştırmak güvenlidir: tohum bir kez uygulanır (ek_is_ayar.tohum); yöneticinin sonradan yaptığı
+-- ücret/süre değişikliklerini ezmez. Oyuncu verisi (kayıtlar, cüzdan) değiştirilmez.
+
+alter table oyun.ek_is_katalog add column if not exists kategori text not null default 'hizmet';
+alter table oyun.ek_is_katalog add column if not exists min_kidem numeric not null default 0;
+alter table oyun.ek_is_katalog add column if not exists silindi boolean not null default false;
+alter table oyun.ek_is_katalog add column if not exists guncelleme timestamptz not null default now();
+
+do $kisit$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'ek_is_katalog_kategori_chk' and conrelid = 'oyun.ek_is_katalog'::regclass) then
+    alter table oyun.ek_is_katalog add constraint ek_is_katalog_kategori_chk
+      check (kategori in ('hizmet','ulasim','zanaat','egitim_ofis','teknoloji','medya','tarim','diger'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'ek_is_katalog_min_kidem_chk' and conrelid = 'oyun.ek_is_katalog'::regclass) then
+    alter table oyun.ek_is_katalog add constraint ek_is_katalog_min_kidem_chk check (min_kidem >= 0);
+  end if;
+end $kisit$;
+
+create table if not exists oyun.ek_is_ayar(
+  id smallint primary key default 1 check (id = 1),
+  gunluk_limit smallint not null default 5 check (gunluk_limit between 1 and 24),
+  tohum smallint not null default 0,
+  guncelleme timestamptz not null default now()
+);
+insert into oyun.ek_is_ayar(id) values (1) on conflict (id) do nothing;
+alter table oyun.ek_is_ayar enable row level security;
+revoke all on oyun.ek_is_ayar from public, anon, authenticated;
+
+create index if not exists ek_is_kayit_baslama on oyun.ek_is_kayit(baslama);
+
+-- Başlangıç kataloğu: 20 meslek (Ercan'ın tablosundaki ücretler; süre ≈ saatte 850 ₺ olacak biçimde ücretle orantılı).
+-- Önceden var olan beş iş (kurye, taksi, özel ders, tasarım, fotoğraf) aynı kodla yeni değerlerine çekilir;
+-- "Ev ve Cihaz Tamiri" olduğu gibi kalır. Yalnız bir kez uygulanır.
+do $tohum$
+begin
+  if (select tohum from oyun.ek_is_ayar where id = 1) >= 2 then return; end if;
+  insert into oyun.ek_is_katalog(kod, ad, simge, aciklama, sure_dakika, asgari_ucret, azami_ucret, sira, kategori) values
+    ('garson',            'Garsonluk',                  '🍽️', 'Bir restoranda servis yap; vardiya bitince ücretini al.',            55,   750,  750,  1, 'hizmet'),
+    ('kurye',             'Paket Kuryeliği',            '🚲', 'Teslimat yap, iş bitince ücretini cüzdanına al.',                    70,  1000, 1000,  2, 'ulasim'),
+    ('taksi',             'Taksi Şoförlüğü',            '🚕', 'Şehir içinde yolcu taşı ve sefer ücretini kazan.',                   90,  1250, 1250,  3, 'ulasim'),
+    ('market',            'Market Çalışanı',            '🛒', 'Kasada ve reyonda çalış; mesai sonunda ücretini al.',                60,   850,  850,  4, 'hizmet'),
+    ('guvenlik',          'Özel Güvenlik',              '🛡️', 'Bir işyerinde nöbet tut; nöbet bitince ödemeni al.',                 80,  1100, 1100,  5, 'hizmet'),
+    ('insaat',            'İnşaat İşçiliği',            '🏗️', 'Şantiyede çalış; günün sonunda yevmiyeni al.',                      100,  1400, 1400,  6, 'zanaat'),
+    ('oto_tamir',         'Oto Tamirciliği',            '🔧', 'Serviste araç bakımı ve onarımı yap.',                              125,  1750, 1750,  7, 'zanaat'),
+    ('elektrik',          'Elektrikçilik',              '💡', 'Ev ve işyerlerinde elektrik arızalarını gider.',                    130,  1800, 1800,  8, 'zanaat'),
+    ('tesisat',           'Tesisatçılık',               '🚿', 'Su ve ısıtma tesisatı arızalarını onar.',                           120,  1650, 1650,  9, 'zanaat'),
+    ('fotograf',          'Fotoğrafçılık',              '📷', 'Bir etkinliğin ya da ürünün çekimini tamamla.',                     105,  1500, 1500, 10, 'medya'),
+    ('ozel_ders',         'Özel Ders Öğretmenliği',     '📚', 'Bir öğrenciye ders ver, ders sonunda ödeme al.',                    125,  1750, 1750, 11, 'egitim_ofis'),
+    ('muhasebe',          'Muhasebe Destek İşleri',     '🧾', 'Bir işletmenin defter ve beyanname işlerine yardım et.',            145,  2000, 2000, 12, 'egitim_ofis'),
+    ('yazilim',           'Yazılım Geliştirme',         '💻', 'Bir müşteri için yazılım işi tamamla.',                             180,  2500, 2500, 13, 'teknoloji'),
+    ('tasarim',           'Grafik Tasarım',             '🎨', 'Bir işletme için afiş ve tasarım işi tamamla.',                     120,  1650, 1650, 14, 'medya'),
+    ('sosyal_medya',      'Sosyal Medya Yöneticiliği',  '📱', 'Bir markanın hesaplarını yönet, içerik hazırla.',                   105,  1500, 1500, 15, 'medya'),
+    ('gazetecilik',       'Gazetecilik',                '📰', 'Haber takip et, dosya hazırla ve teslim et.',                       100,  1400, 1400, 16, 'medya'),
+    ('organizasyon',      'Organizasyon Görevlisi',     '🎪', 'Bir etkinliğin kurulumunda ve karşılamasında görev al.',             85,  1200, 1200, 17, 'hizmet'),
+    ('tarim',             'Tarım İşçiliği',             '🌾', 'Tarlada ekim, bakım ya da hasat işinde çalış.',                      65,   950,  950, 18, 'tarim'),
+    ('asci',              'Aşçılık',                    '🍳', 'Bir mutfakta yemek hazırla; servis bitince ücretini al.',            95,  1300, 1300, 19, 'hizmet'),
+    ('bilgisayar_servis', 'Bilgisayar Teknik Servisi',  '🖥️', 'Bilgisayar ve ağ arızalarını gider, kurulum yap.',                  135,  1900, 1900, 20, 'teknoloji')
+  on conflict (kod) do update set ad = excluded.ad, simge = excluded.simge, aciklama = excluded.aciklama,
+    sure_dakika = excluded.sure_dakika, asgari_ucret = excluded.asgari_ucret, azami_ucret = excluded.azami_ucret,
+    sira = excluded.sira, kategori = excluded.kategori, guncelleme = now();
+  update oyun.ek_is_katalog set kategori = 'zanaat', sira = 21, guncelleme = now() where kod = 'tamirat';
+  update oyun.ek_is_ayar set gunluk_limit = 5, tohum = 2, guncelleme = now() where id = 1;
+end $tohum$;
+
+create or replace function oyun.ek_is_kategori_ad(p_kod text) returns text
+language sql immutable set search_path = '' as $fn$
+  select case p_kod
+    when 'hizmet' then 'Hizmet' when 'ulasim' then 'Ulaşım' when 'zanaat' then 'Zanaat ve teknik'
+    when 'egitim_ofis' then 'Eğitim ve ofis' when 'teknoloji' then 'Teknoloji' when 'medya' then 'Medya ve tasarım'
+    when 'tarim' then 'Tarım' else 'Diğer' end
+$fn$;
+
+create or replace function oyun.ek_is_gunluk_limit() returns integer
+language sql stable set search_path = '' as $fn$
+  select coalesce((select gunluk_limit::integer from oyun.ek_is_ayar where id = 1), 5)
+$fn$;
+
+-- Tek ödeme noktası: kaydı kilitler, süreyi ve tekrar ödemeyi denetler, cüzdana ve hesap hareketlerine yazar.
+create or replace function oyun.ek_is_ode(p_user uuid, p_id bigint, t timestamptz) returns jsonb
+language plpgsql security definer set search_path = '' as $fn$
+declare k oyun.ek_is_kayit; v_ad text;
+begin
+  select * into k from oyun.ek_is_kayit where id = p_id and user_id = p_user for update;
+  if k.id is null then raise exception 'Ek iş kaydı bulunamadı.'; end if;
+  if k.odendi_at is not null then raise exception 'Bu ek işin ücreti daha önce ödendi.'; end if;
+  if t < k.bitis then raise exception 'İş henüz bitmedi. Bitiş saatini beklemelisin.'; end if;
+  update oyun.ek_is_kayit set odendi_at = t where id = k.id and odendi_at is null;
+  if not found then raise exception 'Bu ek işin ücreti daha önce ödendi.'; end if;
+  select c.ad into v_ad from oyun.ek_is_katalog c where c.kod = k.tur;
+  perform oyun.para_islem(p_user, k.ucret, 'ek_is', coalesce(v_ad, 'Ek iş') || ' ek iş ücreti', t);
+  return jsonb_build_object('id', k.id, 'ucret', k.ucret, 'odendi_at', t, 'ad', coalesce(v_ad, 'Ek iş'));
+end $fn$;
+
+create or replace function public.ek_is_paneli() returns jsonb
+language plpgsql security definer set search_path = '' as $fn$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := now();
+  g date := (t at time zone 'Europe/Istanbul')::date;
+  gun_basi timestamptz := (g::timestamp at time zone 'Europe/Istanbul');
+  lim integer := oyun.ek_is_gunluk_limit(); yap integer; kd numeric := null;
+begin
+  select count(*) into yap from oyun.ek_is_kayit where user_id = p.id and gun = g;
+  if exists (select 1 from oyun.ek_is_katalog where aktif and not silindi and min_kidem > 0) then kd := oyun.kidem_puani(p.id); end if;
+  return jsonb_build_object(
+    'gunluk_limit', lim,
+    'bugun_yapilan', yap,
+    'kalan', greatest(0, lim - yap),
+    'bugun_kazanilan', coalesce((select sum(ucret) from oyun.ek_is_kayit where user_id = p.id and odendi_at >= gun_basi), 0),
+    'simdi', t,
+    'sifirlanma', ((g + 1)::timestamp at time zone 'Europe/Istanbul'),
+    'kidem', kd,
+    'isler', coalesce((select jsonb_agg(jsonb_build_object(
+        'kod', c.kod, 'ad', c.ad, 'simge', c.simge, 'aciklama', c.aciklama, 'sure_dakika', c.sure_dakika,
+        'asgari_ucret', c.asgari_ucret, 'azami_ucret', c.azami_ucret, 'kategori', c.kategori,
+        'kategori_ad', oyun.ek_is_kategori_ad(c.kategori), 'min_kidem', c.min_kidem,
+        'uygun', (c.min_kidem <= 0 or coalesce(kd, 0) >= c.min_kidem)) order by c.sira, c.ad)
+      from oyun.ek_is_katalog c where c.aktif and not c.silindi), '[]'::jsonb),
+    'aktif', (select jsonb_build_object('id', k.id, 'tur', k.tur, 'ad', c.ad, 'simge', c.simge,
+        'baslama', k.baslama, 'bitis', k.bitis, 'ucret', k.ucret, 'hazir', t >= k.bitis)
+      from oyun.ek_is_kayit k join oyun.ek_is_katalog c on c.kod = k.tur
+      where k.user_id = p.id and k.odendi_at is null limit 1),
+    'gecmis', coalesce((select jsonb_agg(to_jsonb(x) order by x.odendi_at desc) from
+      (select k.id, c.ad, c.simge, k.ucret, k.odendi_at from oyun.ek_is_kayit k
+       join oyun.ek_is_katalog c on c.kod = k.tur
+       where k.user_id = p.id and k.odendi_at is not null order by k.odendi_at desc limit 20) x), '[]'::jsonb)
+  );
+end $fn$;
+
+-- Ana ekrandaki "Ek İşler" şeridi için hafif özet (tek dizinli sayım + açık iş).
+create or replace function public.ek_is_ozet() returns jsonb
+language plpgsql stable security definer set search_path = '' as $fn$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := now();
+  g date := (t at time zone 'Europe/Istanbul')::date; lim integer := oyun.ek_is_gunluk_limit(); yap integer;
+begin
+  select count(*) into yap from oyun.ek_is_kayit where user_id = p.id and gun = g;
+  return jsonb_build_object('gunluk_limit', lim, 'bugun_yapilan', yap, 'kalan', greatest(0, lim - yap), 'simdi', t,
+    'sifirlanma', ((g + 1)::timestamp at time zone 'Europe/Istanbul'),
+    'aktif', (select jsonb_build_object('id', k.id, 'ad', c.ad, 'simge', c.simge, 'bitis', k.bitis, 'ucret', k.ucret, 'hazir', t >= k.bitis)
+      from oyun.ek_is_kayit k join oyun.ek_is_katalog c on c.kod = k.tur
+      where k.user_id = p.id and k.odendi_at is null limit 1));
+end $fn$;
+
+create or replace function public.ek_is_baslat(p_tur text) returns jsonb
+language plpgsql security definer set search_path = '' as $fn$
+declare p oyun.profiller := oyun.profilim(); c oyun.ek_is_katalog; k oyun.ek_is_kayit;
+  t timestamptz := now(); g date := (t at time zone 'Europe/Istanbul')::date;
+  lim integer := oyun.ek_is_gunluk_limit(); yap integer; v_id bigint; v_ucret integer; onceki jsonb := null;
+begin
+  perform 1 from oyun.profiller where id = p.id for update;
+  select * into c from oyun.ek_is_katalog where kod = p_tur and aktif and not silindi;
+  if c.kod is null then raise exception 'Bu ek iş mevcut değil.'; end if;
+  select * into k from oyun.ek_is_kayit where user_id = p.id and odendi_at is null for update;
+  if k.id is not null and t < k.bitis then
+    raise exception 'Önce devam eden ek işinin süresinin dolmasını bekleyip ücretini al.';
+  end if;
+  select count(*) into yap from oyun.ek_is_kayit where user_id = p.id and gun = g;
+  if yap >= lim then
+    raise exception 'Bugünkü % ek iş hakkını doldurdun. Haklar Türkiye saatiyle 00.00''da yenilenir.', lim;
+  end if;
+  if c.min_kidem > 0 and oyun.kidem_puani(p.id) < c.min_kidem then
+    raise exception 'Bu iş için en az % kıdem puanı gerekir.', c.min_kidem;
+  end if;
+  if k.id is not null then onceki := oyun.ek_is_ode(p.id, k.id, t); end if;
+  v_ucret := c.asgari_ucret + floor(random() * (c.azami_ucret - c.asgari_ucret + 1))::int;
+  insert into oyun.ek_is_kayit(user_id, tur, baslama, bitis, gun, ucret)
+  values (p.id, c.kod, t, t + c.sure_dakika * interval '1 minute', g, v_ucret) returning id into v_id;
+  return jsonb_build_object('id', v_id, 'tur', c.kod, 'ad', c.ad, 'bitis', t + c.sure_dakika * interval '1 minute',
+    'ucret', v_ucret, 'gunluk_limit', lim, 'bugun_yapilan', yap + 1, 'kalan', greatest(0, lim - yap - 1), 'onceki_odeme', onceki);
+end $fn$;
+
+create or replace function public.ek_is_ucret_al(p_id bigint) returns jsonb
+language plpgsql security definer set search_path = '' as $fn$
+declare p oyun.profiller := oyun.profilim();
+begin
+  perform 1 from oyun.profiller where id = p.id for update;
+  return oyun.ek_is_ode(p.id, p_id, now());
+end $fn$;
+
+-- ---------- Yönetim (yalnız oyunun sahibi) ----------
+create or replace function public.yk_ek_is_liste() returns jsonb
+language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $fn$
+declare p oyun.profiller := oyun.yk_sahip(); t timestamptz := now();
+  g date := (t at time zone 'Europe/Istanbul')::date;
+begin
+  return jsonb_build_object(
+    'gunluk_limit', oyun.ek_is_gunluk_limit(),
+    'kategoriler', (select jsonb_agg(jsonb_build_object('kod', k, 'ad', oyun.ek_is_kategori_ad(k)) order by o)
+      from unnest(array['hizmet','ulasim','zanaat','egitim_ofis','teknoloji','medya','tarim','diger']) with ordinality as x(k, o)),
+    'bugun', (select jsonb_build_object('baslatilan', count(*), 'oyuncu', count(distinct user_id),
+        'odenen', coalesce(sum(ucret) filter (where odendi_at is not null), 0)) from oyun.ek_is_kayit where gun = g),
+    'isler', coalesce((select jsonb_agg(to_jsonb(c) || jsonb_build_object('kategori_ad', oyun.ek_is_kategori_ad(c.kategori),
+        'adet_7g', coalesce(s.adet, 0), 'odenen_7g', coalesce(s.odenen, 0), 'gecmis_var', exists (select 1 from oyun.ek_is_kayit y where y.tur = c.kod))
+        order by c.silindi, c.sira, c.ad)
+      from oyun.ek_is_katalog c
+      left join (select tur, count(*) adet, sum(ucret) filter (where odendi_at is not null) odenen
+                 from oyun.ek_is_kayit where baslama > t - interval '7 days' group by tur) s on s.tur = c.kod), '[]'::jsonb));
+end $fn$;
+
+create or replace function public.yk_ek_is_ayar(p_gunluk_limit integer) returns jsonb
+language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $fn$
+declare p oyun.profiller := oyun.yk_sahip(); once jsonb; sonra jsonb;
+begin
+  if p_gunluk_limit is null or p_gunluk_limit < 1 or p_gunluk_limit > 24 then
+    raise exception 'Günlük ek iş hakkı 1 ile 24 arasında olmalı.';
+  end if;
+  select to_jsonb(a) into once from oyun.ek_is_ayar a where id = 1 for update;
+  update oyun.ek_is_ayar set gunluk_limit = p_gunluk_limit, guncelleme = now() where id = 1;
+  select to_jsonb(a) into sonra from oyun.ek_is_ayar a where id = 1;
+  perform oyun.yk_kaydet_log(p, 'oyun.ek_is_ayar'::regclass, 'guncelle', jsonb_build_object('id', 1), once, sonra, 'Ek işler: günlük hak ' || p_gunluk_limit);
+  return jsonb_build_object('tamam', true, 'gunluk_limit', p_gunluk_limit);
+end $fn$;
+
+-- p_kod boşsa yeni meslek eklenir (kod addan üretilir); doluysa yalnız gönderilen alanlar güncellenir.
+create or replace function public.yk_ek_is_kaydet(p_kod text, p_veri jsonb) returns jsonb
+language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $fn$
+declare p oyun.profiller := oyun.yk_sahip(); c oyun.ek_is_katalog; once jsonb := null; sonra jsonb;
+  v jsonb := coalesce(p_veri, '{}'::jsonb); v_kod text := nullif(btrim(coalesce(p_kod, '')), ''); yeni boolean := false;
+  taban text; n integer := 1; alan text;
+begin
+  foreach alan in array array['sure_dakika','asgari_ucret','azami_ucret','sira'] loop
+    if v ? alan and coalesce(v ->> alan, '') !~ '^[0-9]{1,9}$' then raise exception 'Süre, ücret ve sıra alanlarına yalnız tam sayı yaz.'; end if;
+  end loop;
+  if v ? 'min_kidem' and coalesce(v ->> 'min_kidem', '') !~ '^[0-9]{1,6}([.][0-9]{1,2})?$' then raise exception 'Kıdem şartına sayı yaz (şart yoksa 0).'; end if;
+  if v_kod is not null then
+    select * into c from oyun.ek_is_katalog where kod = v_kod for update;
+    if c.kod is null then raise exception 'Bu meslek bulunamadı.'; end if;
+    once := to_jsonb(c);
+  else
+    yeni := true;
+    c.simge := '💼'; c.kategori := 'diger'; c.min_kidem := 0; c.aktif := true; c.silindi := false;
+    c.sira := coalesce((select max(sira) from oyun.ek_is_katalog), 0) + 1;
+  end if;
+  if v ? 'ad' then c.ad := btrim(coalesce(v ->> 'ad', '')); end if;
+  if v ? 'simge' then c.simge := coalesce(nullif(btrim(coalesce(v ->> 'simge', '')), ''), '💼'); end if;
+  if v ? 'aciklama' then c.aciklama := btrim(coalesce(v ->> 'aciklama', '')); end if;
+  if v ? 'sure_dakika' then c.sure_dakika := (v ->> 'sure_dakika')::integer; end if;
+  if v ? 'asgari_ucret' then c.asgari_ucret := (v ->> 'asgari_ucret')::integer; end if;
+  if v ? 'azami_ucret' then c.azami_ucret := (v ->> 'azami_ucret')::integer;
+  elsif v ? 'asgari_ucret' and (yeni or c.azami_ucret < c.asgari_ucret) then c.azami_ucret := c.asgari_ucret; end if;
+  if v ? 'kategori' then c.kategori := v ->> 'kategori'; end if;
+  if v ? 'min_kidem' then c.min_kidem := (v ->> 'min_kidem')::numeric; end if;
+  if v ? 'sira' then c.sira := least((v ->> 'sira')::integer, 32000)::smallint; end if;
+  if v ? 'aktif' then c.aktif := coalesce((v ->> 'aktif')::boolean, c.aktif); end if;
+  if v ? 'silindi' and not coalesce((v ->> 'silindi')::boolean, true) then c.silindi := false; end if;
+
+  if c.ad is null or char_length(c.ad) < 3 or char_length(c.ad) > 40 then raise exception 'Meslek adı 3–40 karakter olmalı.'; end if;
+  if char_length(c.simge) > 12 then raise exception 'Simge tek bir emoji olmalı.'; end if;
+  if c.aciklama is null or char_length(c.aciklama) < 5 or char_length(c.aciklama) > 160 then raise exception 'Açıklama 5–160 karakter olmalı.'; end if;
+  if c.sure_dakika is null or c.sure_dakika < 15 or c.sure_dakika > 480 then raise exception 'Çalışma süresi 15 ile 480 dakika arasında olmalı.'; end if;
+  if c.asgari_ucret is null or c.asgari_ucret < 1 or c.asgari_ucret > 1000000 then raise exception 'Ücret 1 ile 1.000.000 ₺ arasında olmalı.'; end if;
+  if c.azami_ucret is null or c.azami_ucret < c.asgari_ucret or c.azami_ucret > 1000000 then raise exception 'En yüksek ücret, en düşük ücretten az olamaz (üst sınır 1.000.000 ₺).'; end if;
+  if c.kategori is null or c.kategori not in ('hizmet','ulasim','zanaat','egitim_ofis','teknoloji','medya','tarim','diger') then raise exception 'Meslek türü geçersiz.'; end if;
+  if c.min_kidem is null or c.min_kidem < 0 then raise exception 'Kıdem şartı eksi olamaz.'; end if;
+  if exists (select 1 from oyun.ek_is_katalog x where lower(x.ad) = lower(c.ad) and not x.silindi and (yeni or x.kod <> c.kod)) then
+    raise exception 'Bu adla bir meslek zaten var.';
+  end if;
+
+  if yeni then
+    taban := btrim(regexp_replace(lower(translate(c.ad, 'çğıİöşüÇĞIÖŞÜâîûÂÎÛ', 'cgiiosucgiosuaiuaiu')), '[^a-z0-9]+', '_', 'g'), '_');
+    taban := left(coalesce(nullif(taban, ''), 'is'), 28);
+    c.kod := taban;
+    while exists (select 1 from oyun.ek_is_katalog x where x.kod = c.kod) loop n := n + 1; c.kod := taban || '_' || n; end loop;
+    insert into oyun.ek_is_katalog(kod, ad, simge, aciklama, sure_dakika, asgari_ucret, azami_ucret, sira, aktif, kategori, min_kidem, silindi, guncelleme)
+    values (c.kod, c.ad, c.simge, c.aciklama, c.sure_dakika, c.asgari_ucret, c.azami_ucret, c.sira, c.aktif, c.kategori, c.min_kidem, false, now());
+  else
+    update oyun.ek_is_katalog set ad = c.ad, simge = c.simge, aciklama = c.aciklama, sure_dakika = c.sure_dakika,
+      asgari_ucret = c.asgari_ucret, azami_ucret = c.azami_ucret, sira = c.sira, aktif = c.aktif, kategori = c.kategori,
+      min_kidem = c.min_kidem, silindi = c.silindi, guncelleme = now() where kod = c.kod;
+  end if;
+  select to_jsonb(x) into sonra from oyun.ek_is_katalog x where x.kod = c.kod;
+  perform oyun.yk_kaydet_log(p, 'oyun.ek_is_katalog'::regclass, case when yeni then 'ekle' else 'guncelle' end,
+    jsonb_build_object('kod', c.kod), once, sonra, 'Ek işler: ' || c.ad);
+  return jsonb_build_object('tamam', true, 'yeni', yeni, 'is', sonra);
+end $fn$;
+
+-- Geçmişi olmayan meslek kalıcı silinir; ödeme geçmişi ya da süren işi olan meslek arşive alınır (oyunculara görünmez).
+create or replace function public.yk_ek_is_sil(p_kod text) returns jsonb
+language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $fn$
+declare p oyun.profiller := oyun.yk_sahip(); c oyun.ek_is_katalog; once jsonb; kalici boolean;
+begin
+  select * into c from oyun.ek_is_katalog where kod = btrim(coalesce(p_kod, '')) for update;
+  if c.kod is null then raise exception 'Bu meslek bulunamadı.'; end if;
+  once := to_jsonb(c);
+  kalici := not exists (select 1 from oyun.ek_is_kayit where tur = c.kod);
+  if kalici then
+    delete from oyun.ek_is_katalog where kod = c.kod;
+  else
+    update oyun.ek_is_katalog set aktif = false, silindi = true, guncelleme = now() where kod = c.kod;
+  end if;
+  perform oyun.yk_kaydet_log(p, 'oyun.ek_is_katalog'::regclass, case when kalici then 'sil' else 'guncelle' end,
+    jsonb_build_object('kod', c.kod), once, case when kalici then null else (select to_jsonb(x) from oyun.ek_is_katalog x where x.kod = c.kod) end,
+    'Ek işler: ' || c.ad || case when kalici then ' silindi' else ' arşive alındı' end);
+  return jsonb_build_object('tamam', true, 'kalici', kalici, 'kod', c.kod);
+end $fn$;
+
+do $izin$
+declare f text;
+begin
+  foreach f in array array['oyun.ek_is_ode(uuid,bigint,timestamptz)', 'oyun.ek_is_gunluk_limit()', 'oyun.ek_is_kategori_ad(text)'] loop
+    execute format('revoke all on function %s from public, anon, authenticated', f);
+  end loop;
+  foreach f in array array['public.ek_is_paneli()', 'public.ek_is_ozet()', 'public.ek_is_baslat(text)', 'public.ek_is_ucret_al(bigint)',
+      'public.yk_ek_is_liste()', 'public.yk_ek_is_ayar(integer)', 'public.yk_ek_is_kaydet(text,jsonb)', 'public.yk_ek_is_sil(text)'] loop
+    execute format('revoke all on function %s from public, anon', f);
+    execute format('grant execute on function %s to authenticated', f);
+  end loop;
+end $izin$;
+-- zz_20261124_kursu_denetim_talep.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun.akis') is null or to_regclass('oyun.akis_sikayet') is null or to_regclass('oyun.moderatorler') is null or to_regclass('oyun.destek_talep') is null or to_regclass('oyun.destek_mesaj') is null or to_regclass('oyun.mod_kayit') is null or to_regclass('oyun.mod_kisit') is null then raise notice 'zz_20261124_kursu_denetim_talep.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 24.11.2026 · KÜRSÜ DENETİMİ, PAYLAŞIM ARALIĞI, TALEP KUTUSU (sürüm 2026.11.24-3)
+-- İstek (Ercan): "Kürsü ekranında ne benim ne de içerik moderatörlerinin yetkisi yok gözüküyor; şikâyetleri kontrol
+-- edebilelim ve istediğimiz içeriği kaldırabilelim. Kürsü'ye oyuncu başına 5 dakikada bir paylaşım. Şikâyet ve destek
+-- talepleri için yardım masasına bütün modlar girip talepleri görüp cevap yazabilsin; isimleri değil G-01, G-09 yazsın."
+--
+-- 1) KÜRSÜ ŞİKÂYETLERİ: admin_akis_sikayetleri ve admin_akis_karar'a istemci çağrı izni hiç verilmemişti (RPC yüzey
+--    kilidi listesinde yoktu); kurucu dahil herkes "Bu işlem için yetkin yok" görüyordu. Yetki denetimi zaten işlevlerin
+--    içinde: oyun.yetki_zorunlu('sikayet') → kurucu + İçerik Masası + Oyuncu Masası. Burada yalnız çağrı izni açılır.
+-- 2) ŞİKÂYET BEKLEMEDEN KALDIRMA: mod_kursu_kaldir(p_id, p_gerekce) — aynı 'sikayet' yetkisi, çıkar çatışması/korunan
+--    hesap kuralı (korunan_hedef_ceza), yönetim kaydı (akis_gizle), paylaşım sahibine gerekçeli bildirim.
+--    mod_kursu_kaldirilanlar(): son 14 günde kaldırılan paylaşımlar (geri yükleme admin_akis_karar(id,'yok_say') ile).
+-- 3) PAYLAŞIM ARALIĞI: bir oyuncu Kürsü'de oyun.kursu_ayar.paylasim_aralik_dk (başlangıç 5) dakikada bir paylaşım yapar.
+--    Yeni gönderi, alıntı ve kurum adına gönderi sayılır; YANIT sayılmaz. Kurucuya uygulanmaz. Sayaç ayrı tabloda
+--    (oyun.kursu_hiz) ve tek ifadede kilitlenir: gönderiyi silip yeniden yazmak ya da aynı anda çok istek atmak aşamaz.
+--    Aralık 0 yapılırsa sınır kapanır (Kontrol Merkezi › Veri › oyun.kursu_ayar).
+-- 4) TALEP KUTUSU: Yönetime Yaz talepleri artık yalnız ilgili masaya değil bütün oyun yöneticilerine görünür ve hepsi
+--    yanıtlayabilir. Korunanlar aynen: kendi açtığı talep, kendisi hakkındaki talep ve Kurucu masasındaki talepler
+--    (yönetici hakkındaki şikâyetler, öneriler) görünmez. Yazışmada yanıtlayanın adı yerine görev kodu (G-07) görünür;
+--    kurucu kodun yanında kullanıcı adını da görür. Oyuncuya zaten "Oyun Yöneticisi G-07" olarak gidiyordu.
+-- Oyuncu verisi değişmez; tekrar çalıştırmak güvenlidir. _yama yardımcısını kullanır (zz_20261121_00_yama.sql).
+
+-- ---------- 2) Şikâyet beklemeden kaldırma ----------
+create or replace function public.mod_kursu_kaldir(p_id bigint, p_gerekce text) returns jsonb
+language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $f$
+declare p oyun.profiller := oyun.yetki_zorunlu('sikayet'); a oyun.akis; h oyun.profiller;
+  g text := btrim(coalesce(p_gerekce, '')); t timestamptz := oyun.simdi();
+begin
+  if char_length(g) < 5 or char_length(g) > 300 then
+    raise exception 'Kaldırma gerekçesini yaz (5-300 karakter; paylaşımın sahibi görür).';
+  end if;
+  select * into a from oyun.akis where id = p_id for update;
+  if a.id is null then raise exception 'Paylaşım bulunamadı.'; end if;
+  if a.gizli then raise exception 'Bu paylaşım zaten kaldırılmış.'; end if;
+  select * into h from oyun.profiller where id = a.user_id;
+  perform oyun.korunan_hedef_ceza(p, h.id);
+  update oyun.akis set gizli = true where id = a.id;
+  update oyun.akis_sikayet set durum = 'incelendi' where akis_id = a.id and durum = 'yeni';
+  perform oyun.mod_log(p, 'akis_gizle', h.kad, left(a.metin, 300) || ' · Gerekçe: ' || g);
+  perform oyun.bildir(h.id, format('Kürsü paylaşımın topluluk kurallarına aykırı bulunduğu için oyun yönetimi tarafından kaldırıldı. Gerekçe: %s · İtiraz için: Ben › Yönetime Yaz.', g), t);
+  return jsonb_build_object('tamam', true, 'id', a.id);
+end $f$;
+
+create or replace function public.mod_kursu_kaldirilanlar() returns jsonb
+language plpgsql security definer set search_path to 'oyun', 'public', 'pg_temp' as $f$
+declare p oyun.profiller := oyun.yetki_zorunlu('sikayet');
+begin
+  return coalesce((select jsonb_agg(jsonb_build_object('id', q.id, 'kad', q.kad, 'metin', left(q.metin, 500), 'zaman', q.zaman, 'sikayet', q.sikayet) order by q.zaman desc)
+    from (select a.id, pr.kad, a.metin, a.zaman, (select count(*) from oyun.akis_sikayet s where s.akis_id = a.id) sikayet
+            from oyun.akis a join oyun.profiller pr on pr.id = a.user_id
+           where a.gizli and a.zaman > oyun.simdi() - interval '14 days'
+           order by a.zaman desc limit 60) q), '[]'::jsonb);
+end $f$;
+
+-- ---------- 3) Paylaşım aralığı ----------
+create table if not exists oyun.kursu_ayar(
+  id smallint primary key default 1 check (id = 1),
+  paylasim_aralik_dk integer not null default 5 check (paylasim_aralik_dk between 0 and 1440),
+  guncelleme timestamptz not null default now()
+);
+insert into oyun.kursu_ayar(id) values (1) on conflict (id) do nothing;
+create table if not exists oyun.kursu_hiz(
+  user_id uuid primary key references oyun.profiller(id) on delete cascade,
+  son timestamptz not null
+);
+alter table oyun.kursu_ayar enable row level security;
+alter table oyun.kursu_hiz enable row level security;
+revoke all on oyun.kursu_ayar, oyun.kursu_hiz from public, anon, authenticated;
+
+-- İlk kurulumda son bir saatin gönderileri sayaca işlenir (uygulandığı anda sınır herkes için doğru başlasın).
+insert into oyun.kursu_hiz(user_id, son)
+select a.user_id, max(a.zaman) from oyun.akis a
+ where a.yanit_id is null and a.zaman > now() - interval '1 hour' and a.zaman <= now()
+ group by a.user_id
+on conflict (user_id) do nothing;
+
+create or replace function oyun.kursu_hiz_kapisi(p oyun.profiller, t timestamptz) returns void
+language plpgsql set search_path to '' as $f$
+declare dk integer := (select paylasim_aralik_dk from oyun.kursu_ayar where id = 1); v_son timestamptz; kalan integer;
+begin
+  if coalesce(dk, 0) <= 0 or coalesce(p.yonetici, false) then return; end if;
+  if coalesce(current_setting('oyun.kursu_yanit', true), '') = '1' then return; end if;      -- yanıtlar bu sınıra girmez
+  insert into oyun.kursu_hiz as k (user_id, son) values (p.id, t)
+  on conflict (user_id) do update set son = excluded.son where k.son <= excluded.son - make_interval(mins => dk)
+  returning k.son into v_son;
+  if v_son is null then
+    select k.son into v_son from oyun.kursu_hiz k where k.user_id = p.id;
+    kalan := greatest(1, ceil(extract(epoch from (v_son + make_interval(mins => dk) - t)))::integer);
+    raise exception 'Kürsü''de % dakikada bir paylaşım yapabilirsin. % sonra yeniden dene (yanıt yazmak serbest).', dk,
+      case when kalan >= 60 then (kalan / 60) || ' dk ' || (kalan % 60) || ' sn' else kalan || ' sn' end;
+  end if;
+end $f$;
+revoke all on function oyun.kursu_hiz_kapisi(oyun.profiller, timestamptz) from public, anon, authenticated;
+
+-- akis_yaz: kayıt eklenmeden hemen önce kapı (bütün gönderi yolları — alıntı, kurum adına — bu işlevden geçer)
+select oyun._yama('public.akis_yaz(text)',
+  '(insert\s+into\s+oyun\.akis\s*\(\s*user_id)',
+  '/* kursu_hiz */ perform oyun.kursu_hiz_kapisi(p, t); \1',
+  '/* kursu_hiz */');
+-- akis_yanit_yaz: yanıt yazarken kapı atlanır (işlem içi işaret; istemci bu ayarı veremez)
+select oyun._yama('public.akis_yanit_yaz(bigint,text)',
+  'r := public.akis_yaz(p_metin);',
+  '/* kursu_yanit */ perform set_config(''oyun.kursu_yanit'', ''1'', true); r := public.akis_yaz(p_metin); perform set_config(''oyun.kursu_yanit'', '''', true);',
+  '/* kursu_yanit */', true);
+
+-- ---------- 4) Talep kutusu bütün oyun yöneticilerine açık ----------
+create or replace function oyun.mod_kutu_gorur(p oyun.profiller, x oyun.destek_talep) returns boolean
+language sql stable set search_path to '' as $f$
+  select coalesce(p.yonetici, false)
+      or (x.user_id <> p.id and x.hedef is distinct from p.id
+          and coalesce(x.masa, 'oyuncu') <> 'kurucu'
+          and exists (select 1 from oyun.moderatorler m where m.user_id = p.id))
+$f$;
+revoke all on function oyun.mod_kutu_gorur(oyun.profiller, oyun.destek_talep) from public, anon, authenticated;
+
+-- Yazışmada yanıtlayan yöneticinin adı yerine görev kodu; kurucu kodun yanında kullanıcı adını da görür
+select oyun._yama('oyun.destek_talep_json(oyun.destek_talep,boolean)',
+  'when p_gorevli then oyun.kad(m.yazan)',
+  'when p_gorevli then /* kutu_kod */ oyun.mod_kod(m.yazan) || case when coalesce((select pv.yonetici from oyun.profiller pv where pv.id = auth.uid()), false) then '' · '' || oyun.kad(m.yazan) else '''' end',
+  '/* kutu_kod */', true);
+
+-- ---------- 1) Çağrı izinleri ----------
+do $izin$
+declare f text;
+begin
+  foreach f in array array['public.admin_akis_sikayetleri()', 'public.admin_akis_karar(bigint,text)',
+      'public.mod_kursu_kaldir(bigint,text)', 'public.mod_kursu_kaldirilanlar()'] loop
+    if to_regprocedure(f) is not null then
+      execute format('revoke all on function %s from public, anon', f);
+      execute format('grant execute on function %s to authenticated', f);
+    end if;
+  end loop;
+end $izin$;
+$kosullu_govde$;
+end $kosullu_dis$;
 -- =====================================================================
 --  KALICILIK (son): bütünlük kontrolü, silme koruması, sürüm bilgisi, sahibin sıfırlama/geri yükleme araçları
 -- =====================================================================
@@ -85763,7 +86356,7 @@ declare
     'admin_oyuncu', 'admin_ozet', 'admin_sikayet_karar', 'admin_sikayetler', 'admin_supheler', 'admin_transferler_sayfa',
     'ajans_anket_cevap', 'ajans_anket_yayimla', 'ajans_ayarla', 'ajans_gundem', 'ajans_haberler', 'ajans_kur',
     'ajans_kur_ilde', 'ajans_liste', 'ajans_puanla', 'ajans_siparis', 'ajans_yonetim', 'akis_begen',
-    'akis_gundem', 'akis_konu', 'akis_liste', 'akis_sikayet_et', 'akis_sil', 'akis_tepki',
+    'admin_akis_karar', 'admin_akis_sikayetleri', 'akis_gundem', 'akis_konu', 'akis_liste', 'akis_sikayet_et', 'akis_sil', 'akis_tepki',
     'akis_yanit_yaz', 'akis_yaz', 'aktarim_hakki', 'anket_durum', 'anket_oyla', 'arsa_teklif',
     'avukat_akademiye_katil', 'avukat_buro_ac', 'avukat_buro_davet', 'avukat_buro_davet_cevap', 'avukat_buro_davetler', 'avukat_dava_durum',
     'avukat_durum', 'avukat_iller', 'avukat_istinaf', 'avukat_karsi_teklif', 'avukat_kontenjan_ayarla', 'avukat_pazarlik_karar',
@@ -85830,7 +86423,7 @@ declare
     'sokak_kaynak_aktar', 'sokak_kaynak_ozet',
     -- 09.11.2026 Halk Hareketleri 4.0 Eylem Meydanı (supabase/migrations/20261109270000_halk_eylem_meydani.sql)
     'sokak_eylem_akis', 'sokak_sohbet_akis', 'sokak_sohbet_sabitle', 'sokak_sohbet_tepki', 'sokak_sirket_ara',
-    'ek_is_baslat', 'ek_is_paneli', 'ek_is_ucret_al', 'eko_emlak_islem', 'eko_emlak_panel', 'eko_gunluk_kar_cek',
+    'ek_is_baslat', 'ek_is_ozet', 'ek_is_paneli', 'ek_is_ucret_al', 'eko_emlak_islem', 'eko_emlak_panel', 'eko_gunluk_kar_cek',
     'eko_islem', 'eko_magaza_hazirla', 'eko_otomasyon_ayarla', 'eko_otomasyon_panel', 'eko_panel', 'eko_ticaret_islem',
     'eko_ticaret_panel', 'eko_vergi_kanun_teklif', 'eko_vergi_panel', 'ekonomi_yasa_durum', 'ekonomi_yasa_teklif', 'emlak_pazarlik_alici_yanit',
     'emlak_pazarlik_satici_yanit', 'emlak_pazarlik_teklif', 'emlak_pazarliklarim', 'engel_kaldir', 'engelle', 'engellenenler',
@@ -85889,7 +86482,7 @@ declare
     'oyb_liste', 'oyb_mevduat_cek', 'oyb_oran_ayarla', 'oyb_paket_kaydet', 'oyb_paket_sil', 'oyb_portfoy',
     'oyb_teklif', 'oyb_urun_ayarla', 'oyb_urunler', 'oyb_yatir', 'oyb_yonetim', 'oyuncu_arama',
     'oyuncu_kart', 'oyuncu_nisanlari', 'oyuncu_parti_gecmisi', 'ozel_liste', 'ozel_oku', 'ozel_yasa_durum',
-    'ozel_yasa_teklif', 'ozel_yaz', 'para_gonder', 'parti_aciklama_sil', 'parti_aciklama_yap', 'parti_aciklamalari',
+    'ozel_yasa_teklif', 'ozel_yanitla', 'ozel_yaz', 'para_gonder', 'parti_aciklama_sil', 'parti_aciklama_yap', 'parti_aciklamalari',
     'parti_ad_degistir', 'parti_ad_ozel_hakki', 'parti_aday_kart', 'parti_aday_tanit', 'parti_amblem_degistir', 'parti_birlesme_iptal',
     'parti_birlesme_teklif', 'parti_birlesme_yanit', 'parti_destek', 'parti_detay', 'parti_finans_bagis', 'parti_finans_durum',
     'parti_finans_emir', 'parti_finans_kampanya', 'parti_gecisleri', 'parti_hedefleri', 'parti_il_uyeleri', 'parti_isbirligi_durum',
@@ -85911,7 +86504,7 @@ declare
     'sirket_pay_kabul', 'sirket_pay_teklif', 'sirket_reklam_ayarla', 'sirket_satiliga_cikar', 'sirket_satilik_al', 'sirket_satis_raporu',
     'sirket_sermaye_artir', 'sirket_sube_ac_ilde', 'sirket_sube_finans', 'sirket_sube_teklif', 'sirket_vitrini', 'sirket_yerleri',
     'siyaset_merkezi_ozet', 'siyasi_bagislar', 'siyasi_hafta', 'siyasi_sistem', 'sohbet_oku', 'sohbet_ozet',
-    'sohbet_yaz', 'sos_dernek_durum', 'sos_dilekce_gonder', 'sos_dilekce_yanit', 'sos_dilekceler', 'sos_duello_davet',
+    'sohbet_yanitla', 'sohbet_yaz', 'sos_dernek_durum', 'sos_dilekce_gonder', 'sos_dilekce_yanit', 'sos_dilekceler', 'sos_duello_davet',
     'sos_duello_konus', 'sos_duello_oyla', 'sos_duellolar', 'sos_haber_cevapla', 'sos_haber_hedefle', 'sos_haberler',
     'sos_imza_baslat', 'sos_imza_kampanyalari', 'sos_parti_imza_durum', 'sos_parti_imzala', 'sos_roportaj_davet', 'sos_roportaj_yanit',
     'sos_roportajlar', 'spk_ekrani', 'spk_inceleme_ac', 'spk_karar', 'stant_ac', 'stant_cevapla',
@@ -85924,6 +86517,7 @@ declare
     'vadeli_boz', 'varlik_fonu_aktar', 'vatandaslik', 'vekalet_paneli', 'vergi_kanun_teklif', 'vergi_karnem',
     'vergi_rehberi', 'yatirim_kasam', 'yatirim_pazar_islem', 'yatirim_pazar_panel', 'yayin_gonder', 'yayin_haklari',
     'yk_ad_degistir', 'yk_adaylik_yasagi', 'yk_bildirim', 'yk_degisiklikler', 'yk_engel_kaldir', 'yk_engelle',
+    'yk_ek_is_ayar', 'yk_ek_is_kaydet', 'yk_ek_is_liste', 'yk_ek_is_sil',
     'yk_geri_al', 'yk_il_degistir', 'yk_kasa', 'yk_kidem', 'yk_makam_al', 'yk_makam_ver',
     'yk_makamlar', 'yk_motor_calistir', 'yk_oyuncu', 'yk_oyuncular', 'yk_ozet', 'yk_para',
     'yk_parti_degistir', 'yk_parti_gorev_al', 'yk_satir_kaydet', 'yk_satir_sil', 'yk_satislar', 'yk_secimler',
@@ -85959,7 +86553,7 @@ declare
     -- 23.11.2026 TV yayını kesme / kanal kapatma (sql/zz_20261123_mod_tv_kapat.sql)
     'mod_tv_liste', 'mod_tv_yayin_kes', 'mod_tv_kanal_kapat', 'mod_tv_kanal_ac',
     -- 23.11.2026 Medya ve yayın denetimi + kurum denetimi çekirdeği (sql/zz_20261123_medya_denetimi.sql)
-    'mod_medya_akis', 'mod_medya_kaldir', 'mod_medya_geri_yukle', 'mod_icerik_kaldir', 'mod_icerik_geri_yukle',
+    'mod_medya_akis', 'mod_medya_kaldir', 'mod_medya_geri_yukle', 'mod_icerik_kaldir', 'mod_icerik_geri_yukle', 'mod_kursu_kaldir', 'mod_kursu_kaldirilanlar',
     'mod_kurum_ara', 'mod_kurum_dosya', 'mod_kurum_durdur', 'mod_kurum_durdurma_kaldir', 'mod_kurum_durdurma_karar',
     'mod_kurum_durdurmalar', 'mod_kurum_ad_duzelt',
     -- 23.11.2026 Gazete/dergi kapatma (sql/zz_20261123_mod_kurum_kapat.sql)
