@@ -83,14 +83,18 @@ function aliciBagisModal(tur, id, ad){
     <button class="btn" id="ah_gonder">${e(isim)} için bağışla</button>
     <button class="btn ikinci" id="ah_vazgec">Vazgeç</button>`);
   $("#ah_vazgec",m).onclick=()=>modalKapat();
+  // Parti, şehir ve Hazine bağışı kıdem kazandırır (günde en çok +1): tutar yazılırken canlı gösterilir.
+  const kidemBilgi=["parti","il","devlet"].includes(tur)&&typeof bagisKidemBagla==="function"?bagisKidemBagla(m,"#ah_tutar","#ah_hak"):null;
   if(["oyuncu","sirket","gazete"].includes(tur)) API.rpc("aktarim_hakki").then(h=>{const el=$("#ah_hak",m);if(el)el.textContent=h.engel?h.engel:"Bugün kalan aktarma hakkın: "+tlYaz(h.kalan)+" / "+tlYaz(h.tavan);}).catch(()=>{});
   $("#ah_gonder",m).onclick=async()=>{
     const miktar=Number($("#ah_tutar",m).value),aciklama=$("#ah_not",m).value.trim();
     if(!Number.isSafeInteger(miktar)||miktar<1){toast("En az 1 ₺ tutarında, tam sayı bağış gir.",true);return;}
     if(aciklama.length>150){toast("Bağış notu en fazla 150 karakter olmalı.",true);return;}
+    const kb=kidemBilgi?kidemBilgi(miktar):null;
     const evet=await onayla("Bağışı onayla",
-      "<b>"+e(isim)+"</b> alıcısına <b>"+tlYaz(miktar)+"</b> göndereceksin. İşlem geri alınamaz.",
-      "Evet, bağışla");
+      "<b>"+e(isim)+"</b> alıcısına <b>"+tlYaz(miktar)+"</b> göndereceksin. İşlem geri alınamaz."+
+      (kb?"<br><br>"+(kb.uyari?"<b style=\"color:var(--warn)\">⚠ "+e(kb.metin)+"</b>":e(kb.metin)):""),
+      kb&&kb.uyari?"Yine de bağışla":"Evet, bağışla");
     if(!evet)return;
     try{
       const result=await API.rpc("serbest_bagis",{

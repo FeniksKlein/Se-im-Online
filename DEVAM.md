@@ -16,6 +16,16 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 23.11.2026 — 2026.11.23-3 Bağıştan ÖNCE kıdem uyarısı (istemci; web'de yayında, telefonlar mağaza sürümünü bekler)
+- İstek (Ercan): 23-2'deki bildirim bağıştan sonra geliyor; oyuncu parayı göndermeden önce uyarılsın.
+- Üç bağış penceresine canlı kıdem satırı eklendi (`bagisKidemHesap`, `bagisKidemBagla`, `bagisKidemOnay` — `index.html`, `tlYaz`'ın hemen altı): `aliciBagisModal` (parti · şehir · Hazine; `otomatik_gazete.js`, satır `#ah_hak`), `bagisModal` (Partine bağış, `#bkidem`), `ilBagisModal` (kalkınma bağışı, `#ibkidem`). Veri: `hayat` → `bagis.bugun` / `bagis.tavan` (yeni RPC yok; sunucu değişmedi).
+  - tutar yazılırken: "Bu bağış +0,36 kıdem puanı getirir (bugün 0,36 / 1)…";
+  - günlük +1'i aşan tutarda (sarı): "Bu bağışın yalnızca 28.075 ₺ tutarındaki kısmı kıdem getirir (+1). Kalan 56.150 ₺ kıdem getirmez…";
+  - günlük +1 alındıysa (sarı): "Bugünkü bağış kıdemini aldın (1 / 1). Bu bağış kıdem puanı getirmez…".
+- Sarı uyarı varsa gönderimden önce onay penceresi aynı uyarıyı gösterir, düğme "Yine de bağışla" olur. Partine bağış ve kalkınma bağışında daha önce onay adımı yoktu; yalnız uyarılı durumda onay sorulur. `hayat` okunamadıysa uyarı çıkmaz, bağış eskisi gibi ilerler.
+- Doğrulama (derlenmiş `dist/index.html`, başsız Chrome, sahte API): 3 asgari ücret → kısmi uyarı + onay; günlük puan dolu → "getirmez" uyarısı + onay; normal tutar → bilgi satırı, onaysız/olağan onay; oyuncuya hediye penceresi değişmedi; onaydan önce sunucuya istek gitmiyor.
+- **Telefonlar:** bağış pencereleri uygulamanın içinde paketli olduğundan bu uyarı ancak yeni mağaza sürümüyle gelir (23-1'deki Statü metni düzeltmesiyle birlikte). O zamana kadar telefonda yalnız 23-2'nin bağış sonrası bildirimi var.
+
 ## 23.11.2026 — 2026.11.23-2 Bağış kıdemi bildirimi (canlıda)
 - Sorun (Ercan, oyuncu şikâyeti): Statü kartındaki "bir asgari ücret tutarındaki her bağış +1 kıdem" cümlesi yüzünden bir oyuncu 3 asgari ücret bağışlayıp 3 kıdem bekledi. **Kural değişmedi:** parti, şehir ve Hazine bağışlarından günde en çok +1 kıdem (`serbest_bagis`: `least(1, günlük toplam / asgari)`); dernek, kol, oyuncu, şirket ve gazete bağışı kıdem vermez. Görünen kıdem aşağı yuvarlanır (`oyun.kidem_puani`), küsurat birikir.
 - **2026.11.23-1 (istemci):** Statü ve "Şehrine katkı" metinleri "bağıştan günde en çok +1 kıdem gelir" diye yeniden yazıldı (`gelistirici/www/index.html`, `TASARIM.md`). Web'de yayında; **telefon uygulamaları bu metni ancak yeni mağaza sürümüyle görür** (OTA yok).
@@ -26,7 +36,7 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
   - 0,005 puandan küçük kazançta (≈140 ₺ altı) bildirim yok; işlev hata verirse bağış yine tamamlanır (exception bloğu). `serbest_bagis` içine `_yama` ile tek satır eklendi (işaret `/* bagis_kidem_bildir */`); imza, dönüş değeri ve yetkiler aynı.
 - Kaynak `zz_20261123_bagis_kidem_bildirimi.sql`, migration `bagis_kidem_bildirimi_20261123` (`migrations/20261123_bagis_kidem_bildirimi.sql`).
 - Doğrulama (canlıda geri alınan işlem): 10.000 ₺ → +0,3562 kıdem ve "+0,36 (bugün 0,36 / 1)" bildirimi; ardından 20.000 ₺ → +0,6438 ve "tamamlandı (1 / 1)"; sonraki iki bağışta kıdem 0, tek "kıdem getirmedi" bildirimi; tek seferde 3 asgari ücret (84.225 ₺) → +1 kıdem ve "tamamlandı" bildirimi; başka oyuncuya bildirim gitmedi.
-- Açık kalan: metin düzeltmesinin telefonlara gelmesi için yeni mağaza paketi (Ercan mağazadaki güncel sürüm numaralarını verince hazırlanır).
+- Açık kalan: metin düzeltmesinin ve 23-3'teki bağış öncesi uyarının telefonlara gelmesi için yeni mağaza paketi (Ercan mağazadaki güncel sürüm numaralarını verince hazırlanır).
 
 ## 22.11.2026 — 2026.11.22-1 Moderatörlere küçük ve kademeli cezalar (canlıda)
 - İstek (Ercan): sohbette ırkçı vb. yazılar çok; moderatörler kısa susturma (15 dk–3 saat), tekrar edene kendiliğinden artan susturma, kalıcı banın yanında saatlik/günlük uzaklaştırma ve caydırıcı küçük cezalar verebilsin.

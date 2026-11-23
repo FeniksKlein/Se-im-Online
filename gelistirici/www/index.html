@@ -2566,8 +2566,11 @@ async function partiKasaCiz(pid){
 function bagisModal(pid){
   const h = D._hayat;
   const m = modal(`<h3 style="font-size:19px;font-weight:800">Partine bağış</h3><p class="alt">Bağışın parti kasasına girer; genel başkan bu parayla adaylara kampanya desteği verebilir. Günlük bağış sınırı yoktur; cüzdanında yeterli oyun parası bulunması gerekir.${h ? ` Cüzdanında ${tlYaz(h.para)} var.` : ""}</p>
-    <div class="alan"><label>Tutar (₺)</label><input id="bmik" type="number" min="100" step="100" value="1000" inputmode="numeric"></div><button class="btn altin" id="bok">Bağışla</button>`);
-  $("#bok", m).onclick = async () => { try { await API.rpc("bagis_yap", { p_miktar: +$("#bmik", m).value }); modalKapat(); toast("Bağışın için teşekkürler!"); D._hayat = null; partiKasaCiz(pid); } catch (err) { toast(hataCevir(err.message), true); } };
+    <div class="alan"><label>Tutar (₺)</label><input id="bmik" type="number" min="100" step="100" value="1000" inputmode="numeric"></div>
+    <div class="kucuk" id="bkidem" style="margin:2px 0 10px"></div><button class="btn altin" id="bok">Bağışla</button>`);
+  const kidemBilgi = bagisKidemBagla(m, "#bmik", "#bkidem");
+  $("#bok", m).onclick = async () => { const miktar = +$("#bmik", m).value; if (!(await bagisKidemOnay(miktar, kidemBilgi(miktar)))) return;
+    try { await API.rpc("bagis_yap", { p_miktar: miktar }); modalKapat(); toast("Bağışın için teşekkürler!"); D._hayat = null; partiKasaCiz(pid); } catch (err) { toast(hataCevir(err.message), true); } };
 }
 function destekModal(pid, kasa){
   const m = modal(`<h3 style="font-size:19px;font-weight:800">Kampanya desteği</h3><p class="alt">Parti kasasından (${tlYaz(kasa)}) bir üyenin cüzdanına para gönder. Adaylarının başvuru, reklam ve taşınma masraflarını karşılayabilir.</p>
@@ -3657,6 +3660,46 @@ const ETKI_AD = {
 const OZEL_AD = { il_yardim: "İl sakinlerine 3.000 ₺", vergi_iade: "Vergi iadesi" };
 const etkiCip = (l) => (l || []).map(x => `<span class="cip">${e(ETKI_AD[x.tur] ? ETKI_AD[x.tur](fmt(x.deger)) : x.tur)}</span>`).join("");
 const tlYaz = (n) => `${fmt(n)} ₺`;
+/* Bağış kıdemi önizlemesi (23.11.2026). Parti, şehir ve Hazine bağışlarından günde en çok +1 kıdem gelir
+   (sunucu kuralı: public.serbest_bagis). Oyuncu bağışlamadan ÖNCE bu bağışın kaç kıdem getireceğini görür;
+   kıdem getirmeyen ya da yalnız bir kısmı kıdem getiren bağışta onay penceresinde ayrıca uyarılır. */
+const kidemYaz = (x) => Number(x).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
+function bagisKidemHesap(bugun, asgari, miktar){
+  asgari = Math.max(1, Number(asgari) || 1); bugun = Math.max(0, Number(bugun) || 0);
+  miktar = Number.isFinite(Number(miktar)) ? Math.max(0, Math.floor(Number(miktar))) : 0;
+  const once = Math.min(1, bugun / asgari), sonra = Math.min(1, (bugun + miktar) / asgari);
+  const kazanc = Math.max(0, sonra - once), kalan = Math.max(0, Math.ceil(asgari - bugun));
+  const kz = kazanc < 0.005 ? "0,01'den az" : "+" + kidemYaz(kazanc);
+  if (once >= 1) return { kazanc: 0, uyari: true,
+    metin: "Bugünkü bağış kıdemini aldın (1 / 1). Bu bağış kıdem puanı getirmez; sayaç gece yarısı sıfırlanır." };
+  if (miktar > kalan) return { kazanc, uyari: true,
+    metin: `Bu bağışın yalnızca ${tlYaz(kalan)} tutarındaki kısmı kıdem getirir (${kz}). Kalan ${tlYaz(miktar - kalan)} kıdem getirmez: bağıştan günde en çok +1 kıdem gelir.` };
+  if (miktar > 0) return { kazanc, uyari: false,
+    metin: `Bu bağış ${kz} kıdem puanı getirir (bugün ${kidemYaz(sonra)} / 1). Bağıştan günde en çok +1 kıdem gelir.` };
+  return { kazanc: 0, uyari: false, metin: `Bağıştan günde en çok +1 kıdem gelir; bugün ${tlYaz(kalan)} bağışlayınca tamamlanır.` };
+}
+/* Bağış penceresine canlı kıdem satırı bağlar. Dönen işlev, verilen tutar için güncel hesabı verir
+   (durum henüz okunamadıysa null; o zaman bağış uyarısız, eskisi gibi ilerler). */
+function bagisKidemBagla(m, girdiSecici, kutuSecici){
+  let durum = null;
+  const ciz = () => {
+    const kutu = $(kutuSecici, m), girdi = $(girdiSecici, m); if (!kutu || !durum) return;
+    const b = bagisKidemHesap(durum.bugun, durum.asgari, girdi ? girdi.value : 0);
+    kutu.textContent = (b.uyari ? "⚠ " : "") + b.metin;
+    kutu.style.color = b.uyari ? "var(--warn)" : ""; kutu.style.fontWeight = b.uyari ? "700" : "";
+  };
+  const girdi = $(girdiSecici, m); if (girdi) girdi.addEventListener("input", ciz);
+  API.rpc("hayat").then(h => {
+    if (!h || !h.bagis) return;
+    durum = { bugun: h.bagis.bugun, asgari: h.bagis.tavan || (h.ulke && h.ulke.asgari) }; ciz();
+  }).catch(() => {});
+  return (miktar) => durum ? bagisKidemHesap(durum.bugun, durum.asgari, miktar) : null;
+}
+/* Kıdem getirmeyen / kısmen getiren bağışta gönderimden önce açık onay ister. */
+async function bagisKidemOnay(miktar, b){
+  if (!b || !b.uyari) return true;
+  return onayla("Bağışı onayla", `<b>${tlYaz(miktar)}</b> bağışlayacaksın. İşlem geri alınamaz.<br><br><b style="color:var(--warn)">⚠ ${e(b.metin)}</b>`, "Yine de bağışla");
+}
 function vaatCipleri(l, karne){
   return (l || []).map(v => `<span class="taahhut ${karne ? (v.tutuldu ? "ok" : "yok") : ""}">${karne ? (v.tutuldu ? "✓" : "○") : "•"} ${e(v.ad)}${v.hedef_yazi ? " → " + e(v.hedef_yazi) : ""}${karne && v.tip === "surekli" && v.gun_toplam ? ` (${v.gun_tutuldu}/${v.gun_toplam} gün)` : ""}</span>`).join("");
 }
@@ -3763,12 +3806,15 @@ async function ilBagisModal(){
   m.querySelector(".modal").innerHTML = `<h3 style="font-size:19px;font-weight:800">${e(d.il_ad)} kalkınma bağışı</h3>
     <p class="alt">Bağışlar ilin gelişmişliğini artırır (şu an ${fmt(d.gelisim, 2)}/100). Günlük bağış sınırı yoktur; cüzdanındaki para kadar bağış yapabilirsin.</p>
     <div class="alan"><label>Bağış (₺)</label><input id="ibmik" type="number" min="100" step="100" value="1000" inputmode="numeric"></div>
+    <div class="kucuk" id="ibkidem" style="margin:2px 0 10px"></div>
     <div class="kv"><span class="k">Bu ay şehre toplam katkı</span><span class="v">${tlYaz(d.ay_toplam)}</span></div>
     <div class="kv"><span class="k">Senin toplam bağışın</span><span class="v">${tlYaz(d.benim_toplam)}</span></div>
     <div class="kucuk" style="margin-top:10px;font-weight:800;color:var(--txt2)">Bu ayın hayırseverleri</div>
     ${d.top.map((x, i) => `<div class="kv"><span class="k">${i + 1}. ${e(x.kad)}</span><span class="v">${tlYaz(x.toplam)}</span></div>`).join("") || `<div class="bos" style="padding:8px 0">Bu ay henüz kimse bağış yapmadı. İlk hayırsever sen ol.</div>`}
     <button class="btn altin" id="ibok">Bağışla</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>`;
-  $("#ibok", m).onclick = async () => { try { await API.rpc("il_bagis", { p_miktar: +$("#ibmik", m).value }); modalKapat(); toast("Bağışın için teşekkürler!"); D._hayat = null; hayatEkrani(); } catch (err) { toast(hataCevir(err.message), true); } };
+  const kidemBilgi = bagisKidemBagla(m, "#ibmik", "#ibkidem");
+  $("#ibok", m).onclick = async () => { const miktar = +$("#ibmik", m).value; if (!(await bagisKidemOnay(miktar, kidemBilgi(miktar)))) return;
+    try { await API.rpc("il_bagis", { p_miktar: miktar }); modalKapat(); toast("Bağışın için teşekkürler!"); D._hayat = null; hayatEkrani(); } catch (err) { toast(hataCevir(err.message), true); } };
 }
 async function vergiKarneModal(){
   const m = modal(`<div class="yukleniyor">Yükleniyor…</div>`);
