@@ -16,12 +16,12 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
-## 23.11.2026 — 2026.11.23-11 Medya ve yayın denetimi (dalda; canlı veritabanına HENÜZ uygulanmadı — Ercan onayı bekliyor)
+## 23.11.2026 — 2026.11.23-11 Medya ve yayın denetimi (sunucu canlıda; ekran web'de, telefonlar mağaza sürümünü bekler)
 - İstek: İçerik moderatörleri Kürsü'nün yanında gazete, TV ve diğer yayınlara da müdahale edebilsin.
 - Bulgu: canlı veritabanında "kurum denetimi" çekirdeği (oyun.mkd_*, public.mod_kurum_*, mod_icerik_kaldir/geri_yukle, mod_kurum_durdurma, mod_icerik_arsiv) vardı ama depoda kaynağı yoktu, ekranı yoktu ve durdurmayı uygulayan tetikleyiciler takılmamıştı. Çekirdeğin depoya geri alınması ayrıca yapılmalı (şimdilik yalnız canlıda).
 - `sql/zz_20261123_medya_denetimi.sql`: durdurma tetikleyicileri (gazete yazısı, dergi sayısı, TV programı + canlıya geçiş, kitap, dernek, sendika, parti açıklaması/mitingi, pano, kurum adına Kürsü), köşe yorumu ve TV yorumu arşivli kaldırma, `mod_medya_akis` / `mod_medya_kaldir` / `mod_medya_geri_yukle`, izinler.
 - `www/mod_merkezi.js`: Moderasyon Merkezi › "Medya denetimi" (Son yayınlar, Yayın durdurma, Kurum ara › Kurum dosyası, Kaldırılanlar). Yetki: 'sikayet'.
-- Uygulama: Supabase SQL Editor'de dosyanın tamamını bir kez çalıştır; sonra dalı main'e birleştir.
+- Canlıya 23.11.2026 gecesi uygulandı (migration medya_denetimi_20261123).
 
 ## 23.11.2026 — 2026.11.23-8 Yönetimden oyuncuya özel mesaj ve yazılı uyarı (sunucu canlıda; moderatör düğmesi web'de PR #61 birleşince, telefonlarda mağaza sürümüyle)
 - İstek (Ercan): "Moderatörlere oyunculara özel mesaj atma, uyarma özelliği getir." Önceden yönetim oyuncuya ancak oyuncu Yönetime Yaz'dan yazarsa karşılık verebiliyordu; tek yönlü bildirim yalnız `duyuru` yetkisinde, Resmî uyarı (`mod_uyari`, 3. uyarıda otomatik susturma) yalnız `sustur` yetkisinde (İçerik + Oyuncu masaları; Finans'ta yok).
