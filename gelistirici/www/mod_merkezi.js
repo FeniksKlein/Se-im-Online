@@ -30,6 +30,7 @@
     kimlik: S('<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="9" cy="11" r="2.2"/><path d="M5.8 16c.7-1.6 1.9-2.4 3.2-2.4s2.5.8 3.2 2.4M14.5 10h4M14.5 13.5h3"/>'),
     sohbet: S('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>'),
     sikayet: S('<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>'),
+    tv: S('<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="m8 3 4 4 4-4"/>'),
     masak: S('<path d="M12 2v20M17 6.5c-.8-1.5-2.6-2.5-5-2.5-3 0-5 1.5-5 3.7 0 5 10 2.6 10 7.6 0 2.2-2 3.7-5 3.7-2.6 0-4.5-1-5.3-2.7"/>'),
     sandik: S('<path d="M4 11h16v9H4zM8 11V4h8v7M10 7h4"/>'),
     terazi: S('<path d="M12 3v17M5 20h14M3 7h18M6 7l-3 5h6L6 7zM18 7l-3 5h6l-3-5z"/>'),
@@ -53,7 +54,7 @@
   const ISLEM = Object.assign({}, typeof MOD_ISLEM === "object" ? MOD_ISLEM : {}, {
     kisit_mali: "para çıkışını dondurdu", kisit_secim: "seçim kısıtı koydu", kisit_uzat: "kısıtı uzattı (ikinci imza)", kisit_kaldir: "kısıtı kaldırdı",
     toplu_gizle: "son içeriklerini topluca gizledi", destek_devir: "talebi başka masaya devretti", masa_yetkileri: "masa yaptırım yetkilerini yürürlüğe koydu",
-    kayit_onay: "başvuruyu kabul etti", kayit_ret: "başvuruyu reddetti", talep_ac: "yaptırım talebi açtı", talep_onay: "talebi onayladı",
+    kayit_onay: "başvuruyu kabul etti", tv_yayin_kes: "TV yayınını kesti", tv_kanal_kapat: "TV kanalını kapattı", tv_kanal_ac: "TV kanalını yeniden açtı", kayit_ret: "başvuruyu reddetti", talep_ac: "yaptırım talebi açtı", talep_onay: "talebi onayladı",
     talep_ret: "talebi reddetti", talep_geri: "talebini geri çekti", not_ekle: "dosyaya not ekledi", destek_yanit: "destek talebini yanıtladı",
     destek_kapat: "destek talebini kapattı", yk_sustur: "susturdu", mod_uyari: "resmî uyarı verdi", mod_para_cezasi: "para cezası kesti", yk_engel_sureli: "süreli engelledi / uzaklaştırdı", yk_engel_kalici: "kalıcı engelledi",
     yk_engel_kaldir: "engeli kaldırdı", masak_temiz: "MASAK: temiz dedi", masak_ihtar: "MASAK: ihtar verdi", masak_el_koy: "MASAK: el koydu",
@@ -242,7 +243,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     const araclar = [
       ["ara", "Oyuncu dosyası", "ara"], yv("duyuru") ? ["megafon", "Duyuru", "duyuru"] : null,
       ["gunluk", b.yonetici ? "Denetim günlüğü" : "İşlemlerim", "gunluk"], ["terazi", "Taleplerim", "taleplerim"],
-      yv("sikayet") ? ["sikayet", "Kürsü şikâyetleri", "kursu"] : null, ["kilit", "Kısıtlar ve yetkilerim", "kisit"],
+      yv("sikayet") ? ["sikayet", "Kürsü şikâyetleri", "kursu"] : null, yv("sikayet") ? ["tv", "TV yayınları", "tv"] : null, ["kilit", "Kısıtlar ve yetkilerim", "kisit"],
       yv("hesap_kapat") ? ["kalkan", "Yasaklı cihazlar", "cihaz"] : null, ["destek", "Talep kutusu", "kutu"],
       typeof window.yardimMasasiAc === "function" ? ["sohbet", "Yardım Masası", "yardim"] : null,
       b.yonetici ? ["ekip", "Ekip yönetimi", "ekip"] : ["ekip", "Ekip", "ekipgor"],
@@ -293,6 +294,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       if (a === "gunluk") return ekranAc(mmGunluk);
       if (a === "taleplerim") return ekranAc(mmTalepler);
       if (a === "kursu") return ekranAc(mmKursu);
+      if (a === "tv") return ekranAc(mmTv);
       if (a === "kisit") return ekranAc(mmKisitlar);
       if (a === "cihaz") return ekranAc(mmCihaz);
       if (a === "kutu") return ekranAc(mmKutu);
@@ -1222,6 +1224,61 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     });
   }
 
+  // 23.11.2026 · TV yayınını kes / kanalı kapat (sql/zz_20261123_mod_tv_kapat.sql)
+  async function mmTv(veri) {
+    let d = veri;
+    if (!d) { yukleniyor("TV yayınları"); try { d = await API.rpc("mod_tv_liste"); } catch (err) { hataSayfa("TV yayınları", err); return; } }
+    const pr = d.programlar || [], kn = d.kanallar || [], kp = d.kapali || [];
+    const progKart = (x, i) => `<div class="mm-kart" style="--c:${x.durum === "canli" ? "#e5574f" : "#5b8def"}">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:16px;overflow-wrap:anywhere">${esc(x.baslik)}</b><span class="mm-etiket" style="--c:${x.durum === "canli" ? "#e5574f" : "#5b8def"}">${x.durum === "canli" ? "Canlı" : "Planlı"}</span></div>
+        <div class="mm-alt">${esc(x.kanal)} · sunucu ${esc(x.sunucu || "—")} · sahip ${esc(x.sahip || "—")}${x.durum === "canli" ? " · " + sayi(x.izleyici) + " izleyici" : " · " + tsaat(x.bas)}</div>
+        <div class="mm-aksiyon"><button data-kes="${i}">${x.durum === "canli" ? "Yayını kes" : "Programı iptal et"}</button><button data-kkapat="${x.kanal_id}">Kanalı kapat</button>${x.sunucu ? `<button class="y" data-dosya="${esc(x.sunucu)}">Sunucu dosyası</button>` : ""}</div></div>`;
+    const kanalSatir = x => `<div class="mm-kart" style="--c:#98a4c4">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:16px;overflow-wrap:anywhere">${esc(x.ad)}</b>${x.canli ? `<span class="mm-etiket" style="--c:#e5574f">${x.canli} canlı</span>` : ""}</div>
+        <div class="mm-alt">Sahibi ${esc(x.sahip || "—")}${x.slogan ? " · " + esc(x.slogan) : ""}${x.planli ? " · " + x.planli + " planlı program" : ""}</div>
+        <div class="mm-aksiyon"><button data-kkapat="${x.id}">Kanalı kapat</button>${x.sahip ? `<button class="y" data-dosya="${esc(x.sahip)}">Sahip dosyası</button>` : ""}</div></div>`;
+    const kapaliSatir = x => `<div class="mm-kart" style="--c:#6b7385">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:16px;overflow-wrap:anywhere">${esc(x.ad)}</b><span class="mm-etiket" style="--c:#6b7385">Kapalı</span></div>
+        <div class="mm-alt">Sahibi ${esc(x.sahip || "—")} · ${tsaat(x.zaman)} · ${esc(x.kapatan || "")}</div>
+        ${x.gerekce ? `<div class="mm-alt" style="white-space:pre-wrap">${esc(x.gerekce)}</div>` : ""}
+        <div class="mm-aksiyon"><button class="y" data-kac="${x.id}">Yeniden aç</button></div></div>`;
+    sayfa("TV yayınları", `<div class="mm-uyari sari">${IK.tv}<div>Uygunsuz başlıklı ya da içerikli yayını tek dokunuşla kes; kanal ısrarla kural dışıysa kanalı kapat. Gerekçe kanal sahibine ve sunucuya imzanla gider, işlem denetim günlüğüne yazılır.</div></div>
+      <div class="mm-alt" style="margin:14px 0 6px;font-weight:700">Canlı ve planlı programlar (${pr.length})</div>
+      ${pr.map(progKart).join("") || bos("Şu an canlı ya da planlı yayın yok", "")}
+      <div class="mm-alt" style="margin:18px 0 6px;font-weight:700">Açık kanallar (${kn.length})</div>
+      ${kn.map(kanalSatir).join("") || bos("Açık kanal yok", "")}
+      ${kp.length ? `<div class="mm-alt" style="margin:18px 0 6px;font-weight:700">Yönetimin kapattığı kanallar (${kp.length})</div>${kp.map(kapaliSatir).join("")}` : ""}`);
+    document.querySelectorAll("[data-dosya]").forEach(b => b.onclick = () => mmDosyaAc(b.dataset.dosya));
+    const gerekceSor = (baslik, aciklama, dugme, ekstra, gonder) => {
+      const md = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">${esc(baslik)}</h3><p class="mm-alt" style="margin:4px 0 8px">${esc(aciklama)}</p>
+        <label class="mm-alan" for="mmTvG">Gerekçe (kanal sahibi ve sunucu görür)</label><textarea class="mm-girdi" id="mmTvG" maxlength="300" placeholder="Örn. Hakaret ve kışkırtıcı içerikli yayın başlığı."></textarea>
+        ${ekstra || ""}
+        <button class="mm-btn kirmizi" style="margin-top:10px" id="mmTvOk">${esc(dugme)}</button><button class="mm-btn cizgi" style="margin-top:8px" id="mmTvVaz">Vazgeç</button>`);
+      $("#mmTvVaz", md).onclick = modalKapat;
+      $("#mmTvOk", md).onclick = async () => {
+        const g = $("#mmTvG", md).value.trim();
+        if (g.length < 5) { toast("Gerekçe en az 5 karakter olmalı.", true); return; }
+        const btn = $("#mmTvOk", md); btn.disabled = true;
+        try { const yeni = await gonder(g, md); modalKapat(); mmTv(yeni); } catch (err) { btn.disabled = false; hata(err); }
+      };
+    };
+    document.querySelectorAll("[data-kes]").forEach(b => b.onclick = () => {
+      const x = pr[+b.dataset.kes];
+      gerekceSor(x.durum === "canli" ? "Yayını kes" : "Programı iptal et", `${x.kanal} · “${x.baslik}”`, x.durum === "canli" ? "Yayını kes" : "İptal et",
+        `<label style="display:flex;gap:10px;align-items:center;margin-top:10px;font-size:15px"><input type="checkbox" id="mmTvBg" checked style="width:22px;height:22px"> Başlığı da kaldır (arşivde “Yayın yönetim kararıyla kesildi” görünür)</label>`,
+        async (g, md) => { const r = await API.rpc("mod_tv_yayin_kes", { p_program: x.id, p_gerekce: g, p_baslik_gizle: $("#mmTvBg", md).checked }); toast("Yayın kesildi."); return r; });
+    });
+    document.querySelectorAll("[data-kkapat]").forEach(b => b.onclick = () => {
+      const id = +b.dataset.kkapat, k = kn.find(z => z.id === id) || {};
+      gerekceSor("Kanalı kapat", `${k.ad || "Kanal"} kapanır; canlı ve planlı bütün programları kesilir, yeni yayın açılamaz. Kasası ve geçmişi silinmez; gerekirse buradan yeniden açabilirsin.`, "Kanalı kapat", "",
+        async g => { const r = await API.rpc("mod_tv_kanal_kapat", { p_kanal: id, p_gerekce: g }); toast("Kanal kapatıldı."); return r; });
+    });
+    document.querySelectorAll("[data-kac]").forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      try { const r = await API.rpc("mod_tv_kanal_ac", { p_kanal: +b.dataset.kac }); toast("Kanal yeniden açıldı."); mmTv(r); } catch (err) { b.disabled = false; hata(err); }
+    });
+  }
+
   const KISIT_RENK = { sustur: "#e0a43a", engel: "#e5574f", mali: "#3fb67a", secim: "#5b8def" };
   function kisitSatir(k, yon) {
     const elle = k.kod === "mali" || k.kod === "secim";
@@ -1311,5 +1368,5 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     window.yoneticiEkraniKlasik = yoneticiEkrani;
     window.yoneticiEkrani = yoneticiEkrani = modMerkezi;
   }
-  Object.assign(window, { modMerkezi, mmDosyaAc, mmKayit, mmSikayet, mmNobet, mmDestek, mmTalepler, mmEkip, mmGunluk, mmDuyuru, mmCoklu, mmTalepAc: talepAc, mmKutu, mmKursu, mmKisitlar, mmCihaz, mmOyuncuyaYaz: oyuncuyaYazAc });
+  Object.assign(window, { modMerkezi, mmDosyaAc, mmKayit, mmSikayet, mmNobet, mmDestek, mmTalepler, mmEkip, mmGunluk, mmDuyuru, mmCoklu, mmTalepAc: talepAc, mmKutu, mmKursu, mmTv, mmKisitlar, mmCihaz, mmOyuncuyaYaz: oyuncuyaYazAc });
 })();

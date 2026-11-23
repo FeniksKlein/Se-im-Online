@@ -21,6 +21,7 @@ const R={
  mod_destek:[{id:12,kad:"yeniOyuncu",kategori:"hata",metin:"Seçim ekranında oy veremiyorum, buton gri kalıyor.",zaman:dk(20),durum:"yeni",platform:"ios",surum:"2026.11.17-8",onceki:0}],
  admin_mod_ekip:{birimler,yetkiler:[["ozet","Özet"],["sikayet","Şikâyetler"],["sustur","Susturma"],["hesap_kapat","Engelleme"],["oyuncu_ara","Oyuncu inceleme"],["eposta","E-posta görme",1],["duyuru","Duyuru"],["coklu_hesap","Çoklu hesap"],["kurallar","Kurallar",1],["ekonomi","MASAK"],["para","Para ve kıdem",1],["makam","Görev verme",1],["kayit","Kayıt onayı",0,1],["destek","Destek"]].map(([kod,ad,k,t])=>({kod,ad,aciklama:"Açıklama metni burada yer alır.",kritik:!!k,temel:!!t})),moderatorler:mods},
  mod_gunluk:[{id:5,kad:"halilmutlu",islem:"kayit_onay",hedef:"ahmet",ayrinti:"Ahmet Yılmaz",zaman:dk(5)}],
+ mod_tv_liste:{programlar:[{id:60,baslik:"KAMARBEY VURDURUYOR 🏳️‍🌈👌🏻",durum:"canli",tur:"haber",bas:dk(30),izleyici:10,kanal_id:12,kanal:"Türk Tv",sunucu:"karahanlı",sahip:"İskender"},{id:61,baslik:"Akşam Bülteni",durum:"planli",tur:"haber",bas:dk(-60),izleyici:0,kanal_id:9,kanal:"Kanaltürk Tv",sunucu:"MusaOzkan",sahip:"mücahiterbakan"}],kanallar:[{id:12,ad:"Türk Tv",slogan:"Tek yürek Tek Millet",sahip:"İskender",canli:1,planli:0},{id:9,ad:"Kanaltürk Tv",slogan:"Türkiyenin Kanalı KanalTürk",sahip:"mücahiterbakan",canli:0,planli:1}],kapali:[{id:4,ad:"Haber Odası",sahip:"eskiOyuncu",zaman:dk(100),gerekce:"Bölücü içerikli yayınlar.",kapatan:"Oyun Kurucusu"}]},
  yk_oyuncular:{toplam:1,liste:[{kad:"gürültücü",il:"İstanbul",parti:{kisa:"HP"},son_gorulme:dk(3),susturma_bitis:simdi}]}
 };
 const KOPRU=`<script>window.__R=${JSON.stringify(R)};window.API_TEST={async rpc(fn,a){window.__son=(window.__son||[]);window.__son.push([fn,a]);if(fn in __R)return JSON.parse(JSON.stringify(__R[fn]));return null},async oturum(){return null},async kayit(){},async giris(){},async cikis(){}};</script>`;
@@ -51,4 +52,9 @@ const html=html0.replace(/<script src="https:[^"]+"><\/script>/g,'').replace('<b
  await p.evaluate(()=>modalKapat());
  await ekran('9_gunluk',()=>ekranAc(mmGunluk));
  await ekran('10_duyuru',()=>ekranAc(mmDuyuru));
+ await ekran('11_tv',()=>ekranAc(mmTv));
+ await ekran('11b_kes',()=>document.querySelector('[data-kes]').click());
+ await p.evaluate(()=>modalKapat());
+ await ekran('11c_kapat',()=>document.querySelector('[data-kkapat]').click());
+ await p.evaluate(()=>modalKapat());
  console.log('HATALAR',hatalar.slice(0,5));await b.close();})();

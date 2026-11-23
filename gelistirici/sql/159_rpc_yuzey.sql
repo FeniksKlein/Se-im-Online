@@ -347,7 +347,9 @@ declare
     -- 23.11.2026 Cihaz yasağı (sql/zz_20261123_cihaz_yasak.sql): görerek kayıt kararı, yasaklı cihazlar ekranı
     'mod_kayit_karar', 'mod_cihaz_yasaklari', 'mod_cihaz_yasak_ayarla',
     -- 23.11.2026 Oyuncuya özel mesaj / yazılı uyarı (sql/zz_20261123_mod_oyuncuya_yaz.sql)
-    'mod_oyuncuya_yaz'
+    'mod_oyuncuya_yaz',
+    -- 23.11.2026 TV yayını kesme / kanal kapatma (sql/zz_20261123_mod_tv_kapat.sql)
+    'mod_tv_liste', 'mod_tv_yayin_kes', 'mod_tv_kanal_kapat', 'mod_tv_kanal_ac'
   ];
 -- @@rpc_yuzey_izin_son@@
   anon_izin text[] := array['surum', 'uygulama_ayar'];
