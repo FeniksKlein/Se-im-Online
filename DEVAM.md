@@ -16,6 +16,18 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 23.11.2026 — 2026.11.23-6 Bağımsız Cumhurbaşkanı: gerçek 72 saat imza + aday gösteremeyen parti üyesi (sunucu canlıda; istemci web'de, telefonlar mağaza sürümünü bekler)
+- İstek (Ercan): "ikisini de düzelt". (1) İmza kampanyası adaylık başvurusu kapanınca bitiyordu (açılışta en çok 32, normal ayda 48 saat). (2) Partisi CB adayı gösteremeyen üye sunucuda bağımsız aday olabiliyor ama düğmeyi göremiyordu.
+- **Sunucu** `gelistirici/sql/zz_20261123_cb_imza_72saat.sql` (listenin sonunda; kopya `migrations/20261123_cb_imza_72saat.sql`, canlı ad `cb_imza_72saat_20261123`, **uygulandı**):
+  - `bagimsiz_aday_ol`: kampanya bitişi = açılıştan 72 saat sonra, en geç CB seçimi sandığından **6 saat önce** (oyun kuralı). Kampanya AÇMA yine yalnız cb_on başvuru süresinde.
+  - `cb_bagimsiz_imzala`: başvuru penceresi şartı kalktı; kampanya süresi + asıl seçim başlamamış olması yeter. Aday, aday gösterebilen bir partiye geçtiyse imza reddedilir.
+  - `cb_bagimsiz_kampanyalar`: partiye geçen adayın kampanyasını okurken iptal eder, adaya bildirir (teminat iade edilmez).
+  - `secim_ozet` + `secim_ozet_takvim` (durum() ikincisini kullanır): yeni alanlar `bagimsiz_acik` (cb_on; partili ama partisi aday gösteremiyor), `cb_bagimsiz {adayim,kampanyam}` (cb_on), `cb_imza {on_secim_id,acik,son,kampanyam}` (cb). Eski uygulamalar bu alanları görmezden gelir.
+- **İstemci** `gelistirici/www/index.html`: `olayKarti` (aday gösteremeyen parti üyesine "Bağımsız Cumhurbaşkanı adayı ol"; kampanyası sürene rozet), yeni `cbImzaKarti()` (Gündem › Seçimler ve oylamalar; başvuru kapansa da imza sürerken görünür), imza ekranında "Son imza" ve 72 saat açıklaması.
+- Doğrulama: canlıda geri alınan işlemle uçtan uca (72 saat bitiş; başvuru kapalıyken imza; hedefe ulaşınca adaylık + teminat iadesi; partiye geçen adaya imza reddi ve iptal; `bagimsiz_acik`; `durum()`), `node gelistirici/test/cb_imza_72saat_arayuz.js`.
+- **Telefonlar:** eski mağaza uygulamasında imza düğmesi yalnız cb_on başvurusu açıkken görünür; başvuru kapandıktan sonraki imzalar ve aday gösteremeyen parti üyesinin düğmesi yeni mağaza sürümüyle gelir. Web'de hemen geçerli. Açılış seçiminde (30 Kasım) bütün partiler kurucu parti olduğundan (2) açılışta kimseyi etkilemez.
+- Aynı gün: bölücü süzgecinden "mkp" çıkarıldı (kurucu parti Millî Kalkınma Partisi'nin kısaltması; örgüt adı tam yazımla hâlâ yakalanır) — `migrations/20261123_bolucu_mkp_serbest.sql`. **Not:** `oyun.bolucu*` işlevleri yalnız canlıda; `gelistirici/sql` kaynağında yok.
+
 ## 23.11.2026 — 2026.11.23-5 Sözleşmede geliştirici adı (web'de yayında)
 - Ercan adını verdi: sözleşme Madde 1.1 "FeniksKlein adıyla faaliyet gösteren Ercan Öztürk", gizlilik metinlerinde (oyun içi + `docs/gizlilik.html`) "Veri sorumlusu: Ercan Öztürk (FeniksKlein)", iletişim feniksklein@gmail.com. Adres verilmedi; metinlerde adres yok. `docs/kullanici-sozlesmesi.html` yeniden üretildi (`node gelistirici/build/sozlesme_sayfasi.js`).
 

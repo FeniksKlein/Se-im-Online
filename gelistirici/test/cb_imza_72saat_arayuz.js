@@ -1,0 +1,21 @@
+// 23.11.2026 · Bağımsız Cumhurbaşkanı düğmesi ve imza kartı (olayKarti, cbImzaKarti) — node gelistirici/test/cb_imza_72saat_arayuz.js
+const fs=require('fs');const h=fs.readFileSync(require('path').join(__dirname,'../www/index.html'),'utf8');
+const al=(ad)=>{const i=h.indexOf('function '+ad+'(');let d=0,j=h.indexOf('{',i);for(let k=j;k<h.length;k++){if(h[k]==='{')d++;else if(h[k]==='}'){d--;if(!d)return h.slice(i,k+1);}}};
+global.D={durum:{profil:{parti:null,il_ad:'İzmir'},takvim:[]}};
+global.TUR={cb_on:{aday:'Aday adayı ol'},cb:{},mv_on:{aday:'x'}};global.siradakiAn=()=>null;global.secimTakvimAdi=s=>s.tur;global.IKON={megafon:'',sandik:'<svg'};
+global.e=x=>String(x);global.tarihSaat=t=>new Date(t).toISOString();global.kalan=ms=>Math.round(ms/3600e3)+' sa';global.simdi=()=>Date.now();
+eval(al('olayKarti')+';'+al('cbImzaKarti')+';global.olayKarti=olayKarti;global.cbImzaKarti=cbImzaKarti');
+const b={id:8,tur:'cb_on',asama:'basvuru'};
+const g=(ad,html,var_,yok)=>{const ok=var_.every(x=>html.includes(x))&&(yok||[]).every(x=>!html.includes(x));console.log(ok?'OK  ':'HATA',ad);if(!ok)console.log(html)};
+g('partisiz: bağımsız düğmesi',olayKarti(b),["bagimsizAdayOl(8,'cb_on'",'İmza ver']);
+D.durum.profil.parti={id:9};
+g('hakkı olan partili: parti adaylığı',olayKarti(b),["adayOl('cb_on')"],['bagimsizAdayOl']);
+g('hakkı olmayan partili: bağımsız düğmesi',olayKarti({...b,bagimsiz_acik:true}),["bagimsizAdayOl(8,'cb_on'",'gösterme hakkı yok'],["adayOl('cb_on')"]);
+g('kampanyası süren',olayKarti({...b,bagimsiz_acik:true,cb_bagimsiz:{kampanyam:true}}),['İmza kampanyan sürüyor','cbBagimsizImzaEkrani(8)'],['bagimsizAdayOl']);
+g('kesinleşen partili bağımsız',olayKarti({...b,cb_bagimsiz:{adayim:true}}),['Bağımsız adaylığın alındı','bagimsizAdayCek(8)']);
+g('eski sunucu alanı yok (mv_on partili)',olayKarti({id:5,tur:'mv_on',asama:'basvuru'}),["adayOl('mv_on')"]);
+g('imza kartı yok',cbImzaKarti()||'-',['-']);
+D.durum.takvim=[{id:7,tur:'cb',asama:'yakinda',cb_imza:{on_secim_id:8,acik:0,son:null,kampanyam:false}}];
+g('imza kartı: kampanya yokken gizli',cbImzaKarti()||'-',['-']);
+D.durum.takvim[0].cb_imza={on_secim_id:8,acik:2,son:new Date(Date.now()+50*3600e3).toISOString(),kampanyam:false};
+g('imza kartı: başvuru kapalıyken görünür',cbImzaKarti(),['2 bağımsız aday','cbBagimsizImzaEkrani(8)','Son imza','data-an=']);

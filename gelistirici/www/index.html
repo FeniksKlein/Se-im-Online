@@ -1020,9 +1020,13 @@ function olayKarti(s){
   let cls = "", etiket = "", aksiyon = "";
   if (s.asama === "basvuru" && tur.aday) {
     cls = "basvuru"; etiket = `<span class="rozet altin">Başvuru açık</span>`;
-    const partiIci = !p.parti ? "Parti içi adaylık için parti üyeliği gerekir. Bağımsız aday olabilirsin." : null;
-    if (s.bagimsiz_adayim) {
+    const partiIci = !p.parti ? "Parti içi adaylık için parti üyeliği gerekir. Bağımsız aday olabilirsin."
+      : s.bagimsiz_acik ? "Partinin Cumhurbaşkanı adayı gösterme hakkı yok (TBMM grubu ya da son genel seçimde %5 oy şartı sağlanmıyor). Seçmen imzasıyla bağımsız aday olabilirsin." : null;
+    const cbB = s.cb_bagimsiz || {};
+    if (s.bagimsiz_adayim || cbB.adayim) {
       aksiyon = `<span class="rozet yesil">✓ Bağımsız adaylığın alındı</span><button class="btn ikinci" onclick="bagimsizAdayCek(${s.id})">Bağımsız adaylıktan çekil</button>`;
+    } else if (cbB.kampanyam) {
+      aksiyon = `<span class="rozet yesil" style="margin-top:12px">✓ İmza kampanyan sürüyor</span><p class="alt" style="margin-top:8px">İmza hedefine ulaşınca adaylığın kesinleşir. Durumu aşağıdaki imza ekranından izleyebilirsin.</p>`;
     } else {
     aksiyon = s.adayim
       ? `<div class="satir"><span class="rozet yesil" style="margin-top:12px">✓ Başvurun alındı</span></div><button class="btn altin" onclick="ekranAc(bildirimEkrani)">${IKON.megafon} Propaganda yap</button><button class="btn ikinci" onclick="vaatModal(${s.id})">Seçim bildirgeni yaz</button><button class="btn ikinci" onclick="adaylikCek(${s.id})">Başvuruyu geri çek</button>`
@@ -1046,6 +1050,15 @@ function olayKarti(s){
     ${sa ? `<div class="alt" style="margin-top:6px">${sa.ad}: ${tarihSaat(sa.an)}</div><div class="sayac" data-an="${sa.an}">${kalan(sa.an - simdi())}</div>` : ""}
     ${s.katilim != null ? `<div class="kucuk" style="margin-top:4px">${s.katilim} oy kullanıldı</div>` : ""}
     ${aksiyon}</div>`;
+}
+function cbImzaKarti(){
+  const c = ((D.durum && D.durum.takvim) || []).find(s => s.tur === "cb" && s.cb_imza && s.cb_imza.on_secim_id && (Number(s.cb_imza.acik) > 0 || s.cb_imza.kampanyam));
+  if (!c) return "";
+  const i = c.cb_imza, son = i.son ? new Date(i.son).getTime() : null;
+  return `<div class="olay basvuru"><div class="baslik"><b>Bağımsız Cumhurbaşkanı adayları</b><span class="rozet altin">İmza toplanıyor</span></div>
+    <p class="alt" style="margin-top:6px">${Number(i.acik)} bağımsız aday seçmen imzası topluyor${i.kampanyam ? " (biri senin kampanyan)" : ""}. Adaylık başvurusu kapansa da imza toplama sürer. Bu seçimde yalnız bir adaya imza verebilirsin.</p>
+    ${son ? `<div class="alt" style="margin-top:6px">Son imza: ${tarihSaat(son)}</div><div class="sayac" data-an="${son}">${kalan(son - simdi())}</div>` : ""}
+    <button class="btn ikinci" onclick="cbBagimsizImzaEkrani(${Number(i.on_secim_id)})">Adayları gör / İmza ver</button></div>`;
 }
 function cbKararKarti(){
   const k = D.durum.cb_karar;
@@ -1118,8 +1131,9 @@ async function gundemEkrani(){
     <div class="kart">${is.length ? is.map(yapilacakSatir).join("") : `<div class="bos" style="padding:8px 0">Bugün acil bir işin yok. Sohbete uğra ya da gazeteleri oku.</div>`}</div>
     ${ilkAdimlarHtml(ia)}
     ${typeof gundemEkAlt === "function" ? gundemEkAlt(EK) : ""}
-    ${aktif.length || ihaleler.length || meclisBekleyen.length || refler.length || cbKararKarti() ? `<div class="bolum-bas"><h2>Seçimler ve oylamalar</h2></div>` : ""}
+    ${aktif.length || ihaleler.length || meclisBekleyen.length || refler.length || cbKararKarti() || cbImzaKarti() ? `<div class="bolum-bas"><h2>Seçimler ve oylamalar</h2></div>` : ""}
     ${cbKararKarti()}
+    ${cbImzaKarti()}
     ${aktif.map(s => `<div id="sec${s.id}">${olayKarti(s)}</div>`).join("")}
     ${meclisBekleyen.map(meclisSecimKart).join("")}
     ${ihaleler.map(ihaleKart).join("")}
@@ -1178,10 +1192,11 @@ async function cbBagimsizImzaEkrani(onSecimId){
  try{
   const d=await API.rpc("cb_bagimsiz_kampanyalar",{p_on_secim:onSecimId});
   const liste=d.liste||[];
-  let h='<div class="kart"><h2>Bağımsız Cumhurbaşkanı adaylığı — seçmen imzası</h2><p class="alt">Gerçekçi siyasette bağımsız adaylık için en az aktif seçmenlerin %3\'ü (asgari 10 imza) ve 50.000 TL iade edilebilir teminat gerekir. Aynı seçimde sadece bir adaya imza verebilirsin. İmza tamamlanmadan aday pusulaya girmez.</p></div>';
+  let h='<div class="kart"><h2>Bağımsız Cumhurbaşkanı adaylığı — seçmen imzası</h2><p class="alt">Gerçekçi siyasette bağımsız adaylık için en az aktif seçmenlerin %3\'ü (asgari 10 imza) ve 50.000 TL iade edilebilir teminat gerekir. İmza toplama, kampanya açıldıktan sonra 72 saat sürer; adaylık başvurusu kapansa da devam eder ve en geç seçim sandığı açılmadan 6 saat önce biter. Aynı seçimde sadece bir adaya imza verebilirsin. İmza tamamlanmadan aday pusulaya girmez.</p></div>';
   if(!d.gercekci) h+='<div class="kart"><p>Bu kural resmî lansmanda etkinleşecektir.</p></div>';
   h+=liste.map(x=>'<div class="kart"><h3>'+e(x.aday)+'</h3>'
    +'<p class="alt">Toplanan imza: <b>'+Number(x.toplanan)+' / '+Number(x.hedef)+'</b></p>'
+   +(x.durum==="imza"&&x.bit?'<p class="alt">Son imza: <b>'+tarihSaat(new Date(x.bit).getTime())+'</b></p>':'')
    +'<p class="alt">Durum: '+e(({imza:"İmza toplanıyor",onay:"Adaylık kesinleşti",sure_doldu:"İmza süresi doldu",iptal:"Adaylık iptal edildi"})[x.durum]||x.durum)+'</p>'
    +(x.imza_verebilirim?'<button class="btn altin" onclick="cbBagimsizImzaVer('+Number(x.id)+','+Number(onSecimId)+')">Bu adayı imzamla destekle</button>':'')
    +(x.imzaladim?'<span class="rozet yesil">Bu seçimde imzanı kullandın</span>':'')
@@ -1202,7 +1217,7 @@ async function bagimsizAdayOl(sid,tur,ucret){
   const ad = {mv_on:"milletvekili",bel_on:"belediye başkanı",cb_on:"Cumhurbaşkanı"}[tur];
   const gercekci=tur==="cb_on"&&(await API.rpc("cb_bagimsiz_kampanyalar",{p_on_secim:sid})).gercekci;
   const metin=gercekci
-    ? "Bağımsız Cumhurbaşkanı adaylığı için 50.000 TL teminat yatıracak, en az seçmenlerin %3'ünün imzasını (asgari 10) toplayacaksın. İmza hedefi tamamlanınca adaylığın kesinleşecek ve teminatın iade edilecek."
+    ? "Bağımsız Cumhurbaşkanı adaylığı için 50.000 TL teminat yatıracak, 72 saat içinde en az seçmenlerin %3'ünün imzasını (asgari 10) toplayacaksın. İmza toplama, adaylık başvurusu kapansa da sürer; en geç seçim sandığı açılmadan 6 saat önce biter. İmza hedefi tamamlanınca adaylığın kesinleşecek ve teminatın iade edilecek."
     : `Herhangi bir partiye bağlı olmadan ${e(ad)} adayı olacaksın. Ön seçime girmezsin; doğrudan asıl seçim pusulasına eklenirsin. Başvuru harcı: <b>${tlYaz(ucret)}</b>.`;
   if(!await onayla("Bağımsız adaylık",metin,gercekci?"İmza kampanyası aç":"Bağımsız aday ol"))return;
   try{
