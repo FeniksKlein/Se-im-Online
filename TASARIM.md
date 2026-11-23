@@ -254,8 +254,8 @@ Birden fazla makamı olan en yüksek makamın maaşını tam, diğer her makamı
 | **Aday adaylığı ücreti** (parti kasasına gider) | Milletvekili 15.000, belediye 10.000 × il büyüklüğü (1–3), genel başkanlık 50.000, cumhurbaşkanlığı 150.000 ₺ (31.10.2026, `oyun.tarife`). Fiyat düzeyiyle artar. Genel başkan her ücreti ×0 ile ×3 arasında ayarlayabilir |
 | **Taşınma** (il değiştirme) | 20.000 ₺ × fiyat düzeyi. Devletin taşınma desteği, ücretsiz ulaşım ve hızlı tren düşürür (en fazla %90) |
 | **Ek propaganda hakkı** | 1.500 ₺. Günlük hak bitince bir yayın daha. Günde en fazla 3 |
-| **Partiye bağış** | Parti kasasına girer. Günde en fazla bir aylık asgari ücret kadar (şehir bağışıyla ortak sınır). Her asgari ücret tutarı **+1 kıdem puanı** kazandırır |
-| **Şehir kalkınma bağışı** | İlin gelişmişliğini artırır: her asgari ücret tutarı için **+0,005 gelişmişlik** (gelişmiş ilde maaşlar ve belediye geliri artar) ve **+1 kıdem puanı**. Ayın hayırseverleri listesi herkese açıktır |
+| **Partiye bağış** | Parti kasasına girer; tutar sınırı yoktur. Bir günde toplam bir asgari ücret tutarı **+1 kıdem puanı** kazandırır (daha azı payı kadar); parti, şehir ve hazine bağışlarından **günde en çok +1 kıdem** gelir, fazlası kıdem getirmez |
+| **Şehir kalkınma bağışı** | İlin gelişmişliğini artırır: her asgari ücret tutarı için **+0,005 gelişmişlik** (gelişmiş ilde maaşlar ve belediye geliri artar). Kıdem kazancı parti ve hazine bağışıyla ortaktır: bir günde toplam bir asgari ücret **+1 kıdem puanı**, günde en çok +1. Ayın hayırseverleri listesi herkese açıktır |
 | **Parti kuruluşu** | 500.000 ₺ × fiyat düzeyi harç (başvurandan) + 1.000.000 ₺ × fiyat düzeyi kuruluş fonu (kurucular birlikte toplar, partinin kasasına geçer). Ayrıntı: bölüm 21 |
 | **İl teşkilatı** (parti kasasından) | 10.000 ₺ × il büyüklüğü (1–3) × fiyat düzeyi. Bir kez ödenir |
 | **Para gönderme** | Başka bir oyuncuya; günde en fazla 1 aylık asgari ücret |

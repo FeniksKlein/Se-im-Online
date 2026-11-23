@@ -3706,14 +3706,14 @@ function hayatCiz(h){
       <div style="display:flex;justify-content:space-between"><b>${e(st.ad)}</b><span class="kucuk">${st.puan} kıdem puanı${st.sonraki_esik ? ` · ${e(st.sonraki_ad)}: ${st.sonraki_esik}` : ""}</span></div>
       <div class="bar"><i style="width:${stOran}%;background:var(--gold)"></i></div>
       <div style="margin-top:6px">${STATU.map(([a, p2], i) => `<span class="taahhut ${i <= STATU.findIndex(x => x[0] === st.ad) ? "" : "yok"}">${a}</span>`).join("")}</div>
-      <p class="kucuk" style="margin-top:6px">Oyuna girip topladığın her gün +1, kullandığın her oy +3, tuttuğun her vaat +5, bir asgari ücret tutarındaki her bağış +1 kıdem puanı (tutamadığın vaat −3). Her basamak maaşına kıdem primi kadar (%${fmt(h.ulke.kidem_primi, 1)}) ekler. Kıdem primini hükümet belirler. Şu an maaş çarpanın ×${fmt(st.carpan, 2)}.</p></div>
+      <p class="kucuk" style="margin-top:6px">Oyuna girip maaşını topladığın her gün +1, kullandığın her oy +3, tuttuğun her vaat +5 kıdem puanı (tutamadığın vaat −3). Partine, şehrine ya da Hazine'ye bağış da kıdem kazandırır: bir günde toplam ${tlYaz(h.ulke.asgari)} (bir asgari ücret) bağışlayınca +1, daha azında payı kadar. <b>Bağıştan günde en çok +1 kıdem gelir</b>; aynı gün daha fazla bağış kıdem getirmez. Her basamak maaşına kıdem primi kadar (%${fmt(h.ulke.kidem_primi, 1)}) ekler. Kıdem primini hükümet belirler. Şu an maaş çarpanın ×${fmt(st.carpan, 2)}.</p></div>
     <div class="kart"><h2>Söz karnen</h2>
       ${h.itibar && h.itibar.toplam ? `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>${h.itibar.tutulan} vaat tutuldu, ${h.itibar.bozulan} vaat tutulmadı</b>${itibarCip(h.itibar)}</div>
         <div class="bar"><i style="width:${h.itibar.oran}%;background:var(--good)"></i></div><div class="kucuk" style="margin-top:6px">Tutma oranın %${h.itibar.oran}. Karnen oyuncu kartında ve aday olduğunda herkese görünür.</div>`
         : `<div class="bos" style="padding:6px 0">Henüz sonuçlanmış vaadin yok. Aday olup ölçülebilir vaat verirsen, görev dönemin içinde yerine getirdiklerin burada görünür.</div>`}
       <p class="kucuk" style="margin-top:6px">Tutulan her vaat +5 kıdem puanı kazandırır (statü ve maaşın artar), tutulmayan −3 kaybettirir.</p></div>
     <div class="kart"><h2>Şehrine katkı</h2>
-      <p class="alt">Kalkınma bağışın ${e(h.il_ad)} ilinin gelişmişliğini artırır; gelişmiş ilde maaşlar ve belediye geliri yükselir. Bir asgari ücret tutarındaki bağış 1 kıdem puanı kazandırır.</p>
+      <p class="alt">Kalkınma bağışın ${e(h.il_ad)} ilinin gelişmişliğini artırır; gelişmiş ilde maaşlar ve belediye geliri yükselir. Bir günde toplam ${tlYaz(h.ulke.asgari)} (bir asgari ücret) bağış +1 kıdem puanı kazandırır; bağıştan günde en çok +1 kıdem gelir, fazlası kıdem getirmez.</p>
       <button class="btn ikinci" id="hBagis">Kalkınma bağışı yap</button></div>
     <div class="kart"><h2>Verginin karşılığı</h2>
       <p class="alt">Ödediğin gelir vergisinin hangi bakanlığa, belediyeye ve sosyal desteğe gittiğini gör.</p>
