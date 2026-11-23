@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.23-3', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.23-4', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -83781,6 +83781,125 @@ select oyun._yama('public.serbest_bagis(text,text,numeric,text)',
                   $d$bagis_bugun=coalesce(bagis_bugun,0)+m where user_id=u;
    /* bagis_kidem_bildir */ perform oyun.bagis_kidem_bildir(u, coalesce(c.bagis_bugun,0), m, v_min, t);$d$,
                   '/* bagis_kidem_bildir */', true);
+-- zz_20261123_kullanici_sozlesmesi.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun_yonetim.kayit_basvurulari') is null then raise notice 'zz_20261123_kullanici_sozlesmesi.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 23.11.2026 · Kullanıcı Sözleşmesi onay kaydı (Sürüm 1.0)
+-- İstek (Ercan): bundan sonra kayıt olan herkes Kullanıcı Sözleşmesi'ni görsün; kabul eden kayıt olabilsin, etmeyen olamasın.
+-- Mevcut oyunculardan (profili olanlar) onay istenmez (Ercan'ın kararı).
+--   · İstemci (gelistirici/www/kullanici_sozlesmesi.js): "Hesap oluştur"dan önce tam metin + iki zorunlu kutu
+--     (sözleşme, 18 yaş). Kabul cihazda ve signUp hesap bilgisinde tutulur, oturum açılınca buraya yazılır.
+--   · Kayıt: oyun_yonetim.sozlesme_onaylari — kullanıcı, sürüm, kaynak (kayit | giris), sunucu saati, istemci saati,
+--     uygulama sürümü, IP özeti (oyun.ozet: tuzlanmış SHA-256; ham IP saklanmaz). Hesap silinse de satır kalır:
+--     sözleşmenin kurulduğunun delilidir (KVKK m.5/2-c, e). Oyunculara açık değildir.
+--   · Sunucu kapısı (/* sozlesme_kapi */): kayit_basvuru_gonder ve profil_olustur kabul kaydı olmayan hesabı reddeder;
+--     ANCAK yalnız en düşük uygulama sürümü (oyun.ayarlar.min_uygulama) sözleşme ekranını içeren ilk sürüme
+--     (2026.11.23-4) ya da üstüne çıkarıldığında. Böylece mağazadaki eski uygulamalarla kayıt kesilmez; yeni mağaza
+--     sürümü yayına girip yönetici panelinden en düşük sürüm yükseltilince kapı kendiliğinden kapanır.
+--     Web istemcisi sözleşmeyi hemen zorunlu tutar.
+--   · Metin değişirse oyun.sozlesme_surumu() ve istemcideki SOZLESME.surum birlikte artırılır; yeni sürüm yeni
+--     kayıtlarda yeniden onay ister (eski onaylar silinmez).
+-- Yama yardımcısı oyun._yama (zz_20261121_00_yama.sql) bu dosyadan önce gelmelidir.
+
+create table if not exists oyun_yonetim.sozlesme_onaylari (
+  id bigserial primary key,
+  user_id uuid not null,
+  surum text not null,
+  kaynak text not null default 'kayit',
+  onay_at timestamptz not null default clock_timestamp(),
+  istemci_at timestamptz,
+  uygulama text,
+  ip_ozet text,
+  constraint sozlesme_onaylari_kaynak_ck check (kaynak in ('kayit', 'giris')),
+  constraint sozlesme_onaylari_tek unique (user_id, surum)
+);
+create index if not exists sozlesme_onaylari_zaman_ix on oyun_yonetim.sozlesme_onaylari(onay_at desc);
+alter table oyun_yonetim.sozlesme_onaylari enable row level security;
+revoke all on oyun_yonetim.sozlesme_onaylari from public, anon, authenticated;
+revoke all on sequence oyun_yonetim.sozlesme_onaylari_id_seq from public, anon, authenticated;
+
+-- Güncel sözleşme sürümü (istemcideki SOZLESME.surum ile aynı olmalı)
+create or replace function oyun.sozlesme_surumu() returns text
+language sql immutable set search_path to '' as $f$ select '1.0'::text $f$;
+
+-- "2026.11.23-4" → {2026,11,23,4}; sayısal karşılaştırma için (istemcideki surumKucuk ile aynı mantık)
+create or replace function oyun.surum_dizi(p text) returns integer[]
+language sql immutable set search_path to '' as $f$
+  select coalesce(array_agg(x::integer order by o), '{}'::integer[])
+    from unnest(regexp_split_to_array(coalesce(p, ''), '[^0-9]+')) with ordinality as t(x, o)
+   where x <> '' and length(x) <= 9
+$f$;
+
+-- Sunucu kapısı ne zaman kapanır: en düşük uygulama sürümü sözleşme ekranlı sürüme ulaşınca
+create or replace function oyun.sozlesme_zorunlu() returns boolean
+language sql stable set search_path to '' as $f$
+  select coalesce(oyun.surum_dizi((select a.min_uygulama from oyun.ayarlar a where a.id = 1))
+                  >= oyun.surum_dizi('2026.11.23-4'), false)
+$f$;
+
+create or replace function oyun.sozlesme_kabul(u uuid) returns boolean
+language sql stable set search_path to '' as $f$
+  select exists (select 1 from oyun_yonetim.sozlesme_onaylari s where s.user_id = u and s.surum = oyun.sozlesme_surumu())
+$f$;
+
+revoke all on function oyun.sozlesme_surumu() from public;
+revoke all on function oyun.surum_dizi(text) from public;
+revoke all on function oyun.sozlesme_zorunlu() from public;
+revoke all on function oyun.sozlesme_kabul(uuid) from public;
+
+-- Oyuncunun kendi onay durumu (kayıt onayı beklerken de çağrılabilir; oyun.ben() kullanmaz)
+create or replace function public.sozlesme_durumum() returns jsonb
+language plpgsql stable security definer set search_path to '' as $f$
+declare u uuid := auth.uid(); s oyun_yonetim.sozlesme_onaylari;
+begin
+  if u is null then raise exception 'Önce giriş yap.'; end if;
+  select * into s from oyun_yonetim.sozlesme_onaylari where user_id = u and surum = oyun.sozlesme_surumu();
+  return jsonb_build_object('surum', oyun.sozlesme_surumu(), 'kabul', s.id is not null, 'onay_at', s.onay_at,
+                            'zorunlu', oyun.sozlesme_zorunlu());
+end $f$;
+
+-- Onayı kaydet. Tekrar çağrılırsa ilk kayıt korunur (idempotent); sürüm uyuşmazsa reddeder.
+create or replace function public.sozlesme_onayla(p_surum text, p_kaynak text default 'kayit',
+                                                  p_istemci_at timestamptz default null, p_uygulama text default null)
+returns jsonb language plpgsql security definer set search_path to '' as $f$
+declare u uuid := auth.uid(); s oyun_yonetim.sozlesme_onaylari; t timestamptz := clock_timestamp();
+begin
+  if u is null then raise exception 'Önce giriş yap.'; end if;
+  if coalesce(btrim(p_surum), '') <> oyun.sozlesme_surumu() then
+    raise exception 'Kullanıcı Sözleşmesi güncellendi. Uygulamayı yenileyip güncel metni onayla.';
+  end if;
+  insert into oyun_yonetim.sozlesme_onaylari(user_id, surum, kaynak, onay_at, istemci_at, uygulama, ip_ozet)
+  values (u, oyun.sozlesme_surumu(),
+          case when p_kaynak = 'giris' then 'giris' else 'kayit' end, t,
+          case when p_istemci_at between t - interval '30 days' and t + interval '1 hour' then p_istemci_at end,
+          nullif(left(btrim(coalesce(p_uygulama, '')), 40), ''),
+          oyun.ozet(oyun.istek_ip()))
+  on conflict (user_id, surum) do nothing;
+  select * into s from oyun_yonetim.sozlesme_onaylari where user_id = u and surum = oyun.sozlesme_surumu();
+  return jsonb_build_object('surum', s.surum, 'kabul', true, 'onay_at', s.onay_at);
+end $f$;
+
+revoke all on function public.sozlesme_durumum() from public, anon;
+grant execute on function public.sozlesme_durumum() to authenticated;
+revoke all on function public.sozlesme_onayla(text, text, timestamptz, text) from public, anon;
+grant execute on function public.sozlesme_onayla(text, text, timestamptz, text) to authenticated;
+
+-- Sunucu kapısı: başvuru ve doğrudan profil oluşturma
+select oyun._yama('public.kayit_basvuru_gonder(text,integer,text)',
+  $d$if u is null then raise exception 'Önce giriş yap.'; end if;$d$,
+  $y$if u is null then raise exception 'Önce giriş yap.'; end if;
+  /* sozlesme_kapi */ if oyun.sozlesme_zorunlu() and not oyun.sozlesme_kabul(u) then raise exception 'Kayıt için Kullanıcı Sözleşmesi''ni kabul etmen gerekiyor. Uygulamayı güncelleyip yeniden dene.'; end if;$y$,
+  '/* sozlesme_kapi */', true);
+
+select oyun._yama('public.profil_olustur(text,integer)',
+  $d$raise exception 'Profilin zaten var.'; end if;$d$,
+  $y$raise exception 'Profilin zaten var.'; end if;
+  /* sozlesme_kapi */ if oyun.sozlesme_zorunlu() and not oyun.sozlesme_kabul(u) then raise exception 'Kayıt için Kullanıcı Sözleşmesi''ni kabul etmen gerekiyor. Uygulamayı güncelleyip yeniden dene.'; end if;$y$,
+  '/* sozlesme_kapi */', true);
+$kosullu_govde$;
+end $kosullu_dis$;
 -- =====================================================================
 --  KALICILIK (son): bütünlük kontrolü, silme koruması, sürüm bilgisi, sahibin sıfırlama/geri yükleme araçları
 -- =====================================================================
@@ -84143,7 +84262,7 @@ declare
     'dernek_uye_destek_karar', 'dernek_uye_destek_liste', 'dernek_yonetim_ata', 'dernek_ziyaret_taleplerim', 'dernek_ziyaret_tamamla', 'dernek_ziyaret_teklif',
     'dernek_ziyaret_yanit', 'dernekler', 'disiplin_baslat', 'disiplin_durum', 'disiplin_oyla', 'durum', 'istemci_hata_kaydet',
     -- 08.11.2026: Halk Hareketleri ekranlarının çağırdığı ve listede eksik kalan adlar
-    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'mod_merkez', 'mod_ustlen', 'mod_ustlenmeler', 'mod_sohbet_nobeti', 'mod_sohbet_sekme', 'mod_uyari', 'mod_para_cezasi', 'mod_kucuk_cezalar', 'mod_dosya', 'mod_not_ekle', 'mod_talep_ac', 'mod_talepler', 'mod_talep_karar', 'mod_talep_geri_cek', 'mod_destek', 'mod_destek_yanitla', 'mod_gunluk', 'admin_mod_ekip', 'admin_mod_kaydet', 'admin_mod_sadelestir', 'ifade_cagir', 'ifade_ver', 'ifade_reddet', 'ifade_zorla_getir', 'ifade_iptal', 'ifade_cagrilari', 'bakanlik_dava_bilgi', 'bakanlik_dava_ac', 'mod_sozlesme_kabul', 'admin_mod_tarafsizlik', 'mod_inceleme_karar', 'mod_kisitlar', 'mod_kisit_uygula', 'mod_kisit_uzat', 'mod_kisit_kaldir', 'mod_icerik_toplu_gizle', 'mod_yetki_tablosu', 'kisitlarim', 'yonetime_yaz_bilgi', 'yonetime_yaz', 'yonetime_yaz_yanit', 'yonetime_yaz_okundu', 'mod_kutu', 'mod_kutu_yanitla', 'mod_kutu_devret', 'yardim_yanitla', 'mod_sohbet_yaz', 'admin_akis_sikayetleri', 'admin_akis_karar', 'destek_gonder', 'kayit_basvuru_gonder', 'kayit_durumum', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'nobetci_sevk_et', 'nobetci_savunma', 'nobetci_karar', 'nobetci_panel', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
+    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'mod_merkez', 'mod_ustlen', 'mod_ustlenmeler', 'mod_sohbet_nobeti', 'mod_sohbet_sekme', 'mod_uyari', 'mod_para_cezasi', 'mod_kucuk_cezalar', 'mod_dosya', 'mod_not_ekle', 'mod_talep_ac', 'mod_talepler', 'mod_talep_karar', 'mod_talep_geri_cek', 'mod_destek', 'mod_destek_yanitla', 'mod_gunluk', 'admin_mod_ekip', 'admin_mod_kaydet', 'admin_mod_sadelestir', 'ifade_cagir', 'ifade_ver', 'ifade_reddet', 'ifade_zorla_getir', 'ifade_iptal', 'ifade_cagrilari', 'bakanlik_dava_bilgi', 'bakanlik_dava_ac', 'mod_sozlesme_kabul', 'admin_mod_tarafsizlik', 'mod_inceleme_karar', 'mod_kisitlar', 'mod_kisit_uygula', 'mod_kisit_uzat', 'mod_kisit_kaldir', 'mod_icerik_toplu_gizle', 'mod_yetki_tablosu', 'kisitlarim', 'yonetime_yaz_bilgi', 'yonetime_yaz', 'yonetime_yaz_yanit', 'yonetime_yaz_okundu', 'mod_kutu', 'mod_kutu_yanitla', 'mod_kutu_devret', 'yardim_yanitla', 'mod_sohbet_yaz', 'admin_akis_sikayetleri', 'admin_akis_karar', 'destek_gonder', 'kayit_basvuru_gonder', 'kayit_durumum', 'sozlesme_durumum', 'sozlesme_onayla', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'nobetci_sevk_et', 'nobetci_savunma', 'nobetci_karar', 'nobetci_panel', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
     -- 09.11.2026 Halk Hareketleri 3.0 (supabase/migrations/20261109090000_sokak_gercek_oyuncu.sql)
     'sokak_eylemden_ayril', 'sokak_goreve_cik', 'sokak_gorevden_ayril', 'sokak_karsi_katil', 'sokak_taktik_yap', 'sokak_grev_cagri', 'sokak_nabiz_ver', 'sokak_yasak_koy', 'sokak_jest_yap', 'sokak_heyet_davet', 'sokak_heyet_yanit', 'sokak_heyet_rapor', 'sokak_seslenis_yap', 'sokak_seslenis_tepki', 'sokak_karsi_cagri', 'sokak_kalkan_birak', 'sokak_saha_panel',
     -- 09.11.2026 on iki yeni hükümet aracı (supabase/migrations/20261109150000_halk_hukumet_yeni_tedbirler.sql)
