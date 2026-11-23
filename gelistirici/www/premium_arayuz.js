@@ -946,7 +946,7 @@
     if (g('muzayedeEkrani')) e('cekic', '#c99a3a', 'Müzayede Evi', 'Koleksiyon eserlerine pey ver, sergile, sat', ['muzayede'], 'müzayede açık artırma pey koleksiyon eser tablo sikke pul antika saat mücevher halı otomobil sergi müze', 'Para');
     e('magaza', '#7a5af0', 'Mağaza', 'Siyaset Kartı ve ₺ paketleri', ['magaza'], 'mağaza satın al paket siyaset kartı rozet', 'Para');
     e('gorev', '#8a68f2', 'Görevler', 'Günlük, haftalık ve kalıcı görevler', ['gorev'], 'görev ödül', 'Hayat');
-    if (g('ekIslerEkrani')) e('canta', '#1f9e86', 'Ek İşler', 'Günde 5 iş: çalış, süre dolunca ücretini al', ['ekis'], 'ek iş meslek çalış para kazan garson kurye taksi yazılım günlük hak', 'Hayat');
+    if (g('ekIslerEkrani')) e('canta', '#1f9e86', 'Ek İşler', 'Bir iş seç, çalış; süre dolunca ücretini al', ['ekis'], 'ek iş meslek çalış para kazan garson kurye taksi yazılım günlük hak', 'Hayat');
     e('kanun', B.meclis.a1, 'Kanun teklifi ver', 'Meclis\'e yeni kanun teklifi sun', ['kanun'], 'kanun teklif yasa önerge', 'Meclis');
     e('sandik', B.meclis.a1, 'Yasama ve oylamalar', 'Oylamadaki kanunlar', ['meclisSekme', 'yasama'], 'oylama oy ver yasama kanun', 'Meclis');
     e('kisiler', B.meclis.a1, 'İl il milletvekilleri', 'Vekil listesi', ['meclisSekme', 'vekiller'], 'vekil milletvekili liste', 'Meclis');

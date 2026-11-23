@@ -4,7 +4,7 @@
 (function(){
 "use strict";
 let mesgul=false, SIRA="onerilen", SON=null, SON_FARK=0, sayacNo=0;
-let OZET=null, OZET_T=0, ozetIstek=null;
+let OZET=null, OZET_T=0, ozetIstek=null, OZET_HATA_T=0;
 try{const s=localStorage.getItem("ssk_ek_is_sira"); if(s&&["onerilen","kazanc","sure","tur"].includes(s))SIRA=s;}catch(_){/* depolama yoksa varsayılan */}
 const esc=x=>typeof e==="function"?e(String(x??"")):String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const para=x=>typeof tlYaz==="function"?tlYaz(Number(x)||0):(Number(x)||0).toLocaleString("tr-TR")+" ₺";
@@ -237,9 +237,10 @@ function seritDoldur(){
 function ekIsSeritYenile(zorla){
  if(typeof API==="undefined"||!API||typeof API.rpc!=="function")return Promise.resolve();
  if(!zorla&&OZET&&Date.now()-OZET_T<60000){seritDoldur();return Promise.resolve();}
+ if(!zorla&&OZET_HATA_T&&Date.now()-OZET_HATA_T<600000)return Promise.resolve();   // özet alınamadıysa 10 dk yeniden sorma
  if(ozetIstek)return ozetIstek;
- ozetIstek=API.rpc("ek_is_ozet").then(z=>{OZET=z;OZET_T=Date.now();seritDoldur();})
-  .catch(()=>{/* eski sunucu ya da bağlantı sorunu: şerit yine Ek İşler'i açar */})
+ ozetIstek=API.rpc("ek_is_ozet").then(z=>{OZET=z;OZET_T=Date.now();OZET_HATA_T=0;seritDoldur();})
+  .catch(()=>{OZET_HATA_T=Date.now();/* eski sunucu ya da bağlantı sorunu: şerit yine Ek İşler'i açar */})
   .then(()=>{ozetIstek=null;});
  return ozetIstek;
 }

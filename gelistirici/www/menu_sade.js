@@ -171,7 +171,7 @@
         satir("altin", "Kuyumcu ve Döviz Çarşısı", "Gerçek kur · oyuncu dükkânları · meslek edin", "ekranAc(meslekOfisEkrani)", "meslekOfisEkrani"),
         satir("sirket", "🔒 Kasa gizliliği", "Şirket, banka, dernek ve gazete kasan kime görünsün", "ekranAc(kasaGizlilikEkrani)", "kasaGizlilikEkrani"),
         satir("sirket", "Şirket kârı tercihleri", "Kâr şirket kasasında mı biriksin, cüzdana mı geçsin? Her şirket için seç", "ekranAc(sirketKarTercihEkrani)", "sirketKarTercihEkrani"),
-        satir("gorev", "💼 Ek İşler", "Günde 5 iş, 20'den fazla meslek; çalış, süre dolunca ücretini al", "ekranAc(ekIslerEkrani)", "ekIslerEkrani"),
+        satir("gorev", "💼 Ek İşler", "Bir iş seç, çalış; süre dolunca ücretini al", "ekranAc(ekIslerEkrani)", "ekIslerEkrani"),
         satir("dunya", "🌾 Tarım ve hayvancılık", "Tarla, mevsim, hasat, süt, et ve market tedariki", "ucYeniAc('tarim')", "ucYeniAc"),
         satir("rehber", "📚 Kitap ve yayınevi", "Kitap yaz, yayımla, telif al, yeni baskı yap", "ucYeniAc('kitap')", "ucYeniAc"),
         satir("ajans", "📺 Medya ve yayınevleri", "Millet TV, yayınlanan kitaplar ve bağışlar", "ucYeniAc('medya')", "ucYeniAc"),
