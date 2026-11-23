@@ -92,7 +92,8 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   // 23.11.2026: Cihaz yasağı — kalıcı engellenen hesabın cihazından yeni başvuru ve giriş yok (_yama kullanır; kayıt onayı ve sözleşme kapısından SONRA)
   'zz_20261123_cihaz_yasak.sql',
   // 23.11.2026: oyun yöneticisinden oyuncuya özel mesaj ve yazılı uyarı (Yönetime Yaz altyapısı; _yama kullanır)
-  'zz_20261123_mod_oyuncuya_yaz.sql'];
+  'zz_20261123_mod_oyuncuya_yaz.sql',
+  'zz_20261123_grup_uye_sinirsiz.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',

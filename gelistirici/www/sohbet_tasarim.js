@@ -1544,7 +1544,6 @@
       var kad = b.getAttribute('data-kad');
       if (seciliMi(kad)) secili = secili.filter(function (x) { return x.kad.toLocaleLowerCase('tr-TR') !== kad.toLocaleLowerCase('tr-TR'); });
       else {
-        if (secili.length >= 99) { tst('Bir grupta en fazla 100 üye olabilir.', true); return; }
         secili.push({ kad: kad, renk: b.getAttribute('data-renk') || null });
       }
       var on = seciliMi(kad); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); $1('.sh-gy-tik', b).innerHTML = on ? I.tik : '';
@@ -1604,7 +1603,7 @@
       (kur ? '<div class="sh-gb-kutu"><label class="sh-gy-et" for="shGbAdInp">Grup adı</label>' +
         '<input id="shGbAdInp" class="sh-gy-inp" type="text" maxlength="40" autocomplete="off" value="' + esc(d.ad) + '">' +
         '<button type="button" class="sh-btn sh-gb-tam" data-gb="ad">' + I.kalem + 'Adı kaydet</button></div>' +
-        '<div class="sh-gb-kutu"><div class="sh-gy-et">Üye ekle <small>' + n(d.uye_sayisi) + ' / ' + n(d.uye_sinir || 100) + '</small></div>' +
+        '<div class="sh-gb-kutu"><div class="sh-gy-et">Üye ekle <small>' + n(d.uye_sayisi) + (d.uye_sinir ? ' / ' + n(d.uye_sinir) : ' üye') + '</small></div>' +
         '<label class="sh-ara sh-ara-m">' + I.ara + '<input id="shGbAra" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="Oyuncu adı yaz"></label>' +
         '<div class="sh-gb-sonuc" id="shGbSonuc"></div></div>' : '') +
       '<div class="sh-ys-bas">Üyeler (' + n(d.uye_sayisi) + ')</div><div class="sh-gb-uyeler">' + uyeHtml + '</div>' +
