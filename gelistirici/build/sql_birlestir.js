@@ -44,6 +44,10 @@ const KOSULLU = {
   // 23.11: Kullanıcı Sözleşmesi; kayıt başvuru tablosu (16.11 canlı migration) yoksa atlanır.
   'zz_20261123_kullanici_sozlesmesi.sql': ['oyun_yonetim.kayit_basvurulari'],
   'zz_20261121_nobetci_hakimlik.sql': ['oyun.yonetim_tutuklama', 'oyun.tarife', 'oyun.zamanlayici_adim', 'oyun.mahkeme_uye', 'oyun.adliye_davalar', 'oyun.mahkeme_ayar'],
+  // 23.11: Cihaz yasağı; kayıt başvuru tablosu, oturum kaydı, çoklu hesap onayı ve moderatör tabloları (canlı migration'lar) yoksa atlanır.
+  // 23.11: yönetimden oyuncuya özel mesaj / yazılı uyarı; Yönetime Yaz tabloları (20.11 canlı migration) yoksa atlanır.
+  'zz_20261123_mod_oyuncuya_yaz.sql': ['oyun.destek_talep', 'oyun.destek_mesaj', 'oyun.moderatorler', 'oyun.mod_kayit'],
+  'zz_20261123_cihaz_yasak.sql': ['oyun_yonetim.kayit_basvurulari', 'oyun.oturumlar', 'oyun.hesap_onay', 'oyun.moderatorler', 'oyun.mod_kayit', 'oyun.yonetici_kimlik'],
 };
 const okuKosullu = ad => {
   const govde = oku(ad), tablolar = KOSULLU[ad];
@@ -84,7 +88,11 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   // 23.11.2026: Kullanıcı Sözleşmesi onay kaydı + kayıt kapısı (_yama yardımcısını kullanır; kapı en düşük uygulama sürümüne bağlı)
   'zz_20261123_kullanici_sozlesmesi.sql',
   // 23.11.2026: bağımsız Cumhurbaşkanı imza kampanyası gerçek 72 saat + aday gösteremeyen parti üyeleri (_yama kullanır)
-  'zz_20261123_cb_imza_72saat.sql'];
+  'zz_20261123_cb_imza_72saat.sql',
+  // 23.11.2026: Cihaz yasağı — kalıcı engellenen hesabın cihazından yeni başvuru ve giriş yok (_yama kullanır; kayıt onayı ve sözleşme kapısından SONRA)
+  'zz_20261123_cihaz_yasak.sql',
+  // 23.11.2026: oyun yöneticisinden oyuncuya özel mesaj ve yazılı uyarı (Yönetime Yaz altyapısı; _yama kullanır)
+  'zz_20261123_mod_oyuncuya_yaz.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
