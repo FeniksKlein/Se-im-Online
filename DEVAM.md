@@ -16,6 +16,12 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 24.11.2026 01:38 — Ek İşler sunucusu canlıda; Kürsü 5 dakika sınırı kapatıldı
+- İstek (Ercan): "Ek İşler veritabanı güncellemesini uygula" · "Kürsü 5 dakika kısıtını kaldır".
+- `ek_isler_v2_20261124` canlıya uygulandı: günlük hak 5, 21 açık meslek (20 yeni tablo + Ev ve Cihaz Tamiri), yönetim sekmesi çalışır. 11 işlev md5 ile kaynakla aynı. Uygulama anında süren 160 iş vardı; onlara dokunulmadı (ücretleri başlarken sabitlenmişti).
+- `kursu_paylasim_siniri_kapat_20261124` canlıya uygulandı: `oyun.kursu_ayar.paylasim_aralik_dk = 0` (varsayılan da 0). Düzenek duruyor; yeniden açmak tek satır (`update oyun.kursu_ayar set paylasim_aralik_dk = 5`). Aşağıdaki 2026.11.24-3 notundaki "5 dakikada bir paylaşım" artık geçerli değil.
+- İstemci değişmedi (sürüm 2026.11.24-3 aynı).
+
 ## 24.11.2026 — 2026.11.24-3 Kürsü denetimi, 5 dakikada bir paylaşım, Talep kutusu bütün yöneticilere (sunucu canlıda 24.11 01:31; ekranlar web'de, telefonlar mağaza sürümünü bekler)
 - İstek (Ercan): "Kürsü ekranında ne benim ne de içerik moderatörlerinin yetkisi yok gözüküyor"; şikâyetleri görüp istediğimiz içeriği kaldırabilelim; Kürsü'ye oyuncu başına 5 dakikada bir paylaşım; şikâyet/destek taleplerine bütün modlar girip görev koduyla yanıt yazabilsin.
 - **Kök neden (Kürsü şikâyetleri):** `admin_akis_sikayetleri` ve `admin_akis_karar` 159 izin dizisinde yoktu; `authenticated` rolünün EXECUTE izni olmadığı için kurucu dahil herkes "Bu işlem için yetkin yok" görüyordu (istemci Postgres'in "permission denied" hatasını böyle çeviriyor). İşlevlerin içindeki yetki denetimi (`yetki_zorunlu('sikayet')`: kurucu + İçerik + Oyuncu masaları) doğruydu. 24.11 gecesi 48 paylaşım hakkında açık şikâyet bekliyordu.

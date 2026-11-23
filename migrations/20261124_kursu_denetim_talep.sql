@@ -2,6 +2,7 @@
 -- Kaynak: gelistirici/sql/zz_20261124_kursu_denetim_talep.sql (aynı gövde) · tekrar çalıştırmak güvenlidir.
 -- DURUM (24.11.2026 01:31): canlıya UYGULANDI. Önce canlıda geri alınan işlemle denendi (gelistirici/test/kursu_denetim_talep_canli_test.sql);
 --   uygulandıktan sonra mod_kursu_kaldir, kursu_hiz_kapisi ve mod_kutu_gorur gövdeleri kaynakla md5 eşleşti.
+-- NOT (24.11.2026 01:38): 5 dakikalık paylaşım aralığı Ercan'ın isteğiyle kapatıldı → migrations/20261124_kursu_paylasim_siniri_kapat.sql
 -- Geri dönüş: paylaşım aralığını kapatmak için  update oyun.kursu_ayar set paylasim_aralik_dk = 0;
 --   Talep kutusunu yeniden masalara bölmek için oyun.mod_kutu_gorur'un önceki tanımı (masa = ana_gorev) geri yazılır.
 --   Kürsü şikâyet ekranını kapatmak için: revoke execute on function public.admin_akis_sikayetleri(), public.admin_akis_karar(bigint,text) from authenticated;

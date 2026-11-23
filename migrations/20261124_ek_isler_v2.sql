@@ -1,5 +1,6 @@
 -- Canlı Supabase migration adı: ek_isler_v2_20261124
--- DURUM (24.11.2026 01:35): canlıya UYGULANMADI (otomatik izin denetimi durdurdu; Ercan'ın onayı ya da SQL Editor'dan çalıştırması bekleniyor).
+-- DURUM (24.11.2026 01:37): canlıya UYGULANDI (Ercan'ın açık onayıyla). 11 işlevin gövdesi kaynakla md5 eşleşti; canlıda 21 meslek, günlük hak 5.
+--   Uygulama sonrası geri alınan denemede: panel 5 hak/21 iş, iş başlatma hakkı 4'e düşürdü, aynı anda ikinci iş engellendi.
 --   Canlıda geri alınan işlemle denendi ve geçti (gelistirici/test/ek_isler_v2_canli_test.sql).
 -- Kaynak: gelistirici/sql/zz_20261124_ek_isler_v2.sql (aynı gövde) · tekrar çalıştırmak güvenlidir.
 -- Yerel doğrulama: gelistirici/test/ek_isler_v2.py (13 başlık; eşzamanlı istekler dahil) ve ek_isler_v2_arayuz.js.

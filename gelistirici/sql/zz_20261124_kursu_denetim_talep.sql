@@ -9,7 +9,8 @@
 -- 2) ŞİKÂYET BEKLEMEDEN KALDIRMA: mod_kursu_kaldir(p_id, p_gerekce) — aynı 'sikayet' yetkisi, çıkar çatışması/korunan
 --    hesap kuralı (korunan_hedef_ceza), yönetim kaydı (akis_gizle), paylaşım sahibine gerekçeli bildirim.
 --    mod_kursu_kaldirilanlar(): son 14 günde kaldırılan paylaşımlar (geri yükleme admin_akis_karar(id,'yok_say') ile).
--- 3) PAYLAŞIM ARALIĞI: bir oyuncu Kürsü'de oyun.kursu_ayar.paylasim_aralik_dk (başlangıç 5) dakikada bir paylaşım yapar.
+-- 3) PAYLAŞIM ARALIĞI (24.11.2026 01:38'de Ercan'ın isteğiyle KAPATILDI; düzenek duruyor, ayar 0 = sınır yok):
+--    oyun.kursu_ayar.paylasim_aralik_dk > 0 yapılırsa bir oyuncu Kürsü'de o kadar dakikada bir paylaşım yapar.
 --    Yeni gönderi, alıntı ve kurum adına gönderi sayılır; YANIT sayılmaz. Kurucuya uygulanmaz. Sayaç ayrı tabloda
 --    (oyun.kursu_hiz) ve tek ifadede kilitlenir: gönderiyi silip yeniden yazmak ya da aynı anda çok istek atmak aşamaz.
 --    Aralık 0 yapılırsa sınır kapanır (Kontrol Merkezi › Veri › oyun.kursu_ayar).
@@ -54,9 +55,11 @@ end $f$;
 -- ---------- 3) Paylaşım aralığı ----------
 create table if not exists oyun.kursu_ayar(
   id smallint primary key default 1 check (id = 1),
-  paylasim_aralik_dk integer not null default 5 check (paylasim_aralik_dk between 0 and 1440),
+  paylasim_aralik_dk integer not null default 0 check (paylasim_aralik_dk between 0 and 1440),
+  -- (ilk kurulumda 5 idi; aynı gün kapatıldı)
   guncelleme timestamptz not null default now()
 );
+alter table oyun.kursu_ayar alter column paylasim_aralik_dk set default 0;
 insert into oyun.kursu_ayar(id) values (1) on conflict (id) do nothing;
 create table if not exists oyun.kursu_hiz(
   user_id uuid primary key references oyun.profiller(id) on delete cascade,
