@@ -16,6 +16,18 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 23.11.2026 — 2026.11.23-2 Bağış kıdemi bildirimi (canlıda)
+- Sorun (Ercan, oyuncu şikâyeti): Statü kartındaki "bir asgari ücret tutarındaki her bağış +1 kıdem" cümlesi yüzünden bir oyuncu 3 asgari ücret bağışlayıp 3 kıdem bekledi. **Kural değişmedi:** parti, şehir ve Hazine bağışlarından günde en çok +1 kıdem (`serbest_bagis`: `least(1, günlük toplam / asgari)`); dernek, kol, oyuncu, şirket ve gazete bağışı kıdem vermez. Görünen kıdem aşağı yuvarlanır (`oyun.kidem_puani`), küsurat birikir.
+- **2026.11.23-1 (istemci):** Statü ve "Şehrine katkı" metinleri "bağıştan günde en çok +1 kıdem gelir" diye yeniden yazıldı (`gelistirici/www/index.html`, `TASARIM.md`). Web'de yayında; **telefon uygulamaları bu metni ancak yeni mağaza sürümüyle görür** (OTA yok).
+- **2026.11.23-2 (sunucu, mağaza güncellemesi gerektirmez):** `oyun.bagis_kidem_bildir(u, önceki günlük toplam, tutar, asgari, zaman)` — bağış yapana bildirim:
+  - kıdem kazandıysa her bağışta: "Bağışınla +0,36 kıdem puanı kazandın (bugün 0,36 / 1)… bugün 18.075 ₺ daha bağışlarsan tamamlanır";
+  - günlük +1 dolduysa: "…Bugünkü bağış kıdemi tamamlandı (1 / 1)…";
+  - +1 dolduktan sonraki bağışta günde **bir kez** (`akilli_bildir`, anahtar `bagis_kidem_tavan_YYYYMMDD`): "Bu bağış kıdem puanı getirmedi…".
+  - 0,005 puandan küçük kazançta (≈140 ₺ altı) bildirim yok; işlev hata verirse bağış yine tamamlanır (exception bloğu). `serbest_bagis` içine `_yama` ile tek satır eklendi (işaret `/* bagis_kidem_bildir */`); imza, dönüş değeri ve yetkiler aynı.
+- Kaynak `zz_20261123_bagis_kidem_bildirimi.sql`, migration `bagis_kidem_bildirimi_20261123` (`migrations/20261123_bagis_kidem_bildirimi.sql`).
+- Doğrulama (canlıda geri alınan işlem): 10.000 ₺ → +0,3562 kıdem ve "+0,36 (bugün 0,36 / 1)" bildirimi; ardından 20.000 ₺ → +0,6438 ve "tamamlandı (1 / 1)"; sonraki iki bağışta kıdem 0, tek "kıdem getirmedi" bildirimi; tek seferde 3 asgari ücret (84.225 ₺) → +1 kıdem ve "tamamlandı" bildirimi; başka oyuncuya bildirim gitmedi.
+- Açık kalan: metin düzeltmesinin telefonlara gelmesi için yeni mağaza paketi (Ercan mağazadaki güncel sürüm numaralarını verince hazırlanır).
+
 ## 22.11.2026 — 2026.11.22-1 Moderatörlere küçük ve kademeli cezalar (canlıda)
 - İstek (Ercan): sohbette ırkçı vb. yazılar çok; moderatörler kısa susturma (15 dk–3 saat), tekrar edene kendiliğinden artan susturma, kalıcı banın yanında saatlik/günlük uzaklaştırma ve caydırıcı küçük cezalar verebilsin.
 - **Kısa susturma:** sunucu kesirli saati zaten kabul ediyordu (`yk_sustur` p_saat numeric). `oyun.mod_sure_yaz` 1 saatten kısa süreyi "15 dk" yazar; `yk_sustur` günlüğü bu işlevle (işaret `/* kisa_sure */`). Kaynak `zz_20261122_kisa_susturma.sql`, migration `kisa_susturma_20261122`.
