@@ -31,6 +31,7 @@
     sohbet: S('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/>'),
     sikayet: S('<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>'),
     tv: S('<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="m8 3 4 4 4-4"/>'),
+    gazete: S('<path d="M4 5h13v14H6a2 2 0 0 1-2-2V5zM17 9h3v8a2 2 0 0 1-2 2M7 9h7M7 12.5h7M7 16h4"/>'),
     masak: S('<path d="M12 2v20M17 6.5c-.8-1.5-2.6-2.5-5-2.5-3 0-5 1.5-5 3.7 0 5 10 2.6 10 7.6 0 2.2-2 3.7-5 3.7-2.6 0-4.5-1-5.3-2.7"/>'),
     sandik: S('<path d="M4 11h16v9H4zM8 11V4h8v7M10 7h4"/>'),
     terazi: S('<path d="M12 3v17M5 20h14M3 7h18M6 7l-3 5h6L6 7zM18 7l-3 5h6l-3-5z"/>'),
@@ -54,7 +55,7 @@
   const ISLEM = Object.assign({}, typeof MOD_ISLEM === "object" ? MOD_ISLEM : {}, {
     kisit_mali: "para çıkışını dondurdu", kisit_secim: "seçim kısıtı koydu", kisit_uzat: "kısıtı uzattı (ikinci imza)", kisit_kaldir: "kısıtı kaldırdı",
     toplu_gizle: "son içeriklerini topluca gizledi", destek_devir: "talebi başka masaya devretti", masa_yetkileri: "masa yaptırım yetkilerini yürürlüğe koydu",
-    kayit_onay: "başvuruyu kabul etti", tv_yayin_kes: "TV yayınını kesti", tv_kanal_kapat: "TV kanalını kapattı", tv_kanal_ac: "TV kanalını yeniden açtı", kayit_ret: "başvuruyu reddetti", talep_ac: "yaptırım talebi açtı", talep_onay: "talebi onayladı",
+    kayit_onay: "başvuruyu kabul etti", tv_yayin_kes: "TV yayınını kesti", tv_kanal_kapat: "TV kanalını kapattı", tv_kanal_ac: "TV kanalını yeniden açtı", icerik_kaldir: "içeriği yayından kaldırdı", icerik_geri: "içeriği geri yükledi", pano_kaldir: "pano reklamını kaldırdı", kurum_durdur: "kurumun yayınlarını durdurdu", kurum_durdur_talep: "yayın durdurma talebi açtı", kurum_durdur_onay: "yayın durdurmaya ikinci imza attı", kurum_durdur_ret: "yayın durdurma talebini reddetti", kurum_durdur_kaldir: "yayın durdurmayı kaldırdı", kurum_ad: "kurum adını düzeltti", kayit_ret: "başvuruyu reddetti", talep_ac: "yaptırım talebi açtı", talep_onay: "talebi onayladı",
     talep_ret: "talebi reddetti", talep_geri: "talebini geri çekti", not_ekle: "dosyaya not ekledi", destek_yanit: "destek talebini yanıtladı",
     destek_kapat: "destek talebini kapattı", yk_sustur: "susturdu", mod_uyari: "resmî uyarı verdi", mod_para_cezasi: "para cezası kesti", yk_engel_sureli: "süreli engelledi / uzaklaştırdı", yk_engel_kalici: "kalıcı engelledi",
     yk_engel_kaldir: "engeli kaldırdı", masak_temiz: "MASAK: temiz dedi", masak_ihtar: "MASAK: ihtar verdi", masak_el_koy: "MASAK: el koydu",
@@ -243,7 +244,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     const araclar = [
       ["ara", "Oyuncu dosyası", "ara"], yv("duyuru") ? ["megafon", "Duyuru", "duyuru"] : null,
       ["gunluk", b.yonetici ? "Denetim günlüğü" : "İşlemlerim", "gunluk"], ["terazi", "Taleplerim", "taleplerim"],
-      yv("sikayet") ? ["sikayet", "Kürsü şikâyetleri", "kursu"] : null, yv("sikayet") ? ["tv", "TV yayınları", "tv"] : null, ["kilit", "Kısıtlar ve yetkilerim", "kisit"],
+      yv("sikayet") ? ["sikayet", "Kürsü şikâyetleri", "kursu"] : null, yv("sikayet") ? ["tv", "TV yayınları", "tv"] : null, yv("sikayet") ? ["gazete", "Medya denetimi", "medya"] : null, ["kilit", "Kısıtlar ve yetkilerim", "kisit"],
       yv("hesap_kapat") ? ["kalkan", "Yasaklı cihazlar", "cihaz"] : null, ["destek", "Talep kutusu", "kutu"],
       typeof window.yardimMasasiAc === "function" ? ["sohbet", "Yardım Masası", "yardim"] : null,
       b.yonetici ? ["ekip", "Ekip yönetimi", "ekip"] : ["ekip", "Ekip", "ekipgor"],
@@ -295,6 +296,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       if (a === "taleplerim") return ekranAc(mmTalepler);
       if (a === "kursu") return ekranAc(mmKursu);
       if (a === "tv") return ekranAc(mmTv);
+      if (a === "medya") return ekranAc(mmMedya);
       if (a === "kisit") return ekranAc(mmKisitlar);
       if (a === "cihaz") return ekranAc(mmCihaz);
       if (a === "kutu") return ekranAc(mmKutu);
@@ -1279,6 +1281,167 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     });
   }
 
+  // 23.11.2026 · Medya ve yayın denetimi (sql/zz_20261123_medya_denetimi.sql + kurum denetimi çekirdeği)
+  const MD_TUR = [["", "Tümü"], ["gazete_yazi", "Gazete yazısı"], ["kose_yorum", "Gazete yorumu"], ["dergi_sayi", "Karikatür"], ["kitap", "Kitap"],
+    ["pano", "Pano reklamı"], ["tv_yorum", "TV yorumu"], ["dernek_eylem", "Dernek"], ["sendika_bildiri", "Sendika"], ["parti_aciklama", "Parti açıklaması"]];
+  const MD_TUR_AD = Object.fromEntries(MD_TUR.filter(x => x[0]));
+  const MD_KURUM = [["gazete", "Gazete"], ["dergi", "Karikatür dergisi"], ["tv", "TV kanalı"], ["sirket", "Yayınevi / şirket"], ["kitap", "Kitap adıyla ara"],
+    ["dernek", "Dernek"], ["sendika", "Sendika"], ["parti", "Parti"]];
+  const MD = { sekme: "akis", tur: "", ara: "", ktur: "gazete", kara: "" };
+  const mdGerekce = (baslik, aciklama, dugme, enAz, ekstra, gonder) => {
+    const md = sheet(`<h3 style="font-size:19px;font-weight:800;margin:0">${esc(baslik)}</h3><p class="mm-alt" style="margin:4px 0 8px;white-space:pre-wrap">${esc(aciklama)}</p>
+      ${ekstra || ""}
+      <label class="mm-alan" for="mdG">Gerekçe (ilgili oyuncu görür)</label><textarea class="mm-girdi" id="mdG" maxlength="500" placeholder="Örn. Bölücü ve hakaret içeren yayın."></textarea>
+      <button class="mm-btn kirmizi" style="margin-top:10px" id="mdOk">${esc(dugme)}</button><button class="mm-btn cizgi" style="margin-top:8px" id="mdVaz">Vazgeç</button>`);
+    $("#mdVaz", md).onclick = modalKapat;
+    $("#mdOk", md).onclick = async () => {
+      const g = $("#mdG", md).value.trim();
+      if (g.length < enAz) { toast(`Gerekçe en az ${enAz} karakter olmalı.`, true); return; }
+      const btn = $("#mdOk", md); btn.disabled = true;
+      try { await gonder(g, md); modalKapat(); } catch (err) { btn.disabled = false; hata(err); }
+    };
+  };
+  const mdIcerikKart = (x, i, ozel) => `<div class="mm-kart" style="--c:${x.kaldirildi ? "#6b7385" : "#5b8def"}">
+      <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:16px;overflow-wrap:anywhere">${esc(x.baslik || "")}</b><span class="mm-etiket" style="--c:${x.kaldirildi ? "#6b7385" : "#5b8def"}">${esc(x.kaldirildi ? "Kaldırıldı" : (MD_TUR_AD[x.tur] || x.etiket || ""))}</span></div>
+      <div class="mm-alt">${[x.kurum, x.yazar ? "yazan " + x.yazar : "", x.etiket && MD_TUR_AD[x.tur] ? ({ kose: "köşe yazısı", haber: "haber", propaganda: "propaganda", teklif: "yayınevi onayı bekliyor", yayinda: "satışta" }[x.etiket] || x.etiket) : "", x.zaman ? tsaat(x.zaman) : ""].filter(Boolean).map(esc).join(" · ")}</div>
+      ${x.metin ? `<div class="mm-baloncuk" style="white-space:pre-wrap;max-height:180px;overflow:auto">${esc(x.metin)}</div>` : ""}
+      <div class="mm-aksiyon">${!x.kaldirildi && !x.salt_okunur ? `<button data-mdk="${ozel || ""}${i}">Yayından kaldır</button>` : ""}${x.kurum_tur && x.kurum_id ? `<button class="y" data-mdkd="${x.kurum_tur}:${x.kurum_id}">Kurum dosyası</button>` : ""}${x.yazar ? `<button class="y" data-dosya="${esc(x.yazar)}">Oyuncu dosyası</button>` : ""}</div></div>`;
+  function mdKaldirBagla(liste, ozel, sonra) {
+    document.querySelectorAll(`[data-mdk^="${ozel || ""}"]`).forEach(b => {
+      const kod = b.dataset.mdk; if (ozel && !kod.startsWith(ozel)) return; if (!ozel && /\D/.test(kod)) return;
+      const x = liste[+kod.slice((ozel || "").length)]; if (!x) return;
+      b.onclick = () => mdGerekce("Yayından kaldır", `${MD_TUR_AD[x.tur] || "İçerik"} · “${x.baslik}”${x.kurum ? "\n" + x.kurum : ""}\nİçerik arşive alınır, gerekirse geri yüklenir. Yazan oyuncu ve kurum sorumlusu bildirim alır.`,
+        "Kaldır", 10, "", async g => { await API.rpc("mod_medya_kaldir", { p_tur: x.tur, p_id: x.id, p_gerekce: g }); toast("İçerik yayından kaldırıldı."); sonra(); });
+    });
+  }
+  function mdOrtakBagla() {
+    document.querySelectorAll("[data-dosya]").forEach(b => b.onclick = () => mmDosyaAc(b.dataset.dosya));
+    document.querySelectorAll("[data-mdkd]").forEach(b => b.onclick = () => { const [t, id] = b.dataset.mdkd.split(":"); mdKurumDosya(t, +id); });
+  }
+  async function mmMedya() {
+    const sekmeler = [["akis", "Son yayınlar"], ["durdurma", "Yayın durdurma"], ["kurum", "Kurum ara"], ["arsiv", "Kaldırılanlar"]];
+    yukleniyor("Medya denetimi");
+    let d;
+    try {
+      if (MD.sekme === "akis") d = await API.rpc("mod_medya_akis", { p_tur: MD.tur || null, p_ara: MD.ara || null });
+      else if (MD.sekme === "kurum") d = MD.kara || MD.ktur ? await API.rpc("mod_kurum_ara", { p_tur: MD.ktur, p_ara: MD.kara || null }) : [];
+      else d = await API.rpc("mod_kurum_durdurmalar");
+    } catch (err) { hataSayfa("Medya denetimi", err); return; }
+    let govde = "";
+    if (MD.sekme === "akis") {
+      const l = (d && d.liste) || [];
+      govde = `<div class="mm-cipler" id="mdTur" style="margin-bottom:10px">${MD_TUR.map(([k, a]) => `<button class="mm-cip${MD.tur === k ? " on" : ""}" data-v="${k}" style="cursor:pointer${MD.tur === k ? ";background:var(--ink);color:#fff" : ""}">${esc(a)}</button>`).join("")}</div>
+        <label class="mm-alan" for="mdAra">Ara (başlık, metin, kurum adı)</label><input class="mm-girdi" id="mdAra" value="${esc(MD.ara)}" placeholder="Örn. bir kelime ya da gazete adı" enterkeyhint="search">
+        <button class="mm-btn" id="mdAraB" style="margin:8px 0 12px">Ara</button>
+        <div class="mm-alt" style="margin:0 0 6px;font-weight:700">Son 14 gün · ${l.length} kayıt</div>
+        ${l.map((x, i) => mdIcerikKart(x, i)).join("") || bos("Bu filtrede yayın yok", "")}`;
+      sayfa("Medya denetimi", mdUst(sekmeler) + govde);
+      cipSec($("#mdTur"), v => { MD.tur = v; mmMedya(); });
+      $("#mdAraB").onclick = () => { MD.ara = $("#mdAra").value.trim(); mmMedya(); };
+      $("#mdAra").onkeydown = e => { if (e.key === "Enter") $("#mdAraB").click(); };
+      mdKaldirBagla(l, "", mmMedya);
+    } else if (MD.sekme === "kurum") {
+      const l = d || [];
+      govde = `<label class="mm-alan" for="mdKt">Kurum türü</label><select class="mm-girdi" id="mdKt">${MD_KURUM.map(([k, a]) => `<option value="${k}"${MD.ktur === k ? " selected" : ""}>${esc(a)}</option>`).join("")}</select>
+        <label class="mm-alan" for="mdKa" style="margin-top:8px">Ad</label><input class="mm-girdi" id="mdKa" value="${esc(MD.kara)}" placeholder="Boş bırakırsan son kurumlar listelenir">
+        <button class="mm-btn" id="mdKaB" style="margin:8px 0 12px">Ara</button>
+        ${l.map(x => `<div class="mm-kart" style="--c:${x.durdurma ? "#e0a43a" : x.aktif ? "#98a4c4" : "#6b7385"}">
+          <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:16px;overflow-wrap:anywhere">${esc(x.ad)}</b>${x.durdurma ? `<span class="mm-etiket" style="--c:#e0a43a">Durduruldu</span>` : !x.aktif ? `<span class="mm-etiket" style="--c:#6b7385">Kapalı</span>` : ""}</div>
+          <div class="mm-alt">${[x.sahip ? "sorumlu " + x.sahip : "", x.alt || ""].filter(Boolean).map(esc).join(" · ")}${x.durdurma ? " · " + tsaat(x.durdurma) + " tarihine kadar" : ""}</div>
+          <div class="mm-aksiyon"><button data-mdkd="${x.tur}:${x.id}">Kurum dosyası</button></div></div>`).join("") || bos("Sonuç yok", "")}`;
+      sayfa("Medya denetimi", mdUst(sekmeler) + govde);
+      $("#mdKaB").onclick = () => { MD.ktur = $("#mdKt").value; MD.kara = $("#mdKa").value.trim(); mmMedya(); };
+      $("#mdKt").onchange = () => { MD.ktur = $("#mdKt").value; mmMedya(); };
+    } else if (MD.sekme === "durdurma") {
+      const ak = d.aktif || [], bk = d.bekleyen || [];
+      govde = `<div class="mm-uyari sari">${IK.kilit}<div>${(d.kurallar || []).map(esc).join("<br>")}</div></div>
+        <div class="mm-alt" style="margin:14px 0 6px;font-weight:700">İkinci imza bekleyenler (${bk.length})</div>
+        ${bk.map(x => mdDurdurmaKart(x, true)).join("") || bos("Bekleyen talep yok", "")}
+        <div class="mm-alt" style="margin:18px 0 6px;font-weight:700">Yürürlükteki durdurmalar (${ak.length})</div>
+        ${ak.map(x => mdDurdurmaKart(x, false)).join("") || bos("Yürürlükte durdurma yok", "Bir kurumu durdurmak için Kurum ara › Kurum dosyası.")}
+        <div class="mm-alt" style="margin:18px 0 6px;font-weight:700">Süre ve yetkiler</div>
+        ${(d.turler || []).map(x => `<div class="mm-kart" style="--c:${x.yetkim ? "#3fb67a" : "#6b7385"}"><b>${esc(x.ad)}</b><div class="mm-alt">Tek imza: ${esc(x.tek)} · İki imza: ${esc(x.cift)}${x.yetkim ? "" : " · senin masanın yetkisinde değil"}</div><div class="mm-alt">${esc(x.etki)}</div></div>`).join("")}`;
+      sayfa("Medya denetimi", mdUst(sekmeler) + govde);
+      mdDurdurmaBagla(mmMedya);
+    } else {
+      const l = d.kaldirilan || [];
+      govde = `<div class="mm-alt" style="margin:0 0 8px">Yönetimin kaldırdığı son içerikler ve değiştirilen kurum adları. Yanlış karar geri yüklenebilir; kendi kaldırdığın içerik dışında kurum sorumlusu olduğun ya da partinden bir içeriği geri yükleyemezsin.</div>
+        ${l.map(x => `<div class="mm-kart" style="--c:${x.geri_zaman ? "#3fb67a" : "#6b7385"}">
+          <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:16px;overflow-wrap:anywhere">${esc(x.baslik || "")}</b><span class="mm-etiket" style="--c:${x.geri_zaman ? "#3fb67a" : "#6b7385"}">${x.geri_zaman ? "Geri yüklendi" : esc(x.tur_ad)}</span></div>
+          <div class="mm-alt">${[x.sahip ? "sahibi " + x.sahip : "", "kaldıran " + (x.kaldiran || "—"), tsaat(x.zaman)].filter(Boolean).map(esc).join(" · ")}</div>
+          <div class="mm-alt" style="white-space:pre-wrap">${esc(x.gerekce || "")}</div>
+          <div class="mm-aksiyon">${!x.geri_zaman ? `<button class="y" data-mdg="${x.id}">Geri yükle</button>` : ""}${x.kurum_tur && x.kurum_id ? `<button class="y" data-mdkd="${x.kurum_tur}:${x.kurum_id}">Kurum dosyası</button>` : ""}</div></div>`).join("") || bos("Kaldırılan içerik yok", "")}`;
+      sayfa("Medya denetimi", mdUst(sekmeler) + govde);
+      mdGeriBagla(mmMedya);
+    }
+    document.querySelectorAll(".mm-sekme [data-s]").forEach(b => b.onclick = () => { MD.sekme = b.dataset.s; mmMedya(); });
+    mdOrtakBagla();
+  }
+  function mdUst(sekmeler) {
+    return `<div class="mm-uyari sari">${IK.gazete}<div>Gazete, karikatür, kitap, pano, TV yorumu, dernek, sendika ve parti açıklamaları tek yerde. Kural dışı içeriği kaldır; kurum ısrar ediyorsa yayınlarını süreli durdur. Her işlemde gerekçe zorunlu, imzanla bildirilir ve denetim günlüğüne yazılır. Canlı TV yayını için: TV yayınları ekranı.</div></div>
+      <div class="mm-sekme">${sekmeler.map(s => `<button class="${MD.sekme === s[0] ? "on" : ""}" data-s="${s[0]}">${s[1]}</button>`).join("")}</div>`;
+  }
+  const mdDurdurmaKart = (x, bekleyen) => `<div class="mm-kart" style="--c:${bekleyen ? "#5b8def" : "#e0a43a"}">
+      <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:16px;overflow-wrap:anywhere">${esc(x.kurum)} · ${esc(x.tur_ad)}</b><span class="mm-etiket" style="--c:${bekleyen ? "#5b8def" : "#e0a43a"}">${bekleyen ? "İmza bekliyor" : "Durduruldu"}</span></div>
+      <div class="mm-alt">${x.bitis && !bekleyen ? esc(tsaat(x.bitis)) + " tarihine kadar · " : ""}${x.istenen ? "istenen " + esc(x.istenen) + " · " : ""}veren ${esc(x.veren || "—")}${x.onaylayan ? " · onaylayan " + esc(x.onaylayan) : ""}</div>
+      <div class="mm-alt" style="white-space:pre-wrap">${esc(x.gerekce || "")}${x.kanit ? "\nKanıt: " + esc(x.kanit) : ""}</div>
+      <div class="mm-aksiyon">${bekleyen && !x.benim ? `<button data-mdo="${x.id}">İkinci imzayı at</button><button class="y" data-mdr="${x.id}">Reddet</button>` : ""}${!bekleyen || x.benim ? `<button class="y" data-mdx="${x.id}" data-aktif="${x.aktif ? 1 : 0}">${x.aktif ? "Durdurmayı kaldır" : "Talebi geri çek"}</button>` : ""}<button class="y" data-mdkd="${x.tur}:${x.kurum_id}">Kurum dosyası</button></div></div>`;
+  function mdDurdurmaBagla(sonra) {
+    document.querySelectorAll("[data-mdo]").forEach(b => b.onclick = async () => {
+      if (!await onayla("İkinci imza", "Durdurma talebini onaylıyorsun; istenen süre yürürlüğe girer ve kurum sorumlularına bildirilir.", "Onayla", true)) return;
+      try { await API.rpc("mod_kurum_durdurma_karar", { p_id: +b.dataset.mdo, p_onay: true, p_not: null }); toast("Onaylandı."); sonra(); } catch (err) { hata(err); }
+    });
+    document.querySelectorAll("[data-mdr]").forEach(b => b.onclick = () => mdGerekce("Talebi reddet", "İkinci imza verilmez. Tek imzalı süre varsa aynen sürer.", "Reddet", 5, "",
+      async g => { await API.rpc("mod_kurum_durdurma_karar", { p_id: +b.dataset.mdr, p_onay: false, p_not: g }); toast("Reddedildi."); sonra(); }));
+    document.querySelectorAll("[data-mdx]").forEach(b => b.onclick = () => mdGerekce(b.dataset.aktif === "1" ? "Durdurmayı kaldır" : "Talebi geri çek",
+      "Kurum yeniden yayın ve faaliyet yapabilir. Kurucunun koyduğu durdurmayı yalnız kurucu kaldırır.", "Kaldır", 5, "",
+      async g => { await API.rpc("mod_kurum_durdurma_kaldir", { p_id: +b.dataset.mdx, p_not: g }); toast("Kaldırıldı."); sonra(); }));
+  }
+  function mdGeriBagla(sonra) {
+    document.querySelectorAll("[data-mdg]").forEach(b => b.onclick = () => mdGerekce("Geri yükle", "İçerik yeniden yayına girer; sahibi ve kaldıran görevli bildirim alır.", "Geri yükle", 5, "",
+      async g => { await API.rpc("mod_medya_geri_yukle", { p_arsiv: +b.dataset.mdg, p_not: g }); toast("Geri yüklendi."); sonra(); }));
+  }
+  async function mdKurumDosya(tur, id) {
+    yukleniyor("Kurum dosyası");
+    let d; try { d = await API.rpc("mod_kurum_dosya", { p_tur: tur, p_id: id }); } catch (err) { hataSayfa("Kurum dosyası", err); return; }
+    const y = d.yetki || {}, ic = d.icerikler || [], pn = d.panolar || [], ar = d.arsiv || [];
+    const tekrar = () => mdKurumDosya(tur, id);
+    const icerik = ic.map(x => Object.assign({}, x, { kurum: "", kaldirildi: !!x.kaldirildi || ar.some(a => a.tur === x.tur && a.kayit_id === x.id && !a.geri_zaman) }));
+    sayfa("Kurum dosyası", `<section class="mm-kart" style="--c:${d.durdurma ? "#e0a43a" : d.aktif ? "#5b8def" : "#6b7385"}">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between"><b style="font-size:19px;overflow-wrap:anywhere">${esc(d.ad)}</b><span class="mm-etiket" style="--c:#98a4c4">${esc(d.tur_ad)}</span></div>
+        ${d.slogan ? `<div class="mm-alt">${esc(d.slogan)}</div>` : ""}
+        <div class="mm-alt">Sorumlu: ${esc((d.sorumlular || []).join(", ") || "—")}${d.aktif ? "" : " · kurum kapalı"}</div>
+        ${d.durdurma ? `<div class="mm-uyari sari" style="margin-top:8px">${IK.kilit}<div><b>Yayınlar ${esc(tsaat(d.durdurma.bitis))} tarihine kadar durduruldu.</b><br>${esc(d.durdurma.gerekce || "")}<br>${esc(d.etki || "")}</div></div>` : ""}
+        ${d.bekleyen ? `<div class="mm-alt" style="margin-top:6px">İkinci imza bekleyen talep var (${esc(d.bekleyen.istenen || "")}, ${esc(d.bekleyen.veren || "")}).</div>` : ""}
+        <div class="mm-aksiyon" style="margin-top:8px">${y.durdur && d.aktif && !d.durdurma && !d.bekleyen ? `<button id="mdDur">Yayınları durdur</button>` : ""}${y.icerik ? `<button class="y" id="mdAd">Adını düzelt</button>` : ""}${(d.sorumlular || [])[0] ? `<button class="y" data-dosya="${esc(d.sorumlular[0])}">Sorumlu dosyası</button>` : ""}</div>
+        ${y.tek_engel ? `<div class="mm-alt" style="margin-top:6px">${esc(y.tek_engel)}</div>` : ""}</section>
+      <div class="mm-alt" style="margin:14px 0 6px;font-weight:700">Son içerikler (${icerik.length})</div>
+      ${icerik.map((x, i) => mdIcerikKart(x, i, "k")).join("") || bos("İçerik yok", "")}
+      ${pn.length ? `<div class="mm-alt" style="margin:18px 0 6px;font-weight:700">Yayındaki pano reklamları (${pn.length})</div>${pn.map((x, i) => `<div class="mm-kart" style="--c:#5b8def"><b>${esc(x.ad)}</b><div class="mm-alt">${x.kapsam === "ulke" ? "Ülke geneli" : "İl"} · ${esc(tsaat(x.bit))} tarihine kadar</div><div class="mm-aksiyon"><button data-mdp="${i}">Panodan kaldır</button></div></div>`).join("")}` : ""}
+      ${ar.length ? `<div class="mm-alt" style="margin:18px 0 6px;font-weight:700">Bu kurumdan kaldırılanlar (${ar.length})</div>${ar.map(x => `<div class="mm-kart" style="--c:#6b7385"><b>${esc(x.baslik || "")}</b><div class="mm-alt">${esc(x.tur_ad)} · ${esc(x.kaldiran || "")} · ${esc(tsaat(x.zaman))}</div><div class="mm-alt" style="white-space:pre-wrap">${esc(x.gerekce || "")}</div>${!x.geri_zaman ? `<div class="mm-aksiyon"><button class="y" data-mdg="${x.id}">Geri yükle</button></div>` : `<div class="mm-alt">Geri yüklendi</div>`}</div>`).join("")}` : ""}`);
+    mdOrtakBagla();
+    mdKaldirBagla(icerik, "k", tekrar);
+    mdGeriBagla(tekrar);
+    document.querySelectorAll("[data-mdp]").forEach(b => b.onclick = () => { const x = pn[+b.dataset.mdp];
+      mdGerekce("Panodan kaldır", `“${x.ad}” reklamı panodan iner. Ödeme iade edilmez.`, "Kaldır", 10, "",
+        async g => { await API.rpc("mod_medya_kaldir", { p_tur: "pano", p_id: x.id, p_gerekce: g }); toast("Reklam kaldırıldı."); tekrar(); }); });
+    const dr = $("#mdDur"); if (dr) dr.onclick = () => {
+      const ust = Math.max(1, +y.cift_saat || 720), tek = +y.tek_saat || 0;
+      const secenek = [[6, "6 saat"], [24, "1 gün"], [72, "3 gün"], [168, "7 gün"], [336, "14 gün"], [720, "30 gün"], [8760, "1 yıl"]].filter(s => s[0] <= ust);
+      mdGerekce("Yayınları durdur", `${d.ad} (${d.tur_ad}) süre boyunca: ${d.etki}\nKurum kapanmaz, kasası ve üyeleri etkilenmez; süre bitince kendiliğinden açılır.\nTek imza: ${y.tek || "yok"} · İki imza: ${y.cift || ""}`, "Durdur", 10,
+        `<label class="mm-alan" for="mdSure">Süre</label><select class="mm-girdi" id="mdSure">${secenek.map(([s, a]) => `<option value="${s}"${s === Math.min(24, ust) ? " selected" : ""}>${a}${tek && s > tek ? " (ikinci imza gerekir)" : ""}</option>`).join("")}</select>
+         <label class="mm-alan" for="mdKanit" style="margin-top:8px">Kanıt (ikinci imza gerekiyorsa zorunlu: hangi yayın, hangi tarih, hangi ifade)</label><textarea class="mm-girdi" id="mdKanit" maxlength="600"></textarea>`,
+        async (g, md) => {
+          const r = await API.rpc("mod_kurum_durdur", { p_tur: tur, p_id: id, p_saat: +$("#mdSure", md).value, p_gerekce: g, p_kanit: $("#mdKanit", md).value.trim() || null });
+          toast(r && r.durum === "bekliyor" ? "Talep açıldı; ikinci imza bekliyor." : r && r.ikinci_imza ? "Durduruldu; uzatma için ikinci imza bekliyor." : "Kurumun yayınları durduruldu.");
+          tekrar();
+        });
+    };
+    const ad = $("#mdAd"); if (ad) ad.onclick = () => mdGerekce("Adını düzelt", `Kurala aykırı kurum adı “${d.ad}” değiştirilir. Yeni ad boş bırakılırsa “${d.tur_ad} No. ${id}” olur. Eski ad arşivde kalır.`, "Adı değiştir", 10,
+      `<label class="mm-alan" for="mdYad">Yeni ad (isteğe bağlı, 4-40 karakter)</label><input class="mm-girdi" id="mdYad" maxlength="40">`,
+      async (g, md) => { await API.rpc("mod_kurum_ad_duzelt", { p_tur: tur, p_id: id, p_gerekce: g, p_yeni_ad: $("#mdYad", md).value.trim() || null }); toast("Kurum adı değiştirildi."); tekrar(); });
+  }
+
   const KISIT_RENK = { sustur: "#e0a43a", engel: "#e5574f", mali: "#3fb67a", secim: "#5b8def" };
   function kisitSatir(k, yon) {
     const elle = k.kod === "mali" || k.kod === "secim";
@@ -1368,5 +1531,5 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     window.yoneticiEkraniKlasik = yoneticiEkrani;
     window.yoneticiEkrani = yoneticiEkrani = modMerkezi;
   }
-  Object.assign(window, { modMerkezi, mmDosyaAc, mmKayit, mmSikayet, mmNobet, mmDestek, mmTalepler, mmEkip, mmGunluk, mmDuyuru, mmCoklu, mmTalepAc: talepAc, mmKutu, mmKursu, mmTv, mmKisitlar, mmCihaz, mmOyuncuyaYaz: oyuncuyaYazAc });
+  Object.assign(window, { modMerkezi, mmDosyaAc, mmKayit, mmSikayet, mmNobet, mmDestek, mmTalepler, mmEkip, mmGunluk, mmDuyuru, mmCoklu, mmTalepAc: talepAc, mmKutu, mmKursu, mmTv, mmMedya, mdKurumDosya, mmKisitlar, mmCihaz, mmOyuncuyaYaz: oyuncuyaYazAc });
 })();

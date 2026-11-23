@@ -22,6 +22,10 @@ const R={
  admin_mod_ekip:{birimler,yetkiler:[["ozet","Özet"],["sikayet","Şikâyetler"],["sustur","Susturma"],["hesap_kapat","Engelleme"],["oyuncu_ara","Oyuncu inceleme"],["eposta","E-posta görme",1],["duyuru","Duyuru"],["coklu_hesap","Çoklu hesap"],["kurallar","Kurallar",1],["ekonomi","MASAK"],["para","Para ve kıdem",1],["makam","Görev verme",1],["kayit","Kayıt onayı",0,1],["destek","Destek"]].map(([kod,ad,k,t])=>({kod,ad,aciklama:"Açıklama metni burada yer alır.",kritik:!!k,temel:!!t})),moderatorler:mods},
  mod_gunluk:[{id:5,kad:"halilmutlu",islem:"kayit_onay",hedef:"ahmet",ayrinti:"Ahmet Yılmaz",zaman:dk(5)}],
  mod_tv_liste:{programlar:[{id:60,baslik:"KAMARBEY VURDURUYOR 🏳️‍🌈👌🏻",durum:"canli",tur:"haber",bas:dk(30),izleyici:10,kanal_id:12,kanal:"Türk Tv",sunucu:"karahanlı",sahip:"İskender"},{id:61,baslik:"Akşam Bülteni",durum:"planli",tur:"haber",bas:dk(-60),izleyici:0,kanal_id:9,kanal:"Kanaltürk Tv",sunucu:"MusaOzkan",sahip:"mücahiterbakan"}],kanallar:[{id:12,ad:"Türk Tv",slogan:"Tek yürek Tek Millet",sahip:"İskender",canli:1,planli:0},{id:9,ad:"Kanaltürk Tv",slogan:"Türkiyenin Kanalı KanalTürk",sahip:"mücahiterbakan",canli:0,planli:1}],kapali:[{id:4,ad:"Haber Odası",sahip:"eskiOyuncu",zaman:dk(100),gerekce:"Bölücü içerikli yayınlar.",kapatan:"Oyun Kurucusu"}]},
+ mod_medya_akis:{liste:[{tur:"gazete_yazi",id:31,baslik:"Hükümet istifa etmeli",metin:"Uzun bir köşe yazısı metni burada yer alır ve satır kırar.",etiket:"kose",yazar:"yazarOyuncu",kurum_tur:"gazete",kurum_id:3,kurum:"Halkın Sesi",zaman:dk(15),kaldirildi:false},{tur:"pano",id:77,baslik:"Seçim afişi",metin:"OY VER · Değişim zamanı",etiket:"ülke geneli",yazar:"partiGB",kurum_tur:"parti",kurum_id:2,kurum:"Halkın Partisi",zaman:dk(80),kaldirildi:false},{tur:"kose_yorum",id:9,baslik:"Yorum · Hükümet istifa etmeli",metin:"Katılmıyorum.",yazar:"okur1",kurum_tur:"gazete",kurum_id:3,kurum:"Halkın Sesi",zaman:dk(5),kaldirildi:true}]},
+ mod_kurum_ara:[{tur:"gazete",id:3,ad:"Halkın Sesi",sahip:"yazarOyuncu",aktif:true,alt:"Doğru haber",durdurma:null}],
+ mod_kurum_dosya:{tur:"gazete",tur_ad:"Gazete",id:3,ad:"Halkın Sesi",slogan:"Doğru haber",aktif:true,etki:"Yeni haber, köşe yazısı ve propaganda yayımlayamaz.",sorumlular:["yazarOyuncu"],yetki:{durdur:true,icerik:true,yonetici:true,tek_saat:8760,cift_saat:8760,tek:"1 yıl",cift:"1 yıl",tek_engel:null},durdurma:null,bekleyen:null,gecmis:[],icerikler:[{tur:"gazete_yazi",id:31,baslik:"Hükümet istifa etmeli",metin:"Metin",yazar:"yazarOyuncu",zaman:dk(15),etiket:"kose"}],panolar:[{id:5,ad:"Gazete reklamı",kapsam:"il",bit:dk(-600)}],arsiv:[]},
+ mod_kurum_durdurmalar:{turler:[{kod:"gazete",ad:"Gazete",etki:"Yeni yazı yayımlayamaz.",tek:"3 gün",cift:"30 gün",yetkim:true}],icerik_yetkim:true,yonetici:true,aktif:[{id:1,tur:"tv",tur_ad:"TV kanalı",kurum_id:12,kurum:"Türk Tv",bitis:dk(-1440),aktif:true,veren:"Eyetkin",gerekce:"Uygunsuz yayın başlıkları.",benim:false}],bekleyen:[{id:2,tur:"dergi",tur_ad:"Karikatür dergisi",kurum_id:4,kurum:"Kırmızı Kalem",istenen:"14 gün",veren:"yavuz02",gerekce:"Bölücü karikatürler.",kanit:"Sayı 3, 22.11",benim:false,aktif:false}],son:[],kaldirilan:[{id:4,tur:"gazete_yazi",tur_ad:"Gazete yazısı",kurum_tur:"gazete",kurum_id:3,baslik:"Eski yazı",sahip:"yazarOyuncu",kaldiran:"Geçici",gerekce:"Hakaret içeriyor.",zaman:dk(300),geri_zaman:null}],kurallar:["Tek imza en çok 3 gün; ikinci imzayla en çok 30 gün."]},
  yk_oyuncular:{toplam:1,liste:[{kad:"gürültücü",il:"İstanbul",parti:{kisa:"HP"},son_gorulme:dk(3),susturma_bitis:simdi}]}
 };
 const KOPRU=`<script>window.__R=${JSON.stringify(R)};window.API_TEST={async rpc(fn,a){window.__son=(window.__son||[]);window.__son.push([fn,a]);if(fn in __R)return JSON.parse(JSON.stringify(__R[fn]));return null},async oturum(){return null},async kayit(){},async giris(){},async cikis(){}};</script>`;
@@ -56,5 +60,12 @@ const html=html0.replace(/<script src="https:[^"]+"><\/script>/g,'').replace('<b
  await ekran('11b_kes',()=>document.querySelector('[data-kes]').click());
  await p.evaluate(()=>modalKapat());
  await ekran('11c_kapat',()=>document.querySelector('[data-kkapat]').click());
+ await p.evaluate(()=>modalKapat());
+ await ekran('12_medya',()=>ekranAc(mmMedya));
+ await ekran('12b_kaldir',()=>document.querySelector('[data-mdk]').click());
+ await p.evaluate(()=>modalKapat());
+ await ekran('12c_durdurma',()=>document.querySelector('.mm-sekme [data-s="durdurma"]').click());
+ await ekran('12d_kurum',()=>mdKurumDosya('gazete',3));
+ await ekran('12e_durdur',()=>document.getElementById('mdDur').click());
  await p.evaluate(()=>modalKapat());
  console.log('HATALAR',hatalar.slice(0,5));await b.close();})();
