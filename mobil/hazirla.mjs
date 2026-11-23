@@ -32,6 +32,10 @@ if (fs.existsSync(and)) {
     m = m.replace(/android:launchMode="singleTask"/g, 'android:launchMode="singleTop"');
     // Oyun dikey ekran için tasarlandı
     if (!/android:screenOrientation=/.test(m)) m = m.replace(/(<activity\b)/, '$1 android:screenOrientation="portrait"');
+    // Dikey kilit, Play'de "android.hardware.screen.portrait zorunlu" sayılıp tablet/Chromebook/PC'yi dışlıyor.
+    // Özelliği isteğe bağlı bildir: uygulama yine dikey açılır, ama hiçbir cihaz yükleyemez duruma düşmez.
+    if (!m.includes("android.hardware.screen.portrait"))
+      m = m.replace(/(<\/manifest>)/, `    <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />\n$1`);
     return m;
   });
   const gradle = path.join(and, "app/build.gradle");
