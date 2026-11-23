@@ -353,7 +353,9 @@ declare
     -- 23.11.2026 Medya ve yayın denetimi + kurum denetimi çekirdeği (sql/zz_20261123_medya_denetimi.sql)
     'mod_medya_akis', 'mod_medya_kaldir', 'mod_medya_geri_yukle', 'mod_icerik_kaldir', 'mod_icerik_geri_yukle',
     'mod_kurum_ara', 'mod_kurum_dosya', 'mod_kurum_durdur', 'mod_kurum_durdurma_kaldir', 'mod_kurum_durdurma_karar',
-    'mod_kurum_durdurmalar', 'mod_kurum_ad_duzelt'
+    'mod_kurum_durdurmalar', 'mod_kurum_ad_duzelt',
+    -- 23.11.2026 Gazete/dergi kapatma (sql/zz_20261123_mod_kurum_kapat.sql)
+    'mod_kurum_kapat', 'mod_kurum_ac', 'mod_kurum_kapatma_bilgi'
   ];
 -- @@rpc_yuzey_izin_son@@
   anon_izin text[] := array['surum', 'uygulama_ayar'];

@@ -66,6 +66,8 @@ const html=html0.replace(/<script src="https:[^"]+"><\/script>/g,'').replace('<b
  await p.evaluate(()=>modalKapat());
  await ekran('12c_durdurma',()=>document.querySelector('.mm-sekme [data-s="durdurma"]').click());
  await ekran('12d_kurum',()=>mdKurumDosya('gazete',3));
+ await ekran('12f_kapat',()=>document.getElementById('mdKapat').click());
+ await p.evaluate(()=>modalKapat());
  await ekran('12e_durdur',()=>document.getElementById('mdDur').click());
  await p.evaluate(()=>modalKapat());
  console.log('HATALAR',hatalar.slice(0,5));await b.close();})();

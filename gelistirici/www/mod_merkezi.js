@@ -55,7 +55,7 @@
   const ISLEM = Object.assign({}, typeof MOD_ISLEM === "object" ? MOD_ISLEM : {}, {
     kisit_mali: "para çıkışını dondurdu", kisit_secim: "seçim kısıtı koydu", kisit_uzat: "kısıtı uzattı (ikinci imza)", kisit_kaldir: "kısıtı kaldırdı",
     toplu_gizle: "son içeriklerini topluca gizledi", destek_devir: "talebi başka masaya devretti", masa_yetkileri: "masa yaptırım yetkilerini yürürlüğe koydu",
-    kayit_onay: "başvuruyu kabul etti", tv_yayin_kes: "TV yayınını kesti", tv_kanal_kapat: "TV kanalını kapattı", tv_kanal_ac: "TV kanalını yeniden açtı", icerik_kaldir: "içeriği yayından kaldırdı", icerik_geri: "içeriği geri yükledi", pano_kaldir: "pano reklamını kaldırdı", kurum_durdur: "kurumun yayınlarını durdurdu", kurum_durdur_talep: "yayın durdurma talebi açtı", kurum_durdur_onay: "yayın durdurmaya ikinci imza attı", kurum_durdur_ret: "yayın durdurma talebini reddetti", kurum_durdur_kaldir: "yayın durdurmayı kaldırdı", kurum_ad: "kurum adını düzeltti", kayit_ret: "başvuruyu reddetti", talep_ac: "yaptırım talebi açtı", talep_onay: "talebi onayladı",
+    kayit_onay: "başvuruyu kabul etti", tv_yayin_kes: "TV yayınını kesti", tv_kanal_kapat: "TV kanalını kapattı", tv_kanal_ac: "TV kanalını yeniden açtı", icerik_kaldir: "içeriği yayından kaldırdı", icerik_geri: "içeriği geri yükledi", pano_kaldir: "pano reklamını kaldırdı", kurum_durdur: "kurumun yayınlarını durdurdu", kurum_durdur_talep: "yayın durdurma talebi açtı", kurum_durdur_onay: "yayın durdurmaya ikinci imza attı", kurum_durdur_ret: "yayın durdurma talebini reddetti", kurum_durdur_kaldir: "yayın durdurmayı kaldırdı", kurum_ad: "kurum adını düzeltti", kurum_kapat: "kurumu kapattı", kurum_ac: "kurumu yeniden açtı", kayit_ret: "başvuruyu reddetti", talep_ac: "yaptırım talebi açtı", talep_onay: "talebi onayladı",
     talep_ret: "talebi reddetti", talep_geri: "talebini geri çekti", not_ekle: "dosyaya not ekledi", destek_yanit: "destek talebini yanıtladı",
     destek_kapat: "destek talebini kapattı", yk_sustur: "susturdu", mod_uyari: "resmî uyarı verdi", mod_para_cezasi: "para cezası kesti", yk_engel_sureli: "süreli engelledi / uzaklaştırdı", yk_engel_kalici: "kalıcı engelledi",
     yk_engel_kaldir: "engeli kaldırdı", masak_temiz: "MASAK: temiz dedi", masak_ihtar: "MASAK: ihtar verdi", masak_el_koy: "MASAK: el koydu",
@@ -1403,7 +1403,9 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
   }
   async function mdKurumDosya(tur, id) {
     yukleniyor("Kurum dosyası");
-    let d; try { d = await API.rpc("mod_kurum_dosya", { p_tur: tur, p_id: id }); } catch (err) { hataSayfa("Kurum dosyası", err); return; }
+    let d, kp = null; try { d = await API.rpc("mod_kurum_dosya", { p_tur: tur, p_id: id }); } catch (err) { hataSayfa("Kurum dosyası", err); return; }
+    const kapanir = tur === "gazete" || tur === "dergi";
+    if (kapanir && !d.aktif && d.yetki && d.yetki.icerik) { try { kp = await API.rpc("mod_kurum_kapatma_bilgi", { p_tur: tur, p_id: id }); } catch (err) { kp = null; } }
     const y = d.yetki || {}, ic = d.icerikler || [], pn = d.panolar || [], ar = d.arsiv || [];
     const tekrar = () => mdKurumDosya(tur, id);
     const icerik = ic.map(x => Object.assign({}, x, { kurum: "", kaldirildi: !!x.kaldirildi || ar.some(a => a.tur === x.tur && a.kayit_id === x.id && !a.geri_zaman) }));
@@ -1412,8 +1414,9 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
         ${d.slogan ? `<div class="mm-alt">${esc(d.slogan)}</div>` : ""}
         <div class="mm-alt">Sorumlu: ${esc((d.sorumlular || []).join(", ") || "—")}${d.aktif ? "" : " · kurum kapalı"}</div>
         ${d.durdurma ? `<div class="mm-uyari sari" style="margin-top:8px">${IK.kilit}<div><b>Yayınlar ${esc(tsaat(d.durdurma.bitis))} tarihine kadar durduruldu.</b><br>${esc(d.durdurma.gerekce || "")}<br>${esc(d.etki || "")}</div></div>` : ""}
+        ${kp ? `<div class="mm-uyari sari" style="margin-top:8px">${IK.kilit}<div><b>Yönetim kararıyla kapatıldı</b> · ${esc(tsaat(kp.zaman))} · ${esc(kp.kapatan || "")}<br>${esc(kp.gerekce || "")}</div></div>` : ""}
         ${d.bekleyen ? `<div class="mm-alt" style="margin-top:6px">İkinci imza bekleyen talep var (${esc(d.bekleyen.istenen || "")}, ${esc(d.bekleyen.veren || "")}).</div>` : ""}
-        <div class="mm-aksiyon" style="margin-top:8px">${y.durdur && d.aktif && !d.durdurma && !d.bekleyen ? `<button id="mdDur">Yayınları durdur</button>` : ""}${y.icerik ? `<button class="y" id="mdAd">Adını düzelt</button>` : ""}${(d.sorumlular || [])[0] ? `<button class="y" data-dosya="${esc(d.sorumlular[0])}">Sorumlu dosyası</button>` : ""}</div>
+        <div class="mm-aksiyon" style="margin-top:8px">${y.durdur && d.aktif && !d.durdurma && !d.bekleyen ? `<button id="mdDur">Yayınları durdur</button>` : ""}${y.icerik && kapanir && d.aktif ? `<button id="mdKapat">Kurumu kapat</button>` : ""}${kp ? `<button class="y" id="mdAc">Yeniden aç</button>` : ""}${y.icerik ? `<button class="y" id="mdAd">Adını düzelt</button>` : ""}${(d.sorumlular || [])[0] ? `<button class="y" data-dosya="${esc(d.sorumlular[0])}">Sorumlu dosyası</button>` : ""}</div>
         ${y.tek_engel ? `<div class="mm-alt" style="margin-top:6px">${esc(y.tek_engel)}</div>` : ""}</section>
       <div class="mm-alt" style="margin:14px 0 6px;font-weight:700">Son içerikler (${icerik.length})</div>
       ${icerik.map((x, i) => mdIcerikKart(x, i, "k")).join("") || bos("İçerik yok", "")}
@@ -1436,6 +1439,12 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
           toast(r && r.durum === "bekliyor" ? "Talep açıldı; ikinci imza bekliyor." : r && r.ikinci_imza ? "Durduruldu; uzatma için ikinci imza bekliyor." : "Kurumun yayınları durduruldu.");
           tekrar();
         });
+    };
+    const kb = $("#mdKapat"); if (kb) kb.onclick = () => mdGerekce("Kurumu kapat", `${d.ad} (${d.tur_ad}) kapanır: listelerden düşer, yeni yayın yapamaz. Kasası ve geçmişi silinmez; sahibi 7 gün yenisini kuramaz. Yanlış karar buradan geri alınabilir.\nGeçici önlem yetiyorsa “Yayınları durdur”u kullan.`, "Kurumu kapat", 10, "",
+      async g => { await API.rpc("mod_kurum_kapat", { p_tur: tur, p_id: id, p_gerekce: g }); toast("Kurum kapatıldı."); tekrar(); });
+    const ac = $("#mdAc"); if (ac) ac.onclick = async () => {
+      if (!await onayla("Yeniden aç", `${d.ad} yeniden açılır ve sahibine bildirilir.`, "Yeniden aç", false)) return;
+      try { await API.rpc("mod_kurum_ac", { p_tur: tur, p_id: id }); toast("Kurum yeniden açıldı."); tekrar(); } catch (err) { hata(err); }
     };
     const ad = $("#mdAd"); if (ad) ad.onclick = () => mdGerekce("Adını düzelt", `Kurala aykırı kurum adı “${d.ad}” değiştirilir. Yeni ad boş bırakılırsa “${d.tur_ad} No. ${id}” olur. Eski ad arşivde kalır.`, "Adı değiştir", 10,
       `<label class="mm-alan" for="mdYad">Yeni ad (isteğe bağlı, 4-40 karakter)</label><input class="mm-girdi" id="mdYad" maxlength="40">`,

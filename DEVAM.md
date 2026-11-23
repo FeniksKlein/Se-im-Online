@@ -16,6 +16,11 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 23.11.2026 — 2026.11.23-12 Gazete ve karikatür dergisi kapatma (sunucu canlıda; ekran web'de, telefonlar mağaza sürümünü bekler)
+- İstek: moderatörler gazete ve dergileri de kalıcı kapatabilsin. `sql/zz_20261123_mod_kurum_kapat.sql`: `mod_kurum_kapat`, `mod_kurum_ac`, `mod_kurum_kapatma_bilgi`; kapatılan kurumun sahibi 7 gün aynı türde yenisini kuramaz. Yetki: 'sikayet' + kurucu.
+- Ekran: Medya denetimi › Kurum dosyası › "Kurumu kapat" / "Yeniden aç".
+- AÇIK İŞ: canlıdaki kurum denetimi çekirdeği ve başka bazı işlevler (ör. oyun.bolucu, oyun.mod_sandik_acik) depoda yok; depo–canlı eşitlemesi ayrıca yapılmalı.
+
 ## 23.11.2026 — 2026.11.23-11 Medya ve yayın denetimi (sunucu canlıda; ekran web'de, telefonlar mağaza sürümünü bekler)
 - İstek: İçerik moderatörleri Kürsü'nün yanında gazete, TV ve diğer yayınlara da müdahale edebilsin.
 - Bulgu: canlı veritabanında "kurum denetimi" çekirdeği (oyun.mkd_*, public.mod_kurum_*, mod_icerik_kaldir/geri_yukle, mod_kurum_durdurma, mod_icerik_arsiv) vardı ama depoda kaynağı yoktu, ekranı yoktu ve durdurmayı uygulayan tetikleyiciler takılmamıştı. Çekirdeğin depoya geri alınması ayrıca yapılmalı (şimdilik yalnız canlıda).
