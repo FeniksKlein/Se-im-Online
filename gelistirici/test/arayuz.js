@@ -113,10 +113,12 @@ const AUTH = {
 
   // ---- KAYIT
   await tikla('Hesap oluştur');
+  // 23.11.2026: önce Kullanıcı Sözleşmesi (iki zorunlu kutu), sonra kayıt formu
+  await bekle('Kullanıcı Sözleşmesi');
+  await page.check('#sozK1'); await page.check('#sozK2');
+  await foto('02a-sozlesme');
+  await tikla('Kabul ediyorum, devam et');
   await page.fill('#eposta', 'ercan@ornek.com'); await page.fill('#sifre', 'gizli1234'); await page.fill('#sifre2', 'gizli1234');
-  await tikla('Kayıt ol');
-  await bekle('Devam etmek için');
-  await page.check('#kvkk');
   await foto('02-kayit');
   await tikla('Kayıt ol');
   await bekle('6 haneli bir kod');

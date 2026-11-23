@@ -41,6 +41,8 @@ const KOSULLU = {
   'zz_20261121_mod_sohbet_sekme.sql': ['oyun.moderatorler', 'oyun.mod_kisit'],
   // 22.11: resmî uyarı, para cezası, kademeli susturma, saatlik uzaklaştırma (mod_kisit canlı migration'la kuruldu).
   'zz_20261122_kucuk_cezalar.sql': ['oyun.moderatorler', 'oyun.mod_kisit', 'oyun.hazine_kalem'],
+  // 23.11: Kullanıcı Sözleşmesi; kayıt başvuru tablosu (16.11 canlı migration) yoksa atlanır.
+  'zz_20261123_kullanici_sozlesmesi.sql': ['oyun_yonetim.kayit_basvurulari'],
   'zz_20261121_nobetci_hakimlik.sql': ['oyun.yonetim_tutuklama', 'oyun.tarife', 'oyun.zamanlayici_adim', 'oyun.mahkeme_uye', 'oyun.adliye_davalar', 'oyun.mahkeme_ayar'],
 };
 const okuKosullu = ad => {
@@ -78,7 +80,9 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   // 21.11.2026: takılan teklifler, Meclis tamsayısı, vekâlet, dönem sınırı, nöbetçi hâkimlik (sıra önemli: teklif_bakim önce)
   'zz_20261121_00_yama.sql', 'zz_20261121_teklif_bakim.sql', 'zz_20261121_meclis_tamsayi.sql', 'zz_20261121_cb_vekalet.sql', 'zz_20261121_cb_donem_siniri.sql', 'zz_20261121_nobetci_hakimlik.sql', 'zz_20261121_mod_sohbet_sekme.sql', 'zz_20261122_kisa_susturma.sql', 'zz_20261122_kucuk_cezalar.sql',
   // 23.11.2026: bağış yapan oyuncuya kazandığı kıdemi ve günlük +1 sınırını bildir (zz_20261121_00_yama'daki _yama yardımcısını kullanır)
-  'zz_20261123_bagis_kidem_bildirimi.sql'];
+  'zz_20261123_bagis_kidem_bildirimi.sql',
+  // 23.11.2026: Kullanıcı Sözleşmesi onay kaydı + kayıt kapısı (_yama yardımcısını kullanır; kapı en düşük uygulama sürümüne bağlı)
+  'zz_20261123_kullanici_sozlesmesi.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',

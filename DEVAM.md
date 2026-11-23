@@ -1,6 +1,6 @@
 # DEVAM — yeni sohbette önce bunu oku
 
-Sahibi: Ercan (FeniksKlein / Gülveren Games). Kodlama bilmiyor; **her şeyi Türkçe, sade ve adım adım anlat.**
+Sahibi: Ercan (FeniksKlein). Not: "Gülveren Games" unvanı kullanılmaz (Ercan, 23.11.2026). Kodlama bilmiyor; **her şeyi Türkçe, sade ve adım adım anlat.**
 Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (tek dosya HTML/JS + Capacitor, Supabase arka uç).
 
 ## ⚠️ KALICI TEMEL: YAYIN ÖLÇEĞİ (16.11.2026 — Ercan'ın kararı)
@@ -15,6 +15,16 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlıya küçük değişiklik gerekiyorsa: kaynağa yeni bir `gelistirici/sql/NN_*.sql` modülü ekle, `build/sql_birlestir.js` listesine yaz, **aynısını** `migrations/YYYYMMDD_*.sql` olarak (begin/commit içinde) Ercan'a çalıştırt.
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
+
+## 23.11.2026 — 2026.11.23-4 Kullanıcı Sözleşmesi: kayıttan önce zorunlu onay (istemci web'de yayında; sunucu kısmı onay bekliyor)
+- İstek (Ercan): hukuki koruma için Kullanıcı Sözleşmesi hazırlandı (Claude Docs'ta "Seçim Simülasyonu Online — Kullanıcı Sözleşmesi", Sürüm 1.0, yürürlük 23.11.2026); "bundan sonra kayıt olan herkese çıkart, kabul eden kayıt olabilsin, etmeyen olamasın". **Mevcut oyunculardan (profili olanlar) onay istenmez** (Ercan'ın kararı).
+- **İstemci** `gelistirici/www/kullanici_sozlesmesi.js` (`derle.js`'te en sonda): `SOZLESME` (sürüm 1.0, tam metin `SOZLESME.metin()`, `METIN.sozlesme`), `sozlesmeEkrani(mod)`, `sozlesmeKapisi()`. "Hesap oluştur" → önce tam metin + iki zorunlu kutu (sözleşme kabulü + 18 yaş; ikisi işaretlenmeden düğme kapalı); "Kabul etmiyorum" karşılamaya döner. Kabulden sonra e-posta/şifre formu (eski tek `#kvkk` kutusu kalktı; modül yüklenemezse eski kutu yedek olarak görünür). `API.kayit(email, sifre, meta)` kabulü signUp `user_metadata`'ya yazar (`sozlesme_surum`, `sozlesme_onay_at`); `API.oturum()` artık `meta` da döndürür. Cihazda `localStorage.so_sozlesme_onay` (e-postaya bağlı).
+- `profilOlusturEkrani` başında kapı: sunucuda kabul kaydı yoksa cihazdaki ya da hesap bilgisindeki kabul `sozlesme_onayla(...,'kayit')` ile yazılır; o da yoksa (eski yoldan kayıt olup başvurusunu göndermemiş hesap) sözleşme ekranı açılır, onay `'giris'` olarak yazılır, reddeden çıkış yapar. `sozlesme_durumum` hata verirse (ör. sunucu işlevi yoksa) eski akış bozulmaz.
+- Karşılama altbilgisi ve Ben menüsüne "Kullanıcı Sözleşmesi" eklendi. Gizlilik metni: veri sorumlusu "FeniksKlein"; sohbet/grup/özel mesajların yönetimce görüntülenebileceği; sözleşme onay kaydı paragrafı; sunucu yeri Supabase AB (Frankfurt).
+- **Sunucu** `gelistirici/sql/zz_20261123_kullanici_sozlesmesi.sql` (KOŞULLU, listenin sonunda; kopya `migrations/20261123_kullanici_sozlesmesi.sql`, canlı ad `kullanici_sozlesmesi_20261123`): tablo `oyun_yonetim.sozlesme_onaylari` (RLS, oyunculara kapalı; hesap silinse de kalır), `oyun.sozlesme_surumu()` = '1.0', `oyun.surum_dizi`, `oyun.sozlesme_zorunlu()`, `oyun.sozlesme_kabul(u)`, RPC `sozlesme_durumum()` / `sozlesme_onayla(p_surum, p_kaynak, p_istemci_at, p_uygulama)` (159 izin dizisine eklendi). Kapı (`/* sozlesme_kapi */`, `_yama`): `kayit_basvuru_gonder` ve `profil_olustur` kabul kaydı olmayanı reddeder — **yalnız `ayarlar.min_uygulama` ≥ 2026.11.23-4 olunca** (eski mağaza uygulamaları kilitlenmesin). Yeni mağaza sürümü yayına girip yönetici panelinden en düşük sürüm yükseltilince kapı kendiliğinden kapanır.
+- **DURUM:** sunucu migration'ı canlıda geri alınan işlemle denendi, hepsi geçti (onaysız başvuru reddi, onay idempotent, eski sürüm reddi, profil kapısı, kapı kapalıyken eski akış, yetkiler). **Kalıcı uygulama otomatik izin denetimine takıldı; Ercan'ın onayını bekliyor.** Uygulanana kadar kabul yalnız Supabase Auth hesap bilgisinde (`raw_user_meta_data.sozlesme_surum/_onay_at`) durur; uygulanınca bu hesaplar profil ekranına gelirken tabloya otomatik yazılır.
+- **Telefonlar:** kayıt ekranı uygulama paketinde olduğundan sözleşme ekranı mağaza uygulamalarına ancak yeni mağaza sürümüyle gelir. Ondan sonra yönetici panelinden "en düşük uygulama sürümü" yeni sürüme çekilmeli (hem herkes günceller hem sunucu kapısı kapanır).
+- Doğrulama: `gelistirici/test/kullanici_sozlesmesi_arayuz.js` (390/320 px; kutu kilidi, taşma yok, metadata, cihaz kaydı e-postaya bağlı, başka hesaba taşınmaz, kapı akışları). `test/arayuz.js` kayıt adımları yeni akışa göre güncellendi.
 
 ## 23.11.2026 — 2026.11.23-3 Bağıştan ÖNCE kıdem uyarısı (istemci; web'de yayında, telefonlar mağaza sürümünü bekler)
 - İstek (Ercan): 23-2'deki bildirim bağıştan sonra geliyor; oyuncu parayı göndermeden önce uyarılsın.

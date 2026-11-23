@@ -128,6 +128,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','adliye_istinaf_iade.js'),'utf8')+'</script></body>');
 // Cumhurbaşkanı Bakanlık Kur/Kapat: yeni ekran mobil/tek dosyalık uygulamada da yer alır.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','bakanlik_kur_kapat.js'),'utf8')+'</script></body>');
+// 23.11.2026: Kullanıcı Sözleşmesi — kayıttan önce tam metin + zorunlu onay, sunucuya onay kaydı (web ve mobil paket).
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kullanici_sozlesmesi.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});

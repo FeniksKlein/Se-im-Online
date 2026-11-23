@@ -681,8 +681,9 @@ function gercekApi(){
       if(!r.ok)throw new Error(v.error||"AI öneri servisi kullanılamıyor.");
       return v;
     },
-    async oturum(){ const { data } = await sb.auth.getSession(); return data.session ? { email: data.session.user.email } : null; },
-    async kayit(email, sifre){ const d = await k(sb.auth.signUp({ email, password: sifre })); return { onayGerekli: !d.session }; },
+    async oturum(){ const { data } = await sb.auth.getSession(); return data.session ? { email: data.session.user.email, meta: data.session.user.user_metadata || {} } : null; },
+    // meta: Kullanıcı Sözleşmesi kabulü (sürüm + an) hesap bilgisine yazılır (kullanici_sozlesmesi.js)
+    async kayit(email, sifre, meta){ const d = await k(sb.auth.signUp(meta ? { email, password: sifre, options: { data: meta } } : { email, password: sifre })); return { onayGerekli: !d.session }; },
     async kodDogrula(email, kod, tur){ await k(sb.auth.verifyOtp({ email, token: kod, type: tur })); },
     async kodTekrar(email){ await k(sb.auth.resend({ type: "signup", email })); },
     async giris(email, sifre){ await k(sb.auth.signInWithPassword({ email, password: sifre })); },
@@ -858,7 +859,7 @@ function karsilama(){
     <p class="giris">Türkiye'yi botlar değil oyuncular yönetiyor. Her ay belediye, kurultay ve genel seçim var; 81 ilde aday ol, miting yap, oy topla, Meclis'e gir.</p>
     <button class="btn" onclick="kayitEkrani()">Hesap oluştur</button>
     <button class="btn ikinci" onclick="girisEkrani()">Giriş yap</button>
-    <p class="kucuk" style="margin-top:18px;text-align:center"><a class="bag" href="#" onclick="metinGoster('kurallar');return false">Oyun nasıl oynanır?</a> · <a class="bag" href="#" onclick="metinGoster('gizlilik');return false">Gizlilik</a></p>
+    <p class="kucuk" style="margin-top:18px;text-align:center"><a class="bag" href="#" onclick="metinGoster('kurallar');return false">Oyun nasıl oynanır?</a> · <a class="bag" href="#" onclick="metinGoster(METIN.sozlesme ? 'sozlesme' : 'kurallar');return false">Kullanıcı Sözleşmesi</a> · <a class="bag" href="#" onclick="metinGoster('gizlilik');return false">Gizlilik</a></p>
   </div>`;
 }
 function girisEkrani(){
@@ -879,13 +880,17 @@ function girisEkrani(){
     } finally { const b = $("#gir"); if (b) b.disabled = false; }
   };
 }
-function kayitEkrani(){
+// 23.11.2026: "Hesap oluştur" önce Kullanıcı Sözleşmesi'ni açar; kabul etmeyen kayıt formuna geçemez.
+function kayitEkrani(sozlesmeOnayli){
+  const SZ = window.SOZLESME;
+  if (SZ && typeof sozlesmeEkrani === "function" && !(sozlesmeOnayli && SZ.yerelOku("", true))) return sozlesmeEkrani("kayit", () => kayitEkrani(true));
   $("#app").innerHTML = `<div class="karsila">${LOGO}<h1>Hesap oluştur</h1>
     <p class="giris" style="margin-bottom:6px">E-posta adresine 6 haneli bir doğrulama kodu göndereceğiz.</p>
     <div class="alan"><label>E-posta</label><input id="eposta" type="email" autocomplete="email" inputmode="email"></div>
     <div class="alan"><label>Şifre (en az 8 karakter)</label><input id="sifre" type="password" autocomplete="new-password"></div>
     <div class="alan"><label>Şifre tekrar</label><input id="sifre2" type="password" autocomplete="new-password"></div>
-    <label class="onay"><input type="checkbox" id="kvkk"><span><a class="bag" href="#" onclick="metinGoster('gizlilik');return false">Gizlilik ve KVKK Aydınlatma Metni</a>'ni ve <a class="bag" href="#" onclick="metinGoster('kurallar');return false">Oyun Kuralları</a>'nı okudum, kabul ediyorum. 18 yaşından büyüğüm.</span></label>
+    ${SZ ? `<p class="soz-kabul-not">Kullanıcı Sözleşmesi'ni (Sürüm ${e(SZ.surum)}) kabul ettin. <a class="bag" href="#" onclick="metinGoster('sozlesme');return false">Metni gör</a> · <a class="bag" href="#" onclick="metinGoster('gizlilik');return false">Gizlilik ve KVKK</a></p>`
+      : `<label class="onay"><input type="checkbox" id="kvkk"><span><a class="bag" href="#" onclick="metinGoster('gizlilik');return false">Gizlilik ve KVKK Aydınlatma Metni</a>'ni ve <a class="bag" href="#" onclick="metinGoster('kurallar');return false">Oyun Kuralları</a>'nı okudum, kabul ediyorum. 18 yaşından büyüğüm.</span></label>`}
     <div class="hata-metin" id="hata"></div>
     <button class="btn" id="kaydol">Kayıt ol</button>
     <button class="btn ikinci" onclick="karsilama()">Geri</button></div>`;
@@ -895,9 +900,15 @@ function kayitEkrani(){
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return h.textContent = "Geçerli bir e-posta adresi gir.";
     if (sf.length < 8) return h.textContent = "Şifre en az 8 karakter olmalı.";
     if (sf !== sf2) return h.textContent = "Şifreler aynı değil.";
-    if (!$("#kvkk").checked) return h.textContent = "Devam etmek için metinleri onaylaman gerekiyor.";
+    if (!SZ && !$("#kvkk").checked) return h.textContent = "Devam etmek için metinleri onaylaman gerekiyor.";
+    let meta = null;
+    if (SZ) {
+      const once = SZ.yerelOku("", true);
+      if (!once) return sozlesmeEkrani("kayit", () => kayitEkrani(true));
+      meta = SZ.meta(SZ.yerelKaydet(em, once.at)); // kabul bu e-postaya bağlanır
+    }
     $("#kaydol").disabled = true;
-    try { const r = await API.kayit(em, sf); if (r.onayGerekli) kodEkrani(em, "signup"); else await basla(); }
+    try { const r = await API.kayit(em, sf, meta); if (r.onayGerekli) kodEkrani(em, "signup"); else await basla(); }
     catch (err) { h.textContent = hataCevir(err.message); const b = $("#kaydol"); if (b) b.disabled = false; }
   };
 }
@@ -936,6 +947,8 @@ function sifremiUnuttum(){
   };
 }
 async function profilOlusturEkrani(){
+  // 23.11.2026: Kullanıcı Sözleşmesi kabul kaydı olmayan hesap önce sözleşmeyi onaylar (kullanici_sozlesmesi.js)
+  if (typeof sozlesmeKapisi === "function" && !(await sozlesmeKapisi())) return;
   let harita = [];
   try { harita = await API.rpc("harita"); } catch (_) {}
   const hm = Object.fromEntries(harita.map(x => [x.id, x]));
@@ -2753,6 +2766,7 @@ async function benEkrani(){
       <div class="liste-satir" onclick="typeof yonetimeYazEkrani==='function'&&ekranAc(yonetimeYazEkrani)" style="cursor:pointer"><div class="orta"><b>Yönetime yaz</b><div class="kucuk">Soru, şikâyet, ihbar, itiraz, hata ve öneri; taleplerin ve yanıtlar</div></div><span>›</span></div>
       <div class="liste-satir" onclick="typeof davetEkrani==='function'&&ekranAc(davetEkrani)" style="cursor:pointer"><div class="orta"><b>Arkadaşını davet et, kazan</b><div class="kucuk">Davet kodun, davet ettiklerinin aktifliği ve ödüllerin</div></div><span>›</span></div>
       <div class="liste-satir" onclick="metinGoster('kurallar')" style="cursor:pointer"><div class="orta"><b>Oyun kuralları ve takvim</b></div><span>›</span></div>
+      <div class="liste-satir" onclick="metinGoster(METIN.sozlesme ? 'sozlesme' : 'kurallar')" style="cursor:pointer"><div class="orta"><b>Kullanıcı Sözleşmesi</b></div><span>›</span></div>
       <div class="liste-satir" onclick="metinGoster('gizlilik')" style="cursor:pointer"><div class="orta"><b>Gizlilik ve KVKK</b></div><span>›</span></div>
       <div class="liste-satir" onclick="engellenenlerModal()" style="cursor:pointer"><div class="orta"><b>Engellediğim oyuncular</b></div><span>›</span></div></div>
     <div class="kart"><h2>Bildirimler</h2>
@@ -3215,7 +3229,7 @@ const METIN = {
     <h4>Kurallar</h4>
     <p>• Oy ve aday olabilmek için hesabının en az 3 günlük olması gerekir.<br>• Parti içi seçimlerde (ön seçim, kurultay) adaylık için başvuru süresi içinde parti üyesi olman yeterlidir. Ön seçimde oy kullanmak için oylama başlamadan en az 24 saat önce (başvurular daha kısa sürüyorsa başvurular açılmadan önce) partiye üye olmalısın; yeni kurulan partilerde oylama başlamadan önce üye olmak yeterlidir. Kurultayda başvurular açılmadan önce üye olmalısın.<br>• Bir kişi aynı anda tek seçilmiş görev tutabilir (vekil, belediye başkanı veya cumhurbaşkanı). Yeni görevine başlayınca eskisi düşer; boşalan vekilliğe listedeki sıradaki aday gelir.<br>• İlini 30 günde bir değiştirebilirsin (taşınma masraflıdır); seçim dönemlerinde (6–11 ve 26–2 arası) il değiştirilemez.<br>• Görev süreleri 1 aydır.<br>• Birden fazla hesap açmak, hesap satmak, hakaret, küfür, taciz, nefret söylemi ve spam yasaktır. 3 kişinin şikâyet ettiği mesaj otomatik gizlenir; 24 saatte çok sayıda şikâyet alan hesap 24 saat susturulur; ağır ihlallerde hesap kapatılır.</p></div>`,
   gizlilik: () => `<h3 style="font-size:20px;font-weight:900">Gizlilik ve KVKK Aydınlatma Metni</h3><div class="metin">
-    <p>Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında Seçim Simülasyonu Online oyununda işlenen kişisel verileri açıklar. Veri sorumlusu: FeniksKlein / Gülveren Games. İletişim: ${e(AYAR.ILETISIM)}</p>
+    <p>Bu metin, 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında Seçim Simülasyonu Online oyununda işlenen kişisel verileri açıklar. Veri sorumlusu: FeniksKlein. İletişim: ${e(AYAR.ILETISIM)}</p>
     <h4>Hangi verileri işliyoruz?</h4>
     <p>E-posta adresin ve şifren (şifre geri döndürülemez biçimde saklanır), seçtiğin kullanıcı adı, ilin, parti üyeliğin, adaylıkların, oyunda kullandığın oyların kaydı, oyun içi işlemlerin zamanları, sohbet mesajların, özel mesajların, propaganda yayınların, engellediğin oyuncular, şikâyetlerin, bildirim tercihlerin ve telefon bildirimleri için telefonunun bildirim anahtarı (push token).</p>
     <h4>Cihaz ve bağlantı bilgisi (çoklu hesap önlemi)</h4>
@@ -3225,13 +3239,15 @@ const METIN = {
     <h4>Reklamlar ve satın almalar</h4>
     <p>Ödüllü reklamlar yalnızca sen "Reklam izle"ye bastığında Google AdMob tarafından gösterilir; AdMob reklam göstermek için cihaz bilgilerini ve reklam kimliğini işleyebilir; iPhone'da bunun için izin istenir, Avrupa'daki oyunculara Google'ın rıza formu gösterilir. İzin vermezsen reklamlar kişiselleştirilmeden gösterilir. Oyun içi ₺ paketlerinin ödemesini Apple App Store veya Google Play alır, doğrulamasını RevenueCat yapar. Kart bilgilerin bize ulaşmaz; biz yalnızca hangi paketin ne zaman alındığını, cüzdan hareketlerini ve oyun içi kullanıcı numaranı saklarız. Satın alınan oyun parası gerçek paraya çevrilemez ve devredilemez.</p>
     <h4>Mesajlar ne kadar saklanır?</h4>
-    <p>Sohbet mesajları ve propaganda yayınları 30 gün, bildirimler 60 gün, özel mesajlar 90 gün sonra otomatik silinir. Şikâyet edilen mesajlar kuralların uygulanması için oyun yönetimi tarafından incelenebilir.</p>
+    <p>Sohbet mesajları ve propaganda yayınları 30 gün, bildirimler 60 gün, özel mesajlar 90 gün sonra otomatik silinir. Oyundaki iletişim gizli değildir: sohbet kanalları, özel gruplar ve özel mesajlar dahil mesajlar; kuralların uygulanması, şikâyetlerin incelenmesi ve güvenlik için oyun yönetimi tarafından görüntülenebilir ve incelenebilir (Kullanıcı Sözleşmesi Madde 8). Hukuka aykırılık şüphesi taşıyan içerikler ve ilgili kayıtlar, olası bir uyuşmazlık ya da yetkili makam talebi için bu sürelerden uzun saklanabilir.</p>
+    <h4>Kullanıcı Sözleşmesi onay kaydı</h4>
+    <p>Kayıt olurken Kullanıcı Sözleşmesi'ni kabul ettiğinde; hesabın, kabul ettiğin sözleşme sürümü, kabul zamanı, uygulama sürümü ve bağlantı (IP) adresinin geri döndürülemez özeti kaydedilir. Bu kayıt, sözleşmenin kurulduğunu ispat etmek için tutulur ve hesabını silsen de yasal zamanaşımı süresince saklanır. Hukuki sebep: KVKK m.5/2-c (sözleşmenin kurulması) ve m.5/2-e (bir hakkın tesisi, kullanılması veya korunması).</p>
     <h4>Neden işliyoruz?</h4>
     <p>Hesabını oluşturmak ve doğrulamak, oyunu oynatmak, seçimleri adil yürütmek (her oyuncunun tek oy kullanması, çoklu hesapların önlenmesi) ve sana hesabınla ilgili zorunlu e-postaları (doğrulama, şifre yenileme) göndermek için. Hukuki sebep: sözleşmenin kurulması ve ifası ile meşru menfaat (KVKK m.5/2-c ve f).</p>
     <h4>Kimler görür?</h4>
     <p>Kullanıcı adın, ilin, partin, adaylıkların ve makamların diğer oyunculara görünür. E-posta adresin hiçbir oyuncuya gösterilmez. Verdiğin oylar gizlidir; kimin kime oy verdiği hiçbir ekranda gösterilmez, yalnızca toplam sonuçlar yayımlanır.</p>
     <h4>Nerede saklanıyor?</h4>
-    <p>Veriler, oyunun altyapı hizmet sağlayıcısı Supabase'in sunucularında saklanır; bu nedenle yurt dışına aktarılabilir. Doğrulama e-postaları e-posta gönderim hizmeti aracılığıyla iletilir.</p>
+    <p>Veriler, oyunun altyapı hizmet sağlayıcısı Supabase'in Avrupa Birliği'ndeki (Frankfurt, Almanya) sunucularında saklanır; bu nedenle yurt dışına aktarılır. Doğrulama e-postaları e-posta gönderim hizmeti aracılığıyla iletilir.</p>
     <h4>Hakların</h4>
     <p>KVKK m.11 kapsamında verilerine erişme, düzeltilmesini ve silinmesini isteme haklarına sahipsin. Hesabını ve kişisel verilerini <b>Ben → Hesabımı sil</b> ile istediğin an kendin silebilirsin. Silmede kullanıcı adın ve profilin kaldırılır; verdiğin oylar kimliğinden ayrılarak yalnızca sayım toplamlarında kalır.</p>
     <h4>Yaş</h4><p>Oyun 18 yaş ve üzeri içindir. Siyasi içerik, oyuncular arası sohbet ve oyun içi satın alma barındırdığı için 18 yaşından küçükler hesap açamaz.</p>
