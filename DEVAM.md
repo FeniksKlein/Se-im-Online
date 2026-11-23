@@ -16,6 +16,13 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 24.11.2026 — 2026.11.24-1 Genel Kurul: söz hakkı ve konuşma sınırı (sunucu canlıda; ekran web'de, telefonlar mağaza sürümünü bekler)
+- İstek: gerçek Meclisteki konuşma süresi gibi karakter sınırı olsun; söz hakkını Meclis Başkanı versin.
+- `sql/zz_20261124_meclis_soz.sql`: `oyun.meclis_soz`; `meclis_soz_durum/iste/vazgec/karar`; `sohbet_yaz` Genel Kurul'da söz ve sınır denetler. Sınırlar: şahsı adına 800, grup adına 1500, hükümet adına 1500, yerinden 250, Başkanlık 600.
+- Söz verilince 15 dk içinde tek mesaj; konuşmadan sonra 2 dk bekleme. Başkanlık (tbmm, bskv) çevrimiçi değilse söz hemen, çevrimiçi ama işlem yapmıyorsa 5 dk sonra kendiliğinden verilir.
+- `www/meclis_soz.js` (sohbet_tasarim.js kanalEkrani çağırır). Test: `test/meclis_soz_arayuz.js`; sunucu akışı geri alınan işlemle canlıda denendi.
+- DİKKAT: mağazadaki eski uygulamada "Söz iste" düğmesi yok; Başkanlık çevrimiçiyken telefon kullanıcıları söz isteyemez. İlk Meclis açılmadan önce mağaza güncellemesi gönderilmeli.
+
 ## 23.11.2026 — 2026.11.23-12 Gazete ve karikatür dergisi kapatma (sunucu canlıda; ekran web'de, telefonlar mağaza sürümünü bekler)
 - İstek: moderatörler gazete ve dergileri de kalıcı kapatabilsin. `sql/zz_20261123_mod_kurum_kapat.sql`: `mod_kurum_kapat`, `mod_kurum_ac`, `mod_kurum_kapatma_bilgi`; kapatılan kurumun sahibi 7 gün aynı türde yenisini kuramaz. Yetki: 'sikayet' + kurucu.
 - Ekran: Medya denetimi › Kurum dosyası › "Kurumu kapat" / "Yeniden aç".

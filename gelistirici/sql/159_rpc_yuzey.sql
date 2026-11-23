@@ -355,7 +355,9 @@ declare
     'mod_kurum_ara', 'mod_kurum_dosya', 'mod_kurum_durdur', 'mod_kurum_durdurma_kaldir', 'mod_kurum_durdurma_karar',
     'mod_kurum_durdurmalar', 'mod_kurum_ad_duzelt',
     -- 23.11.2026 Gazete/dergi kapatma (sql/zz_20261123_mod_kurum_kapat.sql)
-    'mod_kurum_kapat', 'mod_kurum_ac', 'mod_kurum_kapatma_bilgi'
+    'mod_kurum_kapat', 'mod_kurum_ac', 'mod_kurum_kapatma_bilgi',
+    -- 24.11.2026 Genel Kurul söz hakkı (sql/zz_20261124_meclis_soz.sql)
+    'meclis_soz_durum', 'meclis_soz_iste', 'meclis_soz_vazgec', 'meclis_soz_karar'
   ];
 -- @@rpc_yuzey_izin_son@@
   anon_izin text[] := array['surum', 'uygulama_ayar'];

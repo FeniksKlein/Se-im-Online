@@ -953,6 +953,8 @@
       yukluyor = false;
     }, { passive: true });
     asagiKur(akis, S); yazmaKur(S, akis);
+    /* 24.11.2026: Genel Kurul söz hakkı (meclis_soz.js) */
+    if (kanal === 'meclis' && r && r.yazabilir && typeof window.meclisSozKur === 'function') window.meclisSozKur(S);
     canliKur([r.sinyal || (window.CANLI && CANLI.sohbetAnahtari && CANLI.sohbetAnahtari(kanal))].filter(Boolean), function () { return S.yeniGetir().catch(function () {}); }, 5500);
   }
 
