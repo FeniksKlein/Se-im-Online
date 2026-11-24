@@ -49467,7 +49467,8 @@ end $yetki$;
 --    satışta %7 komisyon), özel müzesinde sergileyip günlük sergi geliri
 --    alabilir (günde en fazla 2.000 ₺), müzayede evine değerinin %50'sine
 --    satabilir (alımdan 72 saat sonra) ya da Devlet Müzesi'ne bağışlayıp
---    kıdem puanı kazanabilir (bağış başına en fazla +5, toplam +20).
+--    kıdem puanı kazanabilir (her bağış en az +1; 20.000 ₺ ve üstünde her
+--    20.000 ₺ değer için +1, bağış başına en fazla +5, toplam +20).
 --  Yalnız yeni tablo / fonksiyon ekler; iki kez çalıştırmak güvenlidir.
 -- =====================================================================
 
@@ -49994,6 +49995,16 @@ begin
   return public.muzayede_lot(l.id);
 end $$;
 
+-- Bağış kıdemi kuralı (tek yerde). 24.11.2026 düzeltmesi (destek talebi #18):
+-- oyun "bağışlayıp kıdem puanı kazanabilirsin" derken 20.000 ₺ altındaki eserler 0 kıdem veriyordu.
+-- Kalıcı kural: Devlet Müzesi'ne bağışlanan her eser en az +1 kıdem verir; 20.000 ₺ ve üstünde
+-- her 20.000 ₺ değer için +1, eser başına en çok +5. Oyuncu başına toplam +20 tavanı çağıran yerde uygulanır.
+create or replace function oyun.mz_bagis_kidem(p_deger numeric)
+returns numeric language sql immutable set search_path = '' as $$
+  select greatest(1, least(5, floor(coalesce(p_deger, 0) / 20000)))
+$$;
+revoke all on function oyun.mz_bagis_kidem(numeric) from public, anon, authenticated;
+
 -- Koleksiyonum
 create or replace function public.muzayede_koleksiyonum()
 returns jsonb language plpgsql security definer set search_path = '' as $$
@@ -50009,7 +50020,7 @@ begin
           'sergi_bas', e.sergi_bas,
           'eve_satis', oyun.mz_yuvarla(oyun.mz_deger(e.id) * a.eve_satis_oran),
           'eve_satis_acilis', e.alis_zaman + interval '72 hours',
-          'bagis_kidem', least(5, floor(oyun.mz_deger(e.id) / 20000)))
+          'bagis_kidem', least(oyun.mz_bagis_kidem(oyun.mz_deger(e.id)), greatest(0, 20 - v_bagis)))
         order by oyun.mz_deger(e.id) desc)
         from oyun.muzayede_eserler e join oyun.muzayede_katalog k on k.kod = e.katalog
        where e.sahip = p.id and e.durum in ('kasa','sergide','artirmada')), '[]'::jsonb),
@@ -50119,7 +50130,7 @@ begin
   if e.alis_zaman is not null and e.alis_zaman > v_t - interval '24 hours' then raise exception 'Yeni aldığın eseri en erken 24 saat sonra bağışlayabilirsin.'; end if;
   select * into k from oyun.muzayede_katalog where kod = e.katalog;
   select coalesce(sum(bagis_kidem), 0) into v_onceki from oyun.muzayede_eserler where bagisci = p.id;
-  v_kidem := greatest(0, least(5, floor(oyun.mz_deger(e.id) / 20000), 20 - v_onceki));
+  v_kidem := least(oyun.mz_bagis_kidem(oyun.mz_deger(e.id)), greatest(0, 20 - v_onceki));
   update oyun.muzayede_eserler set sahip = null, durum = 'muzede', sergi_bas = null, bagisci = p.id, bagis_zaman = v_t, bagis_kidem = v_kidem where id = e.id;
   if v_kidem > 0 then
     perform oyun.cuzdanim(p.id);
