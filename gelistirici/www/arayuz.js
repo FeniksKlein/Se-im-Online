@@ -199,10 +199,95 @@ function seritHtml(haberler) {
   return `<div class="serit" aria-label="Son gelişmeler"><span class="etiket">Gündem</span><div class="kaydir"><span style="--sure:${sure}s">${metin}</span></div></div>`;
 }
 const SEC_GRUP = { bel_on: "bel", bel: "bel", kurultay: "kur", mv_on: "gen", cb_on: "gen", mv: "gen", cb: "gen", cb2: "gen" };
+/* 26.11.2026 · Sıradaki seçim panosu (Ercan: "Daha seçimlere çok var, burada böyle gösteriyor; oyuncuların
+   kafası karışmış. Doğru tarihler yazsın: önce adaylık başvurusuna kalan süre, milletvekili ön seçimine kalan süre
+   ve bağımsızlar için CB adaylığı imza kampanyası başlatma süresine kalan süre.")
+   Eskiden takvimdeki en yakın an tek başına "Cumhurbaşkanlığı Seçimi" başlığıyla gösteriliyordu; oysa o an,
+   genel başkanların CB adayı kararının son anıydı. Artık seçim (aynı dönemin ön seçim + ana seçim kayıtları)
+   tek grup olarak ele alınır: başlıkta asıl sandık günü, altında sırasıyla her aşama ve kendi geri sayımı. */
+function sahneSecimGruplari(takvim) {
+  const ben = (D.durum && D.durum.profil) || {}, benimParti = ben.parti && ben.parti.id, benimIl = ben.il_id;
+  const gruplar = new Map();
+  (takvim || []).forEach(s => {
+    const g = SEC_GRUP[s.tur]; if (!g || !s.oy_bas) return;
+    if (s.hedef_parti_id && benimParti && +s.hedef_parti_id !== +benimParti) return;   // başka partinin kurultayı
+    if (s.hedef_il_id && benimIl && +s.hedef_il_id !== +benimIl) return;               // başka ilin ara seçimi
+    const anahtar = [g, s.donem || "", s.hedef_parti_id || "", s.hedef_il_id || ""].join("|");
+    if (!gruplar.has(anahtar)) gruplar.set(anahtar, { grup: g, kayit: {} });
+    gruplar.get(anahtar).kayit[s.tur] = s;
+  });
+  return [...gruplar.values()];
+}
+function sahneAsamalari(G) {
+  const k = G.kayit, ms = (x) => x ? new Date(x).getTime() : null, A = [];
+  const pencere = (s, alan) => s && s[alan + "_bas"] ? { bas: ms(s[alan + "_bas"]), bit: ms(s[alan + "_bit"]) } : null;
+  const ayni = (a, b) => a && b && a.bas === b.bas && a.bit === b.bit;
+  const ekle = (ad, alt, w, sec) => { if (w && w.bas) A.push(Object.assign({ ad, alt, sec }, w)); };
+  if (G.grup === "gen") {
+    const mvB = pencere(k.mv_on, "basvuru"), cbB = pencere(k.cb_on, "basvuru");
+    if (ayni(mvB, cbB)) ekle("Adaylık başvurusu", "Milletvekili ve Cumhurbaşkanı aday adaylığı", mvB, k.mv_on);
+    else { ekle("Milletvekili adaylık başvurusu", "Milletvekili aday adaylığı", mvB, k.mv_on); ekle("Cumhurbaşkanı adaylık başvurusu", "Cumhurbaşkanı aday adaylığı", cbB, k.cb_on); }
+    ekle("Bağımsız CB adaylığı · imza kampanyası başlatma", "Partisizler ve aday gösteremeyen partilerin üyeleri için. İmzalar kampanya açıldıktan sonra 72 saat toplanır.", cbB, k.cb_on);
+    const ck = D.durum && D.durum.cb_karar;
+    if (ck && ck.acik) ekle("Partinin CB adayı kararı", "Genel başkan karar verir; vermezse üyelerin ön seçimi belirler.", pencere(k.cb, "basvuru"), k.cb);
+    const mvO = pencere(k.mv_on, "oy"), cbO = pencere(k.cb_on, "oy");
+    ekle("Milletvekili ön seçimi", "Ön seçim yapan partilerde üyeler il listelerinin sırasını belirler." + (ayni(mvO, cbO) ? " CB ön seçimi de aynı saatte." : ""), mvO, k.mv_on);
+    if (!ayni(mvO, cbO)) ekle("Cumhurbaşkanı ön seçimi", "Adayını ön seçimle belirleyen partilerde.", cbO, k.cb_on);
+    const ana = k.mv || k.cb;
+    ekle("Genel seçim · sandık", k.mv && k.cb ? "Milletvekili ve Cumhurbaşkanı oyu" : k.mv ? "Milletvekili oyu" : "Cumhurbaşkanı oyu", pencere(ana, "oy"), ana);
+    if (ana && ana.sonuc_at) ekle("Sonuçlar açıklanıyor", "", { bas: ms(ana.sonuc_at) }, ana);
+    if (k.cb2) { ekle("Cumhurbaşkanlığı 2. tur · sandık", "", pencere(k.cb2, "oy"), k.cb2); if (k.cb2.sonuc_at) ekle("2. tur sonuçları", "", { bas: ms(k.cb2.sonuc_at) }, k.cb2); }
+  } else if (G.grup === "bel") {
+    ekle("Belediye başkanlığı adaylık başvurusu", "Belediye başkanı aday adaylığı", pencere(k.bel_on, "basvuru"), k.bel_on);
+    ekle("Belediye ön seçimi", "Ön seçim yapan partilerde üyeler adayı belirler.", pencere(k.bel_on, "oy"), k.bel_on);
+    ekle("Belediye seçimi · sandık", "", pencere(k.bel, "oy"), k.bel);
+    if (k.bel && k.bel.sonuc_at) ekle("Sonuçlar açıklanıyor", "", { bas: ms(k.bel.sonuc_at) }, k.bel);
+  } else if (G.grup === "kur" && k.kurultay) {
+    ekle("Genel başkanlık adaylık başvurusu", "", pencere(k.kurultay, "basvuru"), k.kurultay);
+    ekle("Kurultay oylaması", "Parti üyeleri genel başkanı seçer.", pencere(k.kurultay, "oy"), k.kurultay);
+    if (k.kurultay.sonuc_at) ekle("Sonuçlar açıklanıyor", "", { bas: ms(k.kurultay.sonuc_at) }, k.kurultay);
+  }
+  return A.sort((a, b) => a.bas - b.bas);
+}
+function sahneGrupBasligi(G) {
+  const k = G.kayit, ana = G.grup === "gen" ? (k.mv || k.cb || k.cb2) : G.grup === "bel" ? k.bel : k.kurultay;
+  const ad = G.grup === "gen" ? (k.mv ? "Genel Seçim" : "Cumhurbaşkanlığı Seçimi") : ana ? secimTakvimAdi(ana) : "Seçim";
+  const kapsam = G.grup === "gen" ? (k.mv && k.cb ? "Milletvekili ve Cumhurbaşkanlığı" : k.mv ? "Milletvekilliği" : "Cumhurbaşkanlığı") : "";
+  const ara = ana && ana.ara && G.grup === "gen" ? '<span class="rozet kirmizi" style="margin-right:5px">Olağanüstü</span>' : "";
+  const sandik = ana && ana.oy_bas ? `Sandık ${tarih(ana.oy_bas)} ${saatYaz(ana.oy_bas)}–${saatYaz(ana.oy_bit)}` : "";
+  return { ad: ara + (G.grup === "gen" ? e(ad) : ad), alt: [kapsam, sandik].filter(Boolean).join(" · "), ana };
+}
 function sahneHtml(takvim) {
   const t = simdi();
-  let en = null;
-  (takvim || []).forEach(s => { const a = siradakiAn(s); if (a && (!en || a.an < en.an.an)) en = { s, an: a }; });
+  // Sıradaki seçim: sonucu en erken açıklanacak, henüz bitmemiş grup
+  const gruplar = sahneSecimGruplari(takvim).map(G => {
+    const A = sahneAsamalari(G), son = A.length ? Math.max(...A.map(a => a.bit || a.bas)) : 0;
+    return { G, A, son };
+  }).filter(x => x.A.length && x.son > t).sort((a, b) => a.son - b.son);
+  const sec = gruplar[0], sonraki = gruplar.find(x => x !== sec && x.G.grup !== (sec && sec.G.grup));
+  let ust = `<div class="olay-adi">Takvim hazırlanıyor</div>`;
+  if (sec) {
+    const b = sahneGrupBasligi(sec.G);
+    const durumu = (a) => a.bit ? (t < a.bas ? "gelecek" : t < a.bit ? "acik" : "tamam") : (t < a.bas ? "gelecek" : "tamam");
+    const hedef = sec.A.find(a => durumu(a) !== "tamam");
+    let buyuk = "";
+    if (hedef) {
+      const acik = durumu(hedef) === "acik", an = acik ? hedef.bit : hedef.bas;
+      const ne = hedef.bit ? `${hedef.ad} ${acik ? "kapanıyor" : "açılıyor"}` : hedef.ad;
+      buyuk = `<div class="sahne-hedef${acik ? " acik" : ""}"><div class="ne">${e(ne)} · ${tarihSaat(an)}</div>
+        <div class="geri-sayim" data-an="${an}">${kalan(an - t)}</div><div class="kucuk">${acik ? "Kapanmasına kalan süre" : "Başlamasına kalan süre"}</div></div>`;
+    }
+    const satir = (a) => {
+      const d = durumu(a), an = d === "acik" ? a.bit : a.bas;
+      const zaman = a.bit ? `${tarihSaat(a.bas)} – ${trParca(a.bas).g === trParca(a.bit).g && trParca(a.bas).a === trParca(a.bit).a ? saatYaz(a.bit) : tarihSaat(a.bit)}` : tarihSaat(a.bas);
+      const sag = d === "tamam" ? `<span class="sa-durum tamam">✓ Tamamlandı</span>`
+        : `<span class="sa-durum ${d}">${d === "acik" ? "Açık · kapanışa" : "Başlamasına"}</span><span class="sa-sayac" data-an="${an}">${kalan(an - t)}</span>`;
+      return `<div class="sa-satir ${d}"><span class="sa-nokta"></span><div class="sa-orta"><b>${e(a.ad)}</b><div class="kucuk">${zaman}${a.alt ? " · " + e(a.alt) : ""}</div></div><div class="sa-sag">${sag}</div></div>`;
+    };
+    ust = `<div class="ne">Sıradaki seçim</div><div class="olay-adi">${b.ad}</div>${b.alt ? `<div class="sahne-alt">${e(b.alt)}</div>` : ""}
+      ${buyuk}<div class="sahne-asamalar">${sec.A.map(satir).join("")}</div>
+      ${sonraki ? `<div class="kucuk sahne-sonraki">Sonraki: ${sahneGrupBasligi(sonraki.G).ad.replace(/<[^>]+>/g, "")} · ${(() => { const a = sahneGrupBasligi(sonraki.G).ana; return a && a.oy_bas ? tarih(a.oy_bas) : ""; })()}</div>` : ""}`;
+  }
   const p = trParca(t), ayGun = new Date(p.y, p.a, 0).getDate();
   const gunler = Array.from({ length: ayGun }, (_, i) => i + 1).map(g => {
     let cls = "";
@@ -219,8 +304,7 @@ function sahneHtml(takvim) {
   }).join("");
   const imlec = ((p.g - 1) + (+p.s + +p.d / 60) / 24) / ayGun * 100;
   return `<section class="sahne">
-    ${en ? `<div class="ne">${e(en.an.ad)} · ${tarihSaat(en.an.an)}</div><div class="olay-adi">${secimTakvimAdi(en.s)}</div>
-      <div class="geri-sayim" data-an="${en.an.an}">${kalan(en.an.an - t)}</div>` : `<div class="olay-adi">Takvim hazırlanıyor</div>`}
+    ${ust}
     <div class="ay-serit" style="--gun:${ayGun}" aria-label="${AYLAR[p.a - 1]} seçim takvimi"><div class="gunler">${gunler}</div><div class="imlec" style="left:calc(${imlec.toFixed(2)}% - 1px)"></div></div>
     <div class="ay-lejant"><span><i style="background:#2E7D64"></i>Belediye</span><span><i style="background:#8A6A1F"></i>Kurultay</span><span><i style="background:#5D47D6"></i>Genel seçim</span><span>${AYLAR[p.a - 1]}</span></div>
   </section>`;

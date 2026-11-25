@@ -3,6 +3,11 @@
 Sahibi: Ercan (FeniksKlein). Not: "Gülveren Games" unvanı kullanılmaz (Ercan, 23.11.2026). Kodlama bilmiyor; **her şeyi Türkçe, sade ve adım adım anlat.**
 Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (tek dosya HTML/JS + Capacitor, Supabase arka uç).
 
+## 26.11.2026 — 2026.11.26-1 Gündem: "Sıradaki seçim" panosu (yalnız istemci)
+- Şikâyet (Ercan): ana ekrandaki büyük sayaç "Başvuru kapanıyor · 27 Kasım 00:00 / Cumhurbaşkanlığı Seçimi" yazıyordu; oyuncular seçimin ertesi gün olduğunu sandı. O an aslında genel başkanların CB adayı kararının son anıydı (`cb` kaydının başvuru penceresi).
+- Çözüm: `gelistirici/www/arayuz.js` `sahneHtml` yeniden yazıldı. Aynı dönemin ön seçim + ana seçim kayıtları tek grup (`sahneSecimGruplari`, `sahneAsamalari`): başlıkta asıl sandık günü, büyük sayaçta sıradaki aşama (açılış/kapanış), altında sırayla aşamalar ve her birinin geri sayımı — adaylık başvurusu, bağımsız CB imza kampanyası başlatma, ön seçim, sandık, sonuç (+ yalnız kararı açık genel başkana "Partinin CB adayı kararı"). Başka partinin/ilin ara seçimi gösterilmez. Altta "Sonraki: …". CSS `index.html` (`.sahne-hedef`, `.sa-satir`).
+- Sunucuya dokunulmadı. Web hemen; telefonlar bir sonraki mağaza sürümüyle.
+
 ## ⚠️ 25.11.2026 gecesi: yük olayı ve hızlandırma (önce bunu bil)
 - **Olay:** ~150 çevrimiçi oyuncuda sunucu (Supabase Large, 2 çekirdek) işlemcisi doldu. 22.00 (oylama bitişi) ve 22.30'da (kurultay sonucu) bütün istemciler geri sayım sıfırlanınca aynı saniyede ana ekranı yeniledi (istemci başına ~24 RPC); oyun 22.30–22.37 arasında yanıt veremedi.
 - **Ölçüm:** her çevrimiçi oyuncu dakikada 60–100 istek gönderiyor. Olaydan önce oyuncu başına ~930 ms/dk veritabanı işlemcisi harcanıyordu; hızlandırmadan sonra ~180 ms/dk.
