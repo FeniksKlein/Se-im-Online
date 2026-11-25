@@ -116,7 +116,9 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261125_dernek_amac_guncelle.sql',
   // 25.11.2026: derneklerde il başkanlığı (destek #69) ve kitapta yayınevi sahibi / inceleme süresi / yayınevi değiştirme (destek #71); _yama kullanır
   'zz_20261125_dernek_il_baskani.sql',
-  'zz_20261125_kitap_yayinevi_degistir.sql'];
+  'zz_20261125_kitap_yayinevi_degistir.sql',
+  // 25.11.2026: şube bedeli yazısı tahsilatla aynı kaynaktan; yönetim kurulu sınırı üye sayısına göre (4 + her 10 üyede 1, en çok 12)
+  'zz_20261125_dernek_yk_sube_bedeli.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
