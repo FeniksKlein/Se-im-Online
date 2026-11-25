@@ -92,6 +92,7 @@ const detay = (id, rol) => {
         if (ad === 'dernek_ziyaret_taleplerim') return [{ id: 3, dernek: 'Kadın Emeği Platformu', dernek_id: 8, parti: 'Örnek Parti', parti_id: 3, konu: 'Kreş ve eşit ücret taleplerimizi görüşmek istiyoruz.', tarih: new Date(Date.now() + 2 * 864e5).toISOString(), durum: 'bekliyor' }];
         if (ad === 'dernek_eylem_oku') return JSON.parse(JSON.stringify(akis.aciklamalar.find(x => x.id === arg.p_eylem) || null));
         if (ad === 'dernek_kampanya_bagis') { window.__bagis = arg; return { tamam: true }; }
+        if (ad === 'dernek_amac_guncelle') { window.__amac = arg; const y = detaylar[arg.p_dernek]; y.amac = String(arg.p_amac).trim(); return JSON.parse(JSON.stringify(y)); }
         if (ad === 'kimlikler') return {};
         if (ad === 'rozetler') return { bildirim: 0, ozel: 0, sohbet: 0 };
         return v.rpc[ad] ?? null;
@@ -202,6 +203,7 @@ const detay = (id, rol) => {
       eskiGenel: [...document.querySelectorAll('#icerik .sos-menu-karti')].filter(x => x.offsetParent).length,
       kasa: document.querySelector('#icerik .dv-istat')?.textContent || ''
     }));
+    assert.ok(!await page.$('#icerik .dv-amac-duz'), 'Başkan olmayana "Açıklamayı düzenle" görünmemeli');
     assert.ok(dt.uyeOl && dt.bagis, 'Üye ol + Bağış yap'); assert.ok(!dt.masa, 'Üye olmayana yönetim masası yok');
     assert.strictEqual(dt.eskiFaaliyet, 0, 'Eski faaliyet kartı tekrarlanmamalı'); assert.strictEqual(dt.eskiGenel, 0, 'Eski genel kurul kartı tekrarlanmamalı');
     assert.ok(/Gizli/.test(dt.kasa), 'Gizli kasa "Gizli" yazar: ' + dt.kasa);
@@ -228,6 +230,31 @@ const detay = (id, rol) => {
     }
     await page.click('#icerik .dv-dsekme button[data-s="akis"]');
     sonuc.push('dernek sayfası (başkan): yönetim masası, 4 sekme');
+
+    // 6b) Başkan açıklamayı (amacı) sonradan düzeltir (25.11.2026)
+    assert.strictEqual(await page.textContent('#icerik .dv-amac-duz'), 'Açıklamayı düzenle');
+    await page.click('#icerik .dv-amac-duz');
+    await page.waitForTimeout(200);
+    const eskiAmac = await page.inputValue('#dvAmacMetin');
+    assert.ok(eskiAmac.length > 20, 'Düzenleme kutusu mevcut açıklamayla dolu açılır');
+    await foto('dernek_amac_duzenle');
+    const kutu = await page.evaluate(() => { const t = document.getElementById('dvAmacMetin'), r = t.getBoundingClientRect(), b = document.getElementById('dvAmacTamam').getBoundingClientRect();
+      return { yazi: parseFloat(getComputedStyle(t).fontSize), sag: r.right, dugme: b.height, say: document.getElementById('dvAmacSay').textContent }; });
+    assert.ok(kutu.yazi >= 16, 'Metin kutusu en az 16px'); assert.ok(kutu.sag <= W + 1, 'Metin kutusu ekrandan taşmamalı'); assert.ok(kutu.dugme >= 44, 'Kaydet düğmesi en az 44px');
+    assert.strictEqual(kutu.say, eskiAmac.length + ' / 2000');
+    await page.fill('#dvAmacMetin', 'Ege kıyılarını, ormanlarını ve zeytinliklerini korumak için kurulduk.');
+    await page.click('#dvAmacTamam');
+    await page.waitForTimeout(300);
+    const am = await page.evaluate(() => ({ arg: window.__amac, modal: !!document.getElementById('modal'), metin: document.getElementById('dvAmac')?.textContent }));
+    assert.deepStrictEqual(am.arg, { p_dernek: 5, p_amac: 'Ege kıyılarını, ormanlarını ve zeytinliklerini korumak için kurulduk.' });
+    assert.ok(!am.modal, 'Kayıttan sonra pencere kapanır'); assert.strictEqual(am.metin, am.arg.p_amac, 'Sayfadaki açıklama hemen güncellenir');
+    await page.click('#icerik .dv-amac-duz'); await page.waitForTimeout(150);
+    await page.fill('#dvAmacMetin', ''); await page.click('#dvAmacTamam'); await page.waitForTimeout(300);
+    assert.ok(!await page.$('#dvAmac'), 'Boş kaydedilince açıklama kalkar');
+    assert.strictEqual(await page.textContent('#icerik .dv-amac-duz'), 'Açıklama ekle');
+    await foto('dernek_amac_bos');
+    s = await durum(); assert.ok(!s.yatay, 'Yatay taşma (açıklama düzenleme)');
+    sonuc.push('dernek sayfası (başkan): açıklamayı düzenle / kaldır');
 
     // 7) Bildirimden açılan tek yayın sayfası
     await page.evaluate(() => ekranAc(() => stkYayinGoster(31)));

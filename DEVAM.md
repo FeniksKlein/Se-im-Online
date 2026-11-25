@@ -16,6 +16,12 @@ Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (t
 - Canlı veritabanında migration geçmişi: 8 Ekim migration'ları (`migrations/20261008_*`) ve **`migrations/20261009_oyuncu_deneyimi.sql`** (Ercan çalıştırmalı; 1 Kasım genel seçiminden önce şart — genel seçim sayımındaki hata burada düzeltildi).
 - Tam kurulum dosyası artık temiz bir veritabanında hatasız kuruluyor (pg_cron yalnız Supabase'de).
 
+## 25.11.2026 — 2026.11.25-1 Dernek açıklamasını sonradan düzeltme (sunucu canlıda; ekran web'de, telefonlar mağaza sürümünü bekler)
+- İstek (Ercan): "Dernek kurarken oyuncu açıklamayı yanlış yazmış, onu değiştirebilecek hale getir." Eskiden amaç yalnız `dernek_kur` ile yazılıyordu, düzeltme yolu yoktu.
+- Sunucu: `gelistirici/sql/zz_20261125_dernek_amac_guncelle.sql` (canlı migration `dernek_amac_guncelle_20261125`, depo kopyası `migrations/20261125_dernek_amac_guncelle.sql`). Yeni RPC `dernek_amac_guncelle(p_dernek, p_amac)`: yalnız başkan, açık dernek; metin kuruluştaki süzgeçten geçer (2000 karakter), boş = açıklamayı kaldır; dernek başına 24 saatte en çok 3 değişiklik; yönetimce yayını durdurulmuş dernek değiştiremez. Eski/yeni metin `oyun.dernek_amac_gecmis` tablosunda kalır (oyunculara kapalı; denetim için SQL'den okunur, yönetim ekranı YOK). 159 RPC listesine eklendi.
+- Ekran: `gelistirici/www/dernek_vitrini.js` — dernek sayfasında başkana "Açıklamayı düzenle" (açıklama yoksa "Açıklama ekle") düğmesi ve sayaçlı düzenleme penceresi (`dvAmacDuzenle`). Dernek adı ve çalışma alanı hâlâ değiştirilemez (istenmedi).
+- Test: canlıda geri alınan işlem içinde 6 senaryo (düzelt, aynı metin, boşalt, geri yaz, 4. değişiklik reddi, başkan olmayan reddi); `gelistirici/test/dernek_arayuz.js` 6b adımı (390/320 px).
+
 ## 24.11.2026 02:24 — Mağaza paketi 1.0.8 (10): Play "zorunlu donanım özelliği" düzeltmesi
 - Play, 9 numaralı pakette incelemeyi durdurdu: `android:screenOrientation="portrait"` → `android.hardware.screen.portrait` zorunlu sayılıyor (tablet/Chromebook/PC/XR dışlanıyor). `mobil/hazirla.mjs` artık `<uses-feature android:name="android.hardware.screen.portrait" android:required="false"/>` ekliyor; uygulama yine dikey.
 - Play aynı sürüm kodunu tekrar kabul etmediği için `magaza.json` 1.0.8 / 10. Derleme kaynak 8f911ba; Android + iOS 1.0.8 (10), oyun 2026.11.24-3. AAB aynı yükleme anahtarıyla imzalandı (SHA-256 BF:5C…6A:5C), Ercan'a `SecimOnline-1.0.8-kod10.aab` + iOS projesi teslim edildi. 9 numaralı paket Play taslağından silinecek.
