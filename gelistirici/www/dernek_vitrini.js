@@ -733,7 +733,7 @@ function dUyelerHtml(d) {
       '<span><b>' + esc(u.kad) + '</b><small>' + (r ? '<span class="dv-rol ' + r[1] + '">' + r[0] + '</span> ' : '') + (u.il_baskani ? '<span class="dv-rol altin">İl Başkanı</span> ' : '') + esc(u.il || "") + '</small></span></button>' +
       (yonet && u.rol !== "baskan" ? '<button type="button" class="dv-dugme" data-kad="' + esc(u.kad) + '" data-rol="' + esc(u.rol) + '" onclick="dvUyeYonet(this)">Yönet</button>' : '') + '</div>';
   }).join("") + '</div>' +
-    (d.rolum === "baskan" ? '<p class="dv-not">Yönetim kurulu (en fazla 4 kişi) dernek adına açıklama yapar, protesto düzenler ve şube açar. İl başkanı, şubesi olan ilde yaşayan üyelerden seçilir ve kendi ilinde protesto düzenleyebilir; atamak için üyenin yanındaki "Yönet"e dokun.</p>' : '');
+    (d.rolum === "baskan" ? '<p class="dv-not">Yönetim kurulu (bu üye sayısıyla en fazla ' + (Number(d.yk_sinir) || 4) + ' kişi; her 10 üyede 1 kişi artar, en çok 12) dernek adına açıklama yapar, protesto düzenler ve şube açar. İl başkanı, şubesi olan ilde yaşayan üyelerden seçilir ve kendi ilinde protesto düzenleyebilir; atamak için üyenin yanındaki "Yönet"e dokun.</p>' : '');
 }
 function dSubelerHtml(d) {
   var l = dizi(d.subeler), u = d.sube_ucretleri || {}, r = alanRenk(d.alan);
@@ -836,7 +836,7 @@ window.dvUyeYonet = function (el) {
   var ilbHtml = u.il_baskani && sube ? '<button type="button" class="btn ikinci" id="dvYIlb">' + esc(sube.il) + ' il başkanlığından al</button>'
     : sube ? '<button type="button" class="btn" id="dvYIlb">' + esc(sube.il) + ' il başkanı yap</button>' + (sube.il_baskani ? '<p class="alt" style="margin-top:6px">Şu anki il başkanı ' + esc(sube.il_baskani) + ' görevden ayrılmış olur.</p>' : '')
     : '<p class="alt" style="margin-top:10px">' + esc(u.il || "Bu il") + ' ilinde derneğin şubesi yok. Bu üyeyi il başkanı yapmak için önce Şubeler sekmesinden ' + esc(u.il || "o il") + ' şubesini aç.</p>';
-  var m = modal('<h3>' + esc(u.kad) + '</h3><p class="alt">' + esc(u.il || "") + ' · Yönetim kurulu (en fazla 4 kişi) dernek adına açıklama yapar, protesto düzenler ve şube açar. İl başkanı yalnız kendi ilinde protesto düzenler.</p>' +
+  var m = modal('<h3>' + esc(u.kad) + '</h3><p class="alt">' + esc(u.il || "") + ' · Yönetim kurulu (en fazla ' + (Number(d.yk_sinir) || 4) + ' kişi) dernek adına açıklama yapar, protesto düzenler ve şube açar. İl başkanı yalnız kendi ilinde protesto düzenler.</p>' +
     '<button type="button" class="btn' + (u.rol === "yonetim" ? ' ikinci' : '') + '" id="dvYYon">' + (u.rol === "yonetim" ? 'Yönetim kurulundan çıkar' : 'Yönetim kuruluna al') + '</button>' + ilbHtml +
     '<button type="button" class="btn altin" id="dvYBas">Başkanlığı devret</button><div class="hata-metin" id="dvYHata"></div>');
   var h = m.querySelector("#dvYHata");

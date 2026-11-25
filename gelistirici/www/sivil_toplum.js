@@ -135,7 +135,7 @@ function stkSubeModal(id) {
   };
 }
 async function stkUyeIslem(id, kad, rol) {
-  const m = modal(`<h3>${e(kad)}</h3><p class="alt">Yönetim kurulu (en fazla 4 kişi) dernek adına açıklama yapar, protesto düzenler ve şube açar.</p>
+  const m = modal(`<h3>${e(kad)}</h3><p class="alt">Yönetim kurulu (en fazla ${Number((D._stk || {}).yk_sinir) || 4} kişi) dernek adına açıklama yapar, protesto düzenler ve şube açar.</p>
     ${rol === "yonetim" ? `<button class="btn ikinci" id="duY">Yönetim kurulundan çıkar</button>` : `<button class="btn" id="duY">Yönetim kuruluna al</button>`}
     <button class="btn altin" id="duB">Başkanlığı devret</button>`);
   $("#duY", m).onclick = async () => { try { await API.rpc("dernek_yonetim_ata", { p_dernek: id, p_kad: kad, p_yonetim: rol !== "yonetim" }); modalKapat(); toast("Yönetim kurulu güncellendi."); stkDetay(id); } catch (err) { toast(hataCevir(err.message), true); } };
