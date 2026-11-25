@@ -3,6 +3,13 @@
 Sahibi: Ercan (FeniksKlein). Not: "Gülveren Games" unvanı kullanılmaz (Ercan, 23.11.2026). Kodlama bilmiyor; **her şeyi Türkçe, sade ve adım adım anlat.**
 Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (tek dosya HTML/JS + Capacitor, Supabase arka uç).
 
+## 26.11.2026 — 2026.11.26-2 Parti il başkanı ataması 81 ilde (sunucu canlıda; ekran web'de, telefonlar mağaza sürümünü bekler)
+- Bildirim (Ercan): "Parti il başkanı ata kısmı çalışmıyor, sadece Ankara il başkanı atayabiliyorsun." Bütün partilerde aynıydı.
+- KÖK NEDEN: `teskilat_kongre.js` `window.D` kullanıyordu; `D` index.html'de üst düzey `const`, `window.D` YOK. Bu yüzden (1) "Parti İl Başkanı ata" düğmesi her zaman teşkilat listesinin İLK ilini (Ankara) açıyordu, (2) karttaki 81 illik "İl başkanlığı, kongre…" seçicisi hiç eklenmiyordu. Ayrıca alan kullanıcı adı istiyordu (oyunda Ad Soyad görünüyor). Sunucu (`teskilat_gorev_ver`) her ilde doğruydu.
+- İstemci: `window.D` → `typeof D` denetimi; düğme önce 81 il seçtirir (üye sayısı ve mevcut başkanla); il ekranında "Başka il seç"; geçici il başkanı ve il yönetim kurulu alanları o ilde kayıtlı üyelerden açılır liste.
+- Sunucu: `gelistirici/sql/zz_20261126_il_baskani_atama.sql` (canlı migration `il_baskani_atama_20261126`, depo `migrations/20261126_il_baskani_atama.sql`). Yeni RPC `parti_il_uye_listesi(p_parti,p_il)` (GB / teşkilat GBY / o ilin il başkanı). `il_gecici_baskan_ata` köprü: ad soyad da kabul (partide tek eşleşme), üye başka ilde kayıtlıysa kendi iline atanır + atayana bildirim — eski mağaza uygulaması yalnız kendi ilini açtığı için. Canlıda geri alınan işlemde denendi (başka il, ad soyadla, yetkisiz üye reddi).
+- Bilinen aynı tür hata (dokunulmadı): `dernek_faaliyet.js:412` `window.D`.
+
 ## 26.11.2026 — 2026.11.26-1 Gündem: "Sıradaki seçim" panosu (yalnız istemci)
 - Şikâyet (Ercan): ana ekrandaki büyük sayaç "Başvuru kapanıyor · 27 Kasım 00:00 / Cumhurbaşkanlığı Seçimi" yazıyordu; oyuncular seçimin ertesi gün olduğunu sandı. O an aslında genel başkanların CB adayı kararının son anıydı (`cb` kaydının başvuru penceresi).
 - Çözüm: `gelistirici/www/arayuz.js` `sahneHtml` yeniden yazıldı. Aynı dönemin ön seçim + ana seçim kayıtları tek grup (`sahneSecimGruplari`, `sahneAsamalari`): başlıkta asıl sandık günü, büyük sayaçta sıradaki aşama (açılış/kapanış), altında sırayla aşamalar ve her birinin geri sayımı — adaylık başvurusu, bağımsız CB imza kampanyası başlatma, ön seçim, sandık, sonuç (+ yalnız kararı açık genel başkana "Partinin CB adayı kararı"). Başka partinin/ilin ara seçimi gösterilmez. Altta "Sonraki: …". CSS `index.html` (`.sahne-hedef`, `.sa-satir`).

@@ -121,6 +121,8 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261125_kitap_yayinevi_degistir.sql',
   // 25.11.2026: şube bedeli yazısı tahsilatla aynı kaynaktan; yönetim kurulu sınırı üye sayısına göre (4 + her 10 üyede 1, en çok 12)
   'zz_20261125_dernek_yk_sube_bedeli.sql',
+  // 26.11.2026: Parti il başkanı ataması 81 ilde, o ilde kayıtlı üyeler listesinden (parti_il_uye_listesi; eski uygulama için il_gecici_baskan_ata köprüsü)
+  'zz_20261126_il_baskani_atama.sql',
   // 25.11.2026: YÜK HIZLANDIRMA — Kürsü gündemi/akışı, sohbet açılışı ve unvan önbelleği (canlıda 25.11 akşamı uygulandı).
   // LİSTENİN SONUNDA KALMALI: sohbet_oku, kursu_akis, kursu_gundem ve oyun.unvan'ı yeniden yazan dosyalardan sonra gelir.
   'zz_20261125_yuk_hizlandirma.sql'];

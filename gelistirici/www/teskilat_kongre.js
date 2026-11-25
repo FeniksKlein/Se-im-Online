@@ -8,6 +8,7 @@
   function rpc(fn, a) { return API.rpc(fn, a || {}); }
   function hata(err) { var m = (err && err.message) || String(err); if (typeof hataCevir === "function") m = hataCevir(m); toast(m, true); }
   function saat(t) { if (!t) return "—"; try { return new Date(t).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); } catch (e) { return String(t); } }
+  // Not: D, index.html'de üst düzey "const" olarak tanımlı; window.D YOKTUR (26.11.2026 hatasının kökü).
   function $$(s, k) { return (k || document).querySelector(s); }
   var CSS = '<style>.tk-satir{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08)}' +
     '.tk-cipler{display:flex;flex-wrap:wrap;gap:6px}.tk-cip{font-size:14px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08)}' +
@@ -100,6 +101,17 @@
   async function ilEkrani(pid, il) {
     var d; try { d = await rpc("il_teskilat_detay", { p_parti: pid, p_il: il }); } catch (err) { return hata(err); }
     var b = d.baskan, k = d.kongre, h = CSS + '<h3 style="font-size:19px;font-weight:800">' + esc(d.il) + ' il teşkilatı</h3>';
+    // 26.11.2026: atama alanları kullanıcı adı yerine o ilde kayıtlı parti üyelerinden seçim yapar
+    var uyeler = null;
+    if (d.yonetebilir || d.il_baskaniyim) { try { uyeler = ((await rpc("parti_il_uye_listesi", { p_parti: pid, p_il: il })) || {}).uyeler || []; } catch (_) { uyeler = null; } }
+    var uyeSec = function (id, etiket, haric) {
+      if (!uyeler) return '<div class="tk-alan"><label for="' + id + '">' + esc(etiket) + ' (kullanıcı adı)</label><input id="' + id + '" maxlength="20" autocomplete="off"></div>';
+      var liste = uyeler.filter(function (u) { return !u.yasakli && !(haric && haric(u)); });
+      if (!liste.length) return '<p class="tk-not">' + esc(d.il) + ' ilinde kayıtlı uygun parti üyesi yok. İl başkanı, görev yapacağı ilde kayıtlı üyelerden seçilir.</p>';
+      return '<div class="tk-alan"><label for="' + id + '">' + esc(etiket) + ' · ' + liste.length + ' üye</label><select id="' + id + '"><option value="">— Üye seç —</option>' +
+        liste.map(function (u) { return '<option value="' + esc(u.kad) + '">' + esc(u.ad) + (u.ad !== u.kad ? ' (' + esc(u.kad) + ')' : '') + (u.il_baskani ? ' · il başkanı' : '') + '</option>'; }).join("") + '</select></div>';
+    };
+    if (d.yonetebilir) h += '<button class="btn ikinci" id="ikIlDegis" style="margin-top:4px">Başka il seç (81 il)</button>';
     h += '<div class="tk-satir"><b>İl Başkanı</b><div>' + (b ? esc(b.kad) + ' · ' + (b.statu === "secilmis" ? "Kongrede seçildi" + (b.donem_bit ? " (dönem sonu " + esc(saat(b.donem_bit)) + ")" : "") : "Geçici görevli") : "Boş") + '</div>' +
       '<div class="tk-not">İl başkanını il kongresinde, kongre açılmadan önce bu ilde partiye üye ve kayıtlı olan üyeler seçer. Geçici görevlendirme kongreye kadar sürer.</div></div>';
     if (k && (k.durum === "aday" || k.durum === "oy")) {
@@ -120,12 +132,12 @@
     h += '<div class="tk-satir"><b>İl yönetim kurulu</b>' + ((d.yonetim_kurulu || []).map(function (y) {
       return '<div>' + esc(y.kad) + (y.gorev ? ' · ' + esc(y.gorev) : '') + ((d.il_baskaniyim || d.yonetebilir) ? ' <button class="btn ikinci" data-ik-ykcikar="' + esc(y.kad) + '">Çıkar</button>' : '') + '</div>';
     }).join("") || '<div class="tk-not">Henüz üye yok.</div>') +
-      ((d.il_baskaniyim || d.yonetebilir) && b ? '<div class="tk-alan"><label for="ikYkKad">Üye kullanıcı adı</label><input id="ikYkKad" maxlength="20" autocomplete="off"></div>' +
+      ((d.il_baskaniyim || d.yonetebilir) && b ? uyeSec("ikYkKad", "Yönetim kuruluna eklenecek üye", function (u) { return u.il_baskani; }) +
         '<div class="tk-alan"><label for="ikYkGorev">Görevi (isteğe bağlı)</label><input id="ikYkGorev" maxlength="60" placeholder="Örn. Seçim İşleri"></div><button class="btn" id="ikYkEkle">Yönetim kuruluna ekle / görev ver</button>' : '') + '</div>';
     if (d.yonetebilir) {
-      h += '<details style="margin-top:10px"><summary>Genel merkez işlemleri</summary>' +
+      h += '<details open style="margin-top:10px"><summary>Genel merkez işlemleri · il başkanı ata</summary>' +
         (!k || (k.durum !== "aday" && k.durum !== "oy") ? '<button class="btn altin" id="ikKongreAc">İl kongresini aç</button>' : '') +
-        (!b || b.statu !== "secilmis" ? '<div class="tk-alan"><label for="ikGecKad">Geçici il başkanı (kullanıcı adı)</label><input id="ikGecKad" maxlength="20" autocomplete="off"></div><button class="btn" id="ikGecAta">Geçici il başkanı görevlendir</button>' : '') +
+        (!b || b.statu !== "secilmis" ? uyeSec("ikGecKad", "Geçici il başkanı", function (u) { return u.il_baskani; }) + '<button class="btn" id="ikGecAta">' + (b ? 'Geçici il başkanını değiştir' : 'Geçici il başkanı görevlendir') + '</button>' : '') +
         (b ? '<div class="tk-alan"><label for="ikAlGer">Görevden alma gerekçesi (en az 20 karakter)</label><textarea id="ikAlGer" maxlength="300"></textarea></div><button class="btn ikinci" id="ikAl">İl başkanını görevden al ve olağanüstü kongre aç</button>' : '') +
         '</details>';
     }
@@ -136,9 +148,10 @@
     on("ikAday", function () { return rpc("il_kongre_aday_ol", { p_kongre: k.id, p_vaat: $$("#ikVaat", m).value }); });
     on("ikCekil", function () { return rpc("il_kongre_cekil", { p_kongre: k.id }); });
     on("ikKongreAc", function () { return rpc("il_kongre_ac", { p_il: il }); });
-    on("ikGecAta", function () { return rpc("il_gecici_baskan_ata", { p_il: il, p_kad: $$("#ikGecKad", m).value.trim() }); });
+    on("ikGecAta", function () { var x = $$("#ikGecKad", m), kad = x ? x.value.trim() : ""; if (!kad) return Promise.reject(new Error("Önce il başkanı yapılacak üyeyi seç.")); return rpc("il_gecici_baskan_ata", { p_il: il, p_kad: kad }).then(function () { toast(d.il + " geçici il başkanı görevlendirildi."); }); });
+    var degis = $$("#ikIlDegis", m); if (degis) degis.onclick = function () { modalKapat(); ilSecici(pid, il); };
     on("ikAl", function () { if (!window.confirm("İl başkanını görevden almak ve olağanüstü kongre açmak istiyor musun?")) return Promise.reject(new Error("Vazgeçildi")); return rpc("il_baskan_gorevden_al", { p_il: il, p_gerekce: $$("#ikAlGer", m).value }); });
-    on("ikYkEkle", function () { return rpc("il_yk_ekle", { p_il: il, p_kad: $$("#ikYkKad", m).value.trim(), p_gorev: $$("#ikYkGorev", m).value }); });
+    on("ikYkEkle", function () { var x = $$("#ikYkKad", m), kad = x ? x.value.trim() : ""; if (!kad) return Promise.reject(new Error("Önce üyeyi seç.")); return rpc("il_yk_ekle", { p_il: il, p_kad: kad, p_gorev: $$("#ikYkGorev", m).value }); });
     m.addEventListener("click", function (ev) {
       var o = ev.target.closest("[data-ik-oy]");
       if (o) { if (window.confirm(o.getAttribute("data-ik-oy") + " adayına oy vermek istiyor musun? Oy değiştirilemez.")) yap(function () { return rpc("il_kongre_oy", { p_kongre: k.id, p_aday_kad: o.getAttribute("data-ik-oy") }); }); return; }
@@ -153,20 +166,36 @@
   if (typeof eskiKart === "function") {
     window.teskilatKartCiz = async function (pid) {
       await eskiKart(pid);
-      var el = document.getElementById("teskilatKart"), t = window.D && D._teskilat; if (!el || !t) return;
+      var el = document.getElementById("teskilatKart"), t = (typeof D !== "undefined" && D) && D._teskilat; if (!el || !t) return;
       var kart = el.querySelector(".kart"); if (!kart || kart.querySelector("#ikSec")) return;
-      var iller = (t.iller || []).slice().sort(function (a, b) { return String(a.ad).localeCompare(String(b.ad), "tr"); });
+      var iller = tumIller(t);
       if (!iller.length) return;
+      var benimIl = (typeof D !== "undefined" && D) && D.durum && D.durum.profil && D.durum.profil.il_id;
       var kutu = document.createElement("div");
-      kutu.innerHTML = '<div class="tk-alan" style="margin-top:10px"><label for="ikSec">İl başkanlığı, kongre ve il yönetim kurulu</label><select id="ikSec">' +
-        iller.map(function (x) { return '<option value="' + esc(x.il_id) + '">' + esc(x.ad) + '</option>'; }).join("") + '</select></div><button class="btn ikinci" id="ikAc">İl teşkilatını aç</button>';
+      kutu.innerHTML = '<div class="tk-alan" style="margin-top:10px"><label for="ikSec">İl başkanlığı, kongre ve il yönetim kurulu (81 il)</label><select id="ikSec">' +
+        iller.map(function (x) { return '<option value="' + esc(x.il_id) + '"' + (+x.il_id === +benimIl ? ' selected' : '') + '>' + esc(x.ad) + '</option>'; }).join("") + '</select></div><button class="btn ikinci" id="ikAc">İl teşkilatını aç</button>';
       kart.appendChild(kutu);
       kutu.querySelector("#ikAc").onclick = function () { ilEkrani(pid, Number(kutu.querySelector("#ikSec").value)); };
     };
   }
-  window.teskilatGorevModal = function (pid) {
-    var il = (window.D && D.durum && D.durum.profil && D.durum.profil.il_id) || ((D._teskilat && D._teskilat.iller && D._teskilat.iller[0]) || {}).il_id;
-    if (!il) return toast("Önce bir il teşkilatı açılmalı.", true);
-    ilEkrani(pid, il);
-  };
+  // 81 ilin listesi: oyunun il kataloğu (VERI.iller); yoksa açık teşkilatlar
+  function tumIller(t) {
+    var kaynak = (window.VERI && VERI.iller && VERI.iller.length) ? VERI.iller.map(function (i) { return { il_id: i.id, ad: i.ad }; }) : ((t && t.iller) || []);
+    return kaynak.slice().sort(function (a, b) { return String(a.ad).localeCompare(String(b.ad), "tr"); });
+  }
+  // 26.11.2026: "Parti İl Başkanı ata" düğmesi önce il seçtirir (eskiden yalnız atayanın kendi ilini açıyordu)
+  async function ilSecici(pid, secili) {
+    var iller = tumIller((typeof D !== "undefined" && D) && D._teskilat), say = {};
+    try { ((await rpc("parti_il_uyeleri", { p_parti: pid })).iller || []).forEach(function (x) { say[x.id] = x.uye; }); } catch (_) {}
+    var gorev = {}; (((typeof D !== "undefined" && D) && D._teskilat && D._teskilat.gorevler) || []).forEach(function (g) { gorev[g.il_id] = g.kad; });
+    var benimIl = secili || ((typeof D !== "undefined" && D) && D.durum && D.durum.profil && D.durum.profil.il_id);
+    var m = modal(CSS + '<h3 style="font-size:19px;font-weight:800">Parti İl Başkanı ata</h3>' +
+      '<p class="tk-not">81 ilin her birine, o ilde kayıtlı parti üyelerinden il başkanı atanabilir. Atama, il kongresi yapılana kadar geçicidir.</p>' +
+      '<div class="tk-alan"><label for="ikSecIl">İl</label><select id="ikSecIl">' + iller.map(function (x) {
+        var n = say[x.il_id]; return '<option value="' + esc(x.il_id) + '"' + (+x.il_id === +benimIl ? ' selected' : '') + '>' + esc(x.ad) + (n != null ? ' — ' + n + ' üye' : '') + (gorev[x.il_id] ? ' · başkan: ' + esc(gorev[x.il_id]) : '') + '</option>';
+      }).join("") + '</select></div><button class="btn altin" id="ikSecAc">Devam et</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
+    $$("#ikSecAc", m).onclick = function () { var il = Number($$("#ikSecIl", m).value); modalKapat(); ilEkrani(pid, il); };
+  }
+  window.ilBaskaniIlSecici = ilSecici;
+  window.teskilatGorevModal = function (pid) { ilSecici(pid); };
 })();

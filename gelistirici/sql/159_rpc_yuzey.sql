@@ -284,7 +284,7 @@ declare
     'ozel_yasa_teklif', 'ozel_yanitla', 'ozel_yaz', 'para_gonder', 'parti_aciklama_sil', 'parti_aciklama_yap', 'parti_aciklamalari',
     'parti_ad_degistir', 'parti_ad_ozel_hakki', 'parti_aday_kart', 'parti_aday_tanit', 'parti_amblem_degistir', 'parti_birlesme_iptal',
     'parti_birlesme_teklif', 'parti_birlesme_yanit', 'parti_destek', 'parti_detay', 'parti_finans_bagis', 'parti_finans_durum',
-    'parti_finans_emir', 'parti_finans_kampanya', 'parti_gecisleri', 'parti_hedefleri', 'parti_il_uyeleri', 'parti_isbirligi_durum',
+    'parti_finans_emir', 'parti_finans_kampanya', 'parti_gecisleri', 'parti_hedefleri', 'parti_il_uyeleri', 'parti_il_uye_listesi', 'parti_isbirligi_durum',
     'parti_kasa', 'parti_kasa_defteri', 'parti_kimlik_ayarla', 'parti_kimlikleri', 'parti_kur_baslat', 'parti_kur_iptal',
     'parti_kur_tamamla', 'parti_miting_bilgi', 'parti_miting_duzenle', 'parti_sozcu_bilgi', 'parti_tuzuk', 'parti_tuzuk_oyla',
     'parti_tuzuk_teklif', 'parti_ucret_ayarla', 'parti_ucret_tarife', 'parti_yetkilerim', 'partiden_ayril', 'partiler',
