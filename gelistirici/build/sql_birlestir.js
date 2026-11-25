@@ -52,6 +52,8 @@ const KOSULLU = {
   'zz_20261124_mesaj_alinti.sql': ['oyun.moderatorler', 'oyun.mesajlar', 'oyun.ozel', 'oyun.mod_kisit', 'oyun.destek_mesaj', 'oyun.sohbet_grup', 'oyun.kanal_okuma'],
   // 24.11: Kürsü denetimi + paylaşım aralığı + herkese açık Talep kutusu; Kürsü şikâyet ve Yönetime Yaz tabloları (canlı migration'lar) yoksa atlanır.
   'zz_20261124_kursu_denetim_talep.sql': ['oyun.akis', 'oyun.akis_sikayet', 'oyun.moderatorler', 'oyun.destek_talep', 'oyun.destek_mesaj', 'oyun.mod_kayit', 'oyun.mod_kisit'],
+  // 25.11: yük hızlandırma; Kürsü (yeniden paylaşım, takip, beğenmeme), alıntılı sohbet ve İçişleri atama tabloları (bir kısmı canlı migration) yoksa atlanır.
+  'zz_20261125_yuk_hizlandirma.sql': ['oyun.akis', 'oyun.akis_begenmeme', 'oyun.akis_etiket', 'oyun.kursu_yp', 'oyun.kursu_takip', 'oyun.mesajlar', 'oyun.kanal_okuma', 'oyun.icisleri_atama', 'oyun.parti_gby', 'oyun.oda', 'oyun.dernekler'],
 };
 const okuKosullu = ad => {
   const govde = oku(ad), tablolar = KOSULLU[ad];
@@ -118,7 +120,10 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261125_dernek_il_baskani.sql',
   'zz_20261125_kitap_yayinevi_degistir.sql',
   // 25.11.2026: şube bedeli yazısı tahsilatla aynı kaynaktan; yönetim kurulu sınırı üye sayısına göre (4 + her 10 üyede 1, en çok 12)
-  'zz_20261125_dernek_yk_sube_bedeli.sql'];
+  'zz_20261125_dernek_yk_sube_bedeli.sql',
+  // 25.11.2026: YÜK HIZLANDIRMA — Kürsü gündemi/akışı, sohbet açılışı ve unvan önbelleği (canlıda 25.11 akşamı uygulandı).
+  // LİSTENİN SONUNDA KALMALI: sohbet_oku, kursu_akis, kursu_gundem ve oyun.unvan'ı yeniden yazan dosyalardan sonra gelir.
+  'zz_20261125_yuk_hizlandirma.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',

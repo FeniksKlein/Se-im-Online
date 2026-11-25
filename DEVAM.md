@@ -3,6 +3,15 @@
 Sahibi: Ercan (FeniksKlein). Not: "Gülveren Games" unvanı kullanılmaz (Ercan, 23.11.2026). Kodlama bilmiyor; **her şeyi Türkçe, sade ve adım adım anlat.**
 Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (tek dosya HTML/JS + Capacitor, Supabase arka uç).
 
+## ⚠️ 25.11.2026 gecesi: yük olayı ve hızlandırma (önce bunu bil)
+- **Olay:** ~150 çevrimiçi oyuncuda sunucu (Supabase Large, 2 çekirdek) işlemcisi doldu. 22.00 (oylama bitişi) ve 22.30'da (kurultay sonucu) bütün istemciler geri sayım sıfırlanınca aynı saniyede ana ekranı yeniledi (istemci başına ~24 RPC); oyun 22.30–22.37 arasında yanıt veremedi.
+- **Ölçüm:** her çevrimiçi oyuncu dakikada 60–100 istek gönderiyor. Olaydan önce oyuncu başına ~930 ms/dk veritabanı işlemcisi harcanıyordu; hızlandırmadan sonra ~180 ms/dk.
+- **Canlıya alınan (kaynak: `gelistirici/sql/zz_20261125_yuk_hizlandirma.sql`, listenin SONUNDA kalmalı):** Kürsü gündemi dakikalık önbellek; Kürsü akışı (puan önbelleği + sayfa JSON'u tek sorgu + zaman dizinleri); sohbet_oku (son 40 mesaj dizinden, boş "okundu" yazımı yok); **unvan önbelleği** (`oyun.unvan` artık `oyun.unvan_onbellek`'ten okur, asıl hesap `oyun.unvan_hesap`; dakikada bir `oyun.unvan_yenile`). pg_cron işleri: `unvan-onbellek`, `kursu-skor-onbellek`, `kursu-gundem-onbellek`.
+- **İstemci (1.0.9 / 2026.11.25-4):** geri sayım sıfırlanınca yenileme rastgele 3–28 sn gecikmeyle, tek sefer (`geriSayimYenileme`, index.html). Telefonlara mağaza sürümüyle ulaşır.
+- **Kural:** her RPC'de satır başına çağrılan yardımcı işlev (unvan, parti_json, engelli…) gördüğünde maliyetini ölç; listeleri tek sorguda üret. Yeni ekran ana ekrana yeni RPC eklemesin.
+- **Sıradaki ücretsiz işler (yapılmadı):** (1) ana ekranın ~24 RPC'sini tek "toplu" istekte birleştirmek; (2) `CANLI.izle` her ekran değişiminde yeni Realtime kanalı açıyor (`realtime.subscription` 4,9 milyon ekleme/silme) — kanalı yeniden kullan; (3) `denge_paneli` (her çağrıda herkesin servetini hesaplıyor, ~130 ms) ve `gorevlerim` (~400–700 ms) hafifletilmeli; (4) `durum` (~15 ms, en sık çağrılan).
+- **Ölçek gerçeği:** 2 çekirdekli sunucu binlerce eşzamanlı oyuncuyu taşımaz; yukarıdaki işler bittikten sonra da büyüme için daha güçlü işlem paketi gerekir (Ercan'ın kararı).
+
 ## ⚠️ KALICI TEMEL: YAYIN ÖLÇEĞİ (16.11.2026 — Ercan'ın kararı)
 - Beta dönemi ve beta için tasarlanan şartlar/kurallar **artık esas alınmaz**. Oyun yayına çıkacak ve **binlerce oyuncu** aynı anda oynayacakmış gibi tasarlanır, düzeltilir ve test edilir.
 - Hiçbir kural "şu an az oyuncu var" diye gevşetilmez ya da sıkılaştırılmaz; eşikler (nisap, kota, süre, ücret, sınır) yayın ölçeğine göre seçilir. Gerçek Türk hukuku esas; oyun temposu için kısaltılmış süreler açıkça "oyun kuralı" olarak işaretlenir.

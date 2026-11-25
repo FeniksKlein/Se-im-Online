@@ -4548,11 +4548,20 @@ async function basla(){
   if (D._bekleyenYon) { const v = D._bekleyenYon; D._bekleyenYon = null; PUSH.yonlendir(v); }
 }
 // Geri sayımlar her saniye; ekran her dakika ve uygulamaya dönüldüğünde tazelenir
+// 25.11.2026 yük koruması: bir geri sayım sıfırlanınca bütün oyuncular aynı saniyede ana ekranı yeniliyordu
+// (seçim saatlerinde sunucuya binlerce istek birden). Yenileme artık oyuncu başına rastgele 3–28 sn sonra,
+// tek sefer yapılır; sunucu da o sürede seçimi işlemiş olur.
+let geriSayimYenileme = null;
 setInterval(() => {
   document.querySelectorAll("[data-an]").forEach(el => {
     const ms = +el.dataset.an - simdi();
     el.textContent = kalan(ms);
-    if (ms < 0 && ms > -1500 && D.sekme === "gundem" && !D.yigin.length && !$("#modal")) setTimeout(gundemEkrani, 1500);
+    if (ms < 0 && ms > -1500 && !geriSayimYenileme && D.sekme === "gundem" && !D.yigin.length && !$("#modal")) {
+      geriSayimYenileme = setTimeout(() => {
+        geriSayimYenileme = null;
+        if (D.durum && D.sekme === "gundem" && !D.yigin.length && !$("#modal") && !document.hidden && YUK.otomatik()) gundemEkrani();
+      }, 3000 + Math.floor(Math.random() * 25000));
+    }
   });
 }, 1000);
 setInterval(() => { if (D.durum && D.sekme === "gundem" && !D.yigin.length && !$("#modal") && !document.hidden && YUK.otomatik()) gundemEkrani(); }, 120000 + Math.floor(Math.random() * 30000));
