@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.26-2', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.26-3', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -86357,6 +86357,157 @@ end $f$;
 
 revoke all on function public.parti_il_uye_listesi(bigint, integer), public.il_gecici_baskan_ata(integer, text) from public, anon;
 grant execute on function public.parti_il_uye_listesi(bigint, integer), public.il_gecici_baskan_ata(integer, text) to authenticated;
+-- 26.11.2026 · YENİ OYUNCU REHBERİ (ONBOARDING) — sürüm 2026.11.26-3
+-- İstek (Ercan, Yönetime Yaz'dan gelen oyuncu önerisi üzerine): "Oyuna ilk girişte oyuncu yönlendirilmeli,
+--   başlangıçta kısa ve doğal bir onboarding olsun. İlk giren oyuncu için oyun aşırı karışık. Her şeyi görüyor
+--   ama hiçbir şey bilmiyor." → "ekle".
+-- Bu dosya (oyuncu verisi değişmez; yalnız sütun/işlev/dizin eklenir; tekrar çalıştırmak güvenlidir):
+--   1) oyun.profiller.rehber (jsonb): karşılama görüldü mü, hangi ekran ipuçları kapatıldı, ödül alındı mı.
+--      Hesaba bağlı tutulur; oyuncu telefon değiştirse de ipuçları yeniden çıkmaz.
+--   2) public.ilk_adimlar() yeniden yazıldı:
+--      • 14 günden eski hesaplarda ağır denetimler HİÇ çalışmaz (bu işlev Gündem'de dakikada bir çağrılıyor;
+--        25.11 ölçümünde 222 bin çağrı × 25 ms ≈ 94 dk işlemci). Yeni hesaplarda da dizinlerle hızlanır.
+--      • Adımlara "neden" açıklaması ve yeni adım "İlk ek işini tamamla" eklendi. Eski uygulama aynı alanları
+--        (kod/ad/tamam/not, yeni, bitti) okumaya devam eder; yeni alanları görmezden gelir.
+--      • Karşılama kartı metinleri (uygulama_ayar, herkese açık değil) yalnız yeni oyunculara döner;
+--        Süper Yönetici Portalı › Ayarlar › Genel'den kod yazmadan değiştirilebilir.
+--      'otomatik': karşılama turu ve ekran ipuçları kendiliğinden açılsın mı (ayarlar.rehber_bas'tan sonra açılan hesap).
+--   3) public.rehber_isaretle(p_anahtar): karşılama/ipucu/kart kapatma kaydı.
+--   4) public.rehber_odul_al(): ilk 6 adımı (oy hariç) bitiren yeni oyuncuya TEK SEFERLİK başlangıç ödülü.
+--      Tutar oyun.ayarlar.rehber_odul (varsayılan 5.000 ₺ = başlangıç parasının çeyreği); portaldan değişir, 0 = kapalı.
+--      Çift ödeme kilidi: profiller.rehber->'odul' koşullu güncelleme (aynı anda iki istek gelse de bir kez öder).
+--   5) public.sohbet_oku 'yeni' alanı (son 7 günde katılan oyuncu) → sohbette "Yeni" rozeti.
+--      sohbet_oku'nun kaynağı zz_20261125_yuk_hizlandirma.sql'dedir (listenin sonunda); alan orada da eklendi.
+-- Ekranlar: gelistirici/www/rehber.js.
+
+alter table oyun.profiller add column if not exists rehber jsonb not null default '{}'::jsonb;
+alter table oyun.ayarlar add column if not exists rehber_odul numeric not null default 5000;
+-- Karşılama ve otomatik ekran ipuçları yalnız bu andan SONRA açılan hesaplarda kendiliğinden açılır
+-- (sütun eklendiği an mevcut satıra yazılır; mevcut oyuncular turu görmez, ? düğmesi ve İlk Adımlar kartı herkese açık).
+alter table oyun.ayarlar add column if not exists rehber_bas timestamptz not null default now();
+
+-- ilk_adimlar / ilk_uc_gorev denetimleri için dizinler (eskiden mesajlar ve oylar tablosu baştan sona taranıyordu)
+create index if not exists mesajlar_il_kahve_kullanici on oyun.mesajlar (user_id) where kanal like 'il:%';
+create index if not exists oylar_secmen on oyun.oylar (secmen);
+
+-- Karşılama kartı metinleri (yalnız yoksa eklenir; portaldan yapılan düzenleme ezilmez). Biçim: "Başlık | açıklama"
+insert into oyun.uygulama_ayar (anahtar, deger, aciklama, herkese_acik) values
+  ('rehber_kart_1', to_jsonb('Türkiye''yi oyuncular yönetiyor | Burada bot yok. Cumhurbaşkanından belediye başkanına, vekilden bakana kadar her makamda gerçek bir oyuncu oturuyor. Sen de o koltuklardan birine aday olabilirsin.'::text), 'Yeni oyuncu karşılaması · 1. kart (Başlık | açıklama)', false),
+  ('rehber_kart_2', to_jsonb('Para ve kıdem nasıl kazanılır? | Her gün maaşını topla (+1 kıdem), günde 5 ek iş yap, mitinglere katıl, oyunu kullan. Kıdem arttıkça maaşın yükselir; parti ve şirket kurma, adaylık hakları açılır.'::text), 'Yeni oyuncu karşılaması · 2. kart (Başlık | açıklama)', false),
+  ('rehber_kart_3', to_jsonb('Her ay seçim var | Belediye seçimi, kurultay ve genel seçim her ay döner. Önce adaylık başvurusu, sonra ön seçim, sonra sandık. Takvimi Gündem''in en üstünde görürsün.'::text), 'Yeni oyuncu karşılaması · 3. kart (Başlık | açıklama)', false),
+  ('rehber_kart_4', to_jsonb('İlk hedefin | Gündem''deki "İlk adımların" listesini bitir: maaşını topla, kendini tanıt, bir partiye katıl. Hepsini bitirince başlangıç ödülün cüzdanına yatar. Takıldığın her ekranda sağ üstteki ? düğmesine bas.'::text), 'Yeni oyuncu karşılaması · 4. kart (Başlık | açıklama)', false)
+on conflict (anahtar) do nothing;
+
+-- Süper Yönetici Portalı ayar kataloğu (yoksa eklenir)
+insert into oyun.yp_ayar_katalog (anahtar, grup, baslik, aciklama, tur, birim, en_az, en_cok, en_uzun, risk, etki, tablo, sutun, satir, sira, aktif) values
+  ('ayarlar.rehber_odul', 'ekonomi', 'Yeni oyuncu rehberi ödülü', 'İlk adımları bitiren yeni oyuncuya bir kez verilen başlangıç ödülü. 0 yazarsan ödül kapanır.', 'para', '₺', 0, 50000, null, 'orta', 'Hemen: ödülü henüz almamış oyuncularda.', 'oyun.ayarlar', 'rehber_odul', null, 12, true),
+  ('uygulama.rehber_kart_1', 'genel', 'Karşılama kartı 1', 'Yeni oyuncunun ilk girişte gördüğü kart. Biçim: Başlık | açıklama', 'metin', null, null, null, 300, 'dusuk', 'Yeni oyuncularda hemen.', 'oyun.uygulama_ayar', 'deger', '{"anahtar":"rehber_kart_1"}'::jsonb, 21, true),
+  ('uygulama.rehber_kart_2', 'genel', 'Karşılama kartı 2', 'Yeni oyuncunun ilk girişte gördüğü kart. Biçim: Başlık | açıklama', 'metin', null, null, null, 300, 'dusuk', 'Yeni oyuncularda hemen.', 'oyun.uygulama_ayar', 'deger', '{"anahtar":"rehber_kart_2"}'::jsonb, 22, true),
+  ('uygulama.rehber_kart_3', 'genel', 'Karşılama kartı 3', 'Yeni oyuncunun ilk girişte gördüğü kart. Biçim: Başlık | açıklama', 'metin', null, null, null, 300, 'dusuk', 'Yeni oyuncularda hemen.', 'oyun.uygulama_ayar', 'deger', '{"anahtar":"rehber_kart_3"}'::jsonb, 23, true),
+  ('uygulama.rehber_kart_4', 'genel', 'Karşılama kartı 4', 'Yeni oyuncunun ilk girişte gördüğü kart. Biçim: Başlık | açıklama', 'metin', null, null, null, 300, 'dusuk', 'Yeni oyuncularda hemen.', 'oyun.uygulama_ayar', 'deger', '{"anahtar":"rehber_kart_4"}'::jsonb, 24, true)
+on conflict (anahtar) do nothing;
+
+-- Ödül için gereken çekirdek adımlar (oy hariç: seçim takvimine bağlı, herkes 14 günde sandığa denk gelmeyebilir)
+create or replace function oyun.rehber_durum(p oyun.profiller, t timestamptz)
+returns jsonb language plpgsql stable security definer set search_path = '' as $f$
+declare d jsonb := oyun.ilk_uc_gorev(p); u text; ek boolean; anket boolean; oy boolean; adimlar jsonb;
+begin
+  u := coalesce(oyun.uyari(p, t), oyun.ilk_uc_gorev_engel(p));
+  ek := exists (select 1 from oyun.ek_is_kayit k where k.user_id = p.id and k.odendi_at is not null);
+  anket := exists (select 1 from oyun.haftalik_anket_oy a where a.user_id = p.id);
+  oy := exists (select 1 from oyun.oylar o where o.secmen = p.id);
+  adimlar := jsonb_build_array(
+    jsonb_build_object('kod','maas','ad','İlk maaşını topla','tamam',(d->>'maas')::boolean,'cekirdek',true,
+      'neden','Her gün maaşını topla: para ve +1 kıdem kazanırsın. Kıdem; oy, adaylık ve kuruluş haklarını açar.'),
+    jsonb_build_object('kod','kimlik','ad','Portreni ve kısa biyografini hazırla','tamam',(d->>'kimlik')::boolean,'cekirdek',true,
+      'neden','Diğer oyuncular seni portren ve biyografinle tanır. İlk oyunu kullanmak için gerekir.'),
+    jsonb_build_object('kod','sohbet','ad','İl kahvesinde kendini tanıt','tamam',(d->>'kahve')::boolean,'cekirdek',true,
+      'neden','Sohbet › İl kahvesi, ilindeki oyuncuların buluşma yeri. Bir selam yaz; ilk oy hakkı için son başlangıç görevi.'),
+    jsonb_build_object('kod','parti','ad','Bir partiye katıl','tamam',p.parti_id is not null,'cekirdek',true,
+      'neden','Parti üyeleri kurultayda genel başkanı seçer, ön seçimde aday sıralamasını belirler. Partini sonra değiştirebilirsin.'),
+    jsonb_build_object('kod','ek_is','ad','İlk ek işini tamamla','tamam',ek,'cekirdek',true,
+      'neden','Günde 5 ek iş hakkın var, gece 00.00''da yenilenir. İşi başlat, süre dolunca ücretini al.'),
+    jsonb_build_object('kod','anket','ad','Haftalık siyasi ankete katıl','tamam',anket,'cekirdek',true,
+      'neden','Her hafta hangi partiyi desteklediğini söyle; sonuçlar herkese açık yayınlanır.'),
+    jsonb_build_object('kod','oy','ad','İlk oyunu kullan','tamam',oy,'cekirdek',false,'not',u,
+      'neden','Sandık açıkken Gündem''deki seçim kartından oy verirsin. Ödül için şart değil; ilk seçimini kaçırma.'));
+  return jsonb_build_object('adimlar', adimlar, 'engel', u, 'oy_gorevleri', d,
+    'cekirdek_bitti', not exists (select 1 from jsonb_array_elements(adimlar) x where (x->>'cekirdek')::boolean and not (x->>'tamam')::boolean),
+    'bitti', not exists (select 1 from jsonb_array_elements(adimlar) x where not (x->>'tamam')::boolean));
+end $f$;
+
+create or replace function public.ilk_adimlar() returns jsonb
+language plpgsql security definer set search_path = '' as $f$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); r jsonb; s jsonb; odul numeric;
+begin
+  r := coalesce(p.rehber, '{}'::jsonb);
+  -- 14 günden eski hesap: hiçbir tablo taranmaz (Gündem bu işlevi dakikada bir çağırır)
+  if p.olusturma <= t - interval '14 days' then
+    return jsonb_build_object('yeni', false, 'bitti', true, 'adimlar', '[]'::jsonb, 'rehber', r);
+  end if;
+  s := oyun.rehber_durum(p, t);
+  odul := greatest(coalesce((select a.rehber_odul from oyun.ayarlar a where a.id = 1), 0), 0);
+  return s || jsonb_build_object(
+    'yeni', true, 'rehber', r, 'secmen_karti', (s->>'engel') is null,
+    'otomatik', p.olusturma >= coalesce((select a.rehber_bas from oyun.ayarlar a where a.id = 1), '-infinity'::timestamptz),
+    'katilim', p.olusturma, 'bitis', p.olusturma + interval '14 days',
+    'odul', odul, 'odul_alindi', r ? 'odul', 'odul_hazir', odul > 0 and not (r ? 'odul') and (s->>'cekirdek_bitti')::boolean,
+    'metinler', coalesce((select jsonb_agg(u.deger order by u.anahtar) from oyun.uygulama_ayar u
+                          where u.anahtar in ('rehber_kart_1','rehber_kart_2','rehber_kart_3','rehber_kart_4')
+                            and jsonb_typeof(u.deger) = 'string' and btrim(u.deger #>> '{}') <> ''), '[]'::jsonb));
+end $f$;
+
+create or replace function public.rehber_isaretle(p_anahtar text) returns jsonb
+language plpgsql security definer set search_path = '' as $f$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); a text := lower(btrim(coalesce(p_anahtar, ''))); r jsonb;
+begin
+  r := coalesce(p.rehber, '{}'::jsonb);
+  if a in ('karsilama', 'kart_gizle') then
+    r := r || jsonb_build_object(a, t);
+  elsif a = 'kart_goster' then
+    r := r - 'kart_gizle';
+  elsif a = 'ipucu_sifirla' then
+    r := (r - 'ipucu') - 'karsilama';
+  elsif a ~ '^ipucu:[a-z_]{2,24}$' then
+    a := substr(a, 7);
+    if not coalesce(r->'ipucu', '[]'::jsonb) ? a then
+      if jsonb_array_length(coalesce(r->'ipucu', '[]'::jsonb)) >= 40 then raise exception 'Çok fazla ipucu kaydı.'; end if;
+      r := jsonb_set(r, '{ipucu}', coalesce(r->'ipucu', '[]'::jsonb) || to_jsonb(a));
+    end if;
+  else
+    raise exception 'Geçersiz rehber işlemi.';
+  end if;
+  update oyun.profiller set rehber = r where id = p.id and rehber is distinct from r;
+  return r;
+end $f$;
+
+create or replace function public.rehber_odul_al() returns jsonb
+language plpgsql security definer set search_path = '' as $f$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); s jsonb; odul numeric;
+begin
+  if p.olusturma <= t - interval '14 days' then raise exception 'Yeni oyuncu rehberi ödülü hesabın ilk 14 gününde alınabilir.'; end if;
+  if coalesce(p.rehber, '{}'::jsonb) ? 'odul' then raise exception 'Başlangıç ödülünü zaten aldın.'; end if;
+  odul := greatest(coalesce((select a.rehber_odul from oyun.ayarlar a where a.id = 1), 0), 0);
+  if odul <= 0 then raise exception 'Başlangıç ödülü şu an verilmiyor.'; end if;
+  s := oyun.rehber_durum(p, t);
+  if not (s->>'cekirdek_bitti')::boolean then raise exception 'Önce ilk adımları tamamla (oy kullanmak hariç).'; end if;
+  -- Çift ödeme kilidi: yalnız ödül kaydı yoksa güncellenir
+  update oyun.profiller set rehber = coalesce(rehber, '{}'::jsonb) || jsonb_build_object('odul', t, 'odul_tutar', odul)
+   where id = p.id and not (coalesce(rehber, '{}'::jsonb) ? 'odul');
+  if not found then raise exception 'Başlangıç ödülünü zaten aldın.'; end if;
+  perform oyun.para_islem(p.id, odul, 'rehber_odul', 'Yeni oyuncu rehberi · başlangıç ödülü', t);
+  return jsonb_build_object('odul', odul, 'para', (select c.para from oyun.cuzdan c where c.user_id = p.id));
+end $f$;
+
+do $g$
+declare f text;
+begin
+  foreach f in array array['ilk_adimlar()', 'rehber_isaretle(text)', 'rehber_odul_al()'] loop
+    execute format('revoke all on function public.%s from public, anon', f);
+    execute format('grant execute on function public.%s to authenticated', f);
+  end loop;
+  revoke all on function oyun.rehber_durum(oyun.profiller, timestamptz) from public, anon, authenticated;
+end $g$;
 -- zz_20261125_yuk_hizlandirma.sql (koşullu)
 do $kosullu_dis$
 begin
@@ -86728,6 +86879,7 @@ begin
               'parti', case when x.gorevli then null else oyun.parti_json(pr.parti_id) end,
               'unvan', case when x.gorevli then 'Oyun Yönetimi' else oyun.unvan(x.user_id) end,
               'benim', x.user_id = p.id, 'gorevli', x.gorevli,
+              'yeni', coalesce(not x.gorevli and pr.olusturma > v_t - interval '7 days', false),
               'yanit', case when x.yanit_id is not null then oyun.mesaj_alinti(p, x.yanit_id) end) order by x.id), '[]'::jsonb)
       into liste
     from (
@@ -86744,6 +86896,7 @@ begin
               'parti', case when x.gorevli then null else oyun.parti_json(pr.parti_id) end,
               'unvan', case when x.gorevli then 'Oyun Yönetimi' else oyun.unvan(x.user_id) end,
               'benim', x.user_id = p.id, 'gorevli', x.gorevli,
+              'yeni', coalesce(not x.gorevli and pr.olusturma > v_t - interval '7 days', false),
               'yanit', case when x.yanit_id is not null then oyun.mesaj_alinti(p, x.yanit_id) end) order by x.id), '[]'::jsonb)
       into liste
     from (
@@ -87160,7 +87313,7 @@ declare
     'dernek_uye_destek_karar', 'dernek_uye_destek_liste', 'dernek_yonetim_ata', 'dernek_ziyaret_taleplerim', 'dernek_ziyaret_tamamla', 'dernek_ziyaret_teklif',
     'dernek_ziyaret_yanit', 'dernekler', 'disiplin_baslat', 'disiplin_durum', 'disiplin_oyla', 'durum', 'istemci_hata_kaydet',
     -- 08.11.2026: Halk Hareketleri ekranlarının çağırdığı ve listede eksik kalan adlar
-    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'mod_merkez', 'mod_ustlen', 'mod_ustlenmeler', 'mod_sohbet_nobeti', 'mod_sohbet_sekme', 'mod_uyari', 'mod_para_cezasi', 'mod_kucuk_cezalar', 'mod_dosya', 'mod_not_ekle', 'mod_talep_ac', 'mod_talepler', 'mod_talep_karar', 'mod_talep_geri_cek', 'mod_destek', 'mod_destek_yanitla', 'mod_gunluk', 'admin_mod_ekip', 'admin_mod_kaydet', 'admin_mod_sadelestir', 'ifade_cagir', 'ifade_ver', 'ifade_reddet', 'ifade_zorla_getir', 'ifade_iptal', 'ifade_cagrilari', 'bakanlik_dava_bilgi', 'bakanlik_dava_ac', 'mod_sozlesme_kabul', 'admin_mod_tarafsizlik', 'mod_inceleme_karar', 'mod_kisitlar', 'mod_kisit_uygula', 'mod_kisit_uzat', 'mod_kisit_kaldir', 'mod_icerik_toplu_gizle', 'mod_yetki_tablosu', 'kisitlarim', 'yonetime_yaz_bilgi', 'yonetime_yaz', 'yonetime_yaz_yanit', 'yonetime_yaz_okundu', 'mod_kutu', 'mod_kutu_yanitla', 'mod_kutu_devret', 'yardim_yanitla', 'mod_sohbet_yaz', 'admin_akis_sikayetleri', 'admin_akis_karar', 'destek_gonder', 'kayit_basvuru_gonder', 'kayit_durumum', 'sozlesme_durumum', 'sozlesme_onayla', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'nobetci_sevk_et', 'nobetci_savunma', 'nobetci_karar', 'nobetci_panel', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
+    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'mod_merkez', 'mod_ustlen', 'mod_ustlenmeler', 'mod_sohbet_nobeti', 'mod_sohbet_sekme', 'mod_uyari', 'mod_para_cezasi', 'mod_kucuk_cezalar', 'mod_dosya', 'mod_not_ekle', 'mod_talep_ac', 'mod_talepler', 'mod_talep_karar', 'mod_talep_geri_cek', 'mod_destek', 'mod_destek_yanitla', 'mod_gunluk', 'admin_mod_ekip', 'admin_mod_kaydet', 'admin_mod_sadelestir', 'ifade_cagir', 'ifade_ver', 'ifade_reddet', 'ifade_zorla_getir', 'ifade_iptal', 'ifade_cagrilari', 'bakanlik_dava_bilgi', 'bakanlik_dava_ac', 'mod_sozlesme_kabul', 'admin_mod_tarafsizlik', 'mod_inceleme_karar', 'mod_kisitlar', 'mod_kisit_uygula', 'mod_kisit_uzat', 'mod_kisit_kaldir', 'mod_icerik_toplu_gizle', 'mod_yetki_tablosu', 'kisitlarim', 'rehber_isaretle', 'rehber_odul_al', 'yonetime_yaz_bilgi', 'yonetime_yaz', 'yonetime_yaz_yanit', 'yonetime_yaz_okundu', 'mod_kutu', 'mod_kutu_yanitla', 'mod_kutu_devret', 'yardim_yanitla', 'mod_sohbet_yaz', 'admin_akis_sikayetleri', 'admin_akis_karar', 'destek_gonder', 'kayit_basvuru_gonder', 'kayit_durumum', 'sozlesme_durumum', 'sozlesme_onayla', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'nobetci_sevk_et', 'nobetci_savunma', 'nobetci_karar', 'nobetci_panel', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
     -- 09.11.2026 Halk Hareketleri 3.0 (supabase/migrations/20261109090000_sokak_gercek_oyuncu.sql)
     'sokak_eylemden_ayril', 'sokak_goreve_cik', 'sokak_gorevden_ayril', 'sokak_karsi_katil', 'sokak_taktik_yap', 'sokak_grev_cagri', 'sokak_nabiz_ver', 'sokak_yasak_koy', 'sokak_jest_yap', 'sokak_heyet_davet', 'sokak_heyet_yanit', 'sokak_heyet_rapor', 'sokak_seslenis_yap', 'sokak_seslenis_tepki', 'sokak_karsi_cagri', 'sokak_kalkan_birak', 'sokak_saha_panel',
     -- 09.11.2026 on iki yeni hükümet aracı (supabase/migrations/20261109150000_halk_hukumet_yeni_tedbirler.sql)
