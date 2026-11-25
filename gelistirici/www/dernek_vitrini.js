@@ -293,6 +293,7 @@ function stil() {
   ".dv-iller{display:flex;flex-wrap:wrap;gap:7px;padding:14px}",
   ".dv-il{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:10px;background:var(--panel2);font-size:13px;font-weight:700;color:var(--txt2)}",
   ".dv-il.merkez{background:var(--at);color:#fff;box-shadow:inset 0 0 0 1px var(--a)}",
+  ".dv-il{flex-wrap:wrap}.dv-il em{font-style:normal;font-size:12px;font-weight:600;color:var(--mut)}",
   ".dv-il small{font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--ac)}",
   ".dv-panel-alt{padding:12px 14px 14px;border-top:1px solid var(--line)}",
   ".dv-panel-alt p{margin:0 0 10px;font-size:12.5px;color:var(--mut);line-height:1.5}",
@@ -666,6 +667,7 @@ var DSEKME = ["akis", "uyeler", "subeler", "kasa"];
 function detayKunye(d) {
   var r = alanRenk(d.alan), ben = benKad();
   var rol = d.rolum === "baskan" ? '' : d.rolum === "yonetim" ? '<span class="dv-rol mor">Yönetim kurulundasın</span>' : d.rolum ? '<span class="dv-rol">Üyesin</span>' : "";
+  var ilb = ilBaskanligim(d); if (ilb) rol = '<span class="dv-rol altin">' + esc(ilb.il) + ' İl Başkanısın</span>';   // İL BAŞKANLIĞI (25.11.2026)
   var kasa = d.kasa === null || d.kasa === undefined ? '<b class="gizli">' + IK.kilit + 'Gizli</b>' : '<b>' + esc(kisaPara(d.kasa)) + '</b>';
   var baskan = d.baskan || (dizi(d.uyeler).filter(function (u) { return u.rol === "baskan"; })[0] || {}).kad;
   var uzun = String(d.amac || "").length > 110;
@@ -693,9 +695,14 @@ function islemHtml(d) {
   if (d.rolum) return '<div class="dv-islem tek"><button type="button" class="dv-dugme" onclick="stkBagisModal(' + i + ')">' + IK.kalp + 'Derneğe bağış yap</button></div>';
   return '<div class="dv-islem"><button type="button" class="dv-dugme birincil" onclick="stkKatil(' + i + ')">' + IK.arti + 'Üye ol</button><button type="button" class="dv-dugme" onclick="stkBagisModal(' + i + ')">' + IK.kalp + 'Bağış yap</button></div>';
 }
+function ilBaskanligim(d) { var k = Number(d && d.il_baskanligim); return k ? dizi(d.subeler).filter(function (s) { return Number(s.il_id) === k; })[0] || null : null; }
 function masaHtml(d) {
-  if (!d.yetkili || d.kapali || typeof stkEylemModal !== "function") return "";
-  var i = nid(d.id);
+  if (d.kapali || typeof stkEylemModal !== "function") return "";
+  var i = nid(d.id), ilb = ilBaskanligim(d);
+  if (!d.yetkili && ilb) return '<section class="dv-masa"><div class="dv-masa-bas"><h3>' + esc(ilb.il) + ' il başkanlığı</h3><span>Kendi ilinde protesto</span></div>' +
+    '<p class="dv-not" style="margin:0 0 10px">İl başkanı olarak ' + esc(ekDe(ilb.il)) + ' dernek adına protesto düzenleyebilirsin. Derneğin günde 1 protesto sınırı ortaktır.</p>' +
+    '<button type="button" class="dv-dugme birincil tam" onclick="stkEylemModal(' + i + ',\'protesto\')">' + IK.bayrak + esc(ekDe(ilb.il)) + ' protesto düzenle</button></section>';
+  if (!d.yetkili) return "";
   var btn = function (tur, ad, alt, cls) { return '<button type="button" class="dv-masa-btn ' + (cls || "") + '" style="' + turStil(tur) + '" aria-label="' + esc(turBilgi(tur).ad) + '" onclick="stkEylemModal(' + i + ',\'' + tur + '\')"><i>' + IK[turBilgi(tur).ik] + '</i><b>' + ad + '</b><small>' + alt + '</small></button>'; };
   return '<section class="dv-masa"><div class="dv-masa-bas"><h3>Yönetim masası</h3><span>Günde 3 açıklama · 1 protesto</span></div><div class="dv-masa-izgara">' +
     btn("protesto", "Protesto", "düzenle", "kirmizi") + btn("basin", "Basın", "açıklaması") +
@@ -717,21 +724,21 @@ function dAkisHtml(d) {
   return h;
 }
 function dUyelerHtml(d) {
-  var rolAd = { baskan: ["Başkan", "altin"], yonetim: ["Yönetim kurulu", "mor"] }, yonet = d.rolum === "baskan" && !d.kapali && typeof stkUyeIslem === "function";
+  var rolAd = { baskan: ["Başkan", "altin"], yonetim: ["Yönetim kurulu", "mor"] }, yonet = d.rolum === "baskan" && !d.kapali;
   var l = dizi(d.uyeler);
   if (!l.length) return '<div class="dv-liste"><div class="dv-bos">Üye yok.</div></div>';
   return '<div class="dv-liste">' + l.map(function (u) {
     var r = rolAd[u.rol];
     return '<div class="dv-uye"><button type="button" class="dv-uye-kim" data-kad="' + esc(u.kad) + '" onclick="dvOyuncu(this)">' + (typeof portre === "function" ? portre(u.kad) : "") +
-      '<span><b>' + esc(u.kad) + '</b><small>' + (r ? '<span class="dv-rol ' + r[1] + '">' + r[0] + '</span> ' : '') + esc(u.il || "") + '</small></span></button>' +
+      '<span><b>' + esc(u.kad) + '</b><small>' + (r ? '<span class="dv-rol ' + r[1] + '">' + r[0] + '</span> ' : '') + (u.il_baskani ? '<span class="dv-rol altin">İl Başkanı</span> ' : '') + esc(u.il || "") + '</small></span></button>' +
       (yonet && u.rol !== "baskan" ? '<button type="button" class="dv-dugme" data-kad="' + esc(u.kad) + '" data-rol="' + esc(u.rol) + '" onclick="dvUyeYonet(this)">Yönet</button>' : '') + '</div>';
   }).join("") + '</div>' +
-    (d.rolum === "baskan" ? '<p class="dv-not">Yönetim kurulu (en fazla 4 kişi) dernek adına açıklama yapar, protesto düzenler ve şube açar.</p>' : '');
+    (d.rolum === "baskan" ? '<p class="dv-not">Yönetim kurulu (en fazla 4 kişi) dernek adına açıklama yapar, protesto düzenler ve şube açar. İl başkanı, şubesi olan ilde yaşayan üyelerden seçilir ve kendi ilinde protesto düzenleyebilir; atamak için üyenin yanındaki "Yönet"e dokun.</p>' : '');
 }
 function dSubelerHtml(d) {
   var l = dizi(d.subeler), u = d.sube_ucretleri || {}, r = alanRenk(d.alan);
   return '<div class="dv-liste" style="--a:' + r + ';--at:' + hex2(r, .28) + ';--ac:' + mix(r) + '"><div class="dv-iller">' + l.map(function (s) {
-    return '<span class="dv-il' + (s.merkez ? ' merkez' : '') + '">' + esc(s.il) + (s.merkez ? '<small>Merkez</small>' : '') + '</span>';
+    return '<span class="dv-il' + (s.merkez ? ' merkez' : '') + '">' + esc(s.il) + (s.merkez ? '<small>Merkez</small>' : '') + (s.il_baskani ? '<em>İl başkanı ' + esc(s.il_baskani) + '</em>' : '') + '</span>';
   }).join("") + '</div>' +
     (d.yetkili && !d.kapali && typeof stkSubeModal === "function" ? '<div class="dv-panel-alt"><p>Protesto yalnız şubesi olan illerde yapılır. Şube bedeli dernek kasasından ödenir: küçük il ' + esc(para(u["1"])) + ', orta il ' + esc(para(u["2"])) + ', büyük il ' + esc(para(u["3"])) + '.</p>' +
       '<button type="button" class="dv-dugme birincil tam" onclick="stkSubeModal(' + nid(d.id) + ')">' + IK.sube + 'Yeni şube aç</button></div>' : '') + '</div>';
@@ -820,9 +827,32 @@ window.dvAmacDuzenle = function () {
   };
 };
 window.dvOyuncu = function (el) { var k = el && el.getAttribute("data-kad"); if (k && typeof oyuncuKart === "function") oyuncuKart(k); };
+/* İL BAŞKANLIĞI (25.11.2026): "Yönet" penceresi — yönetim kurulu, il başkanlığı, başkanlık devri (sunucu: dernek_il_baskani_ata). */
 window.dvUyeYonet = function (el) {
   var d = typeof D !== "undefined" ? D._stk : null, k = el && el.getAttribute("data-kad");
-  if (d && k && typeof stkUyeIslem === "function") stkUyeIslem(nid(d.id), k, el.getAttribute("data-rol") || "uye");
+  if (!d || !k || d.rolum !== "baskan" || d.kapali || typeof modal !== "function") return;
+  var i = nid(d.id), u = dizi(d.uyeler).filter(function (x) { return x.kad === k; })[0]; if (!u || u.rol === "baskan") return;
+  var sube = dizi(d.subeler).filter(function (s) { return Number(s.il_id) === Number(u.il_id); })[0] || null;
+  var ilbHtml = u.il_baskani && sube ? '<button type="button" class="btn ikinci" id="dvYIlb">' + esc(sube.il) + ' il başkanlığından al</button>'
+    : sube ? '<button type="button" class="btn" id="dvYIlb">' + esc(sube.il) + ' il başkanı yap</button>' + (sube.il_baskani ? '<p class="alt" style="margin-top:6px">Şu anki il başkanı ' + esc(sube.il_baskani) + ' görevden ayrılmış olur.</p>' : '')
+    : '<p class="alt" style="margin-top:10px">' + esc(u.il || "Bu il") + ' ilinde derneğin şubesi yok. Bu üyeyi il başkanı yapmak için önce Şubeler sekmesinden ' + esc(u.il || "o il") + ' şubesini aç.</p>';
+  var m = modal('<h3>' + esc(u.kad) + '</h3><p class="alt">' + esc(u.il || "") + ' · Yönetim kurulu (en fazla 4 kişi) dernek adına açıklama yapar, protesto düzenler ve şube açar. İl başkanı yalnız kendi ilinde protesto düzenler.</p>' +
+    '<button type="button" class="btn' + (u.rol === "yonetim" ? ' ikinci' : '') + '" id="dvYYon">' + (u.rol === "yonetim" ? 'Yönetim kurulundan çıkar' : 'Yönetim kuruluna al') + '</button>' + ilbHtml +
+    '<button type="button" class="btn altin" id="dvYBas">Başkanlığı devret</button><div class="hata-metin" id="dvYHata"></div>');
+  var h = m.querySelector("#dvYHata");
+  var calis = async function (ad, arg, mesaj) {
+    h.textContent = "";
+    try { var y = await API.rpc(ad, arg); if (typeof modalKapat === "function") modalKapat(); toast(mesaj);
+      if (y && nid(y.id) === i) { S.detay[i] = y; if (document.querySelector('.dv[data-dv="detay"][data-id="' + i + '"]')) detayCiz(y); } else window.stkDetay(i);
+    } catch (err) { h.textContent = hata(err); }
+  };
+  m.querySelector("#dvYYon").onclick = function () { calis("dernek_yonetim_ata", { p_dernek: i, p_kad: k, p_yonetim: u.rol !== "yonetim" }, "Yönetim kurulu güncellendi."); };
+  var ib = m.querySelector("#dvYIlb");
+  if (ib) ib.onclick = function () { calis("dernek_il_baskani_ata", { p_dernek: i, p_il: Number(sube.il_id), p_kad: u.il_baskani ? "" : k }, u.il_baskani ? "İl başkanlığı görevi sona erdi." : k + ", " + sube.il + " il başkanı oldu."); };
+  m.querySelector("#dvYBas").onclick = async function () {
+    if (typeof onayla === "function" && !await onayla("Başkanlığı devret", esc(k) + " derneğin başkanı olacak; sen yönetim kurulunda kalacaksın.", "Devret")) return;
+    try { await API.rpc("dernek_baskan_devret", { p_dernek: i, p_kad: k }); toast("Başkanlık devredildi."); delete S.detay[i]; window.stkDetay(i); } catch (err) { toast(hata(err), true); }
+  };
 };
 
 /* ---------- Tek yayın (bildirimden açılan açıklama) ---------- */
