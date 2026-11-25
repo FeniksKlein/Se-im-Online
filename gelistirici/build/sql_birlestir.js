@@ -51,7 +51,8 @@ const KOSULLU = {
   // 24.11: alıntılı yanıt; sohbet_oku'nun Yardım Masası / yönetim adına yazma (20.11 canlı migration'ları) üstündeki hâlini yazar, onlar yoksa atlanır.
   'zz_20261124_mesaj_alinti.sql': ['oyun.moderatorler', 'oyun.mesajlar', 'oyun.ozel', 'oyun.mod_kisit', 'oyun.destek_mesaj', 'oyun.sohbet_grup', 'oyun.kanal_okuma'],
   // 24.11: Kürsü denetimi + paylaşım aralığı + herkese açık Talep kutusu; Kürsü şikâyet ve Yönetime Yaz tabloları (canlı migration'lar) yoksa atlanır.
-  'zz_20261124_kursu_denetim_talep.sql': ['oyun.akis', 'oyun.akis_sikayet', 'oyun.moderatorler', 'oyun.destek_talep', 'oyun.destek_mesaj', 'oyun.mod_kayit', 'oyun.mod_kisit'],
+  'zz_20261124_kursu_denetim_talep.sql': ['oyun.akis', 'oyun.akis_sikayet', 'oyun.moderatorler', 'oyun.destek_talep', 'oyun.destek_mesaj', 'oyun.mod_kayit', 'oyun.mod_kisit'],  // 25.11: Şirket Kazanç Dengesi; şube, mağaza satışı, zamanlayıcı adımı ve portal ayarı tabloları (bir kısmı canlı migration) yoksa atlanır.
+  'zz_20261125_sirket_kazanc_dengesi.sql': ['oyun.pazar_sirket', 'oyun.pazar_sektor', 'oyun.pazar_ayar', 'oyun.sirket_il_subeleri', 'oyun.eko_npc_satis', 'oyun.eko_isletmeler', 'oyun.zamanlayici_adim', 'oyun.yp_ayar_katalog', 'oyun.satin_almalar'],
 };
 const okuKosullu = ad => {
   const govde = oku(ad), tablolar = KOSULLU[ad];
@@ -118,7 +119,11 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261125_dernek_il_baskani.sql',
   'zz_20261125_kitap_yayinevi_degistir.sql',
   // 25.11.2026: şube bedeli yazısı tahsilatla aynı kaynaktan; yönetim kurulu sınırı üye sayısına göre (4 + her 10 üyede 1, en çok 12)
-  'zz_20261125_dernek_yk_sube_bedeli.sql'];
+  'zz_20261125_dernek_yk_sube_bedeli.sql',
+  // 25.11.2026: Şirket Kazanç Dengesi — kuruluş dönemi verimi, sermayeye bağlı kazanç tavanı, şube tavanı, mağaza satış tavanı, geçiş dönemi.
+  // pazar_tahmin / sube_bolge_analiz / sube_pazar_tahmin / halka_arz_net_tahmin'i yeniden yazar, pazar_hesapla / eko_ticaret_tick /
+  // npc_isletme_tick / pazar_danisman'ı yamalar (oyun.sd_yama); bu yüzden listenin SONUNDA kalmalı.
+  'zz_20261125_sirket_kazanc_dengesi.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
