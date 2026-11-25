@@ -60,6 +60,8 @@ const KOSULLU = {
   'zz_20261126_destek_atama.sql': ['oyun.destek_talep', 'oyun.destek_mesaj', 'oyun.moderatorler', 'oyun.mesajlar', 'oyun.kanal_okuma', 'oyun.sohbet_grup_uye', 'oyun.parti_gby', 'oyun.parti_teskilat_gorev'],
   'zz_20261126_kitap_takip.sql': ['oyun.uc_kitap', 'oyun.uc_kitap_satis', 'oyun.sirket_ortaklari', 'oyun.akilli_bildirim'],
   'zz_20261125_yuk_hizlandirma.sql': ['oyun.akis', 'oyun.akis_begenmeme', 'oyun.akis_etiket', 'oyun.kursu_yp', 'oyun.kursu_takip', 'oyun.mesajlar', 'oyun.kanal_okuma', 'oyun.icisleri_atama', 'oyun.parti_gby', 'oyun.oda', 'oyun.dernekler'],
+  // 25.11: Şirket Kazanç Dengesi; şube, mağaza satışı, zamanlayıcı adımı ve portal ayarı tabloları (bir kısmı canlı migration) yoksa atlanır.
+  'zz_20261125_sirket_kazanc_dengesi.sql': ['oyun.pazar_sirket', 'oyun.pazar_sektor', 'oyun.pazar_ayar', 'oyun.sirket_il_subeleri', 'oyun.eko_npc_satis', 'oyun.eko_isletmeler', 'oyun.zamanlayici_adim', 'oyun.yp_ayar_katalog', 'oyun.satin_almalar'],
 };
 const okuKosullu = ad => {
   const govde = oku(ad), tablolar = KOSULLU[ad];
@@ -149,6 +151,10 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261126_pdk_otomatik_ac.sql',
   // 26.11.2026: oyuncu kartında Kürsü takip durumu ve takipçi sayısı (Takip et düğmesi)
   'zz_20261126_oyuncu_kart_takip.sql',
+  // 25.11.2026: Şirket Kazanç Dengesi — kuruluş dönemi verimi, sermayeye bağlı kazanç tavanı, şube tavanı, mağaza satış tavanı, geçiş dönemi.
+  // pazar_tahmin / sube_bolge_analiz / sube_pazar_tahmin / halka_arz_net_tahmin'i yeniden yazar, pazar_hesapla / eko_ticaret_tick /
+  // npc_isletme_tick / pazar_danisman'ı yamalar (oyun.sd_yama); bu yüzden listenin SONUNDA kalmalı.
+  'zz_20261125_sirket_kazanc_dengesi.sql',
   // 25.11.2026: YÜK HIZLANDIRMA — Kürsü gündemi/akışı, sohbet açılışı ve unvan önbelleği (canlıda 25.11 akşamı uygulandı).
   // LİSTENİN SONUNDA KALMALI: sohbet_oku, kursu_akis, kursu_gundem ve oyun.unvan'ı yeniden yazan dosyalardan sonra gelir.
   'zz_20261125_yuk_hizlandirma.sql'];
