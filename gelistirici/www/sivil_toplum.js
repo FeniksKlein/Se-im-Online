@@ -159,7 +159,7 @@ async function stkEylemModal(id, tur) {
       : "Açıklama Gündem'e haber olur. Konu bir parti, oyuncu, dernek ya da kanunsa ilgilisine bildirim gider."}</p>
     <div class="alan"><label for="deKonu">Konu</label><select id="deKonu">${hedefTurler.map(k => `<option value="${k}">${e(STK_HEDEF[k])}</option>`).join("")}</select></div>
     <div class="alan" id="deHedefAlan"></div>
-    ${tur === "protesto" ? `<div class="alan"><label for="deIl">İl (şubesi olan iller)</label><select id="deIl">${d.subeler.map(s => `<option value="${s.il_id}">${e(s.il)}</option>`).join("")}</select></div>
+    ${tur === "protesto" ? `<div class="alan"><label for="deIl">İl (şubesi olan iller)</label><select id="deIl">${(d.yetkili ? d.subeler : d.subeler.filter(s => s.il_id === d.il_baskanligim)).map(s => `<option value="${s.il_id}">${e(s.il)}</option>`).join("")}</select></div>
       <div class="alan"><label for="deZaman">Başlangıç (Türkiye saati)</label><input id="deZaman" type="datetime-local" value="${pz.y}-${iki(pz.a)}-${iki(pz.g)}T${pz.s}:00"></div>` : ""}
     <div class="alan"><label for="deBaslik">Başlık</label><input id="deBaslik" maxlength="100" placeholder="${tur === "protesto" ? "Örnek: Kordon'da büyük buluşma" : "Kısa ve net bir başlık"}"></div>
     <div class="alan"><label for="deMetin">Metin</label><textarea id="deMetin" class="alanmetin" maxlength="5000" placeholder="Derneğin görüşü, talepleri, çağrısı…"></textarea></div>

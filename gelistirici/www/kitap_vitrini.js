@@ -312,8 +312,9 @@ function yayineviHtml(){
  var en=Math.max(1,Number(y[0]&&y[0].hafta_adet)||0);
  var yl=y.length?'<ol class="kt-sira">'+y.map(function(x,i){
    var ga=Number(x.gecen_adet)||0,ha=Number(x.hafta_adet)||0;
+   var sh=sahipBul(x);
    return '<li style="cursor:default"><span class="kt-rank">'+(i+1)+'</span><div class="kt-ad"><b>'+e(x.ad)+(x.benim?'<span class="kt-sen">Senin</span>':'')+'</b>'+
-    '<small>'+e(sayi(x.kitap))+' kitap · toplam '+e(sayi(x.toplam_adet))+' satış'+(Number(x.imza)>0?' · '+e(sayi(x.imza))+' imza günü':'')+'</small>'+
+    '<small>'+(sh?'Sahibi '+e(sh)+' · ':'')+e(sayi(x.kitap))+' kitap · toplam '+e(sayi(x.toplam_adet))+' satış'+(Number(x.imza)>0?' · '+e(sayi(x.imza))+' imza günü':'')+'</small>'+
     '<div class="kt-cubuk"><i style="width:'+Math.max(ha?4:0,Math.round(ha/en*100))+'%"></i></div></div>'+
     '<div class="kt-deger"><b>'+e(sayi(ha))+'</b><small>bu hafta</small><div class="kt-not">'+e(para(x.hafta_ciro))+'</div></div></li>';
   }).join("")+'</ol>':'<div class="kt-bos">Henüz kitap basan yayınevi yok.</div>';
@@ -323,7 +324,18 @@ function yayineviHtml(){
     '<div class="kt-deger"><b>'+e(sayi(x.toplam_adet))+'</b><small>toplam</small></div></li>';
   }).join("")+'</ol>':'<div class="kt-bos">Henüz yayımlanmış yazar yok.</div>';
  return '<section class="kt-panel"><h3>Yayınevleri yarışı</h3><p>Bu haftaki satış adedine göre sıralanır; tutar bu haftanın cirosudur.</p>'+geriSayimHtml()+yl+'</section>'+
-  '<section class="kt-panel"><h3>Yazarlar</h3><p>Toplam satışa göre ilk 10 yazar.</p>'+yzl+'</section>'+yazBtn();
+  '<section class="kt-panel"><h3>Yazarlar</h3><p>Toplam satışa göre ilk 10 yazar.</p>'+yzl+'</section>'+tumYayinevleriHtml()+yazBtn();
+}
+/* 25.11.2026: yayınevi sahipleri — uc_kitap_panel yayinevleri {sahip, bekleyen, yayinlanan} */
+function panelYayinevleri(){return Array.isArray(veri&&veri.yayinevleri)?veri.yayinevleri:[];}
+function sahipBul(x){var p=panelYayinevleri().filter(function(y){return (x.id!=null&&id(y.id)===id(x.id))||y.ad===x.ad;})[0];return p&&p.sahip?p.sahip:"";}
+function tumYayinevleriHtml(){
+ var l=panelYayinevleri().slice().sort(function(a,b){return String(a.ad).localeCompare(String(b.ad),"tr");});
+ if(!l.length)return "";
+ return '<section class="kt-panel"><h3>Bütün yayınevleri</h3><p>Kitabını göndermeden önce yayınevinin sahibine ve bekleyen dosya sayısına bak.</p><ol class="kt-sira">'+l.map(function(y){
+   return '<li style="cursor:default"><div class="kt-ad"><b>'+e(y.ad)+'</b><small>'+(y.sahip?'Sahibi '+e(y.sahip):'Sahibi belirsiz')+'</small></div>'+
+    '<div class="kt-deger"><b>'+e(sayi(y.bekleyen))+'</b><small>bekleyen dosya</small><div class="kt-not">'+e(sayi(y.yayinlanan))+' yayımlanan</div></div></li>';
+  }).join("")+'</ol></section>';
 }
 function biletHtml(ev){
  var t=simdiMs(),z=trTarih(ev.baslangic),canli=ev.durum==="canli",bitti=ev.durum==="bitti";

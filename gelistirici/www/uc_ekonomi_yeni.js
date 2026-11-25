@@ -118,13 +118,14 @@ function bookDialog(mode,id){
   const arr=pressCo();
   if(!arr.length)return toast("Henüz yayınevi bulunmuyor. Medya şirketi kurulmalı.",true);
   return dialog("📖 Kitap dosyası gönder",
-   select("ucPress","Yayınevi",arr.map(x=>[x.id,x.ad]))+
+   select("ucPress","Yayınevi",arr.map(x=>[x.id,pressLabel(x)]))+
    field("ucTitle","Kitap başlığı","")+
    select("ucGenre","Tür",[["Siyasi hatırat","Siyasi hatırat"],["Araştırma","Araştırma"],["Roman","Roman"],["Ekonomi","Ekonomi"],["Anı","Anı"]])+
    area("ucSummary","Kitap tanıtımı (en fazla 2000 karakter)","",3)+
    area("ucContent","Kitabın tam metni (100–50.000 karakter)","",10)+
    field("ucAuthorPrice","Kitabın satış fiyatı (100–2.000 ₺)",300,"number",100,2000)+
-   note("Satış fiyatını sen belirlersin. Yayınevi baskı ücretini ödeyip kitabını onaylar; diğer oyuncular cüzdanlarından satın alabilir. Her satıştan %15 telif alırsın."),
+   note("Satış fiyatını sen belirlersin. Yayınevi baskı ücretini ödeyip kitabını onaylar; diğer oyuncular cüzdanlarından satın alabilir. Her satıştan %15 telif alırsın.")+
+   note("Yayınevinin dosyanı incelemesi için 24 saati var. Bu sürede yanıt gelmezse ya da dosyan reddedilirse kitabını başka bir yayınevine taşıyabilirsin."),
    "Yayınevine gönder",async el=>{
     const price=Number(val(el,"ucAuthorPrice"));
     if(!Number.isInteger(price)||price<100||price>2000){toast("Kitap fiyatını 100 ile 2.000 ₺ arasında belirle.",true);return false;}
@@ -136,6 +137,17 @@ function bookDialog(mode,id){
    '<div style="max-height:50vh;overflow:auto;white-space:pre-wrap;line-height:1.6">'+E(k.icerik)+'</div>'+btn("Kapat","modalKapat()",true));
  if(mode==="satinal")return confirmBook(id,k);
  if(mode==="reddet")return bookAct("reddet",id,{});
+ if(mode==="yayinevi"){   // YAYINEVİ DEĞİŞTİR (25.11.2026): reddedilen dosya hemen, bekleyen dosya 24 saat sonra taşınır
+   if(!k.yazar_benim)return toast("Yayınevini yalnızca kitabın yazarı değiştirebilir.",true);
+   const others=pressCo().filter(x=>Number(x.id)!==Number(k.yayinevi));
+   if(!others.length)return toast("Kitabını taşıyabileceğin başka yayınevi yok.",true);
+   return dialog("🔁 Yayınevini değiştir",note(k.baslik+" · Şu anki yayınevi: "+k.yayinevi_ad+(k.yayinevi_sahip?" (sahibi "+k.yayinevi_sahip+")":""))+
+     select("ucNewPress","Yeni yayınevi",others.map(x=>[x.id,pressLabel(x)]))+
+     note("Dosyan yeni yayınevine gönderilir ve 24 saatlik inceleme süresi yeniden başlar. Belirlediğin satış fiyatı aynı kalır."),
+     "Yeni yayınevine gönder",async el=>{
+       await command("uc_kitap_islem",{p_islem:"yayinevi_degistir",p_id:Number(id),p_veri:{yayinevi:Number(val(el,"ucNewPress"))}});
+     });
+ }
  if(mode==="fiyat"){
    if(!k.yazar_benim)return toast("Kitap fiyatını yalnızca yazarı değiştirebilir.",true);
    return dialog("💰 Kitabın satış fiyatı",note(k.baslik+" · Mevcut fiyat: "+TL(k.fiyat))+
@@ -172,6 +184,15 @@ async function bookAct(mode,id,data){
  }catch(err){toast(err.message||String(err),true);}
 }
 window.ucBookModal=bookDialog;window.ucBookDo=bookAct;
+const pressLabel=x=>x.ad+(x.sahip?" · Sahibi: "+x.sahip:"")+(Number(x.bekleyen)>0?" · "+x.bekleyen+" bekleyen dosya":"");
+const STATUS={teklif:"Yayınevi inceliyor",yayinda:"Yayında",reddedildi:"Yayınevi reddetti"};
+function waitInfo(k){   // yazarın bekleyen dosyası: ne zamandır inceleniyor, ne zaman taşınabilir
+ const sent=new Date(k.gonderim||0).getTime();if(!sent)return {text:"",can:false};
+ const now=typeof simdi==="function"?simdi():Date.now(),limit=sent+(Number(k.degisim_saat)||24)*3600000;
+ const hours=Math.max(0,Math.floor((now-sent)/3600000));
+ const since=hours<1?"1 saatten kısa süredir":hours<48?hours+" saattir":Math.floor(hours/24)+" gündür";
+ return {can:now>=limit,text:"Gönderim: "+DT(k.gonderim)+" · "+since+" inceleniyor."+(now>=limit?" 24 saatlik inceleme süresi doldu; kitabını başka yayınevine taşıyabilirsin.":" Yanıt gelmezse "+DT(limit)+" sonrasında başka yayınevine taşıyabilirsin.")};
+}
 function renderBooks(){
  let out=card("📚 Kitap yaz, yayımla, telif kazan","Kitabına satış fiyatını <b>yazar olarak sen belirlersin</b>. Yayınevi yöneticisi onaylar ve baskı giderini karşılar. Yayımlanan kitabı diğer oyuncular oyun parasıyla satın alır; kitap, satın alanın kitaplığında kalır. Ayrıca sanal okur satışı yapılır. Yazar her satıştan <b>%15 telif</b> alır.",
  btn("✍️ Kitap yaz ve gönder","ucBookModal('teklif',0)")+
@@ -179,14 +200,18 @@ function renderBooks(){
  const manages=cache?.benim_yayinevleri||[];
  for(const k of cache?.kitaplar||[]){
    const own=manages.some(id=>Number(id)===Number(k.yayinevi));
-   const detail="Yazar: "+E(k.yazar)+" · Yayınevi: "+E(k.yayinevi_ad)+"<p>"+E(k.ozet)+"</p>"+
-   "Durum: <b>"+E(k.durum)+"</b> · Stok: "+k.stok+" · Satılan: "+k.satilan+
+   const wait=k.yazar_benim&&k.durum==="teklif"?waitInfo(k):null;
+   const detail="Yazar: "+E(k.yazar)+" · Yayınevi: "+E(k.yayinevi_ad)+(k.yayinevi_sahip?" (sahibi "+E(k.yayinevi_sahip)+")":"")+"<p>"+E(k.ozet)+"</p>"+
+   "Durum: <b>"+E(STATUS[k.durum]||k.durum)+"</b> · Stok: "+k.stok+" · Satılan: "+k.satilan+
    (k.durum==="yayinda"?" · Fiyat: "+TL(k.fiyat):k.yazar_benim?" · Belirlediğin fiyat: "+TL(k.fiyat):"");
    let acts="";
    if(k.durum==="yayinda")acts+=(k.icerik?btn("📖 Oku","ucBookModal('oku',"+k.id+")",true):"")+
       (!k.aldim&&!k.yazar_benim&&k.stok>0?btn("📕 "+TL(k.fiyat)+" · Satın al","ucBookModal('satinal',"+k.id+")"):"")+
       (k.aldim?note("✅ Kitaplığında · İstediğin zaman okuyabilirsin."):(!k.yazar_benim&&k.stok<=0?note("Stok tükendi; yayınevi yeni baskı yaptığında satın alabilirsin."):"")); 
    if(k.yazar_benim && (k.durum==="teklif"||k.durum==="yayinda"))acts+=btn("💰 Fiyatı belirle / değiştir","ucBookModal('fiyat',"+k.id+")",true);
+   if(wait&&wait.text)acts+=note("⏳ "+wait.text);
+   if(k.yazar_benim&&k.durum==="reddedildi")acts+=note("Dosyan reddedildi. Kitabını yeniden yazmadan başka bir yayınevine gönderebilirsin.");
+   if(k.yazar_benim&&(k.durum==="reddedildi"||(wait&&wait.can)))acts+=btn("🔁 Yayınevini değiştir","ucBookModal('yayinevi',"+k.id+")");
    if(own&&k.durum==="teklif")acts+=btn("Yayımla","ucBookModal('yayinla',"+k.id+")")+btn("Reddet","ucBookDo('reddet',"+k.id+")",true)+btn("Metni incele","ucBookModal('oku',"+k.id+")",true);
    if(own&&k.durum==="yayinda")acts+=btn("Yeni baskı","ucBookModal('yenibaski',"+k.id+")");
    out+=card(k.baslik,detail,acts);
