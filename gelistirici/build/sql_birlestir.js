@@ -111,7 +111,9 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   // 24.11.2026: Ek İşler 2.0 — günlük 5 hak, 20 meslek, yönetilebilir katalog (109'daki ek iş işlevlerinin yerine geçer)
   'zz_20261124_ek_isler_v2.sql',
   // 24.11.2026: Kürsü şikâyet ekranı izni, yönetimin doğrudan kaldırması, 5 dakikada bir paylaşım, Talep kutusu bütün yöneticilere (_yama kullanır)
-  'zz_20261124_kursu_denetim_talep.sql'];
+  'zz_20261124_kursu_denetim_talep.sql',
+  // 25.11.2026: dernek başkanı açıklamayı (amacı) sonradan düzeltebilir; günde 3 değişiklik, değişiklik geçmişi
+  'zz_20261125_dernek_amac_guncelle.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',

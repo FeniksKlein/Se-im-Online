@@ -190,7 +190,7 @@ declare
     'cek_iskonto_islem', 'cek_islem', 'cek_panel', 'cek_tazminat_ode', 'cek_ticaret_islem', 'cek_ticaret_panel',
     'cek_toptan_islem', 'cek_toptan_panel', 'cevrimici_oyuncular', 'cihaz_kaydet', 'cihaz_sil', 'cimer',
     'cimer_basvur', 'cimer_degerlendir', 'cimer_karne', 'cimer_yanitla', 'cuzdan_hareketleri', 'denge_paneli',
-    'dernek_akis', 'dernek_ayril', 'dernek_bagis', 'dernek_baskan_devret', 'dernek_detay', 'dernek_etkinlik_ac',
+    'dernek_akis', 'dernek_amac_guncelle', 'dernek_ayril', 'dernek_bagis', 'dernek_baskan_devret', 'dernek_detay', 'dernek_etkinlik_ac',
     'dernek_eylem', 'dernek_eylem_oku', 'dernek_faaliyetler', 'dernek_gonullu_katil', 'dernek_kampanya_ac', 'dernek_kampanya_bagis',
     'dernek_kampanya_vitrin', 'dernek_katil', 'dernek_kur', 'dernek_program_baslat', 'dernek_program_katalog', 'dernek_program_katil',
     'dernek_program_ozet', 'dernek_proje_fiyatlar', 'dernek_proje_yap', 'dernek_protesto_katil', 'dernek_sube_ac', 'dernek_uye_destek_basvur',
