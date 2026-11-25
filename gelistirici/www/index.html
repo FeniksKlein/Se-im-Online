@@ -3083,6 +3083,7 @@ async function oyuncuKart(kad){
   m.querySelector(".modal").innerHTML = `<div class="tutamak"></div>
     <div style="display:flex;gap:14px;align-items:center">${typeof portre === "function" ? portre(k.kad, k.parti && k.parti.renk, 72) : amblemKutu(k.parti, 56)}<div style="min-width:0"><h3 style="font-size:26px">${e(k.kad)}</h3><div class="kucuk" data-adsoyad="${e(k.kad)}"></div>
       ${k.unvan ? `<div style="color:var(--gold2);font-weight:700;font-size:14px">${e(k.unvan)}</div>` : ""}
+      ${k.katilim && simdi() - new Date(k.katilim).getTime() < 7 * 864e5 ? `<div style="margin:2px 0"><span class="rh-yeni-rozet" style="margin-left:0" title="Son 7 günde oyuna katıldı">Yeni oyuncu</span></div>` : ""}
       <div class="alt">${e(k.il_ad)} · ${partiRozet(k.parti, true)}${k.statu ? ` · <span style="color:var(--gold2)">${e(k.statu.ad)}</span>` : ""}</div></div></div>
     ${kim && kim.biyografi ? `<p style="margin-top:10px;font-size:15px;line-height:1.45">${e(kim.biyografi)}</p>` : ""}
     ${kim && kim.aktif && (k.makamlar || k.unvan) ? `<div class="kucuk" style="margin-top:4px">${AKTIF_YAZI[kim.aktif] || ""}</div>` : ""}

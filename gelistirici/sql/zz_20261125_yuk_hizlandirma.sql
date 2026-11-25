@@ -364,6 +364,7 @@ begin
               'parti', case when x.gorevli then null else oyun.parti_json(pr.parti_id) end,
               'unvan', case when x.gorevli then 'Oyun Yönetimi' else oyun.unvan(x.user_id) end,
               'benim', x.user_id = p.id, 'gorevli', x.gorevli,
+              'yeni', coalesce(not x.gorevli and pr.olusturma > v_t - interval '7 days', false),
               'yanit', case when x.yanit_id is not null then oyun.mesaj_alinti(p, x.yanit_id) end) order by x.id), '[]'::jsonb)
       into liste
     from (
@@ -380,6 +381,7 @@ begin
               'parti', case when x.gorevli then null else oyun.parti_json(pr.parti_id) end,
               'unvan', case when x.gorevli then 'Oyun Yönetimi' else oyun.unvan(x.user_id) end,
               'benim', x.user_id = p.id, 'gorevli', x.gorevli,
+              'yeni', coalesce(not x.gorevli and pr.olusturma > v_t - interval '7 days', false),
               'yanit', case when x.yanit_id is not null then oyun.mesaj_alinti(p, x.yanit_id) end) order by x.id), '[]'::jsonb)
       into liste
     from (

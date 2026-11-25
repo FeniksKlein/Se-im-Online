@@ -123,6 +123,8 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261125_dernek_yk_sube_bedeli.sql',
   // 26.11.2026: Parti il başkanı ataması 81 ilde, o ilde kayıtlı üyeler listesinden (parti_il_uye_listesi; eski uygulama için il_gecici_baskan_ata köprüsü)
   'zz_20261126_il_baskani_atama.sql',
+  // 26.11.2026: Yeni oyuncu rehberi (onboarding) — karşılama, İlk Adımlar 2.0 + tek seferlik başlangıç ödülü, ekran ipuçları; ilk_adimlar hızlandırma dizinleri
+  'zz_20261126_rehber.sql',
   // 25.11.2026: YÜK HIZLANDIRMA — Kürsü gündemi/akışı, sohbet açılışı ve unvan önbelleği (canlıda 25.11 akşamı uygulandı).
   // LİSTENİN SONUNDA KALMALI: sohbet_oku, kursu_akis, kursu_gundem ve oyun.unvan'ı yeniden yazan dosyalardan sonra gelir.
   'zz_20261125_yuk_hizlandirma.sql'];

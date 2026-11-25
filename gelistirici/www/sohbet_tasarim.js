@@ -207,7 +207,7 @@
     var h = '<div class="' + cls + '" data-id="' + esc(m.id) + '" data-kad="' + esc(m.kad || '') + '" style="--pr:' + esc(/^#[0-9a-f]{6}$/i.test(renk) ? renk : '#9aa6cc') + '">';
     if (ilk) {
       var rol = konusmaciRol(m), parti = m.parti && m.parti.kisa ? m.parti.kisa : '';
-      h += '<div class="shr-kim"><span class="shm-av">' + av(m.kad, renk, 34) + '</span><span class="shr-ad"><b>' + esc(m.kad) + '</b>' + nisan(m.unvan) +
+      h += '<div class="shr-kim"><span class="shm-av">' + av(m.kad, renk, 34) + '</span><span class="shr-ad"><b>' + esc(m.kad) + '</b>' + nisan(m.unvan) + (m.yeni ? '<span class="rh-yeni-rozet" title="Son 7 günde oyuna katıldı">Yeni</span>' : '') +
         (m.benim ? '<em>Siz</em>' : '') + '<small>' + esc([rol, parti].filter(Boolean).join(' · ') || 'Üye') + '</small></span><time>' + esc(saat(m.zaman)) + '</time></div>';
     }
     h += '<div class="shr-metin">' + alintiHtml(m) + '<span class="shm-tx">' + metinHtml(m.metin) + '</span>' + (m._bekle || m._hata ? '<span class="shr-dur">' + tikHtml(m, S) + (m._hata ? ' Kayda geçmedi, dokunarak tekrar deneyin' : ' Kayda geçiyor') + '</span>' : '') + '</div></div>';
@@ -601,7 +601,7 @@
     var h = '<div class="' + cls + '" data-id="' + esc(m.id) + '" data-kad="' + esc(m.kad || S.kad || '') + '">';
     if (kanalBaskasi) h += '<span class="shm-av">' + (son ? av(m.kad, renk, 32) : '') + '</span>';
     h += '<div class="shm-b">';
-    if (kanalBaskasi && ilk) h += '<div class="shm-kim"><b style="color:' + esc(renkAcik(renk)) + '">' + esc(m.kad) + '</b>' + nisan(m.unvan) + (m.unvan ? '<small>' + esc(m.unvan) + '</small>' : m.parti && m.parti.kisa ? '<small>' + esc(m.parti.kisa) + '</small>' : '') + '</div>';
+    if (kanalBaskasi && ilk) h += '<div class="shm-kim"><b style="color:' + esc(renkAcik(renk)) + '">' + esc(m.kad) + '</b>' + nisan(m.unvan) + (m.yeni ? '<span class="rh-yeni-rozet" title="Son 7 günde oyuna katıldı">Yeni</span>' : '') + (m.unvan ? '<small>' + esc(m.unvan) + '</small>' : m.parti && m.parti.kisa ? '<small>' + esc(m.parti.kisa) + '</small>' : '') + '</div>';
     h += alintiHtml(m) + '<span class="shm-tx">' + (em ? esc(m.metin) : metinHtml(m.metin)) + '</span><span class="shm-ne"><time>' + esc(saat(m.zaman)) + '</time>' + tikHtml(m, S) + '</span></div></div>';
     return h;
   }
