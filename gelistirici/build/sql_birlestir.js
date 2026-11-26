@@ -153,6 +153,8 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261126_pdk_otomatik_ac.sql',
   // 26.11.2026: oyuncu kartında Kürsü takip durumu ve takipçi sayısı (Takip et düğmesi)
   'zz_20261126_oyuncu_kart_takip.sql',
+  // 27.11.2026: Aday Vitrini (il il MV adayları ve sıraları) + Aday Tanıtım Lansmanı (parti kasası bedeli, canlı salon, alkış, mesaj, haber)
+  'zz_20261127_aday_vitrini_lansman.sql',
   // 25.11.2026: Şirket Kazanç Dengesi — kuruluş dönemi verimi, sermayeye bağlı kazanç tavanı, şube tavanı, mağaza satış tavanı, geçiş dönemi.
   // pazar_tahmin / sube_bolge_analiz / sube_pazar_tahmin / halka_arz_net_tahmin'i yeniden yazar, pazar_hesapla / eko_ticaret_tick /
   // npc_isletme_tick / pazar_danisman'ı yamalar (oyun.sd_yama); bu yüzden listenin SONUNDA kalmalı.

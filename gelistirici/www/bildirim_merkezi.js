@@ -56,6 +56,8 @@
       return "bakanlik";
     }
     if (/^muzayede:/.test(t)) return "muzayede";
+    // 27.11.2026: aday vitrini ve aday tanıtım lansmanları
+    if (/aday vitrini|aday lansmani|aday tanitim lansmanina|lansmani bitti/.test(t)) return "aday";
     if (/tv kanallari|tv kanali|tv programina|kanalindaki "|kanalinda "|" programi|" programin|sunuculu|studyoya gir|duellosunu/.test(t)) return "tv";
     if (/ticaret odasi|odalar birligi|sendikasi/.test(t)) return "oda";
     if (/valiligi|valilik|vali havuzu/.test(t)) return "valilik";
@@ -92,6 +94,7 @@
     banka:   { ad: "Bankaya git", ac: () => ekranAc(bankaEkrani), var: () => typeof bankaEkrani === "function" },
     kursu:   { ad: "Kürsü’ye git", ac: () => ekranAc(() => kursuEkrani("bildirim")), var: () => typeof kursuEkrani === "function" },
     muzayede:{ ad: "Müzayede’ye git", ac: () => ekranAc(muzayedeEkrani), var: () => typeof muzayedeEkrani === "function" },
+    aday:    { ad: "Aday Vitrini’ne git", ac: () => adayVitriniAc(), var: () => typeof adayVitriniAc === "function" },
     tv:      { ad: "TV Kanalları’na git", ac: () => ekranAc(tvKanallariEkrani), var: () => typeof tvKanallariEkrani === "function" },
     oda:     { ad: "Ticaret Odası’na git", ac: () => ekranAc(() => ticaretOdasiEkrani()), var: () => typeof ticaretOdasiEkrani === "function" },
     valilik: { ad: "Valiliğe git", ac: () => ekranAc(valilikEkrani), var: () => typeof valilikEkrani === "function" },
