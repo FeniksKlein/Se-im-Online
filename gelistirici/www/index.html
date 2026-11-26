@@ -3091,6 +3091,7 @@ async function oyuncuKart(kad){
     <div class="kart" style="margin-top:12px"><h2>Siyasi geçmiş</h2>${k.gecmis.map(g => `<div class="kv"><span class="k">${e(g.makam)}</span><span class="v kucuk">${tarih(g.bas)}${g.bit ? " – " + tarih(g.bit) : " – görevde"}</span></div>`).join("") || `<div class="alt">Henüz görev almadı.</div>`}
       <div class="kucuk" style="margin-top:6px">Katılım: ${tarih(k.katilim)}</div></div>
     ${k.ben ? "" : `<button class="btn" id="ko">Özel mesaj gönder</button>
+      ${k.takip_ediyorum === undefined ? "" : `<button class="btn ${k.takip_ediyorum ? "ikinci" : "altin"}" id="kt">${k.takip_ediyorum ? "✓ Takip ediliyor" : "Takip et"}${k.takipci ? ` · ${fmt(k.takipci)} takipçi` : ""}</button>`}
       <button class="btn altin" id="kh">Cüzdandan para hediye et</button>
       <button class="btn ikinci" id="kp">Vadesiz hesaptan havale</button>
       <button class="btn ikinci" id="ke">${k.engelledim ? "Engeli kaldır" : "Engelle"}</button>
@@ -3098,6 +3099,17 @@ async function oyuncuKart(kad){
     <button class="btn ikinci" onclick="modalKapat()">Kapat</button>`;
   if (!k.ben) {
     $("#ko", m).onclick = () => { modalKapat(); ekranAc(() => ozelEkrani(k.kad)); };
+    const kt = $("#kt", m);
+    if (kt) kt.onclick = async () => {
+      const ac = !k.takip_ediyorum;
+      if (!ac && !(await onayla(k.kad + " takibi bırakılsın mı?", "Kürsü paylaşımları artık Takip ettiklerin akışında görünmez.", "Takibi bırak", true))) return;
+      kt.disabled = true;
+      try { const r = await API.rpc("kursu_takip_et", { p_kad: k.kad, p_takip: ac }); k.takip_ediyorum = !!(r && r.takip_ediyorum); k.takipci = r && r.takipci != null ? r.takipci : k.takipci;
+        kt.className = "btn " + (k.takip_ediyorum ? "ikinci" : "altin"); kt.textContent = (k.takip_ediyorum ? "✓ Takip ediliyor" : "Takip et") + (k.takipci ? " · " + fmt(k.takipci) + " takipçi" : "");
+        toast(k.takip_ediyorum ? k.kad + " takip ediliyor." : k.kad + " takibi bırakıldı."); }
+      catch (err) { toast(hataCevir(err.message), true); }
+      kt.disabled = false;
+    };
     $("#kh", m).onclick = () => aliciBagisModal("oyuncu",k.kad,k.kad);
     $("#kp", m).onclick = () => paraGonderModal(k.kad);
     $("#ke", m).onclick = () => engelDegis(k.kad, !k.engelledim);

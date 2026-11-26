@@ -3,6 +3,10 @@
 Sahibi: Ercan (FeniksKlein). Not: "Gülveren Games" unvanı kullanılmaz (Ercan, 23.11.2026). Kodlama bilmiyor; **her şeyi Türkçe, sade ve adım adım anlat.**
 Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (tek dosya HTML/JS + Capacitor, Supabase arka uç).
 
+## 26.11.2026 — 2026.11.26-11 Oyuncu kartında "Takip et" (sunucu canlıda; ekran web'de, telefonlar mağaza sürümünü bekler)
+- Öneri (oyuncu, X; Ercan: "Bunu da yayına sok"): oyuncu kartında Özel mesaj düğmesinin altında takip et.
+- Takip = Kürsü takibi (`oyun.kursu_takip`, işlem `kursu_takip_et`; günlük 150 sınırı, engel kontrolü, takip bildirimi aynen). `oyuncu_kart` dönüşüne `takip_ediyorum`, `takipci` eklendi (`zz_20261126_oyuncu_kart_takip.sql`, canlıya execute_sql ile). İstemci `index.html` oyuncu kartı: `#kt` düğmesi ("Takip et · N takipçi" / "✓ Takip ediliyor"), bırakırken onay. Eski sunucuda alan yoksa düğme gizli. Sahte RPC'yle 390 px denendi.
+
 ## 26.11.2026 — 2026.11.26-9 Partilerde MYK + seçilmiş Disiplin Kurulu (sunucu canlıda 26.11 ~19.15; ekran web'de, telefonlar mağaza sürümünü bekler)
 - İstek (Ercan): "Partilere MYK, disiplin kurulu getir; ihraç etmek çok zor, adil bir öneri bul" → öneriyi onayladı ("Uygula oyuna gelsin").
 - Eski sistem: GB / hukuk GBY sevk, BÜTÜN üyeler 72 saat oy, ihraç için üye tamsayısının çoğunluğu (379 üyede 190 evet) → imkânsızdı.
