@@ -249,6 +249,7 @@
     var siraHtml = kesin && a.sira ? '<span class="av-sira' + (a.sira === 1 ? ' ilk' : '') + '">' + a.sira + '</span>' : '<span class="av-sira aa" title="Aday adayı">AA</span>';
     var ek = [];
     if (a.gb) ek.push('Genel Başkan');
+    if (a.yasadigi_il) ek.push('yaşadığı il: ' + a.yasadigi_il);
     if (a.oy != null) ek.push(a.oy + ' ön seçim oyu');
     if (a.lansman) ek.push('lansmanda tanıtıldı' + (a.alkis ? ' · ' + a.alkis + ' alkış' : ''));
     return '<button type="button" class="av-satir" data-kad="' + esc(a.kad) + '">' + siraHtml +

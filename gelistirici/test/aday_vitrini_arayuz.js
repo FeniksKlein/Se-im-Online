@@ -41,7 +41,7 @@ const shot = process.argv[2];
         toplam_kontenjan: 600, partiler: P, iller, lansmanlar: [L(7, true), L(8, false)], ben: { parti_id: 1, il_id: 34, lansman_yetkili: true, mod: false } };
       const ilv = { donem: 'x', asama: 'kesin', asama_yazi: 'Aday listeleri kesinleşti', kesin: true, il: { id: 34, ad: 'İstanbul', kontenjan: 84 }, benim_ilim: true,
         listeler: [{ parti: P[0], yontem: 'onsecim', adaylar: [1, 2, 3, 4].map(i => ({ aday_id: 240 + i, kad: 'aday' + i, ad: i === 2 ? 'Zeynep Çok Uzun Soyadlıoğlu Karamanoğulları' : 'Aday ' + i, sira: i, oy: 10 - i, vaat: i === 1 ? 'İstanbul için ulaşımda ücretsiz öğrenci kartı, her ilçeye kreş ve gençlik merkezi; şeffaf belediyecilik ve açık ihale sözü veriyorum.' : null, gb: i === 3, lansman: 1, alkis: 5 })) },
-                   { parti: P[1], yontem: 'atama', adaylar: [{ aday_id: 301, kad: 'm1', ad: 'Mehmet Bey', sira: 1, oy: null, vaat: null, gb: false, lansman: 0, alkis: 0 }] }],
+                   { parti: P[1], yontem: 'atama', adaylar: [{ aday_id: 301, kad: 'm1', ad: 'Mehmet Bey', sira: 1, oy: null, vaat: null, gb: false, lansman: 0, alkis: 0, yasadigi_il: 'Yozgat' }] }],
         bagimsizlar: [{ aday_id: 400, kad: 'bag', ad: 'Bağımsız Aday', vaat: 'Partisiz, halktan biri.' }], bos_listeli_partiler: [{ kisa: 'DETP', renk: '#00838f', yontem: 'atama' }], lansmanlar: [L(7, true)] };
       const haz = { acik: true, donem: 'x', kesin: true, yontem: 'onsecim', aday_hazir: true, kural_yazi: 'Listeler kesinleşti: listedeki adaylarınla lansman yapabilirsin.',
         en_erken: iso(15 * 60e3), en_gec: iso(2 * 86400e3), sure_dk: 60, parti: Object.assign({ kasa: 3118590 }, P[0]), bedel: { il_taban: 10000, il_sandalye: 1000, ulke: 150000, secili: 150000 },
@@ -105,6 +105,7 @@ const shot = process.argv[2];
     assert.match(il, /ön seçim oyu/, et('ön seçim oyu'));
     assert.match(il, /Bağımsız adaylar/, et('bağımsızlar'));
     assert.match(il, /DETP/, et('boş partiler'));
+    assert.match(il, /yaşadığı il: Yozgat/, et('başka ilde yaşayan aday'));
     assert.equal(await page.$$eval('.av-sira.ilk', x => x.length), 2, et('1. sıralar vurgulu'));
     assert.deepEqual(await tasma(), [], et('il taşma'));
     await cek('il');
