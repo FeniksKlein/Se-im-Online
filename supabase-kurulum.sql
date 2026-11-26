@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.26-7', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.26-8', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -87637,6 +87637,48 @@ begin
 end $function$;
 $kosullu_govde$;
 end $kosullu_dis$;
+-- 26.11.2026 · Yönetim adına yazılan sohbet mesajını silme
+--   * Moderatör, "Oyun Yöneticisi G-xx" imzasıyla yazdığı KENDİ mesajını silebilir (yanlış/yarım gönderim).
+--   * Oyun kurucusu (yonetici) yönetim adına yazılmış HER mesajı silebilir.
+--   * Silme yumuşaktır (gizli = true): kayıt denetim için durur, oyunculardan kalkar. Kurucu geri açabilir.
+--   * Her işlem mod_kayit denetim günlüğüne yazılır.
+--   * sohbet_oku dönüşündeki 'silebilir' (mesaj başına) ve 'gizlenen' (kanalda son gizlenen mesajlar)
+--     alanları zz_20261125_yuk_hizlandirma.sql içindedir; açık sohbet ekranları silinen mesajı anında düşer.
+
+-- Yalnız gizli satırları tutan küçük dizin: sohbet_oku'nun 'gizlenen' listesi her yoklamada birkaç satır okur.
+create index if not exists mesajlar_kanal_gizli on oyun.mesajlar (kanal, id desc) where gizli;
+
+create or replace function public.mod_sohbet_sil(p_mesaj bigint, p_geri boolean default false)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'oyun', 'public', 'pg_temp'
+as $function$
+declare p oyun.profiller := oyun.profilim(); m oyun.mesajlar; kurucu boolean;
+begin
+  if p.id is null or coalesce(p.yasakli, false) then raise exception 'Bu işlem için yetkin yok.'; end if;
+  kurucu := coalesce(p.yonetici, false);
+  select * into m from oyun.mesajlar where id = p_mesaj for update;
+  if m.id is null then raise exception 'Mesaj bulunamadı.'; end if;
+  if not m.gorevli then raise exception 'Bu yalnız yönetim adına yazılmış mesajlar içindir. Oyuncu mesajları Mod › Sohbet nöbeti üzerinden gizlenir.'; end if;
+  if not (m.user_id = p.id or kurucu) then raise exception 'Yalnız kendi yazdığın yönetim mesajını silebilirsin.'; end if;
+  if coalesce(p_geri, false) then
+    if not kurucu then raise exception 'Silinen yönetim mesajını yalnız oyun kurucusu geri açabilir.'; end if;
+    if not m.gizli then return jsonb_build_object('tamam', true, 'gizli', false); end if;
+    update oyun.mesajlar set gizli = false where id = m.id;
+  else
+    if m.gizli then return jsonb_build_object('tamam', true, 'gizli', true); end if;
+    update oyun.mesajlar set gizli = true where id = m.id;
+  end if;
+  perform oyun.mod_log(p, case when coalesce(p_geri, false) then 'sohbet_resmi_geri' else 'sohbet_resmi_sil' end, m.kanal,
+                       oyun.mod_kanal_ad(m.kanal) || ': ' || m.metin);
+  -- açık ekranlara haber (canlı sinyal varsa); yoksa bir sonraki yoklamada düşer
+  begin perform oyun.canli_sinyal('sohbet:' || m.kanal); exception when others then null; end;
+  return jsonb_build_object('tamam', true, 'gizli', not coalesce(p_geri, false), 'kanal', m.kanal);
+end $function$;
+
+revoke all on function public.mod_sohbet_sil(bigint, boolean) from public, anon;
+grant execute on function public.mod_sohbet_sil(bigint, boolean) to authenticated, service_role;
 -- zz_20261125_yuk_hizlandirma.sql (koşullu)
 do $kosullu_dis$
 begin
@@ -87995,7 +88037,7 @@ create or replace function public.sohbet_oku(p_kanal text, p_once bigint DEFAULT
  security definer
  set search_path to 'oyun', 'public', 'pg_temp'
 as $function$
-declare p oyun.profiller := oyun.profilim(); k text; liste jsonb; son bigint; v_t timestamptz := oyun.simdi(); v_eng uuid[];
+declare p oyun.profiller := oyun.profilim(); k text; liste jsonb; son bigint; v_t timestamptz := oyun.simdi(); v_eng uuid[]; v_gizlenen jsonb;
 begin
   k := oyun.kanal_coz(p, p_kanal);
   if k is null then raise exception '%', oyun.kanal_hata(p_kanal); end if;
@@ -88009,6 +88051,7 @@ begin
               'parti', case when x.gorevli then null else oyun.parti_json(pr.parti_id) end,
               'unvan', case when x.gorevli then 'Oyun Yönetimi' else oyun.unvan(x.user_id) end,
               'benim', x.user_id = p.id, 'gorevli', x.gorevli,
+              'silebilir', x.gorevli and (x.user_id = p.id or coalesce(p.yonetici, false)),
               'yeni', coalesce(not x.gorevli and pr.olusturma > v_t - interval '7 days', false),
               'yanit', case when x.yanit_id is not null then oyun.mesaj_alinti(p, x.yanit_id) end) order by x.id), '[]'::jsonb)
       into liste
@@ -88026,6 +88069,7 @@ begin
               'parti', case when x.gorevli then null else oyun.parti_json(pr.parti_id) end,
               'unvan', case when x.gorevli then 'Oyun Yönetimi' else oyun.unvan(x.user_id) end,
               'benim', x.user_id = p.id, 'gorevli', x.gorevli,
+              'silebilir', x.gorevli and (x.user_id = p.id or coalesce(p.yonetici, false)),
               'yeni', coalesce(not x.gorevli and pr.olusturma > v_t - interval '7 days', false),
               'yanit', case when x.yanit_id is not null then oyun.mesaj_alinti(p, x.yanit_id) end) order by x.id), '[]'::jsonb)
       into liste
@@ -88045,12 +88089,17 @@ begin
         where oyun.kanal_okuma.son_id is distinct from greatest(oyun.kanal_okuma.son_id, excluded.son_id);
     end if;
   end if;
+  -- 26.11.2026: sonradan kaldırılan (gizlenen) son mesajlar; açık ekranlar bunları listeden düşer.
+  -- Kısmi dizin (mesajlar_kanal_gizli) yalnız gizli satırları tutar, sorgu her yoklamada birkaç satır okur.
+  select coalesce(jsonb_agg(g.id), '[]'::jsonb) into v_gizlenen
+    from (select m.id from oyun.mesajlar m where m.kanal = k and m.gizli order by m.id desc limit 30) g;
   return jsonb_build_object('kanal', p_kanal, 'mesajlar', liste, 'yazabilir', oyun.kanal_yazabilir(p, p_kanal),
     'baslik', oyun.kanal_baslik(p, p_kanal), 'sinyal', 'sohbet:' || k,
     'gorevli_yazabilir', k = 'yardim' and oyun.yardim_gorevli_mi(p), 'resmi_yazabilir', oyun.sohbet_resmi_yazabilir(p, k), 'kanal_kod', k,
     -- 26.11.2026: sabit mesajlar (parti / yönetim / özel grup; eski sayfa yüklemesinde gönderilmez)
     'sabitler', case when p_once is null and oyun.sohbet_sabit_kanal(k) then oyun.sohbet_sabit_liste(k) end,
-    'sabitleyebilir', p_once is null and oyun.sohbet_sabit_kanal(k) and oyun.sohbet_sabit_yetki(p, k));
+    'sabitleyebilir', p_once is null and oyun.sohbet_sabit_kanal(k) and oyun.sohbet_sabit_yetki(p, k),
+    'gizlenen', v_gizlenen);
 end $function$;
 
 set local check_function_bodies = on;
@@ -88607,7 +88656,9 @@ declare
     -- 23.11.2026 Gazete/dergi kapatma (sql/zz_20261123_mod_kurum_kapat.sql)
     'mod_kurum_kapat', 'mod_kurum_ac', 'mod_kurum_kapatma_bilgi',
     -- 24.11.2026 Genel Kurul söz hakkı (sql/zz_20261124_meclis_soz.sql)
-    'meclis_soz_durum', 'meclis_soz_iste', 'meclis_soz_vazgec', 'meclis_soz_karar'
+    'meclis_soz_durum', 'meclis_soz_iste', 'meclis_soz_vazgec', 'meclis_soz_karar',
+    -- 26.11.2026 Yönetim adına yazılan sohbet mesajını silme (sql/zz_20261126_mod_sohbet_sil.sql)
+    'mod_sohbet_sil'
   ];
 -- @@rpc_yuzey_izin_son@@
   anon_izin text[] := array['surum', 'uygulama_ayar'];
