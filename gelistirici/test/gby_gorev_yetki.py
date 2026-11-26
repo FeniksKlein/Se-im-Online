@@ -43,7 +43,7 @@ ok("Tanıtım ve Medyadan Sorumlu grup konuşması yayımladı; üyeye unvanıyl
 
 # Hukuk: disiplin, GB'yi sevk edemez
 rpc(gb, "gby_gorev_ver", "Huk", "Siyasi ve Hukuki İşlerden Sorumlu")
-hata_bekle(rpc, bos, "disiplin_baslat", "Uye", "Parti kararlarına aykırı davrandı.", icerir="Hukuki")
+hata_bekle(rpc, bos, "disiplin_baslat", "Uye", "Parti kararlarına aykırı davrandı.", icerir="MYK")
 hata_bekle(rpc, huk, "disiplin_baslat", "Genbas", "Parti kararlarına aykırı davrandı.", icerir="Genel başkan disipline")
 rpc(huk, "disiplin_baslat", "Uye", "Parti kararlarına aykırı davrandı.")
 ok("Siyasi ve Hukuki İşlerden Sorumlu üyeyi disipline sevk etti; genel başkanı edemedi")

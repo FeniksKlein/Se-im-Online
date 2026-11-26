@@ -5,6 +5,8 @@ const oku = ad => fs.readFileSync(path.join(kok, 'sql', ad), 'utf8').replace(/\r
 // Canlıda Supabase migration'larıyla kurulmuş tablolara (halk hareketleri, gözaltı, kabine süresi, görev denetimi) dayanan
 // modüller: tam kurulumda bu tablolar yoksa dosya atlanır, varsa tek parça çalışır. Böylece tam kurulum bozulmaz.
 const KOSULLU = {
+  // 26.11: MYK + Disiplin Kurulu; canlı migration'larla gelen imza kampanyası, moderatör ve Yüksek Mahkeme tablolarına dayanır.
+  'zz_20261126_parti_disiplin_kurulu.sql': ['oyun.sos_parti_imza', 'oyun.sos_parti_imzaci', 'oyun.moderatorler', 'oyun.mahkeme_uye', 'oyun.parti_gby', 'oyun.parti_teskilat_gorev', 'oyun.mesajlar'],
   'zz_20261116_baro_mudafi_guvence.sql': ['oyun.gozalti_baro_talep', 'oyun.sokak_baro_talep', 'oyun.yonetim_tutuklama', 'oyun.icisleri_tedbir_v2', 'oyun.baro_adli_yardim', 'oyun.zamanlayici_adim'],
   'zz_20261116_kabine_48_saat_kaldir.sql': ['oyun.cb_kabine_sure'],
   'zz_20261116_makam_guvenligi.sql': ['oyun_yonetim.gorev_denetim', 'oyun.gorev_tercihi', 'oyun.cb_yardimcisi_teklifleri', 'oyun.mahkeme_uye'],
@@ -140,6 +142,8 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261126_destek_atama.sql',
   // 26.11.2026: Moderatör yönetim adına yazdığı kendi sohbet mesajını silebilir; kurucu hepsini silip geri açabilir
   'zz_20261126_mod_sohbet_sil.sql',
+  // 26.11.2026: Partilerde MYK + seçilmiş Disiplin Kurulu (sevk MYK, karar kurul, savunma, itiraz heyeti, adalet kilitleri); eski disiplin_* RPC'leri yeni akışa köprü
+  'zz_20261126_parti_disiplin_kurulu.sql',
   // 25.11.2026: YÜK HIZLANDIRMA — Kürsü gündemi/akışı, sohbet açılışı ve unvan önbelleği (canlıda 25.11 akşamı uygulandı).
   // LİSTENİN SONUNDA KALMALI: sohbet_oku, kursu_akis, kursu_gundem ve oyun.unvan'ı yeniden yazan dosyalardan sonra gelir.
   'zz_20261125_yuk_hizlandirma.sql'];
