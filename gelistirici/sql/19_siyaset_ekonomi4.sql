@@ -176,7 +176,7 @@ begin
   b:=btrim(coalesce(p_baslik,''));
   if length(b)<5 or length(b)>100 then raise exception 'Tüzük başlığı 5-100 karakter olmalı.'; end if;
   if oyun.kufurlu(b) then raise exception 'Başlıkta uygunsuz ifade var.'; end if;
-  m:=oyun.metin_temizle(p_metin,6000);
+  m:=oyun.metin_temizle(p_metin,50000);
   if length(m)<50 then raise exception 'Parti tüzüğü en az 50 karakter olmalı.'; end if;
 
   insert into oyun.parti_tuzuk_teklifleri(parti_id,baslik,metin,teklif_eden,bas,bit)

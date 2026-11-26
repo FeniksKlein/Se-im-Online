@@ -2511,7 +2511,7 @@ function tuzukTeklifModal(pid){
   const m=modal(`<h3 style="font-size:19px;font-weight:800">Tüzüğü oylamaya sun</h3>
     <p class="alt">Teklif 24 saat açık kalır. Evet oyları Hayır oylarından fazlaysa tüzük yürürlüğe girer.</p>
     <div class="alan"><label>Başlık</label><input id="ttbas" maxlength="100" placeholder="Örn. Demokratik Parti Tüzüğü"></div>
-    <div class="alan"><label>Tüzük metni</label><textarea class="alanmetin" id="ttmetin" maxlength="12000" style="min-height:180px" placeholder="Partinin işleyişi, üyelerin hakları, yönetim ilkeleri…"></textarea></div>
+    <div class="alan"><label>Tüzük metni (en fazla 50.000 karakter)</label><textarea class="alanmetin" id="ttmetin" maxlength="50000" style="min-height:180px" placeholder="Partinin işleyişi, üyelerin hakları, yönetim ilkeleri…"></textarea></div>
     <div class="hata-metin" id="tthata"></div><button class="btn altin" id="ttok">24 saatlik oylamayı başlat</button>`);
   $("#ttok",m).onclick=async()=>{ const b=$("#ttok",m); b.disabled=true; try{ await API.rpc("parti_tuzuk_teklif",{p_baslik:$("#ttbas",m).value,p_metin:$("#ttmetin",m).value}); modalKapat(); toast("Tüzük üyelerin oyuna sunuldu."); partiTuzukEkrani(pid); }catch(err){b.disabled=false;$("#tthata",m).textContent=hataCevir(err.message);} };
 }
