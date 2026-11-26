@@ -210,4 +210,15 @@ if(typeof adliyeHtml==='function'){
     return '<div class="kart"><h3>Parti Disiplin İtirazları</h3><p class="alt">'+(g?fmt(g)+' itiraz dosyasında heyet üyesisin. ':'')+(k?'Hakkında işlem bekleyen disiplin dosyası var.':'')+'</p><button class="btn altin" onclick="ekranAc(pdkItirazEkrani)">Aç</button></div>'+h;
   };
 }
+// Açılışta bir kez istemci sürümünü bildir (sunucu, yeni sürüme geçen oyuncu oranı %70'i bulunca kurul seçimlerini kendiliğinden açar)
+(function bildir(n){
+  try{
+    if(typeof D!=='undefined'&&D.durum&&D.durum.profil&&typeof API!=='undefined'){
+      const pl=window.Capacitor&&typeof window.Capacitor.getPlatform==='function'?window.Capacitor.getPlatform():'web';
+      API.rpc("istemci_bildir",{p_surum:String(window.UYGULAMA_SURUM||'?'),p_platform:pl}).catch(()=>{});
+      return;
+    }
+  }catch(_){}
+  if(n<120)setTimeout(()=>bildir(n+1),5000);
+})(0);
 })();
