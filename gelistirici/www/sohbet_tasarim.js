@@ -322,6 +322,14 @@
         '<span class="sh-meydan-alt2"><span><span class="sh-nokta"></span>' + n(g.cevrimici != null ? g.cevrimici : oz.cevrimici) + ' oyuncu çevrimiçi</span><span class="sh-meydan-git">Meydana gir' + I.ok + '</span></span></button>';
     }
     var yr = oz.yardim, yardim = '';
+    /* 26.11: Yardım Masası kapalıyken (yardim=null) "Yardım" bölümü oyuncuyu özel destek sohbetine (Yönetime Yaz) götürür. */
+    if (!yr && typeof window.yonetimeYazEkrani === 'function' && !q) {
+      yardimCss();
+      yardim = '<div class="sh-bas"><h3>Yardım</h3></div><div class="sh-liste"><button type="button" class="sh-c" data-sh="destek">' +
+        '<span class="sh-kik" style="--k:#34c98a;width:50px;height:50px">' + I.mesaj + '</span>' +
+        '<span class="sh-k-orta"><span class="sh-k-ust"><b>Yardım ve destek</b><time></time></span>' +
+        '<span class="sh-k-alt"><span class="sh-k-m">Sorunu yaz; bir oyun yöneticisi seninle özel olarak ilgilensin.</span></span></span></button></div>';
+    }
     if (yr) {
       var ys = kanalSatir(yr, false, 0, yr.gorevli && n(yr.bekleyen) ? '<span class="sh-gr-istek">' + I.mesaj + n(yr.bekleyen) + ' yanıt bekleyen mesaj</span>' : '');
       if (ys) yardim = '<div class="sh-bas"><h3>Yardım</h3></div><div class="sh-liste">' + ys + '</div>';
@@ -346,7 +354,8 @@
   }
   /* Mod sekmesi: yalnız yönetim görevlisi görünen hesapta (yardim.gorevli) bir kez sorulur; yanıt oturum boyunca saklanır. */
   function modSekmeYokla() {
-    if (ST.modSekme !== null || !(ST.oz && ST.oz.yardim && ST.oz.yardim.gorevli)) return;
+    /* 26.11: sunucu üst düzey 'gorevli' döndürür; Yardım Masası kapalıyken (yardim=null) de sekme çalışır. */
+    if (ST.modSekme !== null || !(ST.oz && (ST.oz.gorevli || (ST.oz.yardim && ST.oz.yardim.gorevli)))) return;
     ST.modSekme = false;
     API.rpc('mod_sohbet_sekme', {}).then(function (r) {
       ST.modSekme = !!(r && r.nobet);
@@ -455,6 +464,7 @@
       case 'kilit': tst(el.getAttribute('data-kilit') || 'Bu kanal şimdilik kilitli.'); break;
       case 'seg': if (ST.seg !== el.getAttribute('data-v')) { hafif(); ST.seg = el.getAttribute('data-v'); try { sessionStorage.setItem('shSeg', ST.seg); } catch (e) {} govdeTazele(true); var ic = document.getElementById('icerik'); if (ic) ic.scrollTop = 0; } break;
       case 'modNobet': hafif(); if (typeof mmNobet === 'function') ekranAc(mmNobet); break;
+      case 'destek': hafif(); if (typeof window.yonetimeYazEkrani === 'function') ekranAc(window.yonetimeYazEkrani); break;
       case 'suz': ST.yalnizYeni = el.getAttribute('data-v') === '1'; govdeTazele(true); break;
       case 'yeni': hafif(); yeniMesaj(); break;
       case 'cevrimici': hafif(); if (typeof cevrimiciListeAc === 'function') cevrimiciListeAc(); else if (typeof oyuncuAramaAc === 'function') oyuncuAramaAc(); break;
@@ -1211,7 +1221,12 @@
       '@media (prefers-reduced-motion:reduce){.shy-anahtar,.shy-anahtar::after{transition:none}}';
     document.head.appendChild(st);
   }
-  window.yardimMasasiAc = function () { try { modalKapat(); } catch (e) {} ekranAc(function () { return kanalEkrani('yardim'); }); };
+  /* 26.11: Yardım Masası kapalıysa (sunucu yardim=null döndürür ya da sohbet henüz yüklenmediyse) kısayollar özel destek sohbetine gider. */
+  window.yardimMasasiAc = function () {
+    try { modalKapat(); } catch (e) {}
+    if (!(ST.oz && ST.oz.yardim) && typeof window.yonetimeYazEkrani === 'function') { ekranAc(window.yonetimeYazEkrani); return; }
+    ekranAc(function () { return kanalEkrani('yardim'); });
+  };
 
   /* =====================================================================
      ÜST ÇUBUKTA MESAJ KISAYOLU (her ana ekranda, zilin yanında)

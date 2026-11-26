@@ -98,12 +98,14 @@ const html=html0.replace(/<script src="https:[^"]+"><\/script>/g,'').replace('<b
  await p.evaluate(()=>document.querySelector('#mmKUOk').click());await p.waitForTimeout(500);if(await say('mod_kisit_uzat')!==1)throw new Error('uzatma');
  if(!/yonetimeYazEkrani==='function'&&ekranAc\(yonetimeYazEkrani\)/.test(html0))throw new Error('Ben ekranında giriş yok');
  await ekran('yy2_yaz',()=>ekranAc(yonetimeYazEkrani));
- const y2=await p.evaluate(()=>({konu:document.querySelectorAll('#yyKonular [data-k]').length,talep:document.querySelectorAll('[data-talep]').length,nokta:document.querySelectorAll('.yy-nokta').length}));console.log('yonetime yaz',JSON.stringify(y2));if(y2.konu!==3||y2.talep!==1||y2.nokta!==1)throw new Error('yönetime yaz ekranı');
+ await p.evaluate(()=>{const b=document.querySelector('#yyYeni');if(b)b.click()});await p.waitForTimeout(300);
+ const y2=await p.evaluate(()=>({konu:document.querySelectorAll('#yyKonular [data-k]').length,talep:document.querySelectorAll('.yy-satir[data-ac]').length,nokta:document.querySelectorAll('.yy-nokta').length}));console.log('yonetime yaz',JSON.stringify(y2));if(y2.konu!==3||y2.talep!==1||y2.nokta!==1)throw new Error('yönetime yaz ekranı');
  await p.evaluate(()=>{document.querySelector('#yyKonular [data-k="hile"]').click();document.querySelector('#yyMetin').value='Şu banka üzerinden sürekli para döndürülüyor, bakar mısınız?';document.querySelector('#yyGonder').click()});await p.waitForTimeout(700);
  if(await say('yonetime_yaz')!==1)throw new Error('talep gönderilmedi');
  const a1=await p.evaluate(()=>(window.__son||[]).filter(x=>x[0]==='yonetime_yaz')[0][1]);console.log('gönderilen',JSON.stringify(a1));if(a1.p_konu!=='hile')throw new Error('konu');
+ await p.evaluate(()=>ekranAc(yonetimeYazEkrani));await p.waitForTimeout(600);
  await ekran('yy3_talep',()=>document.querySelector('[data-ac="31"]').click());
- await p.evaluate(()=>{document.querySelector('#yyY31').value='Ek bilgi: dün akşam da oldu.';document.querySelector('[data-yanit="31"]').click()});await p.waitForTimeout(500);if(await say('yonetime_yaz_yanit')!==1)throw new Error('oyuncu yanıtı');
+ await p.evaluate(()=>{document.querySelector('#yyY').value='Ek bilgi: dün akşam da oldu.';document.querySelector('#yyYGonder').click()});await p.waitForTimeout(500);if(await say('yonetime_yaz_yanit')!==1)throw new Error('oyuncu yanıtı');
  await ekran('yy4_sikayet_kisayol',()=>sikayetModal('oyuncu',null,'gürültücü'));
  await p.evaluate(()=>[...document.querySelectorAll('.modal button, #modal button')].find(b=>/kendi cümlelerimle/.test(b.textContent)).click());await p.waitForTimeout(900);
  const h1=await p.evaluate(()=>(document.querySelector('#yyHedef')||{}).value);console.log('kısayol hedef',h1);if(h1!=='gürültücü')throw new Error('şikâyet kısayolu');

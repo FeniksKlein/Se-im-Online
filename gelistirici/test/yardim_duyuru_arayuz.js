@@ -32,7 +32,7 @@ const html = html0.replace(/<script src="https:[^"]+"><\/script>/g, '').replace(
 
 (async () => {
   // Derlemede yeni metinler ve girişler
-  for (const isaret of ['window.yardimMasasiAc', "API.rpc('yardim_yanitla'", '3 üyeli İstinaf Dairesi', 'İstinaf Dairesi görevin var', "yardimMasasiAc==='function'&&yardimMasasiAc()", 'maxlength="5000"', 'İstinaf teminatı: ', 'her dosya için kurayla'])
+  for (const isaret of ['window.yardimMasasiAc', "API.rpc('yardim_yanitla'", '3 üyeli İstinaf Dairesi', 'İstinaf Dairesi görevin var', 'maxlength="5000"', 'İstinaf teminatı: ', 'her dosya için kurayla'])
     if (!html0.includes(isaret)) throw new Error('Derlemede yok: ' + isaret);
   if (/kurayla seçilen[^<]{0,40}jüri/.test(html0)) throw new Error('Eski jüri metni derlemede duruyor');
   if (/istinaf yargılama gideri yüklenir/.test(html0)) throw new Error('Eski "gider sonradan yüklenir" metni derlemede duruyor');

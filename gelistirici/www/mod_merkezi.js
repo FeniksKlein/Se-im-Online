@@ -585,7 +585,7 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     "Bu tartışma burada kapanmıştır. Sürdürenler hakkında işlem yapılacaktır.",
     "Aynı mesajı tekrar tekrar göndermek (spam) yasaktır.",
     "Kişisel bilgi, telefon numarası ve dış bağlantı paylaşmayın.",
-    "Sorularınız için Sohbet › Yardım Masası'nı, şikâyetleriniz için Ben › Yönetime Yaz'ı kullanabilirsiniz."];
+    "Soru, sorun ve şikâyetleriniz için Ben › Yönetime Yaz'dan talep açabilirsiniz; bir görevli sizinle özel olarak ilgilenir."];
   function resmiYazAc(kanal, kanalAd) {
     let liste = NB.kanallar.slice();
     if (kanal && !liste.some(k => k[0] === kanal)) liste.unshift([kanal, kanalAd || kanal]);
@@ -1172,14 +1172,17 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     yukleniyor("Talep kutusu");
     let r; try { r = await API.rpc("mod_kutu", { p_durum: KT.tum ? "tum" : "acik" }); } catch (err) { hataSayfa("Talep kutusu", err); return; }
     const l = r.talepler || [];
-    sayfa("Talep kutusu", `<div class="mm-uyari yesil">${IK.destek}<div>Oyuncuların <b>Yönetime Yaz</b> ile gönderdiği talepler konusuna göre masana düşer. Yanıtın oyuncuya görev kodunla gider; adın görünmez.</div></div>
+    sayfa("Talep kutusu", `<div class="mm-uyari yesil">${IK.destek}<div>Oyuncuların <b>Yönetime Yaz</b> ile açtığı talepler çevrimiçi bir görevliye otomatik atanır; 30 dakika yanıt verilmezse başka görevliye geçer. Herkes bütün talepleri görür; bir talebi <b>Üstlen</b> ile alabilirsin. İş bitince <b>Kapat</b>. Yanıtın oyuncuya görev kodunla gider; adın görünmez.</div></div>
+      ${r.bana_atanan ? `<div class="mm-uyari sari">${IK.destek}<div>Sana atanmış <b>${r.bana_atanan}</b> talep yanıt bekliyor (en üstte).</div></div>` : ""}
       <div class="mm-filtre"><button class="${KT.tum ? "" : "on"}" data-t="0">Yanıt bekleyen</button><button class="${KT.tum ? "on" : ""}" data-t="1">Son 30 gün</button></div>
       ${l.map((d, i) => `<div class="mm-kart ${d.durum === "yeni" && dkGecti(d.son_hareket) > 240 ? "vurgu" : ""}" data-i="${i}" style="--c:#9a7bff">
         <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap"><b style="font-size:16px">#${d.id} · ${esc(d.kad)}</b><span class="mm-etiket" style="--c:${(KDURUM[d.durum] || KDURUM.yeni)[1]}">${(KDURUM[d.durum] || KDURUM.yeni)[0]}</span></div>
+        ${d.durum !== "kapali" && "atanan_kod" in d ? `<div class="mm-alt" style="margin-top:2px">${d.bana_atandi ? `<b style="color:#34c98a">Sana atandı</b>` : d.atanan_kod ? `Görevli: <b>${esc(d.atanan_kod)}</b>` : `<b style="color:#e0a43a">Henüz görevli atanmadı</b>`}</div>` : ""}
         <div class="mm-alt">${esc(d.konu_ad)} · ${esc(d.masa_ad)} · ${once(d.zaman)}${d.hedef ? ` · hakkında: <b>${esc(d.hedef)}</b>` : ""}${d.onceki ? ` · daha önce ${d.onceki} talep` : ""}${d.hedef_sikayet ? ` · bu oyuncu hakkında ${d.hedef_sikayet} talep daha` : ""}${d.platform ? " · " + esc(d.platform) : ""}</div>
         ${(d.mesajlar || []).map(m => `<div class="mm-baloncuk" style="${m.gorevli ? "border-left:3px solid #34c98a" : ""}"><b>${m.gorevli ? esc(m.yazan) : esc(d.kad)}</b> · ${once(m.zaman)}\n${esc(m.metin)}</div>`).join("")}
         ${d.durum !== "kapali" ? `<textarea class="mm-girdi" maxlength="1000" placeholder="Yanıtın (oyuncuya bildirim olarak gider)"></textarea>
-          <div class="mm-iki"><button class="mm-btn mor" data-y="0">Yanıtla</button><button class="mm-btn" data-y="1">Yanıtla ve kapat</button></div>` : ""}
+          <div class="mm-iki"><button class="mm-btn mor" data-y="0">Yanıtla</button><button class="mm-btn" data-y="1">Yanıtla ve kapat</button></div>
+          <div class="mm-iki" style="margin-top:6px">${"atanan_kod" in d && !d.bana_atandi ? `<button class="mm-btn" data-ustlen="1">Üstlen</button>` : ""}<button class="mm-btn cizgi" data-kapat="1">Yanıtsız kapat</button></div>` : ""}
         <div class="mm-aksiyon">${d.hedef ? `<button data-dosya="${esc(d.hedef)}">Şikâyet edilenin dosyası</button>` : ""}<button data-dosya="${esc(d.kad)}">Yazanın dosyası</button>${d.durum !== "kapali" ? `<button data-devret="1">Başka masaya devret</button>` : ""}</div>
       </div>`).join("") || bos(KT.tum ? "Son 30 günde talep yok" : "Yanıt bekleyen talep yok", "Oyuncular Ben › Yönetime yaz ekranından yazdığında burada görünür.")}`);
     document.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { KT.tum = b.dataset.t === "1"; mmKutu(); });
@@ -1192,6 +1195,10 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
         try { await API.rpc("mod_kutu_yanitla", { p_id: d.id, p_metin: m || null, p_kapat: kapat }); toast(kapat ? "Yanıtlandı ve kapatıldı." : "Yanıt gönderildi."); mmKutu(); }
         catch (err) { hata(err); }
       });
+      const us = k.querySelector("[data-ustlen]");
+      if (us) us.onclick = async () => { try { await API.rpc("mod_kutu_ustlen", { p_id: d.id }); toast("Talep sende."); mmKutu(); } catch (err) { hata(err); } };
+      const kp = k.querySelector("[data-kapat]");
+      if (kp) kp.onclick = async () => { try { await API.rpc("mod_kutu_yanitla", { p_id: d.id, p_metin: null, p_kapat: true }); toast("Talep kapatıldı."); mmKutu(); } catch (err) { hata(err); } };
       const dv = k.querySelector("[data-devret]");
       if (dv) dv.onclick = () => {
         const secenek = (r.masalar || []).filter(x => x.kod !== d.masa).concat(d.masa !== "kurucu" ? [{ kod: "kurucu", ad: "Kurucu (oyun yönetimi)" }] : []);

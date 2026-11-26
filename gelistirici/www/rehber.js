@@ -43,7 +43,7 @@
     adliye: ["Adliye", "Davalar, mahkemeler, istinaf, baro ve avukatlar. Hakkının yendiğini düşünüyorsan dava açabilirsin; dava açmak ve savunma yapmak için avukat tutman gerekir. Gözaltı ve ifade çağrıları da buradan izlenir."],
     hayat: ["Hayat — cüzdanın ve günlük işlerin", "Maaşını buradan toplarsın; her gün topladığında +1 kıdem kazanırsın. Ek işler, mülklerin, banka hesapların ve harcamaların burada. Kıdem arttıkça maaşın ve hakların artar."],
     ekonomi: ["Ekonomi", "Şirket kur, dükkân aç, hisse ve döviz al, ilanlara ve müzayedeye katıl. Şirket kurmak için yeterli kıdem ve sermaye gerekir; önce ek işlerle ve maaşla para biriktir."],
-    sohbet: ["Sohbet", "İl kahvesi ilindeki oyuncularla, meydan bütün Türkiye ile konuşma yeri. Partinin kanalı, özel mesajların ve kurduğun gruplar da burada. Bir sorun ya da sorun varsa Yardım Masası'na yaz."],
+    sohbet: ["Sohbet", "İl kahvesi ilindeki oyuncularla, meydan bütün Türkiye ile konuşma yeri. Partinin kanalı, özel mesajların ve kurduğun gruplar da burada. Bir sorunun varsa Ben › Yönetime yaz'dan yardım iste; bir görevli seninle ilgilenir."],
     meclis: ["Meclis", "TBMM'nin sandalye dağılımı, Meclis Başkanı ve il il milletvekilleri. Vekilsen kanun teklifi verir, Genel Kurul'da oy kullanırsın; vekil değilsen oturumları canlı izleyebilirsin."],
     harita: ["Harita", "81 ilin belediye başkanları, oy dağılımı ve oyuncu sayıları. Bir ile dokunarak ayrıntısını gör. İlini değiştirmeyi düşünüyorsan rekabetin az olduğu illere bak."],
     parti: ["Partiler", "Partileri, ideolojilerini ve üye sayılarını incele, sana yakın olana katıl. Üyeler kurultayda genel başkanı seçer, ön seçimde aday sıralamasını belirler. Partini sonradan değiştirebilirsin."],
@@ -284,9 +284,8 @@
     if (yeni && ia.adimlar && ia.adimlar.length && !(ia.bitti && !ia.odul_hazir)) bag.push(["ilk", "İlk adımlarım" + (ia.odul_hazir ? " · ödülün hazır" : "")]);
     bag.push(["karsilama", "Oyun tanıtımını yeniden izle"]);
     if (fn("metinGoster")) bag.push(["kurallar", "Oyun nasıl oynanır? (kurallar)"]);
-    if (fn("yardimMasasiAc")) bag.push(["yardim", "Yardım Masası'na soru sor"]);
     if (fn("smMentorEkrani") && yeni) bag.push(["mentor", "Deneyimli bir yol arkadaşı bul"]);
-    if (fn("yonetimeYazEkrani")) bag.push(["yonetim", "Yönetime yaz (sorun, öneri, şikâyet)"]);
+    if (fn("yonetimeYazEkrani")) bag.push(["yonetim", "Yardım iste · Yönetime yaz (soru, sorun, şikâyet)"]);
     var a = katman(
       '<div class="rh-ust"><span class="rh-etiket">' + (otomatik ? "Bu ekran ne işe yarar?" : "Rehber") + '</span><button class="rh-atla" data-rh="kapat">Kapat</button></div>' +
       "<h3>" + esc(t[0]) + "</h3><p>" + esc(t[1]) + "</p>" +
