@@ -138,6 +138,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','parti_disiplin_kurulu.js'),'utf8')+'</script></body>');
 // 26.11.2026: Kademeli Getiri kartı + Şirket › Personel + İş Hayatı (iş ilanı, başvuru, mesai) + mağazada tahmini getiri.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kademe_istihdam.js'),'utf8')+'</script></body>');
+// 27.11.2026: Aday Vitrini (il il MV adayları, sıra, harita) + Aday Tanıtım Lansmanı (canlı salon, alkış, destek mesajı).
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','aday_vitrini.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
