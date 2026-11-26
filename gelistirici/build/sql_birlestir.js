@@ -125,6 +125,8 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261126_il_baskani_atama.sql',
   // 26.11.2026: Yeni oyuncu rehberi (onboarding) — karşılama, İlk Adımlar 2.0 + tek seferlik başlangıç ödülü, ekran ipuçları; ilk_adimlar hızlandırma dizinleri
   'zz_20261126_rehber.sql',
+  // 26.11.2026: Sohbette mesaj sabitleme (parti/yönetim/özel grup, en çok 3) + "XXP Parti Sözcüsü" unvanı. sohbet_oku dönüşü yuk_hizlandirma'da.
+  'zz_20261126_sohbet_sabitle.sql',
   // 26.11.2026: Mesaj saklama süresi — 30 günden eski kanal sohbetleri ve özel mesajlar her gece silinir (şikâyetli/moderasyonlu ve resmî oturumlar hariç)
   'zz_20261126_mesaj_saklama.sql',
   // 25.11.2026: YÜK HIZLANDIRMA — Kürsü gündemi/akışı, sohbet açılışı ve unvan önbelleği (canlıda 25.11 akşamı uygulandı).

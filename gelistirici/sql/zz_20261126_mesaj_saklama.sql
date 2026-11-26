@@ -6,7 +6,8 @@
 --   • şikâyet edilmiş mesajlar (oyun.sikayetler tur 'mesaj' / 'ozel', kayit_id) — şikâyetin durumu ne olursa olsun;
 --   • moderasyonun gizlediği (gizli), işaretlediği (mod_isaret) ya da yönetim adına yazılmış (gorevli) mesajlar;
 --   • moderasyon içerik arşivinde kaydı olanlar (oyun.mod_icerik_arsiv.kayit_id);
---   • resmî oturum kanalları (meclis, grup, divan, kabine — tutanak niteliğinde).
+--   • resmî oturum kanalları (meclis, grup, divan, kabine — tutanak niteliğinde);
+--   • sabitlenmiş mesajlar (oyun.sohbet_sabit, 26.11.2026 — sabitleme kaldırılınca normal süreye döner).
 -- Süre Süper Yönetici Portalı › Hesap › "Sohbet mesajı saklama süresi" ayarından değişir (7–365 gün).
 -- Çalışma: her gece 04.40 (TSİ) pg_cron 'mesaj-saklama'; 5.000'lik partilerle, tur başına en çok 60 parti
 --   (300 bin satır; kalan ertesi gece). Tepkiler (mesaj_tepki) de birlikte silinir. Tekrar çalıştırmak güvenlidir.
@@ -44,6 +45,7 @@ begin
          and not m.gizli and not m.gorevli and coalesce(cardinality(m.mod_isaret), 0) = 0
          and split_part(m.kanal, ':', 1) not in ('meclis', 'grup', 'divan', 'kabine')
          and not exists (select 1 from oyun.sikayetler s where s.tur = 'mesaj' and s.kayit_id = m.id)
+         and not exists (select 1 from oyun.sohbet_sabit sb where sb.mesaj_id = m.id)
          and not exists (select 1 from oyun.mod_icerik_arsiv a where a.kayit_id = m.id and coalesce(a.tur, '') in ('', 'mesaj', 'sohbet', 'kanal'))
        order by m.zaman
        limit p_parti) m;

@@ -70,6 +70,7 @@ begin
     union select o.baskan from oyun.oda o where o.baskan is not null
     union select a.hedef from oyun.icisleri_atama a where a.tur = 'vali' and a.durum = 'aktif'
     union select g.user_id from oyun.parti_gby g
+    union select s.user_id from oyun.parti_sozcu s
   ), yeni as materialized (
     select a.id, oyun.unvan_hesap(a.id) unvan from aday a where a.id is not null
   ), sil as (
@@ -402,7 +403,10 @@ begin
   end if;
   return jsonb_build_object('kanal', p_kanal, 'mesajlar', liste, 'yazabilir', oyun.kanal_yazabilir(p, p_kanal),
     'baslik', oyun.kanal_baslik(p, p_kanal), 'sinyal', 'sohbet:' || k,
-    'gorevli_yazabilir', k = 'yardim' and oyun.yardim_gorevli_mi(p), 'resmi_yazabilir', oyun.sohbet_resmi_yazabilir(p, k), 'kanal_kod', k);
+    'gorevli_yazabilir', k = 'yardim' and oyun.yardim_gorevli_mi(p), 'resmi_yazabilir', oyun.sohbet_resmi_yazabilir(p, k), 'kanal_kod', k,
+    -- 26.11.2026: sabit mesajlar (parti / yönetim / özel grup; eski sayfa yüklemesinde gönderilmez)
+    'sabitler', case when p_once is null and oyun.sohbet_sabit_kanal(k) then oyun.sohbet_sabit_liste(k) end,
+    'sabitleyebilir', p_once is null and oyun.sohbet_sabit_kanal(k) and oyun.sohbet_sabit_yetki(p, k));
 end $function$;
 
 set local check_function_bodies = on;

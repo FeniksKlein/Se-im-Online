@@ -775,6 +775,80 @@
     akis.addEventListener('touchcancel', function () { if (sw) { sw.dx = 0; bitir(); } }, { passive: true });
   }
 
+  /* ---------- SABİT MESAJLAR (26.11.2026) ----------
+     Sunucu: sohbet_oku dönüşünde `sabitler` (en yeni sabit önce, en çok 3) ve `sabitleyebilir`; değişiklik sohbet_sabitle.
+     Parti sohbeti, parti yönetimi ve özel gruplarda açık. Yetki (GB / GBY / sözcü; grupta kurucu) sunucuda denetlenir. */
+  var I_IGNE = sv('<path d="M9.2 3.5h5.6l-.9 5.2 3.3 3.1v2.1H6.8v-2.1l3.3-3.1z"/><path d="M12 13.9v6.6"/>');
+  function sabitStil() {
+    if (document.getElementById('shSabitStil')) return;
+    var st = document.createElement('style'); st.id = 'shSabitStil';
+    st.textContent =
+      '.sh-sabit{position:relative;z-index:3;display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;min-height:52px;padding:7px 12px;border:0;border-bottom:1px solid rgba(164,184,255,.16);background:rgba(20,28,58,.94);color:inherit;font:inherit;text-align:left;cursor:pointer}' +
+      '.sh-sabit:active{background:rgba(30,40,80,.96)}' +
+      '.sh-sabit-ik{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:color-mix(in srgb,var(--tema,#8b6cff) 22%,transparent);color:color-mix(in srgb,var(--tema,#8b6cff) 70%,#fff)}.sh-sabit-ik svg{width:18px;height:18px}' +
+      '.sh-sabit-m{flex:1;min-width:0}.sh-sabit-m b{display:block;font-size:13px;font-weight:800;line-height:1.3;color:color-mix(in srgb,var(--tema,#8b6cff) 55%,#fff)}' +
+      '.sh-sabit-m span{display:block;font-size:14.5px;line-height:1.35;color:#d6ddf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.sh-sabit-ok{flex:none;color:#98a4c4}.sh-sabit-ok svg{width:18px;height:18px}' +
+      '.sh-sbs h3{margin:0;font-size:19px;font-weight:800}.sh-sbs>p{margin:-4px 0 0;font-size:14px;line-height:1.4;color:var(--sh-soluk,#98a4c4)}' +
+      '.sh-sbs-liste{display:flex;flex-direction:column;gap:10px;max-height:62vh;overflow-y:auto;-webkit-overflow-scrolling:touch}' +
+      '.sh-sbk{padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}' +
+      '.sh-sbk-ust{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}.sh-sbk-ust b{font-size:15px}.sh-sbk-ust small{font-size:13px;color:var(--sh-soluk,#98a4c4)}' +
+      '.sh-sbk p{margin:6px 0 0;font-size:15.5px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}' +
+      '.sh-sbk-kim{display:block;margin-top:8px;font-size:13px;color:var(--sh-soluk,#98a4c4)}' +
+      '.sh-sbk-dug{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}' +
+      '.sh-sbk-dug button{flex:1 1 140px;min-height:44px;padding:0 14px;border-radius:12px;border:1px solid rgba(164,184,255,.3);background:transparent;color:var(--txt,#fff);font:inherit;font-size:15px;font-weight:700;cursor:pointer}' +
+      '.sh-sbk-dug button.kirmizi{border-color:rgba(255,90,110,.45);color:#ff8a98}';
+    document.head.appendChild(st);
+  }
+  function sabitGuncelle(S, r) {
+    if (!S || !r || !Object.prototype.hasOwnProperty.call(r, 'sabitler')) return;
+    if (r.sabitleyebilir != null) S.sabitYetki = !!r.sabitleyebilir;
+    var l = Array.isArray(r.sabitler) ? r.sabitler : [];
+    var imza = l.map(function (x) { return x.id + ':' + String(x.metin || '').length; }).join(',');
+    if (imza === S.sabitImza && (!l.length || $1('#shSabit'))) { S.sabitler = l; return; }
+    S.sabitler = l; S.sabitImza = imza; sabitCiz(S);
+  }
+  function sabitMi(S, id) { return (S.sabitler || []).some(function (x) { return String(x.id) === String(id); }); }
+  function sabitCiz(S) {
+    var eski = $1('#shSabit'), l = S.sabitler || [];
+    if (!l.length) { if (eski) eski.remove(); return; }
+    sabitStil();
+    var m = l[0];
+    var html = '<button type="button" class="sh-sabit" id="shSabit" aria-label="Sabitlenmiş mesajlar (' + l.length + ')">' +
+      '<span class="sh-sabit-ik">' + I_IGNE + '</span><span class="sh-sabit-m"><b>' + (l.length > 1 ? l.length + ' sabitlenmiş mesaj' : 'Sabitlenmiş mesaj') + '</b>' +
+      '<span>' + esc(m.kad ? m.kad + ': ' : '') + esc(kisalt(m.metin, 140)) + '</span></span><span class="sh-sabit-ok">' + I.ok + '</span></button>';
+    if (eski) eski.outerHTML = html;
+    else { var ak = $1('#akis'); if (!ak) return; ak.insertAdjacentHTML('beforebegin', html); }
+    var b = $1('#shSabit'); if (b) b.onclick = function () { hafif(); sabitSayfa(S); };
+  }
+  function sabitSayfa(S) {
+    var l = S.sabitler || []; if (!l.length) return;
+    sabitStil();
+    var md = modal('<div class="sh-sayfa sh-sbs"><h3>Sabitlenmiş mesajlar</h3>' +
+      (S.sabitYetki ? '<p>En çok 3 mesaj sabitlenebilir; yenisi eklenince en eskisi kalkar. Sabitlemek için mesaja dokun › Sabitle.</p>' : '') +
+      '<div class="sh-sbs-liste">' + l.map(function (m) {
+        return '<div class="sh-sbk"><div class="sh-sbk-ust"><b>' + esc(m.kad || 'Oyun Yönetimi') + '</b><small>' + esc(gunBaslik(m.zaman)) + ' ' + esc(saat(m.zaman)) + '</small></div>' +
+          '<p>' + metinHtml(m.metin) + '</p>' + (m.sabitleyen ? '<small class="sh-sbk-kim">' + esc(m.sabitleyen) + ' sabitledi</small>' : '') +
+          '<div class="sh-sbk-dug"><button type="button" data-sb="git" data-id="' + esc(m.id) + '">Mesaja git</button>' +
+          (S.sabitYetki ? '<button type="button" class="kirmizi" data-sb="kaldir" data-id="' + esc(m.id) + '">Sabitlemeyi kaldır</button>' : '') + '</div></div>';
+      }).join('') + '</div><button type="button" class="sh-es-vaz" data-sb="vaz">Kapat</button></div>');
+    md.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-sb]'); if (!b) return;
+      var k = b.getAttribute('data-sb'), id = b.getAttribute('data-id');
+      if (k === 'vaz') { modalKapat(); return; }
+      if (k === 'git') { modalKapat(); var ak = $1('#akis'); if (ak) alintiyaGit(S, ak, id); return; }
+      if (k === 'kaldir') { b.disabled = true; modalKapat(); sabitIslem(S, id, false); }
+    });
+  }
+  async function sabitIslem(S, id, sabitle) {
+    try {
+      var r = await API.rpc('sohbet_sabitle', { p_kanal: S.kanal, p_mesaj: n(id), p_sabitle: !!sabitle });
+      S.sabitImza = null; sabitGuncelle(S, { sabitler: (r && r.sabitler) || [] });
+      tst(sabitle ? (r && r.dusen ? 'Mesaj sabitlendi. En eski sabit mesaj kaldırıldı (en çok 3).' : 'Mesaj sabitlendi.') : 'Sabitleme kaldırıldı.');
+      hafif();
+    } catch (e) { tst(hataYaz(e), true); }
+  }
+
   /* Balona dokununca eylem sayfası */
   function eylemSayfasi(S, el) {
     var id = el.getAttribute('data-id'), kad = el.getAttribute('data-kad');
@@ -786,7 +860,8 @@
     var sat = function (k, ik, ad, cls) { return '<button type="button" class="sh-es' + (cls ? ' ' + cls : '') + '" data-es="' + k + '">' + ik + '<span>' + ad + '</span></button>'; };
     var md = modal('<div class="sh-sayfa"><div class="sh-sayfa-onizle"><div class="shm-mini' + (benim ? ' benim' : '') + '">' + esc(String(m.metin).slice(0, 220)) + (String(m.metin).length > 220 ? '…' : '') + '</div><small>' + (benim ? 'Sen' : esc(kad)) + ' · ' + esc(gunBaslik(m.zaman)) + ' ' + esc(saat(m.zaman)) + '</small></div>' +
       (m.id && n(m.id) > 0 ? '<div class="sh-tp-sec" role="group" aria-label="Tepki ver">' + tpListe(S).map(function (em) { var bn = S.tepki && S.tepki[id] && S.tepki[id].ben === em; return '<button type="button" class="' + (bn ? 'ben' : '') + '" data-es="tp" data-em="' + esc(em) + '">' + esc(em) + '</button>'; }).join('') + '</div>' : '') +
-      '<div class="sh-es-grup">' + (yanitlanir(m) ? sat('yanit', I_YANIT, 'Yanıtla') : '') + sat('kopya', I.kopya, 'Metni kopyala') +
+      '<div class="sh-es-grup">' + (yanitlanir(m) ? sat('yanit', I_YANIT, 'Yanıtla') : '') +
+      (!ozel && S.sabitYetki && n(m.id) > 0 ? (sabitMi(S, id) ? sat('sabitsil', I_IGNE, 'Sabitlemeyi kaldır') : sat('sabit', I_IGNE, 'Sabitle')) : '') + sat('kopya', I.kopya, 'Metni kopyala') +
       (!benim && !ozel && !yon ? sat('dm', I.mesaj, kad + ' kişisine özel mesaj') + sat('kart', I.kart, 'Oyuncu kartı') : '') +
       (!benim && ozel ? sat('kart', I.kart, 'Oyuncu kartı') : '') +
       (yon && !benim && typeof window.yonetimeYazEkrani === 'function' ? sat('yy', I.mesaj, 'Yönetime özel yaz') : '') + '</div>' +
@@ -797,6 +872,7 @@
       var k = b.getAttribute('data-es');
       if (k === 'vaz') { modalKapat(); return; }
       if (k === 'yanit') { modalKapat(); yanitBaslat(S, m); return; }
+      if (k === 'sabit' || k === 'sabitsil') { modalKapat(); sabitIslem(S, id, k === 'sabit'); return; }
       if (k === 'tp') { modalKapat(); var ak = $1('#akis'); if (ak) tepkiVer(S, ak, id, b.getAttribute('data-em')); return; }
       if (k === 'kopya') {
         modalKapat();
@@ -998,6 +1074,7 @@
       var r = await API.rpc('sohbet_oku', { p_kanal: kanal, p_once: null, p_sonra: S.sonId });
       if (!$1('.shk-kanal')) return r;
       if (r.mesajlar && r.mesajlar.length) { S.sonId = r.mesajlar[r.mesajlar.length - 1].id; yeniEkle(akis, S, r.mesajlar); }
+      sabitGuncelle(S, r);
       return r;
     };
     try {
@@ -1011,6 +1088,7 @@
       S.bosHtml = R ? '<div class="shm-bos shr-bos" style="--ar:' + R.renk + '"><span class="shr-arma buyuk">' + ARMA + '</span><small>' + esc(R.kurum) + '</small><b>' + esc(r.baslik || R.oturum) + '</b><p>' + esc(R.bos) + '</p></div>'
         : '<div class="shm-bos">' + kanalIkon(kanal, 76) + '<b>' + esc(r.baslik || '') + '</b><p>' + (YRD ? 'Henüz soru yok. Bulamadığın ekranı, anlamadığın kuralı ya da takıldığın işlemi yaz; oyun yönetimi ve deneyimli oyuncular yanıtlar.' : r.yazabilir ? 'Henüz kimse yazmadı. İlk sözü sen al!' : 'Henüz kimse söz almadı. Burada konuşulanları izleyebilirsin.') + '</p></div>';
       akisCiz(akis, S, 'ilk');
+      sabitGuncelle(S, r);
       if (YRD) yardimKur(r);
       else if (r.resmi_yazabilir && r.kanal_kod && r.yazabilir) { S.kanalKod = r.kanal_kod; resmiYazKur(r, R); }
       if (R && r.yazabilir) {
