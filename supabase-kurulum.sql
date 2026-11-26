@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.26-9', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.26-10', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -88724,6 +88724,95 @@ do $$ begin
 end $$;
 $kosullu_govde$;
 end $kosullu_dis$;
+-- zz_20261126_pdk_otomatik_ac.sql (koşullu)
+do $kosullu_dis$
+begin
+  if to_regclass('oyun.pdk_dosya') is null or to_regclass('oyun.ayarlar') is null then raise notice 'zz_20261126_pdk_otomatik_ac.sql atlandı: önkoşul tablo yok'; return; end if;
+  execute $kosullu_govde$
+-- 26.11.2026 · Disiplin Kurulu seçimlerinin KENDİLİĞİNDEN açılması (sürüm 2026.11.26-10)
+-- Ercan: "Unuturum ben bunu demeyi" → seçimleri açmak için elle komut beklenmez.
+-- Yeni istemci (bu sürüm ve sonrası) açılışta bir kez sürümünü bildirir (oyun.istemci_surum). Son 24 saatte aktif
+-- oyuncuların en az %70'i yeni istemciyi kullanıyorsa (en az 50 aktif oyuncu varken) oyun.pdk_tick seçimleri açar
+-- (ayarlar.pdk_secim_acik = true) ve yöneticilere bildirim gider. Eski mağaza uygulaması sürüm bildirmez.
+-- Bu tablo ayrıca "oyuncular hangi sürümde / hangi cihazda" sorusunun cevabıdır.
+
+create table if not exists oyun.istemci_surum(
+  user_id uuid primary key,
+  surum text not null,
+  platform text not null,
+  zaman timestamptz not null default now()
+);
+create index if not exists istemci_surum_zaman on oyun.istemci_surum(zaman);
+alter table oyun.istemci_surum enable row level security;
+revoke all on oyun.istemci_surum from public, anon, authenticated;
+
+create or replace function public.istemci_bildir(p_surum text, p_platform text) returns void
+language plpgsql security definer set search_path = 'oyun','public','pg_temp' as $$
+declare u uuid := auth.uid();
+begin
+  if u is null then return; end if;
+  insert into oyun.istemci_surum(user_id, surum, platform, zaman)
+  values (u, left(coalesce(p_surum, '?'), 40), left(coalesce(p_platform, '?'), 20), now())
+  on conflict (user_id) do update set surum = excluded.surum, platform = excluded.platform, zaman = excluded.zaman
+    where oyun.istemci_surum.zaman < now() - interval '1 hour'
+       or oyun.istemci_surum.surum is distinct from excluded.surum
+       or oyun.istemci_surum.platform is distinct from excluded.platform;
+end $$;
+revoke all on function public.istemci_bildir(text, text) from public, anon;
+grant execute on function public.istemci_bildir(text, text) to authenticated;
+
+-- Seçimler kapalıysa ve yeni istemci oranı yeterliyse açar. pdk_tick her çalıştığında çağrılır (2 sayım, ucuz).
+create or replace function oyun.pdk_secim_otomatik_ac() returns boolean
+language plpgsql set search_path = 'oyun','public','pg_temp' as $$
+declare n int; r int;
+begin
+  if coalesce((select pdk_secim_acik from oyun.ayarlar where id = 1), false) then return false; end if;
+  select count(*) into n from oyun.profiller where son_gorulme > now() - interval '24 hours';
+  if n < 50 then return false; end if;
+  select count(*) into r from oyun.profiller p join oyun.istemci_surum s on s.user_id = p.id
+   where p.son_gorulme > now() - interval '24 hours' and s.zaman > now() - interval '7 days';
+  if r * 100 < n * 70 then return false; end if;
+  update oyun.ayarlar set pdk_secim_acik = true where id = 1;
+  insert into oyun.bildirimler(user_id, zaman, metin)
+  select id, now(), '⚖️ Son 24 saatte aktif oyuncuların %' || round(r * 100.0 / n) || '''i yeni uygulama sürümünde. Disiplin Kurulu seçimleri kendiliğinden açıldı; partilerde adaylık başlıyor.'
+  from oyun.profiller where coalesce(yonetici, false);
+  return true;
+end $$;
+revoke all on function oyun.pdk_secim_otomatik_ac() from public, anon, authenticated;
+
+-- pdk_tick: seçim adımından önce otomatik açma denetimi
+create or replace function oyun.pdk_tick() returns jsonb
+language plpgsql security definer set search_path = 'oyun','public','pg_temp' as $$
+declare t timestamptz := oyun.simdi(); r record; s jsonb;
+begin
+  if not pg_try_advisory_xact_lock(77250031) then return jsonb_build_object('atlandi', true); end if;
+  for r in select id from oyun.pdk_dosya where durum = 'myk' and myk_son <= t order by id limit 200 loop
+    begin perform oyun.pdk_myk_kapat(r.id, t, true);
+    exception when others then raise warning 'pdk myk %: %', r.id, sqlerrm; end;
+  end loop;
+  for r in select id, heyet, hedef from oyun.pdk_dosya where durum = 'savunma' and savunma_son <= t order by id limit 200 loop
+    update oyun.pdk_dosya set durum = 'kurul', karar_son = t + make_interval(hours => oyun.pdk_s('kurul_saat')::int) where id = r.id;
+    perform oyun.pdk_toplu_bildir(r.heyet, '⚖️ ' || oyun.kad(r.hedef) || ' dosyasında savunma süresi doldu; kurul oylaması açıldı (' || oyun.pdk_s('kurul_saat') || ' saat).', t);
+  end loop;
+  for r in select id from oyun.pdk_dosya where durum = 'kurul' and karar_son <= t order by id limit 200 loop
+    begin perform oyun.pdk_kurul_sonuc(r.id, t, true);
+    exception when others then raise warning 'pdk kurul %: %', r.id, sqlerrm; end;
+  end loop;
+  update oyun.pdk_dosya set durum = 'kesin', kapandi = t where durum = 'karar' and itiraz_son <= t;
+  for r in select id from oyun.pdk_dosya where durum = 'itiraz' and itiraz_karar_son <= t order by id limit 200 loop
+    begin perform oyun.pdk_itiraz_sonuc(r.id, t, true);
+    exception when others then raise warning 'pdk itiraz %: %', r.id, sqlerrm; end;
+  end loop;
+  begin perform oyun.pdk_secim_otomatik_ac();
+  exception when others then raise warning 'pdk otomatik ac: %', sqlerrm; end;
+  s := oyun.pdk_secim_tick(t);
+  begin perform oyun.disiplin_sonuclandir();
+  exception when others then raise warning 'eski disiplin: %', sqlerrm; end;
+  return s;
+end $$;
+revoke all on function oyun.pdk_tick() from public, anon, authenticated;
+$kosullu_govde$;
+end $kosullu_dis$;
 -- zz_20261125_yuk_hizlandirma.sql (koşullu)
 do $kosullu_dis$
 begin
@@ -89540,7 +89629,7 @@ declare
     'dernek_uye_destek_karar', 'dernek_uye_destek_liste', 'dernek_yonetim_ata', 'dernek_ziyaret_taleplerim', 'dernek_ziyaret_tamamla', 'dernek_ziyaret_teklif',
     'dernek_ziyaret_yanit', 'dernekler', 'disiplin_baslat', 'disiplin_durum', 'disiplin_oyla', 'durum', 'istemci_hata_kaydet',
     -- 08.11.2026: Halk Hareketleri ekranlarının çağırdığı ve listede eksik kalan adlar
-    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'mod_merkez', 'mod_ustlen', 'mod_ustlenmeler', 'mod_sohbet_nobeti', 'mod_sohbet_sekme', 'mod_uyari', 'mod_para_cezasi', 'mod_kucuk_cezalar', 'mod_dosya', 'mod_not_ekle', 'mod_talep_ac', 'mod_talepler', 'mod_talep_karar', 'mod_talep_geri_cek', 'mod_destek', 'mod_destek_yanitla', 'mod_gunluk', 'admin_mod_ekip', 'admin_mod_kaydet', 'admin_mod_sadelestir', 'ifade_cagir', 'ifade_ver', 'ifade_reddet', 'ifade_zorla_getir', 'ifade_iptal', 'ifade_cagrilari', 'bakanlik_dava_bilgi', 'bakanlik_dava_ac', 'mod_sozlesme_kabul', 'admin_mod_tarafsizlik', 'mod_inceleme_karar', 'mod_kisitlar', 'mod_kisit_uygula', 'mod_kisit_uzat', 'mod_kisit_kaldir', 'mod_icerik_toplu_gizle', 'mod_yetki_tablosu', 'kisitlarim', 'rehber_isaretle', 'rehber_odul_al', 'sohbet_sabitle', 'pdk_panel', 'pdk_benim', 'pdk_oner', 'pdk_myk_oy', 'pdk_savunma', 'pdk_kurul_oy', 'pdk_itiraz', 'pdk_itiraz_oy', 'pdk_aday_ol', 'pdk_aday_cekil', 'pdk_secim_oy', 'yonetime_yaz_bilgi', 'yonetime_yaz', 'yonetime_yaz_yanit', 'yonetime_yaz_okundu', 'mod_kutu', 'mod_kutu_yanitla', 'mod_kutu_devret', 'mod_kutu_ustlen', 'yardim_yanitla', 'mod_sohbet_yaz', 'admin_akis_sikayetleri', 'admin_akis_karar', 'destek_gonder', 'kayit_basvuru_gonder', 'kayit_durumum', 'sozlesme_durumum', 'sozlesme_onayla', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'nobetci_sevk_et', 'nobetci_savunma', 'nobetci_karar', 'nobetci_panel', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
+    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'mod_merkez', 'mod_ustlen', 'mod_ustlenmeler', 'mod_sohbet_nobeti', 'mod_sohbet_sekme', 'mod_uyari', 'mod_para_cezasi', 'mod_kucuk_cezalar', 'mod_dosya', 'mod_not_ekle', 'mod_talep_ac', 'mod_talepler', 'mod_talep_karar', 'mod_talep_geri_cek', 'mod_destek', 'mod_destek_yanitla', 'mod_gunluk', 'admin_mod_ekip', 'admin_mod_kaydet', 'admin_mod_sadelestir', 'ifade_cagir', 'ifade_ver', 'ifade_reddet', 'ifade_zorla_getir', 'ifade_iptal', 'ifade_cagrilari', 'bakanlik_dava_bilgi', 'bakanlik_dava_ac', 'mod_sozlesme_kabul', 'admin_mod_tarafsizlik', 'mod_inceleme_karar', 'mod_kisitlar', 'mod_kisit_uygula', 'mod_kisit_uzat', 'mod_kisit_kaldir', 'mod_icerik_toplu_gizle', 'mod_yetki_tablosu', 'kisitlarim', 'rehber_isaretle', 'rehber_odul_al', 'sohbet_sabitle', 'pdk_panel', 'pdk_benim', 'pdk_oner', 'pdk_myk_oy', 'pdk_savunma', 'pdk_kurul_oy', 'pdk_itiraz', 'pdk_itiraz_oy', 'pdk_aday_ol', 'pdk_aday_cekil', 'pdk_secim_oy', 'istemci_bildir', 'yonetime_yaz_bilgi', 'yonetime_yaz', 'yonetime_yaz_yanit', 'yonetime_yaz_okundu', 'mod_kutu', 'mod_kutu_yanitla', 'mod_kutu_devret', 'mod_kutu_ustlen', 'yardim_yanitla', 'mod_sohbet_yaz', 'admin_akis_sikayetleri', 'admin_akis_karar', 'destek_gonder', 'kayit_basvuru_gonder', 'kayit_durumum', 'sozlesme_durumum', 'sozlesme_onayla', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'nobetci_sevk_et', 'nobetci_savunma', 'nobetci_karar', 'nobetci_panel', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
     -- 09.11.2026 Halk Hareketleri 3.0 (supabase/migrations/20261109090000_sokak_gercek_oyuncu.sql)
     'sokak_eylemden_ayril', 'sokak_goreve_cik', 'sokak_gorevden_ayril', 'sokak_karsi_katil', 'sokak_taktik_yap', 'sokak_grev_cagri', 'sokak_nabiz_ver', 'sokak_yasak_koy', 'sokak_jest_yap', 'sokak_heyet_davet', 'sokak_heyet_yanit', 'sokak_heyet_rapor', 'sokak_seslenis_yap', 'sokak_seslenis_tepki', 'sokak_karsi_cagri', 'sokak_kalkan_birak', 'sokak_saha_panel',
     -- 09.11.2026 on iki yeni hükümet aracı (supabase/migrations/20261109150000_halk_hukumet_yeni_tedbirler.sql)
