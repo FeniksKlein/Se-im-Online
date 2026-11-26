@@ -875,6 +875,8 @@
       (!benim && !ozel && !yon ? sat('dm', I.mesaj, kad + ' kişisine özel mesaj') + sat('kart', I.kart, 'Oyuncu kartı') : '') +
       (!benim && ozel ? sat('kart', I.kart, 'Oyuncu kartı') : '') +
       (yon && !benim && typeof window.yonetimeYazEkrani === 'function' ? sat('yy', I.mesaj, 'Yönetime özel yaz') : '') + '</div>' +
+      /* 26.11.2026: yönetim adına yazılan mesajı yazan moderatör (ve kurucu) silebilir; yetki sunucuda (mod_sohbet_sil) */
+      (yon && n(m.id) > 0 && (m.silebilir || benim) ? '<div class="sh-es-grup">' + sat('ysil', I.kapat, benim ? 'Yönetim mesajımı sil' : 'Yönetim mesajını sil', 'kirmizi') + '</div>' : '') +
       (!benim && !yon ? '<div class="sh-es-grup">' + sat('sikayet', I.bayrak, 'Mesajı şikâyet et', 'kirmizi') + '</div>' : '') +
       '<button type="button" class="sh-es-vaz" data-es="vaz">Vazgeç</button></div>');
     md.addEventListener('click', function (ev) {
@@ -892,7 +894,32 @@
       if (k === 'dm') { modalKapat(); ekranAc(function () { return ozelEkrani(kad); }); }
       if (k === 'kart') { modalKapat(); oyuncuKart(kad); }
       if (k === 'sikayet') { sikayetModal(ozel ? 'ozel' : 'mesaj', +id, kad, el); }
+      if (k === 'ysil') { modalKapat(); yonetimMesajSil(S, m); }
     });
+  }
+
+  /* 26.11.2026 · Yönetim adına yazılan mesajı silme. Sunucu: mod_sohbet_sil (yalnız yazan moderatör ya da kurucu). */
+  function yonetimMesajSil(S, m) {
+    var md = modal('<div class="sh-sayfa"><div class="sh-sayfa-onizle"><div class="shm-mini benim">' + esc(String(m.metin).slice(0, 220)) + '</div><small>Mesaj kanaldan kaldırılacak; herkesin ekranından silinir. Kayıt denetim günlüğünde kalır.</small></div>' +
+      '<div class="sh-es-grup"><button type="button" class="sh-es kirmizi" data-es="evet">' + I.kapat + '<span>Evet, sil</span></button></div><button type="button" class="sh-es-vaz" data-es="vaz">Vazgeç</button></div>');
+    md.addEventListener('click', async function (ev) {
+      var b = ev.target.closest('[data-es]'); if (!b) return;
+      var k = b.getAttribute('data-es'); modalKapat();
+      if (k !== 'evet') return;
+      try {
+        await API.rpc('mod_sohbet_sil', { p_mesaj: n(m.id) });
+        gizlenenDus(S, [m.id]);
+        tst('Mesaj silindi.');
+      } catch (err) { tst(hataYaz(err), true); }
+    });
+  }
+  /* Sunucunun bildirdiği kaldırılmış mesajları açık ekrandan düşür (sohbet_oku → gizlenen) */
+  function gizlenenDus(S, ids) {
+    if (!S || !ids || !ids.length || !S.liste) return;
+    var g = {}; ids.forEach(function (x) { g[String(x)] = 1; });
+    var once = S.liste.length;
+    S.liste = S.liste.filter(function (x) { return !g[String(x.id)]; });
+    if (S.liste.length !== once) { var ak = $1('#akis'); if (ak) akisCiz(ak, S, null); }
   }
 
   /* Gönderim: anında görünür, sunucu onaylayınca gerçek mesajla yer değiştirir */
@@ -1084,6 +1111,7 @@
       var r = await API.rpc('sohbet_oku', { p_kanal: kanal, p_once: null, p_sonra: S.sonId });
       if (!$1('.shk-kanal')) return r;
       if (r.mesajlar && r.mesajlar.length) { S.sonId = r.mesajlar[r.mesajlar.length - 1].id; yeniEkle(akis, S, r.mesajlar); }
+      if (r.gizlenen && r.gizlenen.length) gizlenenDus(S, r.gizlenen);
       sabitGuncelle(S, r);
       return r;
     };

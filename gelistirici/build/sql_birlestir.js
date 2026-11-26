@@ -138,6 +138,8 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261126_kurultay_imza_devir.sql',
   // 26.11.2026: Yardım Masası kapatma anahtarı + Yönetime Yaz taleplerine otomatik görevli ataması (30 dk devir, 48 saat kapanış, üstlenme)
   'zz_20261126_destek_atama.sql',
+  // 26.11.2026: Moderatör yönetim adına yazdığı kendi sohbet mesajını silebilir; kurucu hepsini silip geri açabilir
+  'zz_20261126_mod_sohbet_sil.sql',
   // 25.11.2026: YÜK HIZLANDIRMA — Kürsü gündemi/akışı, sohbet açılışı ve unvan önbelleği (canlıda 25.11 akşamı uygulandı).
   // LİSTENİN SONUNDA KALMALI: sohbet_oku, kursu_akis, kursu_gundem ve oyun.unvan'ı yeniden yazan dosyalardan sonra gelir.
   'zz_20261125_yuk_hizlandirma.sql'];

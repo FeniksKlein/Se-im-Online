@@ -358,7 +358,9 @@ declare
     -- 23.11.2026 Gazete/dergi kapatma (sql/zz_20261123_mod_kurum_kapat.sql)
     'mod_kurum_kapat', 'mod_kurum_ac', 'mod_kurum_kapatma_bilgi',
     -- 24.11.2026 Genel Kurul söz hakkı (sql/zz_20261124_meclis_soz.sql)
-    'meclis_soz_durum', 'meclis_soz_iste', 'meclis_soz_vazgec', 'meclis_soz_karar'
+    'meclis_soz_durum', 'meclis_soz_iste', 'meclis_soz_vazgec', 'meclis_soz_karar',
+    -- 26.11.2026 Yönetim adına yazılan sohbet mesajını silme (sql/zz_20261126_mod_sohbet_sil.sql)
+    'mod_sohbet_sil'
   ];
 -- @@rpc_yuzey_izin_son@@
   anon_izin text[] := array['surum', 'uygulama_ayar'];

@@ -351,7 +351,7 @@ create or replace function public.sohbet_oku(p_kanal text, p_once bigint DEFAULT
  security definer
  set search_path to 'oyun', 'public', 'pg_temp'
 as $function$
-declare p oyun.profiller := oyun.profilim(); k text; liste jsonb; son bigint; v_t timestamptz := oyun.simdi(); v_eng uuid[];
+declare p oyun.profiller := oyun.profilim(); k text; liste jsonb; son bigint; v_t timestamptz := oyun.simdi(); v_eng uuid[]; v_gizlenen jsonb;
 begin
   k := oyun.kanal_coz(p, p_kanal);
   if k is null then raise exception '%', oyun.kanal_hata(p_kanal); end if;
@@ -365,6 +365,7 @@ begin
               'parti', case when x.gorevli then null else oyun.parti_json(pr.parti_id) end,
               'unvan', case when x.gorevli then 'Oyun Yönetimi' else oyun.unvan(x.user_id) end,
               'benim', x.user_id = p.id, 'gorevli', x.gorevli,
+              'silebilir', x.gorevli and (x.user_id = p.id or coalesce(p.yonetici, false)),
               'yeni', coalesce(not x.gorevli and pr.olusturma > v_t - interval '7 days', false),
               'yanit', case when x.yanit_id is not null then oyun.mesaj_alinti(p, x.yanit_id) end) order by x.id), '[]'::jsonb)
       into liste
@@ -382,6 +383,7 @@ begin
               'parti', case when x.gorevli then null else oyun.parti_json(pr.parti_id) end,
               'unvan', case when x.gorevli then 'Oyun Yönetimi' else oyun.unvan(x.user_id) end,
               'benim', x.user_id = p.id, 'gorevli', x.gorevli,
+              'silebilir', x.gorevli and (x.user_id = p.id or coalesce(p.yonetici, false)),
               'yeni', coalesce(not x.gorevli and pr.olusturma > v_t - interval '7 days', false),
               'yanit', case when x.yanit_id is not null then oyun.mesaj_alinti(p, x.yanit_id) end) order by x.id), '[]'::jsonb)
       into liste
@@ -401,12 +403,17 @@ begin
         where oyun.kanal_okuma.son_id is distinct from greatest(oyun.kanal_okuma.son_id, excluded.son_id);
     end if;
   end if;
+  -- 26.11.2026: sonradan kaldırılan (gizlenen) son mesajlar; açık ekranlar bunları listeden düşer.
+  -- Kısmi dizin (mesajlar_kanal_gizli) yalnız gizli satırları tutar, sorgu her yoklamada birkaç satır okur.
+  select coalesce(jsonb_agg(g.id), '[]'::jsonb) into v_gizlenen
+    from (select m.id from oyun.mesajlar m where m.kanal = k and m.gizli order by m.id desc limit 30) g;
   return jsonb_build_object('kanal', p_kanal, 'mesajlar', liste, 'yazabilir', oyun.kanal_yazabilir(p, p_kanal),
     'baslik', oyun.kanal_baslik(p, p_kanal), 'sinyal', 'sohbet:' || k,
     'gorevli_yazabilir', k = 'yardim' and oyun.yardim_gorevli_mi(p), 'resmi_yazabilir', oyun.sohbet_resmi_yazabilir(p, k), 'kanal_kod', k,
     -- 26.11.2026: sabit mesajlar (parti / yönetim / özel grup; eski sayfa yüklemesinde gönderilmez)
     'sabitler', case when p_once is null and oyun.sohbet_sabit_kanal(k) then oyun.sohbet_sabit_liste(k) end,
-    'sabitleyebilir', p_once is null and oyun.sohbet_sabit_kanal(k) and oyun.sohbet_sabit_yetki(p, k));
+    'sabitleyebilir', p_once is null and oyun.sohbet_sabit_kanal(k) and oyun.sohbet_sabit_yetki(p, k),
+    'gizlenen', v_gizlenen);
 end $function$;
 
 set local check_function_bodies = on;

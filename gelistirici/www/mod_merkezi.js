@@ -557,7 +557,8 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     const sus = yv("sustur");
     const md = sheet(`<h3 style="font-size:18px;font-weight:800;margin:0">${esc(m.kad)} · ${esc(m.kanal_ad)}</h3><div class="mm-alt">${tsaat(m.zaman)}</div>
       <div class="mm-baloncuk" style="margin-top:10px">${esc(m.metin)}</div>
-      ${m.gorevli ? `<div class="mm-uyari yesil">${IK.kalkan}<div>Oyun yönetimi adına yazılmış mesaj. Yazanın adı gösterilmez; yanlış ya da uygunsuzsa yöneticiye ilet.</div></div>` : m.moderator && !(M && M.ben && M.ben.yonetici && M.ben.kad !== m.kad) ? `<div class="mm-uyari sari">${IK.kilit}<div>Bu mesaj oyun yönetiminden birine ait; işlem yapılamaz.</div></div>` : `
+      ${m.gorevli ? `<div class="mm-uyari yesil">${IK.kalkan}<div>Oyun yönetimi adına yazılmış mesaj. Yazanın adı gösterilmez; ${yonSilebilir(m) ? "kendi mesajını silebilirsin." : "yanlış ya da uygunsuzsa yöneticiye ilet."}</div></div>
+        ${yonSilebilir(m) ? (m.gizli ? (M && M.ben && M.ben.yonetici ? `<button class="mm-btn yesil" style="margin-top:8px" id="mmYonGeri">Silinen mesajı geri aç</button>` : "") : `<button class="mm-btn kirmizi" style="margin-top:8px" id="mmYonSil">Yönetim mesajını sil</button>`) : ""}` : m.moderator && !(M && M.ben && M.ben.yonetici && M.ben.kad !== m.kad) ? `<div class="mm-uyari sari">${IK.kilit}<div>Bu mesaj oyun yönetiminden birine ait; işlem yapılamaz.</div></div>` : `
       <div class="mm-iki">${m.gizli ? `<button class="mm-btn yesil" data-k="yok_say">Geri aç</button>` : `<button class="mm-btn" data-k="gizle">Mesajı gizle</button>`}
         ${sus ? `<button class="mm-btn kirmizi" data-k="gizle_sustur1">Gizle + 1 gün sustur</button>` : `<button class="mm-btn kirmizi" data-talep="1">Yaptırım talebi</button>`}</div>
       ${sus ? `<button class="mm-btn" style="margin-top:8px" data-uyar="1">Resmî uyarı ver (24 saatte 3. uyarıda otomatik susturma)</button><div class="mm-alan">Hızlı susturma (mesaj kalır · tekrar edende süre kendiliğinden artar)</div><div class="mm-aksiyon">${[[0.25, "15 dk"], [0.5, "30 dk"], [1, "1 saat"], [3, "3 saat"], [24, "24 saat"], [72, "3 gün"]].map(s => `<button data-s="${s[0]}">${s[1]}</button>`).join("")}</div>` : ""}`}
@@ -565,6 +566,12 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
       ${m.gorevli || m.moderator ? "" : `<button class="mm-btn" style="margin-top:8px" id="mmMsgY">${IK.sohbet}Oyuncuya özel mesaj yaz / uyar</button>`}
       <div class="mm-iki">${m.gorevli ? "" : `<button class="mm-btn cizgi" data-dosya="1">${IK.ara}Oyuncu dosyası</button>`}<button class="mm-btn cizgi" id="mmKap">Kapat</button></div>`);
     $("#mmKap", md).onclick = modalKapat;
+    /* 26.11.2026: yönetim adına yazılan mesajı silme / kurucu için geri açma (sunucu: mod_sohbet_sil) */
+    [["#mmYonSil", false], ["#mmYonGeri", true]].forEach(([sec, geri]) => { const b = $(sec, md); if (b) b.onclick = async () => {
+      b.disabled = true;
+      try { await API.rpc("mod_sohbet_sil", { p_mesaj: m.id, p_geri: geri }); modalKapat(); toast(geri ? "Mesaj yeniden görünür." : "Mesaj silindi."); mmNobetYenile(); }
+      catch (err) { b.disabled = false; hata(err); }
+    }; });
     const my = $("#mmMsgY", md); if (my) my.onclick = () => { modalKapat(); oyuncuyaYazAc(m.kad, true); };
     const mr = $("#mmMsgR", md); if (mr) mr.onclick = () => { modalKapat(); resmiYazAc(m.kanal, m.kanal_ad); };
     const dsy = $("[data-dosya]", md); if (dsy) dsy.onclick = () => { modalKapat(); mmDosyaAc(m.kad); };
@@ -578,6 +585,12 @@ textarea.mm-girdi{min-height:88px;resize:vertical;line-height:1.45}
     });
     const uy = $("[data-uyar]", md); if (uy) uy.onclick = () => { modalKapat(); kucukCezaAc("uyari", m.kad, `${m.kanal_ad} · ${tsaat(m.zaman)}: ${m.metin}`, () => mmNobetYenile()); };
     const t = $("[data-talep]", md); if (t) t.onclick = () => { modalKapat(); talepAc(m.kad, { kanit: `${m.kanal_ad} · ${tsaat(m.zaman)}: ${m.metin}`, tur: "sustur" }); };
+  }
+  /* Yönetim adına yazılmış mesajı bu kişi silebilir mi: kurucu hepsini, moderatör kendi imzasını taşıyanı (sunucu ayrıca denetler) */
+  function yonSilebilir(m) {
+    if (!m || !m.gorevli || !M || !M.ben) return false;
+    if (M.ben.yonetici) return true;
+    return !!M.ben.kod && String(m.kad || "").trim() === ("Oyun Yöneticisi " + M.ben.kod).trim();
   }
   /* 20.11.2026 · Sohbete yönetim adına yaz: mesaj kanalda "Oyun Yöneticisi G-03" imzasıyla görünür, moderatörün adı görünmez.
      Yetki sunucuda doğrulanır (mod_sohbet_yaz); kanalın üyesi olmak gerekmez. */
