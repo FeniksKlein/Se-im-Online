@@ -3,6 +3,13 @@
 Sahibi: Ercan (FeniksKlein). Not: "Gülveren Games" unvanı kullanılmaz (Ercan, 23.11.2026). Kodlama bilmiyor; **her şeyi Türkçe, sade ve adım adım anlat.**
 Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (tek dosya HTML/JS + Capacitor, Supabase arka uç).
 
+## 26.11.2026 — 2026.11.26-4 Mesaj saklama süresi: 30 gün (sunucu canlıda; istemci değişmedi)
+- Karar (Ercan): "Mesajlar belli bir tarihten sonra silinsin" → 30 gün; kapsam kanal sohbetleri (genel/Türkiye, parti, il, yönetim, özel gruplar `og`, yardım) + özel mesajlar (`oyun.ozel`). Kürsü (`akis`) ve TV yorumları silinmez.
+- Hiç silinmeyenler: şikâyet edilmiş (`sikayetler` tur mesaj/ozel), `gizli`, `gorevli`, `mod_isaret` dolu, `mod_icerik_arsiv`'de kaydı olan mesajlar; resmî oturum kanalları (meclis, grup, divan, kabine).
+- `oyun.mesaj_saklama_temizle()` — pg_cron `mesaj-saklama` her gece 01:40 UTC (04:40 TSİ); 5.000'lik partiler, en çok 60 parti/gece; tepkiler de silinir; danışma kilidiyle tek çalışır. Süre `ayarlar.mesaj_saklama_gun` (7–365, portal › Hesap). Dizinler `mesajlar_zaman`, `ozel_zaman`.
+- Kaynak `gelistirici/sql/zz_20261126_mesaj_saklama.sql`, canlı migration `mesaj_saklama_20261126` (+ `migrations/20261126_mesaj_saklama.sql`). Geri alınan denemede: sıradan kanal/özel mesaj silindi, şikâyetli ve gizli kaldı.
+- En eski mesaj 22.11.2026 → ilk gerçek silme ~22.12.2026 gecesi.
+
 ## 26.11.2026 — 2026.11.26-3 Yeni oyuncu rehberi (onboarding) (sunucu canlıda; ekran web'de, telefonlar mağaza sürümünü bekler)
 - İstek (Ercan, Yönetime Yaz'daki oyuncu önerisi): "İlk giren oyuncu için oyun aşırı karışık. Her şeyi görüyor ama hiçbir şey bilmiyor; kısa ve doğal bir onboarding olsun." → "ekle".
 - İstemci `gelistirici/www/rehber.js` (derle.js'de kullanici_sozlesmesi.js'den sonra): (1) 4 kartlık karşılama (atlanabilir; metinler sunucudan, yoksa varsayılan), (2) İlk Adımlar 2.0 — `ilkAdimlarHtml`'in yerine geçer, Gündem'de takvimin altına taşınır; her adımın nedeni + "Git" düğmesi + ilerleme çubuğu + tek seferlik başlangıç ödülü düğmesi + "Yol arkadaşı bul" (mevcut mentor sistemi), (3) her ana sekmede başlığın yanında "?" düğmesi ve 12 sekme için ipucu panosu (Yardım Masası, Yönetime Yaz, kurallar bağlantıları), (4) "Yeni" rozeti: sohbet balonları (`sohbet_tasarim.js`, `m.yeni`) ve oyuncu kartı (`index.html`, `k.katilim` < 7 gün).
