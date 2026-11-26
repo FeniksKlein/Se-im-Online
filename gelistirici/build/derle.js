@@ -136,6 +136,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','rehber.js'),'utf8')+'</script></body>');
 // 26.11.2026: Parti MYK + seçilmiş Disiplin Kurulu ekranı (partiDisiplinEkrani'nın yerine geçer) ve Adliye › Parti Disiplin İtirazları.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','parti_disiplin_kurulu.js'),'utf8')+'</script></body>');
+// 26.11.2026: Kademeli Getiri kartı + Şirket › Personel + İş Hayatı (iş ilanı, başvuru, mesai) + mağazada tahmini getiri.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kademe_istihdam.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
