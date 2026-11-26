@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.27-1', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.27-2', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -10835,7 +10835,7 @@ begin
   b:=btrim(coalesce(p_baslik,''));
   if length(b)<5 or length(b)>100 then raise exception 'Tüzük başlığı 5-100 karakter olmalı.'; end if;
   if oyun.kufurlu(b) then raise exception 'Başlıkta uygunsuz ifade var.'; end if;
-  m:=oyun.metin_temizle(p_metin,6000);
+  m:=oyun.metin_temizle(p_metin,50000);
   if length(m)<50 then raise exception 'Parti tüzüğü en az 50 karakter olmalı.'; end if;
 
   insert into oyun.parti_tuzuk_teklifleri(parti_id,baslik,metin,teklif_eden,bas,bit)
