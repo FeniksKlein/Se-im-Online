@@ -185,12 +185,15 @@ window.sirketTekSirketEkrani=async function(id,tab){
     window.smTedarikciler=vendors;
     const factory=company?.tur==='fabrika',store=company?.tur==='magaza';
     const products=(t?.urunler||[]).filter(x=>x.grup===company?.grup);
+    // 26.11.2026: ürün kodu (uc_sebze, cold_brew) yerine Türkçe ürün adı; kendi mağazası olmayan fabrikaya sevk düğmesi gösterilmez.
+    const urunAd=k=>((t?.urunler||[]).find(u=>u.kod===k)?.ad)||k;
+    const myStores=(t?.sirketler||[]).filter(x=>x.tur==='magaza'&&x.yonetici&&Number(x.id)!==id);
     html+=sectionHeader('📦 Mal, stok ve işletme faaliyetleri',
      '<p class="sm-note">Alış, üretim, stok fiyatı, satış ve sektör kararları bu şirkete aittir; başka şirketin kasası kullanılmaz.</p>'+
      kv('İşletme türü',company?.tur||s.sektor)+
      (error?'<p>'+safe(error)+'</p>':'')+
      '<h3>Mevcut stok</h3>'+
-     (stock.length?stock.map((x,k)=>item('<b>'+safe(x.urun)+'</b>'+kv('Adet',x.adet)+kv('Alış/üretim birim maliyeti',money(x.maliyet))+
+     (stock.length?stock.map((x,k)=>item('<b>'+safe(urunAd(x.urun))+'</b>'+kv('Adet',x.adet)+kv('Alış/üretim birim maliyeti',money(x.maliyet))+
        '<div class="alan"><label>Satış fiyatı (₺)</label><input id="sm_fiyat_'+k+'" type="number" step="1" min="1" value="'+Number(x.fiyat||0)+'"></div>'+
        (manager?action('Satış fiyatını kaydet','sirketMerkezStokFiyat('+id+','+k+','+JSON.stringify(String(x.urun)).replace(/"/g,'&quot;')+')'):''))).join(''):
        '<p class="alt">Bu şirket için listelenen stok bulunmuyor.</p>')+
@@ -218,7 +221,7 @@ window.sirketTekSirketEkrani=async function(id,tab){
          kv('Maliyet',money(p.maliyet)));
      }).join(''):'<p class="alt">Bekleyen üretim emri yok.</p>')+
      '<h3>Gerçekleşen satışlar</h3>'+
-     (sales.length?sales.map(x=>item(safe(x.urun)+' · '+x.adet+' adet'+kv('Ciro',money(x.ciro))+
+     (sales.length?sales.map(x=>item(safe(urunAd(x.urun))+' · '+x.adet+' adet'+kv('Ciro',money(x.ciro))+
        kv('Net kâr',money(x.kar))+'<p class="alt">'+shortDate(x.zaman)+'</p>')).join(''):'<p class="alt">Henüz kayıtlı satış yok.</p>')+
      ((npc?.urunler||[]).length?
         '<h3>🛍️ İşletme ürünleri ve mağaza stoğu</h3><p class="sm-note">Şirket kasasıyla ürün al, satış fiyatını belirle. Oyun müşterileri stoktan otomatik satın alır.</p>'+
@@ -230,8 +233,15 @@ window.sirketTekSirketEkrani=async function(id,tab){
           action('Fiyatı değiştir','sirketMerkezNpcIslem('+id+',\'fiyat\','+safe(JSON.stringify(String(u.kod)))+','+j+')'):'')
         )).join('')+'<h3>NPC satış özeti</h3>'+kv('Son 7 gün ciro',money(npc.son_7_gun?.ciro))+
          kv('Satılan adet',npc.son_7_gun?.satilan||0):'')+
-       (factory&&manager?stock.filter(x=>/^[a-z0-9_]+$/.test(String(x.urun))).map(x=>
-      action('Kendi mağazama '+x.urun+' sat',"sirketToptanAlModal("+id+",'"+x.urun+"',0)")).join(''):'')+
+       (factory&&manager?(()=>{
+      const sat=stock.filter(x=>/^[a-z0-9_]+$/.test(String(x.urun))&&Number(x.adet)>0);
+      if(!sat.length)return '';
+      if(!myStores.length)return '<h3>Kendi mağazana sevk</h3><p class="sm-note">Fabrika ürünleri oyun müşterisine doğrudan satılmaz, mağazalara toptan satılır. '+
+        'Ürünlerini kendi mağazana aktarmak için önce yönettiğin bir market / mağaza şirketi kur. '+
+        'Başka oyuncuların mağazaları da stoğundaki ürünleri belirlediğin toptan fiyattan satın alabilir.</p>';
+      return '<h3>Kendi mağazana sevk</h3>'+sat.map(x=>
+        action('Kendi mağazama sat: '+urunAd(x.urun)+' ('+x.adet+' adet)',"sirketToptanAlModal("+id+",'"+x.urun+"',0)")).join('');
+     })():'')+
      (store&&manager?(company?.kategori==='kahve'||company?.kategori==='fastfood'?
       action('Mutfakta ürün hazırlama','sirketPortfoyMutfak('+id+')','altin'):
       action('Gelişmiş toptan alış ve satış','sirketPortfoyTedarik('+id+')','altin')):'')+

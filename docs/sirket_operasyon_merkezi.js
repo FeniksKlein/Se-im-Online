@@ -215,12 +215,17 @@
    }catch(err){toast(String(err.message||err),true);}
   });
  }
- function sirketToptanAlModal(supplier,code,buyer){
+ async function sirketToptanAlModal(supplier,code,buyer){
   supplier=okId(supplier);buyer=okId(buyer);code=String(code||"");
-  const offer=tedarik().find(x=>num(x.sirket)===supplier&&x.urun===code);
-  const options=magaza().filter(x=>!buyer||num(x.id)===buyer);
-  if(!offer||!num(offer.adet)){toast("Hazır satılık stok bulunamadı. Verileri yenile.",true);return;}
-  if(!options.length){toast("Satın alabileceğin mağazan bulunamadı.",true);return;}
+  // 26.11.2026: Şirket tek merkezinden açılınca bu modülün verisi hiç yüklenmemiş olabiliyordu;
+  // stok varken "Hazır satılık stok bulunamadı" çıkıyordu. Veri yoksa önce sunucudan tazelenir.
+  const bul=()=>tedarik().find(x=>num(x.sirket)===supplier&&x.urun===code);
+  let offer=bul();
+  if(!V.ticaret||!offer||!num(offer.adet)){try{await yenile();}catch(_){}offer=bul();}
+  const options=magaza().filter(x=>(!buyer||num(x.id)===buyer)&&num(x.id)!==supplier);
+  if(!offer||!num(offer.adet)){toast("Bu üründen satılık stok kalmadı. Verileri yenile.",true);return;}
+  if(!options.length){toast(buyer?"Bu mağazayı yönetme yetkin bulunamadı.":
+   "Yönettiğin bir mağaza yok. Fabrika ürünlerini kendin satmak için önce bir market / mağaza şirketi kur; başka oyuncuların mağazaları da senden toptan alabilir.",true);return;}
   const max=Math.min(500,num(offer.adet));
   const modalEl=modal('<h3>Toptan ürün satın al</h3>'+
    '<p class="alt">'+guvenli(urun(code)?.ad||code)+" · "+guvenli(offer.ad)+
