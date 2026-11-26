@@ -116,7 +116,7 @@ begin
   if var then y := oyun.yedek_al('Güncelleme öncesi ' || p_surum); end if;
   insert into oyun.surumler(surum, aciklama, yedek, parmak_once) values (p_surum, p_aciklama, y, oyun.parmak_izi());
 end $$;
-select oyun.guncelleme_basla('2026.11.26-4', 'supabase-kurulum.sql');
+select oyun.guncelleme_basla('2026.11.26-5', 'supabase-kurulum.sql');
 -- =====================================================================
 --  SEÇİM SİMÜLASYONU ONLINE — 1) ŞEMA
 --  Tablolar "oyun" şemasında durur; bu şema internete AÇILMAZ.
@@ -86508,6 +86508,167 @@ begin
   end loop;
   revoke all on function oyun.rehber_durum(oyun.profiller, timestamptz) from public, anon, authenticated;
 end $g$;
+-- 26.11.2026 · SOHBETTE MESAJ SABİTLEME + PARTİ SÖZCÜSÜ UNVANI (sürüm 2026.11.26-5)
+--
+-- 1) Parti sözcüsü unvanı (Ercan: "Parti sözcüsü sohbete yazdığında XXP Parti Sözcüsü yazmıyor")
+--    Unvan zincirinde sözcü hiç yoktu. Artık: "XXP Parti Sözcüsü"; aynı kişi Genel Başkan Yardımcısıysa
+--    "XXP … Genel Başkan Yardımcısı ve Sözcüsü". Daha yüksek makam (bakan, milletvekili, GB…) varsa o görünür.
+--    oyun.parti_unvan, zincirdeki oyun.gby_unvan(u) yerine geçer. Taze kurulumda oyun.unvan gövdesi yamalanır
+--    (zz_20261125_yuk_hizlandirma.sql bu gövdeyi sonra unvan_hesap'a kopyalar); canlıda unvan_hesap yamalanır.
+--    Unvan önbelleği (unvan_yenile) sözcüleri de aday listesine alır — o değişiklik yuk_hizlandirma dosyasında.
+--
+-- 2) Mesaj sabitleme (YDP GBY'nin önerisi, Ercan: "gerçekleştir")
+--    Nerede: parti sohbeti (parti:N), parti yönetimi (yonetim:N), özel gruplar (og:N).
+--    Kim: parti sohbetlerinde Genel Başkan, Genel Başkan Yardımcıları ve Parti Sözcüsü; özel grupta grubu kuran.
+--    Kural: kanal başına en çok 3 sabit mesaj; 4. sabitlenince en eskisi kendiliğinden düşer (WhatsApp gibi).
+--    Sabitlenen mesaj 30 günlük mesaj saklama temizliğinde silinmez; sabitlemesi kaldırılınca normal süreye döner.
+--    Moderasyonun gizlediği mesaj sabit listede görünmez. Sabitleme/kaldırma kanal sinyali gönderir,
+--    açık ekranlar anında yenilenir. Ek RPC yok: sabitler sohbet_oku dönüşünde gelir (yalnız bu üç kanal türünde,
+--    en çok 3 satırlık dizinli okuma).
+
+set local check_function_bodies = off;
+
+-- ---------------------------------------------------------------- 1) sözcü unvanı
+create or replace function oyun.parti_unvan(u uuid)
+ returns text
+ language sql
+ stable
+ set search_path to ''
+as $function$
+  select case when x.g is not null and x.s is not null then x.g || ' ve Sözcüsü'
+              else coalesce(x.g, x.s || ' Parti Sözcüsü') end
+  from (select oyun.gby_unvan(u) g,
+               (select pa.kisa from oyun.parti_sozcu ps
+                  join oyun.partiler pa on pa.id = ps.parti_id and not pa.kapali
+                  join oyun.profiller pr on pr.id = ps.user_id and pr.parti_id = ps.parti_id
+                 where ps.user_id = u limit 1) s) x
+$function$;
+revoke all on function oyun.parti_unvan(uuid) from public, anon, authenticated;
+
+do $u$
+declare d text; y text;
+begin
+  -- taze kurulum: oyun.unvan henüz asıl zincir (önbellek sürümü değil)
+  d := pg_get_functiondef('oyun.unvan(uuid)'::regprocedure);
+  if position('unvan_onbellek' in d) = 0 and position('oyun.parti_unvan(u)' in d) = 0 then
+    y := replace(d, 'oyun.gby_unvan(u)', 'oyun.parti_unvan(u)');
+    if y <> d then execute y; else raise notice 'sabitle: oyun.unvan beklenen biçimde değil; sözcü unvanı eklenmedi'; end if;
+  end if;
+  -- canlı: asıl zincir oyun.unvan_hesap'ta
+  if to_regprocedure('oyun.unvan_hesap(uuid)') is not null then
+    d := pg_get_functiondef('oyun.unvan_hesap(uuid)'::regprocedure);
+    if position('oyun.parti_unvan(u)' in d) = 0 then
+      y := replace(d, 'oyun.gby_unvan(u)', 'oyun.parti_unvan(u)');
+      if y <> d then execute y; else raise notice 'sabitle: unvan_hesap beklenen biçimde değil; sözcü unvanı eklenmedi'; end if;
+    end if;
+  end if;
+end $u$;
+
+-- ---------------------------------------------------------------- 2) sabit mesajlar
+create table if not exists oyun.sohbet_sabit (
+  kanal text not null,
+  mesaj_id bigint not null references oyun.mesajlar(id) on delete cascade,
+  sabitleyen uuid,
+  zaman timestamptz not null default now(),
+  primary key (kanal, mesaj_id)
+);
+create index if not exists sohbet_sabit_mesaj on oyun.sohbet_sabit (mesaj_id);
+alter table oyun.sohbet_sabit enable row level security;
+revoke all on oyun.sohbet_sabit from anon, authenticated;
+
+-- Sabitlemenin açık olduğu kanal türleri
+create or replace function oyun.sohbet_sabit_kanal(k text)
+ returns boolean
+ language sql
+ immutable
+ set search_path to ''
+as $function$
+  select coalesce(split_part(k, ':', 1) in ('parti', 'yonetim', 'og') and split_part(k, ':', 2) ~ '^[0-9]{1,18}$', false)
+$function$;
+
+-- Sabitleme yetkisi (k: kanal_coz çıktısı, yani kişinin zaten erişebildiği kanal)
+create or replace function oyun.sohbet_sabit_yetki(p oyun.profiller, k text)
+ returns boolean
+ language plpgsql
+ stable
+ set search_path to ''
+as $function$
+declare tur text := split_part(k, ':', 1); kid bigint;
+begin
+  if p.id is null or k is null or not oyun.sohbet_sabit_kanal(k) then return false; end if;
+  kid := split_part(k, ':', 2)::bigint;
+  if coalesce(p.yonetici, false) then return true; end if;
+  if tur = 'og' then
+    return exists (select 1 from oyun.sohbet_grup g where g.id = kid and g.kurucu = p.id and not g.kapali);
+  end if;
+  -- parti / yonetim: o partinin üyesi ve GB, GBY ya da sözcü
+  if p.parti_id is distinct from kid then return false; end if;
+  return exists (select 1 from oyun.partiler pa where pa.id = kid and not pa.kapali and pa.gb = p.id)
+      or exists (select 1 from oyun.parti_gby g where g.parti_id = kid and g.user_id = p.id)
+      or exists (select 1 from oyun.parti_sozcu s where s.parti_id = kid and s.user_id = p.id);
+end $function$;
+
+-- Kanalın sabit mesajları (en yeni sabit önce); gizlenen mesaj listelenmez
+create or replace function oyun.sohbet_sabit_liste(k text)
+ returns jsonb
+ language sql
+ stable
+ set search_path to ''
+as $function$
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'id', m.id,
+           'kad', case when m.gorevli then oyun.mod_imza(pr) else coalesce(pr.kad, '(silinmiş)') end,
+           'metin', m.metin, 'zaman', m.zaman, 'gorevli', m.gorevli,
+           'sabitleyen', coalesce(sp.kad, ''), 'sabit_zaman', s.zaman) order by s.zaman desc), '[]'::jsonb)
+  from oyun.sohbet_sabit s
+  join oyun.mesajlar m on m.id = s.mesaj_id and m.kanal = s.kanal and not m.gizli
+  left join oyun.profiller pr on pr.id = m.user_id
+  left join oyun.profiller sp on sp.id = s.sabitleyen
+  where s.kanal = k
+$function$;
+revoke all on function oyun.sohbet_sabit_kanal(text), oyun.sohbet_sabit_yetki(oyun.profiller, text), oyun.sohbet_sabit_liste(text) from public, anon, authenticated;
+
+-- Sabitle / kaldır
+create or replace function public.sohbet_sabitle(p_kanal text, p_mesaj bigint, p_sabitle boolean default true)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to ''
+as $function$
+declare p oyun.profiller := oyun.profilim(); k text; m oyun.mesajlar; t timestamptz := clock_timestamp(); dusen bigint;
+begin
+  if p.id is null then raise exception 'Önce giriş yapmalısın.'; end if;
+  k := oyun.kanal_coz(p, p_kanal);
+  if k is null then raise exception '%', oyun.kanal_hata(p_kanal); end if;
+  if not oyun.sohbet_sabit_kanal(k) then raise exception 'Bu sohbette mesaj sabitlenemez. Sabitleme parti sohbetinde, parti yönetiminde ve özel gruplarda açıktır.'; end if;
+  if not oyun.sohbet_sabit_yetki(p, k) then
+    raise exception '%', case when k like 'og:%' then 'Bu grupta mesajı yalnız grubu kuran sabitleyebilir.'
+      else 'Mesajı yalnız Genel Başkan, Genel Başkan Yardımcıları ve Parti Sözcüsü sabitleyebilir.' end;
+  end if;
+  -- aynı kanalda eşzamanlı sabitlemeler sıraya girsin (3 sınırı aşılmasın)
+  perform pg_advisory_xact_lock(hashtext('sohbet_sabit:' || k));
+  if coalesce(p_sabitle, true) then
+    select * into m from oyun.mesajlar where id = p_mesaj;
+    if m.id is null or m.kanal is distinct from k then raise exception 'Mesaj bu sohbette bulunamadı.'; end if;
+    if m.gizli then raise exception 'Bu mesaj moderasyon tarafından kaldırıldığı için sabitlenemez.'; end if;
+    insert into oyun.sohbet_sabit (kanal, mesaj_id, sabitleyen, zaman) values (k, m.id, p.id, t)
+    on conflict (kanal, mesaj_id) do update set sabitleyen = excluded.sabitleyen, zaman = excluded.zaman;
+    -- en çok 3: fazlası (en eski sabit) düşer
+    with fazla as (
+      select s.mesaj_id from oyun.sohbet_sabit s where s.kanal = k order by s.zaman desc, s.mesaj_id desc offset 3
+    ), sil as (
+      delete from oyun.sohbet_sabit s using fazla f where s.kanal = k and s.mesaj_id = f.mesaj_id
+      returning s.mesaj_id
+    )
+    select min(mesaj_id) into dusen from sil;
+  else
+    delete from oyun.sohbet_sabit where kanal = k and mesaj_id = p_mesaj;
+  end if;
+  perform oyun.canli_sinyal('sohbet:' || k);
+  return jsonb_build_object('sabitler', oyun.sohbet_sabit_liste(k), 'dusen', dusen);
+end $function$;
+revoke all on function public.sohbet_sabitle(text, bigint, boolean) from public, anon;
+grant execute on function public.sohbet_sabitle(text, bigint, boolean) to authenticated;
 -- 26.11.2026 · MESAJ SAKLAMA SÜRESİ — eski sohbet ve özel mesajlar kendiliğinden silinir (sürüm 2026.11.26-4)
 -- Karar (Ercan): "Mesajlar belli bir tarihten sonra silinsin" → süre 30 gün; kapsam: kanal sohbetleri
 --   (Türkiye/genel, parti, il kahvesi, parti yönetimi, özel gruplar, Yardım Masası) + oyuncular arası özel mesajlar.
@@ -86516,7 +86677,8 @@ end $g$;
 --   • şikâyet edilmiş mesajlar (oyun.sikayetler tur 'mesaj' / 'ozel', kayit_id) — şikâyetin durumu ne olursa olsun;
 --   • moderasyonun gizlediği (gizli), işaretlediği (mod_isaret) ya da yönetim adına yazılmış (gorevli) mesajlar;
 --   • moderasyon içerik arşivinde kaydı olanlar (oyun.mod_icerik_arsiv.kayit_id);
---   • resmî oturum kanalları (meclis, grup, divan, kabine — tutanak niteliğinde).
+--   • resmî oturum kanalları (meclis, grup, divan, kabine — tutanak niteliğinde);
+--   • sabitlenmiş mesajlar (oyun.sohbet_sabit, 26.11.2026 — sabitleme kaldırılınca normal süreye döner).
 -- Süre Süper Yönetici Portalı › Hesap › "Sohbet mesajı saklama süresi" ayarından değişir (7–365 gün).
 -- Çalışma: her gece 04.40 (TSİ) pg_cron 'mesaj-saklama'; 5.000'lik partilerle, tur başına en çok 60 parti
 --   (300 bin satır; kalan ertesi gece). Tepkiler (mesaj_tepki) de birlikte silinir. Tekrar çalıştırmak güvenlidir.
@@ -86554,6 +86716,7 @@ begin
          and not m.gizli and not m.gorevli and coalesce(cardinality(m.mod_isaret), 0) = 0
          and split_part(m.kanal, ':', 1) not in ('meclis', 'grup', 'divan', 'kabine')
          and not exists (select 1 from oyun.sikayetler s where s.tur = 'mesaj' and s.kayit_id = m.id)
+         and not exists (select 1 from oyun.sohbet_sabit sb where sb.mesaj_id = m.id)
          and not exists (select 1 from oyun.mod_icerik_arsiv a where a.kayit_id = m.id and coalesce(a.tur, '') in ('', 'mesaj', 'sohbet', 'kanal'))
        order by m.zaman
        limit p_parti) m;
@@ -86678,6 +86841,7 @@ begin
     union select o.baskan from oyun.oda o where o.baskan is not null
     union select a.hedef from oyun.icisleri_atama a where a.tur = 'vali' and a.durum = 'aktif'
     union select g.user_id from oyun.parti_gby g
+    union select s.user_id from oyun.parti_sozcu s
   ), yeni as materialized (
     select a.id, oyun.unvan_hesap(a.id) unvan from aday a where a.id is not null
   ), sil as (
@@ -87010,7 +87174,10 @@ begin
   end if;
   return jsonb_build_object('kanal', p_kanal, 'mesajlar', liste, 'yazabilir', oyun.kanal_yazabilir(p, p_kanal),
     'baslik', oyun.kanal_baslik(p, p_kanal), 'sinyal', 'sohbet:' || k,
-    'gorevli_yazabilir', k = 'yardim' and oyun.yardim_gorevli_mi(p), 'resmi_yazabilir', oyun.sohbet_resmi_yazabilir(p, k), 'kanal_kod', k);
+    'gorevli_yazabilir', k = 'yardim' and oyun.yardim_gorevli_mi(p), 'resmi_yazabilir', oyun.sohbet_resmi_yazabilir(p, k), 'kanal_kod', k,
+    -- 26.11.2026: sabit mesajlar (parti / yönetim / özel grup; eski sayfa yüklemesinde gönderilmez)
+    'sabitler', case when p_once is null and oyun.sohbet_sabit_kanal(k) then oyun.sohbet_sabit_liste(k) end,
+    'sabitleyebilir', p_once is null and oyun.sohbet_sabit_kanal(k) and oyun.sohbet_sabit_yetki(p, k));
 end $function$;
 
 set local check_function_bodies = on;
@@ -87406,7 +87573,7 @@ declare
     'dernek_uye_destek_karar', 'dernek_uye_destek_liste', 'dernek_yonetim_ata', 'dernek_ziyaret_taleplerim', 'dernek_ziyaret_tamamla', 'dernek_ziyaret_teklif',
     'dernek_ziyaret_yanit', 'dernekler', 'disiplin_baslat', 'disiplin_durum', 'disiplin_oyla', 'durum', 'istemci_hata_kaydet',
     -- 08.11.2026: Halk Hareketleri ekranlarının çağırdığı ve listede eksik kalan adlar
-    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'mod_merkez', 'mod_ustlen', 'mod_ustlenmeler', 'mod_sohbet_nobeti', 'mod_sohbet_sekme', 'mod_uyari', 'mod_para_cezasi', 'mod_kucuk_cezalar', 'mod_dosya', 'mod_not_ekle', 'mod_talep_ac', 'mod_talepler', 'mod_talep_karar', 'mod_talep_geri_cek', 'mod_destek', 'mod_destek_yanitla', 'mod_gunluk', 'admin_mod_ekip', 'admin_mod_kaydet', 'admin_mod_sadelestir', 'ifade_cagir', 'ifade_ver', 'ifade_reddet', 'ifade_zorla_getir', 'ifade_iptal', 'ifade_cagrilari', 'bakanlik_dava_bilgi', 'bakanlik_dava_ac', 'mod_sozlesme_kabul', 'admin_mod_tarafsizlik', 'mod_inceleme_karar', 'mod_kisitlar', 'mod_kisit_uygula', 'mod_kisit_uzat', 'mod_kisit_kaldir', 'mod_icerik_toplu_gizle', 'mod_yetki_tablosu', 'kisitlarim', 'rehber_isaretle', 'rehber_odul_al', 'yonetime_yaz_bilgi', 'yonetime_yaz', 'yonetime_yaz_yanit', 'yonetime_yaz_okundu', 'mod_kutu', 'mod_kutu_yanitla', 'mod_kutu_devret', 'yardim_yanitla', 'mod_sohbet_yaz', 'admin_akis_sikayetleri', 'admin_akis_karar', 'destek_gonder', 'kayit_basvuru_gonder', 'kayit_durumum', 'sozlesme_durumum', 'sozlesme_onayla', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'nobetci_sevk_et', 'nobetci_savunma', 'nobetci_karar', 'nobetci_panel', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
+    'sokak_avukat_cagir', 'sokak_avukat_cevap', 'sokak_baro_ata', 'sokak_baro_gonder', 'sokak_baro_gozaltilar', 'sokak_avukat_cb_dilekce', 'sokak_cb_gozaltilar', 'sokak_cb_serbest_birak', 'cb_icisleri_gozalti_serbest', 'gozalti_gorusme_gonder', 'gozalti_gorusme_liste', 'gozalti_durumum', 'gozalti_avukat_ara', 'gozalti_avukat_cagir2', 'gozalti_avukat_yanit2', 'gozalti_baro_iste2', 'gozalti_baro_liste2', 'gozalti_baro_gonder2', 'gozalti_avukat_cekil', 'gozalti_mudafi_gecmis', 'yk_gorev_kayip_raporu', 'yk_kurum_gorev_ver', 'yk_kurum_gorev_al', 'yk_kurum_gorevleri', 'gby_yetki_ver', 'gby_yetki_al', 'parti_tuzuk_ayarla', 'parti_yetki_durum', 'il_teskilat_detay', 'il_kongre_ac', 'il_gecici_baskan_ata', 'il_baskan_gorevden_al', 'il_kongre_aday_ol', 'il_kongre_cekil', 'il_kongre_oy', 'il_yk_ekle', 'il_yk_cikar', 'kredi_ozkaynak_bilgim', 'davet_aktiflik_bilgim', 'davet_bilgim', 'davet_kodu_gir', 'admin_moderator_gorev', 'mod_gorevim', 'finans_denetim_ozet', 'mod_merkez', 'mod_ustlen', 'mod_ustlenmeler', 'mod_sohbet_nobeti', 'mod_sohbet_sekme', 'mod_uyari', 'mod_para_cezasi', 'mod_kucuk_cezalar', 'mod_dosya', 'mod_not_ekle', 'mod_talep_ac', 'mod_talepler', 'mod_talep_karar', 'mod_talep_geri_cek', 'mod_destek', 'mod_destek_yanitla', 'mod_gunluk', 'admin_mod_ekip', 'admin_mod_kaydet', 'admin_mod_sadelestir', 'ifade_cagir', 'ifade_ver', 'ifade_reddet', 'ifade_zorla_getir', 'ifade_iptal', 'ifade_cagrilari', 'bakanlik_dava_bilgi', 'bakanlik_dava_ac', 'mod_sozlesme_kabul', 'admin_mod_tarafsizlik', 'mod_inceleme_karar', 'mod_kisitlar', 'mod_kisit_uygula', 'mod_kisit_uzat', 'mod_kisit_kaldir', 'mod_icerik_toplu_gizle', 'mod_yetki_tablosu', 'kisitlarim', 'rehber_isaretle', 'rehber_odul_al', 'sohbet_sabitle', 'yonetime_yaz_bilgi', 'yonetime_yaz', 'yonetime_yaz_yanit', 'yonetime_yaz_okundu', 'mod_kutu', 'mod_kutu_yanitla', 'mod_kutu_devret', 'yardim_yanitla', 'mod_sohbet_yaz', 'admin_akis_sikayetleri', 'admin_akis_karar', 'destek_gonder', 'kayit_basvuru_gonder', 'kayit_durumum', 'sozlesme_durumum', 'sozlesme_onayla', 'admin_kayit_karar2', 'oyuncu_ad_soyad', 'ad_soyad_belirle', 'yk_ad_soyad_degistir', 'gozalti_avukat_aciklama', 'gozalti_yetkili_liste', 'gozalti_tahliye', 'yonetim_gozalti_kota', 'yonetim_tutuklama_yap', 'yonetim_tutuklama_liste', 'yonetim_tutuklama_serbest', 'nobetci_sevk_et', 'nobetci_savunma', 'nobetci_karar', 'nobetci_panel', 'sokak_baro_iste', 'sokak_basina_aciklama', 'sokak_butce_mudahale', 'sokak_davet_gonder', 'sokak_davet_karar', 'sokak_davet_yanit', 'sokak_ek_panel', 'sokak_eylem_detay_panel', 'sokak_eylem_sonlandir', 'sokak_finans_panel', 'sokak_gozalti_hakim_incele', 'sokak_gozalti_itiraz', 'sokak_gozalti_mahkeme', 'sokak_gozalti_tazminat_tahsil', 'sokak_katil_tercih', 'sokak_koalisyon_cagri', 'sokak_koalisyon_katil', 'sokak_merkez_panel', 'sokak_olay_baslat', 'sokak_org_baslat', 'sokak_org_baslat_bildirili', 'sokak_org_baslat_kapsamli', 'sokak_org_panel', 'sokak_polis_geri_cek', 'sokak_polis_gonder',
     -- 09.11.2026 Halk Hareketleri 3.0 (supabase/migrations/20261109090000_sokak_gercek_oyuncu.sql)
     'sokak_eylemden_ayril', 'sokak_goreve_cik', 'sokak_gorevden_ayril', 'sokak_karsi_katil', 'sokak_taktik_yap', 'sokak_grev_cagri', 'sokak_nabiz_ver', 'sokak_yasak_koy', 'sokak_jest_yap', 'sokak_heyet_davet', 'sokak_heyet_yanit', 'sokak_heyet_rapor', 'sokak_seslenis_yap', 'sokak_seslenis_tepki', 'sokak_karsi_cagri', 'sokak_kalkan_birak', 'sokak_saha_panel',
     -- 09.11.2026 on iki yeni hükümet aracı (supabase/migrations/20261109150000_halk_hukumet_yeni_tedbirler.sql)
