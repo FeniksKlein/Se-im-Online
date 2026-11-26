@@ -172,6 +172,32 @@ function stil(){
  ".kt-istat div{padding:9px 4px;text-align:center}.kt-istat div+div{border-left:1px solid var(--line)}",
  ".kt-istat b{display:block;font:700 17px/1.15 var(--disp);font-variant-numeric:tabular-nums}.kt-istat small{font-size:11px;color:var(--mut)}",
  ".kt-oku{max-height:56vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.75;font-size:16px;font-family:Georgia,'Times New Roman',serif;color:var(--paperInk);background:var(--paper);padding:18px 16px;border-radius:12px;margin-top:10px;user-select:text;-webkit-user-select:text}",
+ /* dosyalarım (26.11.2026) */
+ ".kt-dosya{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:15px 14px;margin:0 0 14px}",
+ ".kt-dosya-ust{display:flex;gap:13px;align-items:flex-start;min-width:0}",
+ ".kt-dosya-ust .bilgi{flex:1;min-width:0}",
+ ".kt-dosya-ust h3{font-family:Georgia,'Times New Roman',serif;font-size:17px;font-weight:700;line-height:1.25;margin:0 0 4px;overflow-wrap:anywhere}",
+ ".kt-dosya-ust p{margin:0;font-size:12.5px;color:var(--mut);line-height:1.4}",
+ ".kt-yv{margin-top:12px;padding:12px 12px 4px;border-radius:13px;background:var(--panel2);border:1px solid var(--line2)}",
+ ".kt-yv-bas{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;min-width:0}",
+ ".kt-yv-bas b{font-size:14.5px;overflow-wrap:anywhere}.kt-yv-bas small{flex:none;font-size:11.5px;font-weight:800;color:var(--mut)}",
+ ".kt-adimlar{list-style:none;margin:0;padding:0}",
+ ".kt-adimlar li{position:relative;padding:0 0 12px 24px;font-size:13.5px;line-height:1.4;color:var(--txt2)}",
+ ".kt-adimlar li::before{content:'';position:absolute;left:4px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--panel);border:2px solid var(--line2);box-sizing:border-box}",
+ ".kt-adimlar li::after{content:'';position:absolute;left:8px;top:16px;bottom:0;width:2px;background:var(--line2)}",
+ ".kt-adimlar li:last-child::after{display:none}",
+ ".kt-adimlar li.ok::before{background:var(--good);border-color:var(--good)}",
+ ".kt-adimlar li.simdi::before{background:var(--ink2);border-color:var(--ink2);box-shadow:0 0 0 4px rgba(123,97,255,.18)}",
+ ".kt-adimlar li.kirmizi::before{background:var(--al2);border-color:var(--al2)}",
+ ".kt-adimlar li b{color:var(--txt);font-weight:700}.kt-adimlar li small{display:block;font-size:12px;color:var(--mut);overflow-wrap:anywhere}",
+ ".kt-gerekce{display:block;margin-top:4px;padding:8px 10px;border-radius:9px;background:var(--albg);color:var(--txt);font-size:13px;overflow-wrap:anywhere}",
+ ".kt-dugmeler{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}",
+ ".kt-dugmeler button{flex:1 1 140px;min-width:0;min-height:44px;border:0;border-radius:11px;padding:10px 12px;font-weight:800;font-size:14px;cursor:pointer;background:var(--panel2);color:var(--txt);white-space:normal}",
+ ".kt-dugmeler button.birincil{background:var(--ink);color:#fff}.kt-dugmeler button.tehlike{background:var(--albg);color:var(--al2)}",
+ ".kt-yv .kt-dugmeler{margin:2px 0 10px}",
+ ".kt-dosya-afis{display:flex;gap:12px;align-items:center;margin:0 0 18px;padding:12px 14px;border-radius:16px;cursor:pointer;background:linear-gradient(100deg,rgba(123,97,255,.2),rgba(123,97,255,.04));border:1px solid rgba(123,97,255,.35)}",
+ ".kt-dosya-afis div{flex:1;min-width:0}.kt-dosya-afis b{display:block;font-size:14px;line-height:1.3}.kt-dosya-afis small{display:block;font-size:12px;color:var(--txt2);margin-top:2px}",
+ ".kt-dosya-afis .ok{flex:none;font-size:22px;color:var(--txt2)}",
  /* form */
  ".kt-form .alan{margin-bottom:12px}.kt-form label{display:block;font-size:12.5px;font-weight:700;color:var(--txt2);margin-bottom:5px}",
  ".kt-form select{display:block;width:100%;padding:12px;border-radius:11px;background:var(--panel2);border:1px solid var(--line2);color:var(--txt);font-size:15px}",
@@ -277,7 +303,7 @@ function yazBtn(){
 }
 function vitrinHtml(){
  var hepsi=kitaplar().slice().sort(function(a,b){return id(b.id)-id(a.id);});
- return afisHtml()+rafHtml()+sayilarHtml()+
+ return dosyaAfisHtml()+afisHtml()+rafHtml()+sayilarHtml()+
   '<div class="kt-bolum"><div class="kt-bolum-bas"><h2>Katalog</h2><span>'+e(sayi(hepsi.length))+' kitap</span></div>'+
   '<div class="kt-ara">'+SVG.ara+'<input type="search" id="soKitapAra" aria-label="Kitap, yazar veya yayınevi ara" placeholder="Kitap, yazar ya da yayınevi ara" value="'+e(arama)+'" oninput="soKitapFiltre(this.value)"></div>'+
   '<div class="kt-liste kt-iki" id="soKitapKatalog">'+(hepsi.length?hepsi.map(satirHtml).join(""):'<div class="kt-bos">Katalogda henüz kitap yok.</div>')+'</div>'+
@@ -371,10 +397,111 @@ function imzaHtml(){
  var bolum=function(bas,arr,bos){return '<div class="kt-bolum"><div class="kt-bolum-bas"><h2>'+bas+'</h2><span>'+(arr.length?sayi(arr.length):"")+'</span></div>'+(arr.length?arr.map(biletHtml).join(""):'<div class="kt-panel"><div class="kt-bos">'+bos+'</div></div>')+'</div>';};
  return giris+(c.length?bolum("Şimdi imza masasında",c,""):"")+bolum("Yaklaşan imza günleri",p,"Planlanmış imza günü yok. İlk masayı sen kurabilirsin.")+(b.length?bolum("Son imza günleri",b.slice(0,8),""):"");
 }
+/* ---------- Dosyalarım (26.11.2026) ----------
+   Yazar gönderdiği kitabı ve her yayınevindeki aşamasını görür: gönderildi → yayınevi gördü → karar (72 saat).
+   Metni okur, başka yayınevine de gönderir (aynı anda en çok 3), bekleyen dosyayı geri çeker.
+   Yayınevi yöneticisine gelen dosyalar listelenir. Sunucu: uc_kitap_panel + uc_kitap_islem (kopya_gonder, geri_cek). */
+var RET={ret:"Yayınevi reddetti",sure:"Süre doldu, dosya sana iade edildi",geri_cekti:"Dosyayı geri çektin",baska_yayinevi:"Başka yayınevinde yayımlandığı için geri çekildi"};
+function yeniSunucu(){return !!(veri&&veri.inceleme_saat);}
+function tumKitaplar(){return Array.isArray(veri&&veri.kitaplar)?veri.kitaplar:[];}
+function tumBul(x){var n=id(x);return tumKitaplar().find(function(k){return id(k.id)===n;});}
+function benimYayinevleri(){return (Array.isArray(veri&&veri.benim_yayinevleri)?veri.benim_yayinevleri:[]).map(id);}
+function eserGruplari(){
+ var m={},sira=[];
+ tumKitaplar().filter(function(k){return k&&k.yazar_benim===true;}).forEach(function(k){
+  var g=id(k.eser)||id(k.id);
+  if(!m[g]){m[g]=[];sira.push(g);}
+  m[g].push(k);
+ });
+ return sira.map(function(g){
+  var l=m[g].slice().sort(function(a,b){return new Date(b.gonderim||0)-new Date(a.gonderim||0)||id(b.id)-id(a.id);});
+  return {eser:g,dosyalar:l,ana:l.find(function(k){return k.durum==="yayinda";})||l[0]};
+ }).sort(function(a,b){return new Date(b.ana.gonderim||0)-new Date(a.ana.gonderim||0);});
+}
+function gelenDosyalar(){
+ var b=benimYayinevleri();
+ return tumKitaplar().filter(function(k){return k&&k.durum==="teklif"&&b.indexOf(id(k.yayinevi))>=0;});
+}
+function kisaTarih(ts){var z=trTarih(ts);return z.g?z.g+" "+z.a+" "+z.s:"—";}
+function sonKarar(k){
+ if(k.son_karar)return new Date(k.son_karar).getTime();
+ var g=new Date(k.gonderim||0).getTime();return g?g+(Number(veri&&veri.inceleme_saat)||72)*3600e3:0;
+}
+function adimlarHtml(k){
+ var a=[];
+ a.push('<li class="ok"><b>Gönderildi</b><small>'+e(kisaTarih(k.gonderim))+'</small></li>');
+ if(k.durum==="teklif"){
+  if(yeniSunucu())a.push(k.incelendi?'<li class="ok"><b>Yayınevi dosyanı gördü</b><small>'+e(kisaTarih(k.incelendi))+'</small></li>':'<li class="simdi"><b>Yayınevinin dosyayı açması bekleniyor</b><small>Yayınevi yöneticisine bildirim gitti.</small></li>');
+  var son=sonKarar(k);
+  a.push('<li class="'+(k.incelendi?"simdi":"")+'"><b>Karar bekleniyor</b><small>'+(son?(yeniSunucu()?'En geç '+e(kisaTarih(son))+' · kalan <span data-kt-sayac="'+e(new Date(son).toISOString())+'">'+e(kalanYaz(son-simdiMs()))+'</span>. Karar çıkmazsa dosya sana iade edilir.':'Gönderimden bu yana '+e(kalanYaz(simdiMs()-new Date(k.gonderim).getTime()))+' geçti.'):'')+'</small></li>');
+  a.push('<li><b>Baskı ve yayım</b><small>Yayınevi onaylarsa baskı giderini öder, kitabın vitrine çıkar.</small></li>');
+ }else if(k.durum==="yayinda"){
+  if(k.incelendi)a.push('<li class="ok"><b>Yayınevi dosyanı gördü</b><small>'+e(kisaTarih(k.incelendi))+'</small></li>');
+  a.push('<li class="ok"><b>Onaylandı, basıldı ve yayımlandı</b><small>'+e(kisaTarih(k.yayin||k.karar))+' · '+e(sayi(k.satilan))+' satış · stok '+e(sayi(k.stok))+'</small></li>');
+ }else{
+  if(k.incelendi&&k.ret_kod!=="geri_cekti")a.push('<li class="ok"><b>Yayınevi dosyanı gördü</b><small>'+e(kisaTarih(k.incelendi))+'</small></li>');
+  a.push('<li class="kirmizi"><b>'+e(RET[k.ret_kod]||"Yayınevi reddetti")+'</b><small>'+(k.karar?e(kisaTarih(k.karar)):'')+'</small>'+(k.ret_gerekce?'<span class="kt-gerekce">Gerekçe: '+e(k.ret_gerekce)+'</span>':'')+'</li>');
+ }
+ return '<ol class="kt-adimlar">'+a.join("")+'</ol>';
+}
+function durumEtiket(k){
+ return k.durum==="yayinda"?"YAYINDA":k.durum==="teklif"?"İNCELEMEDE":k.ret_kod==="geri_cekti"?"GERİ ÇEKİLDİ":k.ret_kod==="sure"?"İADE EDİLDİ":k.ret_kod==="baska_yayinevi"?"GERİ ÇEKİLDİ":"REDDEDİLDİ";
+}
+function eserHtml(g){
+ var k=g.ana,yayinda=g.dosyalar.some(function(x){return x.durum==="yayinda";});
+ var bekleyen=g.dosyalar.filter(function(x){return x.durum==="teklif";});
+ var ozetYazi=yayinda?"Yayında · "+e(k.yayinevi_ad):bekleyen.length?bekleyen.length+" yayınevinde inceleniyor":"Şu an hiçbir yayınevinde değil — yeniden gönderebilirsin";
+ var gecmis=g.dosyalar.filter(function(x){return !yayinda||x.durum==="yayinda";});
+ if(yayinda)gecmis=g.dosyalar.filter(function(x){return x.durum==="yayinda";});
+ var bloklar=gecmis.map(function(x){
+  var d=[];
+  if(x.durum==="teklif"&&yeniSunucu())d.push('<button type="button" class="tehlike" onclick="soDosyaGeriCek('+id(x.id)+')">Bu yayınevinden geri çek</button>');
+  return '<div class="kt-yv"><div class="kt-yv-bas"><b>'+e(x.yayinevi_ad||"Yayınevi")+(x.yayinevi_sahip?' <span class="kt-not">· sahibi '+e(x.yayinevi_sahip)+'</span>':'')+'</b><small>'+durumEtiket(x)+'</small></div>'+adimlarHtml(x)+(d.length?'<div class="kt-dugmeler">'+d.join("")+'</div>':'')+'</div>';
+ }).join("");
+ var b=[];
+ b.push('<button type="button" onclick="soDosyaOku('+id(k.id)+')">Kitabımı oku</button>');
+ if(yayinda)b.push('<button type="button" class="birincil" onclick="soKitapDetay('+id(k.id)+')">Vitrinde gör</button>');
+ else if(yeniSunucu()&&bekleyen.length<3)b.push('<button type="button" class="birincil" onclick="soDosyaGonder('+id(k.id)+')">'+(bekleyen.length?"Başka yayınevine de gönder":"Bir yayınevine gönder")+'</button>');
+ else if(!yeniSunucu()&&typeof window.ucYeniAc==="function")b.push('<button type="button" class="birincil" onclick="ucYeniAc(\'kitap\')">Yayınevi işlemleri</button>');
+ return '<article class="kt-dosya"><div class="kt-dosya-ust">'+kapak(k,"s")+'<div class="bilgi"><h3>'+e(k.baslik)+'</h3><p>'+e(k.tur||"Kitap")+' · senin fiyatın '+e(para(k.fiyat))+'</p><p style="margin-top:4px;color:var(--txt2);font-weight:700">'+ozetYazi+'</p></div></div>'+
+  bloklar+'<div class="kt-dugmeler">'+b.join("")+'</div>'+
+  (!yayinda&&bekleyen.length>0&&bekleyen.length<3&&yeniSunucu()?'<p class="kt-not" style="margin-top:8px">Aynı kitabı aynı anda en çok 3 yayınevine sunabilirsin. İlk yayımlayan yayınevi kazanır, diğer dosyalar kendiliğinden geri çekilir.</p>':'')+
+  '</article>';
+}
+function dosyalarHtml(){
+ var gr=eserGruplari(),gelen=gelenDosyalar(),out="";
+ out+='<section class="kt-panel"><h3>Dosyalarım</h3><p>Yayınevine gönderdiğin kitapları ve her yayınevindeki aşamasını buradan takip edersin. '+(yeniSunucu()?'Yayınevinin karar için '+e(veri.inceleme_saat)+' saati var; karar çıkmazsa dosya sana iade edilir ve hemen başka yayınevine gönderebilirsin.':'')+'</p>'+
+  (typeof window.ucYeniAc==="function"?'<div class="kt-dugmeler"><button type="button" class="birincil" onclick="ucYeniAc(\'kitap\')">Yeni kitap yaz ve gönder</button></div>':'')+'</section>';
+ if(gelen.length){
+  out+='<section class="kt-panel"><h3>Yayınevine gelen dosyalar</h3><p>Yönettiğin yayınevinde karar bekleyen '+e(sayi(gelen.length))+' dosya var. Süresinde karar vermezsen dosya yazarına iade edilir.</p><ol class="kt-sira">'+
+   gelen.map(function(k){var son=sonKarar(k);
+    return '<li style="cursor:default"><div class="kt-ad"><b>'+e(k.baslik)+'</b><small>'+e(k.yazar||"")+' · '+e(k.yayinevi_ad||"")+'</small></div>'+
+     '<div class="kt-deger"><b style="font-size:14px">'+(son?'<span data-kt-sayac="'+e(new Date(son).toISOString())+'">'+e(kalanYaz(son-simdiMs()))+'</span>':'—')+'</b><small>karar için kalan</small></div></li>';
+   }).join("")+'</ol>'+(typeof window.ucYeniAc==="function"?'<div class="kt-dugmeler"><button type="button" class="birincil" onclick="ucYeniAc(\'kitap\')">Metni incele ve karar ver</button></div>':'')+'</section>';
+ }
+ if(!gr.length)out+='<div class="kt-panel"><div class="kt-bos">Henüz bir yayınevine kitap göndermedin. Gönderdiğin kitaplar ve aşamaları burada görünür.</div></div>';
+ else out+=gr.map(eserHtml).join("");
+ return out;
+}
+function dosyaAfisHtml(){
+ var gr=eserGruplari(),bek=0,iade=0;
+ gr.forEach(function(g){
+  if(g.dosyalar.some(function(x){return x.durum==="yayinda";}))return;
+  var b=g.dosyalar.filter(function(x){return x.durum==="teklif";}).length;
+  if(b)bek++;else iade++;
+ });
+ var gelen=gelenDosyalar().length;
+ if(!bek&&!iade&&!gelen)return "";
+ var p=[];
+ if(bek)p.push(bek+" kitabın incelemede");
+ if(iade)p.push(iade+" kitabın yeniden gönderilmeyi bekliyor");
+ if(gelen)p.push("yayınevine gelen "+gelen+" dosya karar bekliyor");
+ return '<div class="kt-dosya-afis" role="button" tabindex="0" onclick="soKitapSekme(\'dosya\')" onkeydown="if(event.key===\'Enter\')soKitapSekme(\'dosya\')"><div><b>Dosyalarım</b><small>'+e(p.join(" · "))+'</small></div><span class="ok" aria-hidden="true">›</span></div>';
+}
 function gorunum(){
- var tabs=[["vitrin","Vitrin"],["liste","Liste"],["yayinevi","Yayınevleri"],["imza","İmza günü"]];
+ var tabs=[["vitrin","Vitrin"],["dosya","Dosyalarım"],["liste","Liste"],["yayinevi","Yayınevleri"],["imza","İmza günü"]];
  var canliSay=imzalar().filter(function(x){return x.durum==="canli";}).length;
- var govde=sekme==="liste"?listeHtml():sekme==="yayinevi"?yayineviHtml():sekme==="imza"?imzaHtml():vitrinHtml();
+ var govde=sekme==="liste"?listeHtml():sekme==="yayinevi"?yayineviHtml():sekme==="imza"?imzaHtml():sekme==="dosya"?dosyalarHtml():vitrinHtml();
  return '<div class="segment kt-segment" role="tablist">'+tabs.map(function(t){
    return '<button type="button" role="tab" aria-selected="'+(sekme===t[0])+'" class="'+(sekme===t[0]?"aktif":"")+'" onclick="soKitapSekme(\''+t[0]+'\')">'+t[1]+(t[0]==="imza"&&canliSay?' <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--al);vertical-align:2px;margin-left:3px" aria-label="açık masa var"></span>':'')+'</button>';
   }).join("")+'</div><div id="ktGovde">'+govde+'</div>';
@@ -396,7 +523,7 @@ function sayacBaslat(){
 
 /* ---------- Dış işlevler ---------- */
 window.soKitapSekme=function(k){
- sekme=["vitrin","liste","yayinevi","imza"].indexOf(k)>=0?k:"vitrin";
+ sekme=["vitrin","dosya","liste","yayinevi","imza"].indexOf(k)>=0?k:"vitrin";
  try{sessionStorage.setItem("kt_sekme",sekme);}catch(_){}
  var g=document.getElementById("ktGovde");
  if(!g||!veri){ciz();return;}
@@ -578,5 +705,51 @@ window.soImzaDuzenleAc=function(onSecili){
    else{sekme=onceki;var b=document.getElementById("ktImzaGonder");if(b)b.disabled=false;}
   });
  };
+};
+
+/* ---------- Dosyalarım işlemleri (26.11.2026) ---------- */
+window.soDosyaOku=function(kid){
+ var k=tumBul(kid);
+ if(!k||typeof k.icerik!=="string"||!k.icerik){if(typeof toast==="function")toast("Kitabın metni şu anda açılamadı. Ekranı yenileyip tekrar dene.",true);return;}
+ modal('<h3 style="font-family:Georgia,serif">'+e(k.baslik)+'</h3><p class="alt">'+e(k.tur||"Kitap")+' · '+e(sayi(k.icerik.length))+' karakter</p>'+
+  (k.ozet?'<p class="kt-ozet" style="font-size:14px;margin-bottom:10px">'+e(String(k.ozet))+'</p>':'')+
+  '<div class="kt-oku">'+e(k.icerik)+'</div><button class="btn ikinci" onclick="modalKapat()">Kapat</button>');
+};
+async function dosyaIslem(islem,kid,veriObj,basari){
+ if(islemde)return false;islemde=true;
+ try{
+  await API.rpc("uc_kitap_islem",{p_islem:islem,p_id:id(kid),p_veri:veriObj||{}});
+  if(typeof modalKapat==="function")modalKapat();
+  if(basari&&typeof toast==="function")toast(basari);
+  sekme="dosya";try{sessionStorage.setItem("kt_sekme",sekme);}catch(_){}
+  await window.soKitapVitriniAc();
+  return true;
+ }catch(err){
+  if(typeof toast==="function")toast(typeof hataCevir==="function"?hataCevir(err.message||String(err)):String(err.message||err),true);
+  return false;
+ }finally{islemde=false;}
+}
+window.soDosyaGonder=function(kid){
+ var k=tumBul(kid);if(!k)return;
+ var g=id(k.eser)||id(k.id);
+ var bekleyenYv=tumKitaplar().filter(function(x){return x.yazar_benim&&(id(x.eser)||id(x.id))===g&&x.durum==="teklif";}).map(function(x){return id(x.yayinevi);});
+ var l=panelYayinevleri().filter(function(y){return bekleyenYv.indexOf(id(y.id))<0;}).sort(function(a,b){return String(a.ad).localeCompare(String(b.ad),"tr");});
+ if(!l.length){if(typeof toast==="function")toast("Kitabını gönderebileceğin başka yayınevi yok.",true);return;}
+ var sec=l.map(function(y){return '<option value="'+id(y.id)+'">'+e(y.ad+(y.sahip?" · sahibi "+y.sahip:"")+(Number(y.bekleyen)>0?" · "+y.bekleyen+" bekleyen dosya":"")+" · "+sayi(y.yayinlanan)+" yayımlanan")+'</option>';}).join("");
+ var m=modal('<h3>'+(bekleyenYv.length?"Başka yayınevine de gönder":"Yayınevine gönder")+'</h3><p class="alt">«'+e(k.baslik)+'» · Metin, tanıtım ve '+e(para(k.fiyat))+' fiyatın aynen gider.</p>'+
+  '<div class="kt-form" style="margin-top:12px"><div class="alan"><label for="ktDosyaYv">Yayınevi</label><select id="ktDosyaYv">'+sec+'</select></div></div>'+
+  '<p class="kt-not" style="margin-bottom:12px">Yayınevinin karar için '+e((veri&&veri.inceleme_saat)||72)+' saati var. Kitabın aynı anda en çok 3 yayınevinde incelenebilir; biri yayımlarsa diğer dosyalar kendiliğinden geri çekilir.</p>'+
+  '<button class="btn" id="ktDosyaGonder">Gönder</button><button class="btn ikinci" onclick="modalKapat()">Vazgeç</button>');
+ var b=m.querySelector("#ktDosyaGonder");
+ b.onclick=async function(){
+  if(b.disabled)return;b.disabled=true;
+  var ok=await dosyaIslem("kopya_gonder",k.id,{yayinevi:id(m.querySelector("#ktDosyaYv").value)},"Kitabın yayınevine gönderildi. Aşamaları Dosyalarım'dan takip edebilirsin.");
+  if(!ok&&document.body.contains(b))b.disabled=false;
+ };
+};
+window.soDosyaGeriCek=async function(kid){
+ var k=tumBul(kid);if(!k)return;
+ var ok=typeof onayla!=="function"||await onayla("Dosyayı geri çek","«"+e(k.baslik)+"» "+e(k.yayinevi_ad||"")+" yayınevinden geri çekilecek. Kitabın sende kalır; istediğin zaman başka bir yayınevine gönderebilirsin.","Geri çek",true);
+ if(ok)return dosyaIslem("geri_cek",kid,{},"Dosya geri çekildi.");
 };
 })();
