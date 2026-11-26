@@ -140,6 +140,8 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kademe_istihdam.js'),'utf8')+'</script></body>');
 // 27.11.2026: Aday Vitrini (il il MV adayları, sıra, harita) + Aday Tanıtım Lansmanı (canlı salon, alkış, destek mesajı).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','aday_vitrini.js'),'utf8')+'</script></body>');
+// 27.11.2026: Mağaza Paketi 2 — vitrin/manşet, plaka, mazbata, kutlama, kongre, lansman sahnesi, genel merkez, destekçi duvarı (magaza.js'ten SONRA, en sonda).
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','magaza_paket2.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});
