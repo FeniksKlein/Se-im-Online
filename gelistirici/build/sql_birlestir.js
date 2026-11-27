@@ -64,6 +64,10 @@ const KOSULLU = {
   'zz_20261125_sirket_kazanc_dengesi.sql': ['oyun.pazar_sirket', 'oyun.pazar_sektor', 'oyun.pazar_ayar', 'oyun.sirket_il_subeleri', 'oyun.eko_npc_satis', 'oyun.eko_isletmeler', 'oyun.zamanlayici_adim', 'oyun.yp_ayar_katalog', 'oyun.satin_almalar'],
   // 26.11: Kademeli Getiri + İstihdam; kazanç dengesi, mağaza, ek iş ve oturum tabloları (bir kısmı canlı migration) yoksa atlanır.
   'zz_20261126_kademeli_getiri_istihdam.sql': ['oyun.sirket_denge_ayar', 'oyun.sirket_denge_durum', 'oyun.pazar_sirket', 'oyun.ek_is_katalog', 'oyun.ek_is_kayit', 'oyun.kidem_kaynak', 'oyun.magaza_hesap', 'oyun.magaza_jeton', 'oyun.paketler', 'oyun.oturumlar'],
+  // 27.11: Genel Kurul salonu; Meclis tamsayısı, ad-soyad, Yardım Masası (mesajlar.gorevli) ve kıdem tabloları (canlı migration'lar) yoksa atlanır.
+  'zz_20261127_tbmm_genel_kurul.sql': ['oyun.meclis_soz', 'oyun.mesajlar', 'oyun.kazananlar', 'oyun.bakan_teklifleri', 'oyun.zamanlayici_adim', 'oyun_yonetim.yasak_isim', 'oyun.moderatorler', 'oyun.destek_mesaj', 'oyun.mod_kisit', 'oyun.kidem_kaynak'],
+  // 27.11: komisyon ve Meclis araştırması tabloları canlı migration'la (14.10 siyasi kurumlar) kuruldu; onlar ya da Genel Kurul yoksa atlanır.
+  'zz_20261127_tbmm_denetim_vekil.sql': ['oyun.kom_tanim', 'oyun.kom_uye', 'oyun.kom_kanun', 'oyun.kom_oy', 'oyun.meclis_arastirma', 'oyun.gk_birlesim', 'oyun.bakan_soru', 'oyun.kidem_kaynak'],
 };
 const okuKosullu = ad => {
   const govde = oku(ad), tablolar = KOSULLU[ad];
@@ -157,6 +161,11 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261127_aday_vitrini_lansman.sql',
   // 27.11.2026: Genel Başkan ataması — milletvekili listesine başka ilde yaşayan üye (ikamet şartı yok; kişi tek ilden aday). aday_vitrini_il'i de yeniden yazar, bu yüzden ondan SONRA.
   'zz_20261127_atama_dis_il_aday.sql',
+  // 27.11.2026: TBMM Genel Kurul salonu — birleşim, yoklama, kürsü (süre + kelime), tutanak, sıralardan söz, alkış/protesto, işaret oylaması,
+  // grup önerisi, gündem dışı, genel görüşme, kapalı oturum, disiplin, olağanüstü toplantı. sohbet_yaz'ı _yama ile işaretler (meclis_soz'dan SONRA).
+  'zz_20261127_tbmm_genel_kurul.sql',
+  // 27.11.2026: 19 ihtisas komisyonu + komisyon salonu, yazılı soru önergesi, dilekçe, halk buluşması, vekil karnesi (Genel Kurul dosyasından SONRA).
+  'zz_20261127_tbmm_denetim_vekil.sql',
   // 25.11.2026: Şirket Kazanç Dengesi — kuruluş dönemi verimi, sermayeye bağlı kazanç tavanı, şube tavanı, mağaza satış tavanı, geçiş dönemi.
   // pazar_tahmin / sube_bolge_analiz / sube_pazar_tahmin / halka_arz_net_tahmin'i yeniden yazar, pazar_hesapla / eko_ticaret_tick /
   // npc_isletme_tick / pazar_danisman'ı yamalar (oyun.sd_yama); bu yüzden listenin SONUNDA kalmalı.

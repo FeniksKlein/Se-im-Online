@@ -140,6 +140,10 @@ html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','kademe_istihdam.js'),'utf8')+'</script></body>');
 // 27.11.2026: Aday Vitrini (il il MV adayları, sıra, harita) + Aday Tanıtım Lansmanı (canlı salon, alkış, destek mesajı).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','aday_vitrini.js'),'utf8')+'</script></body>');
+// 27.11.2026: TBMM Genel Kurul salonu (canlı birleşim, kürsü, tutanak, oylama, Başkanlık) + Meclis çalışmaları merkezi
+// (komisyonlar, soru önergesi, genel görüşme, Meclis araştırması, dilekçe, halk buluşması, vekil karnesi). sohbet_tasarim/meclis_sandalye'den SONRA.
+for (const m of ['tbmm_salon.js','tbmm_merkez.js'])
+  html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www',m),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();
 html=html.replace('"__SURUM__"', JSON.stringify(surum));
 fs.mkdirSync(path.join(kok,'dist'),{recursive:true});

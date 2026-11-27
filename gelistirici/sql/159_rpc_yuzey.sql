@@ -360,7 +360,20 @@ declare
     -- 24.11.2026 Genel Kurul söz hakkı (sql/zz_20261124_meclis_soz.sql)
     'meclis_soz_durum', 'meclis_soz_iste', 'meclis_soz_vazgec', 'meclis_soz_karar',
     -- 26.11.2026 Yönetim adına yazılan sohbet mesajını silme (sql/zz_20261126_mod_sohbet_sil.sql)
-    'mod_sohbet_sil'
+    'mod_sohbet_sil',
+    -- 27.11.2026 TBMM Genel Kurul salonu (sql/zz_20261127_tbmm_genel_kurul.sql)
+    'gk_durum', 'gk_salon_harita', 'gk_birlesimler', 'gk_tutanak_oku', 'gk_soz_iste', 'gk_soz_geri', 'gk_kursu_cik', 'gk_konus', 'gk_konusma_bitir',
+    'gk_laf', 'gk_tepki', 'gk_buradayim', 'gk_oy', 'gk_karar_yeter_iste', 'gk_andic', 'gk_gundem_disi_iste', 'gk_grup_onerisi_ver', 'gk_grup_onerisi_geri',
+    'gk_kapali_oturum_iste', 'gk_gg_ver', 'gk_gg_imza', 'gk_gg_liste', 'gk_gg_geri', 'gk_birlesim_ac', 'gk_soz_ver', 'gk_soz_reddet', 'gk_soz_sira',
+    'gk_ek_sure', 'gk_sozu_kes', 'gk_ara_ver', 'gk_gundem_gec', 'gk_oylamaya_sun', 'gk_yoklama_iste', 'gk_zil', 'gk_disiplin', 'gk_acik_oturum',
+    'gk_gundem_disi_sec', 'gk_olaganustu_cagir', 'gk_tutanak_kaldir',
+    -- 27.11.2026 Komisyonlar, denetim yolları, dilekçe, halk buluşması, vekil karnesi (sql/zz_20261127_tbmm_denetim_vekil.sql)
+    'komisyonlar', 'komisyon_katil', 'komisyon_ayril', 'komisyon_baskan_oy', 'komisyon_kanun', 'komisyon_oy', 'komisyon_rapor', 'komisyon_uye_cikar', 'komisyon_havale',
+    'meclis_arastirmalar', 'meclis_arastirma_detay', 'meclis_arastirma_ver', 'meclis_arastirma_imza', 'meclis_arastirma_geri_cek', 'meclis_arastirma_oy',
+    'meclis_arastirma_uye_ol', 'meclis_arastirma_baskan_oy', 'meclis_arastirma_davet', 'meclis_arastirma_cevap', 'meclis_arastirma_rapor', 'meclis_arastirma_serh',
+    'vekil_oy_kaydi', 'kom_salon', 'kom_konus', 'tbmm_dilekce_ver', 'tbmm_dilekceler', 'tbmm_dilekce_karar', 'tbmm_dilekce_bakan_cevap',
+    'tbmm_soru_ver', 'tbmm_soru_cevapla', 'tbmm_sorular', 'hb_planla', 'hb_iptal', 'hb_liste', 'hb_detay', 'hb_katil', 'hb_soru_sor', 'hb_soru_begen',
+    'hb_yanitla', 'hb_puanla', 'hb_kaldir', 'hb_soru_kaldir', 'tbmm_vekil_karne', 'tbmm_meclis_siralama', 'tbmm_ozet'
   ];
 -- @@rpc_yuzey_izin_son@@
   anon_izin text[] := array['surum', 'uygulama_ayar'];

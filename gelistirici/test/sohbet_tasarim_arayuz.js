@@ -147,8 +147,9 @@ const shot = process.argv[2];
       await page.click('#dmMenu'); await page.waitForSelector('#modal [data-es="engel"]');
       await page.click('#modal [data-es="vaz"]');
 
-      // 6) Kanal ekranı (izleyici)
-      await page.evaluate(() => { D.sekme = 'sohbet'; D.yigin = []; ekranAc(() => sohbetEkrani('meclis')); });
+      // 6) Kanal ekranı (izleyici). 27.11.2026: sohbetEkrani('meclis') artık Genel Kurul salonuna açılır (tbmm_salon.js);
+      // eski kanal görünümü (salondaki "Eski Genel Kurul sohbet kayıtları") doğrudan denenir.
+      await page.evaluate(() => { D.sekme = 'sohbet'; D.yigin = []; ekranAc(() => sohbetTasarim.kanal('meclis')); });
       await page.waitForSelector('.shk-kanal .shm[data-id="101"]');
       assert.equal(await page.locator('.shk-not').count(), 1);
       assert.match(await page.locator('.shk-not').innerText(), /Genel Kurul/);
