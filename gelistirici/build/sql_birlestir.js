@@ -5,6 +5,8 @@ const oku = ad => fs.readFileSync(path.join(kok, 'sql', ad), 'utf8').replace(/\r
 // Canlıda Supabase migration'larıyla kurulmuş tablolara (halk hareketleri, gözaltı, kabine süresi, görev denetimi) dayanan
 // modüller: tam kurulumda bu tablolar yoksa dosya atlanır, varsa tek parça çalışır. Böylece tam kurulum bozulmaz.
 const KOSULLU = {
+  // 27.11: İl Başkanlığı Masası; canlı migration'larla gelen il teşkilatı, GBY yetki, miting, stant, akış, kıdem ve zamanlayıcı tablolarına dayanır.
+  'zz_20261127_il_baskanligi_masasi.sql': ['oyun.il_baskanlik', 'oyun.il_kongre', 'oyun.il_yonetim_kurulu', 'oyun.parti_teskilat_gorev', 'oyun.parti_gby_yetki', 'oyun.mitingler', 'oyun.stant', 'oyun.akis', 'oyun.kidem_kaynak', 'oyun.zamanlayici_adim', 'oyun.ajans_haberleri', 'oyun.oturumlar'],
   'zz_20261126_pdk_otomatik_ac.sql': ['oyun.pdk_dosya', 'oyun.ayarlar'],
   // 26.11: MYK + Disiplin Kurulu; canlı migration'larla gelen imza kampanyası, moderatör ve Yüksek Mahkeme tablolarına dayanır.
   'zz_20261126_parti_disiplin_kurulu.sql': ['oyun.sos_parti_imza', 'oyun.sos_parti_imzaci', 'oyun.moderatorler', 'oyun.mahkeme_uye', 'oyun.parti_gby', 'oyun.parti_teskilat_gorev', 'oyun.mesajlar'],
@@ -157,6 +159,10 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261127_aday_vitrini_lansman.sql',
   // 27.11.2026: Genel Başkan ataması — milletvekili listesine başka ilde yaşayan üye (ikamet şartı yok; kişi tek ilden aday). aday_vitrini_il'i de yeniden yazar, bu yüzden ondan SONRA.
   'zz_20261127_atama_dis_il_aday.sql',
+  // 27.11.2026: İl Başkanlığı Masası — il yönetim kurulu yetkileri, karar defteri, il kasası, il mitingi/standı, il açıklamaları, genel merkez yazışması,
+  // il başkanı belirleme yöntemi (kongre/atama) ve kurultaydan önce kongre haftası. il_teskilat_detay / il_kongre_tick / il_kongre_ac / il_kongre_oy /
+  // il_baskan_gorevden_al'ı yeniden yazar, teskilat_gorev_ver ve parti_miting_duzenle'yi yamalar; bu yüzden il teşkilatı ve miting dosyalarından SONRA.
+  'zz_20261127_il_baskanligi_masasi.sql',
   // 25.11.2026: Şirket Kazanç Dengesi — kuruluş dönemi verimi, sermayeye bağlı kazanç tavanı, şube tavanı, mağaza satış tavanı, geçiş dönemi.
   // pazar_tahmin / sube_bolge_analiz / sube_pazar_tahmin / halka_arz_net_tahmin'i yeniden yazar, pazar_hesapla / eko_ticaret_tick /
   // npc_isletme_tick / pazar_danisman'ı yamalar (oyun.sd_yama); bu yüzden listenin SONUNDA kalmalı.
