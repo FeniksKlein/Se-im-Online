@@ -3,7 +3,8 @@
    İstek (Ercan): "Satın almaya bağlı olmayan genel merkezler ekle oyuna ama satın alınca daha şık, daha imtiyazlı dursun.
                    Ondan hariç her türlü de şık bir genel merkez paneli görünüşü hazırla."
    Sunucu: sql/zz_20261127_genel_merkez.sql → genel_merkez_panel(p_parti)
-   • Bina (kademe 1–4) satın alınmaz: aktif üye + il teşkilatı + il başkanı sayısından hesaplanır.
+   • Bina (kademe 1–4) gerçek parayla alınmaz: örgüt şartları (aktif üye + il teşkilatı + il başkanı) tutunca genel başkan parti
+     kasasından inşa eder (genel_merkez_yukselt); kademe GBY / il yönetim kurulu / günlük stant kontenjanı verir.
    • Genel Merkez Kampanyası (mağaza) yalnız görünümü süsler: Bronz / Gümüş / Altın donanım (prestij 1–3).
    Ekran: genelMerkezAc(parti) — sahne (parti renginde bina), bina kademesi ve hedefler, yönetim katı, sayılar, katlar (kısayollar),
           pano (miting, il açıklamaları), imtiyazlı görünüm (önizleme + kampanya), bütün partilerin genel merkezleri.
@@ -186,6 +187,8 @@
       '.gmz-merdiven button.simdi{border-color:#f2c46d;box-shadow:0 0 0 1px #f2c46d}.gmz-merdiven button.yok .gmz-svg{filter:grayscale(.85) brightness(.75)}',
       '.gmz-merdiven .k{display:block;line-height:0;aspect-ratio:360/230}.gmz-merdiven b{display:block;font-size:11.5px;line-height:1.25;padding:5px 3px 0;overflow-wrap:anywhere}',
       '.gmz-merdiven small{display:block;font-size:10.5px;opacity:.7;line-height:1.2}',
+      '.gmz-tablo{margin-top:12px;border:1px solid var(--line2,#2a3045);border-radius:12px;overflow:hidden}.gmz-tablo>div{padding:8px 10px;border-bottom:1px solid var(--line2,#2a3045);min-width:0}.gmz-tablo>div:last-child{border-bottom:0}',
+      '.gmz-tablo>div.simdi{background:rgba(242,196,109,.1)}.gmz-tablo b{display:block;font-size:14px}.gmz-tablo span{display:block;font-size:13.5px;line-height:1.4;overflow-wrap:anywhere}.gmz-tablo small{display:block;font-size:12px;opacity:.72;line-height:1.35;overflow-wrap:anywhere}',
       '.gmz-gb{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px;border-radius:14px;border:1px solid var(--gmz-trim,#2a3045);background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.01));color:inherit;font:inherit;margin-top:6px;min-height:72px}',
       '.gmz-gb .orta{flex:1;min-width:0}.gmz-gb b{display:block;font-size:17px;line-height:1.25;overflow-wrap:anywhere}.gmz-gb small{display:block;font-size:13px;opacity:.8;margin-top:2px}',
       '.gmz-gby{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}',
@@ -240,18 +243,30 @@
     var o = gerek ? Math.min(100, Math.round(var_ * 100 / gerek)) : 100, tam = var_ >= gerek;
     return '<div class="gmz-hedef"><div class="ust"><span>' + esc(ad) + '</span><b>' + var_ + ' / ' + gerek + (tam ? ' ✓' : '') + '</b></div><div class="gmz-cubuk"><i class="' + (tam ? 'tam' : '') + '" style="width:' + Math.max(3, o) + '%"></i></div></div>';
   }
+  function kisaTl(x) { x = n(x); return x >= 1e6 ? (x / 1e6).toLocaleString('tr-TR', { maximumFractionDigits: 1 }) + ' milyon ₺' : tl(x); }
+  function avantajMetni(a) { return n(a.gby) + ' genel başkan yardımcısı · il yönetim kurullarında ' + n(a.il_yk) + ' üye · il başına günde ' + n(a.stant) + ' seçim standı'; }
   function kademeKart(v) {
-    var kd = v.kademe, o = kd.olcu || {}, sn = kd.sonraki, pa = v.parti, p = n(v.prestij.seviye);
-    var h = '<div class="kart"><h3 class="gmz-bas">Bina: ' + esc(kd.ad) + '</h3>' +
-      '<p class="alt" style="margin:0">Genel merkez binası satın alınmaz; partinin örgüt gücüyle büyür. Parti küçülürse bina da küçülür.</p>';
-    if (sn) h += '<p style="margin:10px 0 0;font-size:15px"><b>Sıradaki: ' + esc(sn.ad) + '</b></p>' +
-      hedef('Aktif üye (son 14 gün)', n(o.uye), n(sn.uye)) + hedef('İl teşkilatı', n(o.il), n(sn.il)) + hedef('Görevdeki il başkanı', n(o.il_baskani), n(sn.il_baskani)) +
-      '<p class="kucuk" style="margin:8px 0 0">Üç hedef birlikte tamamlanınca bina kendiliğinden büyür.' + (v.gm && n(o.il_baskani) < n(sn.il_baskani) ? ' İl başkanı eksiğini İl Başkanlıkları ekranından kapatabilirsin.' : '') + '</p>';
-    else h += '<p style="margin:10px 0 0;font-size:15px"><b>En büyük kademeye ulaşıldı.</b> ' + n(o.uye) + ' aktif üye, ' + n(o.il) + ' il teşkilatı, ' + n(o.il_baskani) + ' il başkanı.</p>';
+    var kd = v.kademe, o = kd.olcu || {}, sn = kd.sonraki, pa = v.parti, p = n(v.prestij.seviye), av = kd.avantaj || {};
+    var h = '<div class="kart" id="gmzBina"><h3 class="gmz-bas">Bina: ' + esc(kd.ad) + '</h3>' +
+      '<p class="alt" style="margin:0">Genel merkez gerçek parayla alınmaz. Örgüt şartları tutunca genel başkan inşaat bedelini parti kasasından öder; yapılan bina kalıcıdır.</p>' +
+      '<div class="gmz-not" style="margin-top:10px"><b>Bu kademenin sağladıkları:</b> ' + esc(avantajMetni(av)) + '.</div>';
+    if (sn) {
+      h += '<p style="margin:12px 0 0;font-size:15px"><b>Sıradaki: ' + esc(sn.ad) + '</b></p>' +
+        hedef('Aktif üye (son 14 gün)', n(o.uye), n(sn.uye)) + hedef('İl teşkilatı', n(o.il), n(sn.il)) + hedef('Görevdeki il başkanı', n(o.il_baskani), n(sn.il_baskani)) +
+        (kd.kasa != null ? '<div class="gmz-hedef"><div class="ust"><span>İnşaat bedeli (parti kasası)</span><b>' + esc(kisaTl(kd.kasa)) + ' / ' + esc(kisaTl(sn.bedel)) + (n(kd.kasa) >= n(sn.bedel) ? ' ✓' : '') + '</b></div><div class="gmz-cubuk"><i class="' + (n(kd.kasa) >= n(sn.bedel) ? 'tam' : '') + '" style="width:' + Math.max(3, Math.min(100, Math.round(n(kd.kasa) * 100 / Math.max(1, n(sn.bedel))))) + '%"></i></div></div>'
+          : '<div class="gmz-hedef"><div class="ust"><span>İnşaat bedeli (parti kasasından)</span><b>' + esc(tl(sn.bedel)) + '</b></div></div>') +
+        '<p class="kucuk" style="margin:8px 0 0">Kazandırır: ' + esc(avantajMetni(sn)) + '.</p>';
+      if (v.rol === 'gb') h += '<button type="button" class="btn altin" id="gmzYukselt" style="margin-top:10px"' + (kd.yukseltebilir ? '' : ' disabled') + '>' + esc(sn.ad) + ' inşa et · ' + esc(tl(sn.bedel)) + '</button>' +
+        (kd.yukseltebilir ? '' : '<p class="kucuk" style="margin:6px 0 0">' + (kd.kosul_tamam ? 'Örgüt şartları tamam; parti kasası inşaat bedeline ulaşınca inşa edebilirsin.' : 'Önce örgüt şartlarının üçü de tamamlanmalı.' + (v.gm && n(o.il_baskani) < n(sn.il_baskani) ? ' İl başkanı eksiğini İl Başkanlıkları ekranından kapatabilirsin.' : '')) + '</p>');
+      else h += '<p class="kucuk" style="margin:6px 0 0">İnşaat kararını genel başkan verir.</p>';
+    } else h += '<p style="margin:12px 0 0;font-size:15px"><b>En büyük kademeye ulaşıldı.</b> ' + n(o.uye) + ' aktif üye, ' + n(o.il) + ' il teşkilatı, ' + n(o.il_baskani) + ' il başkanı.</p>';
     h += '<div class="gmz-merdiven">' + (kd.liste || []).map(function (x) {
       var no = n(x.no);
-      return '<button type="button" data-gmzk="' + no + '" class="' + (no === n(kd.no) ? 'simdi' : no > n(kd.no) ? 'yok' : '') + '"><span class="k">' + bina(no, p, pa.renk, '') + '</span><b>' + esc(x.ad) + '</b><small>' + (no === n(kd.no) ? 'şimdi' : no < n(kd.no) ? 'geçildi' : n(x.uye) + ' üye') + '</small></button>';
-    }).join('') + '</div><p class="kucuk" style="margin:8px 0 0">Bir kademeye dokun, bina nasıl görünecek gör.</p></div>';
+      return '<button type="button" data-gmzk="' + no + '" class="' + (no === n(kd.no) ? 'simdi' : no > n(kd.no) ? 'yok' : '') + '"><span class="k">' + bina(no, p, pa.renk, '') + '</span><b>' + esc(x.ad) + '</b><small>' + (no === n(kd.no) ? 'şimdi' : no < n(kd.no) ? 'yapıldı' : esc(kisaTl(x.bedel))) + '</small></button>';
+    }).join('') + '</div><p class="kucuk" style="margin:8px 0 0">Bir kademeye dokun, bina nasıl görünecek gör.</p>' +
+      '<div class="gmz-tablo">' + (kd.liste || []).map(function (x) {
+        return '<div class="' + (n(x.no) === n(kd.no) ? 'simdi' : '') + '"><b>' + esc(x.ad) + '</b><span>' + n(x.gby) + ' GBY · il kurulu ' + n(x.il_yk) + ' · stant ' + n(x.stant) + '</span><small>' + (n(x.no) === 1 ? 'Her partinin başlangıcı' : n(x.uye) + ' aktif üye · ' + n(x.il) + ' il · ' + n(x.il_baskani) + ' il başkanı · ' + esc(kisaTl(x.bedel))) + '</small></div>';
+      }).join('') + '</div><p class="kucuk" style="margin:8px 0 0">Kademe sınırının üstünde görevde olan yardımcılar görevde kalır; boşalan koltuk kapanır.</p></div>';
     return h;
   }
   function kisi(x, renk, boy) { return yuz(x.kad, renk, boy); }
@@ -298,7 +313,7 @@
   function donanimKart(v) {
     var pr = v.prestij || {}, pa = v.parti, s = n(pr.seviye), k = n(v.kademe.no), bak = S.onP;
     var h = '<div class="kart" id="gmzDonanim"><h3 class="gmz-bas">İmtiyazlı görünüm</h3>' +
-      '<p class="alt" style="margin:0">Üyelerin Genel Merkez Kampanyası’na katkısı binaya donanım kazandırır. Donanım yalnız görünüştür; binayı büyütmez, oy, makam ya da seçim gücü vermez.</p>' +
+      '<p class="alt" style="margin:0">Üyelerin Genel Merkez Kampanyası’na katkısı binaya donanım kazandırır. Donanım yalnız görünüştür; binayı büyütmez, kontenjan, oy, makam ya da seçim gücü vermez.</p>' +
       '<div class="gmz-don">' + [0, 1, 2, 3].map(function (i) {
         return '<button type="button" data-gmzp="' + i + '" class="' + (i === s ? 'simdi' : '') + (bak === i && i !== s ? ' bak' : '') + '"><span class="k">' + bina(k, i, pa.renk, '') + '</span><b>' + esc(PRESTIJ[i].replace(' Donanım', '')) + '</b><small>' + (i === s ? 'şimdi' : i === 0 ? 'ücretsiz' : n((pr.esik || [])[i - 1]) + ' katkı') + '</small></button>';
       }).join('') + '</div><p class="kucuk" style="margin:8px 0 0" id="gmzDonNe">' + esc(PRESTIJ_NE[bak == null ? s : bak]) + '</p>';
@@ -357,6 +372,17 @@
       else if (ne === 'aday') { if ((f = g('adayVitriniAc'))) f(); }
       else if (ne === 'pdk') { if ((f = g('partiDisiplinEkrani'))) ac(function () { f(pid); }); }
     }; });
+    var yk = document.getElementById('gmzYukselt'); if (yk) yk.onclick = function () {
+      var sn = v.kademe.sonraki; if (!sn || yk.disabled) return;
+      var soru = sn.ad + ' inşa edilsin mi? Parti kasasından ' + tl(sn.bedel) + ' ödenir; inşaat geri alınamaz.';
+      var devam = function () {
+        yk.disabled = true;
+        rpc('genel_merkez_yukselt', {}).then(function (r) { bildir('Genel merkez büyütüldü: ' + sn.ad + '.'); S.onK = null; S.onP = null; ciz(r); })
+          .catch(function (err) { bildir(hata(err), true); if (document.body.contains(yk)) yk.disabled = false; });
+      };
+      if (typeof onayla === 'function') Promise.resolve(onayla('Genel merkez inşaatı', esc(soru), 'İnşa et')).then(function (ok) { if (ok) devam(); });
+      else if (window.confirm(soru)) devam();
+    };
     var mg = document.getElementById('gmzMagaza'); if (mg) mg.onclick = function () { ac(window.magazaEkrani); };
   }
 

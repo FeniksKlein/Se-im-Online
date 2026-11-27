@@ -6,7 +6,7 @@ const oku = ad => fs.readFileSync(path.join(kok, 'sql', ad), 'utf8').replace(/\r
 // modüller: tam kurulumda bu tablolar yoksa dosya atlanır, varsa tek parça çalışır. Böylece tam kurulum bozulmaz.
 const KOSULLU = {
   // 27.11: Parti Genel Merkezleri; Mağaza Paketi 2 (m2_*), il başkanlığı ve il açıklaması tablolarına dayanır.
-  'zz_20261127_genel_merkez.sql': ['oyun.m2_ayar', 'oyun.m2_gm_katki', 'oyun.paketler', 'oyun.parti_teskilat', 'oyun.il_baskanlik', 'oyun.il_aciklama', 'oyun.parti_gby', 'oyun.parti_gby_yetki', 'oyun.pdk_uye', 'oyun.mitingler'],
+  'zz_20261127_genel_merkez.sql': ['oyun.m2_ayar', 'oyun.m2_gm_katki', 'oyun.paketler', 'oyun.parti_teskilat', 'oyun.il_baskanlik', 'oyun.il_aciklama', 'oyun.parti_gby', 'oyun.parti_gby_yetki', 'oyun.pdk_uye', 'oyun.mitingler', 'oyun.parti_tuzuk_ayar', 'oyun.stant'],
   // 27.11: İl Başkanlığı Masası; canlı migration'larla gelen il teşkilatı, GBY yetki, miting, stant, akış, kıdem ve zamanlayıcı tablolarına dayanır.
   'zz_20261127_il_baskanligi_masasi.sql': ['oyun.il_baskanlik', 'oyun.il_kongre', 'oyun.il_yonetim_kurulu', 'oyun.parti_teskilat_gorev', 'oyun.parti_gby_yetki', 'oyun.mitingler', 'oyun.stant', 'oyun.akis', 'oyun.kidem_kaynak', 'oyun.zamanlayici_adim', 'oyun.ajans_haberleri', 'oyun.oturumlar'],
   'zz_20261126_pdk_otomatik_ac.sql': ['oyun.pdk_dosya', 'oyun.ayarlar'],

@@ -5,7 +5,7 @@
 -- Kural:
 --   • Her partinin bir genel merkezi vardır. BİNANIN BÜYÜKLÜĞÜ (kademe 1–4) satın alınmaz; partinin o günkü örgüt gücünden
 --     hesaplanır: son 14 günde aktif üye + il teşkilatı sayısı + görevdeki il başkanı sayısı (üçü birden; oyun.gm_kademe).
---     Kayıt tutulmaz, her okumada hesaplanır; parti küçülürse bina da küçülür.
+--     (İlk sürümde her okumada hesaplanıyordu; dosyanın ikinci bölümünde kademe parti kasasından inşa edilen kalıcı kayda döndü.)
 --   • Genel Merkez Kampanyası (mağaza, m2_gm_katki) yalnız GÖRÜNÜMÜ süsler: Bronz / Gümüş / Altın donanım (prestij 1–3).
 --     Oy, makam, seçim gücü ya da kademe vermez.
 --   • genel_merkez_panel: tek çağrıda bina, yönetim katı, sayılar, pano ve bütün partilerin genel merkezleri. Yazma yapmaz.
@@ -115,3 +115,145 @@ end $$;
 revoke all on function oyun.gm_olculer(timestamptz) from public, anon, authenticated;
 revoke all on function public.genel_merkez_panel(bigint) from public, anon;
 grant execute on function public.genel_merkez_panel(bigint) to authenticated;
+
+-- =====================================================================
+-- 27.11.2026 · GENEL MERKEZ İNŞAATI VE KADEME AVANTAJLARI (sürüm 2026.11.27-10)
+-- İstek (Ercan): "Genel merkez büyüdükçe avantajları da olsun; örneğin genel merkez binası olunca 6 GBY, yerleşke olunca 8,
+--                 büyük genel merkez olunca 10. Parası da ucuz olmasın, diğer şartlar gibi. Sayıları sen hesapla, mantıklı başka avantaj ekle."
+-- Kural:
+--   • Kademe artık kendiliğinden gelmez: örgüt şartları (aktif üye + il teşkilatı + il başkanı) tutunca GENEL BAŞKAN parti kasasından
+--     inşaat bedelini ödeyerek büyütür (genel_merkez_yukselt). İnşa edilen kademe kalıcıdır (oyun.gm_bina); parti küçülse de geri alınmaz.
+--   • Avantajlar (oyun.gm_kademe): genel başkan yardımcısı kontenjanı 4/6/8/10, il yönetim kurulu kontenjanı 5/7/9/11,
+--     il başına günlük seçim standı 1/1/2/3. Tüzük bu sınırların üstüne çıkamaz (oyun.parti_tuzuk etkin değeri kısar).
+--   • Müktesep hak: görevdeki yardımcılar ve kurul üyeleri görevden alınmaz; dolu koltuklar korunur, kademe sınırının üstünde
+--     boşalan koltuk kapanır.
+-- =====================================================================
+alter table oyun.gm_kademe add column if not exists bedel numeric not null default 0 check (bedel >= 0);
+alter table oyun.gm_kademe add column if not exists gby smallint not null default 6 check (gby between 1 and 20);
+alter table oyun.gm_kademe add column if not exists il_yk smallint not null default 7 check (il_yk between 3 and 25);
+alter table oyun.gm_kademe add column if not exists stant smallint not null default 1 check (stant between 1 and 10);
+update oyun.gm_kademe k set bedel = v.bedel, gby = v.gby, il_yk = v.il_yk, stant = v.stant, aciklama = v.aciklama
+  from (values (1, 0::numeric, 4, 5, 1, 'Partinin ilk çalışma ofisi.'),
+               (2, 3000000, 6, 7, 1, 'Müstakil genel merkez binası.'),
+               (3, 12000000, 8, 9, 2, 'Ana bina ve iki kanat.'),
+               (4, 40000000, 10, 11, 3, 'Kuleli ana bina, kanatlar ve tören alanı.')) v(kademe, bedel, gby, il_yk, stant, aciklama)
+ where k.kademe = v.kademe;
+
+create table if not exists oyun.gm_bina (
+  parti_id bigint primary key references oyun.partiler(id),
+  kademe smallint not null default 1 check (kademe between 1 and 4),
+  zaman timestamptz not null,
+  yapan uuid,
+  harcama numeric not null default 0
+);
+alter table oyun.gm_bina enable row level security;
+revoke all on table oyun.gm_bina from public, anon, authenticated;
+
+create or replace function oyun.gm_kademe_no(p_parti bigint) returns integer language sql stable set search_path to '' as $$
+  select coalesce((select b.kademe::integer from oyun.gm_bina b where b.parti_id = p_parti), 1)
+$$;
+
+-- Ölçüler aynı; kademe artık inşa edilmiş kademedir
+create or replace function oyun.gm_olculer(t timestamptz)
+returns table (parti_id bigint, uye integer, aktif integer, il integer, il_baskani integer, kademe integer)
+language sql stable set search_path to '' as $$
+  select pa.id, coalesce(u.uye, 0)::integer, coalesce(u.aktif, 0)::integer, coalesce(ts.n, 0)::integer, coalesce(ib.n, 0)::integer, coalesce(gb.kademe, 1)::integer
+    from oyun.partiler pa
+    left join (select x.parti_id, count(*) uye, count(*) filter (where x.son_gorulme > t - interval '14 days') aktif
+                 from oyun.profiller x where x.parti_id is not null and not coalesce(x.yasakli, false) group by x.parti_id) u on u.parti_id = pa.id
+    left join (select q.parti_id, count(*) n from oyun.parti_teskilat q group by q.parti_id) ts on ts.parti_id = pa.id
+    left join (select b.parti_id, count(*) n from oyun.il_baskanlik b where b.aktif group by b.parti_id) ib on ib.parti_id = pa.id
+    left join oyun.gm_bina gb on gb.parti_id = pa.id
+   where not pa.kapali
+$$;
+
+-- Tüzüğün ETKİN değeri: kademe kontenjanını aşamaz; dolu koltuklar (müktesep hak) görünür kalır
+create or replace function oyun.parti_tuzuk(p_parti bigint)
+returns oyun.parti_tuzuk_ayar language plpgsql stable set search_path to '' as $$
+declare r oyun.parti_tuzuk_ayar; k oyun.gm_kademe; dolu integer;
+begin
+  select * into r from oyun.parti_tuzuk_ayar t where t.parti_id = p_parti;
+  if r.parti_id is null then r := row(p_parti, 6::smallint, 60, 24, 24, 14, 7::smallint, now(), null::uuid)::oyun.parti_tuzuk_ayar; end if;
+  select g.* into k from oyun.gm_kademe g where g.kademe = oyun.gm_kademe_no(p_parti);
+  if k.kademe is not null then
+    select coalesce(max(g.sira), 0) into dolu from oyun.parti_gby g where g.parti_id = p_parti;
+    r.gby_azami := least(r.gby_azami, greatest(k.gby, dolu))::smallint;
+    r.il_yk_azami := least(r.il_yk_azami, k.il_yk)::smallint;
+  end if;
+  return r;
+end $$;
+
+create or replace function public.genel_merkez_yukselt()
+returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); pa oyun.partiler; o record; mevcut integer; sk oyun.gm_kademe; r record;
+begin
+  select * into pa from oyun.partiler where id = p.parti_id and not kapali for update;
+  if pa.id is null then raise exception 'Bir partiye üye değilsin.'; end if;
+  if pa.gb is distinct from p.id then raise exception 'Genel merkez inşaatına yalnız genel başkan karar verir.'; end if;
+  mevcut := oyun.gm_kademe_no(pa.id);
+  select * into sk from oyun.gm_kademe where kademe = mevcut + 1;
+  if sk.kademe is null then raise exception 'Genel merkez zaten en büyük kademede.'; end if;
+  select * into o from oyun.gm_olculer(t) x where x.parti_id = pa.id;
+  if o.aktif < sk.uye then raise exception '% için en az % aktif üye gerekir (şu an %).', sk.ad, sk.uye, o.aktif; end if;
+  if o.il < sk.il then raise exception '% için en az % ilde teşkilat gerekir (şu an %).', sk.ad, sk.il, o.il; end if;
+  if o.il_baskani < sk.il_baskani then raise exception '% için en az % il başkanı görevde olmalı (şu an %).', sk.ad, sk.il_baskani, o.il_baskani; end if;
+  if pa.kasa < sk.bedel then raise exception 'Parti kasası yetersiz: inşaat bedeli % ₺, kasada % ₺ var.', round(sk.bedel)::bigint, round(pa.kasa)::bigint; end if;
+  update oyun.partiler set kasa = kasa - sk.bedel where id = pa.id;
+  insert into oyun.parti_hareket(parti_id, zaman, tutar, aciklama, tur) values (pa.id, t, -sk.bedel, format('Genel merkez inşaatı: %s', sk.ad), 'genel_merkez');
+  insert into oyun.gm_bina(parti_id, kademe, zaman, yapan, harcama) values (pa.id, sk.kademe, t, p.id, sk.bedel)
+  on conflict (parti_id) do update set kademe = excluded.kademe, zaman = excluded.zaman, yapan = excluded.yapan, harcama = oyun.gm_bina.harcama + excluded.harcama;
+  -- Yeni kontenjan hemen kullanılabilsin: tüzükteki sayı yeni kademenin altındaysa yükseltilir
+  insert into oyun.parti_tuzuk_ayar(parti_id, gby_azami, il_yk_azami, guncelleme, guncelleyen)
+  values (pa.id, greatest(6, sk.gby), greatest(7, sk.il_yk), t, p.id)
+  on conflict (parti_id) do update set gby_azami = greatest(oyun.parti_tuzuk_ayar.gby_azami, sk.gby), il_yk_azami = greatest(oyun.parti_tuzuk_ayar.il_yk_azami, sk.il_yk),
+    guncelleme = t, guncelleyen = p.id;
+  insert into oyun.olaylar(zaman, tur, il_id, parti_id, metin) values (t, 'parti', null, pa.id, format('%s genel merkezini büyüttü: %s', pa.ad, sk.ad));
+  for r in select x.id from oyun.profiller x where x.parti_id = pa.id and x.id <> p.id and not coalesce(x.yasakli, false) order by x.son_gorulme desc nulls last limit 3000 loop
+    perform oyun.bildir(r.id, format('Partin %s yeni genel merkezine geçti: %s. Genel başkan yardımcısı kontenjanı %s, il yönetim kurulu kontenjanı %s oldu.', pa.kisa, sk.ad, sk.gby, sk.il_yk), t);
+  end loop;
+  return public.genel_merkez_panel(pa.id);
+end $$;
+revoke all on function oyun.gm_kademe_no(bigint) from public, anon, authenticated;
+revoke all on function public.genel_merkez_yukselt() from public, anon;
+grant execute on function public.genel_merkez_yukselt() to authenticated;
+
+-- Panel: avantajlar, inşaat bedeli, büyütme hakkı; il standı günlük hakkı kademeden
+do $y$
+declare d text; e text;
+begin
+  select pg_get_functiondef('public.genel_merkez_panel(bigint)'::regprocedure) into d;
+  if position('''yukseltebilir''' in d) = 0 then
+    e := replace(d, '''kademe'', jsonb_build_object(''no'', o.kademe, ''ad'', k.ad, ''aciklama'', k.aciklama,',
+      '''kademe'', jsonb_build_object(''no'', o.kademe, ''ad'', k.ad, ''aciklama'', k.aciklama,
+       ''avantaj'', jsonb_build_object(''gby'', k.gby, ''il_yk'', k.il_yk, ''stant'', k.stant),
+       ''kosul_tamam'', sk.kademe is not null and o.aktif >= sk.uye and o.il >= sk.il and o.il_baskani >= sk.il_baskani,
+       ''kasa'', case when rol = ''gb'' then round(pa.kasa) end,
+       ''yukseltebilir'', coalesce(rol = ''gb'' and sk.kademe is not null and o.aktif >= sk.uye and o.il >= sk.il and o.il_baskani >= sk.il_baskani and pa.kasa >= sk.bedel, false),');
+    e := replace(e, 'jsonb_build_object(''no'', sk.kademe, ''ad'', sk.ad, ''uye'', sk.uye, ''il'', sk.il, ''il_baskani'', sk.il_baskani) end',
+      'jsonb_build_object(''no'', sk.kademe, ''ad'', sk.ad, ''uye'', sk.uye, ''il'', sk.il, ''il_baskani'', sk.il_baskani, ''bedel'', sk.bedel, ''gby'', sk.gby, ''il_yk'', sk.il_yk, ''stant'', sk.stant) end');
+    e := replace(e, 'jsonb_build_object(''no'', g.kademe, ''ad'', g.ad, ''uye'', g.uye, ''il'', g.il, ''il_baskani'', g.il_baskani) order by g.kademe',
+      'jsonb_build_object(''no'', g.kademe, ''ad'', g.ad, ''uye'', g.uye, ''il'', g.il, ''il_baskani'', g.il_baskani, ''bedel'', g.bedel, ''gby'', g.gby, ''il_yk'', g.il_yk, ''stant'', g.stant) order by g.kademe');
+    if position('''yukseltebilir''' in e) = 0 or position('''bedel'', sk.bedel' in e) = 0 or position('''bedel'', g.bedel' in e) = 0 then raise exception 'genel_merkez_panel yaması uygulanamadı'; end if;
+    execute e;
+  end if;
+
+  if to_regprocedure('public.il_stant_ac(text,text)') is not null then
+    select pg_get_functiondef('public.il_stant_ac(text,text)'::regprocedure) into d;
+    if position('gm_kademe_no' in d) = 0 then
+      e := replace(d, 'if exists (select 1 from oyun.stant where parti_id = pa.id and il_id = il and oyun.sm_gun(bas) = oyun.sm_gun(t)) then',
+        'if (select count(*) from oyun.stant where parti_id = pa.id and il_id = il and oyun.sm_gun(bas) = oyun.sm_gun(t)) >= (select g.stant from oyun.gm_kademe g where g.kademe = oyun.gm_kademe_no(pa.id)) then');
+      e := replace(e, 'Partin bugün bu ilde zaten stant açtı.', 'Partinin bu ildeki günlük stant hakkı doldu (genel merkez kademesine göre).');
+      if position('gm_kademe_no' in e) = 0 then raise exception 'il_stant_ac yaması uygulanamadı'; end if;
+      execute e;
+    end if;
+  end if;
+  if to_regprocedure('public.il_masa(bigint,integer)') is not null then
+    select pg_get_functiondef('public.il_masa(bigint,integer)'::regprocedure) into d;
+    if position('gm_kademe_no' in d) = 0 then
+      e := replace(d, '''stant_bugun'', exists (select 1 from oyun.stant s where s.parti_id = pa.id and s.il_id = il and oyun.sm_gun(s.bas) = oyun.sm_gun(t)),',
+        '''stant_bugun'', (select count(*) from oyun.stant s where s.parti_id = pa.id and s.il_id = il and oyun.sm_gun(s.bas) = oyun.sm_gun(t)) >= (select g.stant from oyun.gm_kademe g where g.kademe = oyun.gm_kademe_no(pa.id)),');
+      if position('gm_kademe_no' in e) = 0 then raise exception 'il_masa yaması uygulanamadı'; end if;
+      execute e;
+    end if;
+  end if;
+end $y$;

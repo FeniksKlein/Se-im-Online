@@ -26,14 +26,17 @@ const shot = process.argv[2];
     await page.evaluate(() => {
       window.calls = [];
       const now = Date.now(), iso = (ms) => new Date(now + ms).toISOString();
-      const KAD = [{ no: 1, ad: 'Kuruluş Bürosu', uye: 0, il: 0, il_baskani: 0 }, { no: 2, ad: 'Genel Merkez Binası', uye: 50, il: 15, il_baskani: 5 }, { no: 3, ad: 'Genel Merkez Yerleşkesi', uye: 150, il: 40, il_baskani: 20 }, { no: 4, ad: 'Büyük Genel Merkez', uye: 350, il: 70, il_baskani: 50 }];
+      const KAD = [{ no: 1, ad: 'Kuruluş Bürosu', uye: 0, il: 0, il_baskani: 0, bedel: 0, gby: 4, il_yk: 5, stant: 1 }, { no: 2, ad: 'Genel Merkez Binası', uye: 50, il: 15, il_baskani: 5, bedel: 3000000, gby: 6, il_yk: 7, stant: 1 }, { no: 3, ad: 'Genel Merkez Yerleşkesi', uye: 150, il: 40, il_baskani: 20, bedel: 12000000, gby: 8, il_yk: 9, stant: 2 }, { no: 4, ad: 'Büyük Genel Merkez', uye: 350, il: 70, il_baskani: 50, bedel: 40000000, gby: 10, il_yk: 11, stant: 3 }];
+      window.HAZIR = false; window.INSA = false;
       const PARTILER = [{ id: 1, kisa: 'CYP', ad: 'Cumhuriyet Yolu Partisi', renk: '#c62828', kademe: 3, uye: 396, prestij: 0 }, { id: 5, kisa: 'EÖP', ad: 'Emek ve Özgürlük Partisi', renk: '#f2b233', kademe: 4, uye: 410, prestij: 3 },
         { id: 2, kisa: 'MBP', ad: 'Milli Birlik Partisi', renk: '#2B4FB8', kademe: 1, uye: 154, prestij: 1 }, { id: 25, kisa: 'DETP', ad: 'Demokratik Türkiye Partisi', renk: '#2e9e5b', kademe: 1, uye: 23, prestij: 0 }];
       window.URUN = false;
       window.panel = (pid) => {
-        const kendi = pid == null || pid === 1, q = PARTILER.find(x => x.id === (kendi ? 1 : pid)) || PARTILER[0], s = q.prestij, esik = [10, 25, 50], katki = [0, 12, 32, 61][s];
+        const kendi = pid == null || pid === 1, q = Object.assign({}, PARTILER.find(x => x.id === (kendi ? 1 : pid)) || PARTILER[0]); if (kendi && INSA) q.kademe = 4;
+        const ilb = kendi ? (HAZIR ? 52 : 46) : 52, snk = q.kademe < 4 ? KAD[q.kademe] : null, kasa = HAZIR ? 45200000 : 4036540, tamam = !!snk && q.uye >= snk.uye && ilb >= snk.il_baskani, s = q.prestij, esik = [10, 25, 50], katki = [0, 12, 32, 61][s];
         return { simdi: iso(0), parti: { id: q.id, ad: q.ad, kisa: q.kisa, renk: q.renk, amblem: 'a_basak', kurulus: iso(-5 * 864e5) }, uyeyim: kendi, rol: kendi ? 'gb' : null, gm: kendi, sehir: { id: 6, ad: 'Ankara' },
-          kademe: { no: q.kademe, ad: KAD[q.kademe - 1].ad, aciklama: '', olcu: { uye: q.uye, il: 81, il_baskani: kendi ? 46 : 52 }, sonraki: q.kademe < 4 ? KAD[q.kademe] : null, liste: KAD },
+          kademe: { no: q.kademe, ad: KAD[q.kademe - 1].ad, aciklama: '', olcu: { uye: q.uye, il: 81, il_baskani: ilb }, sonraki: snk, liste: KAD, avantaj: { gby: KAD[q.kademe - 1].gby, il_yk: KAD[q.kademe - 1].il_yk, stant: KAD[q.kademe - 1].stant },
+            kosul_tamam: tamam, kasa: kendi ? kasa : null, yukseltebilir: kendi && tamam && kasa >= snk.bedel },
           prestij: { seviye: s, ad: ['Standart', 'Bronz Donanım', 'Gümüş Donanım', 'Altın Donanım'][s], katki, esik, sonraki: s < 3 ? esik[s] : null, sonraki_ad: s < 3 ? ['Bronz Donanım', 'Gümüş Donanım', 'Altın Donanım'][s] : null,
             tutar: 100000, hesap_gun: 3, urun_acik: URUN, katki_verebilir: kendi, liste: katki ? [{ kad: 'ahmet', ad: 'Ahmet Yılmaz', adet: 6 }, { kad: 'zeynep', ad: 'Zeynep Kaya', adet: 4 }] : [] },
           yonetim: { gb: { kad: 'gencer', ad: 'Abdullah Gencer Karamanlıoğulları' }, vekil: null, disiplin: 7,
@@ -47,6 +50,7 @@ const shot = process.argv[2];
       API = { rpc: async (ad, a) => {
         calls.push({ ad, a });
         if (ad === 'genel_merkez_panel') return panel(a.p_parti);
+        if (ad === 'genel_merkez_yukselt') { INSA = true; return panel(1); }
         if (ad === 'parti_detay') return { id: a.p_parti, ad: 'Cumhuriyet Yolu Partisi', kisa: 'CYP', renk: '#c62828', amblem: 'a_basak', uye: 396, vekil: 0, belediye: 0, uyesiyim: true, sistem: true, kurulus: iso(-5 * 864e5), kurulus_bit: iso(-4 * 864e5), gb: 'gencer', kurucu: 'gencer', uyeler: [], gby: [], tuzuk: '', iller: [], makamlar: [] };
         if (ad === 'il_masa_benim') return { parti_id: 1, parti: 'CYP', il_id: 6, il: 'Ankara', rol: null, gm: true, gb: true, yontem: 'secim' };
         if (ad === 'durum') return { profil: D.durum.profil, takvim: [], simdi: iso(0), ulke: {}, okunmamis: { bildirim: 0, ozel: 0 } };
@@ -76,7 +80,12 @@ const shot = process.argv[2];
     assert.match(t, /Sıradaki: Büyük Genel Merkez/, et('sıradaki kademe'));
     assert.match(t, /396 \/ 350 ✓/, et('üye hedefi tamam'));
     assert.match(t, /46 \/ 50/, et('il başkanı hedefi'));
-    assert.match(t, /satın alınmaz/, et('satın alınmaz notu'));
+    assert.match(t, /gerçek parayla alınmaz/, et('gerçek parayla alınmaz notu'));
+    assert.match(t, /Bu kademenin sağladıkları: 8 genel başkan yardımcısı · il yönetim kurullarında 9 üye · il başına günde 2 seçim standı/, et('kademe avantajı'));
+    assert.match(t, /4 milyon ₺ \/ 40 milyon ₺/, et('inşaat bedeli ve kasa'));
+    assert.match(t, /Kazandırır: 10 genel başkan yardımcısı/, et('sıradaki avantaj'));
+    assert.ok(await page.$('#gmzYukselt[disabled]'), et('şart eksikken inşa düğmesi kapalı'));
+    assert.match(t, /10 GBY · il kurulu 11 · stant 3/, et('avantaj tablosu'));
     assert.match(t, /Abdullah Gencer Karamanlıoğulları/, et('genel başkan'));
     assert.match(t, /Teşkilattan Sorumlu/, et('GBY görevi'));
     assert.match(t, /Mali işler/, et('GBY alanı (görev yoksa)'));
@@ -105,6 +114,19 @@ const shot = process.argv[2];
     await tikla('#gmzGercek');
     await page.waitForSelector('#gmzSahne.p0');
     assert.ok(!(await page.$('.gmz-onizle')), et('gerçek görünüme dönüş'));
+
+    // 2b) Şartlar ve kasa tamam: inşa et
+    await page.evaluate(() => { HAZIR = true; genelMerkezAc(); });
+    await page.waitForSelector('#gmzYukselt:not([disabled])');
+    assert.match(await page.textContent('#gmzYukselt'), /Büyük Genel Merkez inşa et · 40\.000\.000 ₺/, et('inşa düğmesi'));
+    await tikla('#gmzYukselt');
+    await page.waitForSelector('#modal #evet');
+    assert.match(await page.textContent('#modal'), /geri alınamaz/, et('inşaat onayı'));
+    await tikla('#modal #evet');
+    await page.waitForFunction(() => calls.some(c => c.ad === 'genel_merkez_yukselt') && /Bina: Büyük Genel Merkez/.test((document.getElementById('icerik') || {}).textContent || ''));
+    assert.match(await page.textContent('#gmzBina'), /En büyük kademeye ulaşıldı/, et('inşaat sonrası'));
+    assert.ok(!(await page.$('#gmzYukselt')), et('son kademede inşa düğmesi yok'));
+    await page.evaluate(() => { HAZIR = false; INSA = false; });
 
     // 3) Katlar ve pano bağlantıları
     await tikla('[data-gmzil="34"]');
