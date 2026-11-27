@@ -5,6 +5,13 @@
   "use strict";
   if (window.SO_MENU_MERKEZLERI_V1) return;
   window.SO_MENU_MERKEZLERI_V1 = true;
+  // Siyasi ekip modu; gorev davetleri kullanici onayli ve sunucu denetimli.
+  if (!document.getElementById('siyasi-meslekler-loader')) {
+    var ekipScript = document.createElement('script');
+    ekipScript.id = 'siyasi-meslekler-loader';
+    ekipScript.src = './siyasi_meslekler.js?v=20261117a';
+    document.head.appendChild(ekipScript);
+  }
   if (!document.getElementById('banka-yonetim-loader')) {
     var bankScript=document.createElement('script');
     bankScript.id='banka-yonetim-loader';
