@@ -215,7 +215,7 @@ insert into oyun.paketler(urun_id, ad, miktar, sira, tur, gun, hak, aciklama, et
   ('secimonline.party_donation', 'Parti Kasasına Bağış', 0, 52, 'hizmet', 0, null,
    'Üyesi olduğun partinin kasasına 250.000 ₺. Partide duyurulur, 30 gün parti içinde "Büyük Bağışçı" unvanı. Oy, delege ya da makam vermez.', 'Parti', '₺199,99', false),
   ('secimonline.hq_campaign', 'Genel Merkez Kampanyası', 0, 53, 'hizmet', 0, null,
-   'Partinin ortak hedefine katkı: kasaya 100.000 ₺. 10, 25 ve 50 katkıda parti İl Binası, Genel Merkez ve Büyük Genel Merkez olur; bütün üyeler rozet alır.', 'Parti', '₺99,99', false),
+   'Partinin ortak hedefine katkı: kasaya 100.000 ₺. 10, 25 ve 50 katkıda genel merkez Bronz, Gümüş ve Altın donanım kazanır (bayraklar, ışıklandırma, altın cephe); bütün üyeler rozet alır. Bina partinin gücüyle kendiliğinden büyür; kampanya yalnız görünümü süsler.', 'Parti', '₺99,99', false),
   ('secimonline.launch_stage', 'Lansman Sahnesi', 0, 54, 'hizmet', 0, null,
    'Partinin aday lansmanlarında ışıklı sahne, alkışta konfeti ve parti posteri. Partiye kalıcı olarak bağlanır.', 'Partiye kalıcı', '₺199,99', false),
   ('secimonline.congress_pack', 'Kongre Paketi', 0, 55, 'hizmet', 0, null,
@@ -390,7 +390,7 @@ create or replace function oyun.m2_gm_seviye_hesap(n bigint, esik integer[]) ret
   select coalesce((select max(i) from generate_subscripts(esik, 1) i where n >= esik[i]), 0)
 $$;
 create or replace function oyun.m2_gm_ad(s integer) returns text language sql immutable set search_path to '' as $$
-  select case s when 1 then 'İl Binası' when 2 then 'Genel Merkez' when 3 then 'Büyük Genel Merkez' else 'Arsa' end
+  select case s when 1 then 'Bronz Donanım' when 2 then 'Gümüş Donanım' when 3 then 'Altın Donanım' else 'Standart' end
 $$;
 
 create or replace function oyun.m2_gm_uygula(u uuid, t timestamptz) returns boolean
@@ -415,11 +415,11 @@ begin
   if yeni > eski then
     insert into oyun.m2_gm_seviye(parti_id, seviye, zaman) values (pa.id, yeni, t)
     on conflict (parti_id) do update set seviye = excluded.seviye, zaman = excluded.zaman;
-    perform oyun.m2_sohbet(u, 'parti:' || pa.id, format('[Genel Merkez] %s %s açıldı. %s. katkıyı %s verdi; bütün üyelerimize rozet tanımlandı.',
+    perform oyun.m2_sohbet(u, 'parti:' || pa.id, format('[Genel Merkez] %s genel merkezi %s kazandı. %s. katkıyı %s verdi; bütün üyelerimize rozet tanımlandı.',
       pa.kisa, oyun.m2_gm_ad(yeni), n, ad), t);
-    insert into oyun.olaylar(zaman, tur, il_id, parti_id, metin) values (t, 'parti', null, pa.id, format('%s %s''ne taşındı', pa.ad, oyun.m2_gm_ad(yeni)));
+    insert into oyun.olaylar(zaman, tur, il_id, parti_id, metin) values (t, 'parti', null, pa.id, format('%s genel merkezi %s ile yenilendi', pa.ad, oyun.m2_gm_ad(yeni)));
     for r in select p.id from oyun.profiller p where p.parti_id = pa.id and not p.yasakli order by p.son_gorulme desc nulls last limit 3000 loop
-      perform oyun.bildir(r.id, format('Partin %s %s seviyesine ulaştı. Rozetin adının yanında.', pa.kisa, oyun.m2_gm_ad(yeni)), t);
+      perform oyun.bildir(r.id, format('Partin %s genel merkezi %s kazandı. Rozetin adının yanında.', pa.kisa, oyun.m2_gm_ad(yeni)), t);
       say := say + 1;
     end loop;
   else

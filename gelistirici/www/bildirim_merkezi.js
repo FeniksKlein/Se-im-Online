@@ -58,6 +58,7 @@
     if (/^muzayede:/.test(t)) return "muzayede";
     // 27.11.2026: aday vitrini ve aday tanıtım lansmanları
     if (/aday vitrini|aday lansmani|aday tanitim lansmanina|lansmani bitti/.test(t)) return "aday";
+    if (/\[genel merkez\]|genel merkezi (bronz|gumus|altin) donanim/.test(t)) return "gmerkez";
     // 27.11.2026: il başkanlığı masası, il yönetim kurulu, il kasası, genel merkez yazışmaları
     if (/il baskanligi masasi|il baskanliklari ›|il baskanliklari >|il yonetim kurulu|il orgutu kasasina|il baskanliginin “|il baskanliginin "|kongre haftasi/.test(t)) return "ilmasa";
     if (/tv kanallari|tv kanali|tv programina|kanalindaki "|kanalinda "|" programi|" programin|sunuculu|studyoya gir|duellosunu/.test(t)) return "tv";
@@ -97,6 +98,7 @@
     kursu:   { ad: "Kürsü’ye git", ac: () => ekranAc(() => kursuEkrani("bildirim")), var: () => typeof kursuEkrani === "function" },
     muzayede:{ ad: "Müzayede’ye git", ac: () => ekranAc(muzayedeEkrani), var: () => typeof muzayedeEkrani === "function" },
     aday:    { ad: "Aday Vitrini’ne git", ac: () => adayVitriniAc(), var: () => typeof adayVitriniAc === "function" },
+    gmerkez: { ad: "Genel Merkez’e git", ac: () => genelMerkezAc(), var: () => typeof genelMerkezAc === "function" },
     ilmasa:  { ad: "İl Başkanlığı Masası’na git", ac: () => ilBaskanligiGiris(), var: () => typeof ilBaskanligiGiris === "function" },
     tv:      { ad: "TV Kanalları’na git", ac: () => ekranAc(tvKanallariEkrani), var: () => typeof tvKanallariEkrani === "function" },
     oda:     { ad: "Ticaret Odası’na git", ac: () => ekranAc(() => ticaretOdasiEkrani()), var: () => typeof ticaretOdasiEkrani === "function" },

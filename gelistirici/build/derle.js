@@ -146,6 +146,8 @@ for (const m of ['tbmm_salon.js','tbmm_merkez.js'])
   html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www',m),'utf8')+'</script></body>');
 // 27.11.2026: İl Başkanlığı Masası (kurul, karar defteri, miting, stant, açıklama, kasa, genel merkez yazışması) + İl Başkanlıkları (81 il, atama/seçim yöntemi). teskilat_kongre.js'den SONRA.
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','il_baskanligi_masasi.js'),'utf8')+'</script></body>');
+// 27.11.2026: Parti Genel Merkezleri — parti renginde bina (kademe: örgüt gücü; donanım: kampanya), Genel Merkez paneli. magaza_paket2.js'ten ÖNCE.
+html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','genel_merkez.js'),'utf8')+'</script></body>');
 // 27.11.2026: Mağaza Paketi 2 — vitrin/manşet, plaka, mazbata, kutlama, kongre, lansman sahnesi, genel merkez, destekçi duvarı (magaza.js'ten SONRA, en sonda).
 html=html.replace('</body>',()=>'<script>'+fs.readFileSync(path.join(kok,'www','magaza_paket2.js'),'utf8')+'</script></body>');
 const surum=fs.readFileSync(path.join(kok,'SURUM'),'utf8').trim();

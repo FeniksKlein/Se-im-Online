@@ -211,6 +211,8 @@ declare
     -- 13.11.2026 Oyuncu sohbet grupları (sql/200_sohbet_gruplari.sql)
     'sohbet_grup_kur', 'sohbet_grup_detay', 'sohbet_grup_ad', 'sohbet_grup_uye_ekle', 'sohbet_grup_uye_cikar', 'sohbet_grup_ayril', 'sohbet_grup_kapat',
     -- 13.11.2026 Sohbet gruplarına dışarıdan katılma (sql/201_sohbet_grup_katilim.sql)
+    -- 27.11.2026 Parti Genel Merkezleri (sql/zz_20261127_genel_merkez.sql)
+    'genel_merkez_panel',
     -- 27.11.2026 İl Başkanlığı Masası + İl Başkanlıkları (sql/zz_20261127_il_baskanligi_masasi.sql)
     'il_masa', 'il_masa_genel', 'il_masa_benim', 'il_kasa_odenek', 'il_kasa_iade', 'il_kasa_bagis', 'il_miting_duzenle', 'il_miting_iptal', 'il_stant_ac',
     'il_aciklama_yap', 'il_aciklamalari', 'il_aciklama_sil', 'il_karar_oner', 'il_karar_oy', 'il_karar_geri_cek', 'il_gm_yazi_gonder', 'il_gm_yazi_cevap',

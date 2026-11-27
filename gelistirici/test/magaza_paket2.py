@@ -104,9 +104,9 @@ for i in range(10): al(uye2, "secimonline.hq_campaign")
 assert kasa(P1) == k0 + 1000000
 g = rpc(uye, "genel_merkez"); assert g["katki"] == 10 and g["seviye"] == 1 and g["sonraki"] == 25, g
 assert "gm:1" in rozet(uye) and "gm:1" in rozet(gb) and not [x for x in rozet(rakip) if x.startswith("gm:")]
-assert q(f"select metin from oyun.olaylar where parti_id={P1} order by id desc limit 1").endswith("İl Binası'ne taşındı")
+assert q(f"select metin from oyun.olaylar where parti_id={P1} order by id desc limit 1").endswith("genel merkezi Bronz Donanım ile yenilendi")
 assert g["siralama"][0]["id"] == P1 and g["liste"][0]["adet"] == 10
-ok("Genel Merkez: 10 katkıda İl Binası, bütün üyelere gm:1 rozeti, haber; 3 günlük hesap şartı; sıralama")
+ok("Genel Merkez: 10 katkıda Bronz Donanım, bütün üyelere gm:1 rozeti, haber; 3 günlük hesap şartı; sıralama")
 
 # 6) Lansman Sahnesi + Kongre
 al(uye, "secimonline.launch_stage"); assert P1 in rpc(rakip, "m2_genel")["sahne"]

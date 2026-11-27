@@ -31,7 +31,7 @@ const shot = process.argv[2];
       const m2 = () => ({ jeton: ST.jeton, plaka: { metin: '35 AY 1923', il: 35, harf: 'AY', rakam: '1923', secildi: true, makam: true }, plaka_hak: true, seckin_hak: false, il: 35,
         vitrin: { yer: 3, saat: 24, dolu: 3, sira: 2, tahmin: iso(20 * 3600e3) }, manset: { yer: 3, saat: 24, oto_saat: 12, dolu: 1, sira: 0, tahmin: iso(0) },
         yayinlarim: [{ id: 5, tur: 'kursu', durum: 'sirada', metin: 'Pazar günü Konya mitingindeyiz', sira: 2, tahmin: iso(20 * 3600e3) }],
-        parti: { id: 1, ad: 'Mavi Kalkınma Partisi', kisa: 'MKP', renk: '#2B4FB8', sahne: false, gm_katki: 32, gm_seviye: 2, gm_seviye_ad: 'Genel Merkez', gm_sonraki: 50, yonetici: true, parti_adina: true, bagisci_bitis: iso(20 * 86400e3) },
+        parti: { id: 1, ad: 'Mavi Kalkınma Partisi', kisa: 'MKP', renk: '#2B4FB8', sahne: false, gm_katki: 32, gm_seviye: 2, gm_seviye_ad: 'Gümüş Donanım', gm_sonraki: 50, yonetici: true, parti_adina: true, bagisci_bitis: iso(20 * 86400e3) },
         gm_hesap_tamam: true, gm_hesap_gun: 3, bagis_tutar: 250000, gm_tutar: 100000, parti_kart_adet: 5,
         kongre: { secim_id: 9, slogan: 'Yeniden büyük MKP' }, zaferler: [{ secim_id: 3, gorev: 'İzmir milletvekili', tarih: iso(-86400e3), mazbata: false, kutlama: true }],
         mazbata_sayi: 1, kutlama_bekleyen: null, destek: 3, yillik_bitis: null, duraklat: false });
@@ -80,7 +80,13 @@ const shot = process.argv[2];
           aktif: [{ id: 5, tur: 'kursu', durum: 'yayinda', metin: 'Vitrindeki paylaşım', ad: 'Zeynep Kaya', kad: 'zeynep' }] };
         if (ad === 'manset_karar') return { id: a.p_id, durum: a.p_onay ? 'yayinda' : 'reddedildi' };
         if (ad === 'mazbatalar') return [{ id: 1, secim_id: 3, tur: 'mv', ad: 'Ahmet Yılmaz', gorev: 'İzmir milletvekili', oy_orani: 38.4, tarih: iso(-86400e3), donem: 'Kasım 2026', kad: 'Ben' }];
-        if (ad === 'genel_merkez') return { parti: { id: 1, ad: 'Mavi Kalkınma Partisi', kisa: 'MKP', renk: '#2B4FB8' }, katki: 32, seviye: 2, seviye_ad: 'Genel Merkez', esik: [10, 25, 50], sonraki: 50, sonraki_ad: 'Büyük Genel Merkez', tutar: 100000,
+        // 27.11.2026: Genel Merkez ekranı genel_merkez.js'e devredildi (bina + panel + kampanya)
+        if (ad === 'genel_merkez_panel') return { simdi: iso(0), parti: { id: 1, ad: 'Mavi Kalkınma Partisi', kisa: 'MKP', renk: '#2B4FB8', amblem: 'a_basak', kurulus: iso(-5 * 864e5) }, uyeyim: true, rol: 'uye', gm: false, sehir: { id: 6, ad: 'Ankara' },
+          kademe: { no: 2, ad: 'Genel Merkez Binası', olcu: { uye: 97, il: 81, il_baskani: 6 }, sonraki: { no: 3, ad: 'Genel Merkez Yerleşkesi', uye: 150, il: 40, il_baskani: 20 }, liste: [{ no: 1, ad: 'Kuruluş Bürosu', uye: 0, il: 0, il_baskani: 0 }, { no: 2, ad: 'Genel Merkez Binası', uye: 50, il: 15, il_baskani: 5 }, { no: 3, ad: 'Genel Merkez Yerleşkesi', uye: 150, il: 40, il_baskani: 20 }, { no: 4, ad: 'Büyük Genel Merkez', uye: 350, il: 70, il_baskani: 50 }] },
+          prestij: { seviye: 2, ad: 'Gümüş Donanım', katki: 32, esik: [10, 25, 50], sonraki: 50, sonraki_ad: 'Altın Donanım', tutar: 100000, hesap_gun: 3, urun_acik: true, katki_verebilir: true, liste: [{ kad: 'ahmet', ad: 'Ahmet Yılmaz', adet: 6 }, { kad: 'zeynep', ad: 'Zeynep Kaya', adet: 4 }] },
+          yonetim: { gb: { kad: 'zeynep', ad: 'Zeynep Kaya' }, vekil: null, gby: [], disiplin: 0 }, sayilar: { uye: 97, aktif_14g: 97, aktif_24s: 40, yeni_7g: 9, il: 81, il_baskani: 6, il_baskani_secilmis: 0, mv: 0, belediye: 0 },
+          mitingler: [], aciklamalar: [], partiler: [{ id: 2, kisa: 'CYP', ad: 'CYP', renk: '#c62828', kademe: 3, uye: 396, prestij: 3 }, { id: 1, kisa: 'MKP', ad: 'MKP', renk: '#2B4FB8', kademe: 2, uye: 97, prestij: 2 }] };
+        if (ad === 'genel_merkez') return { parti: { id: 1, ad: 'Mavi Kalkınma Partisi', kisa: 'MKP', renk: '#2B4FB8' }, katki: 32, seviye: 2, seviye_ad: 'Gümüş Donanım', esik: [10, 25, 50], sonraki: 50, sonraki_ad: 'Altın Donanım', tutar: 100000,
           liste: [{ kad: 'ahmet', ad: 'Ahmet Yılmaz', adet: 6 }, { kad: 'zeynep', ad: 'Zeynep Kaya', adet: 4 }], siralama: [{ id: 2, kisa: 'CYP', renk: '#c62828', katki: 51, seviye: 3 }, { id: 1, kisa: 'MKP', renk: '#2B4FB8', katki: 32, seviye: 2 }, { id: 3, kisa: 'DTP', renk: '#00838f', katki: 3, seviye: 0 }],
           uyesiyim: true, katki_verebilir: true, hesap_gun: 3 };
         if (ad === 'secim_detay') return { id: 9, tur: 'kurultay', asama: 'oy', oy_bas: iso(-3600e3), oy_bit: iso(3600e3), sonuc_at: iso(7200e3), oy_verdim: false,
@@ -108,7 +114,7 @@ const shot = process.argv[2];
     await page.waitForSelector('.m2-bolum');
     const mg = await page.textContent('#icerik');
     for (const x of ['Uzun süreli Siyaset Kartı', 'Siyaset Kartı · Yıllık', 'Hazine Paketi', 'Seçim dönemi', 'Kürsü Vitrini · 24 saat', 'Şu an 3/3 dolu, sırada 2 kişi', 'Gündem Manşeti · 24 saat',
-      'Parti ve hediye', 'MKP: Genel Merkez · 32 katkı · sıradaki seviyeye 18 katkı', 'Görünüş ve tanınma', 'Destekçiler Duvarı · Altın', 'Bu ay bu kademedesin', 'Vitrin ve manşetlerim', '2. sırada'])
+      'Parti ve hediye', 'MKP: Gümüş Donanım · 32 katkı · sıradaki seviyeye 18 katkı', 'Görünüş ve tanınma', 'Destekçiler Duvarı · Altın', 'Bu ay bu kademedesin', 'Vitrin ve manşetlerim', '2. sırada'])
       assert.ok(mg.includes(x), et('mağaza: ' + x));
     assert.ok(await page.$('.m2-plaka.mk.buyuk'), et('makam plakası büyük'));
     assert.deepEqual(await tasma(), [], et('mağaza taşma'));
@@ -194,9 +200,9 @@ const shot = process.argv[2];
 
     // 7) Genel Merkez
     await page.evaluate(() => genelMerkezEkrani(1));
-    await page.waitForFunction(() => /Partiler sıralaması/.test((document.getElementById('icerik') || {}).textContent || ''));
+    await page.waitForFunction(() => /İmtiyazlı görünüm/.test((document.getElementById('icerik') || {}).textContent || ''));
     const gmm = await page.textContent('#icerik');
-    assert.match(gmm, /Büyük Genel Merkez/, et('sonraki seviye')); assert.match(gmm, /18 katkı kaldı/, et('kalan katkı')); assert.match(gmm, /Ahmet Yılmaz/, et('katkı listesi'));
+    assert.match(gmm, /MKP Genel Merkezi/, et('genel merkez paneli')); assert.match(gmm, /★ Gümüş Donanım/, et('donanım')); assert.match(gmm, /Altın Donanım için32 \/ 50 katkı/, et('sonraki donanım')); assert.match(gmm, /Ahmet Yılmaz/, et('katkı listesi')); assert.ok(await page.$('#gmzMagaza'), et('mağaza düğmesi'));
     assert.deepEqual(await tasma(), [], et('genel merkez taşma'));
     await cek('genel_merkez');
 

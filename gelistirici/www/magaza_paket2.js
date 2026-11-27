@@ -132,7 +132,7 @@
   }
   function kademeAd(k) { return k === 3 ? 'altin' : k === 2 ? 'gumus' : 'bronz'; }
   function kademeYazi(k) { return k === 3 ? 'Altın' : k === 2 ? 'Gümüş' : 'Bronz'; }
-  function gmAd(s) { return s === 3 ? 'Büyük Genel Merkez' : s === 2 ? 'Genel Merkez' : s === 1 ? 'İl Binası' : 'Arsa'; }
+  function gmAd(s) { return s === 3 ? 'Altın Donanım' : s === 2 ? 'Gümüş Donanım' : s === 1 ? 'Bronz Donanım' : 'Standart'; }
   // magaza.js rozetHtml çağırır: l = belirteç listesi
   window.M2_ROZET = function (l) {
     if (!l || !l.length) return '';
@@ -141,7 +141,7 @@
     var dw = l.find(function (x) { return x.indexOf('dw:') === 0; });
     if (dw) { var k = n(dw.slice(3)); h += '<span class="m2-rz m2-' + kademeAd(k) + '" title="Ayın destekçisi · ' + kademeYazi(k) + '">' + (k === 3 ? I.taç : I.madalya) + '</span>'; }
     var gm = l.find(function (x) { return x.indexOf('gm:') === 0; });
-    if (gm) { var s = n(gm.slice(3)); h += '<span class="m2-rz m2-' + (s === 3 ? 'altin' : s === 2 ? 'gumus' : 'bronz') + '" title="Partisi: ' + gmAd(s) + '">' + I.bina + '</span>'; }
+    if (gm) { var s = n(gm.slice(3)); h += '<span class="m2-rz m2-' + (s === 3 ? 'altin' : s === 2 ? 'gumus' : 'bronz') + '" title="Partisinin genel merkezi: ' + gmAd(s) + '">' + I.bina + '</span>'; }
     var bb = l.find(function (x) { return x.indexOf('bb:') === 0; });
     if (bb && String(benParti()) === bb.slice(3)) h += '<span class="m2-cip altin" title="Parti içinde görünür">Büyük Bağışçı</span>';
     if (l.indexOf('yu') >= 0) h += '<span class="m2-cip mor" title="Yıllık Siyaset Kartı">Yıllık Üye</span>';
@@ -602,6 +602,8 @@
       '<button type="button" class="btn ikinci" data-m2gm="' + n((g.parti || {}).id) + '" style="margin-top:10px;min-height:44px">Kampanya ve sıralama</button></div></div>';
   }
   async function gmEkrani(pid) {
+    // 27.11.2026: genel_merkez.js varsa Genel Merkez ekranı odur (bina + panel + kampanya tek yerde)
+    if (window.SO_GENEL_MERKEZ_V1 && typeof window.gmzEkrani === 'function') return window.gmzEkrani(pid);
     if (typeof iskelet === 'function') iskelet('Genel Merkez', '<div class="yukleniyor">Yükleniyor…</div>', { geri: true });
     try {
       var g = await rpc('genel_merkez', { p_parti: pid || null });
@@ -622,6 +624,7 @@
   /* ---------- Parti sayfası: Genel Merkez kartı ---------- */
   function partiSar() {
     if (typeof partiDetay !== 'function' || partiDetay._m2) return;
+    if (window.SO_GENEL_MERKEZ_V1) return; // parti sayfasındaki Genel Merkez kartını genel_merkez.js çizer
     var eski = partiDetay;
     var yeni = async function (id) {
       var r = await eski.apply(this, arguments);

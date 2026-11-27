@@ -5,6 +5,8 @@ const oku = ad => fs.readFileSync(path.join(kok, 'sql', ad), 'utf8').replace(/\r
 // Canlıda Supabase migration'larıyla kurulmuş tablolara (halk hareketleri, gözaltı, kabine süresi, görev denetimi) dayanan
 // modüller: tam kurulumda bu tablolar yoksa dosya atlanır, varsa tek parça çalışır. Böylece tam kurulum bozulmaz.
 const KOSULLU = {
+  // 27.11: Parti Genel Merkezleri; Mağaza Paketi 2 (m2_*), il başkanlığı ve il açıklaması tablolarına dayanır.
+  'zz_20261127_genel_merkez.sql': ['oyun.m2_ayar', 'oyun.m2_gm_katki', 'oyun.paketler', 'oyun.parti_teskilat', 'oyun.il_baskanlik', 'oyun.il_aciklama', 'oyun.parti_gby', 'oyun.parti_gby_yetki', 'oyun.pdk_uye', 'oyun.mitingler'],
   // 27.11: İl Başkanlığı Masası; canlı migration'larla gelen il teşkilatı, GBY yetki, miting, stant, akış, kıdem ve zamanlayıcı tablolarına dayanır.
   'zz_20261127_il_baskanligi_masasi.sql': ['oyun.il_baskanlik', 'oyun.il_kongre', 'oyun.il_yonetim_kurulu', 'oyun.parti_teskilat_gorev', 'oyun.parti_gby_yetki', 'oyun.mitingler', 'oyun.stant', 'oyun.akis', 'oyun.kidem_kaynak', 'oyun.zamanlayici_adim', 'oyun.ajans_haberleri', 'oyun.oturumlar'],
   'zz_20261126_pdk_otomatik_ac.sql': ['oyun.pdk_dosya', 'oyun.ayarlar'],
@@ -201,7 +203,9 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   // 27.11.2026: MAĞAZA PAKETİ 2 — 19 yeni ürün (aktif=false), Kürsü vitrini/Gündem manşeti kuyruğu (3 yer + sıra), plaka, mazbata,
   // kutlama, kongre, lansman sahnesi, genel merkez, parti bağışı, hediye/parti kartı, destekçi duvarı. kursu_akis'i (yuk_hizlandirma
   // çıktısı) _yama ile, haberler/magaza_rozetler'i yeniden yazar; magaza_uygula/magaza_durum'u yamalar. Bu yüzden EN SONDA.
-  'zz_20261127_magaza_paket2.sql'];
+  'zz_20261127_magaza_paket2.sql',
+  // 27.11.2026: PARTİ GENEL MERKEZLERİ — kademe (örgüt gücü; satın alınmaz) + genel_merkez_panel. m2_ayar / m2_gm_katki / m2_gm_ad'ı okur; bu yüzden Mağaza Paketi 2'den SONRA.
+  'zz_20261127_genel_merkez.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
