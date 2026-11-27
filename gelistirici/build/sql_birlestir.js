@@ -65,7 +65,18 @@ const KOSULLU = {
   // 25.11: Şirket Kazanç Dengesi; şube, mağaza satışı, zamanlayıcı adımı ve portal ayarı tabloları (bir kısmı canlı migration) yoksa atlanır.
   'zz_20261125_sirket_kazanc_dengesi.sql': ['oyun.pazar_sirket', 'oyun.pazar_sektor', 'oyun.pazar_ayar', 'oyun.sirket_il_subeleri', 'oyun.eko_npc_satis', 'oyun.eko_isletmeler', 'oyun.zamanlayici_adim', 'oyun.yp_ayar_katalog', 'oyun.satin_almalar'],
   // 26.11: Kademeli Getiri + İstihdam; kazanç dengesi, mağaza, ek iş ve oturum tabloları (bir kısmı canlı migration) yoksa atlanır.
+  // 27.11: Mağaza Paketi 2; mağaza, kürsü, seçim ve parti tabloları (bir kısmı canlı migration) yoksa atlanır.
+  'zz_20261127_magaza_paket2.sql': ['oyun.paketler', 'oyun.magaza_jeton', 'oyun.magaza_hesap', 'oyun.oyuncu_hak', 'oyun.akis', 'oyun.engellemeler', 'oyun.kazananlar', 'oyun.oylar', 'oyun.mesajlar', 'oyun.parti_gby', 'oyun.parti_sozcu', 'oyun.moderatorler', 'oyun.satin_almalar'],
   'zz_20261126_kademeli_getiri_istihdam.sql': ['oyun.sirket_denge_ayar', 'oyun.sirket_denge_durum', 'oyun.pazar_sirket', 'oyun.ek_is_katalog', 'oyun.ek_is_kayit', 'oyun.kidem_kaynak', 'oyun.magaza_hesap', 'oyun.magaza_jeton', 'oyun.paketler', 'oyun.oturumlar'],
+  // 27.11: Genel Kurul salonu; Meclis tamsayısı, ad-soyad, Yardım Masası (mesajlar.gorevli) ve kıdem tabloları (canlı migration'lar) yoksa atlanır.
+  'zz_20261127_tbmm_genel_kurul.sql': ['oyun.meclis_soz', 'oyun.mesajlar', 'oyun.kazananlar', 'oyun.bakan_teklifleri', 'oyun.zamanlayici_adim', 'oyun_yonetim.yasak_isim', 'oyun.moderatorler', 'oyun.destek_mesaj', 'oyun.mod_kisit', 'oyun.kidem_kaynak'],
+  // 27.11: komisyon ve Meclis araştırması tabloları canlı migration'la (14.10 siyasi kurumlar) kuruldu; onlar ya da Genel Kurul yoksa atlanır.
+  'zz_20261127_tbmm_denetim_vekil.sql': ['oyun.kom_tanim', 'oyun.kom_uye', 'oyun.kom_kanun', 'oyun.kom_oy', 'oyun.meclis_arastirma', 'oyun.gk_birlesim', 'oyun.bakan_soru', 'oyun.kidem_kaynak'],
+  // 27.11: miting otobüsü tabloları ve mitingler.tur sütunu (canlı migration'lar) yoksa atlanır.
+  'zz_20261127_yayinevi_sayfasi.sql': ['oyun.uc_kitap', 'oyun.sirket_merkezleri'],
+  'zz_20261127_ortak_sirket_ruhsat.sql': ['oyun.ortak_sirket_kurulus', 'oyun.bel_yatirim_ruhsat'],
+  'zz_20261127_kitap_telif_ozet.sql': ['oyun.uc_kitap', 'oyun.uc_kitap_satis'],
+  'zz_20261127_aday_miting_otobus.sql': ['oyun.miting_otobus', 'oyun.miting_otobus_koltuk', 'oyun.mitingler', 'oyun.parti_gby', 'oyun.parti_hareket'],
 };
 const okuKosullu = ad => {
   const govde = oku(ad), tablolar = KOSULLU[ad];
@@ -159,10 +170,24 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261127_aday_vitrini_lansman.sql',
   // 27.11.2026: Genel Başkan ataması — milletvekili listesine başka ilde yaşayan üye (ikamet şartı yok; kişi tek ilden aday). aday_vitrini_il'i de yeniden yazar, bu yüzden ondan SONRA.
   'zz_20261127_atama_dis_il_aday.sql',
+  // 27.11.2026: TBMM Genel Kurul salonu — birleşim, yoklama, kürsü (süre + kelime), tutanak, sıralardan söz, alkış/protesto, işaret oylaması,
+  // grup önerisi, gündem dışı, genel görüşme, kapalı oturum, disiplin, olağanüstü toplantı. sohbet_yaz'ı _yama ile işaretler (meclis_soz'dan SONRA).
+  'zz_20261127_tbmm_genel_kurul.sql',
+  // 27.11.2026: 19 ihtisas komisyonu + komisyon salonu, yazılı soru önergesi, dilekçe, halk buluşması, vekil karnesi (Genel Kurul dosyasından SONRA).
+  'zz_20261127_tbmm_denetim_vekil.sql',
+  // 27.11.2026: aday mitingine otobüs (aday kendi cüzdanından, partili adaya GB/yetkili GBY parti kasasından).
+  'zz_20261127_aday_miting_otobus.sql',
+  // 27.11.2026: yazara günlük telif özeti bildirimi.
+  'zz_20261127_kitap_telif_ozet.sql',
+  // 27.11.2026: ortak inşaat şirketi kuruluşunda kurucu en büyük ortak değilse ruhsat kapısı hatası.
+  'zz_20261127_ortak_sirket_ruhsat.sql',
+  // (canlı uygulama sırası: tbmm → otobüs → telif → ortak şirket ruhsatı → il başkanlığı masası → yayınevi)
   // 27.11.2026: İl Başkanlığı Masası — il yönetim kurulu yetkileri, karar defteri, il kasası, il mitingi/standı, il açıklamaları, genel merkez yazışması,
   // il başkanı belirleme yöntemi (kongre/atama) ve kurultaydan önce kongre haftası. il_teskilat_detay / il_kongre_tick / il_kongre_ac / il_kongre_oy /
   // il_baskan_gorevden_al'ı yeniden yazar, teskilat_gorev_ver ve parti_miting_duzenle'yi yamalar; bu yüzden il teşkilatı ve miting dosyalarından SONRA.
   'zz_20261127_il_baskanligi_masasi.sql',
+  // 27.11.2026: yayınevi sayfası (uc_kitap_panel › yayinevleri: il, kuruluş, yönetici, ortaklar).
+  'zz_20261127_yayinevi_sayfasi.sql',
   // 25.11.2026: Şirket Kazanç Dengesi — kuruluş dönemi verimi, sermayeye bağlı kazanç tavanı, şube tavanı, mağaza satış tavanı, geçiş dönemi.
   // pazar_tahmin / sube_bolge_analiz / sube_pazar_tahmin / halka_arz_net_tahmin'i yeniden yazar, pazar_hesapla / eko_ticaret_tick /
   // npc_isletme_tick / pazar_danisman'ı yamalar (oyun.sd_yama); bu yüzden listenin SONUNDA kalmalı.
@@ -172,7 +197,11 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261126_kademeli_getiri_istihdam.sql',
   // 25.11.2026: YÜK HIZLANDIRMA — Kürsü gündemi/akışı, sohbet açılışı ve unvan önbelleği (canlıda 25.11 akşamı uygulandı).
   // LİSTENİN SONUNDA KALMALI: sohbet_oku, kursu_akis, kursu_gundem ve oyun.unvan'ı yeniden yazan dosyalardan sonra gelir.
-  'zz_20261125_yuk_hizlandirma.sql'];
+  'zz_20261125_yuk_hizlandirma.sql',
+  // 27.11.2026: MAĞAZA PAKETİ 2 — 19 yeni ürün (aktif=false), Kürsü vitrini/Gündem manşeti kuyruğu (3 yer + sıra), plaka, mazbata,
+  // kutlama, kongre, lansman sahnesi, genel merkez, parti bağışı, hediye/parti kartı, destekçi duvarı. kursu_akis'i (yuk_hizlandirma
+  // çıktısı) _yama ile, haberler/magaza_rozetler'i yeniden yazar; magaza_uygula/magaza_durum'u yamalar. Bu yüzden EN SONDA.
+  'zz_20261127_magaza_paket2.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',

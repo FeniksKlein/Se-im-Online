@@ -652,6 +652,8 @@
       toast('Otobüs organizasyonu yalnız parti mitinglerinde yapılabilir.', true);
       return;
     }
+    // 27.11.2026: aday mitinglerinde de otobüs (aday kendi cüzdanından, partili adaya GB/yetkili GBY parti kasasından)
+    var kendi = d.odeme === 'aday';
     var sonuc = '<h3>🚌 ' + temiz(d.il) + ' mitingine otobüsler</h3>';
     sonuc += '<p class="alt">Başka ildeki oyuncular, kendi illerinden kalkan otobüste ücretsiz yer ayırtıp miting başladığında meydanda katılım, slogan ve tepki haklarını kullanır. Her otobüs 40 kişiliktir.</p>';
     var araclar = d.otobusler || [];
@@ -670,18 +672,18 @@
     else if (bana && bana.dolu < bana.koltuk && new Date(d.bit).getTime() > new Date(d.simdi).getTime())
       sonuc += '<button class="btn canli" id="moRezervasyon">Kendi ilimden ücretsiz koltuk ayırt</button>';
     else if (bana && bana.dolu >= bana.koltuk) sonuc += '<p class="kucuk">İlinden kalkan otobüsler dolu. Partinin yeni otobüs kaldırması gerekiyor.</p>';
-    else sonuc += '<p class="kucuk">Yaşadığın ilden henüz otobüs yok. Genel başkan veya yetkili yardımcısının bu ilden otobüs kaldırması gerekiyor.</p>';
+    else sonuc += '<p class="kucuk">Yaşadığın ilden henüz otobüs yok. ' + (d.tur === 'aday' ? 'Mitingi düzenleyen adayın ya da partisinin' : 'Genel başkan veya yetkili yardımcısının') + ' bu ilden otobüs kaldırması gerekiyor.</p>';
     var planlama = d.yetkili && d.iller && new Date(d.bas).getTime() - new Date(d.simdi).getTime() > 600000;
     if (planlama) {
-      sonuc += '<div class="kart"><h3>Parti kasasından otobüs kaldır</h3>' +
-        '<p class="alt">Ücret çıkış ve varış iline göre hesaplanır. 1 otobüs 40 kişilik; bir ilden bir mitinge en fazla 10 otobüs. Harcamalar parti kasası defterine yazılır.</p>' +
-        '<div class="kv"><span>Parti kasası</span><b>' + tl(d.kasa) + '</b></div>' +
+      sonuc += '<div class="kart"><h3>' + (kendi ? 'Kendi cüzdanından otobüs kaldır' : 'Parti kasasından otobüs kaldır') + '</h3>' +
+        '<p class="alt">Ücret çıkış ve varış iline göre hesaplanır. 1 otobüs 40 kişilik; bir ilden bir mitinge en fazla 10 otobüs. ' + (kendi ? 'Bedel cüzdanından düşülür; kalkış ilindeki oyuncular ücretsiz koltuk ayırtır.' : 'Harcamalar parti kasası defterine yazılır.') + '</p>' +
+        '<div class="kv"><span>' + (kendi ? 'Cüzdanın' : 'Parti kasası') + '</span><b>' + tl(d.kasa) + '</b></div>' +
         '<div class="alan"><label>Kalkış ili</label><select id="moKaynak">' +
         d.iller.map(function(i){return '<option value="'+Number(i.id)+'">'+temiz(i.ad)+'</option>';}).join('') +
         '</select></div><div class="alan"><label>Otobüs adedi</label><select id="moAdet">' +
         [1,2,3,4,5].map(function(i){return '<option value="'+i+'">'+i+' otobüs · '+(i*40)+' koltuk</option>';}).join('') +
         '</select></div><p class="alt" id="moFiyat"></p>' +
-        '<button class="btn altin" id="moKaldir">Parti kasasından öde ve otobüs kaldır</button></div>';
+        '<button class="btn altin" id="moKaldir">' + (kendi ? 'Cüzdanımdan öde ve otobüs kaldır' : 'Parti kasasından öde ve otobüs kaldır') + '</button></div>';
     } else if (d.yetkili && new Date(d.bas).getTime() <= new Date(d.simdi).getTime() + 600000) {
       sonuc += '<p class="kucuk">Mitingin başlamasına 10 dakikadan az kaldığı için yeni otobüs planlaması kapalı.</p>';
     }
@@ -708,7 +710,7 @@
           ' · Ek koltuk: '+(n*40)+' · Bu ilden mevcut: '+kalan+' otobüs';
         kaldir.disabled = kalan+n>10 || tut>Number(d.kasa);
         if (kalan+n>10) fiyat.textContent += ' · 10 otobüslük sınır aşılıyor';
-        if (tut>Number(d.kasa)) fiyat.textContent += ' · Parti kasası yetersiz';
+        if (tut>Number(d.kasa)) fiyat.textContent += kendi ? ' · Cüzdanında yeterli para yok' : ' · Parti kasası yetersiz';
       };
       il.addEventListener('change',hesap); adet.addEventListener('change',hesap); hesap();
       kaldir.addEventListener('click',async function () {
@@ -716,7 +718,7 @@
         try {
           await API.rpc('miting_otobus_kaldir',{p_miting:id,p_kaynak_il:Number(il.value),p_adet:Number(adet.value)});
           modalKapat();
-          toast('Otobüsler kaldırıldı; bedel parti kasasından düşüldü ve kalkış iline duyuruldu.');
+          toast('Otobüsler kaldırıldı; bedel ' + (kendi ? 'cüzdanından' : 'parti kasasından') + ' düşüldü ve kalkış iline duyuruldu.');
           if (typeof window.partiMitingKartCiz === 'function' && window.__mitingOtobusPartiPid)
             await window.partiMitingKartCiz(window.__mitingOtobusPartiPid);
           window.mitingOtobusAc(id);
@@ -729,8 +731,8 @@
     var oncekiSahne = window.mtSahneHtml;
     window.mtSahneHtml = function (d) {
       var sonuc = oncekiSahne.apply(this, arguments);
-      if (d && d.tur === 'parti') {
-        sonuc = sonuc.replace(/Canlı izliyorsun\. Katılmak, tepki vermek ve slogan atmak yalnız [^<]+yaşayanlara açık\./,
+      if (d && (d.tur === 'parti' || d.tur === 'aday')) {
+        if (d.tur === 'parti') sonuc = sonuc.replace(/Canlı izliyorsun\. Katılmak, tepki vermek ve slogan atmak yalnız [^<]+yaşayanlara açık\./,
           'Canlı izliyorsun. Başka ilden katılmak için partinin kaldırdığı otobüsten yer ayırtabilirsin.');
         sonuc += '<div class="kart" style="margin-top:8px"><button class="btn ikinci" onclick="mitingOtobusAc('+
           Number(d.id)+')">🚌 Otobüsler ve iller arası miting katılımı</button></div>';

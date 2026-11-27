@@ -7,7 +7,7 @@
 if(window.SO_KITAP_VITRINI_V2)return;
 window.SO_KITAP_VITRINI_V2=true;
 
-var veri=null,rek=null,sekme="vitrin",arama="",islemde=false,istek=0;
+var veri=null,rek=null,sekme="vitrin",arama="",islemde=false,istek=0,yvAcik=null;
 try{var _s=sessionStorage.getItem("kt_sekme");if(_s)sekme=_s;}catch(_){}
 var e=function(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){
  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
@@ -106,6 +106,27 @@ function stil(){
  ".kt-panel h3{font-family:var(--disp);font-size:20px;font-weight:700;margin:0 0 3px}",
  ".kt-panel>p,.kt-not{margin:0;color:var(--mut);font-size:12.5px;line-height:1.45}",
  ".kt-sira{list-style:none;margin:12px 0 0;padding:0}",
+ /* yayınevi kartları ve sayfası (27.11.2026) */
+ ".kt-yvk-liste{display:grid;gap:10px;margin:0 0 14px}",
+ "@media(min-width:700px){.kt-yvk-liste{grid-template-columns:1fr 1fr}}",
+ ".kt-yvk{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:13px 14px;color:inherit;cursor:pointer;min-width:0}",
+ ".kt-yvk-arma{flex:none;width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font:700 19px/1 var(--disp);color:#fff;letter-spacing:.5px}",
+ ".kt-yvk-arma.buyuk{width:62px;height:62px;border-radius:16px;font-size:25px}",
+ ".kt-yvk-bilgi{flex:1;min-width:0}.kt-yvk-bilgi b{display:block;font-size:15.5px;line-height:1.25;overflow-wrap:anywhere}",
+ ".kt-yvk-bilgi small{display:block;color:var(--mut);font-size:12.5px;line-height:1.4;margin-top:2px;overflow-wrap:anywhere}",
+ ".kt-yvk .ok{flex:none;color:var(--mut);font-size:22px}",
+ ".kt-yv-geri{display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:var(--mut);font-weight:700;font-size:13.5px;padding:4px 0 12px;cursor:pointer}",
+ ".kt-yv-ust{display:flex;align-items:center;gap:14px;margin-bottom:14px;min-width:0}",
+ ".kt-yv-ust h2{font-family:var(--disp);font-size:24px;line-height:1.12;margin:0;overflow-wrap:anywhere}",
+ ".kt-yv-ust p{margin:4px 0 0;color:var(--mut);font-size:12.5px;line-height:1.4}",
+ ".kt-ist{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}",
+ ".kt-ist div{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 8px;text-align:center;min-width:0}",
+ ".kt-ist b{display:block;font:700 20px/1.1 var(--disp);font-variant-numeric:tabular-nums}",
+ ".kt-ist small{display:block;color:var(--mut);font-size:11px;line-height:1.25;margin-top:3px}",
+ ".kt-kisi{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;min-width:0}",
+ ".kt-kisi+.kt-kisi{border-top:1px solid var(--line)}",
+ ".kt-kisi button{background:none;border:0;padding:0;color:var(--ink2);font-weight:800;font-size:14.5px;text-align:left;cursor:pointer;overflow-wrap:anywhere;min-width:0}",
+ ".kt-kisi span{color:var(--mut);font-size:12.5px;white-space:nowrap;flex:none}",
  ".kt-sira li{display:flex;align-items:center;gap:12px;padding:10px 0;min-width:0;cursor:pointer}",
  ".kt-sira li+li{border-top:1px solid var(--line)}",
  ".kt-sira .kt-rank{width:30px;flex:none;text-align:center;font:700 26px/1 var(--disp);color:var(--txt2);font-variant-numeric:tabular-nums}",
@@ -333,35 +354,82 @@ function listeHtml(){
   (tum.length?'<section class="kt-panel"><h3>Tüm zamanların en çok satanları</h3>'+kisa(tum,function(k){return k;},function(x,k){return k.satilan;})+'</section>':'');
 }
 function yayineviHtml(){
- if(!rek)return '<div class="kt-panel"><div class="kt-bos">Yayınevi sıralaması şu anda yüklenemedi.</div></div>';
+ if(yvAcik!=null&&yayineviBul(yvAcik))return yayineviSayfaHtml(yvAcik);
+ if(!rek)return tumYayinevleriHtml()+ '<div class="kt-panel"><div class="kt-bos">Yayınevi sıralaması şu anda yüklenemedi.</div></div>';
  var y=(rek.yayinevleri||[]).filter(function(x){return Number(x.kitap)>0||Number(x.toplam_adet)>0;});
  var en=Math.max(1,Number(y[0]&&y[0].hafta_adet)||0);
  var yl=y.length?'<ol class="kt-sira">'+y.map(function(x,i){
    var ga=Number(x.gecen_adet)||0,ha=Number(x.hafta_adet)||0;
    var sh=sahipBul(x);
-   return '<li style="cursor:default"><span class="kt-rank">'+(i+1)+'</span><div class="kt-ad"><b>'+e(x.ad)+(x.benim?'<span class="kt-sen">Senin</span>':'')+'</b>'+
+   return '<li'+(id(x.id)?' onclick="soYayineviAc('+id(x.id)+')"':' style="cursor:default"')+'><span class="kt-rank">'+(i+1)+'</span><div class="kt-ad"><b>'+e(x.ad)+(x.benim?'<span class="kt-sen">Senin</span>':'')+'</b>'+
     '<small>'+(sh?'Sahibi '+e(sh)+' · ':'')+e(sayi(x.kitap))+' kitap · toplam '+e(sayi(x.toplam_adet))+' satış'+(Number(x.imza)>0?' · '+e(sayi(x.imza))+' imza günü':'')+'</small>'+
     '<div class="kt-cubuk"><i style="width:'+Math.max(ha?4:0,Math.round(ha/en*100))+'%"></i></div></div>'+
     '<div class="kt-deger"><b>'+e(sayi(ha))+'</b><small>bu hafta</small><div class="kt-not">'+e(para(x.hafta_ciro))+'</div></div></li>';
   }).join("")+'</ol>':'<div class="kt-bos">Henüz kitap basan yayınevi yok.</div>';
  var yz=(rek.yazarlar||[]);
  var yzl=yz.length?'<ol class="kt-sira">'+yz.slice(0,10).map(function(x,i){
-   return '<li style="cursor:default"><span class="kt-rank">'+(i+1)+'</span><div class="kt-ad"><b>'+e(x.kad)+(x.benim?'<span class="kt-sen">Sen</span>':'')+'</b><small>'+e(sayi(x.kitap))+' kitap · bu hafta '+e(sayi(x.hafta_adet))+' satış</small></div>'+
+   return '<li data-kad="'+e(x.kad)+'" onclick="soKitapOyuncu(this)"><span class="kt-rank">'+(i+1)+'</span><div class="kt-ad"><b>'+e(x.kad)+(x.benim?'<span class="kt-sen">Sen</span>':'')+'</b><small>'+e(sayi(x.kitap))+' kitap · bu hafta '+e(sayi(x.hafta_adet))+' satış</small></div>'+
     '<div class="kt-deger"><b>'+e(sayi(x.toplam_adet))+'</b><small>toplam</small></div></li>';
   }).join("")+'</ol>':'<div class="kt-bos">Henüz yayımlanmış yazar yok.</div>';
- return '<section class="kt-panel"><h3>Yayınevleri yarışı</h3><p>Bu haftaki satış adedine göre sıralanır; tutar bu haftanın cirosudur.</p>'+geriSayimHtml()+yl+'</section>'+
-  '<section class="kt-panel"><h3>Yazarlar</h3><p>Toplam satışa göre ilk 10 yazar.</p>'+yzl+'</section>'+tumYayinevleriHtml()+yazBtn();
+ return tumYayinevleriHtml()+'<section class="kt-panel"><h3>Yayınevleri yarışı</h3><p>Bu haftaki satış adedine göre sıralanır; tutar bu haftanın cirosudur.</p>'+geriSayimHtml()+yl+'</section>'+
+  '<section class="kt-panel"><h3>Yazarlar</h3><p>Toplam satışa göre ilk 10 yazar.</p>'+yzl+'</section>'+yazBtn();
 }
 /* 25.11.2026: yayınevi sahipleri — uc_kitap_panel yayinevleri {sahip, bekleyen, yayinlanan} */
 function panelYayinevleri(){return Array.isArray(veri&&veri.yayinevleri)?veri.yayinevleri:[];}
 function sahipBul(x){var p=panelYayinevleri().filter(function(y){return (x.id!=null&&id(y.id)===id(x.id))||y.ad===x.ad;})[0];return p&&p.sahip?p.sahip:"";}
+/* 27.11.2026: herkese açık yayınevi sayfası — sahibi/ortakları, çıkardığı kitaplar, yazarları, imza günleri */
+function yayineviBul(x){var n=id(x);return panelYayinevleri().filter(function(y){return id(y.id)===n;})[0]||null;}
+function yvKitaplar(yid){var n=id(yid);return kitaplar().filter(function(k){return id(k.yayinevi)===n;});}
+function yvRek(y){return ((rek&&rek.yayinevleri)||[]).filter(function(x){return (x.id!=null&&id(x.id)===id(y.id))||x.ad===y.ad;})[0]||null;}
+function yvSahipYazi(y){
+ var o=Array.isArray(y.ortaklar)?y.ortaklar:[];
+ if(o.length>1)return o.length+" ortaklı · yöneten "+(y.yonetici||y.sahip||o[0].kad);
+ var s=y.sahip||y.yonetici||(o[0]&&o[0].kad);
+ return s?"Sahibi "+s:"Sahibi belirsiz";
+}
+function yvArma(y,buyuk){
+ var ad=String(y.ad||"?").trim(),h=ozet(String(y.id)+"|"+ad),p=PALET[h%PALET.length];
+ var bas=ad.split(/\s+/).slice(0,2).map(function(w){return w.charAt(0);}).join("").toLocaleUpperCase("tr-TR");
+ return '<span class="kt-yvk-arma'+(buyuk?' buyuk':'')+'" style="background:linear-gradient(145deg,'+p[0]+','+p[1]+')" aria-hidden="true">'+e(bas)+'</span>';
+}
 function tumYayinevleriHtml(){
- var l=panelYayinevleri().slice().sort(function(a,b){return String(a.ad).localeCompare(String(b.ad),"tr");});
+ var l=panelYayinevleri().slice().sort(function(a,b){return (Number(b.yayinlanan)||0)-(Number(a.yayinlanan)||0)||String(a.ad).localeCompare(String(b.ad),"tr");});
  if(!l.length)return "";
- return '<section class="kt-panel"><h3>Bütün yayınevleri</h3><p>Kitabını göndermeden önce yayınevinin sahibine ve bekleyen dosya sayısına bak.</p><ol class="kt-sira">'+l.map(function(y){
-   return '<li style="cursor:default"><div class="kt-ad"><b>'+e(y.ad)+'</b><small>'+(y.sahip?'Sahibi '+e(y.sahip):'Sahibi belirsiz')+'</small></div>'+
-    '<div class="kt-deger"><b>'+e(sayi(y.bekleyen))+'</b><small>bekleyen dosya</small><div class="kt-not">'+e(sayi(y.yayinlanan))+' yayımlanan</div></div></li>';
-  }).join("")+'</ol></section>';
+ var benim=(veri&&veri.benim_yayinevleri||[]).map(id);
+ return '<div class="kt-bolum" style="margin-top:4px"><div class="kt-bolum-bas"><h2>Yayınevleri</h2><span>'+e(sayi(l.length))+' yayınevi</span></div>'+
+  '<p class="kt-not" style="margin:-4px 0 12px">Bir yayınevine dokun: sahibini, çıkardığı kitapları ve yazarlarını gör.</p><div class="kt-yvk-liste">'+l.map(function(y){
+   var top=yvKitaplar(y.id).reduce(function(t,k){return t+(Number(k.satilan)||0);},0);
+   return '<button type="button" class="kt-yvk" onclick="soYayineviAc('+id(y.id)+')">'+yvArma(y)+'<span class="kt-yvk-bilgi"><b>'+e(y.ad)+(benim.indexOf(id(y.id))>=0?'<span class="kt-sen">Senin</span>':'')+'</b>'+
+    '<small>'+e(yvSahipYazi(y))+(y.il?' · '+e(y.il):'')+'</small><small>'+e(sayi(y.yayinlanan))+' kitap · '+e(sayi(top))+' satış'+(Number(y.bekleyen)>0?' · '+e(sayi(y.bekleyen))+' dosya bekliyor':'')+'</small></span><span class="ok" aria-hidden="true">›</span></button>';
+  }).join("")+'</div></div>';
+}
+function yayineviSayfaHtml(yid){
+ var y=yayineviBul(yid),r=yvRek(y)||{},kl=yvKitaplar(y.id).slice().sort(function(a,b){return (Number(b.satilan)||0)-(Number(a.satilan)||0)||id(b.id)-id(a.id);});
+ var top=kl.reduce(function(t,k){return t+(Number(k.satilan)||0);},0);
+ var benim=(veri&&veri.benim_yayinevleri||[]).map(id).indexOf(id(y.id))>=0;
+ var o=Array.isArray(y.ortaklar)?y.ortaklar.slice():[];
+ if(!o.length&&(y.sahip||y.yonetici))o=[{kad:y.sahip||y.yonetici,pay:null}];
+ var kisi=function(kad,sag){return '<div class="kt-kisi"><button type="button" data-kad="'+e(kad)+'" onclick="soKitapOyuncu(this)">'+e(kad)+'</button><span>'+sag+'</span></div>';};
+ var yon=y.yonetici||y.sahip||"";
+ var sahipler=o.length?o.map(function(x){
+   var et=[];if(x.pay!=null)et.push("%"+String(x.pay).replace(".",","));if(o.length>1&&x.kad===yon)et.push("yönetici");
+   return kisi(x.kad,e(et.join(" · ")));
+  }).join("")+(Number(y.ortak_sayisi)>o.length?'<p class="kt-not" style="margin-top:6px">ve '+e(sayi(Number(y.ortak_sayisi)-o.length))+' küçük ortak daha</p>':''):'<div class="kt-bos">Sahiplik bilgisi yok.</div>';
+ var ym={};kl.forEach(function(k){var a=k.yazar||"Bilinmiyor";(ym[a]=ym[a]||{kad:a,n:0,s:0}).n++;ym[a].s+=Number(k.satilan)||0;});
+ var yz=Object.keys(ym).map(function(a){return ym[a];}).sort(function(a,b){return b.s-a.s||b.n-a.n;});
+ var im=imzalar().filter(function(x){return (x.yayinevi!=null?id(x.yayinevi)===id(y.id):x.yayinevi_ad===y.ad)&&x.durum!=="bitti";});
+ var tarih="";try{if(y.kurulus)tarih=new Date(y.kurulus).toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric",timeZone:"Europe/Istanbul"});}catch(_){}
+ return '<button type="button" class="kt-yv-geri" onclick="soYayineviAc(null)">‹ Bütün yayınevleri</button>'+
+  '<div class="kt-yv-ust">'+yvArma(y,true)+'<div style="min-width:0"><h2>'+e(y.ad)+(benim?'<span class="kt-sen">Senin</span>':'')+'</h2>'+
+  '<p>'+[y.il?e(y.il):"",tarih?"Kuruluş "+e(tarih):""].filter(Boolean).join(" · ")+'</p></div></div>'+
+  '<div class="kt-ist"><div><b>'+e(sayi(kl.length))+'</b><small>yayımlanan kitap</small></div><div><b>'+e(sayi(top))+'</b><small>toplam satış</small></div><div><b>'+e(sayi(r.hafta_adet||0))+'</b><small>bu hafta satış</small></div>'+
+  '<div><b>'+e(sayi(yz.length))+'</b><small>yazar</small></div><div><b>'+e(sayi(r.imza||0))+'</b><small>imza günü</small></div><div><b>'+e(sayi(y.bekleyen||0))+'</b><small>bekleyen dosya</small></div></div>'+
+  '<section class="kt-panel"><h3>'+(o.length>1?"Ortakları":"Sahibi")+'</h3><p>Ada dokununca oyuncunun kartı açılır.</p><div style="margin-top:6px">'+sahipler+'</div></section>'+
+  '<div class="kt-bolum"><div class="kt-bolum-bas"><h2>Çıkardığı kitaplar</h2><span>'+(kl.length?e(sayi(kl.length))+' kitap':'')+'</span></div>'+
+  (kl.length?'<div class="kt-liste kt-iki">'+kl.map(satirHtml).join("")+'</div>':'<div class="kt-panel"><div class="kt-bos">Bu yayınevi henüz kitap yayımlamadı.</div></div>')+'</div>'+
+  (yz.length?'<section class="kt-panel"><h3>Yazarları</h3><p>Bu yayınevinden kitabı çıkan yazarlar.</p><div style="margin-top:6px">'+yz.map(function(a){return kisi(a.kad,e(sayi(a.n))+' kitap · '+e(sayi(a.s))+' satış');}).join("")+'</div></section>':'')+
+  (im.length?'<div class="kt-bolum"><div class="kt-bolum-bas"><h2>İmza günleri</h2><span>'+e(sayi(im.length))+'</span></div>'+im.map(biletHtml).join("")+'</div>':'')+
+  (benim?'':yazBtn().replace("Kitap yaz ya da yayınevini yönet","Bu yayınevine kitap gönder"));
 }
 function biletHtml(ev){
  var t=simdiMs(),z=trTarih(ev.baslangic),canli=ev.durum==="canli",bitti=ev.durum==="bitti";
@@ -522,7 +590,17 @@ function sayacBaslat(){
 }
 
 /* ---------- Dış işlevler ---------- */
+window.soYayineviAc=function(yid){
+ yvAcik=yid==null?null:id(yid);
+ if(yvAcik!=null&&!yayineviBul(yvAcik)){yvAcik=null;if(typeof toast==="function")toast("Yayınevi bilgisi bulunamadı.",true);return;}
+ sekme="yayinevi";
+ try{sessionStorage.setItem("kt_sekme",sekme);}catch(_){}
+ ciz();
+ var ic=document.getElementById("icerik");if(ic)ic.scrollTop=0;
+};
+window.soKitapOyuncu=function(el){var k=el&&el.getAttribute("data-kad");if(k&&typeof oyuncuKart==="function")oyuncuKart(k);};
 window.soKitapSekme=function(k){
+ yvAcik=null;
  sekme=["vitrin","dosya","liste","yayinevi","imza"].indexOf(k)>=0?k:"vitrin";
  try{sessionStorage.setItem("kt_sekme",sekme);}catch(_){}
  var g=document.getElementById("ktGovde");
@@ -573,7 +651,7 @@ window.soKitapDetay=function(kid){
  else if(duz&&!duz.engel)b.push('<button class="btn altin" onclick="soImzaDuzenleAc('+id(k.id)+')">İmza günü düzenle</button>');
  b.push('<button class="btn ikinci" onclick="modalKapat()">Kapat</button>');
  modal('<div class="kt-detay-ust">'+kapak(k,"l")+'<div class="bilgi"><span class="tur">'+e(k.tur||"Kitap")+'</span><h3>'+e(k.baslik)+'</h3>'+
-  '<p>'+e(k.yazar||"Bilinmiyor")+'</p><p style="color:var(--mut)">'+e(k.yayinevi_ad||"—")+'</p>'+(roz.length?'<div class="kt-rozetler">'+roz.join("")+'</div>':'')+'</div></div>'+
+  '<p>'+e(k.yazar||"Bilinmiyor")+'</p><p style="color:var(--mut)">'+(id(k.yayinevi)&&yayineviBul(k.yayinevi)?'<a href="#" style="color:inherit;text-decoration:underline;text-underline-offset:3px" onclick="if(typeof modalKapat===\'function\')modalKapat();soYayineviAc('+id(k.yayinevi)+');return false">'+e(k.yayinevi_ad||"—")+' ›</a>':e(k.yayinevi_ad||"—"))+'</p>'+(roz.length?'<div class="kt-rozetler">'+roz.join("")+'</div>':'')+'</div></div>'+
   (k.ozet?'<p class="kt-ozet">'+e(String(k.ozet).slice(0,600))+'</p>':'')+
   '<div class="kt-istat"><div><b>'+e(para(k.fiyat))+'</b><small>Fiyat</small></div><div><b>'+e(sayi(k.satilan))+'</b><small>Toplam satış</small></div>'+
   '<div><b>'+e(sayi(hm?hm.adet:0))+'</b><small>Bu hafta</small></div><div><b>'+e(sayi(stok))+'</b><small>Stok</small></div></div>'+
