@@ -12,7 +12,7 @@
 --   secimonline.party_donation        hizmet ₺199,99  Parti Kasasına Bağış (250.000 ₺ + 30 gün "Büyük Bağışçı", yalnız parti içinde)
 --   secimonline.hq_campaign           hizmet ₺99,99   Genel Merkez Kampanyası (kasaya 100.000 ₺; 10/25/50 katkıda seviye)
 --   secimonline.launch_stage          hizmet ₺199,99  Lansman Sahnesi (partiye kalıcı)
---   secimonline.congress_pack         hizmet ₺99,99   Kongre Paketi (kurultay adaylığına bayrak, afiş, alkış)
+--   secimonline.congress_pack         hizmet ₺99,99   Kongre Paketi (kurultay süresince sohbette ve profilde bayrak + slogan; oy pusulasında ayrıcalık YOK)
 --   secimonline.kursu_showcase_24h    hizmet ₺249,99  Kürsü Vitrini 24 saat (aynı anda en çok 3; sonrası sıra)
 --   secimonline.headline_24h          hizmet ₺299,99  Gündem Manşeti 24 saat (moderasyon; aynı anda en çok 3; sonrası sıra)
 --   secimonline.mandate               hizmet ₺49,99   Mazbata (seçim kazanana)
@@ -219,7 +219,7 @@ insert into oyun.paketler(urun_id, ad, miktar, sira, tur, gun, hak, aciklama, et
   ('secimonline.launch_stage', 'Lansman Sahnesi', 0, 54, 'hizmet', 0, null,
    'Partinin aday lansmanlarında ışıklı sahne, alkışta konfeti ve parti posteri. Partiye kalıcı olarak bağlanır.', 'Partiye kalıcı', '₺199,99', false),
   ('secimonline.congress_pack', 'Kongre Paketi', 0, 55, 'hizmet', 0, null,
-   'Kurultay adaylığında oy pusulasında ve aday listesinde bayrak, kendi sloganınla aday afişi ve alkış efekti. O kurultay için geçerlidir.', 'Kurultay', '₺99,99', false),
+   'Kurultay süresince sohbette adının yanında bayrak ve sloganın, profilinde aday afişin ve alkış efekti. Oy pusulasında ve aday listesinde hiçbir ayrıcalık yoktur. O kurultay için geçerlidir.', 'Kurultay', '₺99,99', false),
   ('secimonline.kursu_showcase_24h', 'Kürsü Vitrini · 24 saat', 0, 60, 'hizmet', 0, null,
    'Seçtiğin Kürsü paylaşımın 24 saat akışın en üstünde "Öne çıkan" etiketiyle durur. Aynı anda en çok 3 vitrin olur; doluysa sıraya girersin ve yayına gireceğin saat önceden bildirilir.', 'En çok 3', '₺249,99', false),
   ('secimonline.headline_24h', 'Gündem Manşeti · 24 saat', 0, 61, 'hizmet', 0, null,
@@ -460,7 +460,7 @@ begin
   select pa2.* into pa from oyun.secimler s join oyun.partiler pa2 on pa2.id = s.hedef_parti_id where s.id = sid;
   insert into oyun.m2_kongre(secim_id, user_id, slogan, zaman) values (sid, u, 'Yeniden büyük ' || coalesce(pa.kisa, 'parti'), t)
   on conflict do nothing;
-  perform oyun.bildir(u, 'Kongre Paketin kurultay adaylığına uygulandı. Afişindeki sloganı Mağaza › Kongre Paketi''nden değiştirebilirsin.', t);
+  perform oyun.bildir(u, 'Kongre Paketin kurultay adaylığına uygulandı: kurultay bitene kadar sohbette adının yanında ve profilinde görünür. Sloganı Mağaza › Kongre Paketi''nden değiştirebilirsin.', t);
   return true;
 end $$;
 
@@ -1270,6 +1270,11 @@ language sql stable security definer set search_path to 'oyun', 'public', 'pg_te
           select user_id, 'yu' from oyun.magaza_hesap where yillik_bitis > oyun.simdi()
           union all
           select z.user_id, 'z:' || replace(z.rozet, ',', ' ') from (select distinct on (user_id) user_id, rozet from oyun.m2_zafer order by user_id, id desc) z
+          union all
+          -- Kongre Paketi yalnız kurultay süresince (oy pusulasında ayrıcalık yok; sohbette ve profilde görünür)
+          select k.user_id, 'kg:' || replace(k.slogan, ',', ' ') from oyun.m2_kongre k join oyun.secimler s on s.id = k.secim_id
+           where s.durum not in ('tamam', 'iptal') and coalesce(s.sonuc_at, s.oy_bit) > oyun.simdi()
+             and exists (select 1 from oyun.adaylar a where a.secim_id = k.secim_id and a.user_id = k.user_id)
         ) x group by user_id) r
   join oyun.profiller pr on pr.id = r.user_id
   where not pr.yasakli

@@ -5,7 +5,7 @@
    • Kürsü: vitrindeki paylaşıma "Öne çıkan" etiketi (sunucu zaten akışın başına koyar)
    • Gündem: yayındaki manşetler, Destekçiler Duvarı, moderatöre "Manşet onayı"
    • Sohbet: [Büyük Bağış] / [Genel Merkez] / [Zafer] / [Hediye Kart] / [Parti Kartı] / [Lansman Sahnesi] mesajları kart görünümünde; plaka ve rozetler
-   • Kurultay oy pusulası/aday listesi: Kongre Paketi (bayrak, afiş, alkış); Aday lansmanı: Lansman Sahnesi
+   • Kongre Paketi: yalnız kurultay süresince sohbette adın yanında çip, profilde/oyuncu kartında afiş (oy pusulasında ayrıcalık YOK); Aday lansmanı: Lansman Sahnesi
    • Parti sayfası: Genel Merkez kartı; Profil ve oyuncu kartı: plaka ve mazbatalar; zafer gecesi kutlama sahnesi
    Eski sunucuda (RPC yoksa) hiçbir şey eklenmez. */
 (function () {
@@ -68,7 +68,7 @@
       '.m2-rz{display:inline-flex;align-items:center;gap:2px;vertical-align:-2px}.m2-rz svg{width:14px;height:14px}',
       '.m2-cip{display:inline-block;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:6px;line-height:1.5;white-space:nowrap}',
       '.m2-altin{color:#F2C94C}.m2-gumus{color:#D3D6E0}.m2-bronz{color:#D9A066}',
-      '.m2-cip.altin{background:rgba(242,201,76,.15);color:#F2C94C}.m2-cip.gumus{background:rgba(211,214,224,.13);color:#D3D6E0}.m2-cip.bronz{background:rgba(217,160,102,.15);color:#D9A066}.m2-cip.mor{background:var(--inkbg,rgba(123,97,255,.16));color:var(--ink2,#A895FF)}',
+      '.m2-cip.kirmizi{background:rgba(240,69,75,.16);color:#FF7479}','.m2-cip.altin{background:rgba(242,201,76,.15);color:#F2C94C}.m2-cip.gumus{background:rgba(211,214,224,.13);color:#D3D6E0}.m2-cip.bronz{background:rgba(217,160,102,.15);color:#D9A066}.m2-cip.mor{background:var(--inkbg,rgba(123,97,255,.16));color:var(--ink2,#A895FF)}',
       '.m2-etiket{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;color:var(--ink2,#A895FF);background:var(--inkbg,rgba(123,97,255,.16));border-radius:8px;padding:3px 9px;margin:0 0 6px}',
       '.m2-etiket svg{width:13px;height:13px}',
       '.kr-g.m2-vitrin{border:1.5px solid var(--ink,#7B61FF) !important;border-radius:16px;background:rgba(123,97,255,.07);margin:6px 0}',
@@ -147,6 +147,8 @@
     if (l.indexOf('yu') >= 0) h += '<span class="m2-cip mor" title="Yıllık Siyaset Kartı">Yıllık Üye</span>';
     var z = l.find(function (x) { return x.indexOf('z:') === 0; });
     if (z) h += '<span class="m2-cip altin" title="Seçim zaferi">' + esc(z.slice(2)) + '</span>';
+    var kg = l.find(function (x) { return x.indexOf('kg:') === 0; });
+    if (kg) h += '<span class="m2-cip kirmizi" title="Genel başkan adayı · kurultay süresince">' + I.bayrak.replace('<svg', '<svg style="width:11px;height:11px;vertical-align:-1px;margin-right:3px"') + esc(kg.slice(3)) + '</span>';
     return h;
   };
   function rozetListe(kad) {
@@ -177,7 +179,7 @@
     var eski = API.rpc;
     var yeni = function (ad, args) {
       var p = eski.apply(this, arguments);
-      if (p && typeof p.then === 'function' && (ad === 'kursu_akis' || ad === 'aday_lansman_detay' || ad === 'secim_detay')) {
+      if (p && typeof p.then === 'function' && (ad === 'kursu_akis' || ad === 'aday_lansman_detay')) {
         p.then(function (r) {
           try {
             if (ad === 'kursu_akis' && r && Array.isArray(r.vitrin)) {
@@ -185,8 +187,6 @@
               setTimeout(vitrinEtiketle, 30);
             } else if (ad === 'aday_lansman_detay' && r && r.parti) {
               M2.lansmanParti[r.id] = r.parti.id; setTimeout(sahneSus, 30);
-            } else if (ad === 'secim_detay' && r && r.tur === 'kurultay' && r.asama !== 'bitti') {
-              setTimeout(function () { kongreSus(r.id); }, 40);
             }
           } catch (e) {}
         }, function () {});
@@ -660,9 +660,9 @@
     var k = ic(), p = profil(); if (!k || !p || document.getElementById('m2Profil')) return;
     var m = m2Durum(); var l = [];
     try { l = await rpc('mazbatalar', { p_kad: null }); } catch (e) { return; }
-    var pl = m && m.plaka;
-    if (!l.length && !pl) return;
-    var h = '<div class="kart" id="m2Profil">' + (pl ? '<div style="display:flex;align-items:center;gap:10px;justify-content:space-between"><b>Plakam</b>' + plakaHtml(pl.metin, pl.makam, true) + '</div>' : '') +
+    var pl = m && m.plaka, kg = m && m.kongre && m.kongre.slogan;
+    if (!l.length && !pl && !kg) return;
+    var h = '<div class="kart" id="m2Profil">' + (kg ? kongreAfis(kg) + '<div class="kucuk" style="margin:4px 0 10px">Kurultay bitene kadar sohbette adının yanında ve profilinde görünür; oy pusulasında ayrıcalık yoktur.</div>' : '') + (pl ? '<div style="display:flex;align-items:center;gap:10px;justify-content:space-between"><b>Plakam</b>' + plakaHtml(pl.metin, pl.makam, true) + '</div>' : '') +
       (l.length ? '<div style="margin-top:' + (pl ? '10px' : '0') + '"><b>Mazbatalarım</b>' + mazbataHtml(l[0]) + '<button type="button" class="btn ikinci" id="m2MazTum" style="min-height:44px">' + (l.length > 1 ? 'Bütün mazbatalarım (' + l.length + ')' : 'Paylaş') + '</button></div>' : '') + '</div>';
     var ilk = k.querySelector('.kart'); if (ilk) ilk.insertAdjacentHTML('afterend', h); else k.insertAdjacentHTML('afterbegin', h);
     var b = document.getElementById('m2MazTum'); if (b) b.onclick = function () { if (l.length > 1) mazbataListeModal(null); else mazbataPaylas(l[0]); };
@@ -673,6 +673,13 @@
     var yeni = async function (kad) {
       var r = await eski.apply(this, arguments);
       try {
+        var kgT = rozetListe(kad).find(function (x) { return x.indexOf('kg:') === 0; });
+        var md0 = document.querySelector('#modal .modal');
+        if (kgT && md0 && !md0.querySelector('[data-m2kongre]')) {
+          var tut = md0.querySelector('.tutamak');
+          if (tut) tut.insertAdjacentHTML('afterend', kongreAfis(kgT.slice(3))); else md0.insertAdjacentHTML('afterbegin', kongreAfis(kgT.slice(3)));
+          if (!M2.kongreSes[kad]) { M2.kongreSes[kad] = 1; alkis(1.3); }
+        }
         var l = await rpc('mazbatalar', { p_kad: kad });
         var md = document.querySelector('#modal .modal');
         if (md && l && l.length && !md.querySelector('[data-m2maz]')) {
@@ -686,23 +693,11 @@
     window.oyuncuKart = oyuncuKart = yeni;
   }
 
-  /* ---------- Kongre Paketi: kurultay oy pusulası / aday listesi ---------- */
+  /* ---------- Kongre Paketi: yalnız kurultay süresince sohbette ve profilde (oy pusulasında ayrıcalık YOK) ---------- */
   var BAYRAK = '<svg viewBox="0 0 120 60" aria-hidden="true"><rect width="120" height="60" fill="#E30A17"/><circle cx="46" cy="30" r="14" fill="#fff"/><circle cx="50" cy="30" r="11.2" fill="#E30A17"/><polygon points="62,30 71.3,27 65.6,34.9 65.6,25.1 71.3,33" fill="#fff"/></svg>';
-  async function kongreSus(sid) {
-    var l = M2.kongre[sid];
-    if (!l) { try { l = M2.kongre[sid] = await rpc('kongre_paketleri', { p_secim: sid }); } catch (e) { return; } setTimeout(function () { M2.kongre[sid] = null; }, 60000); }
-    if (!l || !l.length) return;
-    var esle = {}; l.forEach(function (x) { esle[String(x.kad).toLocaleLowerCase('tr')] = x; esle[String(x.ad).toLocaleLowerCase('tr')] = x; });
-    var var_ = false;
-    document.querySelectorAll('#icerik .pusula-secenek, #icerik .liste-satir').forEach(function (el) {
-      if (el.querySelector('.m2-kongre')) return;
-      var b = el.querySelector('b'); if (!b) return;
-      var x = esle[String(b.textContent || '').trim().toLocaleLowerCase('tr')]; if (!x) return;
-      var hedef = b.parentNode;
-      hedef.insertAdjacentHTML('afterbegin', '<div class="m2-kongre"><div class="m2-kongre-bayrak">' + BAYRAK + '</div><div class="m2-kongre-afis">' + I.bayrak.replace('<svg', '<svg style="width:15px;height:15px"') + esc(String(x.slogan).toLocaleUpperCase('tr')) + '</div></div>');
-      var_ = true;
-    });
-    if (var_ && !M2.kongreSes[sid]) { M2.kongreSes[sid] = 1; alkis(1.4); }
+  function kongreAfis(slogan) {
+    return '<div class="m2-kongre" data-m2kongre="1"><div class="m2-kongre-bayrak">' + BAYRAK + '</div><div class="m2-kongre-afis">' + I.bayrak.replace('<svg', '<svg style="width:15px;height:15px"') +
+      '<span style="flex:1">' + esc(String(slogan || '').toLocaleUpperCase('tr')) + '</span><span style="font-size:10.5px;color:#C9D1E6;font-weight:700">Genel başkan adayı</span></div></div>';
   }
   // Kısa alkış sesi (sentezlenmiş; dosya indirmez)
   function alkis(sure) {

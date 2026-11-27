@@ -64,8 +64,9 @@ const shot = process.argv[2];
       API = { rpc: async (ad, a) => {
         calls.push({ ad, a });
         if (ad === 'magaza_durum') return durum();
-        if (ad === 'magaza_rozetler') return { Ben: 'p:35 AY 1923,pm,dw:3,gm:2,bb:1,yu', zeynep: 'p:06 K 07,z:Kasım 2026 zaferi' };
+        if (ad === 'magaza_rozetler') return { Ben: 'p:35 AY 1923,pm,dw:3,gm:2,bb:1,yu', zeynep: 'p:06 K 07,z:Kasım 2026 zaferi,kg:Yeniden büyük MKP' };
         if (ad === 'm2_genel') return genel;
+        if (ad === 'oyuncu_kart') return { kad: a.p_kad, il_ad: 'İzmir', parti: { id: 1, kisa: 'MKP', renk: '#2B4FB8' }, makamlar: [], rozetler: [], gecmis: [], karneler: [], katilim: new Date(now - 30 * 864e5).toISOString(), uyelik: new Date(now - 30 * 864e5).toISOString(), kayit: new Date(now - 30 * 864e5).toISOString() };
         if (ad === 'kursu_profil') return { liste: [{ g: Object.assign(gonderi(901, 'Pazar günü Konya mitingindeyiz, herkesi bekliyoruz!', 'Ben'), { benim: true }) }, { g: Object.assign(gonderi(902, 'Bütçe görüşmeleri için hazırız.', 'Ben'), { benim: true }) }] };
         if (ad === 'kursu_vitrin_baslat') return { id: 9, durum: 'sirada', sira: 3, tahmin: iso(21 * 3600e3) };
         if (ad === 'manset_basvur') return { id: 3, durum: 'onay' };
@@ -161,7 +162,7 @@ const shot = process.argv[2];
     await cek('kursu');
 
     // 4) Sohbet kart mesajı ve rozetler (yeni sohbet tasarımı)
-    await page.evaluate(() => { MGZ.rozet = { Ben: 'p:35 AY 1923,pm,dw:3,gm:2,bb:1,yu', zeynep: 'p:06 K 07,z:Kasım 2026 zaferi' }; document.getElementById('icerik').insertAdjacentHTML('beforeend',
+    await page.evaluate(() => { MGZ.rozet = { Ben: 'p:35 AY 1923,pm,dw:3,gm:2,bb:1,yu', zeynep: 'p:06 K 07,z:Kasım 2026 zaferi,kg:Yeniden büyük MKP' }; document.getElementById('icerik').insertAdjacentHTML('beforeend',
       '<div id="shTest"><div class="shm ilk son" data-id="1" data-kad="zeynep"><span class="shm-av"></span><div class="shm-b"><div class="shm-kim"><b>zeynep</b></div><span class="shm-tx">[Büyük Bağış] Zeynep Kaya parti kasamıza 250.000 ₺ bağışladı. Kasa: 2.090.000 ₺</span></div></div>' +
       '<div class="shm ilk son" data-id="2" data-kad="Ben"><span class="shm-av"></span><div class="shm-b"><div class="shm-kim"><b>Ben</b></div><span class="shm-tx">Merhaba</span></div></div></div>'); });
     await page.waitForSelector('#shTest .m2-kartmsj');
@@ -169,12 +170,18 @@ const shot = process.argv[2];
     assert.match(sh, /Büyük Bağış/, et('kart başlığı')); assert.ok(!/\[Büyük Bağış\]/.test(sh), et('köşeli önek gizlendi'));
     assert.match(sh, /06 K 07/, et('plaka rozeti')); assert.match(sh, /Kasım 2026 zaferi/, et('zafer rozeti')); assert.match(sh, /Büyük Bağışçı/, et('bağışçı rozeti (aynı parti)')); assert.match(sh, /Yıllık Üye/, et('yıllık üye'));
 
-    // 5) Kurultay Kongre Paketi
+    // 5) Kongre Paketi: oy pusulasında ayrıcalık YOK; sohbette çip, oyuncu kartında afiş
+    assert.match(sh, /Yeniden büyük MKP/, et('sohbette kongre çipi'));
     await page.evaluate(() => secimEkrani(9));
-    await page.waitForSelector('.m2-kongre');
-    assert.match(await page.textContent('.m2-kongre'), /YENİDEN BÜYÜK MKP/, et('kongre afişi'));
-    assert.equal(await page.$$eval('.m2-kongre', x => x.length), 1, et('yalnız paketli aday'));
-    await cek('kongre');
+    await page.waitForSelector('.pusula-secenek');
+    await page.waitForTimeout(400);
+    assert.equal(await page.$$eval('#icerik .m2-kongre, #icerik .m2-plaka, #icerik .m2-cip', x => x.length), 0, et('oy pusulasında süsleme yok'));
+    await cek('kongre_pusula_sade');
+    await page.evaluate(() => oyuncuKart('zeynep'));
+    await page.waitForSelector('#modal [data-m2kongre]');
+    assert.match(await page.textContent('#modal [data-m2kongre]'), /YENİDEN BÜYÜK MKP/, et('oyuncu kartında kongre afişi'));
+    if (shot) { await page.screenshot({ path: path.join(shot, String(++no).padStart(2, '0') + '_kongre_kart_' + gen + '.png') }); }
+    await page.evaluate(() => modalKapat());
 
     // 6) Lansman Sahnesi
     await page.evaluate(() => adayLansmanAc(7));
