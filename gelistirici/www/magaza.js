@@ -149,7 +149,7 @@
   function rozetHtml(kad) {
     const l = belirtec(kad); if (!l.length) return "";
     const unv = l.find(x => x.startsWith("u:")), sezon = l.filter(x => x.startsWith("r:"));
-    const ic = `${l.includes("destekci") ? `<span class="mg-yildiz" title="Destekçi">${SVG.yildiz}</span>` : ""}${l.includes("kurucu") ? `<span class="mg-kurucu" title="Kurucu Destekçi">Kurucu</span>` : ""}${sezon.map(x => `<span class="mg-sezon" title="${e(x.slice(2))}">${SVG.isilti}</span>`).join("")}${l.includes("kart") ? `<span class="mg-kart" title="Siyaset Kartı">Kart</span>` : ""}${unv ? `<span class="mg-unvan">${e(unv.slice(2))}</span>` : ""}`;
+    const ic = `${l.includes("destekci") ? `<span class="mg-yildiz" title="Destekçi">${SVG.yildiz}</span>` : ""}${l.includes("kurucu") ? `<span class="mg-kurucu" title="Kurucu Destekçi">Kurucu</span>` : ""}${sezon.map(x => `<span class="mg-sezon" title="${e(x.slice(2))}">${SVG.isilti}</span>`).join("")}${l.includes("kart") ? `<span class="mg-kart" title="Siyaset Kartı">Kart</span>` : ""}${unv ? `<span class="mg-unvan">${e(unv.slice(2))}</span>` : ""}${typeof window.M2_ROZET === "function" ? window.M2_ROZET(l, kad) : ""}`;
     return ic ? `<span class="mg-rz">${ic}</span>` : "";
   }
   M.rozetHtml = rozetHtml;
@@ -409,7 +409,8 @@
       <div class="kart">${hizmetler.map(p => `<div class="mg-satir"><span class="mg-ikon">${SVG.kalem}</span><div class="orta"><b>${e(p.ad)}</b><div class="kucuk">${e(p.aciklama || "")}</div></div>${fiyatDugme(p)}</div>`).join("")}
       ${adHak ? `<div class="mg-satir"><div class="orta"><b>${adHak} ad değiştirme hakkın var</b><div class="kucuk">Şimdiki adın: ${e((D.durum && D.durum.profil && D.durum.profil.kad) || "")}</div></div><button type="button" class="btn altin mg-fiyat" id="mgAdDegis">Kullan</button></div>` : ""}</div>` : "";
     const yonetici = D.durum && D.durum.profil && D.durum.profil.yonetici ? `<div class="kart" id="mgSatis"><h2>Satış özeti · son 30 gün</h2><div class="kucuk">Yükleniyor…</div></div>` : "";
-    iskelet("Mağaza", `<div class="mg-store"><div id="mgEkran"></div>${durumNot}${kartDurum}${vitrinBas}${vitrinKart}${paraListe}${kaliciListe}${hizmetListe}
+    const m2Ek = typeof window.M2_MAGAZA === "function" ? (function () { try { return window.M2_MAGAZA(d, fiyatDugme) || ""; } catch (_) { return ""; } })() : "";
+    iskelet("Mağaza", `<div class="mg-store"><div id="mgEkran"></div>${durumNot}${kartDurum}${vitrinBas}${vitrinKart}${paraListe}${kaliciListe}${hizmetListe}${m2Ek}
       ${yerel() ? `<button class="btn ikinci" id="mgGeri">Satın alımları geri yükle</button>` : ""}
       <p class="mg-not">Ödeme Apple ya da Google hesabından alınır ve mağazanın onayından sonra birkaç saniye içinde hesabına işlenir. Oyun parası gerçek paraya çevrilemez, devredilemez. Oy, makam ve seçim sonucu satılmaz; satın alınan para da oyunun günlük bağış ve yayın sınırlarına tabidir. <a href="https://feniksklein.github.io/Se-im-Online/gizlilik.html" target="_blank" rel="noopener">Gizlilik</a></p>
       ${yonetici}</div>`, { geri: true });
@@ -420,8 +421,10 @@
     const pkb = document.querySelector("#mgPartiKimlik"); if (pkb) pkb.onclick = partiKimlikUygula;
     const adb = document.querySelector("#mgAdDegis"); if (adb) adb.onclick = adDegisModal;
     if (yonetici) satisOzeti();
+    if (typeof window.M2_MAGAZA_BAGLA === "function") { try { window.M2_MAGAZA_BAGLA(d); } catch (_) {} }
   }
   M.magazaCiz = magazaCiz;
+  M.fiyatDugme = (p) => fiyatDugme(p);
 
   /* ---------- İmza Paketi: unvan seçimi ---------- */
   function unvanModal() {
@@ -467,7 +470,8 @@
     };
   }
 
-  const iz = (d) => d ? JSON.stringify([d.para, d.kart && d.kart.bitis, d.haklar, d.jetonlar, (d.paketler || []).map(p => p.alinabilir)]) : "";
+  const iz = (d) => d ? JSON.stringify([d.para, d.kart && d.kart.bitis, d.haklar, d.jetonlar, (d.paketler || []).map(p => p.alinabilir),
+    d.m2 ? [d.m2.jeton, d.m2.destek, d.m2.plaka, d.m2.yillik_bitis, d.m2.parti && d.m2.parti.gm_katki, d.m2.parti && d.m2.parti.sahne, d.m2.parti && d.m2.parti.bagisci_bitis, d.m2.mazbata_sayi, d.m2.kongre] : null]) : "";
   async function satinAl(id, b) {
     const u = URUN.find(x => x.identifier === id); if (!u) return;
     const p = (M.durum.paketler || []).find(x => x.urun_id === id);
@@ -484,6 +488,7 @@
         if (document.querySelector("#mgEkran")) magazaCiz();
         if (typeof rozetGuncelle === "function") rozetGuncelle();
         toast(p && p.tur === "para" ? `Cüzdanına ${tl(p.miktar)} eklendi. Teşekkürler!` : `${p ? p.ad : "Ürün"} hesabına eklendi. Teşekkürler!`);
+        if (typeof window.M2_SATIN_SONRA === "function") { try { window.M2_SATIN_SONRA(p, M.durum); } catch (_) {} }
         return;
       }
     }

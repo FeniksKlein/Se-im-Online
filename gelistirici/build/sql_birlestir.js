@@ -65,6 +65,8 @@ const KOSULLU = {
   // 25.11: Şirket Kazanç Dengesi; şube, mağaza satışı, zamanlayıcı adımı ve portal ayarı tabloları (bir kısmı canlı migration) yoksa atlanır.
   'zz_20261125_sirket_kazanc_dengesi.sql': ['oyun.pazar_sirket', 'oyun.pazar_sektor', 'oyun.pazar_ayar', 'oyun.sirket_il_subeleri', 'oyun.eko_npc_satis', 'oyun.eko_isletmeler', 'oyun.zamanlayici_adim', 'oyun.yp_ayar_katalog', 'oyun.satin_almalar'],
   // 26.11: Kademeli Getiri + İstihdam; kazanç dengesi, mağaza, ek iş ve oturum tabloları (bir kısmı canlı migration) yoksa atlanır.
+  // 27.11: Mağaza Paketi 2; mağaza, kürsü, seçim ve parti tabloları (bir kısmı canlı migration) yoksa atlanır.
+  'zz_20261127_magaza_paket2.sql': ['oyun.paketler', 'oyun.magaza_jeton', 'oyun.magaza_hesap', 'oyun.oyuncu_hak', 'oyun.akis', 'oyun.engellemeler', 'oyun.kazananlar', 'oyun.oylar', 'oyun.mesajlar', 'oyun.parti_gby', 'oyun.parti_sozcu', 'oyun.moderatorler', 'oyun.satin_almalar'],
   'zz_20261126_kademeli_getiri_istihdam.sql': ['oyun.sirket_denge_ayar', 'oyun.sirket_denge_durum', 'oyun.pazar_sirket', 'oyun.ek_is_katalog', 'oyun.ek_is_kayit', 'oyun.kidem_kaynak', 'oyun.magaza_hesap', 'oyun.magaza_jeton', 'oyun.paketler', 'oyun.oturumlar'],
 };
 const okuKosullu = ad => {
@@ -172,7 +174,11 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261126_kademeli_getiri_istihdam.sql',
   // 25.11.2026: YÜK HIZLANDIRMA — Kürsü gündemi/akışı, sohbet açılışı ve unvan önbelleği (canlıda 25.11 akşamı uygulandı).
   // LİSTENİN SONUNDA KALMALI: sohbet_oku, kursu_akis, kursu_gundem ve oyun.unvan'ı yeniden yazan dosyalardan sonra gelir.
-  'zz_20261125_yuk_hizlandirma.sql'];
+  'zz_20261125_yuk_hizlandirma.sql',
+  // 27.11.2026: MAĞAZA PAKETİ 2 — 19 yeni ürün (aktif=false), Kürsü vitrini/Gündem manşeti kuyruğu (3 yer + sıra), plaka, mazbata,
+  // kutlama, kongre, lansman sahnesi, genel merkez, parti bağışı, hediye/parti kartı, destekçi duvarı. kursu_akis'i (yuk_hizlandirma
+  // çıktısı) _yama ile, haberler/magaza_rozetler'i yeniden yazar; magaza_uygula/magaza_durum'u yamalar. Bu yüzden EN SONDA.
+  'zz_20261127_magaza_paket2.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
