@@ -257,3 +257,143 @@ begin
     end if;
   end if;
 end $y$;
+
+-- =====================================================================
+-- 27.11.2026 · GENEL MERKEZ İNŞAAT FONU VE BAĞIŞÇILAR (sürüm 2026.11.27-11)
+-- İstek (Ercan): "Oyuncular partiye bağış yapabilsin bina için veya mağazadan satın alıp parayı arttırsınlar ve bağışçılar
+--                 listesinde sarıyla gösterilsinler."
+-- Kural:
+--   • Her partinin bir inşaat fonu vardır (oyun.gm_fon). Fon YALNIZ genel merkez inşaatına harcanır; inşaatta önce fon, eksik
+--     kalan parti kasasından ödenir. Fon herkese açık görünür.
+--   • genel_merkez_bagis: oyuncu kendi cüzdanından bağışlar (100 ₺ – 10.000.000 ₺; seçmen kartı şartı; bina en büyük kademedeyse kapalı).
+--   • Mağazadaki Genel Merkez Kampanyası katkısı (m2_gm_uygula) artık parti kasasına değil bu fona girer (bina tamamlandıysa kasaya).
+--   • Bağışçılar listesi toplam tutara göre; mağazadan katkı vermiş olanlar 'magaza' işaretiyle gelir (ekranda sarı).
+-- =====================================================================
+create table if not exists oyun.gm_fon (
+  parti_id bigint primary key references oyun.partiler(id),
+  bakiye numeric not null default 0 check (bakiye >= 0),
+  toplam numeric not null default 0
+);
+create table if not exists oyun.gm_bagis (
+  id bigserial primary key,
+  parti_id bigint not null references oyun.partiler(id),
+  user_id uuid not null references oyun.profiller(id),
+  tutar numeric not null check (tutar > 0),
+  kaynak text not null default 'oyun' check (kaynak in ('oyun', 'magaza')),
+  zaman timestamptz not null
+);
+create index if not exists gm_bagis_parti_idx on oyun.gm_bagis(parti_id, user_id);
+alter table oyun.gm_fon enable row level security;
+alter table oyun.gm_bagis enable row level security;
+revoke all on table oyun.gm_fon, oyun.gm_bagis from public, anon, authenticated;
+
+create or replace function oyun.gm_fon_ekle(p_parti bigint, p_user uuid, p_tutar numeric, p_kaynak text, t timestamptz)
+returns void language plpgsql set search_path to '' as $$
+begin
+  insert into oyun.gm_fon(parti_id, bakiye, toplam) values (p_parti, p_tutar, p_tutar)
+  on conflict (parti_id) do update set bakiye = oyun.gm_fon.bakiye + excluded.bakiye, toplam = oyun.gm_fon.toplam + excluded.toplam;
+  insert into oyun.gm_bagis(parti_id, user_id, tutar, kaynak, zaman) values (p_parti, p_user, p_tutar, p_kaynak, t);
+end $$;
+
+create or replace function oyun.gm_fon_ozet(p_parti bigint, u uuid)
+returns jsonb language sql stable set search_path to '' as $$
+  select jsonb_build_object(
+    'bakiye', coalesce((select round(f.bakiye) from oyun.gm_fon f where f.parti_id = p_parti), 0),
+    'toplam', coalesce((select round(f.toplam) from oyun.gm_fon f where f.parti_id = p_parti), 0),
+    'bagisci', (select count(distinct b.user_id) from oyun.gm_bagis b where b.parti_id = p_parti),
+    'benim', coalesce((select round(sum(b.tutar)) from oyun.gm_bagis b where b.parti_id = p_parti and b.user_id = u), 0),
+    'liste', (select coalesce(jsonb_agg(z.x order by z.top desc, z.ilk), '[]'::jsonb) from (
+                select jsonb_build_object('kad', pr.kad, 'ad', coalesce(nullif(btrim(pr.ad_soyad), ''), pr.kad), 'tutar', round(sum(b.tutar)),
+                         'magaza', bool_or(b.kaynak = 'magaza'), 'magaza_adet', count(*) filter (where b.kaynak = 'magaza')) x, sum(b.tutar) top, min(b.id) ilk
+                  from oyun.gm_bagis b join oyun.profiller pr on pr.id = b.user_id where b.parti_id = p_parti
+                 group by pr.id, pr.kad, pr.ad_soyad order by sum(b.tutar) desc, min(b.id) limit 30) z))
+$$;
+
+create or replace function public.genel_merkez_bagis(p_parti bigint, p_tutar numeric)
+returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); pa oyun.partiler; v numeric := round(p_tutar); e text;
+begin
+  if coalesce(p.yasakli, false) then raise exception 'Hesabın kısıtlı.'; end if;
+  e := oyun.uyari(p, t); if e is not null then raise exception 'Bağış için seçmen kartın hazır olmalı: %', e; end if;
+  select * into pa from oyun.partiler where id = coalesce(p_parti, p.parti_id) and not kapali for update;
+  if pa.id is null then raise exception 'Parti bulunamadı.'; end if;
+  if v is null or v < 100 or v > 10000000 then raise exception 'Bağış 100 ₺ ile 10.000.000 ₺ arasında olmalı.'; end if;
+  if not exists (select 1 from oyun.gm_kademe k where k.kademe = oyun.gm_kademe_no(pa.id) + 1) then
+    raise exception '% genel merkezi en büyük kademede; inşaat fonu kapandı. Partiye parti sayfasından bağış yapabilirsin.', pa.kisa; end if;
+  perform oyun.para_islem(p.id, -v, 'bagis', format('%s genel merkez inşaat fonuna bağış', pa.kisa), t);
+  perform oyun.gm_fon_ekle(pa.id, p.id, v, 'oyun', t);
+  if pa.gb is not null and pa.gb <> p.id and v >= 10000 then
+    perform oyun.bildir(pa.gb, format('%s, %s genel merkez inşaat fonuna %s ₺ bağış yaptı.', coalesce(nullif(btrim(p.ad_soyad), ''), p.kad), pa.kisa, round(v)::bigint), t);
+  end if;
+  return public.genel_merkez_panel(pa.id);
+end $$;
+
+-- İnşaat: önce fon, eksik kalan parti kasasından
+create or replace function public.genel_merkez_yukselt()
+returns jsonb language plpgsql security definer set search_path to '' as $$
+declare p oyun.profiller := oyun.profilim(); t timestamptz := oyun.simdi(); pa oyun.partiler; o record; mevcut integer; sk oyun.gm_kademe; r record;
+  fon numeric; fondan numeric; kasadan numeric;
+begin
+  select * into pa from oyun.partiler where id = p.parti_id and not kapali for update;
+  if pa.id is null then raise exception 'Bir partiye üye değilsin.'; end if;
+  if pa.gb is distinct from p.id then raise exception 'Genel merkez inşaatına yalnız genel başkan karar verir.'; end if;
+  mevcut := oyun.gm_kademe_no(pa.id);
+  select * into sk from oyun.gm_kademe where kademe = mevcut + 1;
+  if sk.kademe is null then raise exception 'Genel merkez zaten en büyük kademede.'; end if;
+  select * into o from oyun.gm_olculer(t) x where x.parti_id = pa.id;
+  if o.aktif < sk.uye then raise exception '% için en az % aktif üye gerekir (şu an %).', sk.ad, sk.uye, o.aktif; end if;
+  if o.il < sk.il then raise exception '% için en az % ilde teşkilat gerekir (şu an %).', sk.ad, sk.il, o.il; end if;
+  if o.il_baskani < sk.il_baskani then raise exception '% için en az % il başkanı görevde olmalı (şu an %).', sk.ad, sk.il_baskani, o.il_baskani; end if;
+  select coalesce((select f.bakiye from oyun.gm_fon f where f.parti_id = pa.id), 0) into fon;
+  fondan := least(fon, sk.bedel); kasadan := sk.bedel - fondan;
+  if pa.kasa < kasadan then raise exception 'Para yetmiyor: inşaat bedeli % ₺; inşaat fonunda % ₺, parti kasasında % ₺ var.', round(sk.bedel)::bigint, round(fon)::bigint, round(pa.kasa)::bigint; end if;
+  if fondan > 0 then update oyun.gm_fon set bakiye = bakiye - fondan where parti_id = pa.id; end if;
+  if kasadan > 0 then
+    update oyun.partiler set kasa = kasa - kasadan where id = pa.id;
+    insert into oyun.parti_hareket(parti_id, zaman, tutar, aciklama, tur) values (pa.id, t, -kasadan, format('Genel merkez inşaatı: %s', sk.ad), 'genel_merkez');
+  end if;
+  insert into oyun.gm_bina(parti_id, kademe, zaman, yapan, harcama) values (pa.id, sk.kademe, t, p.id, sk.bedel)
+  on conflict (parti_id) do update set kademe = excluded.kademe, zaman = excluded.zaman, yapan = excluded.yapan, harcama = oyun.gm_bina.harcama + excluded.harcama;
+  insert into oyun.parti_tuzuk_ayar(parti_id, gby_azami, il_yk_azami, guncelleme, guncelleyen)
+  values (pa.id, greatest(6, sk.gby), greatest(7, sk.il_yk), t, p.id)
+  on conflict (parti_id) do update set gby_azami = greatest(oyun.parti_tuzuk_ayar.gby_azami, sk.gby), il_yk_azami = greatest(oyun.parti_tuzuk_ayar.il_yk_azami, sk.il_yk),
+    guncelleme = t, guncelleyen = p.id;
+  insert into oyun.olaylar(zaman, tur, il_id, parti_id, metin) values (t, 'parti', null, pa.id, format('%s genel merkezini büyüttü: %s', pa.ad, sk.ad));
+  for r in select x.id from oyun.profiller x where x.parti_id = pa.id and x.id <> p.id and not coalesce(x.yasakli, false) order by x.son_gorulme desc nulls last limit 3000 loop
+    perform oyun.bildir(r.id, format('Partin %s yeni genel merkezine geçti: %s. Genel başkan yardımcısı kontenjanı %s, il yönetim kurulu kontenjanı %s oldu.', pa.kisa, sk.ad, sk.gby, sk.il_yk), t);
+  end loop;
+  return public.genel_merkez_panel(pa.id);
+end $$;
+
+revoke all on function oyun.gm_fon_ekle(bigint, uuid, numeric, text, timestamptz) from public, anon, authenticated;
+revoke all on function oyun.gm_fon_ozet(bigint, uuid) from public, anon, authenticated;
+revoke all on function public.genel_merkez_bagis(bigint, numeric) from public, anon;
+grant execute on function public.genel_merkez_bagis(bigint, numeric) to authenticated;
+
+do $y$
+declare d text; e text;
+begin
+  -- Panel: fon ve bağışçılar; büyütme hakkı fon + kasa
+  select pg_get_functiondef('public.genel_merkez_panel(bigint)'::regprocedure) into d;
+  if position('gm_fon_ozet' in d) = 0 then
+    e := replace(d, '''prestij'', jsonb_build_object(''seviye'', s,', '''fon'', oyun.gm_fon_ozet(pid, p.id),
+    ''prestij'', jsonb_build_object(''seviye'', s,');
+    e := replace(e, 'and o.il_baskani >= sk.il_baskani and pa.kasa >= sk.bedel, false)',
+      'and o.il_baskani >= sk.il_baskani and pa.kasa + coalesce((select f.bakiye from oyun.gm_fon f where f.parti_id = pid), 0) >= sk.bedel, false)');
+    if position('gm_fon_ozet' in e) = 0 or position('pa.kasa + coalesce' in e) = 0 then raise exception 'genel_merkez_panel fon yaması uygulanamadı'; end if;
+    execute e;
+  end if;
+  -- Mağaza katkısı: parti kasası yerine inşaat fonuna (bina tamamlandıysa kasaya)
+  if to_regprocedure('oyun.m2_gm_uygula(uuid,timestamptz)') is not null then
+    select pg_get_functiondef('oyun.m2_gm_uygula(uuid, timestamptz)'::regprocedure) into d;
+    if position('gm_fon_ekle' in d) = 0 then
+      e := replace(d, 'update oyun.partiler set kasa = kasa + a.gm_tutar where id = pa.id;',
+        'if exists (select 1 from oyun.gm_kademe gk where gk.kademe = oyun.gm_kademe_no(pa.id) + 1) then perform oyun.gm_fon_ekle(pa.id, u, a.gm_tutar, ''magaza'', t); else
+  update oyun.partiler set kasa = kasa + a.gm_tutar where id = pa.id;');
+      e := replace(e, 'values (pa.id, t, a.gm_tutar, format(''Genel Merkez Kampanyası katkısı · %s'', ad), ''genel_merkez'');',
+        'values (pa.id, t, a.gm_tutar, format(''Genel Merkez Kampanyası katkısı · %s'', ad), ''genel_merkez''); end if;');
+      if position('gm_fon_ekle' in e) = 0 or position('''genel_merkez''); end if;' in e) = 0 then raise exception 'm2_gm_uygula fon yaması uygulanamadı'; end if;
+      execute e;
+    end if;
+  end if;
+end $y$;

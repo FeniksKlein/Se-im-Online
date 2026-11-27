@@ -37,6 +37,7 @@ const shot = process.argv[2];
         return { simdi: iso(0), parti: { id: q.id, ad: q.ad, kisa: q.kisa, renk: q.renk, amblem: 'a_basak', kurulus: iso(-5 * 864e5) }, uyeyim: kendi, rol: kendi ? 'gb' : null, gm: kendi, sehir: { id: 6, ad: 'Ankara' },
           kademe: { no: q.kademe, ad: KAD[q.kademe - 1].ad, aciklama: '', olcu: { uye: q.uye, il: 81, il_baskani: ilb }, sonraki: snk, liste: KAD, avantaj: { gby: KAD[q.kademe - 1].gby, il_yk: KAD[q.kademe - 1].il_yk, stant: KAD[q.kademe - 1].stant },
             kosul_tamam: tamam, kasa: kendi ? kasa : null, yukseltebilir: kendi && tamam && kasa >= snk.bedel },
+          fon: { bakiye: 220000 + (window.BAGIS || 0), toplam: 220000 + (window.BAGIS || 0), bagisci: 2, benim: window.BAGIS || 0, liste: [{ kad: 'caneren', ad: 'Eren Bal', tutar: 200000, magaza: true, magaza_adet: 2 }, { kad: 'gencer', ad: 'Abdullah Gencer', tutar: 20000 + (window.BAGIS || 0), magaza: false, magaza_adet: 0 }] },
           prestij: { seviye: s, ad: ['Standart', 'Bronz Donanım', 'Gümüş Donanım', 'Altın Donanım'][s], katki, esik, sonraki: s < 3 ? esik[s] : null, sonraki_ad: s < 3 ? ['Bronz Donanım', 'Gümüş Donanım', 'Altın Donanım'][s] : null,
             tutar: 100000, hesap_gun: 3, urun_acik: URUN, katki_verebilir: kendi, liste: katki ? [{ kad: 'ahmet', ad: 'Ahmet Yılmaz', adet: 6 }, { kad: 'zeynep', ad: 'Zeynep Kaya', adet: 4 }] : [] },
           yonetim: { gb: { kad: 'gencer', ad: 'Abdullah Gencer Karamanlıoğulları' }, vekil: null, disiplin: 7,
@@ -50,6 +51,7 @@ const shot = process.argv[2];
       API = { rpc: async (ad, a) => {
         calls.push({ ad, a });
         if (ad === 'genel_merkez_panel') return panel(a.p_parti);
+        if (ad === 'genel_merkez_bagis') { window.BAGIS = a.p_tutar; return panel(a.p_parti); }
         if (ad === 'genel_merkez_yukselt') { INSA = true; return panel(1); }
         if (ad === 'parti_detay') return { id: a.p_parti, ad: 'Cumhuriyet Yolu Partisi', kisa: 'CYP', renk: '#c62828', amblem: 'a_basak', uye: 396, vekil: 0, belediye: 0, uyesiyim: true, sistem: true, kurulus: iso(-5 * 864e5), kurulus_bit: iso(-4 * 864e5), gb: 'gencer', kurucu: 'gencer', uyeler: [], gby: [], tuzuk: '', iller: [], makamlar: [] };
         if (ad === 'il_masa_benim') return { parti_id: 1, parti: 'CYP', il_id: 6, il: 'Ankara', rol: null, gm: true, gb: true, yontem: 'secim' };
@@ -82,7 +84,11 @@ const shot = process.argv[2];
     assert.match(t, /46 \/ 50/, et('il başkanı hedefi'));
     assert.match(t, /gerçek parayla alınmaz/, et('gerçek parayla alınmaz notu'));
     assert.match(t, /Bu kademenin sağladıkları: 8 genel başkan yardımcısı · il yönetim kurullarında 9 üye · il başına günde 2 seçim standı/, et('kademe avantajı'));
-    assert.match(t, /4 milyon ₺ \/ 40 milyon ₺/, et('inşaat bedeli ve kasa'));
+    assert.match(t, /4,3 milyon ₺ \/ 40 milyon ₺/, et('inşaat bedeli: fon + kasa'));
+    assert.match(t, /İnşaat fonu 220\.000 ₺ \+ parti kasası 4\.036\.540 ₺/, et('fon ve kasa dökümü'));
+    assert.equal(await page.$$eval('#gmzFon .gmz-satir.magaza', x => x.length), 1, et('mağaza destekçisi sarı'));
+    assert.match(await page.textContent('#gmzFon .gmz-satir.magaza'), /Eren Bal ★.*2 mağaza katkısı.*200\.000 ₺/, et('destekçi satırı'));
+    assert.equal(await page.$eval('#gmzFon .gmz-satir.magaza b', el => getComputedStyle(el).color), 'rgb(242, 196, 109)', et('sarı renk'));
     assert.match(t, /Kazandırır: 10 genel başkan yardımcısı/, et('sıradaki avantaj'));
     assert.ok(await page.$('#gmzYukselt[disabled]'), et('şart eksikken inşa düğmesi kapalı'));
     assert.match(t, /10 GBY · il kurulu 11 · stant 3/, et('avantaj tablosu'));
@@ -114,6 +120,15 @@ const shot = process.argv[2];
     await tikla('#gmzGercek');
     await page.waitForSelector('#gmzSahne.p0');
     assert.ok(!(await page.$('.gmz-onizle')), et('gerçek görünüme dönüş'));
+
+    // 2a) İnşaat fonuna bağış
+    await tikla('[data-gmzb="50000"]');
+    await tikla('#gmzBOk');
+    await page.waitForSelector('#modal #evet');
+    assert.match(await page.textContent('#modal'), /50\.000 ₺ bağışlansın mı/, et('bağış onayı'));
+    await tikla('#modal #evet');
+    await page.waitForFunction(() => calls.some(c => c.ad === 'genel_merkez_bagis' && c.a.p_tutar === 50000 && c.a.p_parti === 1) && /Senin bağışın: 50\.000 ₺/.test((document.getElementById('gmzFon') || {}).textContent || ''));
+    await page.evaluate(() => { window.BAGIS = 0; });
 
     // 2b) Şartlar ve kasa tamam: inşa et
     await page.evaluate(() => { HAZIR = true; genelMerkezAc(); });

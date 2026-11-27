@@ -215,7 +215,7 @@ insert into oyun.paketler(urun_id, ad, miktar, sira, tur, gun, hak, aciklama, et
   ('secimonline.party_donation', 'Parti Kasasına Bağış', 0, 52, 'hizmet', 0, null,
    'Üyesi olduğun partinin kasasına 250.000 ₺. Partide duyurulur, 30 gün parti içinde "Büyük Bağışçı" unvanı. Oy, delege ya da makam vermez.', 'Parti', '₺199,99', false),
   ('secimonline.hq_campaign', 'Genel Merkez Kampanyası', 0, 53, 'hizmet', 0, null,
-   'Partinin ortak hedefine katkı: kasaya 100.000 ₺. 10, 25 ve 50 katkıda genel merkez Bronz, Gümüş ve Altın donanım kazanır (bayraklar, ışıklandırma, altın cephe); bütün üyeler rozet alır. Bina partinin gücüyle kendiliğinden büyür; kampanya yalnız görünümü süsler.', 'Parti', '₺99,99', false),
+   'Partinin genel merkez inşaat fonuna 100.000 ₺ katkı. 10, 25 ve 50 katkıda genel merkez Bronz, Gümüş ve Altın donanım kazanır (bayraklar, ışıklandırma, altın cephe); bütün üyeler rozet alır, adın bağışçılar listesinde sarı görünür.', 'Parti', '₺99,99', false),
   ('secimonline.launch_stage', 'Lansman Sahnesi', 0, 54, 'hizmet', 0, null,
    'Partinin aday lansmanlarında ışıklı sahne, alkışta konfeti ve parti posteri. Partiye kalıcı olarak bağlanır.', 'Partiye kalıcı', '₺199,99', false),
   ('secimonline.congress_pack', 'Kongre Paketi', 0, 55, 'hizmet', 0, null,

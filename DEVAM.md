@@ -3,6 +3,13 @@
 Sahibi: Ercan (FeniksKlein). Not: "Gülveren Games" unvanı kullanılmaz (Ercan, 23.11.2026). Kodlama bilmiyor; **her şeyi Türkçe, sade ve adım adım anlat.**
 Proje: "Seçim Simülasyonu Online" — çok oyunculu siyaset rol yapma oyunu (tek dosya HTML/JS + Capacitor, Supabase arka uç).
 
+## 27.11.2026 — 2026.11.27-11 Genel merkez inşaat fonu + bağışçılar (sunucu canlıda 27.11 ~13.00; ekran PR #71 birleşince web'de)
+- İstek (Ercan): "Oyuncular partiye bağış yapabilsin bina için veya mağazadan satın alıp parayı arttırsınlar ve bağışçılar listesinde sarıyla gösterilsinler." ("kıdem parası" ifadesi bina parası olarak yorumlandı.)
+- `oyun.gm_fon` (parti başına; YALNIZ inşaata harcanır) + `oyun.gm_bagis` (kaynak oyun|magaza). `genel_merkez_bagis(p_parti, p_tutar)`: herkes, cüzdandan 100 ₺ – 10 milyon ₺, seçmen kartı şartı, bina en büyük kademedeyse kapalı; 10.000 ₺ ve üstünde GB'ye bildirim. `genel_merkez_yukselt` önce fonu, eksik kalanı parti kasasından öder.
+- Mağaza: `m2_gm_uygula` katkıyı (100.000 ₺) artık parti kasasına değil inşaat fonuna yazar (bina tamamlandıysa kasaya); ürün açıklaması güncellendi. Panelde `fon` {bakiye, toplam, bagisci, benim, liste[kad, ad, tutar, magaza, magaza_adet]}; mağazadan katkı verenler listede sarı + ★.
+- Canlı migration `genel_merkez_d_insaat_fonu_20261127`. Canlıda GERİ ALINAN işlemde: 20.000 ₺ bağış, 2 mağaza katkısı (fon 220.000, kasa değişmedi), inşaatta fon 0'a indi ve kasadan 2.780.000 ₺ çıktı.
+- Test: `genel_merkez_arayuz` (bağış akışı + sarı satır), `magaza_paket2_arayuz` TAMAM.
+
 ## 27.11.2026 — 2026.11.27-10 Genel merkez inşaatı (parti kasasından) + kademe avantajları (sunucu canlıda 27.11 ~12.50; ekran PR #71 birleşince web'de)
 - İstek (Ercan): "Genel merkez büyüdükçe avantajları da olsun; örneğin bina olunca 6 GBY, yerleşke olunca 8, büyük genel merkez olunca 10. Parası da ucuz olmasın, diğer şartlar gibi. Sayıları sen hesapla, mantıklı başka avantaj ekle."
 - **-9'daki kural değişti**: kademe artık kendiliğinden gelmez ve küçülmez. Örgüt şartları (aktif üye / il teşkilatı / il başkanı: 50/15/5 · 150/40/20 · 350/70/50) tutunca **genel başkan** `genel_merkez_yukselt()` ile parti kasasından öder: **3.000.000 · 12.000.000 · 40.000.000 ₺**. Kayıt `oyun.gm_bina` (kalıcı); herkes Kuruluş Bürosu'ndan başlar. Ölçü 27.11: parti kasaları 0,4–4,0 milyon, CYP günlük girişi ~0,8 milyon.

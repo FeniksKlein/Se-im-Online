@@ -189,6 +189,10 @@
       '.gmz-merdiven small{display:block;font-size:10.5px;opacity:.7;line-height:1.2}',
       '.gmz-tablo{margin-top:12px;border:1px solid var(--line2,#2a3045);border-radius:12px;overflow:hidden}.gmz-tablo>div{padding:8px 10px;border-bottom:1px solid var(--line2,#2a3045);min-width:0}.gmz-tablo>div:last-child{border-bottom:0}',
       '.gmz-tablo>div.simdi{background:rgba(242,196,109,.1)}.gmz-tablo b{display:block;font-size:14px}.gmz-tablo span{display:block;font-size:13.5px;line-height:1.4;overflow-wrap:anywhere}.gmz-tablo small{display:block;font-size:12px;opacity:.72;line-height:1.35;overflow-wrap:anywhere}',
+      '.gmz-fon{font-size:28px;font-weight:900;margin:2px 0 4px}.gmz-sari{color:#f2c46d}',
+      '.gmz-satir.magaza b{color:#f2c46d}.gmz-satir.magaza .sag{color:#f2c46d}.gmz-satir.magaza small{color:#f2c46d;opacity:.85}',
+      '.gmz-form label{display:block;font-size:15px;font-weight:700;margin:12px 0 6px}.gmz-form input{display:block;width:100%;min-width:0;box-sizing:border-box;font-size:16px;min-height:48px;padding:10px 12px;border-radius:12px;border:1px solid var(--line2,#2a3045);background:var(--bg,#151a28);color:inherit;color-scheme:dark;font-family:inherit}',
+      '.gmz-form .btn{width:100%;margin-top:10px}.gmz-hizli{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.gmz-hizli button{min-height:40px;padding:6px 12px;border-radius:999px;border:1px solid var(--line2,#2a3045);background:var(--bg,#151a28);color:inherit;font:inherit;font-size:14px}',
       '.gmz-gb{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px;border-radius:14px;border:1px solid var(--gmz-trim,#2a3045);background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.01));color:inherit;font:inherit;margin-top:6px;min-height:72px}',
       '.gmz-gb .orta{flex:1;min-width:0}.gmz-gb b{display:block;font-size:17px;line-height:1.25;overflow-wrap:anywhere}.gmz-gb small{display:block;font-size:13px;opacity:.8;margin-top:2px}',
       '.gmz-gby{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}',
@@ -248,16 +252,19 @@
   function kademeKart(v) {
     var kd = v.kademe, o = kd.olcu || {}, sn = kd.sonraki, pa = v.parti, p = n(v.prestij.seviye), av = kd.avantaj || {};
     var h = '<div class="kart" id="gmzBina"><h3 class="gmz-bas">Bina: ' + esc(kd.ad) + '</h3>' +
-      '<p class="alt" style="margin:0">Genel merkez gerçek parayla alınmaz. Örgüt şartları tutunca genel başkan inşaat bedelini parti kasasından öder; yapılan bina kalıcıdır.</p>' +
+      '<p class="alt" style="margin:0">Genel merkez gerçek parayla alınmaz. Örgüt şartları tutunca genel başkan inşaat bedelini inşaat fonundan ve parti kasasından öder; yapılan bina kalıcıdır.</p>' +
       '<div class="gmz-not" style="margin-top:10px"><b>Bu kademenin sağladıkları:</b> ' + esc(avantajMetni(av)) + '.</div>';
     if (sn) {
       h += '<p style="margin:12px 0 0;font-size:15px"><b>Sıradaki: ' + esc(sn.ad) + '</b></p>' +
         hedef('Aktif üye (son 14 gün)', n(o.uye), n(sn.uye)) + hedef('İl teşkilatı', n(o.il), n(sn.il)) + hedef('Görevdeki il başkanı', n(o.il_baskani), n(sn.il_baskani)) +
-        (kd.kasa != null ? '<div class="gmz-hedef"><div class="ust"><span>İnşaat bedeli (parti kasası)</span><b>' + esc(kisaTl(kd.kasa)) + ' / ' + esc(kisaTl(sn.bedel)) + (n(kd.kasa) >= n(sn.bedel) ? ' ✓' : '') + '</b></div><div class="gmz-cubuk"><i class="' + (n(kd.kasa) >= n(sn.bedel) ? 'tam' : '') + '" style="width:' + Math.max(3, Math.min(100, Math.round(n(kd.kasa) * 100 / Math.max(1, n(sn.bedel))))) + '%"></i></div></div>'
-          : '<div class="gmz-hedef"><div class="ust"><span>İnşaat bedeli (parti kasasından)</span><b>' + esc(tl(sn.bedel)) + '</b></div></div>') +
+        (function () {
+          var fon = n((v.fon || {}).bakiye), var_ = fon + (kd.kasa != null ? n(kd.kasa) : 0), tam = var_ >= n(sn.bedel);
+          return '<div class="gmz-hedef"><div class="ust"><span>İnşaat bedeli</span><b>' + esc(kisaTl(var_)) + ' / ' + esc(kisaTl(sn.bedel)) + (tam ? ' ✓' : '') + '</b></div><div class="gmz-cubuk"><i class="' + (tam ? 'tam' : '') + '" style="width:' + Math.max(3, Math.min(100, Math.round(var_ * 100 / Math.max(1, n(sn.bedel))))) + '%"></i></div></div>' +
+            '<p class="kucuk" style="margin:4px 0 0">İnşaat fonu ' + esc(tl(fon)) + (kd.kasa != null ? ' + parti kasası ' + esc(tl(kd.kasa)) : ' (eksik kalan parti kasasından ödenir)') + '</p>';
+        })() +
         '<p class="kucuk" style="margin:8px 0 0">Kazandırır: ' + esc(avantajMetni(sn)) + '.</p>';
       if (v.rol === 'gb') h += '<button type="button" class="btn altin" id="gmzYukselt" style="margin-top:10px"' + (kd.yukseltebilir ? '' : ' disabled') + '>' + esc(sn.ad) + ' inşa et · ' + esc(tl(sn.bedel)) + '</button>' +
-        (kd.yukseltebilir ? '' : '<p class="kucuk" style="margin:6px 0 0">' + (kd.kosul_tamam ? 'Örgüt şartları tamam; parti kasası inşaat bedeline ulaşınca inşa edebilirsin.' : 'Önce örgüt şartlarının üçü de tamamlanmalı.' + (v.gm && n(o.il_baskani) < n(sn.il_baskani) ? ' İl başkanı eksiğini İl Başkanlıkları ekranından kapatabilirsin.' : '')) + '</p>');
+        (kd.yukseltebilir ? '' : '<p class="kucuk" style="margin:6px 0 0">' + (kd.kosul_tamam ? 'Örgüt şartları tamam; inşaat fonu ile parti kasası bedele ulaşınca inşa edebilirsin.' : 'Önce örgüt şartlarının üçü de tamamlanmalı.' + (v.gm && n(o.il_baskani) < n(sn.il_baskani) ? ' İl başkanı eksiğini İl Başkanlıkları ekranından kapatabilirsin.' : '')) + '</p>');
       else h += '<p class="kucuk" style="margin:6px 0 0">İnşaat kararını genel başkan verir.</p>';
     } else h += '<p style="margin:12px 0 0;font-size:15px"><b>En büyük kademeye ulaşıldı.</b> ' + n(o.uye) + ' aktif üye, ' + n(o.il) + ' il teşkilatı, ' + n(o.il_baskani) + ' il başkanı.</p>';
     h += '<div class="gmz-merdiven">' + (kd.liste || []).map(function (x) {
@@ -268,6 +275,20 @@
         return '<div class="' + (n(x.no) === n(kd.no) ? 'simdi' : '') + '"><b>' + esc(x.ad) + '</b><span>' + n(x.gby) + ' GBY · il kurulu ' + n(x.il_yk) + ' · stant ' + n(x.stant) + '</span><small>' + (n(x.no) === 1 ? 'Her partinin başlangıcı' : n(x.uye) + ' aktif üye · ' + n(x.il) + ' il · ' + n(x.il_baskani) + ' il başkanı · ' + esc(kisaTl(x.bedel))) + '</small></div>';
       }).join('') + '</div><p class="kucuk" style="margin:8px 0 0">Kademe sınırının üstünde görevde olan yardımcılar görevde kalır; boşalan koltuk kapanır.</p></div>';
     return h;
+  }
+  function fonKart(v) {
+    var f = v.fon || {}, sn = v.kademe.sonraki, pa = v.parti, ls = f.liste || [];
+    var h = '<div class="kart gmz-form" id="gmzFon"><h3 class="gmz-bas">İnşaat fonu ve bağışçılar</h3>' +
+      '<div class="gmz-fon">' + esc(tl(f.bakiye)) + '</div><p class="alt" style="margin:0">Fon yalnız genel merkez inşaatına harcanır. Bugüne kadar ' + n(f.bagisci) + ' kişi toplam ' + esc(tl(f.toplam)) + ' bağışladı.' + (n(f.benim) ? ' Senin bağışın: <b>' + esc(tl(f.benim)) + '</b>.' : '') + '</p>';
+    if (sn) h += '<label for="gmzBTut">Bağış tutarı (₺)</label><input id="gmzBTut" type="number" inputmode="numeric" min="100" max="10000000" step="100" placeholder="Örn. 25000">' +
+      '<div class="gmz-hizli"><button type="button" data-gmzb="10000">10 bin</button><button type="button" data-gmzb="50000">50 bin</button><button type="button" data-gmzb="250000">250 bin</button></div>' +
+      '<div class="hata-metin" id="gmzBHata"></div><button type="button" class="btn altin" id="gmzBOk">' + esc(pa.kisa) + ' inşaat fonuna bağışla</button>' +
+      '<p class="kucuk" style="margin:8px 0 0">Bağış cüzdanından düşer. Mağazadaki Genel Merkez Kampanyası da bu fonu büyütür; mağazadan katkı verenler listede <b class="gmz-sari">sarı</b> görünür.</p>';
+    else h += '<div class="gmz-not">Genel merkez en büyük kademede; inşaat fonu kapandı.</div>';
+    h += ls.length ? '<p class="kucuk" style="margin:12px 0 0">Bağışçılar</p>' + ls.map(function (x, i) {
+      return '<button type="button" class="gmz-satir' + (x.magaza ? ' magaza' : '') + '" data-kart="' + esc(x.kad) + '"><div class="orta"><b>' + (i + 1) + '. ' + esc(x.ad) + (x.magaza ? ' ★' : '') + '</b>' + (x.magaza ? '<small>Kampanya destekçisi · ' + n(x.magaza_adet) + ' mağaza katkısı</small>' : '') + '</div><div class="sag">' + esc(tl(x.tutar)) + '</div></button>';
+    }).join('') : '<p class="alt" style="margin:12px 0 0">Henüz bağış yok. İlk bağışı sen yap.</p>';
+    return h + '</div>';
   }
   function kisi(x, renk, boy) { return yuz(x.kad, renk, boy); }
   function yonetimKart(v) {
@@ -322,7 +343,7 @@
       h += '<div class="gmz-hedef"><div class="ust"><span>' + esc(pr.sonraki_ad) + ' için</span><b>' + n(pr.katki) + ' / ' + n(pr.sonraki) + ' katkı</b></div><div class="gmz-cubuk"><i style="width:' + Math.max(3, o) + '%;background:' + TRIM[Math.min(3, s + 1)] + '"></i></div></div>';
     } else h += '<p style="margin:10px 0 0;font-size:15px"><b>En üst donanıma ulaşıldı</b> · ' + n(pr.katki) + ' katkı</p>';
     if (pr.urun_acik) {
-      h += '<p class="kucuk" style="margin:8px 0 0">Her katkı parti kasasına ' + tl(pr.tutar) + ' koyar; donanım kazanıldığında bütün üyelere rozet verilir.</p>';
+      h += '<p class="kucuk" style="margin:8px 0 0">Her katkı inşaat fonuna ' + tl(pr.tutar) + ' koyar (bina tamamlandıysa parti kasasına); donanım kazanıldığında bütün üyelere rozet verilir.</p>';
       if (v.uyeyim && g('magazaEkrani')) h += pr.katki_verebilir ? '<button type="button" class="btn altin" id="gmzMagaza" style="margin-top:10px">Mağazada Genel Merkez Kampanyası</button>'
         : '<div class="gmz-not">Katkı verebilmek için hesabın en az ' + n(pr.hesap_gun) + ' günlük olmalı.</div>';
     } else h += '<div class="gmz-not">Genel Merkez Kampanyası yakında mağazada. O zamana kadar donanımları yukarıdan önizleyebilirsin.</div>';
@@ -343,7 +364,7 @@
     css();
     var p = n(v.prestij.seviye);
     x.innerHTML = '<div id="gmzKok" style="--gmz-trim:' + TRIM[p] + ';--gmz-renk:' + esc(karis(v.parti.renk, '#ffffff', .15)) + '">' +
-      sahne(v) + kademeKart(v) + yonetimKart(v) + sayiKart(v) + katKart(v) + panoKart(v) + donanimKart(v) + partilerKart(v) + '</div>';
+      sahne(v) + kademeKart(v) + fonKart(v) + yonetimKart(v) + sayiKart(v) + katKart(v) + panoKart(v) + donanimKart(v) + partilerKart(v) + '</div>';
     bagla(x, v);
     try { if (typeof portreleriTazele === 'function') portreleriTazele(x); } catch (_) {}
   }
@@ -381,6 +402,20 @@
           .catch(function (err) { bildir(hata(err), true); if (document.body.contains(yk)) yk.disabled = false; });
       };
       if (typeof onayla === 'function') Promise.resolve(onayla('Genel merkez inşaatı', esc(soru), 'İnşa et')).then(function (ok) { if (ok) devam(); });
+      else if (window.confirm(soru)) devam();
+    };
+    x.querySelectorAll('[data-gmzb]').forEach(function (b) { b.onclick = function () { var el = document.getElementById('gmzBTut'); if (el) el.value = b.dataset.gmzb; }; });
+    var bo = document.getElementById('gmzBOk'); if (bo) bo.onclick = function () {
+      var tut = Math.round(n(document.getElementById('gmzBTut').value)), he = document.getElementById('gmzBHata');
+      he.textContent = '';
+      if (tut < 100) { he.textContent = 'En az 100 ₺ bağışlayabilirsin.'; return; }
+      var devam = function () {
+        bo.disabled = true;
+        rpc('genel_merkez_bagis', { p_parti: pid, p_tutar: tut }).then(function (r) { bildir('Bağışın inşaat fonuna eklendi. Teşekkürler!'); try { if (typeof durumYenile === 'function') durumYenile(); } catch (_) {} ciz(r); var k = document.getElementById('gmzFon'); if (k) try { k.scrollIntoView({ block: 'start' }); } catch (_) {} })
+          .catch(function (err) { bildir(hata(err), true); if (document.body.contains(bo)) bo.disabled = false; });
+      };
+      var soru = v.parti.kisa + ' genel merkez inşaat fonuna ' + tl(tut) + ' bağışlansın mı? Bağış geri alınamaz.';
+      if (typeof onayla === 'function') Promise.resolve(onayla('İnşaat fonuna bağış', esc(soru), 'Bağışla')).then(function (ok) { if (ok) devam(); });
       else if (window.confirm(soru)) devam();
     };
     var mg = document.getElementById('gmzMagaza'); if (mg) mg.onclick = function () { ac(window.magazaEkrani); };
