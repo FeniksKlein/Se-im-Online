@@ -69,6 +69,7 @@ const KOSULLU = {
   // 27.11: komisyon ve Meclis araştırması tabloları canlı migration'la (14.10 siyasi kurumlar) kuruldu; onlar ya da Genel Kurul yoksa atlanır.
   'zz_20261127_tbmm_denetim_vekil.sql': ['oyun.kom_tanim', 'oyun.kom_uye', 'oyun.kom_kanun', 'oyun.kom_oy', 'oyun.meclis_arastirma', 'oyun.gk_birlesim', 'oyun.bakan_soru', 'oyun.kidem_kaynak'],
   // 27.11: miting otobüsü tabloları ve mitingler.tur sütunu (canlı migration'lar) yoksa atlanır.
+  'zz_20261127_yayinevi_sayfasi.sql': ['oyun.uc_kitap', 'oyun.sirket_merkezleri'],
   'zz_20261127_ortak_sirket_ruhsat.sql': ['oyun.ortak_sirket_kurulus', 'oyun.bel_yatirim_ruhsat'],
   'zz_20261127_kitap_telif_ozet.sql': ['oyun.uc_kitap', 'oyun.uc_kitap_satis'],
   'zz_20261127_aday_miting_otobus.sql': ['oyun.miting_otobus', 'oyun.miting_otobus_koltuk', 'oyun.mitingler', 'oyun.parti_gby', 'oyun.parti_hareket'],
@@ -176,6 +177,8 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261127_kitap_telif_ozet.sql',
   // 27.11.2026: ortak inşaat şirketi kuruluşunda kurucu en büyük ortak değilse ruhsat kapısı hatası.
   'zz_20261127_ortak_sirket_ruhsat.sql',
+  // 27.11.2026: yayınevi sayfası (uc_kitap_panel › yayinevleri: il, kuruluş, yönetici, ortaklar).
+  'zz_20261127_yayinevi_sayfasi.sql',
   // 25.11.2026: Şirket Kazanç Dengesi — kuruluş dönemi verimi, sermayeye bağlı kazanç tavanı, şube tavanı, mağaza satış tavanı, geçiş dönemi.
   // pazar_tahmin / sube_bolge_analiz / sube_pazar_tahmin / halka_arz_net_tahmin'i yeniden yazar, pazar_hesapla / eko_ticaret_tick /
   // npc_isletme_tick / pazar_danisman'ı yamalar (oyun.sd_yama); bu yüzden listenin SONUNDA kalmalı.
