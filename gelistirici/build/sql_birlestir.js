@@ -5,6 +5,8 @@ const oku = ad => fs.readFileSync(path.join(kok, 'sql', ad), 'utf8').replace(/\r
 // Canlıda Supabase migration'larıyla kurulmuş tablolara (halk hareketleri, gözaltı, kabine süresi, görev denetimi) dayanan
 // modüller: tam kurulumda bu tablolar yoksa dosya atlanır, varsa tek parça çalışır. Böylece tam kurulum bozulmaz.
 const KOSULLU = {
+  // 27.11: İl Başkanlığı Masası; canlı migration'larla gelen il teşkilatı, GBY yetki, miting, stant, akış, kıdem ve zamanlayıcı tablolarına dayanır.
+  'zz_20261127_il_baskanligi_masasi.sql': ['oyun.il_baskanlik', 'oyun.il_kongre', 'oyun.il_yonetim_kurulu', 'oyun.parti_teskilat_gorev', 'oyun.parti_gby_yetki', 'oyun.mitingler', 'oyun.stant', 'oyun.akis', 'oyun.kidem_kaynak', 'oyun.zamanlayici_adim', 'oyun.ajans_haberleri', 'oyun.oturumlar'],
   'zz_20261126_pdk_otomatik_ac.sql': ['oyun.pdk_dosya', 'oyun.ayarlar'],
   // 26.11: MYK + Disiplin Kurulu; canlı migration'larla gelen imza kampanyası, moderatör ve Yüksek Mahkeme tablolarına dayanır.
   'zz_20261126_parti_disiplin_kurulu.sql': ['oyun.sos_parti_imza', 'oyun.sos_parti_imzaci', 'oyun.moderatorler', 'oyun.mahkeme_uye', 'oyun.parti_gby', 'oyun.parti_teskilat_gorev', 'oyun.mesajlar'],
@@ -63,6 +65,8 @@ const KOSULLU = {
   // 25.11: Şirket Kazanç Dengesi; şube, mağaza satışı, zamanlayıcı adımı ve portal ayarı tabloları (bir kısmı canlı migration) yoksa atlanır.
   'zz_20261125_sirket_kazanc_dengesi.sql': ['oyun.pazar_sirket', 'oyun.pazar_sektor', 'oyun.pazar_ayar', 'oyun.sirket_il_subeleri', 'oyun.eko_npc_satis', 'oyun.eko_isletmeler', 'oyun.zamanlayici_adim', 'oyun.yp_ayar_katalog', 'oyun.satin_almalar'],
   // 26.11: Kademeli Getiri + İstihdam; kazanç dengesi, mağaza, ek iş ve oturum tabloları (bir kısmı canlı migration) yoksa atlanır.
+  // 27.11: Mağaza Paketi 2; mağaza, kürsü, seçim ve parti tabloları (bir kısmı canlı migration) yoksa atlanır.
+  'zz_20261127_magaza_paket2.sql': ['oyun.paketler', 'oyun.magaza_jeton', 'oyun.magaza_hesap', 'oyun.oyuncu_hak', 'oyun.akis', 'oyun.engellemeler', 'oyun.kazananlar', 'oyun.oylar', 'oyun.mesajlar', 'oyun.parti_gby', 'oyun.parti_sozcu', 'oyun.moderatorler', 'oyun.satin_almalar'],
   'zz_20261126_kademeli_getiri_istihdam.sql': ['oyun.sirket_denge_ayar', 'oyun.sirket_denge_durum', 'oyun.pazar_sirket', 'oyun.ek_is_katalog', 'oyun.ek_is_kayit', 'oyun.kidem_kaynak', 'oyun.magaza_hesap', 'oyun.magaza_jeton', 'oyun.paketler', 'oyun.oturumlar'],
   // 27.11: Genel Kurul salonu; Meclis tamsayısı, ad-soyad, Yardım Masası (mesajlar.gorevli) ve kıdem tabloları (canlı migration'lar) yoksa atlanır.
   'zz_20261127_tbmm_genel_kurul.sql': ['oyun.meclis_soz', 'oyun.mesajlar', 'oyun.kazananlar', 'oyun.bakan_teklifleri', 'oyun.zamanlayici_adim', 'oyun_yonetim.yasak_isim', 'oyun.moderatorler', 'oyun.destek_mesaj', 'oyun.mod_kisit', 'oyun.kidem_kaynak'],
@@ -177,6 +181,11 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261127_kitap_telif_ozet.sql',
   // 27.11.2026: ortak inşaat şirketi kuruluşunda kurucu en büyük ortak değilse ruhsat kapısı hatası.
   'zz_20261127_ortak_sirket_ruhsat.sql',
+  // (canlı uygulama sırası: tbmm → otobüs → telif → ortak şirket ruhsatı → il başkanlığı masası → yayınevi)
+  // 27.11.2026: İl Başkanlığı Masası — il yönetim kurulu yetkileri, karar defteri, il kasası, il mitingi/standı, il açıklamaları, genel merkez yazışması,
+  // il başkanı belirleme yöntemi (kongre/atama) ve kurultaydan önce kongre haftası. il_teskilat_detay / il_kongre_tick / il_kongre_ac / il_kongre_oy /
+  // il_baskan_gorevden_al'ı yeniden yazar, teskilat_gorev_ver ve parti_miting_duzenle'yi yamalar; bu yüzden il teşkilatı ve miting dosyalarından SONRA.
+  'zz_20261127_il_baskanligi_masasi.sql',
   // 27.11.2026: yayınevi sayfası (uc_kitap_panel › yayinevleri: il, kuruluş, yönetici, ortaklar).
   'zz_20261127_yayinevi_sayfasi.sql',
   // 25.11.2026: Şirket Kazanç Dengesi — kuruluş dönemi verimi, sermayeye bağlı kazanç tavanı, şube tavanı, mağaza satış tavanı, geçiş dönemi.
@@ -188,7 +197,11 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   'zz_20261126_kademeli_getiri_istihdam.sql',
   // 25.11.2026: YÜK HIZLANDIRMA — Kürsü gündemi/akışı, sohbet açılışı ve unvan önbelleği (canlıda 25.11 akşamı uygulandı).
   // LİSTENİN SONUNDA KALMALI: sohbet_oku, kursu_akis, kursu_gundem ve oyun.unvan'ı yeniden yazan dosyalardan sonra gelir.
-  'zz_20261125_yuk_hizlandirma.sql'];
+  'zz_20261125_yuk_hizlandirma.sql',
+  // 27.11.2026: MAĞAZA PAKETİ 2 — 19 yeni ürün (aktif=false), Kürsü vitrini/Gündem manşeti kuyruğu (3 yer + sıra), plaka, mazbata,
+  // kutlama, kongre, lansman sahnesi, genel merkez, parti bağışı, hediye/parti kartı, destekçi duvarı. kursu_akis'i (yuk_hizlandirma
+  // çıktısı) _yama ile, haberler/magaza_rozetler'i yeniden yazar; magaza_uygula/magaza_durum'u yamalar. Bu yüzden EN SONDA.
+  'zz_20261127_magaza_paket2.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
