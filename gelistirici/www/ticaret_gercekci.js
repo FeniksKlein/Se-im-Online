@@ -555,9 +555,23 @@ function franchiseBuy(id){
  ' · Ciro payı %'+tm(m?.ciro_payi)+' · Pozitif net kâr payı %'+tm(m?.kar_payi)+'</p>'+
  choices("tcFirm","Bayilik açacak mağaza",bizNames(arr)),
  "Sözleşmeyi imzala",async el=>{
-  if(!await onayla("Bayilik sözleşmesi","İsim hakkı mağaza kasasından markaya aktarılacak. Satışlarda belirlenen paylar kesilecek.","İmzala"))return;
+  const secilen=arr.find(x=>String(x.id)===String(sel(el,"tcFirm")));
+  const katUyari=secilen&&m&&secilen.kategori&&m.kategori&&secilen.kategori!==m.kategori?
+   " Dikkat: mağazan markanın türüne ("+tm(m.kategori)+") geçecek"+(["fastfood","kahve"].includes(secilen.kategori)&&m.kategori==="market"?"; market olduğu için mutfakta ürün hazırlayamazsın":"")+". Bayilikten çıkarsan eski türüne döner ama isim hakkı iade edilmez.":"";
+  if(!await onayla("Bayilik sözleşmesi","İsim hakkı mağaza kasasından markaya aktarılacak. Satışlarda belirlenen paylar kesilecek."+katUyari,"İmzala"))return;
   await action("bayilik",{sirket:Number(sel(el,"tcFirm")),hedef:id},"Franchise bayiliği açıldı.");
  });
+}
+async function franchiseLeave(id){
+ const s=own("magaza").find(x=>x.id===id);
+ if(!s||!s.bayilik){toast("Bu mağazanın bayiliği yok.",true);return;}
+ if(!await onayla("Bayilikten çık",tm(s.bayilik.marka)+" bayiliği sona erecek. Ödediğin isim hakkı iade edilmez; mağazan bayilikten önceki türüne döner ve 7 gün yeni bayilik alamaz.","Bayilikten çık",true))return;
+ try{
+  await API.rpc("eko_bayilik_birak",{p_sirket:id});
+  toast("Bayilikten çıktın; mağazan kendi işine döndü.");
+  if(typeof durumYenile==="function")durumYenile().catch(()=>{});
+  await ticaretMerkezEkrani();
+ }catch(err){toast(typeof hataCevir==="function"?hataCevir(err.message):String(err.message),true);}
 }
 function panel(){
  const d=TC.veri||{};
@@ -702,7 +716,8 @@ function panel(){
    (s.marka?"Markan: "+tm(s.marka.kategori)+" · Cirodan %"+s.marka.ciro_payi+
      " · Kârdan %"+s.marka.kar_payi:
     s.bayilik?"Bayilik: "+s.bayilik.marka+" · Cirodan %"+s.bayilik.ciro_payi+" · Kârdan %"+s.bayilik.kar_payi:
-    "Bağımsız mağaza"));
+    "Bağımsız mağaza"),
+   s.bayilik?'<button class="btn ikinci" onclick="tcLeaveBrand('+Number(s.id)+')">Bayilikten çık</button>':"");
   html+=title("Bayilik alınabilen markalar","Oyuncu işletmeleri");
   if(!(d.markalar||[]).length)html+=card("Henüz franchise markası yok","Mağaza sahipleri kendi markalarını oluşturabilir.");
   for(const m of d.markalar||[])html+=card("🏷️ "+m.ad,
@@ -768,7 +783,7 @@ window.tcAutomation=automation;window.tcDisable=offAuto;window.tcType=storeType;
 window.tcAutoProduction=tcAutoProduction;window.tcOwnSupply=tcOwnSupply;
 window.tcDisableProduction=tcDisableProduction;window.tcDisableOwn=tcDisableOwn;
 window.tcToggleSales=tcToggleSales;
-window.tcBrand=brandSettings;window.tcBuyBrand=franchiseBuy;
+window.tcBrand=brandSettings;window.tcBuyBrand=franchiseBuy;window.tcLeaveBrand=franchiseLeave;
 window.tcFactoryPermit=factoryWithPermit;
 window.tcMarketPermit=marketWithPermit;
 window.tcKitchen=kitchenPrepare;
