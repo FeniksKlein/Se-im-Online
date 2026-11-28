@@ -51,16 +51,22 @@
     return C.yukleniyor;
   }
 
+  /* Liste tamamlama (28.11.2026): ön seçim/atama bitince boş sıralar genel seçime kadar doldurulur.
+     Sunucu yetkiliye uyum için mv='atama' döndürür; gerçek yöntem gercek_mv'dedir. */
+  var gmv = function (p) { return (p && p.gercek_mv) || (p && p.mv); };
+  var tmAcik = function (p) { return !!(p && p.tamamlama_mv && p.tamamlama_mv.yetkili); };
+
   /* ------------------------------------------------ Partiler kartı */
   function kartHtml(p) {
     if (!p || !p.parti) return '';
     var ust = '<h3>Aday belirleme · ' + esc(p.parti.kisa) + '</h3>' +
-      '<div class="ab-satir"><span>Milletvekili adayları</span><span class="ab-cip ' + (p.mv === 'atama' ? 'atama' : '') + '">' + YAD[p.mv] + '</span></div>' +
+      '<div class="ab-satir"><span>Milletvekili adayları</span><span class="ab-cip ' + (gmv(p) === 'atama' ? 'atama' : '') + '">' + YAD[gmv(p)] + '</span></div>' +
       '<div class="ab-satir"><span>Belediye başkanı adayları</span><span class="ab-cip ' + (p.bel === 'atama' ? 'atama' : '') + '">' + YAD[p.bel] + '</span></div>';
     if (p.gb_mi) {
       return '<div class="kart ab-kart">' + ust +
         (!p.belirlendi ? '<div class="ab-uyari">Genel Başkan olarak partinin aday belirleme yöntemini henüz seçmedin. Seçmezsen adaylar ön seçimle belirlenir.</div>' : '') +
-        '<button class="btn altin" onclick="adayBelirlemeAc()">' + (p.belirlendi ? 'Aday belirleme ve listeler' : 'Yöntemi seç') + '</button></div>';
+        (tmAcik(p) ? '<div class="ab-uyari"><b>Liste tamamlama açık</b> · ' + esc(zaman(p.tamamlama_mv.son)) + "'e kadar. İllerde boş kalan milletvekili sıralarına parti üyelerini ekleyebilirsin.</div>" : '') +
+        '<button class="btn altin" onclick="adayBelirlemeAc()">' + (tmAcik(p) ? 'Listeleri tamamla' : (p.belirlendi ? 'Aday belirleme ve listeler' : 'Yöntemi seç')) + '</button></div>';
     }
     return '<div class="kart ab-kart">' + ust +
       '<p class="alt">' + (p.mv === 'atama' || p.bel === 'atama'
@@ -89,6 +95,7 @@
   /* ------------------------------------------------ GB ekranı */
   function donemHtml(s, ad) {
     if (!s) return '<div class="ab-satir"><span>' + ad + '</span><span>Takvimde yaklaşan ön seçim yok</span></div>';
+    if (s.tamamlama) return '<div class="ab-satir"><span>' + ad + '</span><span><b>Liste tamamlama açık</b> · ' + esc(zaman(s.oy_bit)) + "'e kadar</span></div>";
     return '<div class="ab-satir"><span>' + ad + '</span><span>' + (s.acik ? '<b>Aday belirleme açık</b> · ' + esc(zaman(s.oy_bit)) + "'e kadar" : 'Başvuru ' + esc(zaman(s.basvuru_bas)) + "'de açılır") + '</span></div>';
   }
 
@@ -110,19 +117,21 @@
     };
     var iller = (p.iller || []).map(function (i) {
       var alt = [];
-      if (p.mv === 'atama') alt.push('MV: ' + i.mv_atanan + '/' + i.mv + ' atandı' + (i.mv_basvuru ? ' · ' + i.mv_basvuru + ' başvuru' : ''));
+      if (tmAcik(p)) alt.push('MV: ' + i.mv_atanan + '/' + i.mv + ' dolu' + (i.mv_bos ? ' · <b>' + i.mv_bos + ' boş sıra</b>' : ' · liste tam'));
+      else if (p.mv === 'atama') alt.push('MV: ' + i.mv_atanan + '/' + i.mv + ' atandı' + (i.mv_basvuru ? ' · ' + i.mv_basvuru + ' başvuru' : ''));
       if (p.bel === 'atama') alt.push('Belediye: ' + (i.bel_atanan ? esc(i.bel_atanan) : 'aday yok'));
       return '<button class="ab-il" onclick="adayBelirlemeIl(' + i.il_id + ')"><b>' + esc(i.ad) + '</b> · ' + i.uye + ' üye<small>' + alt.join(' · ') + '</small></button>';
     }).join('');
     ic.innerHTML =
       '<div class="kart ab-ekran"><h3 style="font-size:17px;font-weight:800">Aday belirleme yöntemi</h3>' +
       '<p class="alt">' + esc(p.kural) + '</p>' +
-      '<div class="alan"><label for="abMv">Milletvekili adayları</label>' + sec('abMv', p.mv, p.kilit_mv) + '</div>' +
+      '<div class="alan"><label for="abMv">Milletvekili adayları</label>' + sec('abMv', gmv(p), p.kilit_mv) + '</div>' +
       '<div class="alan"><label for="abBel">Belediye başkanı adayları</label>' + sec('abBel', p.bel, p.kilit_bel) + '</div>' +
       '<div class="hata-metin" id="abHata"></div>' +
       '<button class="btn altin" id="abKaydet">Yöntemi kaydet</button></div>' +
       '<div class="kart"><h3 style="font-size:17px;font-weight:800">Takvim</h3>' + donemHtml(p.secim_mv, 'Milletvekili') + donemHtml(p.secim_bel, 'Belediye başkanlığı') +
       '<p class="kucuk" style="margin-top:8px">Sıra her zaman: önce adaylık başvurusu, sonra ön seçim (ya da Genel Başkan ataması), sonra genel seçim. Atama, başvurular açıldığı andan ön seçim süresi bitene kadar yapılır; süre bitince liste kesinleşir.</p></div>' +
+      (tmAcik(p) ? '<div class="kart ab-kart"><h3>Liste tamamlama</h3><p>' + esc(p.tamamlama_mv.aciklama) + '</p><p class="kucuk">Son: ' + esc(zaman(p.tamamlama_mv.son)) + '. İl listesinde ön seçimle (ya da atamayla) kesinleşen sıralar kilitlidir; yeni adaylar onların arkasına eklenir. Belediye başkanı, vali, il teşkilatı görevlisi, oda/baro/sendika başkanı ve hâkim olan üyeler eklenemez.</p></div>' : '') +
       ((p.mv === 'atama' || p.bel === 'atama')
         ? '<div class="kart"><h3 style="font-size:17px;font-weight:800">İl il adaylar</h3><p class="alt">Milletvekili listesine partinin hangi ilde yaşarsa yaşasın bir üyesini koyabilirsin (ikamet şartı yok; bir kişi yalnız bir ilden aday olur). Belediye başkanı adayı yalnız o ilde kayıtlı üyelerden seçilir. Milletvekili listesi en fazla ilin sandalye sayısı kadar olur; sandalyeler seçimde D\'Hondt usulüyle bu sıraya göre dağıtılır.</p>' +
           (iller || '<div class="bos">Partinin üyesi olan il yok.</div>') + '</div>'
@@ -153,6 +162,7 @@
   }
 
   function listeCiz(v) {
+    if (v.tamamlama) return tamamlamaCiz(v);
     var secili = (v.uyeler || []).filter(function (u) { return u.atama_sira != null; })
       .sort(function (a, b) { return a.atama_sira - b.atama_sira; }).map(function (u) { return u.kad; });
     var baslik = (v.tur === 'mv' ? 'Milletvekili listesi' : 'Belediye başkanı adayı') + ' · ' + v.il_ad;
@@ -217,6 +227,78 @@
         toast(secili.length ? 'Aday listesi kaydedildi.' : 'Liste boşaltıldı.'); modalKapat(); C.at = 0;
         if (typeof yenidenCiz === 'function') yenidenCiz();
       }).catch(function (err) { m.querySelector('#abLHata').textContent = hata(err); k.disabled = false; });
+    };
+  }
+
+  /* ------------------------------------------------ liste tamamlama */
+  function tamamlamaCiz(v) {
+    var kilitli = (v.uyeler || []).filter(function (u) { return u.kilitli; }).sort(function (a, b) { return a.atama_sira - b.atama_sira; });
+    var secili = (v.uyeler || []).filter(function (u) { return u.tamamlama && u.atama_sira != null; })
+      .sort(function (a, b) { return a.atama_sira - b.atama_sira; }).map(function (u) { return u.kad; });
+    var bos = Math.max(0, v.kontenjan - kilitli.length);
+    var uyeBilgi = {}; (v.uyeler || []).forEach(function (u) { uyeBilgi[u.kad] = u; });
+    var disEtiket = function (u) { return u && u.dis_il ? ' <small>(yaşadığı il: ' + esc(u.yasadigi_il || 'başka il') + ')</small>' : ''; };
+    var m = modal('<h3 style="font-size:19px;font-weight:800">Liste tamamlama · ' + esc(v.il_ad) + '</h3>' +
+      '<div class="ab-uyari">' + esc(v.aciklama || '') + '</div>' +
+      '<h4 style="margin:10px 0 4px">Kesinleşen sıralar (' + kilitli.length + ')</h4><ol class="ab-liste" style="padding-left:0;list-style:none;margin:0">' +
+        (kilitli.length ? kilitli.map(function (u) { return '<li><b style="min-width:26px">' + u.atama_sira + '.</b><span>' + esc(u.ad || u.kad) + ' <small>🔒' + (u.oy != null ? ' · ' + u.oy + ' oy' : '') + '</small>' + disEtiket(u) + '</span></li>'; }).join('')
+                        : '<li><span class="kucuk">Bu ilde kesinleşmiş aday yok.</span></li>') + '</ol>' +
+      '<h4 style="margin:12px 0 4px">Eklenenler (en çok ' + bos + ')</h4><ol class="ab-liste" id="abTListe" style="padding-left:0;list-style:none;margin:0"></ol>' +
+      '<h4 style="margin:12px 0 4px">Bu ildeki üyeler</h4><div id="abTUyeler"></div>' +
+      '<h4 style="margin:12px 0 4px">Başka ilden üye ekle</h4>' +
+      '<input id="abTAra" type="search" autocomplete="off" placeholder="Ad soyad ya da kullanıcı adı" style="width:100%;min-width:0;box-sizing:border-box;font-size:16px;min-height:48px;padding:10px 12px;border-radius:12px;border:1px solid var(--line2,#2a3045);background:var(--bg,#151a28);color:inherit;color-scheme:dark"><div id="abTAraSonuc"></div>' +
+      '<div class="hata-metin" id="abTHata"></div>' +
+      '<button class="btn altin" id="abTKaydet"' + (bos ? '' : ' disabled') + '>Listeyi kaydet</button><button class="btn ikinci" id="abTKapat">Kapat</button>');
+    function sinir() { if (secili.length >= bos) { m.querySelector('#abTHata').textContent = 'Bu ilde boş sıra kalmadı (kontenjan ' + v.kontenjan + ').'; return false; } m.querySelector('#abTHata').textContent = ''; return true; }
+    function yenile() {
+      var ol = m.querySelector('#abTListe');
+      ol.innerHTML = secili.length ? secili.map(function (k, i) {
+        var u = uyeBilgi[k] || {};
+        return '<li><b style="min-width:26px">' + (kilitli.length + i + 1) + '.</b><span>' + esc(u.ad || k) + disEtiket(u) + '</span>' +
+          '<button data-y="' + i + '" aria-label="Yukarı">↑</button><button data-a="' + i + '" aria-label="Aşağı">↓</button><button data-s="' + i + '" aria-label="Listeden çıkar">✕</button></li>';
+      }).join('') : '<li><span class="kucuk">Henüz ekleme yok. Aşağıdan üyeye dokun.</span></li>';
+      ol.querySelectorAll('button[data-y]').forEach(function (b) { b.onclick = function () { var i = +b.dataset.y; if (i > 0) { var t = secili[i - 1]; secili[i - 1] = secili[i]; secili[i] = t; yenile(); } }; });
+      ol.querySelectorAll('button[data-a]').forEach(function (b) { b.onclick = function () { var i = +b.dataset.a; if (i < secili.length - 1) { var t = secili[i + 1]; secili[i + 1] = secili[i]; secili[i] = t; yenile(); } }; });
+      ol.querySelectorAll('button[data-s]').forEach(function (b) { b.onclick = function () { secili.splice(+b.dataset.s, 1); yenile(); }; });
+      var kalan = (v.uyeler || []).filter(function (u) { return !u.kilitli && secili.indexOf(u.kad) < 0; });
+      m.querySelector('#abTUyeler').innerHTML = kalan.length ? kalan.map(function (u) {
+        return '<div class="ab-uye"><span>' + esc(u.ad || u.kad) + ' <small>(' + esc(u.kad) + ')</small>' + disEtiket(u) + (u.engel ? ' <small>· eklenemez: ' + esc(u.engel) + '</small>' : '') + '</span>' +
+          (u.engel ? '' : '<button data-e="' + esc(u.kad) + '" aria-label="Listeye ekle">＋</button>') + '</div>';
+      }).join('') : '<div class="kucuk">Eklenebilecek başka üye yok.</div>';
+      m.querySelectorAll('#abTUyeler button[data-e]').forEach(function (b) { b.onclick = function () { if (!sinir()) return; secili.push(b.dataset.e); yenile(); }; });
+    }
+    yenile();
+    var ara = m.querySelector('#abTAra'), zm = null;
+    ara.oninput = function () {
+      clearTimeout(zm); var q = ara.value.trim(), out = m.querySelector('#abTAraSonuc');
+      if (q.length < 2) { out.innerHTML = ''; return; }
+      zm = setTimeout(function () {
+        API.rpc('parti_aday_uye_ara', { p_ara: q }).then(function (r) {
+          if (ara.value.trim() !== q) return;
+          var ls = (r || []).filter(function (u) { return secili.indexOf(u.kad) < 0 && !(uyeBilgi[u.kad] && uyeBilgi[u.kad].kilitli); });
+          out.innerHTML = ls.length ? ls.map(function (u) {
+            var baska = u.atama_sira != null && u.aday_il_id !== v.il_id;
+            var not = baska ? ' <small>· şu an ' + esc(u.aday_il) + ' listesinde</small>' : (!u.uygun ? ' <small>· şu an eklenemez</small>' : '');
+            return '<div class="ab-uye"><span>' + esc(u.ad) + ' <small>(' + esc(u.kad) + ' · ' + esc(u.il) + ')</small>' + not + '</span>' +
+              (baska || !u.uygun ? '' : '<button data-d="' + esc(u.kad) + '" aria-label="Listeye ekle">＋</button>') + '</div>';
+          }).join('') : '<div class="kucuk">Eşleşen üye yok.</div>';
+          out.querySelectorAll('button[data-d]').forEach(function (b) { b.onclick = function () {
+            var u = (r || []).filter(function (x) { return x.kad === b.dataset.d; })[0];
+            if (!sinir()) return;
+            uyeBilgi[u.kad] = { kad: u.kad, ad: u.ad, dis_il: u.il_id !== v.il_id, yasadigi_il: u.il };
+            secili.push(u.kad); ara.value = ''; out.innerHTML = ''; yenile();
+          }; });
+        }).catch(function (err) { out.innerHTML = '<div class="kucuk">' + esc(hata(err)) + '</div>'; });
+      }, 350);
+    };
+    m.querySelector('#abTKapat').onclick = modalKapat;
+    var k = m.querySelector('#abTKaydet');
+    k.onclick = function () {
+      k.disabled = true; m.querySelector('#abTHata').textContent = '';
+      API.rpc('parti_aday_ata', { p_tur: 'mv', p_il: v.il_id, p_kadlar: secili }).then(function () {
+        toast(secili.length ? 'Liste tamamlandı: ' + secili.length + ' aday eklendi.' : 'Eklenen adaylar çıkarıldı.'); modalKapat(); C.at = 0;
+        if (typeof yenidenCiz === 'function') yenidenCiz();
+      }).catch(function (err) { m.querySelector('#abTHata').textContent = hata(err); k.disabled = false; });
     };
   }
 

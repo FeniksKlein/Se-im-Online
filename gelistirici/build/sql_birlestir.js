@@ -178,7 +178,11 @@ const dosyalar = ['01_sema.sql', 'iller.sql', '02_motor.sql', '03_api.sql', '05_
   // 27.11.2026: MAĞAZA PAKETİ 2 — 19 yeni ürün (aktif=false), Kürsü vitrini/Gündem manşeti kuyruğu (3 yer + sıra), plaka, mazbata,
   // kutlama, kongre, lansman sahnesi, genel merkez, parti bağışı, hediye/parti kartı, destekçi duvarı. kursu_akis'i (yuk_hizlandirma
   // çıktısı) _yama ile, haberler/magaza_rozetler'i yeniden yazar; magaza_uygula/magaza_durum'u yamalar. Bu yüzden EN SONDA.
-  'zz_20261127_magaza_paket2.sql'];
+  'zz_20261127_magaza_paket2.sql',
+  // 28.11.2026: Milletvekili listesi tamamlama — ön seçim/atama sonrası boş sıralar genel seçime kadar GB ya da seçim/teşkilat GBY'si
+  // tarafından doldurulur. parti_aday_il / parti_aday_ata / parti_aday_uye_ara / parti_aday_panel / adaylik_geri_cek'i yeniden yazar,
+  // parti_aday_yontem_ayarla'yı yamalar; bu yüzden zz_20261127_atama_dis_il_aday.sql'den SONRA.
+  'zz_20261128_mv_liste_tamamlama.sql'];
 const sql = ['-- SEÇİM SİMÜLASYONU ONLINE — üretilmiş kaynak; elle düzenlemeyin.',
   '-- Oyunu sıfırlamaz. Tek işlem, otomatik yedek ve oyuncu verisi bütünlük kontrolü.',
   '-- Canlı sunucuda uygulanmış sürümler için tekrar çalıştırmayın; bu dosya kurulum/eşitleme kaynağıdır.',
